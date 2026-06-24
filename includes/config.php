@@ -1,0 +1,367 @@
+<?php
+
+$site_config = [
+    'serverName' => 'Raidlands 1000x',
+    'tagline' => 'Raid. Respawn. Rebuild. Repeat.',
+    'region' => 'US Central',
+    'mapName' => 'Procedural Battlefield',
+    'serverFps' => 'Stable',
+    'queue' => '0',
+    'playersOnline' => 127,
+    'maxPlayers' => 250,
+    'serverOnline' => true,
+    'connectCommand' => 'connect play.raidlands.gg:28015',
+    'steamConnectUrl' => 'steam://connect/play.raidlands.gg:28015',
+    'discordInviteUrl' => 'https://discord.gg/raidlands',
+    'wipe' => [
+        'days' => [1, 5],
+        'dayNames' => ['Monday', 'Friday'],
+        'time' => '19:00',
+        'timezone' => 'America/Chicago',
+    ],
+    'auth' => [
+        'steamUrl' => '',
+        'discordUrl' => '',
+    ],
+];
+
+$primary_nav = [
+    ['home', '', 'Home'],
+    ['play', 'play', 'Play'],
+    ['features', 'features', 'Features'],
+    ['rules', 'rules', 'Rules'],
+    ['discord', 'discord', 'Discord'],
+    ['link', 'link', 'Link Account'],
+];
+
+$quick_features = [
+    ['GATHER', '1000x Gather'],
+    ['KIT', 'Kits'],
+    ['TP', 'Teleport / Homes'],
+    ['CLAN', 'Clans'],
+    ['SKIN', 'Skinbox'],
+    ['PACK', 'Backpacks'],
+    ['RAID', 'Fast Raids'],
+    ['STAFF', 'Active Staff'],
+];
+
+$feature_icon_aliases = [
+    '1000x' => 'GATHER',
+    'GATHER' => 'GATHER',
+    'PVP' => 'PVP',
+    'KIT' => 'KIT',
+    'TP' => 'TP',
+    'CLAN' => 'CLAN',
+    'SKIN' => 'SKIN',
+    'PACK' => 'PACK',
+    'RAID' => 'RAID',
+    'STAFF' => 'STAFF',
+    'MINI' => 'MINI',
+    'SHOP' => 'SHOP',
+    'EVENT' => 'EVENT',
+    'FPS' => 'FPS',
+    'PLAY' => 'PLAY',
+    'CMD' => 'CMD',
+    'SRCH' => 'SRCH',
+    'FIX' => 'FIX',
+    'ID' => 'ID',
+    'ROLE' => 'ROLE',
+    'STAT' => 'STAT',
+    'STM' => 'ID',
+    'DSC' => 'STAFF',
+    'SAFE' => 'SAFE',
+    'RISK' => 'RISK',
+    'BAN' => 'BAN',
+    'APPEAL' => 'APPEAL',
+    'EVID' => 'EVID',
+    'SOON' => 'EVENT',
+    'BUG' => 'FIX',
+    'EAC' => 'SAFE',
+    'TIMEOUT' => 'CMD',
+    'TICKET' => 'STAFF',
+];
+
+$feature_icons = [
+    'GATHER' => '<path d="M17 43l9-24 14 6 7 18-15 6z"></path><path d="M26 19l-8 24 14 6 8-24z"></path><path d="M14 48l-5 6 9-1 3 6 4-8"></path><path d="M45 45l4 8 7-4-7-5"></path>',
+    'PVP' => '<circle cx="32" cy="32" r="18"></circle><circle cx="32" cy="32" r="6"></circle><path d="M32 7v12M32 45v12M7 32h12M45 32h12"></path>',
+    'KIT' => '<path d="M13 22l19-9 19 9-19 9z"></path><path d="M13 22v22l19 9 19-9V22"></path><path d="M32 31v22M21 26v14M43 26v14"></path>',
+    'TP' => '<path d="M32 9c-9 0-16 7-16 16 0 13 16 30 16 30s16-17 16-30c0-9-7-16-16-16z"></path><circle cx="32" cy="25" r="6"></circle><path d="M15 53c4 4 30 4 34 0"></path>',
+    'CLAN' => '<circle cx="32" cy="20" r="7"></circle><circle cx="17" cy="27" r="6"></circle><circle cx="47" cy="27" r="6"></circle><path d="M20 51c1-10 7-16 12-16s11 6 12 16"></path><path d="M7 50c1-8 5-13 10-13M57 50c-1-8-5-13-10-13"></path>',
+    'SKIN' => '<path d="M14 20h36v28H14z"></path><path d="M20 14h24l6 6H14z"></path><path d="M23 28h18M23 36h10M42 33l6 6"></path>',
+    'PACK' => '<path d="M20 22h24c5 0 8 4 8 9v21H12V31c0-5 3-9 8-9z"></path><path d="M24 22v-5c0-4 3-7 8-7s8 3 8 7v5"></path><path d="M23 34h18v13H23zM12 34H6v12h6M52 34h6v12h-6"></path>',
+    'RAID' => '<path d="M32 8l6 15 16-6-8 15 12 10-18 1-8 13-8-13-18-1 12-10-8-15 16 6z"></path><path d="M24 36l-10 12M40 36l10 12"></path>',
+    'STAFF' => '<path d="M14 36v-6c0-10 8-18 18-18s18 8 18 18v6"></path><path d="M14 36h8v15h-8zM42 36h8v15h-8z"></path><path d="M42 52c-3 3-7 4-12 4h-4"></path>',
+    'MINI' => '<path d="M20 34h22l8 8H15z"></path><path d="M32 16v18M12 16h40M23 49h18M25 42l-4 9M39 42l4 9"></path>',
+    'SHOP' => '<path d="M11 17h8l5 24h24l5-16H22"></path><circle cx="28" cy="51" r="4"></circle><circle cx="45" cy="51" r="4"></circle><path d="M26 31h22"></path>',
+    'EVENT' => '<path d="M32 8v12M32 44v12M8 32h12M44 32h12"></path><path d="M18 18l8 8M46 18l-8 8M18 46l8-8M46 46l-8-8"></path><circle cx="32" cy="32" r="7"></circle>',
+    'FPS' => '<path d="M14 45a20 20 0 1 1 36 0"></path><path d="M32 38l12-15M20 45h24"></path><path d="M19 34h5M40 34h5M32 18v5"></path>',
+    'PLAY' => '<path d="M22 14l28 18-28 18z"></path>',
+    'CMD' => '<path d="M12 16h40v32H12z"></path><path d="M20 27l7 5-7 5M32 38h12"></path>',
+    'SRCH' => '<circle cx="28" cy="28" r="14"></circle><path d="M39 39l12 12"></path>',
+    'FIX' => '<path d="M42 12l10 10-26 26-13 4 4-13z"></path><path d="M35 19l10 10"></path>',
+    'ID' => '<path d="M12 18h40v28H12z"></path><circle cx="25" cy="32" r="6"></circle><path d="M35 27h10M35 34h10M20 42c2-4 8-4 10 0"></path>',
+    'ROLE' => '<path d="M32 10l18 8v13c0 12-8 19-18 23-10-4-18-11-18-23V18z"></path><path d="M23 32l6 6 13-14"></path>',
+    'STAT' => '<path d="M14 50V34M26 50V24M38 50V30M50 50V16"></path><path d="M10 50h46"></path>',
+    'SAFE' => '<path d="M32 10l18 8v13c0 12-8 19-18 23-10-4-18-11-18-23V18z"></path><path d="M24 32l6 6 11-13"></path>',
+    'RISK' => '<path d="M32 10l22 40H10z"></path><path d="M32 24v13M32 45h.01"></path>',
+    'BAN' => '<circle cx="32" cy="32" r="20"></circle><path d="M18 46l28-28"></path>',
+    'APPEAL' => '<path d="M16 12h28l8 8v32H16z"></path><path d="M44 12v8h8M24 32h18M24 41h13"></path>',
+    'EVID' => '<path d="M14 16h36v34H14z"></path><path d="M21 25h22M21 34h22M21 43h12"></path>',
+];
+
+$status_icons = [
+    'players' => '<circle cx="23" cy="25" r="7"></circle><circle cx="42" cy="25" r="7"></circle><path d="M11 51c1-10 6-17 12-17s11 7 12 17"></path><path d="M29 51c1-10 6-17 13-17s11 7 12 17"></path>',
+    'map' => '<path d="M12 15l14-5 12 5 14-5v39l-14 5-12-5-14 5z"></path><path d="M26 10v39M38 15v39"></path><path d="M17 28l7-3 8 5 8-4 7 3"></path>',
+    'wipe' => '<path d="M15 16h34v36H15z"></path><path d="M15 26h34M23 11v10M41 11v10"></path><path d="M24 36h5M35 36h5M24 45h5M35 45h5"></path>',
+    'cycle' => '<path d="M47 22a18 18 0 0 0-31-4"></path><path d="M47 12v10H37"></path><path d="M17 42a18 18 0 0 0 31 4"></path><path d="M17 52V42h10"></path>',
+    'region' => '<circle cx="32" cy="32" r="20"></circle><path d="M12 32h40M32 12c7 7 10 14 10 20s-3 13-10 20M32 12c-7 7-10 14-10 20s3 13 10 20"></path>',
+];
+
+$action_icons = [
+    'arrow' => '<path d="M18 32h28"></path><path d="M34 18l14 14-14 14"></path>',
+    'copy' => '<path d="M22 18h24v30H22z"></path><path d="M16 26h-2v26h24v-2"></path>',
+    'discord' => '<path d="M20 24c8-5 16-5 24 0l3 22c-5 4-10 6-15 6s-10-2-15-6z"></path><path d="M23 24l3-6M41 24l-3-6"></path><circle cx="26" cy="36" r="2"></circle><circle cx="38" cy="36" r="2"></circle><path d="M28 44c3 2 5 2 8 0"></path>',
+];
+
+$feature_cards = [
+    ['1000x', '1000x Gather', 'Farm fast, gear fast, and spend more time fighting than waiting.', 'Launch target'],
+    ['PVP', 'Battlefield PvP', 'A high-rate battlefield tuned for counters, chaos, and quick returns.', 'Launch target'],
+    ['KIT', 'Kits', 'Fast starter and combat kits keep the pace moving after every death.', 'Launch target'],
+    ['TP', 'Teleport / Homes', 'Move between bases, fights, teammates, and rebuilds without dead time.', 'Launch target'],
+    ['CLAN', 'Clans', 'Build identity around teams, rivalries, and wipe-long wars.', 'Planned'],
+    ['SKIN', 'Skinbox', 'Keep bases and gear looking sharp without breaking the battlefield pace.', 'Planned'],
+    ['PACK', 'Backpacks', 'Extra carry capacity for raiders, builders, and loot runners.', 'Launch target'],
+    ['MINI', 'Personal Mini', 'Fast map movement for scouts, counters, and strike teams.', 'Under review'],
+    ['SHOP', 'Shop', 'High-rate convenience economy for supplies, movement, and recovery.', 'Under review'],
+    ['EVENT', 'Custom Events', 'Wipe fights, clan clashes, and staff-run chaos after launch.', 'Planned'],
+    ['STAFF', 'Active Staff', 'Clear support, bug response, and rule enforcement without over-policing PvP.', 'Launch target'],
+    ['FPS', 'Performance Focused', 'Lean systems and practical moderation built around stable wipe nights.', 'Launch target'],
+];
+
+$feature_groups = [
+    [
+        'title' => 'Combat and Raiding',
+        'copy' => 'High-rate PvP, raid-focused progression, custom loot direction, and frequent resets keep each wipe violent and readable.',
+        'items' => ['1000x gather', 'Fast PvP', 'Raid-focused economy', 'Explosives availability', 'Custom loot tables', 'Frequent wipes'],
+    ],
+    [
+        'title' => 'Movement and Convenience',
+        'copy' => 'The convenience layer removes the slow parts without removing the need to fight, defend, and counter.',
+        'items' => ['Teleport', 'Homes', 'Backpacks', 'Personal minicopter', 'Instant craft', 'Quick recycling'],
+    ],
+    [
+        'title' => 'Community and Clans',
+        'copy' => 'Raidlands is built around recurring rivalries, Discord identity, support channels, and future clan pages.',
+        'items' => ['Clans', 'Team play', 'Discord verification', 'Events', 'Staff support', 'Wipe alerts'],
+    ],
+    [
+        'title' => 'Trust and Performance',
+        'copy' => 'A battlefield server still needs clear enforcement, quick fixes, and a stable base for busy wipe nights.',
+        'items' => ['Active admins', 'Anti-cheat stance', 'Bug patches', 'Server performance', 'Clear rules', 'Appeal path'],
+    ],
+];
+
+$roadmap_cards = [
+    ['Leaderboards', 'Player and clan rankings for kills, raids, K/D, explosives, and wipe MVPs.', 'Planned'],
+    ['Player Profiles', 'Linked Steam and Discord identity with stats, wipe history, and rewards.', 'Planned'],
+    ['Clan Rankings', 'Clan pages, recruitment, rivalry records, and wipe archives.', 'After launch'],
+    ['Wipe Events', 'Friday and Monday wipe events, staff battles, and community votes.', 'In development'],
+    ['VIP Kits', 'Supporter perks may come later, without turning launch into a paywall.', 'After launch'],
+    ['Vote Rewards', 'Voting loops for discovery, population growth, and player rewards.', 'Planned'],
+    ['Ban Appeals', 'Structured appeal intake with Discord support as the first launch path.', 'Planned'],
+    ['Community Hub', 'Patch notes, announcements, wipe winners, and support workflows.', 'Planned'],
+];
+
+$page_copy = [
+    'home' => [
+        'title' => 'Raidlands 1000x Rust',
+        'lede' => 'Twice-weekly apocalyptic battlefield wipes. Kit up, teleport, clan up, and raid without the grind.',
+    ],
+    'play' => [
+        'title' => 'Play Raidlands',
+        'lede' => "Use Steam connect, copy the console command, or search Raidlands in Rust's modded browser.",
+    ],
+    'features' => [
+        'title' => 'Server Features',
+        'lede' => 'Everything points toward fast progression, constant raiding, predictable wipes, and a real community layer.',
+    ],
+    'rules' => [
+        'title' => 'Rules',
+        'lede' => 'Raidlands is a PvP battlefield. Raiding, counters, roofcamping, and revenge raids are part of the game. Cheating, exploits, and real-world threats are not.',
+    ],
+    'discord' => [
+        'title' => 'Raidlands Discord',
+        'lede' => 'Get wipe alerts, find teammates, report bugs, open tickets, appeal bans, and vote on what the server becomes next.',
+    ],
+    'link' => [
+        'title' => 'Link Account',
+        'lede' => 'Link once and keep your identity ready for wipe stats, future rewards, roles, and Raidlands profile systems.',
+    ],
+    'support' => [
+        'title' => 'Support',
+        'lede' => 'Connection help, ticket routing, bug reports, staff contact, and appeal direction for launch.',
+    ],
+    'privacy' => [
+        'title' => 'Privacy Policy',
+        'lede' => 'How Raidlands handles website, Steam, Discord, support, analytics, and future account data.',
+    ],
+    'terms' => [
+        'title' => 'Terms of Service',
+        'lede' => 'Server access, account linking, bans, rules, appeals, and future supporter systems.',
+    ],
+    'leaderboard' => [
+        'title' => 'Leaderboards',
+        'lede' => 'Future player and clan rankings for each wipe season.',
+    ],
+    'store' => [
+        'title' => 'Store',
+        'lede' => 'Raidlands is launching population-first. Supporter perks are planned for later.',
+    ],
+    'events' => [
+        'title' => 'Events',
+        'lede' => 'Future wipe fights, clan wars, staff events, and community chaos.',
+    ],
+    'clans' => [
+        'title' => 'Clans',
+        'lede' => 'Future clan pages, recruitment, rankings, and wipe history.',
+    ],
+    'vote' => [
+        'title' => 'Vote Rewards',
+        'lede' => 'Future voting loops for discovery, rewards, and community growth.',
+    ],
+    'bans' => [
+        'title' => 'Bans and Appeals',
+        'lede' => 'Ban policy, appeal direction, and future public ban tooling.',
+    ],
+    'profile' => [
+        'title' => 'Player Profile',
+        'lede' => 'Future linked profile page for Steam, Discord, wipe stats, and rewards.',
+    ],
+];
+
+$seo_pages = [
+    'home' => [
+        'title' => 'Raidlands 1000x Rust Server | Battlefield, Kits, TP, Clans',
+        'description' => 'Join Raidlands, a 1000x apocalyptic Rust battlefield server with kits, teleporting, clans, fast raids, Discord linking, Steam linking, and Monday/Friday wipes.',
+        'ogTitle' => 'Raidlands 1000x Rust Server',
+        'ogDescription' => '1000x Rust warfare, built for nonstop raids. Kit up, teleport, clan up, and jump straight into the fight.',
+    ],
+    'play' => [
+        'title' => 'Play Raidlands | Join the 1000x Rust Server',
+        'description' => 'Join Raidlands with one-click Steam connect, console command copy, or Rust modded server browser search.',
+        'ogTitle' => 'Play Raidlands 1000x',
+        'ogDescription' => 'Launch Rust, copy the connect command, or find Raidlands in the modded server browser.',
+    ],
+    'features' => [
+        'title' => 'Raidlands Features | 1000x Rust Battlefield',
+        'description' => 'See the Raidlands 1000x Rust feature set: kits, teleporting, homes, clans, skinbox, backpacks, fast raids, events, and active staff.',
+        'ogTitle' => 'Raidlands Features',
+        'ogDescription' => 'High-speed Rust warfare with the slow parts removed.',
+    ],
+    'rules' => [
+        'title' => 'Raidlands Rules | Rust Server and Discord Rules',
+        'description' => 'Read the Raidlands server rules, Discord rules, enforcement policy, and appeal path.',
+        'ogTitle' => 'Raidlands Rules',
+        'ogDescription' => 'A PvP battlefield with clear limits: no cheats, exploits, threats, doxxing, or staff impersonation.',
+    ],
+    'discord' => [
+        'title' => 'Raidlands Discord | Wipe Alerts, Support, Teams',
+        'description' => 'Join the Raidlands Discord for wipe alerts, teammate finding, support, feature votes, event notices, and ban appeals.',
+        'ogTitle' => 'Raidlands Discord',
+        'ogDescription' => 'Get wipe pings, find teammates, report bugs, and stay connected with the Raidlands community.',
+    ],
+    'link' => [
+        'title' => 'Link Raidlands Account | Steam and Discord',
+        'description' => 'Prepare your Raidlands profile by linking Steam and Discord for future leaderboards, rewards, roles, and identity.',
+        'ogTitle' => 'Link Raidlands Account',
+        'ogDescription' => 'Link Steam and Discord once for future Raidlands profiles, rewards, and wipe systems.',
+    ],
+    'support' => [
+        'title' => 'Raidlands Support | Tickets, Bugs, Connection Help',
+        'description' => 'Get help with Raidlands connection issues, support tickets, bug reports, and Discord staff contact.',
+        'ogTitle' => 'Raidlands Support',
+        'ogDescription' => 'Connection troubleshooting, bug reports, tickets, and staff contact for Raidlands.',
+    ],
+    'privacy' => [
+        'title' => 'Raidlands Privacy Policy',
+        'description' => 'Raidlands privacy policy for website analytics, Steam linking, Discord linking, support, and future community systems.',
+        'ogTitle' => 'Raidlands Privacy Policy',
+        'ogDescription' => 'How Raidlands handles website, Steam, Discord, and support data.',
+    ],
+    'terms' => [
+        'title' => 'Raidlands Terms of Service',
+        'description' => 'Raidlands terms covering server access, account linking, bans, appeals, rules, and future supporter systems.',
+        'ogTitle' => 'Raidlands Terms',
+        'ogDescription' => 'Terms for using the Raidlands website, Rust server, Discord, and future account systems.',
+    ],
+    'leaderboard' => [
+        'title' => 'Raidlands Leaderboards | Coming Soon',
+        'description' => 'Raidlands leaderboards are planned for kills, K/D, raids, explosives, clan rankings, and wipe MVPs.',
+        'ogTitle' => 'Raidlands Leaderboards',
+        'ogDescription' => 'Future wipe rankings for players and clans.',
+    ],
+    'store' => [
+        'title' => 'Raidlands Store | Supporter Perks Planned',
+        'description' => 'Raidlands is population-first at launch. Supporter perks are planned, but launch access is open.',
+        'ogTitle' => 'Raidlands Store',
+        'ogDescription' => 'Supporter perks are planned after launch. Raidlands opens population-first.',
+    ],
+    'events' => [
+        'title' => 'Raidlands Events | Coming Soon',
+        'description' => 'Raidlands events are planned for wipe fights, clan wars, community votes, and server announcements.',
+        'ogTitle' => 'Raidlands Events',
+        'ogDescription' => 'Future wipe events and community battles for Raidlands.',
+    ],
+    'clans' => [
+        'title' => 'Raidlands Clans | Coming Soon',
+        'description' => 'Raidlands clan pages are planned for team identity, rankings, recruitment, and wipe history.',
+        'ogTitle' => 'Raidlands Clans',
+        'ogDescription' => 'Future clan pages, clan rankings, and team identity for Raidlands.',
+    ],
+    'vote' => [
+        'title' => 'Raidlands Vote Rewards | Coming Soon',
+        'description' => 'Raidlands vote rewards are planned for future player retention and community growth systems.',
+        'ogTitle' => 'Raidlands Vote Rewards',
+        'ogDescription' => 'Future vote rewards for Raidlands players.',
+    ],
+    'bans' => [
+        'title' => 'Raidlands Bans and Appeals',
+        'description' => 'Raidlands ban policy, appeal path, and future ban list placeholder.',
+        'ogTitle' => 'Raidlands Bans',
+        'ogDescription' => 'Ban policy and appeal information for Raidlands.',
+    ],
+    'profile' => [
+        'title' => 'Raidlands Profile | Coming Soon',
+        'description' => 'Raidlands player profiles are planned for Steam and Discord linked accounts, wipe history, stats, and rewards.',
+        'ogTitle' => 'Raidlands Profile',
+        'ogDescription' => 'Future player profile system for Raidlands.',
+    ],
+];
+
+$future_pages = [
+    'leaderboard' => [
+        ['Kills', 'Top killers and wipe MVP contenders.'],
+        ['Raids Won', 'Base breaks, counters, and explosive pressure.'],
+        ['Clan Rankings', 'Team-wide performance and wipe history.'],
+    ],
+    'events' => [
+        ['Wipe Fights', 'Monday and Friday event hooks.'],
+        ['Clan Wars', 'Scheduled rivalries and community brackets.'],
+        ['Community Votes', 'Let active players steer the next event.'],
+    ],
+    'clans' => [
+        ['Recruitment', 'Clan cards and member discovery.'],
+        ['Rivalries', 'Wipe-long conflicts and archived wins.'],
+        ['Rankings', 'Team stats when the data layer is live.'],
+    ],
+    'vote' => [
+        ['Vote Rewards', 'Future rewards for server discovery loops.'],
+        ['Linked Identity', 'Steam and Discord linking will keep rewards clean.'],
+        ['Growth', 'Voting can help keep wipe nights populated.'],
+    ],
+    'profile' => [
+        ['Steam Identity', 'SteamID64 backed ownership.'],
+        ['Discord Identity', 'Community roles and support context.'],
+        ['Wipe History', 'Stats, rewards, and season records after launch.'],
+    ],
+];

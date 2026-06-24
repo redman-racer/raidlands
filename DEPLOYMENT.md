@@ -1,16 +1,24 @@
 # Raidlands GoDaddy Deployment Guide
 
-This site is a static HTML/CSS/JS website. There is no build step, package install,
-server process, or database required for the current version.
+This site is a PHP-rendered multi-page website with shared includes, static CSS/JS,
+and media assets. There is no package install, build step, database, or long-running
+server process required.
+
+## Hosting Requirement
+
+Deploy to hosting that runs PHP for `index.php` files. A typical GoDaddy cPanel
+Linux hosting account is fine. Static-only hosting will not render the pages.
 
 ## What Gets Deployed
 
 Deploy the site files from the repository root:
 
 - `.htaccess`
-- `index.html`
+- `index.php`
 - `robots.txt`
 - `site.webmanifest`
+- `includes/`
+- `pages/`
 - `assets/`
 - `bans/`
 - `clans/`
@@ -34,14 +42,22 @@ Do not deploy local development folders such as `.git/`, `.agents/`, or `.codex/
 
 1. Preview the site locally.
 
+   With WAMP running, open:
+
+   ```text
+   http://localhost/raidlands/
+   ```
+
+   Or use PHP's built-in server:
+
    ```powershell
    Set-Location C:\wamp64\www\raidlands
-   python -m http.server 4177 --bind 127.0.0.1
+   php -S 127.0.0.1:4177
    ```
 
    Open `http://127.0.0.1:4177/`.
 
-2. Confirm the live values in `assets/js/site.js`.
+2. Confirm the live values in `includes/config.php`.
 
    Check:
 
@@ -58,11 +74,11 @@ Do not deploy local development folders such as `.git/`, `.agents/`, or `.codex/
 3. Click through the local site.
 
    Verify the homepage, navigation links, mobile menu, images, favicon, manifest,
-   Steam link, Discord link, and copy-to-clipboard behavior.
+   Steam link, Discord link, copy-to-clipboard behavior, and direct page loads.
 
 4. Confirm `.htaccess` is included.
 
-   The current `.htaccess` disables directory browsing, sets `index.html` as the
+   The current `.htaccess` disables directory browsing, prefers `index.php` as the
    directory index, and registers the web manifest MIME type.
 
 ## Create a Deployment Zip
@@ -75,9 +91,11 @@ New-Item -ItemType Directory -Force dist | Out-Null
 
 Compress-Archive -Force -DestinationPath .\dist\raidlands-godaddy.zip -Path `
   .\.htaccess, `
-  .\index.html, `
+  .\index.php, `
   .\robots.txt, `
   .\site.webmanifest, `
+  .\includes, `
+  .\pages, `
   .\assets, `
   .\bans, `
   .\clans, `
@@ -96,9 +114,9 @@ Compress-Archive -Force -DestinationPath .\dist\raidlands-godaddy.zip -Path `
   .\vote
 ```
 
-After the zip is created, open it and confirm `.htaccess` is present at the top
-level of the zip. If it is missing, upload `.htaccess` separately in GoDaddy File
-Manager after extracting the zip.
+After the zip is created, open it and confirm `.htaccess`, `index.php`,
+`includes/`, and `pages/` are present at the top level of the zip. If `.htaccess`
+is missing, upload it separately in GoDaddy File Manager after extracting the zip.
 
 ## Back Up the Existing GoDaddy Site
 
@@ -133,9 +151,11 @@ The live root should look like this:
 ```text
 public_html/
   .htaccess
-  index.html
+  index.php
   robots.txt
   site.webmanifest
+  includes/
+  pages/
   assets/
   bans/
   clans/
@@ -159,7 +179,8 @@ Avoid this nested layout:
 ```text
 public_html/
   raidlands/
-    index.html
+    index.php
+    includes/
     assets/
 ```
 
@@ -225,6 +246,7 @@ Also verify:
 - The favicon appears in the browser tab.
 - Direct page loads work, such as `https://your-domain.example/rules/`.
 - Directory listing is blocked, such as `https://your-domain.example/assets/`.
+- Static-only URLs such as `/index.html` are no longer expected to exist.
 
 ## Rollback
 
