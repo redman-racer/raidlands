@@ -178,6 +178,48 @@
     EVID: iconSvg(`<path d="M14 16h36v34H14z"></path><path d="M21 25h22M21 34h22M21 43h12"></path>`)
   };
 
+  const statusIcons = {
+    players: iconSvg(`
+      <circle cx="23" cy="25" r="7"></circle>
+      <circle cx="42" cy="25" r="7"></circle>
+      <path d="M11 51c1-10 6-17 12-17s11 7 12 17"></path>
+      <path d="M29 51c1-10 6-17 13-17s11 7 12 17"></path>
+    `),
+    map: iconSvg(`
+      <path d="M12 15l14-5 12 5 14-5v39l-14 5-12-5-14 5z"></path>
+      <path d="M26 10v39M38 15v39"></path>
+      <path d="M17 28l7-3 8 5 8-4 7 3"></path>
+    `),
+    wipe: iconSvg(`
+      <path d="M15 16h34v36H15z"></path>
+      <path d="M15 26h34M23 11v10M41 11v10"></path>
+      <path d="M24 36h5M35 36h5M24 45h5M35 45h5"></path>
+    `),
+    cycle: iconSvg(`
+      <path d="M47 22a18 18 0 0 0-31-4"></path>
+      <path d="M47 12v10H37"></path>
+      <path d="M17 42a18 18 0 0 0 31 4"></path>
+      <path d="M17 52V42h10"></path>
+    `),
+    region: iconSvg(`
+      <circle cx="32" cy="32" r="20"></circle>
+      <path d="M12 32h40M32 12c7 7 10 14 10 20s-3 13-10 20M32 12c-7 7-10 14-10 20s3 13 10 20"></path>
+    `),
+    command: featureIcons.CMD
+  };
+
+  const actionIcons = {
+    arrow: iconSvg(`<path d="M18 32h28"></path><path d="M34 18l14 14-14 14"></path>`),
+    copy: iconSvg(`<path d="M22 18h24v30H22z"></path><path d="M16 26h-2v26h24v-2"></path>`),
+    discord: iconSvg(`
+      <path d="M20 24c8-5 16-5 24 0l3 22c-5 4-10 6-15 6s-10-2-15-6z"></path>
+      <path d="M23 24l3-6M41 24l-3-6"></path>
+      <circle cx="26" cy="36" r="2"></circle>
+      <circle cx="38" cy="36" r="2"></circle>
+      <path d="M28 44c3 2 5 2 8 0"></path>
+    `)
+  };
+
   const featureCards = [
     ["1000x", "1000x Gather", "Farm fast, gear fast, and spend more time fighting than waiting.", "Launch target"],
     ["PVP", "Battlefield PvP", "A high-rate battlefield tuned for counters, chaos, and quick returns.", "Launch target"],
@@ -372,7 +414,7 @@
     const render = pageViews[pageId] || pageViews.home;
 
     app.innerHTML = html`
-      <div class="app-shell">
+      <div class="app-shell page-${pageId}">
         ${renderHeader()}
         <main id="main-content">
           ${render()}
@@ -384,6 +426,7 @@
 
     bindNav();
     bindActions();
+    initEffects();
     hydrateDates();
     updateCountdowns();
     window.setInterval(updateCountdowns, 1000);
@@ -394,7 +437,7 @@
       <header class="site-header">
         <div class="header-inner">
           <a class="brand" href="${route("")}" aria-label="Raidlands home">
-            <img src="${asset("media/nav-logo.png")}" alt="Raidlands 1000x">
+            <img src="${asset("media/raidlands-logo.webp")}" alt="Raidlands 1000x">
           </a>
           <nav class="nav-menu" id="site-menu" aria-label="Primary navigation">
             ${NAV.map(([id, path, label]) => html`
@@ -403,8 +446,8 @@
           </nav>
           <div class="header-actions">
             <a class="btn btn-primary" href="${CONFIG.steamConnectUrl}" data-track="join_server_clicked">
-              <span class="btn-icon" aria-hidden="true">></span>
               Join Server
+              <span class="btn-icon" aria-hidden="true">${actionIcons.arrow}</span>
             </a>
           </div>
           <button class="mobile-toggle" type="button" aria-expanded="false" aria-controls="site-menu" data-menu-toggle>
@@ -430,8 +473,14 @@
             ${links.map(([, path, label]) => html`<a href="${route(path)}">${label}</a>`).join("")}
           </nav>
           <div class="button-row">
-            <button class="btn btn-secondary" type="button" data-copy-command>Copy Connect</button>
-            <a class="btn btn-discord" href="${CONFIG.discordInviteUrl}" target="_blank" rel="noreferrer" data-track="discord_invite_clicked">Join Discord</a>
+            <button class="btn btn-secondary" type="button" data-copy-command>
+              Copy Connect
+              <span class="btn-icon" aria-hidden="true">${actionIcons.copy}</span>
+            </button>
+            <a class="btn btn-discord" href="${CONFIG.discordInviteUrl}" target="_blank" rel="noreferrer" data-track="discord_invite_clicked">
+              Join Discord
+              <span class="btn-icon" aria-hidden="true">${actionIcons.discord}</span>
+            </a>
           </div>
         </div>
       </footer>
@@ -444,22 +493,21 @@
         <div class="hero-inner">
           <div class="hero-layout">
             <div class="hero-copy">
-              <img class="hero-logo" src="${asset("media/raidlands-logo.png")}" alt="Raidlands 1000x logo">
-              <p class="eyebrow">${CONFIG.tagline}</p>
+              <img class="hero-brand-mark" src="${asset("media/raidlands-logo.webp")}" alt="">
               <h1>Raidlands 1000x</h1>
               <p class="hero-subtitle">${pageMeta.home.lede}</p>
               <div class="hero-actions">
                 <a class="btn btn-primary" href="${CONFIG.steamConnectUrl}" data-track="join_server_clicked">
-                  <span class="btn-icon" aria-hidden="true">></span>
                   Join Server
+                  <span class="btn-icon" aria-hidden="true">${actionIcons.arrow}</span>
                 </a>
                 <button class="btn btn-secondary" type="button" data-copy-command>
-                  <span class="btn-icon" aria-hidden="true">[]</span>
                   Copy Connect Command
+                  <span class="btn-icon" aria-hidden="true">${actionIcons.copy}</span>
                 </button>
                 <a class="btn btn-discord" href="${CONFIG.discordInviteUrl}" target="_blank" rel="noreferrer" data-track="discord_invite_clicked">
-                  <span class="btn-icon" aria-hidden="true">#</span>
                   Join Discord
+                  <span class="btn-icon" aria-hidden="true">${actionIcons.discord}</span>
                 </a>
               </div>
             </div>
@@ -843,7 +891,7 @@
               ${renderCard("RISK", "Avoid Pay-to-Win", "Strong combat kits and huge raid packages should be handled carefully or avoided.")}
             </div>
           </div>
-          <div class="image-panel" style="background-image: linear-gradient(180deg, rgba(0,0,0,.1), rgba(0,0,0,.65)), url('${asset("media/header-bg.png")}')" role="img" aria-label="Raidlands brand banner"></div>
+          <div class="image-panel" style="background-image: linear-gradient(180deg, rgba(0,0,0,.1), rgba(0,0,0,.65)), url('${asset("media/header-bg-rust-v2.png")}')" role="img" aria-label="Raidlands brand banner"></div>
         </div>
       </section>
     `;
@@ -894,7 +942,8 @@
     return html`
       <section class="page-hero">
         <div class="page-hero-content">
-          <div>
+          <img class="page-hero-logo" src="${asset("media/raidlands-logo.webp")}" alt="">
+          <div class="page-hero-copy">
             <p class="eyebrow">${CONFIG.tagline}</p>
             <h1>${meta.title}</h1>
             <p class="page-lede">${meta.lede}</p>
@@ -914,27 +963,27 @@
         </div>
         <ul class="status-list">
           <li class="status-row">
-            <span class="row-icon" aria-hidden="true">PLY</span>
+            <span class="row-icon" aria-hidden="true">${statusIcons.players}</span>
             <span><span class="status-label">Players: <span class="status-value">${CONFIG.playersOnline}</span> / ${CONFIG.maxPlayers}</span></span>
           </li>
           <li class="status-row">
-            <span class="row-icon" aria-hidden="true">MAP</span>
+            <span class="row-icon" aria-hidden="true">${statusIcons.map}</span>
             <span><span class="status-label">Map: <span class="status-value">${CONFIG.mapName}</span></span></span>
           </li>
           <li class="status-row">
-            <span class="row-icon" aria-hidden="true">WIP</span>
+            <span class="row-icon" aria-hidden="true">${statusIcons.wipe}</span>
             <span><span class="status-label">Next Wipe: <span class="status-value" data-next-wipe>Loading</span></span></span>
           </li>
           <li class="status-row">
-            <span class="row-icon" aria-hidden="true">DAY</span>
+            <span class="row-icon" aria-hidden="true">${statusIcons.cycle}</span>
             <span><span class="status-label">Wipes: <span class="status-value">${CONFIG.wipe.dayNames.join(" and ")}</span></span></span>
           </li>
           <li class="status-row">
-            <span class="row-icon" aria-hidden="true">REG</span>
+            <span class="row-icon" aria-hidden="true">${statusIcons.region}</span>
             <span><span class="status-label">Region: <span class="status-value">${CONFIG.region}</span></span></span>
           </li>
           <li class="status-row">
-            <span class="row-icon" aria-hidden="true">CMD</span>
+            <span class="row-icon" aria-hidden="true">${statusIcons.command}</span>
             <span><span class="status-label status-command">Console command: <span class="status-value">${CONFIG.connectCommand}</span></span></span>
           </li>
         </ul>
@@ -1081,6 +1130,120 @@
     if (status === "Launch target") return "review";
     if (status === "Planned") return "planned";
     return "review";
+  }
+
+  function initEffects() {
+    const reducedMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+
+    initCardGlareTiming(reducedMotion);
+    initScrollReveals(reducedMotion);
+
+    if (!reducedMotion) {
+      queueEmberField();
+    }
+  }
+
+  function initCardGlareTiming(reducedMotion) {
+    if (reducedMotion) return;
+
+    app.querySelectorAll(".metal-card, .metal-panel, .route-card").forEach(panel => {
+      const duration = randomBetween(10.5, 18.5);
+      panel.style.setProperty("--surface-glare-duration", `${duration.toFixed(2)}s`);
+      panel.style.setProperty("--surface-glare-delay", `${randomBetween(-duration, 0).toFixed(2)}s`);
+      panel.style.setProperty("--surface-glare-opacity", randomBetween(.24, .44).toFixed(2));
+    });
+  }
+
+  function queueEmberField() {
+    const start = () => createEmberField();
+
+    if ("requestIdleCallback" in window) {
+      window.requestIdleCallback(start, { timeout: 1200 });
+      return;
+    }
+
+    window.setTimeout(start, 600);
+  }
+
+  function createEmberField() {
+    const shell = app.querySelector(".app-shell");
+    if (!shell || shell.querySelector(".ambient-effects")) return;
+
+    const field = document.createElement("div");
+    const particleCount = window.innerWidth < 640 ? 20 : 40;
+    const particles = document.createDocumentFragment();
+
+    field.className = "ambient-effects";
+    field.setAttribute("aria-hidden", "true");
+
+    for (let index = 0; index < particleCount; index += 1) {
+      const particle = document.createElement("span");
+      const isAsh = index % 7 === 0;
+      const size = isAsh ? randomBetween(1.5, 3.5) : randomBetween(2, 6);
+      const duration = isAsh ? randomBetween(22, 36) : randomBetween(16, 30);
+
+      particle.className = `ember-particle ${isAsh ? "is-ash" : "is-spark"}`;
+      particle.style.setProperty("--x", `${randomBetween(-4, 104).toFixed(2)}%`);
+      particle.style.setProperty("--drift", `${randomBetween(-96, 96).toFixed(2)}px`);
+      particle.style.setProperty("--size", `${size.toFixed(2)}px`);
+      particle.style.setProperty("--duration", `${duration.toFixed(2)}s`);
+      particle.style.setProperty("--delay", `${randomBetween(-duration, 0).toFixed(2)}s`);
+      particle.style.setProperty("--opacity", randomBetween(.18, .56).toFixed(2));
+      particle.style.setProperty("--blur", `${randomBetween(0, 1.4).toFixed(2)}px`);
+      particle.style.setProperty("--pulse", `${randomBetween(2.2, 5.4).toFixed(2)}s`);
+      particles.appendChild(particle);
+    }
+
+    field.appendChild(particles);
+    shell.prepend(field);
+  }
+
+  function initScrollReveals(reducedMotion) {
+    const revealGroups = [
+      [".hero-copy, .page-hero-logo, .page-hero-copy", "reveal-left"],
+      [".status-panel, .page-hero .button-row, .image-panel", "reveal-right"],
+      [".section-header, .wipe-bar, .quick-feature-wrap, .metal-panel, .metal-card, .route-card, .rule-block, .steps li, .count-box, .footer-inner", "reveal-up"]
+    ];
+    const elements = [];
+    const seen = new Set();
+
+    revealGroups.forEach(([selector, direction]) => {
+      app.querySelectorAll(selector).forEach((element, index) => {
+        if (seen.has(element)) return;
+
+        seen.add(element);
+        element.classList.add("reveal-on-scroll", direction);
+        element.style.setProperty("--reveal-delay", `${Math.min(index * 55, 360)}ms`);
+        elements.push(element);
+      });
+    });
+
+    if (reducedMotion || !("IntersectionObserver" in window)) {
+      elements.forEach(element => element.classList.add("is-visible"));
+      return;
+    }
+
+    doc.classList.add("motion-ready");
+
+    const observer = new IntersectionObserver(entries => {
+      entries.forEach(entry => {
+        if (!entry.isIntersecting) return;
+
+        entry.target.classList.add("is-visible");
+        observer.unobserve(entry.target);
+      });
+    }, {
+      rootMargin: "0px 0px -12% 0px",
+      threshold: .12
+    });
+
+    window.requestAnimationFrame(() => {
+      elements.forEach(element => observer.observe(element));
+    });
+  }
+
+  function randomBetween(min, max) {
+    return min + Math.random() * (max - min);
   }
 
   function bindNav() {

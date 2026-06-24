@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="640" height="640" viewBox="0 0 640 640">
+  <defs>
+    <filter id="ash" x="0" y="0" width="100%" height="100%">
+      <feTurbulence type="fractalNoise" baseFrequency=".58" numOctaves="5" seed="93"/>
+      <feColorMatrix type="matrix" values="0 0 0 0 .55 0 0 0 0 .49 0 0 0 0 .42 0 0 0 .16 0"/>
+    </filter>
+    <filter id="scar" x="-10%" y="-10%" width="120%" height="120%">
+      <feDropShadow dx="0" dy="1" stdDeviation=".35" flood-color="#000" flood-opacity=".85"/>
+    </filter>
+  </defs>
+  <rect width="640" height="640" fill="transparent"/>
+  <rect width="640" height="640" filter="url(#ash)" opacity=".66"/>
+  <g fill="none" stroke-linecap="round" filter="url(#scar)">
+    <path d="M22 72c52-18 102-20 165-10M388 29c53 9 99 4 169-17M57 264c86 18 159 17 248-5M361 221c77-11 154-1 226 21M75 530c69-24 145-20 219-1M348 580c60 8 117 1 228-29" stroke="#000" stroke-opacity=".27" stroke-width="2"/>
+    <path d="M19 118l77 18M176 96l143 39M384 156l212 48M46 370l184 31M304 347l124 22M464 412l142 32M92 603l111 26" stroke="#f6d6b7" stroke-opacity=".09" stroke-width="1"/>
+    <path d="M118 21l-29 61M294 82l-72 28M522 73l-43 68M601 272l-79 22M256 480l-47 92M448 496l-116 47" stroke="#ff5a16" stroke-opacity=".10" stroke-width="1.5"/>
+  </g>
+  <g fill="#000" fill-opacity=".20">
+    <circle cx="92" cy="174" r="2"/>
+    <circle cx="157" cy="421" r="1.4"/>
+    <circle cx="243" cy="290" r="2.4"/>
+    <circle cx="421" cy="108" r="1.7"/>
+    <circle cx="508" cy="331" r="2.1"/>
+    <circle cx="587" cy="521" r="1.6"/>
+  </g>
+  <g fill="#fff2d8" fill-opacity=".08">
+    <circle cx="39" cy="484" r=".9"/>
+    <circle cx="132" cy="311" r="1"/>
+    <circle cx="332" cy="192" r=".8"/>
+    <circle cx="392" cy="444" r="1.1"/>
+    <circle cx="574" cy="129" r=".9"/>
+  </g>
+</svg>
