@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
@@ -10,12 +11,14 @@ using Oxide.Core.Libraries.Covalence;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteVipBridge", "Raidlands", "1.0.0")]
-    [Description("Syncs website VIP entitlements into managed Oxide permission groups.")]
+    [Info("WebsiteVipBridge", "Raidlands", "1.1.0")]
+    [Description("Syncs website VIP entitlements and player stats between Raidlands.net and the Rust server.")]
     public class WebsiteVipBridge : CovalencePlugin
     {
         private Configuration config;
         private Timer syncTimer;
+        private Timer statsTimer;
+        private Timer pendingStatsTimer;
         private long cursor;
 
         private class Configuration
@@ -25,6 +28,11 @@ namespace Oxide.Plugins
             public string SharedSecret = "";
             public int SyncIntervalSeconds = 120;
             public string FailMode = "log_only";
+            public bool StatsEnabled = true;
+            public int StatsSyncIntervalSeconds = 300;
+            public int StatsDebounceSeconds = 30;
+            public string WipeKey = "";
+            public string WipeStartedAt = "";
             public List<string> ManagedGroups = new List<string>
             {
                 "vip_bronze",
@@ -63,6 +71,53 @@ namespace Oxide.Plugins
             public List<string> groups;
         }
 
+        private class StatsResponse
+        {
+            public bool ok;
+            public string error;
+        }
+
+        private class StatsSnapshot
+        {
+            public string wipe_key;
+            public string wipe_started_at;
+            public string generated_at;
+            public List<StatsPlayer> players = new List<StatsPlayer>();
+        }
+
+        private class StatsPlayer
+        {
+            public string steam_id64;
+            public string display_name;
+            public int kills;
+            public int deaths;
+            public int playtime_seconds;
+            public int afk_seconds;
+            public int reward_points;
+        }
+
+        private class KdrData
+        {
+            public ulong id;
+            public string name;
+            public int kills;
+            public int deaths;
+        }
+
+        private class PlaytimeData
+        {
+            public Dictionary<string, PlaytimeUser> _userData = new Dictionary<string, PlaytimeUser>();
+        }
+
+        private class PlaytimeUser
+        {
+            public double playtime;
+            public double afkTime;
+            public string displayName;
+            public double PlayTime;
+            public double AFKTime;
+        }
+
         protected override void LoadDefaultConfig()
         {
             config = new Configuration();
@@ -82,9 +137,21 @@ namespace Oxide.Plugins
                 config = new Configuration();
             }
 
+            var defaults = new Configuration();
+
             if (config.ManagedGroups == null)
             {
-                config.ManagedGroups = new Configuration().ManagedGroups;
+                config.ManagedGroups = defaults.ManagedGroups;
+            }
+
+            if (config.StatsSyncIntervalSeconds <= 0)
+            {
+                config.StatsSyncIntervalSeconds = defaults.StatsSyncIntervalSeconds;
+            }
+
+            if (config.StatsDebounceSeconds <= 0)
+            {
+                config.StatsDebounceSeconds = defaults.StatsDebounceSeconds;
             }
 
             SaveConfig();
@@ -102,12 +169,24 @@ namespace Oxide.Plugins
 
             var interval = Math.Max(30, config.SyncIntervalSeconds);
             syncTimer = timer.Every(interval, SyncChanges);
-            Puts($"WebsiteVipBridge syncing every {interval} seconds.");
+
+            if (config.StatsEnabled)
+            {
+                var statsInterval = Math.Max(60, config.StatsSyncIntervalSeconds);
+                timer.Once(10f, SyncStatsSnapshot);
+                statsTimer = timer.Every(statsInterval, SyncStatsSnapshot);
+                Puts($"WebsiteVipBridge syncing VIP every {interval} seconds and stats every {statsInterval} seconds.");
+                return;
+            }
+
+            Puts($"WebsiteVipBridge syncing VIP every {interval} seconds. Stats sync is disabled.");
         }
 
         private void Unload()
         {
             syncTimer?.Destroy();
+            statsTimer?.Destroy();
+            pendingStatsTimer?.Destroy();
         }
 
         private void OnUserConnected(IPlayer player)
@@ -118,6 +197,17 @@ namespace Oxide.Plugins
             }
 
             SyncPlayer(player.Id);
+            QueueStatsSync();
+        }
+
+        private void OnUserDisconnected(IPlayer player)
+        {
+            QueueStatsSync();
+        }
+
+        private void OnPointsUpdated(ulong userId, int balance)
+        {
+            QueueStatsSync();
         }
 
         private void SyncPlayer(string steamId)
@@ -196,6 +286,215 @@ namespace Oxide.Plugins
             });
         }
 
+        private void QueueStatsSync()
+        {
+            if (!config.StatsEnabled || !CanRequest())
+            {
+                return;
+            }
+
+            pendingStatsTimer?.Destroy();
+            pendingStatsTimer = timer.Once(Math.Max(5, config.StatsDebounceSeconds), SyncStatsSnapshot);
+        }
+
+        private void SyncStatsSnapshot()
+        {
+            pendingStatsTimer?.Destroy();
+            pendingStatsTimer = null;
+
+            if (!config.StatsEnabled || !CanRequest())
+            {
+                return;
+            }
+
+            var snapshot = BuildStatsSnapshot();
+            var body = JsonConvert.SerializeObject(snapshot);
+            var url = $"{TrimSlash(config.ApiBaseUrl)}/api/server/stats-snapshot.php";
+
+            SendPost(url, body, (code, response) =>
+            {
+                if (!IsSuccess(code, response, out var error))
+                {
+                    PrintWarning($"Stats snapshot sync failed: {error}");
+                    return;
+                }
+
+                var payload = JsonConvert.DeserializeObject<StatsResponse>(response);
+
+                if (payload == null || !payload.ok)
+                {
+                    PrintWarning($"Stats snapshot sync failed: {payload?.error ?? "invalid response"}");
+                    return;
+                }
+
+                Puts($"Stats snapshot synced for {snapshot.players.Count} players.");
+            });
+        }
+
+        private StatsSnapshot BuildStatsSnapshot()
+        {
+            var playersById = new Dictionary<string, StatsPlayer>();
+
+            AddKdrStats(playersById);
+            AddPlaytimeStats(playersById);
+            AddRewardPoints(playersById);
+            AddConnectedPlayers(playersById);
+
+            return new StatsSnapshot
+            {
+                wipe_key = ResolveWipeKey(),
+                wipe_started_at = string.IsNullOrWhiteSpace(config.WipeStartedAt) ? null : config.WipeStartedAt,
+                generated_at = DateTime.UtcNow.ToString("o"),
+                players = playersById.Values
+                    .OrderByDescending(player => player.kills)
+                    .ThenByDescending(player => player.playtime_seconds)
+                    .ThenBy(player => player.steam_id64)
+                    .ToList()
+            };
+        }
+
+        private void AddKdrStats(Dictionary<string, StatsPlayer> playersById)
+        {
+            var directory = Path.Combine(Interface.Oxide.DataFileSystem.Directory, "KDRScoreboard");
+
+            if (!Directory.Exists(directory))
+            {
+                return;
+            }
+
+            foreach (var path in Directory.GetFiles(directory, "*.json"))
+            {
+                try
+                {
+                    var data = JsonConvert.DeserializeObject<KdrData>(File.ReadAllText(path));
+
+                    if (data == null || data.id == 0)
+                    {
+                        continue;
+                    }
+
+                    var steamId = data.id.ToString();
+
+                    if (!IsSteamId64(steamId))
+                    {
+                        continue;
+                    }
+
+                    var player = EnsureStatsPlayer(playersById, steamId);
+                    player.display_name = FirstNonEmpty(player.display_name, data.name);
+                    player.kills = Math.Max(0, data.kills);
+                    player.deaths = Math.Max(0, data.deaths);
+                }
+                catch (Exception ex)
+                {
+                    PrintWarning($"Could not read KDR stats from {Path.GetFileName(path)}: {ex.Message}");
+                }
+            }
+        }
+
+        private void AddPlaytimeStats(Dictionary<string, StatsPlayer> playersById)
+        {
+            var data = ReadDataFile<PlaytimeData>("PlaytimeTracker/user_data");
+
+            if (data?._userData == null)
+            {
+                return;
+            }
+
+            foreach (var entry in data._userData)
+            {
+                if (!IsSteamId64(entry.Key) || entry.Value == null)
+                {
+                    continue;
+                }
+
+                var player = EnsureStatsPlayer(playersById, entry.Key);
+                player.display_name = FirstNonEmpty(player.display_name, entry.Value.displayName);
+                player.playtime_seconds = Math.Max(0, ToInt(Math.Max(entry.Value.PlayTime, entry.Value.playtime)));
+                player.afk_seconds = Math.Max(0, ToInt(Math.Max(entry.Value.AFKTime, entry.Value.afkTime)));
+            }
+        }
+
+        private void AddRewardPoints(Dictionary<string, StatsPlayer> playersById)
+        {
+            var balances = ReadDataFile<Dictionary<string, int>>("ServerRewards/player_balances");
+
+            if (balances == null)
+            {
+                return;
+            }
+
+            foreach (var entry in balances)
+            {
+                if (!IsSteamId64(entry.Key))
+                {
+                    continue;
+                }
+
+                var player = EnsureStatsPlayer(playersById, entry.Key);
+                player.reward_points = Math.Max(0, entry.Value);
+            }
+        }
+
+        private void AddConnectedPlayers(Dictionary<string, StatsPlayer> playersById)
+        {
+            foreach (var player in players.Connected)
+            {
+                if (player == null || !IsSteamId64(player.Id))
+                {
+                    continue;
+                }
+
+                var statsPlayer = EnsureStatsPlayer(playersById, player.Id);
+                statsPlayer.display_name = FirstNonEmpty(statsPlayer.display_name, player.Name);
+            }
+        }
+
+        private StatsPlayer EnsureStatsPlayer(Dictionary<string, StatsPlayer> playersById, string steamId)
+        {
+            StatsPlayer player;
+
+            if (!playersById.TryGetValue(steamId, out player))
+            {
+                player = new StatsPlayer
+                {
+                    steam_id64 = steamId,
+                    display_name = ""
+                };
+                playersById[steamId] = player;
+            }
+
+            return player;
+        }
+
+        private T ReadDataFile<T>(string fileName)
+        {
+            try
+            {
+                if (!Interface.Oxide.DataFileSystem.ExistsDatafile(fileName))
+                {
+                    return default(T);
+                }
+
+                return Interface.Oxide.DataFileSystem.ReadObject<T>(fileName);
+            }
+            catch (Exception ex)
+            {
+                PrintWarning($"Could not read data file {fileName}: {ex.Message}");
+                return default(T);
+            }
+        }
+
+        private string ResolveWipeKey()
+        {
+            if (!string.IsNullOrWhiteSpace(config.WipeKey))
+            {
+                return config.WipeKey.Trim();
+            }
+
+            return $"{config.ServerId}-current";
+        }
+
         private bool CanRequest()
         {
             if (string.IsNullOrWhiteSpace(config.ApiBaseUrl))
@@ -217,6 +516,13 @@ namespace Oxide.Plugins
         {
             var headers = BuildHeaders("GET", url, "");
             webrequest.Enqueue(url, null, (code, response) => callback(code, response), this, RequestMethod.GET, headers);
+        }
+
+        private void SendPost(string url, string body, Action<int, string> callback)
+        {
+            var headers = BuildHeaders("POST", url, body);
+            headers["Content-Type"] = "application/json";
+            webrequest.Enqueue(url, body, (code, response) => callback(code, response), this, RequestMethod.POST, headers);
         }
 
         private Dictionary<string, string> BuildHeaders(string method, string url, string body)
@@ -293,6 +599,29 @@ namespace Oxide.Plugins
         {
             return !string.IsNullOrWhiteSpace(group) && group.All(character =>
                 char.IsLetterOrDigit(character) || character == '_' || character == '-');
+        }
+
+        private bool IsSteamId64(string value)
+        {
+            return !string.IsNullOrWhiteSpace(value)
+                && value.Length == 17
+                && value.StartsWith("7656119")
+                && value.All(char.IsDigit);
+        }
+
+        private string FirstNonEmpty(string current, string next)
+        {
+            return string.IsNullOrWhiteSpace(current) ? (next ?? "").Trim() : current;
+        }
+
+        private int ToInt(double value)
+        {
+            if (double.IsNaN(value) || double.IsInfinity(value) || value <= 0)
+            {
+                return 0;
+            }
+
+            return (int)Math.Min(int.MaxValue, Math.Round(value));
         }
 
         private bool IsSuccess(int code, string response, out string error)

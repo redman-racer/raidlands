@@ -5,6 +5,7 @@ $base_path = '../';
 
 require dirname(__DIR__) . '/includes/bootstrap.php';
 require $site_root . '/includes/admin.php';
+require_once $site_root . '/includes/stats.php';
 
 raidlands_admin_handle_request();
 
@@ -26,7 +27,7 @@ $admin_sections = [
     'seo' => ['label' => 'SEO', 'kicker' => 'Search', 'title' => 'SEO Metadata', 'summary' => 'Browser titles, descriptions, and social sharing copy.'],
     'store' => ['label' => 'Store', 'kicker' => 'VIP', 'title' => 'Products and Prices', 'summary' => 'VIP tiers, one-time perks, Stripe Price IDs, and managed Oxide groups.'],
     'grants' => ['label' => 'Grants', 'kicker' => 'Access', 'title' => 'Manual Entitlement Grant', 'summary' => 'Grant a product to a SteamID64 without going through Stripe.'],
-    'sync' => ['label' => 'Sync', 'kicker' => 'Bridge', 'title' => 'WebsiteVipBridge State', 'summary' => 'Recent entitlement changes and managed groups used by the Rust plugin.'],
+    'sync' => ['label' => 'Sync', 'kicker' => 'Bridge', 'title' => 'WebsiteVipBridge State', 'summary' => 'Entitlement sync, stats ingest status, and server API endpoints.'],
 ];
 $active_section = raidlands_admin_clean_section($_GET['section'] ?? 'identity');
 $active_meta = $admin_sections[$active_section];
@@ -35,6 +36,12 @@ $admin_store_error = '';
 $admin_store_rows = [];
 $admin_store_catalog = ['products' => []];
 $admin_sync_rows = [];
+$admin_stats_summary = [
+    'ready' => false,
+    'active_wipe' => null,
+    'latest_ingest' => null,
+    'current_players' => 0,
+];
 
 try {
     $admin_store_ready = raidlands_db_is_configured() && raidlands_db() instanceof PDO;
@@ -54,6 +61,7 @@ try {
 
     if ($active_section === 'sync' && $admin_store_ready) {
         $admin_sync_rows = raidlands_store_recent_sync_rows(30);
+        $admin_stats_summary = raidlands_stats_admin_summary();
     }
 } catch (Throwable $error) {
     $admin_store_ready = false;
@@ -636,10 +644,45 @@ function admin_status_options(): array
                         <ul class="list-clean">
                           <li><code>/api/server/vip-player.php?steam_id64=...</code></li>
                           <li><code>/api/server/vip-changes.php?since=...</code></li>
+                          <li><code>/api/server/stats-snapshot.php</code></li>
                           <li>Requests require Raidlands HMAC headers.</li>
                         </ul>
                       </div>
                     </div>
+                  </section>
+
+                  <section class="admin-section">
+                    <div class="admin-subsection-head">
+                      <h3>Stats ingest</h3>
+                      <p>Website leaderboards and profile RP use snapshots posted by WebsiteVipBridge.</p>
+                    </div>
+                    <?php if (!$admin_store_ready) : ?>
+                      <div class="admin-alert warning">MySQL is not configured yet. <?= $admin_store_error !== '' ? e($admin_store_error) : '' ?></div>
+                    <?php elseif (empty($admin_stats_summary['ready'])) : ?>
+                      <div class="admin-alert warning">Stats tables are not installed yet. Run <code>database/migrations/002_player_stats.sql</code>.</div>
+                    <?php else : ?>
+                      <?php
+                        $active_wipe = $admin_stats_summary['active_wipe'];
+                        $latest_ingest = $admin_stats_summary['latest_ingest'];
+                      ?>
+                      <div class="admin-grid three">
+                        <div class="metal-panel">
+                          <p class="section-kicker">Active wipe</p>
+                          <h3><?= e((string) ($active_wipe['wipe_key'] ?? 'None')) ?></h3>
+                          <p class="store-muted">Snapshots: <?= e((string) ($active_wipe['snapshot_count'] ?? 0)) ?></p>
+                        </div>
+                        <div class="metal-panel">
+                          <p class="section-kicker">Tracked players</p>
+                          <h3><?= e((string) $admin_stats_summary['current_players']) ?></h3>
+                          <p class="store-muted">Current wipe rows</p>
+                        </div>
+                        <div class="metal-panel">
+                          <p class="section-kicker">Last stats sync</p>
+                          <h3><?= e((string) ($latest_ingest['created_at'] ?? 'Pending')) ?></h3>
+                          <p class="store-muted"><?= e((string) ($latest_ingest['players_accepted'] ?? 0)) ?> accepted / <?= e((string) ($latest_ingest['players_received'] ?? 0)) ?> received</p>
+                        </div>
+                      </div>
+                    <?php endif; ?>
                   </section>
 
                   <section class="admin-section">

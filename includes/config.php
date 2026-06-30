@@ -74,6 +74,7 @@ $primary_nav = [
     ['discord', 'discord', 'Discord'],
     ['link', 'link', 'Link Account'],
     ['store', 'store', 'Store'],
+    ['leaderboard', 'leaderboard', 'Leaderboards'],
     ['profile', 'profile', 'Profile'],
 ];
 
@@ -254,7 +255,7 @@ $page_copy = [
     ],
     'leaderboard' => [
         'title' => 'Leaderboards',
-        'lede' => 'Future player and clan rankings for each wipe season.',
+        'lede' => 'Current-wipe and all-time rankings for kills, K/D, playtime, and Raidlands RP.',
     ],
     'store' => [
         'title' => 'Store',
@@ -338,10 +339,10 @@ $seo_pages = [
         'ogDescription' => 'Terms for using the Raidlands website, Rust server, Discord, and future account systems.',
     ],
     'leaderboard' => [
-        'title' => 'Raidlands Leaderboards | Coming Soon',
-        'description' => 'Raidlands leaderboards are planned for kills, K/D, raids, explosives, clan rankings, and wipe MVPs.',
+        'title' => 'Raidlands Leaderboards | Kills, K/D, Playtime, RP',
+        'description' => 'View Raidlands player leaderboards for current-wipe and all-time kills, K/D, playtime, and ServerRewards RP.',
         'ogTitle' => 'Raidlands Leaderboards',
-        'ogDescription' => 'Future wipe rankings for players and clans.',
+        'ogDescription' => 'Current-wipe and all-time rankings for Raidlands players.',
     ],
     'store' => [
         'title' => 'Raidlands Store | VIP Kits, Monthly Ranks, One-Time Perks',

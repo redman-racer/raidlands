@@ -1,16 +1,19 @@
 <?php
 
 require_once $site_root . '/includes/store.php';
+require_once $site_root . '/includes/stats.php';
 
 $profile_player = raidlands_store_current_player();
 $profile_entitlements = [];
 $profile_active_groups = [];
+$profile_stats = ['current' => null, 'all_time' => null, 'wipe' => null];
 $profile_flash = raidlands_store_flash();
 
 if ($profile_player !== null && !empty($profile_player['id'])) {
     $profile_entitlements = raidlands_store_entitlements_for_player((int) $profile_player['id']);
     $state = raidlands_store_active_groups_for_steam((string) $profile_player['steam_id64']);
     $profile_active_groups = $state['groups'];
+    $profile_stats = raidlands_stats_player_summary((int) $profile_player['id']);
 }
 ?>
 <?= render_page_hero('profile',
@@ -68,6 +71,43 @@ if ($profile_player !== null && !empty($profile_player['id'])) {
 </section>
 
 <?php if ($profile_player !== null) : ?>
+  <section class="section">
+    <div class="section-inner">
+      <div class="section-header">
+        <p class="section-kicker">Player stats</p>
+        <h2>RP, combat, and playtime</h2>
+        <p class="section-lede">These stats come from the server bridge. RP is your ServerRewards balance; wipe stats follow the active wipe season.</p>
+      </div>
+
+      <?php if (!raidlands_stats_is_ready()) : ?>
+        <div class="form-status warning">Stats tables are not installed yet, so profile stats are waiting for setup.</div>
+      <?php elseif ($profile_stats['current'] === null && $profile_stats['all_time'] === null) : ?>
+        <div class="metal-panel">
+          <p class="section-lede">No game stats have synced for this SteamID64 yet. Join the server and the next bridge snapshot should populate this panel.</p>
+        </div>
+      <?php else : ?>
+        <div class="profile-stat-grid">
+          <?php
+            $stat_cards = [
+                ['Current RP', $profile_stats['current']['reward_points'] ?? $profile_stats['all_time']['reward_points'] ?? 0],
+                ['Wipe Kills', $profile_stats['current']['kills'] ?? 0],
+                ['Wipe K/D', isset($profile_stats['current']) ? raidlands_stats_format_kdr($profile_stats['current']['kdr'] ?? 0) : '0.00'],
+                ['Wipe Playtime', isset($profile_stats['current']) ? raidlands_stats_format_duration($profile_stats['current']['playtime_seconds'] ?? 0) : '0m'],
+                ['All-Time Kills', $profile_stats['all_time']['kills'] ?? 0],
+                ['All-Time Playtime', isset($profile_stats['all_time']) ? raidlands_stats_format_duration($profile_stats['all_time']['playtime_seconds'] ?? 0) : '0m'],
+            ];
+          ?>
+          <?php foreach ($stat_cards as [$label, $value]) : ?>
+            <article class="stat-tile">
+              <span><?= e($label) ?></span>
+              <strong><?= e(is_int($value) ? raidlands_stats_format_number($value) : (string) $value) ?></strong>
+            </article>
+          <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
+    </div>
+  </section>
+
   <section class="section alt">
     <div class="section-inner">
       <div class="section-header">

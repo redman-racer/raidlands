@@ -32,8 +32,8 @@ http://127.0.0.1:4177/
 - Each route has a small `index.php` that loads bootstrap, header, content, and footer.
 - `assets/js/site.js` handles behavior only: mobile nav, copy buttons, auth placeholders, reveal effects, metrics, and wipe countdowns.
 - `includes/database.php` and `includes/store.php` provide the MySQL, Stripe, SteamID64, entitlement, and WebsiteVipBridge API layer.
-- `database/` contains the VIP store migration and seed data.
-- `server-plugins/WebsiteVipBridge.cs` is the uMod/Oxide bridge plugin for syncing website entitlements to Rust permission groups.
+- `database/` contains the VIP store migration, stats migration, and seed data.
+- `server-plugins/WebsiteVipBridge.cs` is the uMod/Oxide bridge plugin for syncing website entitlements to Rust permission groups and player stats to leaderboards.
 
 ## Important Config
 
@@ -65,10 +65,11 @@ The store uses MySQL as the source of truth and Stripe Checkout for payments.
 1. Run `composer install`.
 2. Create a MySQL database.
 3. Run `database/migrations/001_vip_store.sql`.
-4. Run `database/seeds/001_store_products.sql`.
-5. Copy `data/raidlands-secrets.example.php` to `data/raidlands-secrets.php`.
-6. Fill in MySQL, Stripe, and bridge secret values.
-7. Configure product Stripe Price IDs in `/admin/?section=store`.
+4. Run `database/migrations/002_player_stats.sql`.
+5. Run `database/seeds/001_store_products.sql`.
+6. Copy `data/raidlands-secrets.example.php` to `data/raidlands-secrets.php`.
+7. Fill in MySQL, Stripe, and bridge secret values.
+8. Configure product Stripe Price IDs in `/admin/?section=store`.
 
 Public store flow:
 
@@ -83,7 +84,9 @@ Game-server flow:
 - Install Rust Kits by k1lly0u.
 - Put `server-plugins/WebsiteVipBridge.cs` into the uMod/Oxide plugins folder.
 - Configure the plugin with the same `ApiBaseUrl`, `ServerId`, and `SharedSecret` as the website.
+- Configure `WipeKey` after each wipe if you want a clean current-wipe leaderboard boundary; leave it blank only if one continuous current season is acceptable.
 - The plugin calls `/api/server/vip-player.php` and `/api/server/vip-changes.php`, then adds/removes managed Oxide groups.
+- The plugin posts `/api/server/stats-snapshot.php` with KDRScoreboard kills/deaths, PlaytimeTracker playtime, and ServerRewards RP for `/leaderboard/` and `/profile/`.
 
 ## Admin Panel
 
@@ -95,4 +98,4 @@ http://localhost/raidlands/admin/
 
 The admin login is configured in `includes/config.php` under `$admin_panel`. Admin-edited site content is saved to `data/site-content.json`; Apache is configured to deny direct web access to that folder.
 
-Admin sections now include Store, Grants, and Sync for product setup, manual entitlements, and WebsiteVipBridge visibility.
+Admin sections now include Store, Grants, and Sync for product setup, manual entitlements, WebsiteVipBridge visibility, and stats ingest health.
