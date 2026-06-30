@@ -18,6 +18,7 @@
   const stateEl = loader.querySelector("[data-loader-state]");
   const progressEl = loader.querySelector("[data-loader-progress]");
   const tipEl = loader.querySelector("[data-loader-tip]");
+  const coreEl = loader.querySelector(".raidlands-loader-core");
   const reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const startedAt = performance.now();
   const minVisibleMs = reducedMotion ? 350 : clamp(Number(data.minVisibleMs) || 1850, 800, 6000);
@@ -35,6 +36,7 @@
   let typedLines = 0;
   let expectedLines = 1;
   let tipIndex = 0;
+  let scopeCleanup = null;
 
   window.__raidlandsServerStatusPromise = statusResultPromise
     .then(result => result && result.status ? result.status : null)
@@ -48,6 +50,7 @@
   pageLoadPromise.then(() => {
     pageLoaded = true;
     setProgress(Math.max(currentProgress, 86));
+    queueScopeSimulation();
   });
 
   const progressTimer = window.setInterval(tickProgress, reducedMotion ? 180 : 80);
@@ -343,6 +346,115 @@
     }, 1700);
   }
 
+  function queueScopeSimulation() {
+    if (reducedMotion || !coreEl || scopeCleanup) return;
+
+    const start = () => {
+      if (closed || scopeCleanup) return;
+
+      scopeCleanup = startScopeSimulation();
+    };
+
+    if ("requestIdleCallback" in window) {
+      window.requestIdleCallback(start, { timeout: 900 });
+      return;
+    }
+
+    window.setTimeout(start, 380);
+  }
+
+  function startScopeSimulation() {
+    const scope = document.createElement("div");
+    const reticle = document.createElement("div");
+    const reticleDot = document.createElement("span");
+    const timers = new Set();
+
+    let stopped = false;
+
+    scope.className = "raidlands-loader-scope";
+    scope.setAttribute("aria-hidden", "true");
+    scope.style.setProperty("--scope-x", "52%");
+    scope.style.setProperty("--scope-y", "46%");
+    reticle.className = "raidlands-loader-reticle";
+    reticleDot.className = "raidlands-loader-reticle-dot";
+    reticle.appendChild(reticleDot);
+    scope.appendChild(reticle);
+    coreEl.prepend(scope);
+
+    window.requestAnimationFrame(() => {
+      if (!stopped) {
+        scope.classList.add("is-active");
+      }
+    });
+
+    const setManagedTimeout = (callback, ms) => {
+      const timer = window.setTimeout(() => {
+        timers.delete(timer);
+        callback();
+      }, ms);
+
+      timers.add(timer);
+      return timer;
+    };
+
+    const fireCycle = () => {
+      if (stopped || closed || !scope.isConnected) return;
+
+      const target = randomScopeTarget();
+      const shadow = document.createElement("span");
+
+      shadow.className = "raidlands-loader-shadow";
+      shadow.style.setProperty("--target-x", `${target.x}%`);
+      shadow.style.setProperty("--target-y", `${target.y}%`);
+      scope.appendChild(shadow);
+
+      window.requestAnimationFrame(() => {
+        if (!stopped) {
+          shadow.classList.add("is-visible");
+          scope.style.setProperty("--scope-x", `${target.x}%`);
+          scope.style.setProperty("--scope-y", `${target.y}%`);
+        }
+      });
+
+      setManagedTimeout(() => {
+        if (stopped || closed) return;
+
+        shadow.classList.add("is-hit");
+        reticle.classList.remove("is-recoiling");
+        void reticle.offsetWidth;
+        reticle.classList.add("is-recoiling");
+      }, 520);
+
+      setManagedTimeout(() => {
+        shadow.remove();
+      }, 1280);
+
+      setManagedTimeout(fireCycle, randomBetween(1080, 1540));
+    };
+
+    setManagedTimeout(fireCycle, 220);
+
+    return (remove = false) => {
+      stopped = true;
+      timers.forEach(timer => window.clearTimeout(timer));
+      timers.clear();
+
+      if (remove) {
+        scope.remove();
+      }
+    };
+  }
+
+  function randomScopeTarget() {
+    const leftSide = Math.random() > .5;
+    const x = leftSide ? randomBetween(24, 38) : randomBetween(62, 76);
+
+    return {
+      x: Math.round(x),
+      y: Math.round(randomBetween(34, 66))
+    };
+  }
+
   function waitForDomReady() {
     if (document.readyState !== "loading") {
       return Promise.resolve();
@@ -381,9 +493,15 @@
       window.clearInterval(tipTimer);
     }
 
+    if (scopeCleanup) {
+      scopeCleanup();
+      scopeCleanup = null;
+    }
+
     loader.style.setProperty("--loader-fade-ms", `${fadeMs}ms`);
-    loader.classList.add("is-exiting");
+    loader.getBoundingClientRect();
     root.classList.add("raidlands-loader-fading");
+    loader.classList.add("is-exiting");
 
     window.setTimeout(() => {
       root.classList.remove("raidlands-loading", "raidlands-loader-fading");
@@ -393,6 +511,10 @@
 
   function delay(ms) {
     return new Promise(resolve => window.setTimeout(resolve, ms));
+  }
+
+  function randomBetween(min, max) {
+    return min + Math.random() * (max - min);
   }
 
   function clamp(value, min, max) {
