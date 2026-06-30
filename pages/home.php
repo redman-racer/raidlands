@@ -44,17 +44,17 @@
 
 <section class="section alt">
   <div class="section-inner split-panel">
-    <div class="metal-panel">
+    <div class="metal-panel wipe-schedule-panel">
       <p class="section-kicker">Wipe schedule</p>
       <h2>Wipes every Thursday</h2>
       <p class="section-lede">The wasteland resets every Thursday. New bases. New rivalries. New raids.</p>
-      <div class="tag-row">
-        <span class="tag">Last wipe: <span data-last-wipe>Loading</span></span>
-        <span class="tag">Upcoming: <span data-next-wipe>Loading</span></span>
-        <span class="tag"><?= e($site_config['wipe']['time']) ?> <?= e($site_config['wipe']['timezone']) ?></span>
+      <div class="tag-row wipe-schedule-meta" aria-label="Wipe timing">
+        <span class="tag"><span class="tag-label">Last wipe</span><span class="tag-value" data-last-wipe>Loading</span></span>
+        <span class="tag"><span class="tag-label">Upcoming</span><span class="tag-value" data-next-wipe>Loading</span></span>
+        <span class="tag"><span class="tag-label">Local time</span><span class="tag-value"><?= e($site_config['wipe']['time']) ?> <?= e($site_config['wipe']['timezone']) ?></span></span>
       </div>
       <?= render_wipe_bar() ?>
-      <div class="button-row">
+      <div class="button-row wipe-schedule-actions">
         <a class="btn btn-discord" href="<?= e($site_config['discordInviteUrl']) ?>" target="_blank" rel="noreferrer" data-track="discord_invite_clicked">Get Wipe Alerts</a>
         <a class="btn btn-secondary" href="<?= e(route_url('play')) ?>">Join Methods</a>
       </div>
@@ -79,8 +79,8 @@
   <div class="section-inner split-panel">
     <div class="metal-panel">
       <p class="section-kicker">Account linking</p>
-      <h2>Keep your identity across wipes</h2>
-      <p class="section-lede">Link Steam and Discord early so Raidlands can support future leaderboards, rewards, roles, support context, and profile identity.</p>
+      <h2>Keep your profile across wipes</h2>
+      <p class="section-lede"><?= e(raidlands_has_linked_account() ? 'Your Steam account is connected. Use your account page to check profile status, stats, and VIP access.' : 'Connect Steam and Discord early so Raidlands can support future leaderboards, rewards, roles, support, and profile features.') ?></p>
       <div class="grid two">
         <?= render_auth_summary_card('steam') ?>
         <?= render_auth_summary_card('discord') ?>
@@ -88,7 +88,7 @@
     </div>
     <div class="metal-panel">
       <p class="section-kicker">Launch promise</p>
-      <h2>VIP synced cleanly</h2>
+      <h2>VIP follows your account</h2>
       <p class="section-lede">VIP kits, monthly ranks, and one-time perks stay tied to your Steam account, then update in game automatically.</p>
       <div class="button-row">
         <a class="btn btn-primary" href="<?= e(route_url('play')) ?>">Play Raidlands</a>
@@ -106,7 +106,7 @@
       <p class="section-lede">Join Discord for wipe alerts, teammate finding, bug reports, ban appeals, feature votes, and launch announcements.</p>
       <div class="button-row">
         <a class="btn btn-discord" href="<?= e($site_config['discordInviteUrl']) ?>" target="_blank" rel="noreferrer" data-track="discord_invite_clicked">Join the Raidlands Discord</a>
-        <a class="btn btn-secondary" href="<?= e(route_url('link')) ?>">Link Discord Account</a>
+        <a class="btn btn-secondary" href="<?= e(raidlands_account_url()) ?>"><?= e(raidlands_account_label('Connect Discord', 'Open Account')) ?></a>
       </div>
     </div>
     <div class="image-panel discord" role="img" aria-label="Raidlands Discord banner"></div>

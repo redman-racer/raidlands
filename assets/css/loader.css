@@ -1,0 +1,423 @@
+.raidlands-loader {
+  display: none;
+}
+
+html.raidlands-loading,
+html.raidlands-loading body {
+  overflow: hidden;
+}
+
+html.raidlands-loading .raidlands-loader {
+  --loader-progress: 0;
+  position: fixed;
+  inset: 0;
+  z-index: 9999;
+  display: grid;
+  place-items: center;
+  padding: 24px;
+  color: #f3eee3;
+  background:
+    linear-gradient(180deg, rgba(5, 6, 7, .95), rgba(5, 6, 7, .98)),
+    url("../media/pattern-bg.png") center / cover,
+    #050607;
+  font-family: "Arial Narrow", "Roboto Condensed", Impact, Arial, sans-serif;
+  letter-spacing: 0;
+  opacity: 1;
+  transition: opacity var(--loader-fade-ms, 520ms) ease;
+}
+
+.raidlands-loader.is-exiting {
+  opacity: 0;
+  pointer-events: none;
+}
+
+.raidlands-loader::before,
+.raidlands-loader::after {
+  position: absolute;
+  inset: 0;
+  content: "";
+  pointer-events: none;
+}
+
+.raidlands-loader::before {
+  background:
+    radial-gradient(circle, rgba(255, 138, 40, .42) 0 1px, transparent 1.6px) 0 0 / 118px 118px,
+    radial-gradient(circle, rgba(124, 255, 107, .22) 0 .8px, transparent 1.4px) 38px 22px / 164px 164px,
+    radial-gradient(circle, rgba(243, 238, 227, .18) 0 .7px, transparent 1.2px) 9px 16px / 36px 36px,
+    linear-gradient(90deg, rgba(255, 138, 40, .06) 1px, transparent 1px),
+    linear-gradient(0deg, rgba(124, 255, 107, .035) 1px, transparent 1px),
+    url("../media/console-scan.svg") center / 260px repeat;
+  background-size: 118px 118px, 164px 164px, 36px 36px, 92px 92px, 92px 92px, 260px 260px;
+  mix-blend-mode: screen;
+  opacity: .48;
+  will-change: background-position, opacity, transform;
+  animation:
+    raidlands-loader-grid 16s linear infinite,
+    raidlands-loader-static .38s steps(2, end) infinite;
+}
+
+.raidlands-loader::after {
+  background:
+    radial-gradient(ellipse at center, transparent 48%, rgba(0, 0, 0, .58) 100%),
+    linear-gradient(180deg, rgba(255, 138, 40, .09), transparent 18%, transparent 78%, rgba(124, 255, 107, .05));
+  mix-blend-mode: screen;
+  opacity: .62;
+}
+
+.raidlands-loader-frame {
+  position: relative;
+  z-index: 1;
+  width: min(1840px, calc(100vw - 48px));
+  height: min(900px, calc(100vh - 48px));
+  height: min(900px, calc(100dvh - 48px));
+  min-height: 560px;
+  display: grid;
+  grid-template-columns: minmax(330px, .72fr) minmax(360px, 1fr);
+  align-items: stretch;
+  overflow: hidden;
+  border: 1px solid rgba(255, 138, 40, .42);
+  border-radius: 6px;
+  background:
+    linear-gradient(90deg, rgba(0, 0, 0, .52), rgba(0, 0, 0, .24) 42%, rgba(0, 0, 0, .5)),
+    url("../media/texture-grunge.svg") center / 640px repeat,
+    rgba(6, 8, 8, .94);
+  box-shadow:
+    0 30px 80px rgba(0, 0, 0, .78),
+    inset 0 0 0 1px rgba(243, 238, 227, .08),
+    inset 0 0 90px rgba(255, 138, 40, .08);
+}
+
+.raidlands-loader-frame::before {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  content: "";
+  pointer-events: none;
+  background:
+    linear-gradient(#ff8a28, #ff8a28) left 0 top 0 / 68px 1px no-repeat,
+    linear-gradient(#ff8a28, #ff8a28) left 0 top 0 / 1px 68px no-repeat,
+    linear-gradient(#ff8a28, #ff8a28) right 0 top 0 / 68px 1px no-repeat,
+    linear-gradient(#ff8a28, #ff8a28) right 0 top 0 / 1px 68px no-repeat,
+    linear-gradient(#ff8a28, #ff8a28) left 0 bottom 0 / 68px 1px no-repeat,
+    linear-gradient(#ff8a28, #ff8a28) left 0 bottom 0 / 1px 68px no-repeat,
+    linear-gradient(#ff8a28, #ff8a28) right 0 bottom 0 / 68px 1px no-repeat,
+    linear-gradient(#ff8a28, #ff8a28) right 0 bottom 0 / 1px 68px no-repeat;
+  opacity: .58;
+}
+
+.raidlands-loader-frame::after {
+  position: absolute;
+  inset: 0;
+  z-index: 0;
+  content: "";
+  pointer-events: none;
+  background:
+    linear-gradient(90deg, transparent, rgba(124, 255, 107, .2), rgba(255, 138, 40, .26), transparent) center / 100% 1px no-repeat,
+    radial-gradient(circle, rgba(255, 138, 40, .34) 0 1px, transparent 1.7px) 12px 18px / 142px 142px,
+    radial-gradient(circle, rgba(124, 255, 107, .18) 0 .9px, transparent 1.5px) 58px 42px / 96px 96px,
+    radial-gradient(circle, rgba(243, 238, 227, .16) 0 .6px, transparent 1.1px) 0 0 / 29px 29px;
+  mix-blend-mode: screen;
+  opacity: .52;
+  will-change: background-position, opacity, transform;
+  animation:
+    raidlands-loader-frame-drift 22s linear infinite,
+    raidlands-loader-static .42s steps(2, end) infinite;
+}
+
+.raidlands-loader-console {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  padding: 28px 26px;
+  overflow: hidden;
+  border-right: 1px solid rgba(255, 138, 40, .18);
+  color: rgba(243, 238, 227, .78);
+  font-family: Consolas, "Courier New", monospace;
+  font-size: .92rem;
+  line-height: 1.52;
+  text-shadow: 0 0 12px rgba(124, 255, 107, .16);
+  mask-image: linear-gradient(180deg, transparent 0, #000 28px, #000 calc(100% - 28px), transparent 100%);
+}
+
+.raidlands-loader-line {
+  min-height: 1.52em;
+  display: flex;
+  gap: 8px;
+  align-items: baseline;
+  color: rgba(243, 238, 227, .74);
+}
+
+.raidlands-loader-line + .raidlands-loader-line {
+  margin-top: 4px;
+}
+
+.raidlands-loader-prompt {
+  flex: 0 0 auto;
+  color: #ff8a28;
+  text-shadow: 0 0 12px rgba(255, 138, 40, .5);
+}
+
+.raidlands-loader-text {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.raidlands-loader-line.is-info {
+  color: rgba(243, 238, 227, .72);
+}
+
+.raidlands-loader-line.is-ok {
+  color: #7cff6b;
+}
+
+.raidlands-loader-line.is-warn {
+  color: #ffd166;
+}
+
+.raidlands-loader-line.is-error {
+  color: #ff8a28;
+}
+
+.raidlands-loader-line:last-child .raidlands-loader-text::after {
+  display: inline-block;
+  width: .62em;
+  height: 1em;
+  margin-left: 2px;
+  content: "";
+  vertical-align: -.14em;
+  background: currentColor;
+  animation: raidlands-loader-caret .74s steps(1, end) infinite;
+}
+
+.raidlands-loader-core {
+  position: relative;
+  z-index: 1;
+  min-width: 0;
+  padding: 40px 28px;
+  display: grid;
+  place-items: center;
+  align-content: center;
+  gap: 24px;
+  text-align: center;
+}
+
+.raidlands-loader-core::before {
+  position: absolute;
+  inset: 16%;
+  z-index: -1;
+  content: "";
+  border: 1px solid rgba(255, 138, 40, .14);
+  background:
+    linear-gradient(90deg, transparent, rgba(255, 138, 40, .10), transparent) center / 100% 1px no-repeat,
+    linear-gradient(180deg, transparent, rgba(124, 255, 107, .06), transparent);
+  opacity: .82;
+}
+
+.raidlands-loader-logo {
+  width: 260px;
+  max-width: min(64vw, 300px);
+  height: auto;
+  filter:
+    drop-shadow(0 16px 26px rgba(0, 0, 0, .78))
+    drop-shadow(0 0 18px rgba(255, 138, 40, .28));
+}
+
+.raidlands-loader-progress {
+  position: relative;
+  width: 76px;
+  height: 76px;
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  background:
+    radial-gradient(circle at center, rgba(5, 6, 7, .94) 0 50%, transparent 51%),
+    conic-gradient(#ff8a28 calc(var(--loader-progress) * 1%), rgba(124, 255, 107, .16) 0);
+  color: #7cff6b;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: 1rem;
+  box-shadow:
+    0 0 24px rgba(255, 138, 40, .16),
+    inset 0 0 18px rgba(0, 0, 0, .72);
+}
+
+.raidlands-loader-progress::after {
+  position: absolute;
+  inset: 7px;
+  content: "";
+  border: 1px solid rgba(124, 255, 107, .28);
+  border-radius: inherit;
+}
+
+.raidlands-loader-progress span::after {
+  content: "%";
+}
+
+.raidlands-loader-state {
+  max-width: 36ch;
+  margin: 0;
+  color: #f3eee3;
+  font-size: 1rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  text-shadow: 0 0 14px rgba(255, 138, 40, .28);
+}
+
+.raidlands-loader-tip {
+  width: min(100%, 520px);
+  display: grid;
+  gap: 12px;
+}
+
+.raidlands-loader-tip span {
+  color: #ff8a28;
+  font-size: .8rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.raidlands-loader-tip p {
+  margin: 0;
+  color: rgba(243, 238, 227, .62);
+  font-family: Arial, sans-serif;
+  font-size: .98rem;
+  line-height: 1.55;
+}
+
+@keyframes raidlands-loader-grid {
+  0% {
+    background-position: 0 0, 38px 22px, 9px 16px, 0 0, 0 0, center;
+  }
+
+  100% {
+    background-position: 118px 74px, -126px 164px, 45px -20px, 92px 46px, -92px 92px, 180px 120px;
+  }
+}
+
+@keyframes raidlands-loader-frame-drift {
+  0% {
+    background-position: center, 12px 18px, 58px 42px, 0 0;
+  }
+
+  100% {
+    background-position: center, 154px 108px, -38px 138px, 29px -29px;
+  }
+}
+
+@keyframes raidlands-loader-static {
+  0%,
+  100% {
+    opacity: .44;
+    transform: translate3d(0, 0, 0);
+  }
+
+  33% {
+    opacity: .58;
+    transform: translate3d(.5px, -.5px, 0);
+  }
+
+  66% {
+    opacity: .38;
+    transform: translate3d(-.5px, .5px, 0);
+  }
+}
+
+@keyframes raidlands-loader-caret {
+  0%,
+  52% {
+    opacity: 1;
+  }
+
+  53%,
+  100% {
+    opacity: 0;
+  }
+}
+
+@media (max-width: 900px) {
+  html.raidlands-loading .raidlands-loader {
+    padding: 12px;
+  }
+
+  .raidlands-loader-frame {
+    width: calc(100vw - 24px);
+    height: calc(100vh - 24px);
+    height: calc(100dvh - 24px);
+    min-height: 0;
+    grid-template-columns: 1fr;
+    grid-template-rows: minmax(210px, 38%) minmax(0, 1fr);
+  }
+
+  .raidlands-loader-console {
+    padding: 22px 18px;
+    border-right: 0;
+    border-bottom: 1px solid rgba(255, 138, 40, .18);
+    font-size: .82rem;
+  }
+
+  .raidlands-loader-core {
+    padding: 28px 18px;
+    gap: 18px;
+  }
+
+  .raidlands-loader-logo {
+    width: 210px;
+  }
+
+  .raidlands-loader-progress {
+    width: 66px;
+    height: 66px;
+  }
+}
+
+@media (max-width: 520px) {
+  .raidlands-loader-frame {
+    grid-template-rows: minmax(220px, 43%) minmax(0, 1fr);
+  }
+
+  .raidlands-loader-frame::before {
+    background:
+      linear-gradient(#ff8a28, #ff8a28) left 0 top 0 / 42px 1px no-repeat,
+      linear-gradient(#ff8a28, #ff8a28) left 0 top 0 / 1px 42px no-repeat,
+      linear-gradient(#ff8a28, #ff8a28) right 0 top 0 / 42px 1px no-repeat,
+      linear-gradient(#ff8a28, #ff8a28) right 0 top 0 / 1px 42px no-repeat,
+      linear-gradient(#ff8a28, #ff8a28) left 0 bottom 0 / 42px 1px no-repeat,
+      linear-gradient(#ff8a28, #ff8a28) left 0 bottom 0 / 1px 42px no-repeat,
+      linear-gradient(#ff8a28, #ff8a28) right 0 bottom 0 / 42px 1px no-repeat,
+      linear-gradient(#ff8a28, #ff8a28) right 0 bottom 0 / 1px 42px no-repeat;
+  }
+
+  .raidlands-loader-console {
+    font-size: .76rem;
+    line-height: 1.45;
+  }
+
+  .raidlands-loader-line {
+    gap: 6px;
+  }
+
+  .raidlands-loader-logo {
+    width: 174px;
+  }
+
+  .raidlands-loader-state {
+    font-size: .86rem;
+  }
+
+  .raidlands-loader-tip span {
+    font-size: .74rem;
+  }
+
+  .raidlands-loader-tip p {
+    font-size: .86rem;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .raidlands-loader,
+  .raidlands-loader::before,
+  .raidlands-loader-frame::after,
+  .raidlands-loader-line:last-child .raidlands-loader-text::after {
+    animation: none !important;
+    transition-duration: .01ms !important;
+  }
+}

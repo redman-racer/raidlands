@@ -1,6 +1,9 @@
 <?php
 
+$loader_payload = raidlands_loader_payload();
 $config_json = json_encode($site_config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+$loader_json = json_encode($loader_payload, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES);
+$linked_player = raidlands_linked_player();
 ?>
 <!doctype html>
 <html lang="en" data-page="<?= e($page_id) ?>" data-base="<?= e($base_path) ?>">
@@ -21,11 +24,22 @@ $config_json = json_encode($site_config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_
       <link rel="preload" as="image" href="<?= e(asset_url('media/website-hero-raid-overlook-v4.webp')) ?>" fetchpriority="high">
       <link rel="preload" as="image" href="<?= e(asset_url('media/raidlands-logo.webp')) ?>">
     <?php endif; ?>
+    <link rel="preload" as="script" href="<?= e(asset_url('js/raidlands-loader.js')) ?>">
+    <script>
+      document.documentElement.classList.add('raidlands-loading');
+      window.__raidlandsLoaderFallback = window.setTimeout(function () {
+        document.documentElement.classList.remove('raidlands-loading');
+      }, 9000);
+    </script>
+    <link rel="stylesheet" href="<?= e(asset_url('css/loader.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset_url('css/styles.css')) ?>">
+    <script type="application/json" id="raidlands-loader-data"><?= $loader_json ?></script>
     <script type="application/json" id="site-config"><?= $config_json ?></script>
     <script defer src="<?= e(asset_url('js/site.js')) ?>"></script>
   </head>
   <body>
+    <?= render_raidlands_loader($loader_payload) ?>
+    <script src="<?= e(asset_url('js/raidlands-loader.js')) ?>"></script>
     <div id="raidlands-app">
       <div class="app-shell page-<?= e($page_id) ?>">
         <header class="site-header">
@@ -35,7 +49,22 @@ $config_json = json_encode($site_config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_
             </a>
             <nav class="nav-menu" id="site-menu" aria-label="Primary navigation">
               <?php foreach ($primary_nav as [$id, $path, $label]) : ?>
-                <a class="nav-link<?= $id === $page_id ? ' is-active' : '' ?>" href="<?= e(route_url($path)) ?>"><?= e($label) ?></a>
+                <?php
+                  if ($id === 'profile') {
+                      continue;
+                  }
+
+                  $nav_path = $path;
+                  $nav_label = $label;
+                  $nav_active = $id === $page_id;
+
+                  if ($id === 'link') {
+                      $nav_path = $linked_player !== null ? 'profile' : 'link';
+                      $nav_label = $linked_player !== null ? 'Account' : 'Link Account';
+                      $nav_active = in_array($page_id, ['link', 'profile'], true);
+                  }
+                ?>
+                <a class="nav-link<?= $nav_active ? ' is-active' : '' ?>" href="<?= e(route_url($nav_path)) ?>"><?= e($nav_label) ?></a>
               <?php endforeach; ?>
             </nav>
             <div class="header-actions">

@@ -391,7 +391,7 @@ function raidlands_store_link_player(string $steam_id64, string $display_name = 
     $steam_id64 = preg_replace('/\D+/', '', $steam_id64) ?? '';
 
     if (!raidlands_store_validate_steam_id64($steam_id64)) {
-        throw new InvalidArgumentException('Enter a valid SteamID64. It should look like 7656119 followed by 10 digits.');
+        throw new InvalidArgumentException('Enter a valid 17-digit Steam ID. It should start with 7656119.');
     }
 
     $player = [
@@ -532,7 +532,7 @@ function raidlands_store_steam_openid_verify(): array
     $claimed_id = (string) ($_GET['openid_claimed_id'] ?? $_GET['openid.claimed_id'] ?? '');
 
     if (!preg_match('#^https?://steamcommunity\.com/openid/id/(\d{17})$#', $claimed_id, $matches)) {
-        throw new RuntimeException('Steam did not return a valid Steam identity.');
+        throw new RuntimeException('Steam did not return a valid Steam account.');
     }
 
     $params = [];
@@ -583,7 +583,7 @@ function raidlands_store_steam_openid_verify(): array
     }
 
     if ($response === false || !str_contains($response, 'is_valid:true')) {
-        throw new RuntimeException('Steam did not confirm the identity response. Use manual SteamID64 linking for now.');
+        throw new RuntimeException('Steam did not confirm the sign-in. Enter your Steam ID manually for now.');
     }
 
     return raidlands_store_link_player((string) $matches[1]);
@@ -677,7 +677,7 @@ function raidlands_store_checkout_for_price(int $price_id): string
     $player = raidlands_store_current_player();
 
     if ($player === null || empty($player['id']) || empty($player['steam_id64'])) {
-        throw new RuntimeException('Link your SteamID64 before checkout.');
+        throw new RuntimeException('Connect your Steam account before checkout.');
     }
 
     $secret_key = (string) ($stripe_config['secretKey'] ?? '');

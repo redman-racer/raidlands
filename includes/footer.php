@@ -6,7 +6,18 @@
               <p class="footer-copy">1000x Rust warfare, built for nonstop raids. Raidlands is not affiliated with Facepunch Studios.</p>
             </div>
             <nav class="footer-nav" aria-label="Footer navigation">
-              <?php foreach (array_merge($primary_nav, [['support', 'support', 'Support'], ['privacy', 'privacy', 'Privacy'], ['terms', 'terms', 'Terms']]) as [, $path, $label]) : ?>
+              <?php $footer_linked_player = raidlands_linked_player(); ?>
+              <?php foreach (array_merge($primary_nav, [['support', 'support', 'Support'], ['privacy', 'privacy', 'Privacy'], ['terms', 'terms', 'Terms']]) as [$id, $path, $label]) : ?>
+                <?php
+                  if ($id === 'profile') {
+                      continue;
+                  }
+
+                  if ($id === 'link') {
+                      $path = $footer_linked_player !== null ? 'profile' : 'link';
+                      $label = $footer_linked_player !== null ? 'Account' : 'Link Account';
+                  }
+                ?>
                 <a href="<?= e(route_url($path)) ?>"><?= e($label) ?></a>
               <?php endforeach; ?>
             </nav>

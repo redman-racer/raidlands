@@ -172,7 +172,7 @@ $feature_cards = [
     ['PVP', 'Battlefield PvP', 'A high-rate battlefield tuned for counters, chaos, and quick returns.', 'Launch target'],
     ['KIT', 'Kits', 'Fast starter and combat kits keep the pace moving after every death.', 'Launch target'],
     ['TP', 'Teleport / Homes', 'Move between bases, fights, teammates, and rebuilds without dead time.', 'Launch target'],
-    ['CLAN', 'Clans', 'Build identity around teams, rivalries, and wipe-long wars.', 'Planned'],
+    ['CLAN', 'Clans', 'Build your team name around rivalries and wipe-long wars.', 'Planned'],
     ['SKIN', 'Skinbox', 'Keep bases and gear looking sharp without breaking the battlefield pace.', 'Planned'],
     ['PACK', 'Backpacks', 'Extra carry capacity for raiders, builders, and loot runners.', 'Launch target'],
     ['MINI', 'Personal Mini', 'Fast map movement for scouts, counters, and strike teams.', 'Under review'],
@@ -195,8 +195,8 @@ $feature_groups = [
     ],
     [
         'title' => 'Community and Clans',
-        'copy' => 'Raidlands is built around recurring rivalries, Discord identity, support channels, and future clan pages.',
-        'items' => ['Clans', 'Team play', 'Discord verification', 'Events', 'Staff support', 'Wipe alerts'],
+        'copy' => 'Raidlands is built around recurring rivalries, Discord, support channels, and future clan pages.',
+        'items' => ['Clans', 'Team play', 'Discord account', 'Events', 'Staff support', 'Wipe alerts'],
     ],
     [
         'title' => 'Trust and Performance',
@@ -207,7 +207,7 @@ $feature_groups = [
 
 $roadmap_cards = [
     ['Leaderboards', 'Player and clan rankings for kills, raids, K/D, explosives, and wipe MVPs.', 'Planned'],
-    ['Player Profiles', 'Linked Steam and Discord identity with stats, wipe history, and rewards.', 'Planned'],
+    ['Player Profiles', 'Connected Steam and Discord accounts with stats, wipe history, and rewards.', 'Planned'],
     ['Clan Rankings', 'Clan pages, recruitment, rivalry records, and wipe archives.', 'After launch'],
     ['Wipe Events', 'Thursday wipe events, staff battles, and community votes.', 'In development'],
     ['VIP Kits', 'VIP tiers and one-time perks tied to your Steam account.', 'Live'],
@@ -239,7 +239,7 @@ $page_copy = [
     ],
     'link' => [
         'title' => 'Link Account',
-        'lede' => 'Link once and keep your identity ready for wipe stats, future rewards, roles, and Raidlands profile systems.',
+        'lede' => 'Connect once and keep wipe stats, future rewards, roles, and VIP access with your Raidlands profile.',
     ],
     'support' => [
         'title' => 'Support',
@@ -259,7 +259,7 @@ $page_copy = [
     ],
     'store' => [
         'title' => 'Store',
-        'lede' => 'VIP kits, monthly ranks, and one-time perks tied to your SteamID64.',
+        'lede' => 'VIP kits, monthly ranks, and one-time perks tied to your Steam account.',
     ],
     'events' => [
         'title' => 'Events',
@@ -279,7 +279,7 @@ $page_copy = [
     ],
     'profile' => [
         'title' => 'Player Profile',
-        'lede' => 'View linked Steam identity, active VIP access, one-time perks, and expirations.',
+        'lede' => 'View your connected Steam account, active VIP access, one-time perks, and expirations.',
     ],
 ];
 
@@ -316,9 +316,9 @@ $seo_pages = [
     ],
     'link' => [
         'title' => 'Link Raidlands Account | Steam and Discord',
-        'description' => 'Prepare your Raidlands profile by linking Steam and Discord for future leaderboards, rewards, roles, and identity.',
+        'description' => 'Prepare your Raidlands profile by connecting Steam and Discord for future leaderboards, rewards, and roles.',
         'ogTitle' => 'Link Raidlands Account',
-        'ogDescription' => 'Link Steam and Discord once for future Raidlands profiles, rewards, and wipe systems.',
+        'ogDescription' => 'Connect Steam and Discord once for future Raidlands profiles, rewards, and wipe systems.',
     ],
     'support' => [
         'title' => 'Raidlands Support | Tickets, Bugs, Connection Help',
@@ -346,9 +346,9 @@ $seo_pages = [
     ],
     'store' => [
         'title' => 'Raidlands Store | VIP Kits, Monthly Ranks, One-Time Perks',
-        'description' => 'Buy Raidlands VIP kits, monthly ranks, and one-time perks tied to your SteamID64.',
+        'description' => 'Buy Raidlands VIP kits, monthly ranks, and one-time perks tied to your Steam account.',
         'ogTitle' => 'Raidlands Store',
-        'ogDescription' => 'VIP tiers and one-time perks synced from the website to the Raidlands Rust server.',
+        'ogDescription' => 'VIP tiers and one-time perks kept ready for the Raidlands Rust server.',
     ],
     'events' => [
         'title' => 'Raidlands Events | Coming Soon',
@@ -358,9 +358,9 @@ $seo_pages = [
     ],
     'clans' => [
         'title' => 'Raidlands Clans | Coming Soon',
-        'description' => 'Raidlands clan pages are planned for team identity, rankings, recruitment, and wipe history.',
+        'description' => 'Raidlands clan pages are planned for team profiles, rankings, recruitment, and wipe history.',
         'ogTitle' => 'Raidlands Clans',
-        'ogDescription' => 'Future clan pages, clan rankings, and team identity for Raidlands.',
+        'ogDescription' => 'Future clan pages, clan rankings, and team profiles for Raidlands.',
     ],
     'vote' => [
         'title' => 'Raidlands Vote Rewards | Coming Soon',
@@ -375,10 +375,10 @@ $seo_pages = [
         'ogDescription' => 'Ban policy and appeal information for Raidlands.',
     ],
     'profile' => [
-        'title' => 'Raidlands Profile | VIP Entitlements and Steam Identity',
-        'description' => 'View your Raidlands linked SteamID64, active VIP access, one-time perks, and expirations.',
+        'title' => 'Raidlands Profile | VIP Access and Steam Account',
+        'description' => 'View your connected Raidlands Steam account, active VIP access, one-time perks, and expirations.',
         'ogTitle' => 'Raidlands Profile',
-        'ogDescription' => 'Check VIP kit access and active Raidlands perks for your Steam identity.',
+        'ogDescription' => 'Check VIP kit access and active Raidlands perks for your Steam account.',
     ],
 ];
 
@@ -400,12 +400,12 @@ $future_pages = [
     ],
     'vote' => [
         ['Vote Rewards', 'Future rewards for server discovery loops.'],
-        ['Linked Identity', 'Steam and Discord linking will keep rewards clean.'],
+        ['Connected Accounts', 'Steam and Discord connections keep rewards clean.'],
         ['Growth', 'Voting can help keep wipe nights populated.'],
     ],
     'profile' => [
-        ['Steam Identity', 'SteamID64 backed ownership.'],
-        ['Discord Identity', 'Community roles and support context.'],
+        ['Steam Account', 'VIP and reward ownership.'],
+        ['Discord Account', 'Community roles and support.'],
         ['Wipe History', 'Stats, rewards, and season records after launch.'],
     ],
 ];

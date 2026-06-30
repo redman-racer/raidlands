@@ -17,15 +17,18 @@ function render_store_product_card(array $product, ?array $player, string $csrf)
 {
     $price = raidlands_store_default_price($product);
     $buyable = raidlands_store_price_is_buyable($price);
-    $has_player = $player !== null && !empty($player['id']);
+    $has_linked_identity = $player !== null && !empty($player['steam_id64']);
+    $has_checkout_player = $has_linked_identity && !empty($player['id']);
     $price_text = $price === null
         ? 'Price coming soon'
         : raidlands_store_money((int) $price['amount_cents'], (string) $price['currency']);
     $interval = $price !== null && (string) $price['billing_interval'] === 'month' ? ' / month' : '';
     $action = '';
 
-    if (!$has_player) {
-        $action = '<a class="btn btn-secondary" href="' . e(route_url('link')) . '">Link Steam First</a>';
+    if (!$has_linked_identity) {
+        $action = '<a class="btn btn-secondary" href="' . e(route_url('link')) . '">Connect Steam First</a>';
+    } elseif (!$has_checkout_player) {
+        $action = '<a class="btn btn-secondary" href="' . e(route_url('profile')) . '">View Account</a>';
     } elseif (!$buyable) {
         $action = '<button class="btn btn-ghost" type="button" disabled>Checkout Coming Soon</button>';
     } else {
@@ -53,7 +56,7 @@ function render_store_product_card(array $product, ?array $player, string $csrf)
 }
 ?>
 <?= render_page_hero('store',
-    '<a class="btn btn-primary" href="' . e(route_url('link')) . '">Link Steam</a>'
+    '<a class="btn btn-primary" href="' . e(raidlands_account_url()) . '">' . e(raidlands_account_label('Connect Steam', 'View Account')) . '</a>'
     . '<a class="btn btn-discord" href="' . e($site_config['discordInviteUrl']) . '" target="_blank" rel="noreferrer" data-track="discord_invite_clicked">Ask Before Buying</a>'
 ) ?>
 
@@ -69,7 +72,7 @@ function render_store_product_card(array $product, ?array $player, string $csrf)
 
     <div class="section-header">
       <p class="section-kicker">VIP kits</p>
-      <h2>Monthly ranks synced to Rust</h2>
+      <h2>Monthly ranks for Rust</h2>
       <p class="section-lede">Bronze, Gold, and Elite give monthly VIP access in game. Kit details, cooldowns, and limits stay visible before you buy.</p>
     </div>
 
@@ -103,10 +106,10 @@ function render_store_product_card(array $product, ?array $player, string $csrf)
       <p class="section-kicker">Game access</p>
       <h2>How purchases reach the game</h2>
       <ul class="list-clean">
-        <li>Your purchase is attached to the SteamID64 you linked.</li>
+        <li>Your purchase is attached to your connected Steam account.</li>
         <li>Raidlands keeps track of your active VIP access and perks.</li>
-        <li>The game server checks that access and updates your permissions.</li>
-        <li>Matching kits and perks appear in game after the next sync.</li>
+        <li>The game server checks your account and updates your VIP access.</li>
+        <li>Matching kits and perks appear in game after the next update.</li>
       </ul>
     </div>
     <div class="metal-panel">

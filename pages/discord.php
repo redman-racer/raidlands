@@ -1,6 +1,6 @@
 <?= render_page_hero('discord',
     '<a class="btn btn-discord" href="' . e($site_config['discordInviteUrl']) . '" target="_blank" rel="noreferrer" data-track="discord_invite_clicked">Join Discord</a>'
-    . '<a class="btn btn-secondary" href="' . e(route_url('link')) . '">Link Discord</a>'
+    . '<a class="btn btn-secondary" href="' . e(raidlands_account_url()) . '">' . e(raidlands_account_label('Connect Discord', 'Open Account')) . '</a>'
 ) ?>
 
 <section class="section">

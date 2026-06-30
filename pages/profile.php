@@ -18,7 +18,7 @@ if ($profile_player !== null && !empty($profile_player['id'])) {
 ?>
 <?= render_page_hero('profile',
     '<a class="btn btn-primary" href="' . e(route_url('store')) . '">Shop VIP</a>'
-    . '<a class="btn btn-secondary" href="' . e(route_url('link')) . '">Link Steam</a>'
+    . '<a class="btn btn-secondary" href="' . e(raidlands_account_url()) . '">' . e(raidlands_account_label('Connect Steam', 'Account')) . '</a>'
 ) ?>
 
 <section class="section">
@@ -30,10 +30,10 @@ if ($profile_player !== null && !empty($profile_player['id'])) {
     <?php if ($profile_player === null) : ?>
       <div class="metal-panel">
         <p class="section-kicker">Profile locked</p>
-        <h2>Link Steam to view VIP access</h2>
-        <p class="section-lede">Your profile uses SteamID64 so purchases, refunds, subscriptions, and in-game access all point at the same Rust identity.</p>
+        <h2>Connect Steam to view VIP access</h2>
+        <p class="section-lede">Your profile uses your Steam account so purchases, refunds, subscriptions, and in-game access all point at the same Rust player.</p>
         <div class="button-row">
-          <a class="btn btn-primary" href="<?= e(route_url('link')) ?>">Link SteamID64</a>
+          <a class="btn btn-primary" href="<?= e(route_url('link')) ?>">Connect Steam</a>
           <a class="btn btn-secondary" href="<?= e(route_url('store')) ?>">Preview Store</a>
         </div>
       </div>
@@ -43,14 +43,14 @@ if ($profile_player !== null && !empty($profile_player['id'])) {
           <p class="section-kicker">Linked player</p>
           <h2><?= e((string) ($profile_player['display_name'] ?: 'Raidlands Player')) ?></h2>
           <div class="auth-status is-linked">
-            <strong>SteamID64:</strong> <code><?= e((string) $profile_player['steam_id64']) ?></code>
+            <strong>Steam ID:</strong> <code><?= e((string) $profile_player['steam_id64']) ?></code>
           </div>
           <div class="tag-row">
             <?php if ($profile_active_groups === []) : ?>
-              <span class="tag">No active VIP groups yet</span>
+              <span class="tag">No active VIP access yet</span>
             <?php else : ?>
               <?php foreach ($profile_active_groups as $group) : ?>
-                <span class="tag"><?= e($group) ?></span>
+                <span class="tag"><?= e(raidlands_public_access_label($group)) ?></span>
               <?php endforeach; ?>
             <?php endif; ?>
           </div>
@@ -59,7 +59,7 @@ if ($profile_player !== null && !empty($profile_player['id'])) {
         <div class="metal-panel">
           <p class="section-kicker">Game access</p>
           <h2>Active server perks</h2>
-          <p class="section-lede">These are the VIP permissions Raidlands should apply when you connect. Updates may take a short moment after checkout or renewal.</p>
+          <p class="section-lede">These are the VIP perks Raidlands should apply when you connect. Updates may take a short moment after checkout or renewal.</p>
           <div class="button-row">
             <a class="btn btn-primary" href="<?= e(route_url('store')) ?>">Add Perks</a>
             <a class="btn btn-secondary" href="<?= e(route_url('discord')) ?>">Need Help?</a>
@@ -76,14 +76,14 @@ if ($profile_player !== null && !empty($profile_player['id'])) {
       <div class="section-header">
         <p class="section-kicker">Player stats</p>
         <h2>RP, combat, and playtime</h2>
-        <p class="section-lede">These stats come from the server bridge. RP is your ServerRewards balance; wipe stats follow the active wipe season.</p>
+        <p class="section-lede">These stats come from the game server. RP is your rewards balance; wipe stats follow the active season.</p>
       </div>
 
       <?php if (!raidlands_stats_is_ready()) : ?>
         <div class="form-status warning">Stats tables are not installed yet, so profile stats are waiting for setup.</div>
       <?php elseif ($profile_stats['current'] === null && $profile_stats['all_time'] === null) : ?>
         <div class="metal-panel">
-          <p class="section-lede">No game stats have synced for this SteamID64 yet. Join the server and the next bridge snapshot should populate this panel.</p>
+          <p class="section-lede">No game stats have reached this profile yet. Join the server and they should appear here after the next update.</p>
         </div>
       <?php else : ?>
         <div class="profile-stat-grid">
@@ -118,7 +118,7 @@ if ($profile_player !== null && !empty($profile_player['id'])) {
 
       <?php if ($profile_entitlements === []) : ?>
         <div class="metal-panel">
-          <p class="section-lede">No VIP access or perks are attached to this SteamID64 yet.</p>
+          <p class="section-lede">No VIP access or perks are attached to this Steam account yet.</p>
           <a class="btn btn-primary" href="<?= e(route_url('store')) ?>">Open Store</a>
         </div>
       <?php else : ?>
@@ -139,7 +139,7 @@ if ($profile_player !== null && !empty($profile_player['id'])) {
                 <tr>
                   <td><?= e((string) $entitlement['name']) ?></td>
                   <td><?= e(raidlands_store_type_label((string) $entitlement['product_type'])) ?></td>
-                  <td><code><?= e((string) $entitlement['oxide_group']) ?></code></td>
+                  <td><?= e(raidlands_public_access_label((string) $entitlement['oxide_group'])) ?></td>
                   <td><span class="status-pill <?= e((string) $entitlement['status']) ?>"><?= e((string) $entitlement['status']) ?></span></td>
                   <td><?= e((string) ($entitlement['ends_at'] ?: 'No scheduled expiration')) ?></td>
                   <td><?= e((string) $entitlement['changed_at']) ?></td>

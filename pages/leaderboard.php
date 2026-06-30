@@ -42,7 +42,7 @@ function leaderboard_metric_value(array $row, string $metric): string
     <div class="section-header">
       <p class="section-kicker">Rankings</p>
       <h2>Player standings</h2>
-      <p class="section-lede">Stats sync from the game server into the website. Current wipe starts from the active wipe key; all-time totals combine tracked wipe seasons.</p>
+      <p class="section-lede">Stats update from the game server into the website. Current wipe rankings start with this wipe; all-time totals combine tracked seasons.</p>
     </div>
 
     <div class="leaderboard-toolbar">
@@ -58,12 +58,12 @@ function leaderboard_metric_value(array $row, string $metric): string
     </div>
 
     <?php if (!$leaderboard_ready) : ?>
-      <div class="form-status warning">Leaderboards need the stats migration before they can receive server data. Run <code>database/migrations/002_player_stats.sql</code>, then let WebsiteVipBridge sync.</div>
+      <div class="form-status warning">Leaderboards are waiting on stats setup before they can receive server data.</div>
     <?php elseif ($leaderboard_rows === []) : ?>
       <div class="metal-panel">
         <p class="section-kicker">No stats yet</p>
-        <h2>Waiting for the first server snapshot</h2>
-        <p class="section-lede">Once WebsiteVipBridge posts a valid snapshot, this page will fill with current-wipe and all-time standings.</p>
+        <h2>Waiting for the first server update</h2>
+        <p class="section-lede">Once the server sends stats, this page will fill with current-wipe and all-time standings.</p>
       </div>
     <?php else : ?>
       <div class="split-panel leaderboard-summary">
@@ -73,7 +73,7 @@ function leaderboard_metric_value(array $row, string $metric): string
           <p class="store-muted">Started <?= e((string) ($leaderboard_wipe['started_at'] ?? 'Not recorded')) ?></p>
         </div>
         <div class="metal-panel">
-          <p class="section-kicker">Last sync</p>
+          <p class="section-kicker">Last update</p>
           <h3><?= e((string) ($leaderboard_ingest['created_at'] ?? 'Pending')) ?></h3>
           <p class="store-muted"><?= e((string) ($leaderboard_ingest['players_accepted'] ?? 0)) ?> players accepted</p>
         </div>

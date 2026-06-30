@@ -13,7 +13,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && (string) ($_GET['action'] ?? '') ===
         header('Location: ' . raidlands_store_steam_openid_url());
         exit;
     } catch (Throwable $error) {
-        raidlands_store_flash('error', 'Steam sign-in could not start. Use manual SteamID64 linking for now.');
+        raidlands_store_flash('error', 'Steam sign-in could not start. Enter your Steam ID manually for now.');
         raidlands_store_redirect('link');
     }
 }
@@ -21,7 +21,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && (string) ($_GET['action'] ?? '') ===
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && raidlands_store_steam_openid_response_present()) {
     try {
         raidlands_store_steam_openid_verify();
-        raidlands_store_flash('success', 'Steam identity linked through Steam sign-in.');
+        raidlands_store_flash('success', 'Steam account connected through Steam.');
     } catch (Throwable $error) {
         raidlands_store_flash('error', $error->getMessage());
     }
@@ -39,13 +39,13 @@ if ($_SERVER['REQUEST_METHOD'] === 'POST') {
 
         if ($action === 'unlink_steam') {
             raidlands_store_unlink_player();
-            raidlands_store_flash('success', 'Steam identity unlinked from this browser session.');
+            raidlands_store_flash('success', 'Steam account removed from this browser.');
         } else {
             raidlands_store_link_player(
                 (string) ($_POST['steam_id64'] ?? ''),
                 (string) ($_POST['display_name'] ?? '')
             );
-            raidlands_store_flash('success', 'SteamID64 linked for store checkout and profile lookup.');
+            raidlands_store_flash('success', 'Steam ID saved for store checkout and profile lookup.');
         }
     } catch (Throwable $error) {
         raidlands_store_flash('error', $error->getMessage());

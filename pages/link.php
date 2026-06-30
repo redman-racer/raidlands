@@ -16,65 +16,71 @@ $steam_openid_url = route_url('link') . '?action=steam';
 <section class="section">
   <div class="section-inner split-panel">
     <div class="metal-panel">
-      <p class="section-kicker">Steam identity</p>
-      <h2>Link before checkout</h2>
-      <p class="section-lede">VIP kits and one-time perks need your SteamID64 so Raidlands can apply them to the right in-game account.</p>
+      <p class="section-kicker">Steam account</p>
+      <h2><?= e($linked_player !== null ? 'Steam account connected' : 'Connect before checkout') ?></h2>
+      <p class="section-lede"><?= e($linked_player !== null ? 'Your Steam account is ready for profile stats, store checkout, and in-game access.' : 'VIP kits and one-time perks need your Steam account so Raidlands can apply them to the right Rust player.') ?></p>
 
       <?php if ($link_flash !== null) : ?>
         <div class="form-status <?= e((string) $link_flash['type']) ?>"><?= e((string) $link_flash['message']) ?></div>
       <?php endif; ?>
 
-      <?php if ($linked_player !== null) : ?>
-        <div class="auth-status is-linked">
-          <strong>Linked.</strong>
-          SteamID64 <code><?= e((string) $linked_player['steam_id64']) ?></code>
-          <?php if (!empty($linked_player['display_name'])) : ?>
-            as <?= e((string) $linked_player['display_name']) ?>
-          <?php endif; ?>
-        </div>
-        <div class="button-row">
-          <a class="btn btn-primary" href="<?= e(route_url('store')) ?>">Shop VIP Kits</a>
-          <form method="post" action="<?= e(route_url('link')) ?>">
-            <input type="hidden" name="csrf" value="<?= e($link_csrf) ?>">
-            <input type="hidden" name="action" value="unlink_steam">
-            <button class="btn btn-ghost" type="submit">Unlink This Browser</button>
-          </form>
-        </div>
-      <?php else : ?>
-        <div class="button-row">
-          <a class="btn btn-steam" href="<?= e($steam_openid_url) ?>">Sign in through Steam</a>
-        </div>
-        <details class="store-form">
-          <summary>Use SteamID64 instead</summary>
-          <p class="store-muted">Prefer this only if Steam sign-in cannot complete in your browser.</p>
-          <form method="post" action="<?= e(route_url('link')) ?>">
-            <input type="hidden" name="csrf" value="<?= e($link_csrf) ?>">
-            <input type="hidden" name="action" value="link_steam">
-            <label class="store-field">
-              <span>SteamID64</span>
-              <input type="text" name="steam_id64" inputmode="numeric" autocomplete="off" placeholder="7656119XXXXXXXXXX" required>
-            </label>
-            <label class="store-field">
-              <span>Display name</span>
-              <input type="text" name="display_name" autocomplete="nickname" placeholder="Optional">
-            </label>
-            <button class="btn btn-primary" type="submit">Link SteamID64</button>
-          </form>
-        </details>
-      <?php endif; ?>
+      <div class="steam-connect-stack">
+        <?php if ($linked_player !== null) : ?>
+          <div class="auth-status is-linked">
+            <strong>Connected.</strong>
+            Steam ID <code><?= e((string) $linked_player['steam_id64']) ?></code>
+            <?php if (!empty($linked_player['display_name'])) : ?>
+              as <?= e((string) $linked_player['display_name']) ?>
+            <?php endif; ?>
+          </div>
+          <div class="button-row">
+            <a class="btn btn-primary" href="<?= e(route_url('profile')) ?>">View Account</a>
+            <a class="btn btn-secondary" href="<?= e(route_url('store')) ?>">Shop VIP Kits</a>
+            <form method="post" action="<?= e(route_url('link')) ?>">
+              <input type="hidden" name="csrf" value="<?= e($link_csrf) ?>">
+              <input type="hidden" name="action" value="unlink_steam">
+              <button class="btn btn-ghost" type="submit">Remove From This Browser</button>
+            </form>
+          </div>
+        <?php else : ?>
+          <div class="button-row">
+            <a class="btn btn-steam" href="<?= e($steam_openid_url) ?>">Continue with Steam</a>
+          </div>
+          <details class="store-form manual-steam-entry">
+            <summary>
+              <span class="manual-steam-title">Enter Steam ID manually</span>
+              <span class="manual-steam-note">Use this if Steam sign-in does not finish.</span>
+            </summary>
+            <p class="store-muted">Paste the 17-digit Steam ID from your Steam profile. It usually starts with 7656119.</p>
+            <form method="post" action="<?= e(route_url('link')) ?>">
+              <input type="hidden" name="csrf" value="<?= e($link_csrf) ?>">
+              <input type="hidden" name="action" value="link_steam">
+              <label class="store-field">
+                <span>17-digit Steam ID</span>
+                <input type="text" name="steam_id64" inputmode="numeric" autocomplete="off" placeholder="7656119XXXXXXXXXX" required>
+              </label>
+              <label class="store-field">
+                <span>Display name</span>
+                <input type="text" name="display_name" autocomplete="nickname" placeholder="Optional">
+              </label>
+              <button class="btn btn-primary" type="submit">Save Steam ID</button>
+            </form>
+          </details>
+        <?php endif; ?>
 
-      <?php if (!$database_ready) : ?>
-        <div class="form-status warning">Purchases are not live yet. You can still prepare your Steam link before checkout opens.</div>
-      <?php endif; ?>
+        <?php if (!$database_ready) : ?>
+          <div class="form-status warning">Store opens soon. Connect Steam.</div>
+        <?php endif; ?>
+      </div>
     </div>
 
     <div class="metal-panel">
-      <p class="section-kicker">Access sync</p>
+      <p class="section-kicker">Game access</p>
       <h2>Your perks follow your Steam account</h2>
-      <p class="section-lede">When VIP access is active, the game server adds the matching permissions for your linked SteamID64.</p>
+      <p class="section-lede">When VIP access is active, Raidlands applies the matching perks to your connected Steam account.</p>
       <ul class="list-clean">
         <?php foreach (raidlands_store_managed_groups() as $group) : ?>
-          <li><code><?= e($group) ?></code></li>
+          <li><?= e(raidlands_public_access_label($group)) ?></li>
         <?php endforeach; ?>
       </ul>
     </div>
@@ -84,13 +90,13 @@ $steam_openid_url = route_url('link') . '?action=steam';
 <section class="section alt">
   <div class="section-inner">
     <div class="section-header">
-      <p class="section-kicker">Identity rules</p>
-      <h2>One SteamID64 per profile</h2>
-      <p class="section-lede">Steam sign-in is the preferred path. Manual SteamID64 linking stays available when the Steam response cannot be completed.</p>
+      <p class="section-kicker">Account rules</p>
+      <h2>One Steam account per profile</h2>
+      <p class="section-lede">Steam sign-in is the fastest path. Manual entry stays available if the Steam window does not finish.</p>
     </div>
     <div class="grid three">
-      <?= render_card('ID', 'SteamID64 backed', 'Purchases attach to the same ID Rust uses for your player account.') ?>
-      <?= render_card('ROLE', 'Game access sync', 'Active VIP and perks are applied to the matching in-game account.') ?>
+      <?= render_card('ID', 'Steam account', 'Purchases attach to the same Rust player account.') ?>
+      <?= render_card('ROLE', 'In-game access', 'Active VIP and perks are applied to your player in game.') ?>
       <?= render_card('STAT', 'Profile ready', 'The profile page shows active VIP, perks, and expirations.') ?>
     </div>
   </div>

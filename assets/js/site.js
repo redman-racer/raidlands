@@ -225,7 +225,7 @@
           return;
         }
 
-        showToast(`${provider === "steam" ? "Steam" : "Discord"} OAuth credentials are not configured yet.`);
+        showToast(`${provider === "steam" ? "Steam sign-in" : "Discord connection"} is not ready yet.`);
       });
     });
 
@@ -233,7 +233,7 @@
       button.addEventListener("click", () => {
         const provider = button.dataset.unlinkProvider;
         track(`${provider}_unlink_clicked`);
-        showToast(`${provider === "steam" ? "Steam" : "Discord"} is not linked on this device.`);
+        showToast(`${provider === "steam" ? "Steam" : "Discord"} is not connected on this browser.`);
       });
     });
   }
@@ -301,6 +301,21 @@
   }
 
   async function hydrateServerStatus() {
+    if (!hydrateServerStatus.usedLoaderProbe && window.__raidlandsServerStatusPromise) {
+      hydrateServerStatus.usedLoaderProbe = true;
+
+      try {
+        const initialStatus = await window.__raidlandsServerStatusPromise;
+
+        if (initialStatus) {
+          applyServerStatus(initialStatus);
+          return;
+        }
+      } catch (error) {
+        console.info("Raidlands loader status could not be reused.", error);
+      }
+    }
+
     if (!window.fetch || !CONFIG.serverStatusUrl) return;
 
     try {
