@@ -1,13 +1,14 @@
 # Raidlands GoDaddy Deployment Guide
 
 This site is a PHP-rendered multi-page website with shared includes, static CSS/JS,
-and media assets. There is no package install, build step, database, or long-running
-server process required.
+media assets, a MySQL-backed VIP store, Stripe Checkout, and a uMod/Oxide bridge
+API for Rust VIP groups.
 
 ## Hosting Requirement
 
-Deploy to hosting that runs PHP for `index.php` files. A typical GoDaddy cPanel
-Linux hosting account is fine. Static-only hosting will not render the pages.
+Deploy to hosting that runs PHP for `index.php` files, supports Composer
+dependencies or uploaded `vendor/`, and provides MySQL. Static-only hosting will
+not render the pages or run the store.
 
 ## What Gets Deployed
 
@@ -17,9 +18,18 @@ Deploy the site files from the repository root:
 - `index.php`
 - `robots.txt`
 - `site.webmanifest`
+- `composer.json`
+- `composer.lock`
 - `includes/`
 - `pages/`
 - `assets/`
+- `admin/`
+- `api/`
+- `data/.htaccess`
+- `database/`
+- `docs/`
+- `server-plugins/`
+- `vendor/` if Composer will not be run on the host
 - `bans/`
 - `clans/`
 - `discord/`
@@ -37,6 +47,8 @@ Deploy the site files from the repository root:
 - `vote/`
 
 Do not deploy local development folders such as `.git/`, `.agents/`, or `.codex/`.
+Do not deploy real secrets through Git. Create `data/raidlands-secrets.php`
+directly on the host or upload it through a private channel.
 
 ## Pre-Deployment Checklist
 
@@ -71,12 +83,36 @@ Do not deploy local development folders such as `.git/`, `.agents/`, or `.codex/
    - `auth.steamUrl`
    - `auth.discordUrl`
 
-3. Click through the local site.
+   Also confirm `data/raidlands-secrets.php` exists on the host with MySQL,
+   Stripe, and WebsiteVipBridge values.
+
+3. Install PHP dependencies.
+
+   If Composer is available on the host:
+
+   ```bash
+   composer install --no-dev --optimize-autoloader
+   ```
+
+   If Composer is not available, run `composer install` locally and include
+   `vendor/` in the deployment upload.
+
+4. Run database setup.
+
+   Import:
+
+   - `database/migrations/001_vip_store.sql`
+   - `database/seeds/001_store_products.sql`
+
+   Then configure Stripe Price IDs in `/admin/?section=store`.
+
+5. Click through the local site.
 
    Verify the homepage, navigation links, mobile menu, images, favicon, manifest,
-   Steam link, Discord link, copy-to-clipboard behavior, and direct page loads.
+   Steam link, Discord link, store, profile, copy-to-clipboard behavior, and
+   direct page loads.
 
-4. Confirm `.htaccess` is included.
+6. Confirm `.htaccess` is included.
 
    The current `.htaccess` disables directory browsing, prefers `index.php` as the
    directory index, and registers the web manifest MIME type.
@@ -94,9 +130,19 @@ Compress-Archive -Force -DestinationPath .\dist\raidlands-godaddy.zip -Path `
   .\index.php, `
   .\robots.txt, `
   .\site.webmanifest, `
+  .\composer.json, `
+  .\composer.lock, `
+  .\admin, `
+  .\api, `
   .\includes, `
   .\pages, `
   .\assets, `
+  .\data\.htaccess, `
+  .\data\raidlands-secrets.example.php, `
+  .\database, `
+  .\docs, `
+  .\server-plugins, `
+  .\vendor, `
   .\bans, `
   .\clans, `
   .\discord, `
@@ -115,8 +161,9 @@ Compress-Archive -Force -DestinationPath .\dist\raidlands-godaddy.zip -Path `
 ```
 
 After the zip is created, open it and confirm `.htaccess`, `index.php`,
-`includes/`, and `pages/` are present at the top level of the zip. If `.htaccess`
-is missing, upload it separately in GoDaddy File Manager after extracting the zip.
+`includes/`, `api/`, `admin/`, `pages/`, and `composer.lock` are present at the
+top level of the zip. If `.htaccess` is missing, upload it separately in
+GoDaddy File Manager after extracting the zip.
 
 ## Back Up the Existing GoDaddy Site
 
@@ -154,9 +201,20 @@ public_html/
   index.php
   robots.txt
   site.webmanifest
+  composer.json
+  composer.lock
+  admin/
+  api/
   includes/
   pages/
   assets/
+  data/
+    .htaccess
+    raidlands-secrets.php
+  database/
+  docs/
+  server-plugins/
+  vendor/
   bans/
   clans/
   discord/
@@ -230,6 +288,9 @@ Check these URLs on the live domain:
 - `/rules/`
 - `/leaderboard/`
 - `/store/`
+- `/profile/`
+- `/link/`
+- `/api/server-status.php`
 - `/support/`
 - `/privacy/`
 - `/terms/`
@@ -243,6 +304,9 @@ Also verify:
 - The navigation menu works on desktop and mobile.
 - The console connect command is correct.
 - Discord, Steam, and store links go to the expected places.
+- Store cards show active products after MySQL seed data is imported.
+- `/profile/` shows the linked SteamID64 after using `/link/`.
+- `/api/server/vip-player.php` rejects unsigned requests and accepts WebsiteVipBridge HMAC requests after the bridge secret is configured.
 - The favicon appears in the browser tab.
 - Direct page loads work, such as `https://your-domain.example/rules/`.
 - Directory listing is blocked, such as `https://your-domain.example/assets/`.

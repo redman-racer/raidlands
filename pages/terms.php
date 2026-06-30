@@ -10,7 +10,7 @@
     <h2>Account Linking</h2>
     <p>Steam and Discord linking may be required for future rewards, profiles, statistics, events, roles, support, appeals, or store entitlements.</p>
     <h2>Supporter Perks</h2>
-    <p>Raidlands is population-first at launch. Future supporter perks may change, rotate, or be removed if they harm server balance or community trust.</p>
+    <p>Raidlands VIP kits, monthly ranks, and one-time perks may change, rotate, or be removed if they harm server balance, server stability, or community trust.</p>
     <h2>Facepunch Disclaimer</h2>
     <p>Raidlands is not affiliated with Facepunch Studios.</p>
   </div>

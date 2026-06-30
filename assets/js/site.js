@@ -8,13 +8,20 @@
   const CONFIG = getSiteConfig();
 
   function getSiteConfig() {
+    const basePath = doc.dataset.base || "./";
     const defaults = {
-      connectCommand: "connect play.raidlands.gg:28015",
-      steamConnectUrl: "steam://connect/play.raidlands.gg:28015",
+      connectCommand: "connect raidlands.net:25607",
+      steamConnectUrl: "steam://connect/raidlands.net:25607",
       discordInviteUrl: "https://discord.gg/raidlands",
+      serverStatusUrl: `${basePath}api/server-status.php`,
+      serverStats: {
+        provider: "battlemetrics",
+        battleMetricsServerId: "",
+        cacheSeconds: 60
+      },
       wipe: {
-        days: [1, 5],
-        dayNames: ["Monday", "Friday"],
+        days: [4],
+        dayNames: ["Thursday"],
         time: "19:00",
         timezone: "America/Chicago"
       },
@@ -42,6 +49,10 @@
         auth: {
           ...defaults.auth,
           ...(parsed.auth || {})
+        },
+        serverStats: {
+          ...defaults.serverStats,
+          ...(parsed.serverStats || {})
         }
       };
     } catch (error) {
@@ -55,8 +66,14 @@
     bindActions();
     initEffects();
     hydrateDates();
+    hydrateServerStatus();
     updateCountdowns();
     window.setInterval(updateCountdowns, 1000);
+
+    if (window.fetch && CONFIG.serverStatusUrl) {
+      const refreshSeconds = Math.max(30, Number(CONFIG.serverStats.cacheSeconds) || 60);
+      window.setInterval(hydrateServerStatus, refreshSeconds * 1000);
+    }
   }
 
   function initEffects() {
@@ -283,6 +300,78 @@
     });
   }
 
+  async function hydrateServerStatus() {
+    if (!window.fetch || !CONFIG.serverStatusUrl) return;
+
+    try {
+      const response = await fetch(CONFIG.serverStatusUrl, {
+        cache: "no-store",
+        headers: {
+          Accept: "application/json"
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`Status request failed with ${response.status}.`);
+      }
+
+      applyServerStatus(await response.json());
+    } catch (error) {
+      console.info("Raidlands live server status could not be loaded.", error);
+    }
+  }
+
+  function applyServerStatus(status) {
+    const panel = app.querySelector("[data-server-status-panel]");
+    if (!panel || !status) return;
+
+    const online = status.online === true;
+    panel.classList.toggle("is-online", online);
+    panel.classList.toggle("is-offline", status.online === false);
+    panel.classList.toggle("is-stale", status.stale === true);
+
+    setPanelText("[data-server-status]", status.statusLabel || (online ? "Online" : "Offline"));
+    setPanelText("[data-server-players]", statValue(status.players, "0"));
+    setPanelText("[data-server-max-players]", statValue(status.maxPlayers, "0"));
+    setPanelText("[data-server-queue]", statValue(status.queue, "0"));
+    setPanelText("[data-server-fps]", statValue(status.serverFps, "Unknown"));
+    setPanelText("[data-server-map]", statValue(status.mapName, "Unknown"));
+    setPanelText("[data-server-updated]", formatServerUpdated(status));
+  }
+
+  function setPanelText(selector, value) {
+    app.querySelectorAll(selector).forEach(item => {
+      item.textContent = value;
+    });
+  }
+
+  function statValue(value, fallback) {
+    if (value === null || value === undefined || value === "") {
+      return fallback;
+    }
+
+    return String(value);
+  }
+
+  function formatServerUpdated(status) {
+    const timestamp = status.updatedAt || status.fetchedAt;
+
+    if (!timestamp) {
+      return status.source === "battlemetrics" ? "BattleMetrics live" : "Fallback values";
+    }
+
+    const date = new Date(timestamp);
+
+    if (Number.isNaN(date.getTime())) {
+      return status.source === "battlemetrics" ? "BattleMetrics live" : "Fallback values";
+    }
+
+    const source = status.source === "battlemetrics" ? "BattleMetrics" : "Fallback";
+    const stale = status.stale ? "stale " : "";
+
+    return `${source} ${stale}${formatDateTime(date)}`;
+  }
+
   function updateCountdowns() {
     const next = getNextWipeDate();
     const now = new Date();
@@ -336,6 +425,15 @@
   function formatDate(date) {
     return new Intl.DateTimeFormat(undefined, {
       weekday: "long",
+      month: "short",
+      day: "numeric",
+      hour: "numeric",
+      minute: "2-digit"
+    }).format(date);
+  }
+
+  function formatDateTime(date) {
+    return new Intl.DateTimeFormat(undefined, {
       month: "short",
       day: "numeric",
       hour: "numeric",

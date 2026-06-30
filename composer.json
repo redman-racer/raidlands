@@ -1,0 +1,17 @@
+{
+  "name": "raidlands/website",
+  "description": "Raidlands PHP website with Stripe-backed VIP kit store.",
+  "type": "project",
+  "require": {
+    "php": ">=8.1",
+    "stripe/stripe-php": "^16.0"
+  },
+  "autoload": {
+    "psr-4": {
+      "Raidlands\\": "src/"
+    }
+  },
+  "config": {
+    "sort-packages": true
+  }
+}

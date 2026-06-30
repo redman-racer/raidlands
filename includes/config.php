@@ -10,18 +10,59 @@ $site_config = [
     'playersOnline' => 127,
     'maxPlayers' => 250,
     'serverOnline' => true,
-    'connectCommand' => 'connect play.raidlands.gg:28015',
-    'steamConnectUrl' => 'steam://connect/play.raidlands.gg:28015',
+    'serverStats' => [
+        'provider' => 'battlemetrics',
+        'battleMetricsServerId' => '39516376',
+        'cacheSeconds' => 60,
+    ],
+    'connectCommand' => 'connect raidlands.net:25607',
+    'steamConnectUrl' => 'steam://connect/raidlands.net:25607',
     'discordInviteUrl' => 'https://discord.gg/raidlands',
     'wipe' => [
-        'days' => [1, 5],
-        'dayNames' => ['Monday', 'Friday'],
+        'days' => [4],
+        'dayNames' => ['Thursday'],
         'time' => '19:00',
         'timezone' => 'America/Chicago',
     ],
     'auth' => [
         'steamUrl' => '',
         'discordUrl' => '',
+    ],
+];
+
+$admin_panel = [
+    'username' => 'admin',
+    'password' => 'nr_clan_password',
+    'passwordHash' => '',
+    'sessionKey' => 'raidlands_admin_authenticated',
+];
+
+$database_config = [
+    'dsn' => getenv('RAIDLANDS_DB_DSN') ?: '',
+    'username' => getenv('RAIDLANDS_DB_USER') ?: '',
+    'password' => getenv('RAIDLANDS_DB_PASSWORD') ?: '',
+    'options' => [],
+];
+
+$stripe_config = [
+    'publishableKey' => getenv('RAIDLANDS_STRIPE_PUBLISHABLE_KEY') ?: '',
+    'secretKey' => getenv('RAIDLANDS_STRIPE_SECRET_KEY') ?: '',
+    'webhookSecret' => getenv('RAIDLANDS_STRIPE_WEBHOOK_SECRET') ?: '',
+];
+
+$vip_bridge_config = [
+    'serverId' => getenv('RAIDLANDS_BRIDGE_SERVER_ID') ?: 'raidlands-main',
+    'sharedSecret' => getenv('RAIDLANDS_BRIDGE_SHARED_SECRET') ?: '',
+    'hmacSkewSeconds' => 300,
+    'managedGroups' => [
+        'vip_bronze',
+        'vip_gold',
+        'vip_elite',
+        'perk_personal_mini',
+        'perk_skinbox',
+        'perk_raid_kit',
+        'perk_queue_priority',
+        'perk_supporter_badge',
     ],
 ];
 
@@ -32,6 +73,8 @@ $primary_nav = [
     ['rules', 'rules', 'Rules'],
     ['discord', 'discord', 'Discord'],
     ['link', 'link', 'Link Account'],
+    ['store', 'store', 'Store'],
+    ['profile', 'profile', 'Profile'],
 ];
 
 $quick_features = [
@@ -141,8 +184,8 @@ $feature_cards = [
 $feature_groups = [
     [
         'title' => 'Combat and Raiding',
-        'copy' => 'High-rate PvP, raid-focused progression, custom loot direction, and frequent resets keep each wipe violent and readable.',
-        'items' => ['1000x gather', 'Fast PvP', 'Raid-focused economy', 'Explosives availability', 'Custom loot tables', 'Frequent wipes'],
+        'copy' => 'High-rate PvP, raid-focused progression, custom loot direction, and weekly Thursday resets keep each wipe violent and readable.',
+        'items' => ['1000x gather', 'Fast PvP', 'Raid-focused economy', 'Explosives availability', 'Custom loot tables', 'Thursday wipes'],
     ],
     [
         'title' => 'Movement and Convenience',
@@ -165,8 +208,8 @@ $roadmap_cards = [
     ['Leaderboards', 'Player and clan rankings for kills, raids, K/D, explosives, and wipe MVPs.', 'Planned'],
     ['Player Profiles', 'Linked Steam and Discord identity with stats, wipe history, and rewards.', 'Planned'],
     ['Clan Rankings', 'Clan pages, recruitment, rivalry records, and wipe archives.', 'After launch'],
-    ['Wipe Events', 'Friday and Monday wipe events, staff battles, and community votes.', 'In development'],
-    ['VIP Kits', 'Supporter perks may come later, without turning launch into a paywall.', 'After launch'],
+    ['Wipe Events', 'Thursday wipe events, staff battles, and community votes.', 'In development'],
+    ['VIP Kits', 'Stripe-backed VIP tiers and one-time perks synced to Rust permissions.', 'Live'],
     ['Vote Rewards', 'Voting loops for discovery, population growth, and player rewards.', 'Planned'],
     ['Ban Appeals', 'Structured appeal intake with Discord support as the first launch path.', 'Planned'],
     ['Community Hub', 'Patch notes, announcements, wipe winners, and support workflows.', 'Planned'],
@@ -175,7 +218,7 @@ $roadmap_cards = [
 $page_copy = [
     'home' => [
         'title' => 'Raidlands 1000x Rust',
-        'lede' => 'Twice-weekly apocalyptic battlefield wipes. Kit up, teleport, clan up, and raid without the grind.',
+        'lede' => 'Weekly Thursday apocalyptic battlefield wipes. Kit up, teleport, clan up, and raid without the grind.',
     ],
     'play' => [
         'title' => 'Play Raidlands',
@@ -215,7 +258,7 @@ $page_copy = [
     ],
     'store' => [
         'title' => 'Store',
-        'lede' => 'Raidlands is launching population-first. Supporter perks are planned for later.',
+        'lede' => 'VIP kits, monthly ranks, and one-time perks synced to your SteamID64 through WebsiteVipBridge.',
     ],
     'events' => [
         'title' => 'Events',
@@ -235,14 +278,14 @@ $page_copy = [
     ],
     'profile' => [
         'title' => 'Player Profile',
-        'lede' => 'Future linked profile page for Steam, Discord, wipe stats, and rewards.',
+        'lede' => 'View linked Steam identity, active VIP groups, one-time perks, expirations, and bridge sync state.',
     ],
 ];
 
 $seo_pages = [
     'home' => [
         'title' => 'Raidlands 1000x Rust Server | Battlefield, Kits, TP, Clans',
-        'description' => 'Join Raidlands, a 1000x apocalyptic Rust battlefield server with kits, teleporting, clans, fast raids, Discord linking, Steam linking, and Monday/Friday wipes.',
+        'description' => 'Join Raidlands, a 1000x apocalyptic Rust battlefield server with kits, teleporting, clans, fast raids, Discord linking, Steam linking, and Thursday wipes.',
         'ogTitle' => 'Raidlands 1000x Rust Server',
         'ogDescription' => '1000x Rust warfare, built for nonstop raids. Kit up, teleport, clan up, and jump straight into the fight.',
     ],
@@ -301,10 +344,10 @@ $seo_pages = [
         'ogDescription' => 'Future wipe rankings for players and clans.',
     ],
     'store' => [
-        'title' => 'Raidlands Store | Supporter Perks Planned',
-        'description' => 'Raidlands is population-first at launch. Supporter perks are planned, but launch access is open.',
+        'title' => 'Raidlands Store | VIP Kits, Monthly Ranks, One-Time Perks',
+        'description' => 'Buy Raidlands VIP kits, monthly ranks, and one-time perks that sync to Rust through SteamID64 and Oxide permission groups.',
         'ogTitle' => 'Raidlands Store',
-        'ogDescription' => 'Supporter perks are planned after launch. Raidlands opens population-first.',
+        'ogDescription' => 'VIP tiers and one-time perks synced from the website to the Raidlands Rust server.',
     ],
     'events' => [
         'title' => 'Raidlands Events | Coming Soon',
@@ -331,10 +374,10 @@ $seo_pages = [
         'ogDescription' => 'Ban policy and appeal information for Raidlands.',
     ],
     'profile' => [
-        'title' => 'Raidlands Profile | Coming Soon',
-        'description' => 'Raidlands player profiles are planned for Steam and Discord linked accounts, wipe history, stats, and rewards.',
+        'title' => 'Raidlands Profile | VIP Entitlements and Steam Identity',
+        'description' => 'View your Raidlands linked SteamID64, active VIP groups, one-time perks, expirations, and WebsiteVipBridge sync state.',
         'ogTitle' => 'Raidlands Profile',
-        'ogDescription' => 'Future player profile system for Raidlands.',
+        'ogDescription' => 'Check VIP kit access and active Raidlands server groups for your Steam identity.',
     ],
 ];
 
@@ -345,7 +388,7 @@ $future_pages = [
         ['Clan Rankings', 'Team-wide performance and wipe history.'],
     ],
     'events' => [
-        ['Wipe Fights', 'Monday and Friday event hooks.'],
+        ['Wipe Fights', 'Thursday event hooks.'],
         ['Clan Wars', 'Scheduled rivalries and community brackets.'],
         ['Community Votes', 'Let active players steer the next event.'],
     ],
@@ -365,3 +408,79 @@ $future_pages = [
         ['Wipe History', 'Stats, rewards, and season records after launch.'],
     ],
 ];
+
+$raidlands_secrets_file = dirname(__DIR__) . '/data/raidlands-secrets.php';
+
+if (is_file($raidlands_secrets_file)) {
+    require $raidlands_secrets_file;
+}
+
+$raidlands_content_file = dirname(__DIR__) . '/data/site-content.json';
+$raidlands_content_overrides = raidlands_load_site_content($raidlands_content_file);
+
+if ($raidlands_content_overrides !== []) {
+    raidlands_apply_content_overrides($raidlands_content_overrides);
+}
+
+unset($raidlands_content_overrides);
+
+function raidlands_load_site_content(string $path): array
+{
+    if (!is_file($path)) {
+        return [];
+    }
+
+    $decoded = json_decode((string) @file_get_contents($path), true);
+
+    return is_array($decoded) ? $decoded : [];
+}
+
+function raidlands_apply_content_overrides(array $content): void
+{
+    global $site_config, $quick_features, $feature_cards, $roadmap_cards, $page_copy, $seo_pages;
+
+    if (isset($content['site_config']) && is_array($content['site_config'])) {
+        $site_config = raidlands_merge_assoc($site_config, $content['site_config']);
+    }
+
+    if (isset($content['page_copy']) && is_array($content['page_copy'])) {
+        $page_copy = raidlands_merge_assoc($page_copy, $content['page_copy']);
+    }
+
+    if (isset($content['seo_pages']) && is_array($content['seo_pages'])) {
+        $seo_pages = raidlands_merge_assoc($seo_pages, $content['seo_pages']);
+    }
+
+    foreach ([
+        'quick_features' => 'quick_features',
+        'feature_cards' => 'feature_cards',
+        'roadmap_cards' => 'roadmap_cards',
+    ] as $content_key => $global_name) {
+        if (isset($content[$content_key]) && is_array($content[$content_key])) {
+            ${$global_name} = $content[$content_key];
+        }
+    }
+}
+
+function raidlands_merge_assoc(array $base, array $overrides): array
+{
+    foreach ($overrides as $key => $value) {
+        if (is_array($value) && isset($base[$key]) && is_array($base[$key]) && raidlands_is_assoc($value)) {
+            $base[$key] = raidlands_merge_assoc($base[$key], $value);
+            continue;
+        }
+
+        $base[$key] = $value;
+    }
+
+    return $base;
+}
+
+function raidlands_is_assoc(array $value): bool
+{
+    if ($value === []) {
+        return false;
+    }
+
+    return array_keys($value) !== range(0, count($value) - 1);
+}

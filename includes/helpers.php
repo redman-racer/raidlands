@@ -41,6 +41,14 @@ function status_icon(string $name): string
         return icon_svg($feature_icons['CMD']);
     }
 
+    if ($name === 'fps') {
+        return icon_svg($feature_icons['FPS']);
+    }
+
+    if ($name === 'queue') {
+        return icon_svg($feature_icons['STAT']);
+    }
+
     return icon_svg($status_icons[$name] ?? '');
 }
 
@@ -139,18 +147,22 @@ function render_status_panel(): string
     global $site_config;
 
     $status = $site_config['serverOnline'] ? 'Online' : 'Offline';
+    $status_class = $site_config['serverOnline'] ? 'is-online' : 'is-offline';
 
-    return '<aside class="status-panel" aria-label="Raidlands server status">'
+    return '<aside class="status-panel ' . e($status_class) . '" aria-label="Raidlands server status" data-server-status-panel>'
         . '<div class="status-head">'
-        . '<span class="online-light" aria-hidden="true"></span>'
-        . '<strong class="status-title">' . e($status) . '</strong>'
+        . '<span class="online-light" aria-hidden="true" data-server-light></span>'
+        . '<strong class="status-title" data-server-status>' . e($status) . '</strong>'
         . '</div>'
         . '<ul class="status-list">'
-        . '<li class="status-row"><span class="row-icon" aria-hidden="true">' . status_icon('players') . '</span><span><span class="status-label">Players: <span class="status-value">' . e((string) $site_config['playersOnline']) . '</span> / ' . e((string) $site_config['maxPlayers']) . '</span></span></li>'
-        . '<li class="status-row"><span class="row-icon" aria-hidden="true">' . status_icon('map') . '</span><span><span class="status-label">Map: <span class="status-value">' . e($site_config['mapName']) . '</span></span></span></li>'
+        . '<li class="status-row"><span class="row-icon" aria-hidden="true">' . status_icon('players') . '</span><span><span class="status-label">Players: <span class="status-value" data-server-players>' . e((string) $site_config['playersOnline']) . '</span> / <span data-server-max-players>' . e((string) $site_config['maxPlayers']) . '</span></span></span></li>'
+        . '<li class="status-row"><span class="row-icon" aria-hidden="true">' . status_icon('queue') . '</span><span><span class="status-label">Queue: <span class="status-value" data-server-queue>' . e((string) $site_config['queue']) . '</span></span></span></li>'
+        . '<li class="status-row"><span class="row-icon" aria-hidden="true">' . status_icon('fps') . '</span><span><span class="status-label">Server FPS: <span class="status-value" data-server-fps>' . e((string) $site_config['serverFps']) . '</span></span></span></li>'
+        . '<li class="status-row"><span class="row-icon" aria-hidden="true">' . status_icon('map') . '</span><span><span class="status-label">Map: <span class="status-value" data-server-map>' . e($site_config['mapName']) . '</span></span></span></li>'
         . '<li class="status-row"><span class="row-icon" aria-hidden="true">' . status_icon('wipe') . '</span><span><span class="status-label">Next Wipe: <span class="status-value" data-next-wipe>Loading</span></span></span></li>'
         . '<li class="status-row"><span class="row-icon" aria-hidden="true">' . status_icon('cycle') . '</span><span><span class="status-label">Wipes: <span class="status-value">' . e(implode(' and ', $site_config['wipe']['dayNames'])) . '</span></span></span></li>'
         . '<li class="status-row"><span class="row-icon" aria-hidden="true">' . status_icon('region') . '</span><span><span class="status-label">Region: <span class="status-value">' . e($site_config['region']) . '</span></span></span></li>'
+        . '<li class="status-row"><span class="row-icon" aria-hidden="true">' . status_icon('cycle') . '</span><span><span class="status-label">Updated: <span class="status-value" data-server-updated>Live lookup pending</span></span></span></li>'
         . '<li class="status-row"><span class="row-icon" aria-hidden="true">' . status_icon('command') . '</span><span><span class="status-label status-command">Console command: <span class="status-value">' . e($site_config['connectCommand']) . '</span></span></span></li>'
         . '</ul>'
         . '</aside>';

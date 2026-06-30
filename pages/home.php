@@ -32,7 +32,7 @@
     <div class="section-header">
       <p class="section-kicker">Built for nonstop raids</p>
       <h2>Farm fast. Gear fast. Raid fast.</h2>
-      <p class="section-lede">Raidlands removes the slow parts and keeps the war. Whether you play solo, with friends, or inside a full clan, every Monday and Friday wipe is a fresh battlefield.</p>
+      <p class="section-lede">Raidlands removes the slow parts and keeps the war. Whether you play solo, with friends, or inside a full clan, every Thursday wipe is a fresh battlefield.</p>
     </div>
     <div class="grid four">
       <?php foreach (array_slice($feature_cards, 0, 8) as $card) : ?>
@@ -46,8 +46,8 @@
   <div class="section-inner split-panel">
     <div class="metal-panel">
       <p class="section-kicker">Wipe schedule</p>
-      <h2>Wipes every Monday and Friday</h2>
-      <p class="section-lede">The wasteland resets twice a week. New bases. New rivalries. New raids.</p>
+      <h2>Wipes every Thursday</h2>
+      <p class="section-lede">The wasteland resets every Thursday. New bases. New rivalries. New raids.</p>
       <div class="tag-row">
         <span class="tag">Last wipe: <span data-last-wipe>Loading</span></span>
         <span class="tag">Upcoming: <span data-next-wipe>Loading</span></span>
@@ -88,11 +88,11 @@
     </div>
     <div class="metal-panel">
       <p class="section-kicker">Launch promise</p>
-      <h2>Population first</h2>
-      <p class="section-lede">VIP kits and supporter perks may come later, but the opening focus is simple: build the best 1000x battlefield community possible.</p>
+      <h2>VIP synced cleanly</h2>
+      <p class="section-lede">VIP kits, monthly ranks, and one-time perks now flow through SteamID64, Stripe, MySQL entitlements, and WebsiteVipBridge.</p>
       <div class="button-row">
         <a class="btn btn-primary" href="<?= e(route_url('play')) ?>">Play Raidlands</a>
-        <a class="btn btn-secondary" href="<?= e(route_url('store')) ?>">Store Roadmap</a>
+        <a class="btn btn-secondary" href="<?= e(route_url('store')) ?>">Open Store</a>
       </div>
     </div>
   </div>
