@@ -105,9 +105,10 @@ function raidlands_loader_payload(): array
         'pageTitle' => (string) ($page_meta['title'] ?? 'Raidlands'),
         'logoUrl' => asset_url('media/raidlands-logo.webp'),
         'serverStatusUrl' => $base_path . 'api/server-status.php',
-        'statusProbeTimeoutMs' => 2200,
-        'minVisibleMs' => 1850,
-        'fadeMs' => 520,
+        'statusProbeTimeoutMs' => 750,
+        'minVisibleMs' => 520,
+        'fastTrackAfterMs' => 360,
+        'fadeMs' => 360,
         'fallbackStatus' => [
             'online' => (bool) ($site_config['serverOnline'] ?? false),
             'statusLabel' => !empty($site_config['serverOnline']) ? 'Online' : 'Offline',

@@ -64,7 +64,7 @@
   function init() {
     bindNav();
     bindActions();
-    initEffects();
+    initEffectsWhenLoaderReveals();
     hydrateDates();
     hydrateServerStatus();
     updateCountdowns();
@@ -74,6 +74,24 @@
       const refreshSeconds = Math.max(30, Number(CONFIG.serverStats.cacheSeconds) || 60);
       window.setInterval(hydrateServerStatus, refreshSeconds * 1000);
     }
+  }
+
+  function initEffectsWhenLoaderReveals() {
+    let started = false;
+    const start = () => {
+      if (started) return;
+
+      started = true;
+      initEffects();
+    };
+
+    if (!doc.classList.contains("raidlands-loading")) {
+      start();
+      return;
+    }
+
+    window.addEventListener("raidlands:site-reveal", start, { once: true });
+    window.setTimeout(start, 9000);
   }
 
   function initEffects() {

@@ -2,10 +2,19 @@
   const root = document.documentElement;
   const loader = document.querySelector("[data-raidlands-loader]");
   const dataNode = document.getElementById("raidlands-loader-data");
+  const loaderSession = getLoaderSession();
 
   if (window.__raidlandsLoaderFallback) {
     window.clearTimeout(window.__raidlandsLoaderFallback);
     window.__raidlandsLoaderFallback = null;
+  }
+
+  if (!loaderSession.shouldShow) {
+    root.classList.remove("raidlands-loading", "raidlands-loader-fading");
+    if (loader) {
+      loader.remove();
+    }
+    return;
   }
 
   if (!loader || !dataNode) {
@@ -21,9 +30,10 @@
   const coreEl = loader.querySelector(".raidlands-loader-core");
   const reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const startedAt = performance.now();
-  const minVisibleMs = reducedMotion ? 350 : clamp(Number(data.minVisibleMs) || 1850, 800, 6000);
-  const fadeMs = reducedMotion ? 80 : clamp(Number(data.fadeMs) || 520, 220, 900);
-  const maxVisibleMs = clamp(Number(data.maxVisibleMs) || 11000, 5000, 20000);
+  const minVisibleMs = reducedMotion ? 220 : clamp(Number(data.minVisibleMs) || 520, 260, 2600);
+  const fastTrackAfterMs = reducedMotion ? 0 : clamp(Number(data.fastTrackAfterMs) || 360, 160, 1200);
+  const fadeMs = reducedMotion ? 80 : clamp(Number(data.fadeMs) || 360, 160, 640);
+  const maxVisibleMs = clamp(Number(data.maxVisibleMs) || 5000, 2200, 10000);
   const domReadyPromise = waitForDomReady();
   const pageLoadPromise = waitForPageLoad();
   const statusResultPromise = requestServerStatus();
@@ -37,6 +47,8 @@
   let expectedLines = 1;
   let tipIndex = 0;
   let scopeCleanup = null;
+  let exitStarted = false;
+  let siteRevealDispatched = false;
 
   window.__raidlandsServerStatusPromise = statusResultPromise
     .then(result => result && result.status ? result.status : null)
@@ -74,6 +86,24 @@
     }
   }
 
+  function getLoaderSession() {
+    const session = window.__raidlandsLoaderSession || {};
+
+    return {
+      storageKey: String(session.storageKey || "raidlands-loader-seen"),
+      navigationType: String(session.navigationType || "navigate"),
+      shouldShow: session.shouldShow !== false
+    };
+  }
+
+  function markLoaderSeen() {
+    try {
+      window.sessionStorage.setItem(loaderSession.storageKey, "true");
+    } catch (error) {
+      // Browsers can disable sessionStorage; the loader simply falls back to showing.
+    }
+  }
+
   async function runLoader() {
     const steps = Array.isArray(data.lines) ? data.lines : [];
     const totalLines = Math.max(1, steps.reduce((total, step) => total + (step.wait ? 2 : 1), 0));
@@ -89,7 +119,7 @@
     await waitForElapsed(minVisibleMs);
     setProgress(100);
     updateState("Entering Raidlands");
-    await delay(reducedMotion ? 30 : 260);
+    await delay(reducedMotion ? 16 : 35);
     window.clearTimeout(hardStopTimer);
     exitLoader();
   }
@@ -160,9 +190,9 @@
 
     updateState(stripStatusPrefix(line.text));
 
-    if (reducedMotion) {
+    if (reducedMotion || shouldFastTrack()) {
       text.textContent = line.text;
-      await delay(20);
+      await delay(reducedMotion ? 12 : 10);
       return;
     }
 
@@ -173,21 +203,33 @@
       await delay(characterDelay(line.text[index]));
     }
 
-    await delay(pageLoaded ? 24 : 58);
+    await delay(shouldFastTrack() ? 4 : pageLoaded ? 10 : 24);
   }
 
   function characterDelay(character) {
-    if (character === " ") return pageLoaded ? 1 : 2;
-    if (character === "." || character === ":" || character === ";") return pageLoaded ? 9 : 18;
-    if (character === "[" || character === "]") return pageLoaded ? 5 : 10;
+    if (shouldFastTrack()) {
+      if (character === " ") return 0;
+      if (character === "." || character === ":" || character === ";") return 1.5;
+      if (character === "[" || character === "]") return 1;
 
-    const base = pageLoaded ? 3 : domReady ? 5 : 7;
-    return base + Math.random() * (pageLoaded ? 3 : 5);
+      return .8 + Math.random() * 1.4;
+    }
+
+    if (character === " ") return 0;
+    if (character === "." || character === ":" || character === ";") return 4;
+    if (character === "[" || character === "]") return 2.5;
+
+    const base = pageLoaded ? 1.4 : domReady ? 2.2 : 3.2;
+    return base + Math.random() * (pageLoaded ? 1.8 : 2.8);
+  }
+
+  function shouldFastTrack() {
+    return pageLoaded || performance.now() - startedAt >= fastTrackAfterMs;
   }
 
   async function requestServerStatus() {
     const url = String(data.serverStatusUrl || "");
-    const timeoutMs = clamp(Number(data.statusProbeTimeoutMs) || 2200, 600, 5000);
+    const timeoutMs = clamp(Number(data.statusProbeTimeoutMs) || 750, 350, 2200);
     const started = performance.now();
 
     if (!url || !window.fetch) {
@@ -484,9 +526,11 @@
   }
 
   function exitLoader() {
-    if (closed) return;
+    if (closed || exitStarted) return;
 
+    exitStarted = true;
     closed = true;
+    markLoaderSeen();
     window.clearInterval(progressTimer);
 
     if (tipTimer) {
@@ -498,15 +542,193 @@
       scopeCleanup = null;
     }
 
-    loader.style.setProperty("--loader-fade-ms", `${fadeMs}ms`);
-    loader.getBoundingClientRect();
-    root.classList.add("raidlands-loader-fading");
-    loader.classList.add("is-exiting");
+    const exitFadeMs = reducedMotion ? fadeMs : Math.max(fadeMs, 900);
+    const breachLeadMs = reducedMotion ? 0 : 220;
+    const siteRevealDelayMs = reducedMotion ? 0 : breachLeadMs + Math.round(exitFadeMs * .32);
+
+    setProgress(100);
+    updateState("Raidlands breach confirmed");
+    loader.style.setProperty("--loader-fade-ms", `${exitFadeMs}ms`);
+    playExitBreach();
+
+    window.setTimeout(startLoaderFade, breachLeadMs);
+    window.setTimeout(dispatchSiteReveal, siteRevealDelayMs);
 
     window.setTimeout(() => {
+      dispatchSiteReveal();
       root.classList.remove("raidlands-loading", "raidlands-loader-fading");
       loader.remove();
-    }, fadeMs);
+    }, breachLeadMs + exitFadeMs + 80);
+  }
+
+  function startLoaderFade() {
+    loader.getBoundingClientRect();
+
+    window.requestAnimationFrame(() => {
+      root.classList.add("raidlands-loader-fading");
+      loader.classList.add("is-exiting");
+    });
+  }
+
+  function dispatchSiteReveal() {
+    if (siteRevealDispatched) return;
+
+    siteRevealDispatched = true;
+    window.dispatchEvent(new CustomEvent("raidlands:site-reveal"));
+  }
+
+  function playExitBreach() {
+    if (reducedMotion || loader.querySelector(".raidlands-loader-breach")) return;
+
+    const breach = document.createElement("div");
+    const flash = document.createElement("div");
+    const fireball = document.createElement("div");
+    const engulf = document.createElement("div");
+    const title = document.createElement("div");
+    const fragments = document.createDocumentFragment();
+    const particleTotal = window.innerWidth < 700 ? 58 : 106;
+    const smokeTotal = window.innerWidth < 700 ? 13 : 22;
+    const debrisTotal = window.innerWidth < 700 ? 18 : 34;
+    const originX = 50;
+    const originY = window.innerWidth < 700 ? 70 : 73;
+
+    breach.className = "raidlands-loader-breach";
+    breach.setAttribute("aria-hidden", "true");
+    breach.style.setProperty("--breach-x", `${originX}%`);
+    breach.style.setProperty("--breach-y", `${originY}%`);
+    loader.style.setProperty("--breach-x", `${originX}%`);
+    loader.style.setProperty("--breach-y", `${originY}%`);
+    prepareLoaderElementBlast(originX, originY);
+    flash.className = "raidlands-loader-breach-flash";
+    fireball.className = "raidlands-loader-breach-core";
+    engulf.className = "raidlands-loader-breach-engulf";
+    title.className = "raidlands-loader-breach-title";
+    title.innerHTML = "<span>Raidlands</span><strong>BREACH LIVE</strong><em>1000x raid route open</em>";
+
+    for (let index = 0; index < 4; index += 1) {
+      const wave = document.createElement("span");
+      wave.className = "raidlands-loader-breach-wave";
+      wave.style.setProperty("--delay", `${(index * 92).toFixed(0)}ms`);
+      wave.style.setProperty("--wave-scale", (1.35 + index * .34).toFixed(2));
+      fragments.appendChild(wave);
+    }
+
+    for (let index = 0; index < particleTotal; index += 1) {
+      const spark = document.createElement("span");
+      const angle = randomBetween(0, Math.PI * 2);
+      const distance = randomBetween(120, window.innerWidth < 700 ? 420 : 760);
+      const size = randomBetween(2, 7);
+      const vertical = Math.sin(angle) * distance * .62 - Math.max(0, Math.cos(angle)) * randomBetween(12, 72);
+
+      spark.className = "raidlands-loader-breach-spark";
+      spark.style.setProperty("--tx", `${Math.cos(angle) * distance}px`);
+      spark.style.setProperty("--ty", `${vertical}px`);
+      spark.style.setProperty("--size", `${size}px`);
+      spark.style.setProperty("--spin", `${randomBetween(-220, 220).toFixed(0)}deg`);
+      spark.style.setProperty("--delay", `${randomBetween(0, 90).toFixed(0)}ms`);
+      spark.style.setProperty("--duration", `${randomBetween(650, 1050).toFixed(0)}ms`);
+      fragments.appendChild(spark);
+    }
+
+    for (let index = 0; index < smokeTotal; index += 1) {
+      const smoke = document.createElement("span");
+      const angle = randomBetween(0, Math.PI * 2);
+      const distance = randomBetween(80, window.innerWidth < 700 ? 240 : 420);
+
+      smoke.className = "raidlands-loader-breach-smoke";
+      smoke.style.setProperty("--tx", `${Math.cos(angle) * distance}px`);
+      smoke.style.setProperty("--ty", `${Math.sin(angle) * distance * .46 - randomBetween(62, 170)}px`);
+      smoke.style.setProperty("--scale", randomBetween(1.2, 2.9).toFixed(2));
+      smoke.style.setProperty("--delay", `${randomBetween(45, 190).toFixed(0)}ms`);
+      smoke.style.setProperty("--duration", `${randomBetween(850, 1280).toFixed(0)}ms`);
+      fragments.appendChild(smoke);
+    }
+
+    for (let index = 0; index < debrisTotal; index += 1) {
+      const debris = document.createElement("span");
+      const angle = randomBetween(0, Math.PI * 2);
+      const distance = randomBetween(100, window.innerWidth < 700 ? 360 : 650);
+      const debrisLift = randomBetween(22, 145);
+
+      debris.className = "raidlands-loader-breach-debris";
+      debris.style.setProperty("--tx", `${Math.cos(angle) * distance}px`);
+      debris.style.setProperty("--ty", `${Math.sin(angle) * distance * .54 - debrisLift}px`);
+      debris.style.setProperty("--w", `${randomBetween(5, 20)}px`);
+      debris.style.setProperty("--h", `${randomBetween(2, 6)}px`);
+      debris.style.setProperty("--spin", `${randomBetween(-540, 540).toFixed(0)}deg`);
+      debris.style.setProperty("--delay", `${randomBetween(0, 110).toFixed(0)}ms`);
+      debris.style.setProperty("--duration", `${randomBetween(680, 1120).toFixed(0)}ms`);
+      fragments.appendChild(debris);
+    }
+
+    breach.append(flash, fireball, engulf, title, fragments);
+    loader.appendChild(breach);
+    loader.classList.add("is-breaching");
+  }
+
+  function prepareLoaderElementBlast(originXPercent, originYPercent) {
+    const loaderRect = loader.getBoundingClientRect();
+    const originX = loaderRect.left + loaderRect.width * originXPercent / 100;
+    const originY = loaderRect.top + loaderRect.height * originYPercent / 100;
+    const diagonal = Math.hypot(loaderRect.width, loaderRect.height) || 1;
+    const progressShell = progressEl ? progressEl.closest(".raidlands-loader-progress") : null;
+    const tipShell = tipEl ? tipEl.closest(".raidlands-loader-tip") : null;
+    const pieces = [
+      ...loader.querySelectorAll(".raidlands-loader-line"),
+      loader.querySelector(".raidlands-loader-logo"),
+      progressShell,
+      stateEl,
+      tipShell,
+      loader.querySelector(".raidlands-loader-scope")
+    ].filter(Boolean);
+
+    pieces.forEach((piece, index) => {
+      const rect = piece.getBoundingClientRect();
+
+      if (!rect.width || !rect.height) return;
+
+      const centerX = rect.left + rect.width / 2;
+      const centerY = rect.top + rect.height / 2;
+      const offsetX = centerX - originX;
+      const offsetY = centerY - originY;
+      const distanceFromOrigin = Math.hypot(offsetX, offsetY) || 1;
+      const normalX = offsetX / distanceFromOrigin;
+      const normalY = offsetY / distanceFromOrigin;
+      const isConsoleLine = piece.classList.contains("raidlands-loader-line");
+      const isScope = piece.classList.contains("raidlands-loader-scope");
+      const nearCenterBias = Math.abs(offsetX) < 42
+        ? (index % 2 === 0 ? -1 : 1) * randomBetween(isConsoleLine ? 8 : 34, isConsoleLine ? 24 : 118)
+        : 0;
+      const travel = clamp(distanceFromOrigin * (isConsoleLine ? .44 : .36) + randomBetween(isConsoleLine ? 96 : 150, isConsoleLine ? 210 : 290), isConsoleLine ? 138 : 170, isScope ? 520 : 620);
+      const lift = randomBetween(isConsoleLine ? 38 : 68, isConsoleLine ? 118 : 170);
+      const translateX = normalX * travel + nearCenterBias;
+      const translateY = normalY * travel - lift;
+      const distanceDelay = clamp(distanceFromOrigin / diagonal, 0, 1) * 80;
+      const heightDelay = clamp((originY - centerY) / Math.max(loaderRect.height, 1), 0, 1) * 110;
+      const delay = clamp(distanceDelay + heightDelay + randomBetween(0, isConsoleLine ? 42 : 64), 0, 210);
+      const duration = randomBetween(isConsoleLine ? 860 : 900, isConsoleLine ? 1160 : 1240);
+      const rotate = clamp(normalX * randomBetween(7, 18) + randomBetween(-8, 8), -22, 22);
+      const scale = randomBetween(isConsoleLine ? .48 : .36, isConsoleLine ? .7 : .62);
+
+      piece.dataset.loaderBlastPiece = "";
+      piece.style.setProperty("--blast-x", `${translateX.toFixed(1)}px`);
+      piece.style.setProperty("--blast-y", `${translateY.toFixed(1)}px`);
+      piece.style.setProperty("--blast-x-early", `${(translateX * .16).toFixed(1)}px`);
+      piece.style.setProperty("--blast-y-early", `${(translateY * .16).toFixed(1)}px`);
+      piece.style.setProperty("--blast-x-mid", `${(translateX * .54).toFixed(1)}px`);
+      piece.style.setProperty("--blast-y-mid", `${(translateY * .54).toFixed(1)}px`);
+      piece.style.setProperty("--blast-rotate", `${rotate.toFixed(1)}deg`);
+      piece.style.setProperty("--blast-rotate-early", `${(rotate * .24).toFixed(1)}deg`);
+      piece.style.setProperty("--blast-rotate-mid", `${(rotate * .62).toFixed(1)}deg`);
+      piece.style.setProperty("--blast-scale", scale.toFixed(2));
+      piece.style.setProperty("--blast-delay", `${delay.toFixed(0)}ms`);
+      piece.style.setProperty("--blast-duration", `${duration.toFixed(0)}ms`);
+
+      if (isScope) {
+        piece.style.setProperty("--blast-scope-x", `${translateX.toFixed(1)}px`);
+        piece.style.setProperty("--blast-scope-y", `${translateY.toFixed(1)}px`);
+      }
+    });
   }
 
   function delay(ms) {

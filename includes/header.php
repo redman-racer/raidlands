@@ -26,10 +26,47 @@ $linked_player = raidlands_linked_player();
     <?php endif; ?>
     <link rel="preload" as="script" href="<?= e(asset_url('js/raidlands-loader.js')) ?>">
     <script>
-      document.documentElement.classList.add('raidlands-loading');
-      window.__raidlandsLoaderFallback = window.setTimeout(function () {
-        document.documentElement.classList.remove('raidlands-loading');
-      }, 9000);
+      (function () {
+        var storageKey = 'raidlands-loader-seen';
+        var navigationType = 'navigate';
+        var shouldShow = true;
+
+        try {
+          var entries = window.performance && window.performance.getEntriesByType
+            ? window.performance.getEntriesByType('navigation')
+            : [];
+
+          if (entries && entries.length && entries[0].type) {
+            navigationType = entries[0].type;
+          } else if (window.performance && window.performance.navigation && window.performance.navigation.type === 1) {
+            navigationType = 'reload';
+          }
+        } catch (error) {
+          navigationType = 'navigate';
+        }
+
+        try {
+          shouldShow = navigationType === 'reload' || window.sessionStorage.getItem(storageKey) !== 'true';
+        } catch (error) {
+          shouldShow = true;
+        }
+
+        window.__raidlandsLoaderSession = {
+          storageKey: storageKey,
+          navigationType: navigationType,
+          shouldShow: shouldShow
+        };
+
+        if (!shouldShow) {
+          document.documentElement.classList.add('raidlands-loader-skipped');
+          return;
+        }
+
+        document.documentElement.classList.add('raidlands-loading');
+        window.__raidlandsLoaderFallback = window.setTimeout(function () {
+          document.documentElement.classList.remove('raidlands-loading');
+        }, 9000);
+      }());
     </script>
     <link rel="stylesheet" href="<?= e(asset_url('css/loader.css')) ?>">
     <link rel="stylesheet" href="<?= e(asset_url('css/styles.css')) ?>">
