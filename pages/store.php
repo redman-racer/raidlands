@@ -19,7 +19,7 @@ function render_store_product_card(array $product, ?array $player, string $csrf)
     $buyable = raidlands_store_price_is_buyable($price);
     $has_player = $player !== null && !empty($player['id']);
     $price_text = $price === null
-        ? 'Configure price'
+        ? 'Price coming soon'
         : raidlands_store_money((int) $price['amount_cents'], (string) $price['currency']);
     $interval = $price !== null && (string) $price['billing_interval'] === 'month' ? ' / month' : '';
     $action = '';
@@ -27,7 +27,7 @@ function render_store_product_card(array $product, ?array $player, string $csrf)
     if (!$has_player) {
         $action = '<a class="btn btn-secondary" href="' . e(route_url('link')) . '">Link Steam First</a>';
     } elseif (!$buyable) {
-        $action = '<button class="btn btn-ghost" type="button" disabled>Configure Stripe</button>';
+        $action = '<button class="btn btn-ghost" type="button" disabled>Checkout Coming Soon</button>';
     } else {
         $action = '<form method="post" action="' . e(route_url('store') . 'checkout.php') . '">'
             . '<input type="hidden" name="csrf" value="' . e($csrf) . '">'
@@ -45,8 +45,8 @@ function render_store_product_card(array $product, ?array $player, string $csrf)
         . '<p class="card-copy">' . e((string) $product['short_description']) . '</p>'
         . '<div class="store-price"><strong>' . e($price_text) . '</strong><span>' . e($interval) . '</span></div>'
         . '<ul class="store-mini-list">'
-        . '<li>Oxide group: <code>' . e((string) $product['oxide_group']) . '</code></li>'
-        . '<li>Rust Kits controls contents, cooldowns, and max uses.</li>'
+        . '<li>Unlocks the matching in-game VIP access.</li>'
+        . '<li>Kit contents, cooldowns, and limits are shown in Discord.</li>'
         . '</ul>'
         . '<div class="store-card-actions">' . $action . '</div>'
         . '</article>';
@@ -64,13 +64,13 @@ function render_store_product_card(array $product, ?array $player, string $csrf)
     <?php endif; ?>
 
     <?php if (!empty($store_catalog['setupRequired'])) : ?>
-      <div class="form-status warning">Store setup mode: <?= e((string) $store_catalog['error']) ?> Run the MySQL migration and configure Stripe before checkout goes live.</div>
+      <div class="form-status warning">Checkout is not live yet. Store setup is still being finished before purchases open.</div>
     <?php endif; ?>
 
     <div class="section-header">
       <p class="section-kicker">VIP kits</p>
       <h2>Monthly ranks synced to Rust</h2>
-      <p class="section-lede">Bronze, Gold, and Elite map to Oxide permission groups. Rust Kits by k1lly0u remains the source of truth for kit contents, cooldowns, hidden kit visibility, and max uses.</p>
+      <p class="section-lede">Bronze, Gold, and Elite give monthly VIP access in game. Kit details, cooldowns, and limits stay visible before you buy.</p>
     </div>
 
     <div class="grid three store-grid">
@@ -86,7 +86,7 @@ function render_store_product_card(array $product, ?array $player, string $csrf)
     <div class="section-header">
       <p class="section-kicker">One-time purchases</p>
       <h2>Stackable perks and kit unlocks</h2>
-      <p class="section-lede">Individual purchases can stack with VIP tiers. Refunds and disputes revoke website entitlements, then WebsiteVipBridge removes managed groups from the server.</p>
+      <p class="section-lede">Individual perks can stack with VIP tiers. If a purchase is refunded or disputed, the matching access is removed automatically.</p>
     </div>
 
     <div class="grid three store-grid">
@@ -100,19 +100,19 @@ function render_store_product_card(array $product, ?array $player, string $csrf)
 <section class="section">
   <div class="section-inner split-panel">
     <div class="metal-panel">
-      <p class="section-kicker">Server translation</p>
+      <p class="section-kicker">Game access</p>
       <h2>How purchases reach the game</h2>
       <ul class="list-clean">
-        <li>Stripe confirms payment through a signed webhook.</li>
-        <li>MySQL stores the active entitlement and desired Oxide group.</li>
-        <li>WebsiteVipBridge polls the website and syncs group membership.</li>
-        <li>Rust Kits shows the matching permission-restricted kits in game.</li>
+        <li>Your purchase is attached to the SteamID64 you linked.</li>
+        <li>Raidlands keeps track of your active VIP access and perks.</li>
+        <li>The game server checks that access and updates your permissions.</li>
+        <li>Matching kits and perks appear in game after the next sync.</li>
       </ul>
     </div>
     <div class="metal-panel">
       <p class="section-kicker">Purchase notes</p>
       <h2>Modded server perks</h2>
-      <p class="section-lede">These products affect gameplay access on a Modded Rust server. Keep kit details, cooldowns, and wipe balance visible in Discord so players know exactly what they are buying.</p>
+      <p class="section-lede">These products affect gameplay access on Raidlands. Check the latest kit details, cooldowns, and wipe-balance notes before buying.</p>
       <div class="button-row">
         <a class="btn btn-primary" href="<?= e(route_url('profile')) ?>">Check My Profile</a>
         <a class="btn btn-secondary" href="<?= e(route_url('terms')) ?>">Terms</a>

@@ -251,7 +251,7 @@ function admin_status_options(): array
                         <input type="number" min="30" max="3600" name="site_config[serverStats][cacheSeconds]" value="<?= e((string) ($admin_site['serverStats']['cacheSeconds'] ?? 60)) ?>">
                       </label>
                       <label class="admin-field">
-                        <?= admin_field_head('Steam OAuth URL', 'Future account-link button destination. Leave blank until the Steam login backend exists.') ?>
+                        <?= admin_field_head('Steam OAuth URL', 'Legacy placeholder. Native Steam sign-in now uses Steam OpenID from /link/.') ?>
                         <input type="url" name="site_config[auth][steamUrl]" value="<?= e((string) ($admin_site['auth']['steamUrl'] ?? '')) ?>">
                       </label>
                       <label class="admin-field">

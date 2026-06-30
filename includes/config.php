@@ -209,7 +209,7 @@ $roadmap_cards = [
     ['Player Profiles', 'Linked Steam and Discord identity with stats, wipe history, and rewards.', 'Planned'],
     ['Clan Rankings', 'Clan pages, recruitment, rivalry records, and wipe archives.', 'After launch'],
     ['Wipe Events', 'Thursday wipe events, staff battles, and community votes.', 'In development'],
-    ['VIP Kits', 'Stripe-backed VIP tiers and one-time perks synced to Rust permissions.', 'Live'],
+    ['VIP Kits', 'VIP tiers and one-time perks tied to your Steam account.', 'Live'],
     ['Vote Rewards', 'Voting loops for discovery, population growth, and player rewards.', 'Planned'],
     ['Ban Appeals', 'Structured appeal intake with Discord support as the first launch path.', 'Planned'],
     ['Community Hub', 'Patch notes, announcements, wipe winners, and support workflows.', 'Planned'],
@@ -258,7 +258,7 @@ $page_copy = [
     ],
     'store' => [
         'title' => 'Store',
-        'lede' => 'VIP kits, monthly ranks, and one-time perks synced to your SteamID64 through WebsiteVipBridge.',
+        'lede' => 'VIP kits, monthly ranks, and one-time perks tied to your SteamID64.',
     ],
     'events' => [
         'title' => 'Events',
@@ -278,7 +278,7 @@ $page_copy = [
     ],
     'profile' => [
         'title' => 'Player Profile',
-        'lede' => 'View linked Steam identity, active VIP groups, one-time perks, expirations, and bridge sync state.',
+        'lede' => 'View linked Steam identity, active VIP access, one-time perks, and expirations.',
     ],
 ];
 
@@ -345,7 +345,7 @@ $seo_pages = [
     ],
     'store' => [
         'title' => 'Raidlands Store | VIP Kits, Monthly Ranks, One-Time Perks',
-        'description' => 'Buy Raidlands VIP kits, monthly ranks, and one-time perks that sync to Rust through SteamID64 and Oxide permission groups.',
+        'description' => 'Buy Raidlands VIP kits, monthly ranks, and one-time perks tied to your SteamID64.',
         'ogTitle' => 'Raidlands Store',
         'ogDescription' => 'VIP tiers and one-time perks synced from the website to the Raidlands Rust server.',
     ],
@@ -375,9 +375,9 @@ $seo_pages = [
     ],
     'profile' => [
         'title' => 'Raidlands Profile | VIP Entitlements and Steam Identity',
-        'description' => 'View your Raidlands linked SteamID64, active VIP groups, one-time perks, expirations, and WebsiteVipBridge sync state.',
+        'description' => 'View your Raidlands linked SteamID64, active VIP access, one-time perks, and expirations.',
         'ogTitle' => 'Raidlands Profile',
-        'ogDescription' => 'Check VIP kit access and active Raidlands server groups for your Steam identity.',
+        'ogDescription' => 'Check VIP kit access and active Raidlands perks for your Steam identity.',
     ],
 ];
 

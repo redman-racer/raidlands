@@ -28,7 +28,7 @@ if ($profile_player !== null && !empty($profile_player['id'])) {
       <div class="metal-panel">
         <p class="section-kicker">Profile locked</p>
         <h2>Link Steam to view VIP access</h2>
-        <p class="section-lede">Your profile uses SteamID64 so purchases, refunds, subscriptions, and WebsiteVipBridge sync all point at the same Rust identity.</p>
+        <p class="section-lede">Your profile uses SteamID64 so purchases, refunds, subscriptions, and in-game access all point at the same Rust identity.</p>
         <div class="button-row">
           <a class="btn btn-primary" href="<?= e(route_url('link')) ?>">Link SteamID64</a>
           <a class="btn btn-secondary" href="<?= e(route_url('store')) ?>">Preview Store</a>
@@ -54,9 +54,9 @@ if ($profile_player !== null && !empty($profile_player['id'])) {
         </div>
 
         <div class="metal-panel">
-          <p class="section-kicker">Bridge state</p>
-          <h2>Desired server groups</h2>
-          <p class="section-lede">WebsiteVipBridge adds these groups and removes managed groups not listed here. Sync happens when you connect or on the bridge timer.</p>
+          <p class="section-kicker">Game access</p>
+          <h2>Active server perks</h2>
+          <p class="section-lede">These are the VIP permissions Raidlands should apply when you connect. Updates may take a short moment after checkout or renewal.</p>
           <div class="button-row">
             <a class="btn btn-primary" href="<?= e(route_url('store')) ?>">Add Perks</a>
             <a class="btn btn-secondary" href="<?= e(route_url('discord')) ?>">Need Help?</a>
@@ -71,14 +71,14 @@ if ($profile_player !== null && !empty($profile_player['id'])) {
   <section class="section alt">
     <div class="section-inner">
       <div class="section-header">
-        <p class="section-kicker">Entitlements</p>
-        <h2>VIP, perks, and sync history</h2>
-        <p class="section-lede">Active rows are the source of truth for game-server group membership. Revoked and expired rows stay visible for support context.</p>
+        <p class="section-kicker">Access history</p>
+        <h2>VIP, perks, and changes</h2>
+        <p class="section-lede">Active items are what your account can use in game. Ended or refunded items stay visible so support can help faster.</p>
       </div>
 
       <?php if ($profile_entitlements === []) : ?>
         <div class="metal-panel">
-          <p class="section-lede">No entitlements are attached to this SteamID64 yet.</p>
+          <p class="section-lede">No VIP access or perks are attached to this SteamID64 yet.</p>
           <a class="btn btn-primary" href="<?= e(route_url('store')) ?>">Open Store</a>
         </div>
       <?php else : ?>
@@ -88,7 +88,7 @@ if ($profile_player !== null && !empty($profile_player['id'])) {
               <tr>
                 <th>Product</th>
                 <th>Type</th>
-                <th>Group</th>
+                <th>Access</th>
                 <th>Status</th>
                 <th>Ends</th>
                 <th>Changed</th>

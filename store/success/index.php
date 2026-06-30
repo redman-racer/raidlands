@@ -20,7 +20,7 @@ require $site_root . '/includes/header.php';
     <div class="metal-panel">
       <p class="section-kicker">Checkout complete</p>
       <h2>Payment received</h2>
-      <p class="section-lede">Stripe accepted the checkout. Your VIP groups update after the webhook records the purchase and the WebsiteVipBridge syncs with the game server.</p>
+      <p class="section-lede">Checkout is complete. Your VIP access will update in game after Raidlands confirms the purchase.</p>
       <?php if ($session_id !== '') : ?>
         <p class="store-muted">Checkout session: <code><?= e($session_id) ?></code></p>
       <?php endif; ?>

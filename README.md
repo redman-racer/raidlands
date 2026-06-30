@@ -51,12 +51,12 @@ Launch values live in `includes/config.php`:
 - `serverStats.cacheSeconds`
 - `wipe.time`
 - `wipe.timezone`
-- `auth.steamUrl`
+- `auth.steamUrl` (legacy placeholder; Steam linking uses native Steam OpenID)
 - `auth.discordUrl`
 
 Live server status is served by `api/server-status.php`. It reads the public BattleMetrics server record, caches it briefly, and falls back to the config values above if BattleMetrics is unreachable.
 
-Steam and Discord account linking buttons are ready for OAuth URLs, but no real OAuth backend or credentials are included yet.
+Steam account linking starts with native Steam OpenID and falls back to manual SteamID64 entry if Steam cannot return a verified response. Discord linking buttons remain ready for a future OAuth URL.
 
 ## VIP Store
 

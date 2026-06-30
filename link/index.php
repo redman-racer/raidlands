@@ -8,6 +8,27 @@ require_once $site_root . '/includes/store.php';
 
 raidlands_store_boot();
 
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && (string) ($_GET['action'] ?? '') === 'steam') {
+    try {
+        header('Location: ' . raidlands_store_steam_openid_url());
+        exit;
+    } catch (Throwable $error) {
+        raidlands_store_flash('error', 'Steam sign-in could not start. Use manual SteamID64 linking for now.');
+        raidlands_store_redirect('link');
+    }
+}
+
+if ($_SERVER['REQUEST_METHOD'] === 'GET' && raidlands_store_steam_openid_response_present()) {
+    try {
+        raidlands_store_steam_openid_verify();
+        raidlands_store_flash('success', 'Steam identity linked through Steam sign-in.');
+    } catch (Throwable $error) {
+        raidlands_store_flash('error', $error->getMessage());
+    }
+
+    raidlands_store_redirect('link');
+}
+
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {
     try {
         if (!raidlands_store_validate_csrf((string) ($_POST['csrf'] ?? ''))) {

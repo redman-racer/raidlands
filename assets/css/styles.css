@@ -1812,6 +1812,19 @@ h3,
   max-width: 560px;
 }
 
+.store-form summary {
+  cursor: pointer;
+  color: var(--white);
+  font-family: var(--font-display);
+  font-size: .92rem;
+  text-transform: uppercase;
+}
+
+.store-form form {
+  display: grid;
+  gap: 14px;
+}
+
 .store-field {
   display: grid;
   gap: 8px;

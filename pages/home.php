@@ -89,7 +89,7 @@
     <div class="metal-panel">
       <p class="section-kicker">Launch promise</p>
       <h2>VIP synced cleanly</h2>
-      <p class="section-lede">VIP kits, monthly ranks, and one-time perks now flow through SteamID64, Stripe, MySQL entitlements, and WebsiteVipBridge.</p>
+      <p class="section-lede">VIP kits, monthly ranks, and one-time perks stay tied to your Steam account, then update in game automatically.</p>
       <div class="button-row">
         <a class="btn btn-primary" href="<?= e(route_url('play')) ?>">Play Raidlands</a>
         <a class="btn btn-secondary" href="<?= e(route_url('store')) ?>">Open Store</a>
@@ -117,8 +117,8 @@
   <div class="section-inner">
     <div class="section-header">
       <p class="section-kicker">Coming soon</p>
-      <h2>A server hub, not a dead landing page</h2>
-      <p class="section-lede">These systems are scaffolded for later so the site can grow with the server without making launch feel paywalled.</p>
+      <h2>A real home for the server</h2>
+      <p class="section-lede">More community tools are planned after launch, with the essentials kept clear and easy to use from day one.</p>
     </div>
     <div class="grid four">
       <?php foreach ($roadmap_cards as $card) : ?>

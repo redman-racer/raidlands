@@ -74,7 +74,7 @@ function raidlands_store_validate_steam_id64(string $steam_id64): bool
 function raidlands_store_money(int $amount_cents, string $currency = 'usd'): string
 {
     if ($amount_cents <= 0) {
-        return 'Configure price';
+        return 'Price coming soon';
     }
 
     return '$' . number_format($amount_cents / 100, 2) . ' ' . strtoupper($currency);
@@ -97,8 +97,8 @@ function raidlands_store_seed_catalog(): array
             'slug' => 'vip-bronze',
             'name' => 'Bronze VIP',
             'product_type' => 'vip_subscription',
-            'short_description' => 'Starter VIP access with Bronze kit permissions.',
-            'description' => 'Monthly Bronze VIP mapped to vip_bronze. Configure the real kit contents in Rust Kits.',
+            'short_description' => 'Starter monthly VIP access for regular Raidlands players.',
+            'description' => 'Monthly Bronze VIP access with starter perks for regular Raidlands players.',
             'oxide_group' => 'vip_bronze',
             'tier_priority' => 10,
             'is_stackable' => 0,
@@ -121,8 +121,8 @@ function raidlands_store_seed_catalog(): array
             'slug' => 'vip-gold',
             'name' => 'Gold VIP',
             'product_type' => 'vip_subscription',
-            'short_description' => 'Upgraded VIP access with stronger Gold kit permissions.',
-            'description' => 'Monthly Gold VIP mapped to vip_gold. Rust Kits owns cooldowns and max uses.',
+            'short_description' => 'Upgraded monthly VIP access for frequent wipe players.',
+            'description' => 'Monthly Gold VIP access with stronger perks for frequent wipe players.',
             'oxide_group' => 'vip_gold',
             'tier_priority' => 20,
             'is_stackable' => 0,
@@ -145,8 +145,8 @@ function raidlands_store_seed_catalog(): array
             'slug' => 'vip-elite',
             'name' => 'Elite VIP',
             'product_type' => 'vip_subscription',
-            'short_description' => 'Top monthly VIP tier with Elite kit permissions.',
-            'description' => 'Monthly Elite VIP mapped to vip_elite.',
+            'short_description' => 'Top monthly VIP tier with the full supporter package.',
+            'description' => 'Monthly Elite VIP access for players who want the full supporter package.',
             'oxide_group' => 'vip_elite',
             'tier_priority' => 30,
             'is_stackable' => 0,
@@ -170,7 +170,7 @@ function raidlands_store_seed_catalog(): array
             'name' => 'Personal Mini Perk',
             'product_type' => 'one_time_perk',
             'short_description' => 'Unlock personal minicopter access as a one-time perk.',
-            'description' => 'One-time perk mapped to perk_personal_mini.',
+            'description' => 'One-time perk for faster map movement and quick returns to the fight.',
             'oxide_group' => 'perk_personal_mini',
             'tier_priority' => 0,
             'is_stackable' => 1,
@@ -194,7 +194,7 @@ function raidlands_store_seed_catalog(): array
             'name' => 'Skinbox Access',
             'product_type' => 'one_time_perk',
             'short_description' => 'Unlock Skinbox access as a one-time perk.',
-            'description' => 'One-time perk mapped to perk_skinbox.',
+            'description' => 'One-time perk for more control over how your gear and base look.',
             'oxide_group' => 'perk_skinbox',
             'tier_priority' => 0,
             'is_stackable' => 1,
@@ -218,7 +218,7 @@ function raidlands_store_seed_catalog(): array
             'name' => 'Raid Kit Unlock',
             'product_type' => 'one_time_kit_unlock',
             'short_description' => 'Unlock a premium raid kit permission.',
-            'description' => 'One-time kit unlock mapped to perk_raid_kit.',
+            'description' => 'One-time kit unlock for raiders who want an extra push during wipe.',
             'oxide_group' => 'perk_raid_kit',
             'tier_priority' => 0,
             'is_stackable' => 1,
@@ -245,7 +245,7 @@ function raidlands_store_catalog(bool $active_only = true): array
         return [
             'source' => 'fallback',
             'setupRequired' => true,
-            'error' => 'MySQL is not configured yet.',
+            'error' => 'Store setup is not finished yet.',
             'products' => raidlands_store_seed_catalog(),
         ];
     }
@@ -453,6 +453,140 @@ function raidlands_store_link_player(string $steam_id64, string $display_name = 
     $_SESSION['raidlands_player'] = $player;
 
     return $player;
+}
+
+function raidlands_store_current_origin(): string
+{
+    $host = trim((string) ($_SERVER['HTTP_X_FORWARDED_HOST'] ?? $_SERVER['HTTP_HOST'] ?? ''));
+
+    if ($host === '') {
+        $host = trim((string) ($_SERVER['SERVER_NAME'] ?? 'localhost'));
+        $port = trim((string) ($_SERVER['SERVER_PORT'] ?? ''));
+
+        if ($port !== '' && !in_array($port, ['80', '443'], true)) {
+            $host .= ':' . $port;
+        }
+    }
+
+    $scheme = strtolower(trim((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')));
+
+    if ($scheme === '') {
+        $https = strtolower((string) ($_SERVER['HTTPS'] ?? ''));
+        $scheme = ($https === 'on' || $https === '1') ? 'https' : 'http';
+    }
+
+    return $scheme . '://' . $host;
+}
+
+function raidlands_store_absolute_route_url(string $path = ''): string
+{
+    return rtrim(raidlands_store_current_origin(), '/') . '/' . ltrim(route_url($path), './');
+}
+
+function raidlands_store_steam_openid_url(): string
+{
+    raidlands_store_boot();
+
+    $return_to = raidlands_store_absolute_route_url('link');
+    $separator = str_contains($return_to, '?') ? '&' : '?';
+    $return_to .= $separator . 'steam_openid=1';
+
+    $_SESSION['raidlands_steam_openid_nonce'] = bin2hex(random_bytes(16));
+    $return_to .= '&state=' . rawurlencode((string) $_SESSION['raidlands_steam_openid_nonce']);
+
+    $params = [
+        'openid.ns' => 'http://specs.openid.net/auth/2.0',
+        'openid.mode' => 'checkid_setup',
+        'openid.return_to' => $return_to,
+        'openid.realm' => rtrim(raidlands_store_current_origin(), '/') . '/',
+        'openid.identity' => 'http://specs.openid.net/auth/2.0/identifier_select',
+        'openid.claimed_id' => 'http://specs.openid.net/auth/2.0/identifier_select',
+    ];
+
+    return 'https://steamcommunity.com/openid/login?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+}
+
+function raidlands_store_steam_openid_response_present(): bool
+{
+    return isset($_GET['steam_openid']) || isset($_GET['openid_mode']) || isset($_GET['openid.mode']);
+}
+
+function raidlands_store_steam_openid_verify(): array
+{
+    raidlands_store_boot();
+
+    $mode = (string) ($_GET['openid_mode'] ?? $_GET['openid.mode'] ?? '');
+
+    if ($mode !== 'id_res') {
+        throw new RuntimeException('Steam did not authorize the identity request.');
+    }
+
+    $state = (string) ($_GET['state'] ?? '');
+    $expected_state = (string) ($_SESSION['raidlands_steam_openid_nonce'] ?? '');
+    unset($_SESSION['raidlands_steam_openid_nonce']);
+
+    if ($state === '' || $expected_state === '' || !hash_equals($expected_state, $state)) {
+        throw new RuntimeException('Steam sign-in state expired. Try linking again.');
+    }
+
+    $claimed_id = (string) ($_GET['openid_claimed_id'] ?? $_GET['openid.claimed_id'] ?? '');
+
+    if (!preg_match('#^https?://steamcommunity\.com/openid/id/(\d{17})$#', $claimed_id, $matches)) {
+        throw new RuntimeException('Steam did not return a valid Steam identity.');
+    }
+
+    $params = [];
+
+    foreach ($_GET as $key => $value) {
+        if (str_starts_with($key, 'openid_')) {
+            $params[str_replace('_', '.', $key)] = (string) $value;
+        } elseif (str_starts_with($key, 'openid.')) {
+            $params[$key] = (string) $value;
+        }
+    }
+
+    $params['openid.mode'] = 'check_authentication';
+    $body = http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+    $headers = "Content-Type: application/x-www-form-urlencoded\r\n"
+        . "User-Agent: RaidlandsSteamOpenID/1.0\r\n";
+
+    $response = false;
+
+    if (function_exists('curl_init')) {
+        $curl = curl_init('https://steamcommunity.com/openid/login');
+
+        if ($curl !== false) {
+            curl_setopt_array($curl, [
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => $body,
+                CURLOPT_HTTPHEADER => ['Content-Type: application/x-www-form-urlencoded'],
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT => 8,
+                CURLOPT_USERAGENT => 'RaidlandsSteamOpenID/1.0',
+            ]);
+            $response = curl_exec($curl);
+            curl_close($curl);
+        }
+    }
+
+    if ($response === false) {
+        $context = stream_context_create([
+            'http' => [
+                'method' => 'POST',
+                'header' => $headers,
+                'content' => $body,
+                'timeout' => 8,
+            ],
+        ]);
+
+        $response = @file_get_contents('https://steamcommunity.com/openid/login', false, $context);
+    }
+
+    if ($response === false || !str_contains($response, 'is_valid:true')) {
+        throw new RuntimeException('Steam did not confirm the identity response. Use manual SteamID64 linking for now.');
+    }
+
+    return raidlands_store_link_player((string) $matches[1]);
 }
 
 function raidlands_store_unlink_player(): void

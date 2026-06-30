@@ -80,7 +80,7 @@ directly on the host or upload it through a private channel.
    - `maxPlayers`
    - `wipe.time`
    - `wipe.timezone`
-   - `auth.steamUrl`
+   - `auth.steamUrl` (legacy placeholder; Steam linking uses native Steam OpenID)
    - `auth.discordUrl`
 
    Also confirm `data/raidlands-secrets.php` exists on the host with MySQL,

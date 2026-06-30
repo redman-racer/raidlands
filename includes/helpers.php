@@ -227,7 +227,9 @@ function render_auth_summary_card(string $provider): string
         ? 'Prepare for SteamID64 backed profiles, leaderboards, rewards, and ownership.'
         : 'Prepare for wipe alerts, guild membership checks, support context, and roles.';
     $button_class = $provider === 'steam' ? 'btn-steam' : 'btn-discord';
-    $extra = '<button class="btn ' . e($button_class) . '" type="button" data-auth-provider="' . e($provider) . '">Link ' . e($label) . '</button>';
+    $extra = $provider === 'steam'
+        ? '<a class="btn ' . e($button_class) . '" href="' . e(route_url('link') . '?action=steam') . '">Link ' . e($label) . '</a>'
+        : '<button class="btn ' . e($button_class) . '" type="button" data-auth-provider="' . e($provider) . '">Link ' . e($label) . '</button>';
 
     return render_card($icon, 'Link ' . $label, $copy, $extra);
 }
@@ -246,13 +248,20 @@ function render_auth_card(string $provider): string
         $list .= '<li>' . e($benefit) . '</li>';
     }
 
+    $status = $provider === 'steam'
+        ? 'Use Steam sign-in first. Manual SteamID64 linking is available if Steam cannot return a response.'
+        : $label . ' linking is not live yet.';
+    $link_button = $provider === 'steam'
+        ? '<a class="btn ' . e($button_class) . '" href="' . e(route_url('link') . '?action=steam') . '">Link ' . e($label) . '</a>'
+        : '<button class="btn ' . e($button_class) . '" type="button" data-auth-provider="' . e($provider) . '">Link ' . e($label) . '</button>';
+
     return '<article class="metal-panel auth-card">'
         . render_feature_symbol($icon)
         . '<h2>' . e($label) . '</h2>'
-        . '<div class="auth-status"><strong>Not linked.</strong> OAuth is ready to connect once the ' . e($label) . ' credentials are configured.</div>'
+        . '<div class="auth-status"><strong>Not linked.</strong> ' . e($status) . '</div>'
         . '<ul class="list-clean">' . $list . '</ul>'
         . '<div class="button-row">'
-        . '<button class="btn ' . e($button_class) . '" type="button" data-auth-provider="' . e($provider) . '">Link ' . e($label) . '</button>'
+        . $link_button
         . '<button class="btn btn-ghost" type="button" data-unlink-provider="' . e($provider) . '">Unlink</button>'
         . '</div>'
         . '</article>';
