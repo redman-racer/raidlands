@@ -23,6 +23,8 @@
   --radius: 6px;
   --cut: 14px;
   --shadow: 0 18px 60px rgba(0, 0, 0, .55);
+  --nav-art-width: 1920px;
+  --nav-ember-width: 1024px;
   --nav-metal-base: url("../media/nav-burnt-metal-base.webp");
   --nav-plate-seams: url("../media/nav-plate-seams.webp");
   --nav-active-ember: url("../media/nav-active-ember.webp");
@@ -216,8 +218,9 @@ main,
   border-bottom: 1px solid rgba(255, 99, 25, .42);
   background:
     linear-gradient(180deg, rgba(8, 9, 9, .08), rgba(0, 0, 0, .28) 42%, rgba(0, 0, 0, .42)),
-    var(--nav-plate-seams) center / 100% 100% no-repeat,
-    var(--nav-metal-base) center / 100% 100% no-repeat,
+    var(--nav-plate-seams) center / min(100%, var(--nav-art-width)) 100% no-repeat,
+    var(--nav-metal-base) center / min(100%, var(--nav-art-width)) 100% no-repeat,
+    var(--nav-metal-base) center / var(--nav-art-width) 100% repeat-x,
     linear-gradient(180deg, #151513, #060708);
   box-shadow:
     0 14px 38px rgba(0, 0, 0, .70),
@@ -246,10 +249,33 @@ main,
   content: "";
   pointer-events: none;
   background:
-    var(--nav-active-ember) center top / 100% 12px no-repeat,
+    var(--nav-active-ember) center top / min(100%, var(--nav-ember-width)) 12px repeat-x,
     var(--section-divider) center top / auto 24px repeat-x;
   opacity: .72;
   animation: divider-glow 6.5s ease-in-out infinite;
+}
+
+@media (min-width: 1921px) {
+  .site-header {
+    background:
+      linear-gradient(180deg, rgba(8, 9, 9, .08), rgba(0, 0, 0, .28) 42%, rgba(0, 0, 0, .42)),
+      linear-gradient(90deg, rgba(0, 0, 0, .62), transparent 18%, transparent 82%, rgba(0, 0, 0, .62)),
+      var(--nav-metal-base) center / var(--nav-art-width) 100% repeat-x,
+      linear-gradient(180deg, #151513, #060708);
+  }
+
+  .site-header::before {
+    right: auto;
+    left: 50%;
+    width: var(--nav-art-width);
+    transform: translateX(-50%);
+    background:
+      linear-gradient(90deg, rgba(0, 0, 0, .62), transparent 18%, transparent 82%, rgba(0, 0, 0, .62)),
+      linear-gradient(180deg, rgba(255, 255, 255, .08), transparent 34%, rgba(0, 0, 0, .38)),
+      var(--nav-plate-seams) center / 100% 100% no-repeat;
+    -webkit-mask-image: linear-gradient(90deg, transparent 0, #000 4.5%, #000 95.5%, transparent 100%);
+    mask-image: linear-gradient(90deg, transparent 0, #000 4.5%, #000 95.5%, transparent 100%);
+  }
 }
 
 .header-inner {
