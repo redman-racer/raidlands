@@ -41,6 +41,29 @@ function action_icon(string $name): string
     return icon_svg($action_icons[$name] ?? '');
 }
 
+function render_steam_avatar(string $avatar_url, string $profile_url, string $name, string $class = ''): string
+{
+    $avatar_url = trim($avatar_url);
+
+    if ($avatar_url === '') {
+        return '';
+    }
+
+    $classes = trim('steam-avatar ' . $class);
+    $name = trim($name);
+    $alt = $name !== '' ? $name . ' Steam avatar' : 'Steam avatar';
+    $image = '<img src="' . e($avatar_url) . '" alt="' . e($alt) . '" loading="lazy" referrerpolicy="no-referrer">';
+    $profile_url = trim($profile_url);
+
+    if ($profile_url !== '') {
+        $label = $name !== '' ? $name . ' Steam profile' : 'Steam profile';
+
+        return '<a class="' . e($classes) . '" href="' . e($profile_url) . '" target="_blank" rel="noopener noreferrer" aria-label="' . e($label) . '">' . $image . '</a>';
+    }
+
+    return '<span class="' . e($classes) . '">' . $image . '</span>';
+}
+
 function raidlands_linked_player(): ?array
 {
     static $checked = false;

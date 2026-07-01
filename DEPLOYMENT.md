@@ -15,6 +15,7 @@ not render the pages or run the store.
 Deploy the site files from the repository root:
 
 - `.htaccess`
+- `.env.example`
 - `index.php`
 - `robots.txt`
 - `site.webmanifest`
@@ -47,8 +48,8 @@ Deploy the site files from the repository root:
 - `vote/`
 
 Do not deploy local development folders such as `.git/`, `.agents/`, or `.codex/`.
-Do not deploy real secrets through Git. Create `data/raidlands-secrets.php`
-directly on the host or upload it through a private channel.
+Do not deploy real secrets through Git. Create the root `.env` file directly on
+the host or upload it through a private channel.
 
 ## Pre-Deployment Checklist
 
@@ -69,22 +70,21 @@ directly on the host or upload it through a private channel.
 
    Open `http://127.0.0.1:4177/`.
 
-2. Confirm the live values in `includes/config.php`.
+2. Confirm the live values in `.env`.
 
    Check:
 
-   - `connectCommand`
-   - `steamConnectUrl`
-   - `discordInviteUrl`
-   - `playersOnline`
-   - `maxPlayers`
-   - `wipe.time`
-   - `wipe.timezone`
-   - `auth.steamUrl` (legacy placeholder; Steam linking uses native Steam OpenID)
-   - `auth.discordUrl`
-
-   Also confirm `data/raidlands-secrets.php` exists on the host with MySQL,
-   Stripe, and WebsiteVipBridge values.
+   - `RAIDLANDS_CONNECT_COMMAND`
+   - `RAIDLANDS_STEAM_CONNECT_URL`
+   - `RAIDLANDS_DISCORD_INVITE_URL`
+   - `RAIDLANDS_MAX_PLAYERS`
+   - `RAIDLANDS_WIPE_TIME`
+   - `RAIDLANDS_WIPE_TIMEZONE`
+   - `RAIDLANDS_AUTH_STEAM_URL` (legacy placeholder; Steam linking uses native Steam OpenID)
+   - `RAIDLANDS_AUTH_DISCORD_URL`
+   - `RAIDLANDS_DB_DSN`
+   - `RAIDLANDS_STRIPE_SECRET_KEY`
+   - `RAIDLANDS_BRIDGE_SHARED_SECRET`
 
 3. Install PHP dependencies.
 
@@ -127,6 +127,7 @@ New-Item -ItemType Directory -Force dist | Out-Null
 
 Compress-Archive -Force -DestinationPath .\dist\raidlands-godaddy.zip -Path `
   .\.htaccess, `
+  .\.env.example, `
   .\browserconfig.xml, `
   .\favicon.ico, `
   .\index.php, `
@@ -140,7 +141,6 @@ Compress-Archive -Force -DestinationPath .\dist\raidlands-godaddy.zip -Path `
   .\pages, `
   .\assets, `
   .\data\.htaccess, `
-  .\data\raidlands-secrets.example.php, `
   .\database, `
   .\docs, `
   .\server-plugins, `
@@ -200,6 +200,8 @@ The live root should look like this:
 ```text
 public_html/
   .htaccess
+  .env
+  .env.example
   browserconfig.xml
   favicon.ico
   index.php
@@ -214,7 +216,6 @@ public_html/
   assets/
   data/
     .htaccess
-    raidlands-secrets.php
   database/
   docs/
   server-plugins/
@@ -302,7 +303,45 @@ Check these URLs on the live domain:
 - `/browserconfig.xml`
 - `/favicon.ico`
 - `/assets/css/styles.css`
+- `/assets/css/loader.css`
 - `/assets/js/site.js`
+- `/assets/js/raidlands-loader.js`
+
+After uploading CSS or JS changes, confirm the live cache-busted asset URLs match
+the local files before judging browser behavior:
+
+```powershell
+Set-Location C:\wamp64\www\raidlands
+$domain = [Uri]'https://raidlands.net/'
+$page = (Invoke-WebRequest -UseBasicParsing -Uri $domain.AbsoluteUri).Content
+$assets = @(
+  'assets/css/styles.css',
+  'assets/css/loader.css',
+  'assets/js/site.js',
+  'assets/js/raidlands-loader.js'
+)
+
+foreach ($asset in $assets) {
+  $pattern = '(?:href|src)="([^"]*' + [regex]::Escape($asset) + '[^"]*)"'
+  $match = [regex]::Match($page, $pattern)
+  if (-not $match.Success) {
+    throw "Missing live asset reference: $asset"
+  }
+
+  $liveUrl = [Uri]::new($domain, $match.Groups[1].Value).AbsoluteUri
+  $tempFile = New-TemporaryFile
+  Invoke-WebRequest -UseBasicParsing -Uri $liveUrl -OutFile $tempFile
+  $localHash = (Get-FileHash $asset -Algorithm SHA256).Hash
+  $liveHash = (Get-FileHash $tempFile -Algorithm SHA256).Hash
+  Remove-Item $tempFile
+
+  if ($localHash -ne $liveHash) {
+    throw "Live asset does not match local file: $asset ($liveUrl)"
+  }
+
+  Write-Host "OK $asset -> $liveUrl"
+}
+```
 
 Also verify:
 

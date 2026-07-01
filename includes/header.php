@@ -36,7 +36,7 @@ $linked_player = raidlands_linked_player();
     <link rel="preload" as="image" href="<?= e(asset_url('media/loading/battlefield-background.webp')) ?>" fetchpriority="high">
     <link rel="preload" as="image" href="<?= e(asset_url('media/loading/breach-ring.webp')) ?>">
     <?php foreach ((array) ($loader_payload['explosionAssetUrls'] ?? []) as $explosion_asset_url) : ?>
-      <link rel="preload" as="image" href="<?= e((string) $explosion_asset_url) ?>">
+      <link rel="preload" as="image" href="<?= e((string) $explosion_asset_url) ?>" media="(min-width: 701px)">
     <?php endforeach; ?>
     <?php if ($page_id === 'home') : ?>
       <link rel="preload" as="image" href="<?= e(asset_url('media/website-hero-raid-overlook-v4.webp')) ?>" fetchpriority="high">

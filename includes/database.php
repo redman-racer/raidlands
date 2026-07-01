@@ -57,7 +57,7 @@ function raidlands_db_required(): PDO
         $message = raidlands_db_last_error();
 
         if ($message === '') {
-            $message = 'MySQL is not configured. Add database credentials to data/raidlands-secrets.php.';
+            $message = 'MySQL is not configured. Add database credentials to the root .env file.';
         }
 
         throw new RuntimeException($message);

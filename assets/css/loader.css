@@ -2429,6 +2429,49 @@ html.raidlands-loading .raidlands-loader.is-exploding {
   }
 }
 
+html.raidlands-loader-mobile-lite .raidlands-loader-frame::after,
+html.raidlands-loader-mobile-lite .raidlands-loader-core::before,
+html.raidlands-loader-mobile-lite .raidlands-loader-hud-ring,
+html.raidlands-loader-mobile-lite .raidlands-loader-progress::after,
+html.raidlands-loader-mobile-lite .raidlands-loader-progress-tip::before,
+html.raidlands-loader-mobile-lite .raidlands-loader-console::before,
+html.raidlands-loader-mobile-lite .raidlands-loader-console::after,
+html.raidlands-loader-mobile-lite .raidlands-loader-scope {
+  animation: none;
+}
+
+html.raidlands-loader-mobile-lite .raidlands-loader-targeting,
+html.raidlands-loader-mobile-lite .raidlands-loader-scope {
+  display: none;
+}
+
+html.raidlands-loader-mobile-lite .raidlands-loader-vfx {
+  will-change: transform, opacity;
+}
+
+html.raidlands-loader-mobile-lite .raidlands-loader.is-exploding .raidlands-loader-frame {
+  animation: raidlands-loader-reduced-ui-exit 420ms ease both;
+}
+
+html.raidlands-loader-mobile-lite .raidlands-loader.is-exploding [data-loader-blast-piece] {
+  animation: none !important;
+}
+
+html.raidlands-loader-mobile-lite .raidlands-loader.is-exploding .raidlands-loader-vfx--ground {
+  animation: raidlands-loader-reduced-ground 560ms ease-out both !important;
+}
+
+html.raidlands-loader-mobile-lite .raidlands-loader.is-exploding .raidlands-loader-vfx--smoke {
+  animation: raidlands-loader-reduced-smoke 580ms 80ms ease-out both !important;
+}
+
+html.raidlands-loader-mobile-lite .raidlands-loader.is-exploding .raidlands-loader-vfx--fireball,
+html.raidlands-loader-mobile-lite .raidlands-loader.is-exploding .raidlands-loader-vfx--debris,
+html.raidlands-loader-mobile-lite .raidlands-loader.is-exploding .raidlands-loader-vfx--shockwave,
+html.raidlands-loader-mobile-lite .raidlands-loader.is-exploding .raidlands-loader-vfx--embers {
+  display: none;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .raidlands-loader,
   .raidlands-loader::before,

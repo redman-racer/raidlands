@@ -25,7 +25,7 @@ http://127.0.0.1:4177/
 
 ## Structure
 
-- `includes/config.php` owns site config, navigation, page metadata, and reusable content data.
+- `includes/config.php` loads the root `.env`, owns navigation, page metadata, and reusable content data.
 - `includes/header.php` renders the shared document head and site header.
 - `includes/footer.php` renders the shared footer and toast region.
 - `pages/` contains one content template per page.
@@ -37,26 +37,25 @@ http://127.0.0.1:4177/
 
 ## Important Config
 
-Launch values live in `includes/config.php`:
+Launch and credential values live in the root `.env` file. Copy `.env.example`
+to `.env` for a new environment, then fill in the local or hosted values.
 
-- `admin_panel.username`
-- `admin_panel.password`
-- `admin_panel.passwordHash`
-- `connectCommand`
-- `steamConnectUrl`
-- `discordInviteUrl`
-- `playersOnline`
-- `maxPlayers`
-- `serverStats.battleMetricsServerId`
-- `serverStats.cacheSeconds`
-- `wipe.time`
-- `wipe.timezone`
-- `auth.steamUrl` (legacy placeholder; Steam linking uses native Steam OpenID)
-- `auth.discordUrl`
+- `RAIDLANDS_ADMIN_USERNAME`
+- `RAIDLANDS_ADMIN_PASSWORD` or `RAIDLANDS_ADMIN_PASSWORD_HASH`
+- `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, `RAIDLANDS_DB_PASSWORD`
+- `RAIDLANDS_STRIPE_PUBLISHABLE_KEY`, `RAIDLANDS_STRIPE_SECRET_KEY`, `RAIDLANDS_STRIPE_WEBHOOK_SECRET`
+- `RAIDLANDS_BRIDGE_SERVER_ID`, `RAIDLANDS_BRIDGE_SHARED_SECRET`
+- `RAIDLANDS_STEAM_API_KEY`
+- `RAIDLANDS_CONNECT_COMMAND`, `RAIDLANDS_STEAM_CONNECT_URL`, `RAIDLANDS_DISCORD_INVITE_URL`
+- `RAIDLANDS_BATTLEMETRICS_SERVER_ID`, `RAIDLANDS_SERVER_STATUS_CACHE_SECONDS`
+- `RAIDLANDS_WIPE_TIME`, `RAIDLANDS_WIPE_TIMEZONE`
+- `RAIDLANDS_AUTH_STEAM_URL`, `RAIDLANDS_AUTH_DISCORD_URL`
 
 Live server status is served by `api/server-status.php`. It reads the public BattleMetrics server record, caches it briefly, and falls back to the config values above if BattleMetrics is unreachable.
 
 Steam account linking starts with native Steam OpenID and falls back to manual SteamID64 entry if Steam cannot return a verified response. Discord linking buttons remain ready for a future OAuth URL.
+
+Steam avatars and profile links are only fetched when `RAIDLANDS_STEAM_API_KEY` is set in `.env`. Without that key, account and leaderboard pages render without Steam profile metadata.
 
 ## VIP Store
 
@@ -67,8 +66,8 @@ The store uses MySQL as the source of truth and Stripe Checkout for payments.
 3. Run `database/migrations/001_vip_store.sql`.
 4. Run `database/migrations/002_player_stats.sql`.
 5. Run `database/seeds/001_store_products.sql`.
-6. Copy `data/raidlands-secrets.example.php` to `data/raidlands-secrets.php`.
-7. Fill in MySQL, Stripe, and bridge secret values.
+6. Copy `.env.example` to `.env`.
+7. Fill in MySQL, Stripe, Steam API, and bridge secret values.
 8. Configure product Stripe Price IDs in `/admin/?section=store`.
 
 Public store flow:
@@ -83,7 +82,7 @@ Game-server flow:
 
 - Install Rust Kits by k1lly0u.
 - Put `server-plugins/WebsiteVipBridge.cs` into the uMod/Oxide plugins folder.
-- Configure the plugin with the same `ApiBaseUrl`, `ServerId`, and `SharedSecret` as the website.
+- Configure the plugin with the same `ApiBaseUrl`, `ServerId`, and `SharedSecret` as the website. Use `server-plugins/WebsiteVipBridge.config.example.json` as the shape of the generated plugin config.
 - Configure `WipeKey` after each wipe if you want a clean current-wipe leaderboard boundary; leave it blank only if one continuous current season is acceptable.
 - The plugin calls `/api/server/vip-player.php` and `/api/server/vip-changes.php`, then adds/removes managed Oxide groups.
 - The plugin posts `/api/server/stats-snapshot.php` with KDRScoreboard kills/deaths, PlaytimeTracker playtime, and ServerRewards RP for `/leaderboard/` and `/profile/`.
@@ -96,6 +95,6 @@ Open:
 http://localhost/raidlands/admin/
 ```
 
-The admin login is configured in `includes/config.php` under `$admin_panel`. Admin-edited site content is saved to `data/site-content.json`; Apache is configured to deny direct web access to that folder.
+The admin login is configured in the root `.env`. Admin-edited site content is saved to `data/site-content.json`; Apache is configured to deny direct web access to that folder.
 
 Admin sections now include Store, Grants, and Sync for product setup, manual entitlements, WebsiteVipBridge visibility, and stats ingest health.

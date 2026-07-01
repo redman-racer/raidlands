@@ -1,60 +1,71 @@
 <?php
 
+$raidlands_root = dirname(__DIR__);
+$raidlands_env_file = $raidlands_root . '/.env';
+
+raidlands_load_env($raidlands_env_file);
+
 $site_config = [
-    'serverName' => 'Raidlands 1000x',
-    'tagline' => 'Raid. Respawn. Rebuild. Repeat.',
-    'region' => 'US Central',
-    'mapName' => 'Procedural Battlefield',
-    'serverFps' => 'Stable',
-    'queue' => '0',
-    'playersOnline' => 127,
-    'maxPlayers' => 250,
-    'serverOnline' => true,
+    'serverName' => raidlands_env('RAIDLANDS_SERVER_NAME', 'Raidlands 1000x'),
+    'tagline' => raidlands_env('RAIDLANDS_TAGLINE', 'Raid. Respawn. Rebuild. Repeat.'),
+    'region' => raidlands_env('RAIDLANDS_REGION', 'US Central'),
+    'mapName' => raidlands_env('RAIDLANDS_MAP_NAME', 'Procedural Battlefield'),
+    'serverFps' => raidlands_env('RAIDLANDS_SERVER_FPS', 'Stable'),
+    'queue' => (string) raidlands_env_int('RAIDLANDS_SERVER_QUEUE', 0),
+    'playersOnline' => raidlands_env_int('RAIDLANDS_PLAYERS_ONLINE', 127),
+    'maxPlayers' => raidlands_env_int('RAIDLANDS_MAX_PLAYERS', 250),
+    'serverOnline' => raidlands_env_bool('RAIDLANDS_SERVER_ONLINE', true),
     'serverStats' => [
-        'provider' => 'battlemetrics',
-        'battleMetricsServerId' => '39516376',
-        'cacheSeconds' => 60,
+        'provider' => raidlands_env('RAIDLANDS_SERVER_STATS_PROVIDER', 'battlemetrics'),
+        'battleMetricsServerId' => raidlands_env('RAIDLANDS_BATTLEMETRICS_SERVER_ID', '39516376'),
+        'cacheSeconds' => raidlands_env_int('RAIDLANDS_SERVER_STATUS_CACHE_SECONDS', 60),
     ],
-    'connectCommand' => 'connect raidlands.net:25607',
-    'steamConnectUrl' => 'steam://connect/raidlands.net:25607',
-    'discordInviteUrl' => 'https://discord.gg/raidlands',
+    'connectCommand' => raidlands_env('RAIDLANDS_CONNECT_COMMAND', 'connect raidlands.net:25607'),
+    'steamConnectUrl' => raidlands_env('RAIDLANDS_STEAM_CONNECT_URL', 'steam://connect/raidlands.net:25607'),
+    'discordInviteUrl' => raidlands_env('RAIDLANDS_DISCORD_INVITE_URL', 'https://discord.gg/N6wnHzMhWS'),
     'wipe' => [
-        'days' => [4],
-        'dayNames' => ['Thursday'],
-        'time' => '19:00',
-        'timezone' => 'America/Chicago',
+        'days' => raidlands_env_int_list('RAIDLANDS_WIPE_DAYS', [4]),
+        'dayNames' => raidlands_env_csv('RAIDLANDS_WIPE_DAY_NAMES', ['Thursday']),
+        'time' => raidlands_env('RAIDLANDS_WIPE_TIME', '19:00'),
+        'timezone' => raidlands_env('RAIDLANDS_WIPE_TIMEZONE', 'Europe/London'),
     ],
     'auth' => [
-        'steamUrl' => '',
-        'discordUrl' => '',
+        'steamUrl' => raidlands_env('RAIDLANDS_AUTH_STEAM_URL', ''),
+        'discordUrl' => raidlands_env('RAIDLANDS_AUTH_DISCORD_URL', ''),
     ],
 ];
 
 $admin_panel = [
-    'username' => 'admin',
-    'password' => 'nr_clan_password',
-    'passwordHash' => '',
-    'sessionKey' => 'raidlands_admin_authenticated',
+    'username' => raidlands_env('RAIDLANDS_ADMIN_USERNAME', 'admin'),
+    'password' => raidlands_env('RAIDLANDS_ADMIN_PASSWORD', 'nr_clan_password'),
+    'passwordHash' => raidlands_env('RAIDLANDS_ADMIN_PASSWORD_HASH', ''),
+    'sessionKey' => raidlands_env('RAIDLANDS_ADMIN_SESSION_KEY', 'raidlands_admin_authenticated'),
 ];
 
 $database_config = [
-    'dsn' => getenv('RAIDLANDS_DB_DSN') ?: '',
-    'username' => getenv('RAIDLANDS_DB_USER') ?: '',
-    'password' => getenv('RAIDLANDS_DB_PASSWORD') ?: '',
+    'dsn' => raidlands_env('RAIDLANDS_DB_DSN', ''),
+    'username' => raidlands_env('RAIDLANDS_DB_USER', ''),
+    'password' => raidlands_env('RAIDLANDS_DB_PASSWORD', ''),
     'options' => [],
 ];
 
 $stripe_config = [
-    'publishableKey' => getenv('RAIDLANDS_STRIPE_PUBLISHABLE_KEY') ?: '',
-    'secretKey' => getenv('RAIDLANDS_STRIPE_SECRET_KEY') ?: '',
-    'webhookSecret' => getenv('RAIDLANDS_STRIPE_WEBHOOK_SECRET') ?: '',
+    'publishableKey' => raidlands_env('RAIDLANDS_STRIPE_PUBLISHABLE_KEY', ''),
+    'secretKey' => raidlands_env('RAIDLANDS_STRIPE_SECRET_KEY', ''),
+    'webhookSecret' => raidlands_env('RAIDLANDS_STRIPE_WEBHOOK_SECRET', ''),
+];
+
+$steam_api_config = [
+    'apiKey' => raidlands_env('RAIDLANDS_STEAM_API_KEY', ''),
+    'baseUrl' => raidlands_env('RAIDLANDS_STEAM_API_BASE_URL', 'https://api.steampowered.com'),
+    'cacheSeconds' => raidlands_env_int('RAIDLANDS_STEAM_API_CACHE_SECONDS', 86400),
 ];
 
 $vip_bridge_config = [
-    'serverId' => getenv('RAIDLANDS_BRIDGE_SERVER_ID') ?: 'raidlands-main',
-    'sharedSecret' => getenv('RAIDLANDS_BRIDGE_SHARED_SECRET') ?: '',
-    'hmacSkewSeconds' => 300,
-    'managedGroups' => [
+    'serverId' => raidlands_env('RAIDLANDS_BRIDGE_SERVER_ID', 'raidlands-main'),
+    'sharedSecret' => raidlands_env('RAIDLANDS_BRIDGE_SHARED_SECRET', ''),
+    'hmacSkewSeconds' => raidlands_env_int('RAIDLANDS_BRIDGE_HMAC_SKEW_SECONDS', 300),
+    'managedGroups' => raidlands_env_csv('RAIDLANDS_BRIDGE_MANAGED_GROUPS', [
         'vip_bronze',
         'vip_gold',
         'vip_elite',
@@ -63,7 +74,7 @@ $vip_bridge_config = [
         'perk_raid_kit',
         'perk_queue_priority',
         'perk_supporter_badge',
-    ],
+    ]),
 ];
 
 $primary_nav = [
@@ -439,13 +450,13 @@ $future_pages = [
     ],
 ];
 
-$raidlands_secrets_file = dirname(__DIR__) . '/data/raidlands-secrets.php';
+$raidlands_secrets_file = $raidlands_root . '/data/raidlands-secrets.php';
 
-if (is_file($raidlands_secrets_file)) {
+if (!is_file($raidlands_env_file) && is_file($raidlands_secrets_file)) {
     require $raidlands_secrets_file;
 }
 
-$raidlands_content_file = dirname(__DIR__) . '/data/site-content.json';
+$raidlands_content_file = $raidlands_root . '/data/site-content.json';
 $raidlands_content_overrides = raidlands_load_site_content($raidlands_content_file);
 
 if ($raidlands_content_overrides !== []) {
@@ -513,4 +524,127 @@ function raidlands_is_assoc(array $value): bool
     }
 
     return array_keys($value) !== range(0, count($value) - 1);
+}
+
+function raidlands_load_env(string $path): void
+{
+    if (!is_file($path)) {
+        return;
+    }
+
+    $lines = file($path, FILE_IGNORE_NEW_LINES);
+
+    if ($lines === false) {
+        return;
+    }
+
+    foreach ($lines as $line) {
+        $line = trim($line);
+
+        if ($line === '' || str_starts_with($line, '#')) {
+            continue;
+        }
+
+        if (str_starts_with($line, 'export ')) {
+            $line = trim(substr($line, 7));
+        }
+
+        $separator = strpos($line, '=');
+
+        if ($separator === false) {
+            continue;
+        }
+
+        $key = trim(substr($line, 0, $separator));
+
+        if ($key === '' || !preg_match('/^[A-Z0-9_]+$/i', $key)) {
+            continue;
+        }
+
+        if (getenv($key) !== false) {
+            continue;
+        }
+
+        $value = raidlands_parse_env_value(trim(substr($line, $separator + 1)));
+
+        putenv($key . '=' . $value);
+        $_ENV[$key] = $value;
+        $_SERVER[$key] = $value;
+    }
+}
+
+function raidlands_parse_env_value(string $value): string
+{
+    if ($value === '') {
+        return '';
+    }
+
+    $quote = $value[0];
+
+    if (($quote === '"' || $quote === "'") && substr($value, -1) === $quote) {
+        $inner = substr($value, 1, -1);
+
+        return $quote === '"' ? stripcslashes($inner) : str_replace("\\'", "'", $inner);
+    }
+
+    $comment = strpos($value, ' #');
+
+    if ($comment !== false) {
+        $value = substr($value, 0, $comment);
+    }
+
+    return trim($value);
+}
+
+function raidlands_env(string $key, string $default = ''): string
+{
+    $value = getenv($key);
+
+    return $value === false ? $default : (string) $value;
+}
+
+function raidlands_env_int(string $key, int $default): int
+{
+    $value = trim(raidlands_env($key));
+
+    return $value === '' || !is_numeric($value) ? $default : (int) $value;
+}
+
+function raidlands_env_bool(string $key, bool $default): bool
+{
+    $value = strtolower(trim(raidlands_env($key)));
+
+    if (in_array($value, ['1', 'true', 'yes', 'on'], true)) {
+        return true;
+    }
+
+    if (in_array($value, ['0', 'false', 'no', 'off'], true)) {
+        return false;
+    }
+
+    return $default;
+}
+
+function raidlands_env_csv(string $key, array $default): array
+{
+    $value = trim(raidlands_env($key));
+
+    if ($value === '') {
+        return $default;
+    }
+
+    $items = array_filter(array_map('trim', explode(',', $value)), static fn ($item) => $item !== '');
+
+    return array_values($items);
+}
+
+function raidlands_env_int_list(string $key, array $default): array
+{
+    $values = raidlands_env_csv($key, []);
+
+    if ($values === []) {
+        return $default;
+    }
+
+    return array_map(static fn ($value) => (int) $value, $values);
 }

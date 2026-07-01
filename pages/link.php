@@ -7,6 +7,18 @@ $link_flash = raidlands_store_flash();
 $link_csrf = raidlands_store_csrf_token();
 $database_ready = raidlands_db_is_configured() && raidlands_db() instanceof PDO;
 $steam_openid_url = route_url('link') . '?action=steam';
+$linked_player_name = $linked_player !== null
+    ? (string) ($linked_player['display_name'] ?: ($linked_player['steam_display_name'] ?? 'Raidlands Player'))
+    : '';
+$linked_player_avatar = $linked_player !== null
+    ? render_steam_avatar(
+        (string) ($linked_player['steam_avatar_url'] ?? ''),
+        (string) ($linked_player['steam_profile_url'] ?? ''),
+        $linked_player_name,
+        'steam-avatar-sm'
+    )
+    : '';
+$linked_player_profile_url = $linked_player !== null ? trim((string) ($linked_player['steam_profile_url'] ?? '')) : '';
 ?>
 <?= render_page_hero('link',
     '<a class="btn btn-primary" href="' . e(route_url('store')) . '">Open Store</a>'
@@ -27,10 +39,18 @@ $steam_openid_url = route_url('link') . '?action=steam';
       <div class="steam-connect-stack">
         <?php if ($linked_player !== null) : ?>
           <div class="auth-status is-linked">
-            <strong>Connected.</strong>
-            Steam ID <code><?= e((string) $linked_player['steam_id64']) ?></code>
-            <?php if (!empty($linked_player['display_name'])) : ?>
-              as <?= e((string) $linked_player['display_name']) ?>
+            <div class="linked-steam-account">
+              <?= $linked_player_avatar ?>
+              <span>
+                <strong>Connected.</strong>
+                Steam ID <code><?= e((string) $linked_player['steam_id64']) ?></code>
+                <?php if ($linked_player_name !== '') : ?>
+                  as <?= e($linked_player_name) ?>
+                <?php endif; ?>
+              </span>
+            </div>
+            <?php if ($linked_player_profile_url !== '') : ?>
+              <a class="profile-steam-link" href="<?= e($linked_player_profile_url) ?>" target="_blank" rel="noopener noreferrer">Open Steam Profile</a>
             <?php endif; ?>
           </div>
           <div class="button-row">

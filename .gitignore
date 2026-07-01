@@ -1,4 +1,7 @@
 vendor/
+.env
+.env.local
+.env.*.local
 data/raidlands-secrets.php
 data/site-content.json
 data/*.log

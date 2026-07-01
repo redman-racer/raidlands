@@ -29,19 +29,20 @@
   const tipEl = loader.querySelector("[data-loader-tip]");
   const targetingEl = loader.querySelector("[data-loader-targeting]");
   const reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  const mobilePerformance = isMobilePerformanceMode();
   const startedAt = performance.now();
   const bootSteps = Array.isArray(data.lines) ? data.lines : [];
   const hasLoadGate = bootSteps.some(step => step && step.wait === "load");
-  const startupMs = reducedMotion ? 90 : clamp(Number(data.startupMs) || 1500, 700, 2200);
+  const startupMs = reducedMotion ? 90 : mobilePerformance ? clamp(Number(data.startupMs) || 980, 640, 1400) : clamp(Number(data.startupMs) || 1500, 700, 2200);
   const startupColdMs = reducedMotion ? 0 : clamp(Number(data.startupColdMs) || 340, 120, Math.max(120, startupMs - 420));
   const startupFlickerMs = Math.max(360, startupMs - startupColdMs);
   const minVisibleMs = reducedMotion ? 120 : clamp(Number(data.minVisibleMs) || startupMs, startupMs, 2200);
   const fastTrackAfterMs = reducedMotion ? 0 : clamp(Number(data.fastTrackAfterMs) || 260, 80, 800);
   const fadeMs = reducedMotion ? 80 : clamp(Number(data.fadeMs) || 360, 160, 640);
   const maxVisibleMs = clamp(Number(data.maxVisibleMs) || 5000, 2200, 10000);
-  const completeHoldMs = reducedMotion ? 120 : clamp(Number(data.completeHoldMs) || 520, 240, 1200);
+  const completeHoldMs = reducedMotion ? 120 : mobilePerformance ? clamp(Number(data.completeHoldMs) || 280, 180, 520) : clamp(Number(data.completeHoldMs) || 520, 240, 1200);
   const explosionAssetTimeoutMs = clamp(Number(data.explosionAssetTimeoutMs) || 6500, 1200, 9000);
-  const explosionAssetUrls = normalizeAssetUrls(data.explosionAssetUrls);
+  const explosionAssetUrls = mobilePerformance ? [] : normalizeAssetUrls(data.explosionAssetUrls);
   const domReadyPromise = waitForDomReady();
   const pageLoadPromise = waitForPageLoad();
   const statusResultPromise = requestServerStatus();
@@ -52,6 +53,8 @@
   });
   let bootProgressLocked = !reducedMotion;
   const startupPromise = playStartupFlicker();
+
+  root.classList.toggle("raidlands-loader-mobile-lite", mobilePerformance);
 
   let currentProgress = 0;
   let domReady = document.readyState !== "loading";
@@ -92,7 +95,7 @@
     finishLoader();
   }, maxVisibleMs);
   const earlyScopeTimer = window.setTimeout(() => {
-    if (!closed && !scopeCleanup && !reducedMotion && targetingEl) {
+    if (!closed && !scopeCleanup && !reducedMotion && !mobilePerformance && targetingEl) {
       scopeCleanup = startScopeSimulation();
     }
   }, reducedMotion ? 0 : 460);
@@ -119,6 +122,10 @@
       navigationType: String(session.navigationType || "navigate"),
       shouldShow: session.shouldShow !== false
     };
+  }
+
+  function isMobilePerformanceMode() {
+    return window.matchMedia && window.matchMedia("(max-width: 700px), (pointer: coarse)").matches;
   }
 
   function markLoaderSeen() {
@@ -489,7 +496,7 @@
   }
 
   function queueScopeSimulation() {
-    if (reducedMotion || !targetingEl || scopeCleanup) return;
+    if (reducedMotion || mobilePerformance || !targetingEl || scopeCleanup) return;
 
     const start = () => {
       if (closed || scopeCleanup) return;
@@ -851,9 +858,9 @@
       scopeCleanup = null;
     }
 
-    const exitFadeMs = reducedMotion ? Math.max(fadeMs, 320) : Math.max(fadeMs, 420);
-    const breachLeadMs = reducedMotion ? 260 : 1220;
-    const siteRevealDelayMs = reducedMotion ? 240 : 1320;
+    const exitFadeMs = reducedMotion ? Math.max(fadeMs, 320) : mobilePerformance ? Math.max(fadeMs, 360) : Math.max(fadeMs, 420);
+    const breachLeadMs = reducedMotion ? 260 : mobilePerformance ? 420 : 1220;
+    const siteRevealDelayMs = reducedMotion ? 240 : mobilePerformance ? 520 : 1320;
 
     setProgress(100);
     updateState("Raidlands breach confirmed");
@@ -898,7 +905,7 @@
     loader.style.setProperty("--explosion-origin-x", `${originX}%`);
     loader.style.setProperty("--explosion-origin-y", `${originY}%`);
 
-    if (!reducedMotion) {
+    if (!reducedMotion && !mobilePerformance) {
       prepareLoaderElementBlast(originX, originY);
     }
 

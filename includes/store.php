@@ -71,6 +71,416 @@ function raidlands_store_validate_steam_id64(string $steam_id64): bool
     return preg_match('/^7656119[0-9]{10}$/', $steam_id64) === 1;
 }
 
+function raidlands_store_steam_api_key(): string
+{
+    global $steam_api_config;
+
+    $key = trim((string) ($steam_api_config['apiKey'] ?? ''));
+
+    if ($key === '') {
+        $env_key = getenv('RAIDLANDS_STEAM_API_KEY');
+        $key = is_string($env_key) ? trim($env_key) : '';
+    }
+
+    if ($key === 'steam_web_api_key_replace_me' || str_contains($key, 'replace_me')) {
+        return '';
+    }
+
+    return $key;
+}
+
+function raidlands_store_steam_profiles_enabled(): bool
+{
+    return raidlands_store_steam_api_key() !== '';
+}
+
+function raidlands_store_steam_profile_cache_seconds(): int
+{
+    global $steam_api_config;
+
+    return max(300, (int) ($steam_api_config['cacheSeconds'] ?? 86400));
+}
+
+function raidlands_store_steam_api_base_url(): string
+{
+    global $steam_api_config;
+
+    $base_url = trim((string) ($steam_api_config['baseUrl'] ?? 'https://api.steampowered.com'));
+
+    return rtrim($base_url !== '' ? $base_url : 'https://api.steampowered.com', '/');
+}
+
+function raidlands_store_clean_profile_text($value, int $max_length = 120): string
+{
+    $text = trim(str_replace("\0", '', (string) $value));
+    $text = preg_replace('/[ \t\r\n]+/', ' ', $text) ?? $text;
+    $text = strip_tags($text);
+
+    if (function_exists('mb_substr')) {
+        return mb_substr($text, 0, $max_length);
+    }
+
+    return substr($text, 0, $max_length);
+}
+
+function raidlands_store_clean_profile_url($value): string
+{
+    $url = trim(str_replace("\0", '', (string) $value));
+
+    if ($url === '' || strlen($url) > 500 || filter_var($url, FILTER_VALIDATE_URL) === false) {
+        return '';
+    }
+
+    $scheme = strtolower((string) parse_url($url, PHP_URL_SCHEME));
+
+    if (!in_array($scheme, ['http', 'https'], true)) {
+        return '';
+    }
+
+    return $url;
+}
+
+function raidlands_store_http_get(string $url, int $timeout = 6): ?string
+{
+    if (function_exists('curl_init')) {
+        $curl = curl_init($url);
+
+        if ($curl !== false) {
+            curl_setopt_array($curl, [
+                CURLOPT_CONNECTTIMEOUT => min(3, $timeout),
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_TIMEOUT => $timeout,
+                CURLOPT_USERAGENT => 'RaidlandsSteamProfile/1.0',
+            ]);
+
+            $response = curl_exec($curl);
+            $status = (int) curl_getinfo($curl, CURLINFO_HTTP_CODE);
+            curl_close($curl);
+
+            if (is_string($response) && $status >= 200 && $status < 300) {
+                return $response;
+            }
+        }
+    }
+
+    $context = stream_context_create([
+        'http' => [
+            'header' => "User-Agent: RaidlandsSteamProfile/1.0\r\n",
+            'ignore_errors' => false,
+            'timeout' => $timeout,
+        ],
+    ]);
+    $response = @file_get_contents($url, false, $context);
+
+    return is_string($response) ? $response : null;
+}
+
+function raidlands_store_normalize_steam_profile(array $api_player): array
+{
+    $steam_id64 = preg_replace('/\D+/', '', (string) ($api_player['steamid'] ?? '')) ?? '';
+
+    if (!raidlands_store_validate_steam_id64($steam_id64)) {
+        return [];
+    }
+
+    $avatar_url = raidlands_store_clean_profile_url($api_player['avatarfull'] ?? '');
+
+    if ($avatar_url === '') {
+        $avatar_url = raidlands_store_clean_profile_url($api_player['avatarmedium'] ?? '');
+    }
+
+    if ($avatar_url === '') {
+        $avatar_url = raidlands_store_clean_profile_url($api_player['avatar'] ?? '');
+    }
+
+    return [
+        'steam_id64' => $steam_id64,
+        'display_name' => raidlands_store_clean_profile_text($api_player['personaname'] ?? '', 120),
+        'avatar_url' => $avatar_url,
+        'profile_url' => raidlands_store_clean_profile_url($api_player['profileurl'] ?? ''),
+    ];
+}
+
+function raidlands_store_fetch_steam_profiles(array $steam_ids): array
+{
+    $api_key = raidlands_store_steam_api_key();
+
+    if ($api_key === '') {
+        return [];
+    }
+
+    $valid_ids = [];
+
+    foreach ($steam_ids as $steam_id64) {
+        $steam_id64 = preg_replace('/\D+/', '', (string) $steam_id64) ?? '';
+
+        if (raidlands_store_validate_steam_id64($steam_id64)) {
+            $valid_ids[$steam_id64] = $steam_id64;
+        }
+    }
+
+    if ($valid_ids === []) {
+        return [];
+    }
+
+    $profiles = [];
+
+    foreach (array_chunk(array_values($valid_ids), 100) as $chunk) {
+        $query = http_build_query([
+            'key' => $api_key,
+            'steamids' => implode(',', $chunk),
+            'format' => 'json',
+        ], '', '&', PHP_QUERY_RFC3986);
+        $response = raidlands_store_http_get(
+            raidlands_store_steam_api_base_url() . '/ISteamUser/GetPlayerSummaries/v2/?' . $query
+        );
+
+        if ($response === null) {
+            continue;
+        }
+
+        $decoded = json_decode($response, true);
+        $players = is_array($decoded) ? ($decoded['response']['players'] ?? []) : [];
+
+        if (!is_array($players)) {
+            continue;
+        }
+
+        foreach ($players as $api_player) {
+            if (!is_array($api_player)) {
+                continue;
+            }
+
+            $profile = raidlands_store_normalize_steam_profile($api_player);
+
+            if ($profile !== []) {
+                $profiles[(string) $profile['steam_id64']] = $profile;
+            }
+        }
+    }
+
+    return $profiles;
+}
+
+function raidlands_store_fetch_steam_profile(string $steam_id64): array
+{
+    $steam_id64 = preg_replace('/\D+/', '', $steam_id64) ?? '';
+
+    if (!raidlands_store_validate_steam_id64($steam_id64)) {
+        return [];
+    }
+
+    $profiles = raidlands_store_fetch_steam_profiles([$steam_id64]);
+
+    return $profiles[$steam_id64] ?? [];
+}
+
+function raidlands_store_steam_profile_targets(array $players): array
+{
+    $targets = [];
+
+    foreach ($players as $player) {
+        if (!is_array($player)) {
+            continue;
+        }
+
+        $player_id = (int) ($player['player_id'] ?? $player['id'] ?? 0);
+        $steam_id64 = preg_replace('/\D+/', '', (string) ($player['steam_id64'] ?? '')) ?? '';
+
+        if ($player_id > 0 && raidlands_store_validate_steam_id64($steam_id64)) {
+            $targets[$steam_id64] = $player_id;
+        }
+    }
+
+    return $targets;
+}
+
+function raidlands_store_sql_in_params(array $values, string $prefix = 'value'): array
+{
+    $placeholders = [];
+    $params = [];
+
+    foreach (array_values($values) as $index => $value) {
+        $key = $prefix . $index;
+        $placeholders[] = ':' . $key;
+        $params[$key] = $value;
+    }
+
+    return [$placeholders, $params];
+}
+
+function raidlands_store_upsert_steam_identity(PDO $pdo, int $player_id, string $steam_id64, array $profile, bool $verified): void
+{
+    if ($player_id <= 0 || !raidlands_store_validate_steam_id64($steam_id64)) {
+        return;
+    }
+
+    $display_name = raidlands_store_clean_profile_text($profile['display_name'] ?? '', 120);
+    $avatar_url = raidlands_store_clean_profile_url($profile['avatar_url'] ?? '');
+    $profile_url = raidlands_store_clean_profile_url($profile['profile_url'] ?? '');
+    $statement = $pdo->prepare(
+        'INSERT INTO steam_identities (player_id, steam_id64, display_name, avatar_url, profile_url, verified_at)
+         VALUES (:player_id, :steam_id64, :display_name, :avatar_url, :profile_url, :verified_at)
+         ON DUPLICATE KEY UPDATE
+            player_id = VALUES(player_id),
+            display_name = IF(VALUES(display_name) <> "", VALUES(display_name), display_name),
+            avatar_url = IF(VALUES(avatar_url) <> "", VALUES(avatar_url), avatar_url),
+            profile_url = IF(VALUES(profile_url) <> "", VALUES(profile_url), profile_url),
+            verified_at = COALESCE(VALUES(verified_at), verified_at),
+            updated_at = NOW()'
+    );
+    $statement->execute([
+        'player_id' => $player_id,
+        'steam_id64' => $steam_id64,
+        'display_name' => $display_name,
+        'avatar_url' => $avatar_url,
+        'profile_url' => $profile_url,
+        'verified_at' => $verified ? gmdate('Y-m-d H:i:s') : null,
+    ]);
+}
+
+function raidlands_store_prime_steam_profiles(array $players): void
+{
+    if (!raidlands_store_steam_profiles_enabled() || !raidlands_db_is_configured()) {
+        return;
+    }
+
+    $targets = raidlands_store_steam_profile_targets($players);
+
+    if ($targets === []) {
+        return;
+    }
+
+    try {
+        $pdo = raidlands_db_required();
+        [$placeholders, $params] = raidlands_store_sql_in_params(array_keys($targets), 'steam');
+        $rows = raidlands_db_fetch_all(
+            'SELECT steam_id64, avatar_url, profile_url, updated_at
+             FROM steam_identities
+             WHERE steam_id64 IN (' . implode(', ', $placeholders) . ')',
+            $params
+        );
+        $existing = [];
+
+        foreach ($rows as $row) {
+            $existing[(string) $row['steam_id64']] = $row;
+        }
+
+        $refresh_before = time() - raidlands_store_steam_profile_cache_seconds();
+        $stale_ids = [];
+
+        foreach (array_keys($targets) as $steam_id64) {
+            $row = $existing[$steam_id64] ?? null;
+            $updated_at = is_array($row) ? strtotime((string) ($row['updated_at'] ?? '')) : false;
+
+            if (
+                $row === null
+                || trim((string) ($row['avatar_url'] ?? '')) === ''
+                || trim((string) ($row['profile_url'] ?? '')) === ''
+                || $updated_at === false
+                || $updated_at < $refresh_before
+            ) {
+                $stale_ids[] = $steam_id64;
+            }
+        }
+
+        if ($stale_ids === []) {
+            return;
+        }
+
+        foreach (raidlands_store_fetch_steam_profiles($stale_ids) as $steam_id64 => $profile) {
+            raidlands_store_upsert_steam_identity($pdo, (int) $targets[$steam_id64], $steam_id64, $profile, false);
+        }
+    } catch (Throwable $error) {
+        return;
+    }
+}
+
+function raidlands_store_steam_profiles_for_players(array $players): array
+{
+    if (!raidlands_store_steam_profiles_enabled() || !raidlands_db_is_configured()) {
+        return [];
+    }
+
+    $targets = raidlands_store_steam_profile_targets($players);
+
+    if ($targets === []) {
+        return [];
+    }
+
+    try {
+        raidlands_store_prime_steam_profiles($players);
+        [$placeholders, $params] = raidlands_store_sql_in_params(array_keys($targets), 'steam');
+        $rows = raidlands_db_fetch_all(
+            'SELECT
+                steam_id64,
+                display_name AS steam_display_name,
+                avatar_url AS steam_avatar_url,
+                profile_url AS steam_profile_url,
+                updated_at AS steam_profile_updated_at
+             FROM steam_identities
+             WHERE steam_id64 IN (' . implode(', ', $placeholders) . ')',
+            $params
+        );
+    } catch (Throwable $error) {
+        return [];
+    }
+
+    $profiles = [];
+
+    foreach ($rows as $row) {
+        $steam_id64 = (string) ($row['steam_id64'] ?? '');
+
+        if (!raidlands_store_validate_steam_id64($steam_id64)) {
+            continue;
+        }
+
+        $profiles[$steam_id64] = [
+            'steam_display_name' => raidlands_store_clean_profile_text($row['steam_display_name'] ?? '', 120),
+            'steam_avatar_url' => raidlands_store_clean_profile_url($row['steam_avatar_url'] ?? ''),
+            'steam_profile_url' => raidlands_store_clean_profile_url($row['steam_profile_url'] ?? ''),
+            'steam_profile_updated_at' => (string) ($row['steam_profile_updated_at'] ?? ''),
+        ];
+    }
+
+    return $profiles;
+}
+
+function raidlands_store_attach_steam_profiles(array $players): array
+{
+    if (!raidlands_store_steam_profiles_enabled() || $players === []) {
+        return $players;
+    }
+
+    $profiles = raidlands_store_steam_profiles_for_players($players);
+
+    if ($profiles === []) {
+        return $players;
+    }
+
+    foreach ($players as &$player) {
+        if (!is_array($player)) {
+            continue;
+        }
+
+        $steam_id64 = preg_replace('/\D+/', '', (string) ($player['steam_id64'] ?? '')) ?? '';
+        $profile = $profiles[$steam_id64] ?? null;
+
+        if (!is_array($profile)) {
+            continue;
+        }
+
+        $player = array_merge($player, $profile);
+
+        if (trim((string) ($player['display_name'] ?? '')) === '' && $profile['steam_display_name'] !== '') {
+            $player['display_name'] = $profile['steam_display_name'];
+        }
+    }
+    unset($player);
+
+    return $players;
+}
+
 function raidlands_store_money(int $amount_cents, string $currency = 'usd'): string
 {
     if ($amount_cents <= 0) {
@@ -375,6 +785,7 @@ function raidlands_store_current_player(): ?array
         );
 
         if ($row !== null) {
+            $row = raidlands_store_attach_steam_profiles([$row])[0] ?? $row;
             $_SESSION['raidlands_player'] = $row;
             return $row;
         }
@@ -394,10 +805,20 @@ function raidlands_store_link_player(string $steam_id64, string $display_name = 
         throw new InvalidArgumentException('Enter a valid 17-digit Steam ID. It should start with 7656119.');
     }
 
+    $steam_profile = raidlands_store_fetch_steam_profile($steam_id64);
+    $display_name = trim($display_name);
+
+    if ($display_name === '' && !empty($steam_profile['display_name'])) {
+        $display_name = (string) $steam_profile['display_name'];
+    }
+
     $player = [
         'id' => null,
         'steam_id64' => $steam_id64,
-        'display_name' => trim($display_name),
+        'display_name' => $display_name,
+        'steam_display_name' => (string) ($steam_profile['display_name'] ?? ''),
+        'steam_avatar_url' => (string) ($steam_profile['avatar_url'] ?? ''),
+        'steam_profile_url' => (string) ($steam_profile['profile_url'] ?? ''),
     ];
 
     if (raidlands_db_is_configured()) {
@@ -415,7 +836,7 @@ function raidlands_store_link_player(string $steam_id64, string $display_name = 
             );
             $statement->execute([
                 'steam_id64' => $steam_id64,
-                'display_name' => trim($display_name),
+                'display_name' => $display_name,
             ]);
 
             $row = raidlands_db_fetch_one(
@@ -427,23 +848,12 @@ function raidlands_store_link_player(string $steam_id64, string $display_name = 
                 throw new RuntimeException('The player record could not be loaded after linking.');
             }
 
-            $identity = $pdo->prepare(
-                'INSERT INTO steam_identities (player_id, steam_id64, display_name, verified_at)
-                 VALUES (:player_id, :steam_id64, :display_name, NOW())
-                 ON DUPLICATE KEY UPDATE
-                    player_id = VALUES(player_id),
-                    display_name = IF(VALUES(display_name) <> "", VALUES(display_name), display_name),
-                    verified_at = NOW(),
-                    updated_at = NOW()'
-            );
-            $identity->execute([
-                'player_id' => (int) $row['id'],
-                'steam_id64' => $steam_id64,
-                'display_name' => trim($display_name),
-            ]);
+            $identity_profile = $steam_profile;
+            $identity_profile['display_name'] = $display_name;
+            raidlands_store_upsert_steam_identity($pdo, (int) $row['id'], $steam_id64, $identity_profile, true);
 
             $pdo->commit();
-            $player = $row;
+            $player = raidlands_store_attach_steam_profiles([$row])[0] ?? $row;
         } catch (Throwable $error) {
             $pdo->rollBack();
             throw $error;

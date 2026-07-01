@@ -156,6 +156,10 @@ img {
   will-change: opacity, transform, filter;
 }
 
+.motion-ready .reveal-on-scroll.is-reveal-complete {
+  will-change: auto;
+}
+
 .motion-ready .reveal-on-scroll:not(.is-visible) {
   opacity: 0;
   transform: translate3d(0, 34px, 0);
@@ -198,6 +202,29 @@ img {
   }
 }
 
+@media (max-width: 700px), (pointer: coarse) {
+  html.mobile-performance-mode.motion-ready .reveal-on-scroll {
+    will-change: auto;
+  }
+
+  html.mobile-performance-mode.motion-ready .reveal-on-scroll:not(.is-visible),
+  html.mobile-performance-mode.motion-ready .reveal-on-scroll.reveal-left:not(.is-visible),
+  html.mobile-performance-mode.motion-ready .reveal-on-scroll.reveal-right:not(.is-visible) {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+    filter: none;
+  }
+
+  html.mobile-performance-mode.motion-ready .reveal-on-scroll.is-visible,
+  html.mobile-performance-mode.motion-ready .reveal-on-scroll.reveal-left.is-visible,
+  html.mobile-performance-mode.motion-ready .reveal-on-scroll.reveal-right.is-visible {
+    filter: none;
+    animation-name: mobile-reveal-up;
+    animation-duration: .46s;
+    animation-timing-function: cubic-bezier(.2, .72, .18, 1);
+  }
+}
+
 .app-shell::before {
   position: fixed;
   inset: 0;
@@ -223,6 +250,85 @@ img {
     var(--grunge-texture) center / 640px repeat;
   opacity: .20;
   mix-blend-mode: soft-light;
+}
+
+@media (max-width: 700px), (pointer: coarse) {
+  body::before,
+  .site-header::before,
+  .site-header::after,
+  .app-shell::before,
+  .hero-inner::before,
+  .wipe-bar::before,
+  .image-panel::after {
+    animation: none;
+  }
+
+  body::before {
+    opacity: .24;
+  }
+
+  .app-shell::before {
+    opacity: .16;
+    mix-blend-mode: normal;
+  }
+
+  .app-shell::after {
+    opacity: .13;
+    mix-blend-mode: normal;
+  }
+
+  .ambient-effects {
+    mix-blend-mode: normal;
+    opacity: .72;
+  }
+
+  .ambient-effects.is-lite .ember-particle::before {
+    filter: none;
+    box-shadow: 0 0 8px rgba(255, 138, 40, .36);
+    animation: none;
+  }
+
+  .ambient-effects.is-lite .ember-particle.is-ash::before {
+    box-shadow: 0 0 6px rgba(243, 238, 227, .12);
+  }
+
+  .btn::before,
+  .metal-card::after,
+  .metal-panel::after,
+  .route-card::after,
+  .image-panel::before,
+  .quick-feature::before,
+  .quick-feature::after,
+  .section-divider::before,
+  .footer-logo-wrap::before {
+    animation: none;
+  }
+
+  .btn::before {
+    background-position: 42% 0, 0 0, 0 0;
+  }
+
+  .metal-card::after,
+  .metal-panel::after,
+  .route-card::after {
+    background-position: 36% 0, 0 0, center;
+    opacity: .22;
+  }
+
+  .image-panel::before {
+    opacity: .26;
+    transform: translateX(-18%) skewX(-17deg);
+  }
+
+  .image-panel::after,
+  .hero-inner::before,
+  .wipe-bar::before {
+    transform: none;
+  }
+
+  .online-light {
+    animation-duration: 4.8s;
+  }
 }
 
 .site-header,
@@ -2433,6 +2539,56 @@ h3,
   margin: 0 0 20px;
 }
 
+.steam-avatar {
+  display: inline-flex;
+  flex: 0 0 auto;
+  align-items: center;
+  justify-content: center;
+  overflow: hidden;
+  border: 1px solid rgba(255, 138, 40, .42);
+  border-radius: 50%;
+  background:
+    var(--console-scan) center / 220px repeat,
+    rgba(0, 0, 0, .42);
+  box-shadow: 0 0 0 3px rgba(255, 138, 40, .08);
+}
+
+.steam-avatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.steam-avatar-sm {
+  width: 42px;
+  height: 42px;
+}
+
+.steam-avatar-lg {
+  width: 82px;
+  height: 82px;
+}
+
+.leaderboard-player,
+.linked-steam-account,
+.player-profile-heading {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  min-width: 0;
+}
+
+.leaderboard-player-copy {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.leaderboard-player-copy strong {
+  overflow-wrap: anywhere;
+}
+
 .leaderboard-table strong {
   color: var(--white);
 }
@@ -2449,6 +2605,23 @@ h3,
   color: rgba(244, 239, 229, .5);
   font-family: Consolas, "Liberation Mono", monospace;
   font-size: .8rem;
+  text-decoration: none;
+}
+
+a.leaderboard-steam:hover,
+.profile-steam-link:hover {
+  color: var(--orange);
+}
+
+.profile-steam-link {
+  display: inline-flex;
+  width: fit-content;
+  margin-top: 10px;
+  color: var(--white);
+  font-family: var(--font-display);
+  font-size: .78rem;
+  text-decoration: none;
+  text-transform: uppercase;
 }
 
 .profile-stat-grid {
@@ -2672,6 +2845,18 @@ h3,
     opacity: 1;
     transform: none;
     filter: blur(0);
+  }
+}
+
+@keyframes mobile-reveal-up {
+  0% {
+    opacity: 0;
+    transform: translate3d(0, 18px, 0);
+  }
+
+  100% {
+    opacity: 1;
+    transform: none;
   }
 }
 

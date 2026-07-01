@@ -6,6 +6,7 @@
 
   const pageId = doc.dataset.page || "home";
   const CONFIG = getSiteConfig();
+  const MOBILE_PERFORMANCE_QUERY = "(max-width: 700px), (pointer: coarse)";
 
   function getSiteConfig() {
     const basePath = doc.dataset.base || "./";
@@ -96,23 +97,25 @@
 
   function initEffects() {
     const reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+    const mobilePerformance = isMobilePerformanceMode();
 
-    initCardGlareTiming(reducedMotion);
-    initScrollReveals(reducedMotion);
+    doc.classList.toggle("mobile-performance-mode", mobilePerformance);
+    initCardGlareTiming(reducedMotion, mobilePerformance);
+    initScrollReveals(reducedMotion, mobilePerformance);
 
     if (!reducedMotion) {
       queueEmberField();
     }
   }
 
-  function initCardGlareTiming(reducedMotion) {
+  function initCardGlareTiming(reducedMotion, mobilePerformance) {
     if (reducedMotion) return;
 
     app.querySelectorAll(".metal-card, .metal-panel, .route-card").forEach(panel => {
-      const duration = randomBetween(10.5, 18.5);
+      const duration = mobilePerformance ? randomBetween(24, 38) : randomBetween(10.5, 18.5);
       panel.style.setProperty("--surface-glare-duration", `${duration.toFixed(2)}s`);
       panel.style.setProperty("--surface-glare-delay", `${randomBetween(-duration, 0).toFixed(2)}s`);
-      panel.style.setProperty("--surface-glare-opacity", randomBetween(.24, .44).toFixed(2));
+      panel.style.setProperty("--surface-glare-opacity", randomBetween(mobilePerformance ? .14 : .24, mobilePerformance ? .24 : .44).toFixed(2));
     });
   }
 
@@ -132,28 +135,33 @@
     if (!shell || shell.querySelector(".ambient-effects")) return;
 
     const field = document.createElement("div");
-    const isMobile = window.innerWidth < 640;
-    const particleCount = isMobile ? 20 : 40;
+    const mobilePerformance = isMobilePerformanceMode();
+    const isMobile = mobilePerformance || window.innerWidth < 640;
+    const particleCount = mobilePerformance ? 6 : isMobile ? 20 : 40;
     const particles = document.createDocumentFragment();
 
-    field.className = "ambient-effects";
+    field.className = `ambient-effects${mobilePerformance ? " is-lite" : ""}`;
     field.setAttribute("aria-hidden", "true");
 
     for (let index = 0; index < particleCount; index += 1) {
       const particle = document.createElement("span");
       const isAsh = index % 7 === 0;
-      const size = isAsh ? randomBetween(1.5, 3.5) : randomBetween(2, 6);
-      const duration = isAsh ? randomBetween(22, 36) : randomBetween(16, 30);
+      const size = mobilePerformance
+        ? randomBetween(isAsh ? 1.4 : 1.8, isAsh ? 2.4 : 3.6)
+        : isAsh ? randomBetween(1.5, 3.5) : randomBetween(2, 6);
+      const duration = mobilePerformance
+        ? randomBetween(isAsh ? 34 : 28, isAsh ? 52 : 44)
+        : isAsh ? randomBetween(22, 36) : randomBetween(16, 30);
 
       particle.className = `ember-particle ${isAsh ? "is-ash" : "is-spark"}`;
       particle.style.setProperty("--x", `${randomBetween(isMobile ? 8 : -4, isMobile ? 92 : 104).toFixed(2)}%`);
-      particle.style.setProperty("--drift", `${randomBetween(isMobile ? -28 : -96, isMobile ? 28 : 96).toFixed(2)}px`);
+      particle.style.setProperty("--drift", `${randomBetween(mobilePerformance ? -18 : isMobile ? -28 : -96, mobilePerformance ? 18 : isMobile ? 28 : 96).toFixed(2)}px`);
       particle.style.setProperty("--size", `${size.toFixed(2)}px`);
       particle.style.setProperty("--duration", `${duration.toFixed(2)}s`);
       particle.style.setProperty("--delay", `${randomBetween(-duration, 0).toFixed(2)}s`);
-      particle.style.setProperty("--opacity", randomBetween(.18, .56).toFixed(2));
-      particle.style.setProperty("--blur", `${randomBetween(0, 1.4).toFixed(2)}px`);
-      particle.style.setProperty("--pulse", `${randomBetween(2.2, 5.4).toFixed(2)}s`);
+      particle.style.setProperty("--opacity", randomBetween(mobilePerformance ? .14 : .18, mobilePerformance ? .34 : .56).toFixed(2));
+      particle.style.setProperty("--blur", `${randomBetween(0, mobilePerformance ? .35 : 1.4).toFixed(2)}px`);
+      particle.style.setProperty("--pulse", `${randomBetween(mobilePerformance ? 4.8 : 2.2, mobilePerformance ? 8.2 : 5.4).toFixed(2)}s`);
       particles.appendChild(particle);
     }
 
@@ -161,7 +169,7 @@
     shell.prepend(field);
   }
 
-  function initScrollReveals(reducedMotion) {
+  function initScrollReveals(reducedMotion, mobilePerformance) {
     const revealGroups = [
       [".hero-copy, .page-hero-logo, .page-hero-copy", "reveal-left"],
       [".status-panel, .page-hero .button-row, .image-panel", "reveal-right"],
@@ -176,13 +184,13 @@
 
         seen.add(element);
         element.classList.add("reveal-on-scroll", direction);
-        element.style.setProperty("--reveal-delay", `${Math.min(index * 55, 360)}ms`);
+        element.style.setProperty("--reveal-delay", `${Math.min(index * (mobilePerformance ? 30 : 55), mobilePerformance ? 160 : 360)}ms`);
         elements.push(element);
       });
     });
 
     if (reducedMotion || !("IntersectionObserver" in window)) {
-      elements.forEach(element => element.classList.add("is-visible"));
+      elements.forEach(element => markRevealVisible(element, true));
       return;
     }
 
@@ -192,17 +200,34 @@
       entries.forEach(entry => {
         if (!entry.isIntersecting) return;
 
-        entry.target.classList.add("is-visible");
+        markRevealVisible(entry.target, mobilePerformance);
         observer.unobserve(entry.target);
       });
     }, {
-      rootMargin: "0px 0px -12% 0px",
-      threshold: .12
+      rootMargin: mobilePerformance ? "0px 0px -4% 0px" : "0px 0px -12% 0px",
+      threshold: mobilePerformance ? .05 : .12
     });
 
     window.requestAnimationFrame(() => {
       elements.forEach(element => observer.observe(element));
     });
+  }
+
+  function markRevealVisible(element, clearImmediately = false) {
+    element.classList.add("is-visible");
+
+    if (clearImmediately) {
+      element.classList.add("is-reveal-complete");
+      return;
+    }
+
+    window.setTimeout(() => {
+      element.classList.add("is-reveal-complete");
+    }, 820);
+  }
+
+  function isMobilePerformanceMode() {
+    return window.matchMedia && window.matchMedia(MOBILE_PERFORMANCE_QUERY).matches;
   }
 
   function randomBetween(min, max) {

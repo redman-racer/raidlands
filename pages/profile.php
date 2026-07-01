@@ -15,6 +15,19 @@ if ($profile_player !== null && !empty($profile_player['id'])) {
     $profile_active_groups = $state['groups'];
     $profile_stats = raidlands_stats_player_summary((int) $profile_player['id']);
 }
+
+$profile_display_name = $profile_player !== null
+    ? (string) ($profile_player['display_name'] ?: ($profile_player['steam_display_name'] ?? 'Raidlands Player'))
+    : '';
+$profile_avatar = $profile_player !== null
+    ? render_steam_avatar(
+        (string) ($profile_player['steam_avatar_url'] ?? ''),
+        (string) ($profile_player['steam_profile_url'] ?? ''),
+        $profile_display_name,
+        'steam-avatar-lg'
+    )
+    : '';
+$profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_profile_url'] ?? '')) : '';
 ?>
 <?= render_page_hero('profile',
     '<a class="btn btn-primary" href="' . e(route_url('store')) . '">Shop VIP</a>'
@@ -40,10 +53,18 @@ if ($profile_player !== null && !empty($profile_player['id'])) {
     <?php else : ?>
       <div class="split-panel">
         <div class="metal-panel">
-          <p class="section-kicker">Linked player</p>
-          <h2><?= e((string) ($profile_player['display_name'] ?: 'Raidlands Player')) ?></h2>
+          <div class="player-profile-heading">
+            <?= $profile_avatar ?>
+            <div>
+              <p class="section-kicker">Linked player</p>
+              <h2><?= e($profile_display_name) ?></h2>
+            </div>
+          </div>
           <div class="auth-status is-linked">
             <strong>Steam ID:</strong> <code><?= e((string) $profile_player['steam_id64']) ?></code>
+            <?php if ($profile_url !== '') : ?>
+              <a class="profile-steam-link" href="<?= e($profile_url) ?>" target="_blank" rel="noopener noreferrer">Open Steam Profile</a>
+            <?php endif; ?>
           </div>
           <div class="tag-row">
             <?php if ($profile_active_groups === []) : ?>

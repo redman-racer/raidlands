@@ -396,6 +396,7 @@ function raidlands_stats_leaderboard(string $metric = 'kills', string $scope = '
 
         $rows = raidlands_db_fetch_all(
             "SELECT
+                p.id AS player_id,
                 p.steam_id64,
                 COALESCE(NULLIF(s.display_name, ''), NULLIF(p.display_name, ''), 'Raidlands Player') AS display_name,
                 s.kills,
@@ -414,6 +415,7 @@ function raidlands_stats_leaderboard(string $metric = 'kills', string $scope = '
     } else {
         $rows = raidlands_db_fetch_all(
             "SELECT
+                p.id AS player_id,
                 p.steam_id64,
                 COALESCE(NULLIF(MAX(NULLIF(s.display_name, '')), ''), NULLIF(p.display_name, ''), 'Raidlands Player') AS display_name,
                 SUM(s.kills) AS kills,
@@ -441,6 +443,8 @@ function raidlands_stats_leaderboard(string $metric = 'kills', string $scope = '
         $row['reward_points'] = (int) $row['reward_points'];
     }
     unset($row);
+
+    $rows = raidlands_store_attach_steam_profiles($rows);
 
     return $rows;
 }

@@ -95,11 +95,30 @@ function leaderboard_metric_value(array $row, string $metric): string
           </thead>
           <tbody>
             <?php foreach ($leaderboard_rows as $row) : ?>
+              <?php
+                $leaderboard_name = (string) ($row['display_name'] ?: ($row['steam_display_name'] ?? 'Raidlands Player'));
+                $leaderboard_avatar = render_steam_avatar(
+                    (string) ($row['steam_avatar_url'] ?? ''),
+                    (string) ($row['steam_profile_url'] ?? ''),
+                    $leaderboard_name,
+                    'steam-avatar-sm'
+                );
+                $leaderboard_profile_url = trim((string) ($row['steam_profile_url'] ?? ''));
+              ?>
               <tr>
                 <td><span class="leaderboard-rank">#<?= e((string) $row['rank']) ?></span></td>
                 <td>
-                  <strong><?= e((string) $row['display_name']) ?></strong>
-                  <span class="leaderboard-steam"><?= e((string) $row['steam_id64']) ?></span>
+                  <div class="leaderboard-player">
+                    <?= $leaderboard_avatar ?>
+                    <span class="leaderboard-player-copy">
+                      <strong><?= e($leaderboard_name) ?></strong>
+                      <?php if ($leaderboard_profile_url !== '') : ?>
+                        <a class="leaderboard-steam" href="<?= e($leaderboard_profile_url) ?>" target="_blank" rel="noopener noreferrer"><?= e((string) $row['steam_id64']) ?></a>
+                      <?php else : ?>
+                        <span class="leaderboard-steam"><?= e((string) $row['steam_id64']) ?></span>
+                      <?php endif; ?>
+                    </span>
+                  </div>
                 </td>
                 <td><strong><?= e(leaderboard_metric_value($row, $leaderboard_metric)) ?></strong></td>
                 <td><?= e(raidlands_stats_format_number($row['kills'])) ?></td>
