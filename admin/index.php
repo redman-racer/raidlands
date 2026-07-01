@@ -105,7 +105,22 @@ function admin_status_options(): array
     <meta name="robots" content="noindex, nofollow">
     <title>Raidlands Admin</title>
     <meta name="theme-color" content="#0b0d0e">
-    <link rel="icon" href="<?= e(asset_url('icons/favicon.ico')) ?>">
+    <meta name="msapplication-TileColor" content="#050607">
+    <meta name="msapplication-TileImage" content="<?= e(asset_url('icons/mstile-150x150.png')) ?>">
+    <meta name="msapplication-config" content="<?= e($base_path . 'browserconfig.xml') ?>">
+    <link rel="icon" href="<?= e(asset_url('icons/favicon.ico')) ?>" type="image/x-icon">
+    <link rel="icon" href="<?= e(asset_url('icons/favicon-16x16.ico')) ?>" sizes="16x16" type="image/x-icon">
+    <link rel="icon" href="<?= e(asset_url('icons/favicon-32x32.ico')) ?>" sizes="32x32" type="image/x-icon">
+    <link rel="icon" href="<?= e(asset_url('icons/favicon-48x48.ico')) ?>" sizes="48x48" type="image/x-icon">
+    <link rel="icon" href="<?= e(asset_url('icons/favicon-64x64.ico')) ?>" sizes="64x64" type="image/x-icon">
+    <link rel="icon" href="<?= e(asset_url('icons/favicon-96x96.ico')) ?>" sizes="96x96" type="image/x-icon">
+    <link rel="icon" href="<?= e(asset_url('icons/favicon-128x128.png')) ?>" sizes="128x128" type="image/png">
+    <link rel="icon" href="<?= e(asset_url('icons/favicon-180x180.png')) ?>" sizes="180x180" type="image/png">
+    <link rel="icon" href="<?= e(asset_url('icons/favicon-192x192.png')) ?>" sizes="192x192" type="image/png">
+    <link rel="icon" href="<?= e(asset_url('icons/favicon-256x256.png')) ?>" sizes="256x256" type="image/png">
+    <link rel="icon" href="<?= e(asset_url('icons/favicon-512x512.png')) ?>" sizes="512x512" type="image/png">
+    <link rel="apple-touch-icon" href="<?= e(asset_url('icons/apple-touch-icon.png')) ?>" sizes="180x180">
+    <link rel="manifest" href="<?= e($base_path . 'site.webmanifest') ?>">
     <link rel="stylesheet" href="<?= e(asset_url('css/styles.css')) ?>">
   </head>
   <body class="admin-body">
@@ -137,7 +152,14 @@ function admin_status_options(): array
     <?php else : ?>
       <header class="admin-topbar">
         <a class="admin-brand" href="<?= e(route_url()) ?>">
-          <img src="<?= e(asset_url('media/nav-logo.png')) ?>" alt="Raidlands">
+          <img
+            src="<?= e(asset_url('media/horizontal-logo-xsm.webp')) ?>"
+            srcset="<?= e(asset_url('media/horizontal-logo-xxsm.webp')) ?> 120w, <?= e(asset_url('media/horizontal-logo-xsm.webp')) ?> 300w, <?= e(asset_url('media/horizontal-logo-sm.webp')) ?> 550w, <?= e(asset_url('media/horizontal-logo-med.webp')) ?> 1100w"
+            sizes="(max-width: 520px) 136px, 168px"
+            width="300"
+            height="100"
+            alt="Raidlands"
+            decoding="async">
           <span>Admin</span>
         </a>
         <div class="admin-topbar-actions">

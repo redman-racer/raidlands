@@ -13,21 +13,34 @@ $linked_player = raidlands_linked_player();
     <title><?= e($seo['title']) ?></title>
     <meta name="description" content="<?= e($seo['description']) ?>">
     <meta name="theme-color" content="#0b0d0e">
+    <meta name="msapplication-TileColor" content="#050607">
+    <meta name="msapplication-TileImage" content="<?= e(asset_url('icons/mstile-150x150.png')) ?>">
+    <meta name="msapplication-config" content="<?= e($base_path . 'browserconfig.xml') ?>">
     <meta property="og:title" content="<?= e($seo['ogTitle']) ?>">
     <meta property="og:description" content="<?= e($seo['ogDescription']) ?>">
     <meta property="og:type" content="website">
     <meta property="og:image" content="<?= e(asset_url('media/og-image.png')) ?>">
-    <link rel="icon" href="<?= e(asset_url('icons/favicon.ico')) ?>">
-    <link rel="apple-touch-icon" href="<?= e(asset_url('icons/apple-touch-icon.png')) ?>">
+    <link rel="icon" href="<?= e(asset_url('icons/favicon.ico')) ?>" type="image/x-icon">
+    <link rel="icon" href="<?= e(asset_url('icons/favicon-16x16.ico')) ?>" sizes="16x16" type="image/x-icon">
+    <link rel="icon" href="<?= e(asset_url('icons/favicon-32x32.ico')) ?>" sizes="32x32" type="image/x-icon">
+    <link rel="icon" href="<?= e(asset_url('icons/favicon-48x48.ico')) ?>" sizes="48x48" type="image/x-icon">
+    <link rel="icon" href="<?= e(asset_url('icons/favicon-64x64.ico')) ?>" sizes="64x64" type="image/x-icon">
+    <link rel="icon" href="<?= e(asset_url('icons/favicon-96x96.ico')) ?>" sizes="96x96" type="image/x-icon">
+    <link rel="icon" href="<?= e(asset_url('icons/favicon-128x128.png')) ?>" sizes="128x128" type="image/png">
+    <link rel="icon" href="<?= e(asset_url('icons/favicon-180x180.png')) ?>" sizes="180x180" type="image/png">
+    <link rel="icon" href="<?= e(asset_url('icons/favicon-192x192.png')) ?>" sizes="192x192" type="image/png">
+    <link rel="icon" href="<?= e(asset_url('icons/favicon-256x256.png')) ?>" sizes="256x256" type="image/png">
+    <link rel="icon" href="<?= e(asset_url('icons/favicon-512x512.png')) ?>" sizes="512x512" type="image/png">
+    <link rel="apple-touch-icon" href="<?= e(asset_url('icons/apple-touch-icon.png')) ?>" sizes="180x180">
     <link rel="manifest" href="<?= e($base_path . 'site.webmanifest') ?>">
     <link rel="preload" as="image" href="<?= e(asset_url('media/loading/battlefield-background.webp')) ?>" fetchpriority="high">
     <link rel="preload" as="image" href="<?= e(asset_url('media/loading/breach-ring.webp')) ?>">
-    <link rel="preload" as="image" href="<?= e(asset_url('media/loading/raidlands-vfx-01-ground-blast-green.png')) ?>">
-    <link rel="preload" as="image" href="<?= e(asset_url('media/loading/raidlands-vfx-02-fireball-core-green.png')) ?>">
-    <link rel="preload" as="image" href="<?= e(asset_url('media/loading/raidlands-vfx-03-molten-debris-burst-green.png')) ?>">
-    <link rel="preload" as="image" href="<?= e(asset_url('media/loading/raidlands-vfx-04-smoke-plume-green.png')) ?>">
-    <link rel="preload" as="image" href="<?= e(asset_url('media/loading/raidlands-vfx-05-shockwave-ring-green.png')) ?>">
-    <link rel="preload" as="image" href="<?= e(asset_url('media/loading/raidlands-vfx-06-ember-field-green.png')) ?>">
+    <link rel="preload" as="image" href="<?= e(asset_url('media/loading/raidlands-vfx-01-ground-blast-green.webp')) ?>">
+    <link rel="preload" as="image" href="<?= e(asset_url('media/loading/raidlands-vfx-02-fireball-core-green.webp')) ?>">
+    <link rel="preload" as="image" href="<?= e(asset_url('media/loading/raidlands-vfx-03-molten-debris-burst-green.webp')) ?>">
+    <link rel="preload" as="image" href="<?= e(asset_url('media/loading/raidlands-vfx-04-smoke-plume-green.webp')) ?>">
+    <link rel="preload" as="image" href="<?= e(asset_url('media/loading/raidlands-vfx-05-shockwave-ring-green.webp')) ?>">
+    <link rel="preload" as="image" href="<?= e(asset_url('media/loading/raidlands-vfx-06-ember-field-green.webp')) ?>">
     <?php if ($page_id === 'home') : ?>
       <link rel="preload" as="image" href="<?= e(asset_url('media/website-hero-raid-overlook-v4.webp')) ?>" fetchpriority="high">
       <link rel="preload" as="image" href="<?= e(asset_url('media/raidlands-logo.webp')) ?>">

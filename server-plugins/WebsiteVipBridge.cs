@@ -53,7 +53,7 @@ namespace Oxide.Plugins
         private class AssetPaths
         {
             public string Logo = "/assets/media/raidlands-logo.png";
-            public string NavLogo = "/assets/media/nav-logo.png";
+            public string NavLogo = "/assets/media/horizontal-logo-sm.webp";
             public string Hero = "/assets/media/website-hero-raid-overlook-v4.webp";
             public string Header = "/assets/media/header-bg-rust-v2.png";
             public string WipePanel = "/assets/media/wipe-countdown-panel-v2.jpg";

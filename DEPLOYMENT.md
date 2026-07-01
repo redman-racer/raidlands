@@ -127,6 +127,8 @@ New-Item -ItemType Directory -Force dist | Out-Null
 
 Compress-Archive -Force -DestinationPath .\dist\raidlands-godaddy.zip -Path `
   .\.htaccess, `
+  .\browserconfig.xml, `
+  .\favicon.ico, `
   .\index.php, `
   .\robots.txt, `
   .\site.webmanifest, `
@@ -198,6 +200,8 @@ The live root should look like this:
 ```text
 public_html/
   .htaccess
+  browserconfig.xml
+  favicon.ico
   index.php
   robots.txt
   site.webmanifest
@@ -295,6 +299,8 @@ Check these URLs on the live domain:
 - `/privacy/`
 - `/terms/`
 - `/site.webmanifest`
+- `/browserconfig.xml`
+- `/favicon.ico`
 - `/assets/css/styles.css`
 - `/assets/js/site.js`
 

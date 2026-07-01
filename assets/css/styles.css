@@ -60,7 +60,7 @@ body {
     radial-gradient(circle at 78% 0%, rgba(124, 255, 107, .07), transparent 25%),
     linear-gradient(180deg, rgba(5, 6, 7, .92), rgba(5, 6, 7, .98)),
     var(--metal-texture) center top / 320px repeat,
-    url("../media/pattern-bg.png") center top / cover;
+    url("../media/pattern-bg.webp") center top / cover;
   letter-spacing: 0;
 }
 
@@ -1906,11 +1906,11 @@ h3,
 }
 
 .image-panel.discord {
-  background-image: linear-gradient(180deg, rgba(0, 0, 0, .05), rgba(0, 0, 0, .62)), url("../media/discord-banner-rust-v2.png");
+  background-image: linear-gradient(180deg, rgba(0, 0, 0, .05), rgba(0, 0, 0, .62)), url("../media/discord-banner-rust-v2.webp");
 }
 
 .image-panel.wipe {
-  background-image: linear-gradient(180deg, rgba(0, 0, 0, .08), rgba(0, 0, 0, .62)), url("../media/wipe-day-rust-v2.png");
+  background-image: linear-gradient(180deg, rgba(0, 0, 0, .08), rgba(0, 0, 0, .62)), url("../media/wipe-day-rust-v2.webp");
 }
 
 .steps {
@@ -1991,7 +1991,7 @@ h3,
   background:
     linear-gradient(90deg, rgba(5, 6, 7, .96), rgba(5, 6, 7, .76), rgba(5, 6, 7, .96)),
     var(--grunge-texture) center / 640px repeat,
-    url("../media/header-bg-rust-v2.png") center / cover no-repeat;
+    url("../media/header-bg-rust-v2.webp") center / cover no-repeat;
 }
 
 .page-hero::before {
@@ -2547,7 +2547,8 @@ h3,
 }
 
 .footer-logo {
-  width: 210px;
+  width: min(250px, 100%);
+  height: auto;
   margin-bottom: 12px;
 }
 
@@ -3283,7 +3284,9 @@ h3,
 }
 
 .admin-brand img {
-  width: 138px;
+  flex: 0 0 auto;
+  width: min(168px, 48vw);
+  height: auto;
 }
 
 .admin-topbar-actions {
@@ -3800,7 +3803,7 @@ h3,
   }
 
   .admin-brand img {
-    width: 112px;
+    width: min(136px, 48vw);
   }
 
   .admin-login-panel h1,
