@@ -14201,3 +14201,3255 @@
 [Wed Jul  1 00:29:54 2026] 127.0.0.1:58058 Accepted
 [Wed Jul  1 00:29:54 2026] 127.0.0.1:58058 [200]: GET /api/server-status.php
 [Wed Jul  1 00:29:54 2026] 127.0.0.1:58058 Closing
+[Wed Jul  1 00:30:54 2026] 127.0.0.1:55396 Accepted
+[Wed Jul  1 00:30:54 2026] 127.0.0.1:50934 Accepted
+[Wed Jul  1 00:30:55 2026] 127.0.0.1:55396 [200]: GET /api/server-status.php
+[Wed Jul  1 00:30:55 2026] 127.0.0.1:55396 Closing
+[Wed Jul  1 00:30:55 2026] 127.0.0.1:50934 [200]: GET /api/server-status.php
+[Wed Jul  1 00:30:55 2026] 127.0.0.1:50934 Closing
+[Wed Jul  1 00:31:54 2026] 127.0.0.1:59209 Accepted
+[Wed Jul  1 00:31:54 2026] 127.0.0.1:59209 [200]: GET /api/server-status.php
+[Wed Jul  1 00:31:54 2026] 127.0.0.1:59209 Closing
+[Wed Jul  1 00:31:54 2026] 127.0.0.1:65159 Accepted
+[Wed Jul  1 00:31:54 2026] 127.0.0.1:65159 [200]: GET /api/server-status.php
+[Wed Jul  1 00:31:54 2026] 127.0.0.1:65159 Closing
+[Wed Jul  1 00:32:54 2026] 127.0.0.1:50476 Accepted
+[Wed Jul  1 00:32:55 2026] 127.0.0.1:50476 [200]: GET /api/server-status.php
+[Wed Jul  1 00:32:55 2026] 127.0.0.1:50476 Closing
+[Wed Jul  1 00:32:55 2026] 127.0.0.1:51407 Accepted
+[Wed Jul  1 00:32:55 2026] 127.0.0.1:51407 [200]: GET /api/server-status.php
+[Wed Jul  1 00:32:55 2026] 127.0.0.1:51407 Closing
+[Wed Jul  1 00:33:54 2026] 127.0.0.1:50872 Accepted
+[Wed Jul  1 00:33:54 2026] 127.0.0.1:50872 [200]: GET /api/server-status.php
+[Wed Jul  1 00:33:54 2026] 127.0.0.1:50872 Closing
+[Wed Jul  1 00:33:54 2026] 127.0.0.1:61627 Accepted
+[Wed Jul  1 00:33:54 2026] 127.0.0.1:61627 [200]: GET /api/server-status.php
+[Wed Jul  1 00:33:54 2026] 127.0.0.1:61627 Closing
+[Wed Jul  1 00:34:54 2026] 127.0.0.1:61637 Accepted
+[Wed Jul  1 00:34:55 2026] 127.0.0.1:61637 [200]: GET /api/server-status.php
+[Wed Jul  1 00:34:55 2026] 127.0.0.1:61637 Closing
+[Wed Jul  1 00:34:55 2026] 127.0.0.1:52275 Accepted
+[Wed Jul  1 00:34:55 2026] 127.0.0.1:52275 [200]: GET /api/server-status.php
+[Wed Jul  1 00:34:55 2026] 127.0.0.1:52275 Closing
+[Wed Jul  1 00:35:54 2026] 127.0.0.1:51397 Accepted
+[Wed Jul  1 00:35:54 2026] 127.0.0.1:51397 [200]: GET /api/server-status.php
+[Wed Jul  1 00:35:54 2026] 127.0.0.1:51397 Closing
+[Wed Jul  1 00:35:54 2026] 127.0.0.1:61872 Accepted
+[Wed Jul  1 00:35:54 2026] 127.0.0.1:61872 [200]: GET /api/server-status.php
+[Wed Jul  1 00:35:54 2026] 127.0.0.1:61872 Closing
+[Wed Jul  1 00:36:54 2026] 127.0.0.1:58903 Accepted
+[Wed Jul  1 00:36:55 2026] 127.0.0.1:58903 [200]: GET /api/server-status.php
+[Wed Jul  1 00:36:55 2026] 127.0.0.1:58903 Closing
+[Wed Jul  1 00:36:55 2026] 127.0.0.1:53351 Accepted
+[Wed Jul  1 00:36:55 2026] 127.0.0.1:53351 [200]: GET /api/server-status.php
+[Wed Jul  1 00:36:55 2026] 127.0.0.1:53351 Closing
+[Wed Jul  1 00:37:54 2026] 127.0.0.1:55127 Accepted
+[Wed Jul  1 00:37:54 2026] 127.0.0.1:54453 Accepted
+[Wed Jul  1 00:37:54 2026] 127.0.0.1:55127 [200]: GET /api/server-status.php
+[Wed Jul  1 00:37:54 2026] 127.0.0.1:55127 Closing
+[Wed Jul  1 00:37:54 2026] 127.0.0.1:54453 [200]: GET /api/server-status.php
+[Wed Jul  1 00:37:54 2026] 127.0.0.1:54453 Closing
+[Wed Jul  1 00:38:54 2026] 127.0.0.1:62023 Accepted
+[Wed Jul  1 00:38:55 2026] 127.0.0.1:62023 [200]: GET /api/server-status.php
+[Wed Jul  1 00:38:55 2026] 127.0.0.1:62023 Closing
+[Wed Jul  1 00:38:55 2026] 127.0.0.1:64330 Accepted
+[Wed Jul  1 00:38:55 2026] 127.0.0.1:64330 [200]: GET /api/server-status.php
+[Wed Jul  1 00:38:55 2026] 127.0.0.1:64330 Closing
+[Wed Jul  1 00:39:54 2026] 127.0.0.1:55888 Accepted
+[Wed Jul  1 00:39:54 2026] 127.0.0.1:55888 [200]: GET /api/server-status.php
+[Wed Jul  1 00:39:54 2026] 127.0.0.1:55888 Closing
+[Wed Jul  1 00:39:54 2026] 127.0.0.1:60466 Accepted
+[Wed Jul  1 00:39:54 2026] 127.0.0.1:60466 [200]: GET /api/server-status.php
+[Wed Jul  1 00:39:54 2026] 127.0.0.1:60466 Closing
+[Wed Jul  1 00:40:54 2026] 127.0.0.1:53683 Accepted
+[Wed Jul  1 00:40:54 2026] 127.0.0.1:57520 Accepted
+[Wed Jul  1 00:40:55 2026] 127.0.0.1:53683 [200]: GET /api/server-status.php
+[Wed Jul  1 00:40:55 2026] 127.0.0.1:53683 Closing
+[Wed Jul  1 00:40:55 2026] 127.0.0.1:57520 [200]: GET /api/server-status.php
+[Wed Jul  1 00:40:55 2026] 127.0.0.1:57520 Closing
+[Wed Jul  1 00:41:54 2026] 127.0.0.1:55352 Accepted
+[Wed Jul  1 00:41:54 2026] 127.0.0.1:55352 [200]: GET /api/server-status.php
+[Wed Jul  1 00:41:54 2026] 127.0.0.1:55352 Closing
+[Wed Jul  1 00:41:54 2026] 127.0.0.1:54892 Accepted
+[Wed Jul  1 00:41:54 2026] 127.0.0.1:54892 [200]: GET /api/server-status.php
+[Wed Jul  1 00:41:54 2026] 127.0.0.1:54892 Closing
+[Wed Jul  1 00:42:54 2026] 127.0.0.1:64581 Accepted
+[Wed Jul  1 00:42:54 2026] 127.0.0.1:64581 [200]: GET /api/server-status.php
+[Wed Jul  1 00:42:54 2026] 127.0.0.1:64581 Closing
+[Wed Jul  1 00:42:54 2026] 127.0.0.1:64917 Accepted
+[Wed Jul  1 00:42:54 2026] 127.0.0.1:64917 [200]: GET /api/server-status.php
+[Wed Jul  1 00:42:54 2026] 127.0.0.1:64917 Closing
+[Wed Jul  1 00:43:54 2026] 127.0.0.1:50377 Accepted
+[Wed Jul  1 00:43:54 2026] 127.0.0.1:50377 [200]: GET /api/server-status.php
+[Wed Jul  1 00:43:54 2026] 127.0.0.1:50377 Closing
+[Wed Jul  1 00:43:54 2026] 127.0.0.1:52996 Accepted
+[Wed Jul  1 00:43:54 2026] 127.0.0.1:52996 [200]: GET /api/server-status.php
+[Wed Jul  1 00:43:54 2026] 127.0.0.1:52996 Closing
+[Wed Jul  1 00:44:54 2026] 127.0.0.1:53542 Accepted
+[Wed Jul  1 00:44:54 2026] 127.0.0.1:53542 [200]: GET /api/server-status.php
+[Wed Jul  1 00:44:54 2026] 127.0.0.1:53542 Closing
+[Wed Jul  1 00:44:54 2026] 127.0.0.1:61593 Accepted
+[Wed Jul  1 00:44:54 2026] 127.0.0.1:61593 [200]: GET /api/server-status.php
+[Wed Jul  1 00:44:54 2026] 127.0.0.1:61593 Closing
+[Wed Jul  1 00:45:54 2026] 127.0.0.1:61597 Accepted
+[Wed Jul  1 00:45:55 2026] 127.0.0.1:61597 [200]: GET /api/server-status.php
+[Wed Jul  1 00:45:55 2026] 127.0.0.1:61597 Closing
+[Wed Jul  1 00:45:55 2026] 127.0.0.1:64301 Accepted
+[Wed Jul  1 00:45:55 2026] 127.0.0.1:64301 [200]: GET /api/server-status.php
+[Wed Jul  1 00:45:55 2026] 127.0.0.1:64301 Closing
+[Wed Jul  1 00:46:54 2026] 127.0.0.1:50109 Accepted
+[Wed Jul  1 00:46:54 2026] 127.0.0.1:50109 [200]: GET /api/server-status.php
+[Wed Jul  1 00:46:54 2026] 127.0.0.1:50109 Closing
+[Wed Jul  1 00:46:54 2026] 127.0.0.1:59940 Accepted
+[Wed Jul  1 00:46:54 2026] 127.0.0.1:59940 [200]: GET /api/server-status.php
+[Wed Jul  1 00:46:54 2026] 127.0.0.1:59940 Closing
+[Wed Jul  1 00:47:54 2026] 127.0.0.1:49501 Accepted
+[Wed Jul  1 00:47:55 2026] 127.0.0.1:49501 [200]: GET /api/server-status.php
+[Wed Jul  1 00:47:55 2026] 127.0.0.1:49501 Closing
+[Wed Jul  1 00:47:55 2026] 127.0.0.1:55584 Accepted
+[Wed Jul  1 00:47:55 2026] 127.0.0.1:55584 [200]: GET /api/server-status.php
+[Wed Jul  1 00:47:55 2026] 127.0.0.1:55584 Closing
+[Wed Jul  1 00:48:54 2026] 127.0.0.1:54198 Accepted
+[Wed Jul  1 00:48:54 2026] 127.0.0.1:54198 [200]: GET /api/server-status.php
+[Wed Jul  1 00:48:54 2026] 127.0.0.1:54198 Closing
+[Wed Jul  1 00:48:54 2026] 127.0.0.1:51165 Accepted
+[Wed Jul  1 00:48:54 2026] 127.0.0.1:51165 [200]: GET /api/server-status.php
+[Wed Jul  1 00:48:54 2026] 127.0.0.1:51165 Closing
+[Wed Jul  1 00:49:54 2026] 127.0.0.1:56023 Accepted
+[Wed Jul  1 00:49:54 2026] 127.0.0.1:56023 [200]: GET /api/server-status.php
+[Wed Jul  1 00:49:54 2026] 127.0.0.1:56023 Closing
+[Wed Jul  1 00:49:54 2026] 127.0.0.1:53002 Accepted
+[Wed Jul  1 00:49:54 2026] 127.0.0.1:53002 [200]: GET /api/server-status.php
+[Wed Jul  1 00:49:54 2026] 127.0.0.1:53002 Closing
+[Wed Jul  1 00:50:54 2026] 127.0.0.1:49409 Accepted
+[Wed Jul  1 00:50:54 2026] 127.0.0.1:49409 [200]: GET /api/server-status.php
+[Wed Jul  1 00:50:54 2026] 127.0.0.1:49409 Closing
+[Wed Jul  1 00:50:54 2026] 127.0.0.1:62492 Accepted
+[Wed Jul  1 00:50:54 2026] 127.0.0.1:62492 [200]: GET /api/server-status.php
+[Wed Jul  1 00:50:54 2026] 127.0.0.1:62492 Closing
+[Wed Jul  1 00:51:54 2026] 127.0.0.1:55508 Accepted
+[Wed Jul  1 00:51:54 2026] 127.0.0.1:64375 Accepted
+[Wed Jul  1 00:51:55 2026] 127.0.0.1:55508 [200]: GET /api/server-status.php
+[Wed Jul  1 00:51:55 2026] 127.0.0.1:55508 Closing
+[Wed Jul  1 00:51:55 2026] 127.0.0.1:64375 [200]: GET /api/server-status.php
+[Wed Jul  1 00:51:55 2026] 127.0.0.1:64375 Closing
+[Wed Jul  1 00:52:54 2026] 127.0.0.1:58875 Accepted
+[Wed Jul  1 00:52:54 2026] 127.0.0.1:58875 [200]: GET /api/server-status.php
+[Wed Jul  1 00:52:54 2026] 127.0.0.1:58875 Closing
+[Wed Jul  1 00:52:54 2026] 127.0.0.1:57923 Accepted
+[Wed Jul  1 00:52:54 2026] 127.0.0.1:57923 [200]: GET /api/server-status.php
+[Wed Jul  1 00:52:54 2026] 127.0.0.1:57923 Closing
+[Wed Jul  1 00:53:54 2026] 127.0.0.1:63340 Accepted
+[Wed Jul  1 00:53:55 2026] 127.0.0.1:63340 [200]: GET /api/server-status.php
+[Wed Jul  1 00:53:55 2026] 127.0.0.1:63340 Closing
+[Wed Jul  1 00:53:55 2026] 127.0.0.1:52272 Accepted
+[Wed Jul  1 00:53:55 2026] 127.0.0.1:52272 [200]: GET /api/server-status.php
+[Wed Jul  1 00:53:55 2026] 127.0.0.1:52272 Closing
+[Wed Jul  1 00:54:54 2026] 127.0.0.1:53876 Accepted
+[Wed Jul  1 00:54:54 2026] 127.0.0.1:53876 [200]: GET /api/server-status.php
+[Wed Jul  1 00:54:54 2026] 127.0.0.1:53876 Closing
+[Wed Jul  1 00:54:54 2026] 127.0.0.1:59664 Accepted
+[Wed Jul  1 00:54:54 2026] 127.0.0.1:59664 [200]: GET /api/server-status.php
+[Wed Jul  1 00:54:54 2026] 127.0.0.1:59664 Closing
+[Wed Jul  1 00:55:54 2026] 127.0.0.1:63110 Accepted
+[Wed Jul  1 00:55:54 2026] 127.0.0.1:63110 [200]: GET /api/server-status.php
+[Wed Jul  1 00:55:54 2026] 127.0.0.1:63110 Closing
+[Wed Jul  1 00:55:54 2026] 127.0.0.1:59858 Accepted
+[Wed Jul  1 00:55:55 2026] 127.0.0.1:59858 [200]: GET /api/server-status.php
+[Wed Jul  1 00:55:55 2026] 127.0.0.1:59858 Closing
+[Wed Jul  1 00:56:54 2026] 127.0.0.1:54795 Accepted
+[Wed Jul  1 00:56:54 2026] 127.0.0.1:54795 [200]: GET /api/server-status.php
+[Wed Jul  1 00:56:54 2026] 127.0.0.1:54795 Closing
+[Wed Jul  1 00:56:54 2026] 127.0.0.1:54285 Accepted
+[Wed Jul  1 00:56:54 2026] 127.0.0.1:54285 [200]: GET /api/server-status.php
+[Wed Jul  1 00:56:54 2026] 127.0.0.1:54285 Closing
+[Wed Jul  1 00:57:54 2026] 127.0.0.1:62999 Accepted
+[Wed Jul  1 00:57:55 2026] 127.0.0.1:62999 [200]: GET /api/server-status.php
+[Wed Jul  1 00:57:55 2026] 127.0.0.1:62999 Closing
+[Wed Jul  1 00:57:55 2026] 127.0.0.1:60680 Accepted
+[Wed Jul  1 00:57:55 2026] 127.0.0.1:60680 [200]: GET /api/server-status.php
+[Wed Jul  1 00:57:55 2026] 127.0.0.1:60680 Closing
+[Wed Jul  1 00:58:54 2026] 127.0.0.1:56097 Accepted
+[Wed Jul  1 00:58:54 2026] 127.0.0.1:56097 [200]: GET /api/server-status.php
+[Wed Jul  1 00:58:54 2026] 127.0.0.1:56097 Closing
+[Wed Jul  1 00:58:54 2026] 127.0.0.1:50635 Accepted
+[Wed Jul  1 00:58:54 2026] 127.0.0.1:50635 [200]: GET /api/server-status.php
+[Wed Jul  1 00:58:54 2026] 127.0.0.1:50635 Closing
+[Wed Jul  1 00:59:54 2026] 127.0.0.1:59001 Accepted
+[Wed Jul  1 00:59:54 2026] 127.0.0.1:59001 [200]: GET /api/server-status.php
+[Wed Jul  1 00:59:55 2026] 127.0.0.1:59001 Closing
+[Wed Jul  1 00:59:55 2026] 127.0.0.1:50522 Accepted
+[Wed Jul  1 00:59:55 2026] 127.0.0.1:50522 [200]: GET /api/server-status.php
+[Wed Jul  1 00:59:55 2026] 127.0.0.1:50522 Closing
+[Wed Jul  1 01:00:54 2026] 127.0.0.1:60024 Accepted
+[Wed Jul  1 01:00:54 2026] 127.0.0.1:60024 [200]: GET /api/server-status.php
+[Wed Jul  1 01:00:54 2026] 127.0.0.1:60024 Closing
+[Wed Jul  1 01:00:54 2026] 127.0.0.1:51517 Accepted
+[Wed Jul  1 01:00:54 2026] 127.0.0.1:51517 [200]: GET /api/server-status.php
+[Wed Jul  1 01:00:54 2026] 127.0.0.1:51517 Closing
+[Wed Jul  1 01:01:54 2026] 127.0.0.1:65054 Accepted
+[Wed Jul  1 01:01:55 2026] 127.0.0.1:65054 [200]: GET /api/server-status.php
+[Wed Jul  1 01:01:55 2026] 127.0.0.1:65054 Closing
+[Wed Jul  1 01:01:55 2026] 127.0.0.1:54084 Accepted
+[Wed Jul  1 01:01:55 2026] 127.0.0.1:54084 [200]: GET /api/server-status.php
+[Wed Jul  1 01:01:55 2026] 127.0.0.1:54084 Closing
+[Wed Jul  1 01:02:54 2026] 127.0.0.1:57406 Accepted
+[Wed Jul  1 01:02:54 2026] 127.0.0.1:57406 [200]: GET /api/server-status.php
+[Wed Jul  1 01:02:54 2026] 127.0.0.1:57406 Closing
+[Wed Jul  1 01:02:54 2026] 127.0.0.1:54579 Accepted
+[Wed Jul  1 01:02:54 2026] 127.0.0.1:54579 [200]: GET /api/server-status.php
+[Wed Jul  1 01:02:54 2026] 127.0.0.1:54579 Closing
+[Wed Jul  1 01:03:54 2026] 127.0.0.1:61399 Accepted
+[Wed Jul  1 01:03:54 2026] 127.0.0.1:62282 Accepted
+[Wed Jul  1 01:03:54 2026] 127.0.0.1:61399 [200]: GET /api/server-status.php
+[Wed Jul  1 01:03:54 2026] 127.0.0.1:61399 Closing
+[Wed Jul  1 01:03:54 2026] 127.0.0.1:62282 [200]: GET /api/server-status.php
+[Wed Jul  1 01:03:54 2026] 127.0.0.1:62282 Closing
+[Wed Jul  1 01:04:54 2026] 127.0.0.1:61905 Accepted
+[Wed Jul  1 01:04:54 2026] 127.0.0.1:56379 Accepted
+[Wed Jul  1 01:04:54 2026] 127.0.0.1:61905 [200]: GET /api/server-status.php
+[Wed Jul  1 01:04:54 2026] 127.0.0.1:61905 Closing
+[Wed Jul  1 01:04:54 2026] 127.0.0.1:56379 [200]: GET /api/server-status.php
+[Wed Jul  1 01:04:54 2026] 127.0.0.1:56379 Closing
+[Wed Jul  1 01:05:54 2026] 127.0.0.1:64785 Accepted
+[Wed Jul  1 01:05:54 2026] 127.0.0.1:64785 [200]: GET /api/server-status.php
+[Wed Jul  1 01:05:54 2026] 127.0.0.1:64785 Closing
+[Wed Jul  1 01:05:54 2026] 127.0.0.1:62238 Accepted
+[Wed Jul  1 01:05:54 2026] 127.0.0.1:62238 [200]: GET /api/server-status.php
+[Wed Jul  1 01:05:54 2026] 127.0.0.1:62238 Closing
+[Wed Jul  1 01:06:54 2026] 127.0.0.1:63784 Accepted
+[Wed Jul  1 01:06:54 2026] 127.0.0.1:63784 [200]: GET /api/server-status.php
+[Wed Jul  1 01:06:54 2026] 127.0.0.1:63784 Closing
+[Wed Jul  1 01:06:54 2026] 127.0.0.1:61317 Accepted
+[Wed Jul  1 01:06:54 2026] 127.0.0.1:61317 [200]: GET /api/server-status.php
+[Wed Jul  1 01:06:54 2026] 127.0.0.1:61317 Closing
+[Wed Jul  1 01:07:54 2026] 127.0.0.1:56865 Accepted
+[Wed Jul  1 01:07:55 2026] 127.0.0.1:56865 [200]: GET /api/server-status.php
+[Wed Jul  1 01:07:55 2026] 127.0.0.1:56865 Closing
+[Wed Jul  1 01:07:55 2026] 127.0.0.1:65157 Accepted
+[Wed Jul  1 01:07:55 2026] 127.0.0.1:65157 [200]: GET /api/server-status.php
+[Wed Jul  1 01:07:55 2026] 127.0.0.1:65157 Closing
+[Wed Jul  1 01:08:54 2026] 127.0.0.1:61722 Accepted
+[Wed Jul  1 01:08:54 2026] 127.0.0.1:61722 [200]: GET /api/server-status.php
+[Wed Jul  1 01:08:54 2026] 127.0.0.1:61722 Closing
+[Wed Jul  1 01:08:54 2026] 127.0.0.1:61389 Accepted
+[Wed Jul  1 01:08:54 2026] 127.0.0.1:61389 [200]: GET /api/server-status.php
+[Wed Jul  1 01:08:54 2026] 127.0.0.1:61389 Closing
+[Wed Jul  1 01:09:54 2026] 127.0.0.1:59058 Accepted
+[Wed Jul  1 01:09:55 2026] 127.0.0.1:59058 [200]: GET /api/server-status.php
+[Wed Jul  1 01:09:55 2026] 127.0.0.1:59058 Closing
+[Wed Jul  1 01:09:55 2026] 127.0.0.1:57402 Accepted
+[Wed Jul  1 01:09:55 2026] 127.0.0.1:57402 [200]: GET /api/server-status.php
+[Wed Jul  1 01:09:55 2026] 127.0.0.1:57402 Closing
+[Wed Jul  1 01:10:54 2026] 127.0.0.1:53548 Accepted
+[Wed Jul  1 01:10:54 2026] 127.0.0.1:63914 Accepted
+[Wed Jul  1 01:10:54 2026] 127.0.0.1:53548 [200]: GET /api/server-status.php
+[Wed Jul  1 01:10:54 2026] 127.0.0.1:53548 Closing
+[Wed Jul  1 01:10:54 2026] 127.0.0.1:63914 [200]: GET /api/server-status.php
+[Wed Jul  1 01:10:54 2026] 127.0.0.1:63914 Closing
+[Wed Jul  1 01:11:54 2026] 127.0.0.1:57097 Accepted
+[Wed Jul  1 01:11:55 2026] 127.0.0.1:57097 [200]: GET /api/server-status.php
+[Wed Jul  1 01:11:55 2026] 127.0.0.1:57097 Closing
+[Wed Jul  1 01:11:55 2026] 127.0.0.1:54096 Accepted
+[Wed Jul  1 01:11:55 2026] 127.0.0.1:54096 [200]: GET /api/server-status.php
+[Wed Jul  1 01:11:55 2026] 127.0.0.1:54096 Closing
+[Wed Jul  1 01:12:54 2026] 127.0.0.1:54524 Accepted
+[Wed Jul  1 01:12:54 2026] 127.0.0.1:54524 [200]: GET /api/server-status.php
+[Wed Jul  1 01:12:54 2026] 127.0.0.1:54524 Closing
+[Wed Jul  1 01:12:54 2026] 127.0.0.1:61941 Accepted
+[Wed Jul  1 01:12:54 2026] 127.0.0.1:61941 [200]: GET /api/server-status.php
+[Wed Jul  1 01:12:54 2026] 127.0.0.1:61941 Closing
+[Wed Jul  1 01:13:54 2026] 127.0.0.1:57703 Accepted
+[Wed Jul  1 01:13:54 2026] 127.0.0.1:57703 [200]: GET /api/server-status.php
+[Wed Jul  1 01:13:54 2026] 127.0.0.1:57703 Closing
+[Wed Jul  1 01:13:54 2026] 127.0.0.1:55749 Accepted
+[Wed Jul  1 01:13:54 2026] 127.0.0.1:55749 [200]: GET /api/server-status.php
+[Wed Jul  1 01:13:54 2026] 127.0.0.1:55749 Closing
+[Wed Jul  1 01:14:54 2026] 127.0.0.1:65238 Accepted
+[Wed Jul  1 01:14:54 2026] 127.0.0.1:65238 [200]: GET /api/server-status.php
+[Wed Jul  1 01:14:54 2026] 127.0.0.1:65238 Closing
+[Wed Jul  1 01:14:54 2026] 127.0.0.1:58011 Accepted
+[Wed Jul  1 01:14:54 2026] 127.0.0.1:58011 [200]: GET /api/server-status.php
+[Wed Jul  1 01:14:54 2026] 127.0.0.1:58011 Closing
+[Wed Jul  1 01:15:54 2026] 127.0.0.1:52847 Accepted
+[Wed Jul  1 01:15:55 2026] 127.0.0.1:52847 [200]: GET /api/server-status.php
+[Wed Jul  1 01:15:55 2026] 127.0.0.1:52847 Closing
+[Wed Jul  1 01:15:55 2026] 127.0.0.1:58745 Accepted
+[Wed Jul  1 01:15:55 2026] 127.0.0.1:58745 [200]: GET /api/server-status.php
+[Wed Jul  1 01:15:55 2026] 127.0.0.1:58745 Closing
+[Wed Jul  1 01:16:54 2026] 127.0.0.1:58921 Accepted
+[Wed Jul  1 01:16:54 2026] 127.0.0.1:58921 [200]: GET /api/server-status.php
+[Wed Jul  1 01:16:54 2026] 127.0.0.1:58921 Closing
+[Wed Jul  1 01:16:54 2026] 127.0.0.1:60308 Accepted
+[Wed Jul  1 01:16:54 2026] 127.0.0.1:60308 [200]: GET /api/server-status.php
+[Wed Jul  1 01:16:54 2026] 127.0.0.1:60308 Closing
+[Wed Jul  1 01:17:54 2026] 127.0.0.1:55193 Accepted
+[Wed Jul  1 01:18:05 2026] 127.0.0.1:55193 [200]: GET /api/server-status.php
+[Wed Jul  1 01:18:05 2026] 127.0.0.1:55193 Closing
+[Wed Jul  1 01:18:05 2026] 127.0.0.1:59057 Accepted
+[Wed Jul  1 01:18:16 2026] 127.0.0.1:59057 [200]: GET /api/server-status.php
+[Wed Jul  1 01:18:16 2026] 127.0.0.1:59057 Closing
+[Wed Jul  1 01:18:54 2026] 127.0.0.1:60582 Accepted
+[Wed Jul  1 01:18:55 2026] 127.0.0.1:60582 [200]: GET /api/server-status.php
+[Wed Jul  1 01:18:55 2026] 127.0.0.1:60582 Closing
+[Wed Jul  1 01:18:55 2026] 127.0.0.1:50553 Accepted
+[Wed Jul  1 01:18:55 2026] 127.0.0.1:50553 [200]: GET /api/server-status.php
+[Wed Jul  1 01:18:55 2026] 127.0.0.1:50553 Closing
+[Wed Jul  1 01:19:54 2026] 127.0.0.1:62298 Accepted
+[Wed Jul  1 01:19:54 2026] 127.0.0.1:62298 [200]: GET /api/server-status.php
+[Wed Jul  1 01:19:54 2026] 127.0.0.1:62298 Closing
+[Wed Jul  1 01:19:54 2026] 127.0.0.1:51716 Accepted
+[Wed Jul  1 01:19:54 2026] 127.0.0.1:51716 [200]: GET /api/server-status.php
+[Wed Jul  1 01:19:54 2026] 127.0.0.1:51716 Closing
+[Wed Jul  1 01:20:54 2026] 127.0.0.1:58526 Accepted
+[Wed Jul  1 01:20:55 2026] 127.0.0.1:58526 [200]: GET /api/server-status.php
+[Wed Jul  1 01:20:55 2026] 127.0.0.1:58526 Closing
+[Wed Jul  1 01:20:55 2026] 127.0.0.1:62436 Accepted
+[Wed Jul  1 01:20:55 2026] 127.0.0.1:62436 [200]: GET /api/server-status.php
+[Wed Jul  1 01:20:55 2026] 127.0.0.1:62436 Closing
+[Wed Jul  1 01:21:54 2026] 127.0.0.1:49735 Accepted
+[Wed Jul  1 01:21:54 2026] 127.0.0.1:49735 [200]: GET /api/server-status.php
+[Wed Jul  1 01:21:54 2026] 127.0.0.1:49735 Closing
+[Wed Jul  1 01:21:54 2026] 127.0.0.1:61378 Accepted
+[Wed Jul  1 01:21:54 2026] 127.0.0.1:61378 [200]: GET /api/server-status.php
+[Wed Jul  1 01:21:54 2026] 127.0.0.1:61378 Closing
+[Wed Jul  1 01:22:54 2026] 127.0.0.1:65535 Accepted
+[Wed Jul  1 01:22:55 2026] 127.0.0.1:65535 [200]: GET /api/server-status.php
+[Wed Jul  1 01:22:55 2026] 127.0.0.1:65535 Closing
+[Wed Jul  1 01:22:55 2026] 127.0.0.1:61409 Accepted
+[Wed Jul  1 01:22:55 2026] 127.0.0.1:61409 [200]: GET /api/server-status.php
+[Wed Jul  1 01:22:55 2026] 127.0.0.1:61409 Closing
+[Wed Jul  1 01:23:54 2026] 127.0.0.1:57309 Accepted
+[Wed Jul  1 01:23:54 2026] 127.0.0.1:57309 [200]: GET /api/server-status.php
+[Wed Jul  1 01:23:54 2026] 127.0.0.1:57309 Closing
+[Wed Jul  1 01:23:54 2026] 127.0.0.1:51243 Accepted
+[Wed Jul  1 01:23:54 2026] 127.0.0.1:51243 [200]: GET /api/server-status.php
+[Wed Jul  1 01:23:54 2026] 127.0.0.1:51243 Closing
+[Wed Jul  1 01:24:54 2026] 127.0.0.1:52362 Accepted
+[Wed Jul  1 01:24:54 2026] 127.0.0.1:52362 [200]: GET /api/server-status.php
+[Wed Jul  1 01:24:54 2026] 127.0.0.1:52362 Closing
+[Wed Jul  1 01:24:54 2026] 127.0.0.1:52927 Accepted
+[Wed Jul  1 01:24:54 2026] 127.0.0.1:52927 [200]: GET /api/server-status.php
+[Wed Jul  1 01:24:54 2026] 127.0.0.1:52927 Closing
+[Wed Jul  1 01:25:54 2026] 127.0.0.1:64766 Accepted
+[Wed Jul  1 01:25:54 2026] 127.0.0.1:64585 Accepted
+[Wed Jul  1 01:25:54 2026] 127.0.0.1:64766 [200]: GET /api/server-status.php
+[Wed Jul  1 01:25:54 2026] 127.0.0.1:64766 Closing
+[Wed Jul  1 01:25:54 2026] 127.0.0.1:64585 [200]: GET /api/server-status.php
+[Wed Jul  1 01:25:54 2026] 127.0.0.1:64585 Closing
+[Wed Jul  1 01:26:54 2026] 127.0.0.1:58262 Accepted
+[Wed Jul  1 01:26:54 2026] 127.0.0.1:58262 [200]: GET /api/server-status.php
+[Wed Jul  1 01:26:54 2026] 127.0.0.1:58262 Closing
+[Wed Jul  1 01:26:54 2026] 127.0.0.1:50098 Accepted
+[Wed Jul  1 01:26:54 2026] 127.0.0.1:50098 [200]: GET /api/server-status.php
+[Wed Jul  1 01:26:54 2026] 127.0.0.1:50098 Closing
+[Wed Jul  1 01:27:54 2026] 127.0.0.1:57901 Accepted
+[Wed Jul  1 01:27:55 2026] 127.0.0.1:57901 [200]: GET /api/server-status.php
+[Wed Jul  1 01:27:55 2026] 127.0.0.1:57901 Closing
+[Wed Jul  1 01:27:55 2026] 127.0.0.1:65327 Accepted
+[Wed Jul  1 01:27:55 2026] 127.0.0.1:65327 [200]: GET /api/server-status.php
+[Wed Jul  1 01:27:55 2026] 127.0.0.1:65327 Closing
+[Wed Jul  1 01:28:54 2026] 127.0.0.1:63391 Accepted
+[Wed Jul  1 01:28:54 2026] 127.0.0.1:63391 [200]: GET /api/server-status.php
+[Wed Jul  1 01:28:54 2026] 127.0.0.1:63391 Closing
+[Wed Jul  1 01:28:54 2026] 127.0.0.1:54249 Accepted
+[Wed Jul  1 01:28:54 2026] 127.0.0.1:54249 [200]: GET /api/server-status.php
+[Wed Jul  1 01:28:54 2026] 127.0.0.1:54249 Closing
+[Wed Jul  1 01:29:54 2026] 127.0.0.1:63122 Accepted
+[Wed Jul  1 01:29:55 2026] 127.0.0.1:63122 [200]: GET /api/server-status.php
+[Wed Jul  1 01:29:55 2026] 127.0.0.1:63122 Closing
+[Wed Jul  1 01:29:55 2026] 127.0.0.1:52390 Accepted
+[Wed Jul  1 01:29:55 2026] 127.0.0.1:52390 [200]: GET /api/server-status.php
+[Wed Jul  1 01:29:55 2026] 127.0.0.1:52390 Closing
+[Wed Jul  1 01:30:54 2026] 127.0.0.1:53523 Accepted
+[Wed Jul  1 01:30:54 2026] 127.0.0.1:53523 [200]: GET /api/server-status.php
+[Wed Jul  1 01:30:54 2026] 127.0.0.1:53523 Closing
+[Wed Jul  1 01:30:54 2026] 127.0.0.1:49669 Accepted
+[Wed Jul  1 01:30:54 2026] 127.0.0.1:49669 [200]: GET /api/server-status.php
+[Wed Jul  1 01:30:54 2026] 127.0.0.1:49669 Closing
+[Wed Jul  1 01:31:54 2026] 127.0.0.1:61870 Accepted
+[Wed Jul  1 01:31:54 2026] 127.0.0.1:62776 Accepted
+[Wed Jul  1 01:31:54 2026] 127.0.0.1:61870 [200]: GET /api/server-status.php
+[Wed Jul  1 01:31:54 2026] 127.0.0.1:61870 Closing
+[Wed Jul  1 01:31:54 2026] 127.0.0.1:62776 [200]: GET /api/server-status.php
+[Wed Jul  1 01:31:54 2026] 127.0.0.1:62776 Closing
+[Wed Jul  1 01:32:54 2026] 127.0.0.1:51398 Accepted
+[Wed Jul  1 01:32:54 2026] 127.0.0.1:51398 [200]: GET /api/server-status.php
+[Wed Jul  1 01:32:54 2026] 127.0.0.1:51398 Closing
+[Wed Jul  1 01:32:54 2026] 127.0.0.1:54966 Accepted
+[Wed Jul  1 01:32:54 2026] 127.0.0.1:54966 [200]: GET /api/server-status.php
+[Wed Jul  1 01:32:54 2026] 127.0.0.1:54966 Closing
+[Wed Jul  1 01:33:54 2026] 127.0.0.1:64120 Accepted
+[Wed Jul  1 01:33:55 2026] 127.0.0.1:64120 [200]: GET /api/server-status.php
+[Wed Jul  1 01:33:55 2026] 127.0.0.1:64120 Closing
+[Wed Jul  1 01:33:55 2026] 127.0.0.1:50389 Accepted
+[Wed Jul  1 01:33:55 2026] 127.0.0.1:50389 [200]: GET /api/server-status.php
+[Wed Jul  1 01:33:55 2026] 127.0.0.1:50389 Closing
+[Wed Jul  1 01:34:54 2026] 127.0.0.1:63897 Accepted
+[Wed Jul  1 01:34:54 2026] 127.0.0.1:63897 [200]: GET /api/server-status.php
+[Wed Jul  1 01:34:54 2026] 127.0.0.1:63897 Closing
+[Wed Jul  1 01:34:54 2026] 127.0.0.1:64367 Accepted
+[Wed Jul  1 01:34:54 2026] 127.0.0.1:64367 [200]: GET /api/server-status.php
+[Wed Jul  1 01:34:54 2026] 127.0.0.1:64367 Closing
+[Wed Jul  1 01:35:54 2026] 127.0.0.1:54201 Accepted
+[Wed Jul  1 01:35:54 2026] 127.0.0.1:64699 Accepted
+[Wed Jul  1 01:35:54 2026] 127.0.0.1:54201 [200]: GET /api/server-status.php
+[Wed Jul  1 01:35:54 2026] 127.0.0.1:54201 Closing
+[Wed Jul  1 01:35:54 2026] 127.0.0.1:64699 [200]: GET /api/server-status.php
+[Wed Jul  1 01:35:54 2026] 127.0.0.1:64699 Closing
+[Wed Jul  1 01:36:54 2026] 127.0.0.1:62640 Accepted
+[Wed Jul  1 01:36:54 2026] 127.0.0.1:62640 [200]: GET /api/server-status.php
+[Wed Jul  1 01:36:54 2026] 127.0.0.1:62640 Closing
+[Wed Jul  1 01:36:54 2026] 127.0.0.1:52866 Accepted
+[Wed Jul  1 01:36:54 2026] 127.0.0.1:52866 [200]: GET /api/server-status.php
+[Wed Jul  1 01:36:54 2026] 127.0.0.1:52866 Closing
+[Wed Jul  1 01:37:54 2026] 127.0.0.1:60189 Accepted
+[Wed Jul  1 01:37:55 2026] 127.0.0.1:60189 [200]: GET /api/server-status.php
+[Wed Jul  1 01:37:55 2026] 127.0.0.1:60189 Closing
+[Wed Jul  1 01:37:55 2026] 127.0.0.1:51452 Accepted
+[Wed Jul  1 01:37:55 2026] 127.0.0.1:51452 [200]: GET /api/server-status.php
+[Wed Jul  1 01:37:55 2026] 127.0.0.1:51452 Closing
+[Wed Jul  1 01:38:54 2026] 127.0.0.1:54308 Accepted
+[Wed Jul  1 01:38:54 2026] 127.0.0.1:61846 Accepted
+[Wed Jul  1 01:38:54 2026] 127.0.0.1:54308 [200]: GET /api/server-status.php
+[Wed Jul  1 01:38:54 2026] 127.0.0.1:54308 Closing
+[Wed Jul  1 01:38:54 2026] 127.0.0.1:61846 [200]: GET /api/server-status.php
+[Wed Jul  1 01:38:54 2026] 127.0.0.1:61846 Closing
+[Wed Jul  1 01:39:54 2026] 127.0.0.1:60406 Accepted
+[Wed Jul  1 01:39:54 2026] 127.0.0.1:60406 [200]: GET /api/server-status.php
+[Wed Jul  1 01:39:54 2026] 127.0.0.1:60406 Closing
+[Wed Jul  1 01:39:54 2026] 127.0.0.1:62608 Accepted
+[Wed Jul  1 01:39:54 2026] 127.0.0.1:62608 [200]: GET /api/server-status.php
+[Wed Jul  1 01:39:54 2026] 127.0.0.1:62608 Closing
+[Wed Jul  1 01:40:54 2026] 127.0.0.1:57948 Accepted
+[Wed Jul  1 01:40:54 2026] 127.0.0.1:57948 [200]: GET /api/server-status.php
+[Wed Jul  1 01:40:54 2026] 127.0.0.1:57948 Closing
+[Wed Jul  1 01:40:54 2026] 127.0.0.1:60158 Accepted
+[Wed Jul  1 01:40:54 2026] 127.0.0.1:60158 [200]: GET /api/server-status.php
+[Wed Jul  1 01:40:54 2026] 127.0.0.1:60158 Closing
+[Wed Jul  1 01:41:54 2026] 127.0.0.1:54846 Accepted
+[Wed Jul  1 01:41:54 2026] 127.0.0.1:56768 Accepted
+[Wed Jul  1 01:41:54 2026] 127.0.0.1:54846 [200]: GET /api/server-status.php
+[Wed Jul  1 01:41:54 2026] 127.0.0.1:54846 Closing
+[Wed Jul  1 01:41:54 2026] 127.0.0.1:56768 [200]: GET /api/server-status.php
+[Wed Jul  1 01:41:54 2026] 127.0.0.1:56768 Closing
+[Wed Jul  1 01:42:54 2026] 127.0.0.1:57936 Accepted
+[Wed Jul  1 01:42:54 2026] 127.0.0.1:57936 [200]: GET /api/server-status.php
+[Wed Jul  1 01:42:54 2026] 127.0.0.1:57936 Closing
+[Wed Jul  1 01:42:54 2026] 127.0.0.1:62855 Accepted
+[Wed Jul  1 01:42:54 2026] 127.0.0.1:62855 [200]: GET /api/server-status.php
+[Wed Jul  1 01:42:54 2026] 127.0.0.1:62855 Closing
+[Wed Jul  1 01:43:54 2026] 127.0.0.1:65222 Accepted
+[Wed Jul  1 01:43:54 2026] 127.0.0.1:65222 [200]: GET /api/server-status.php
+[Wed Jul  1 01:43:54 2026] 127.0.0.1:65222 Closing
+[Wed Jul  1 01:43:54 2026] 127.0.0.1:50801 Accepted
+[Wed Jul  1 01:43:54 2026] 127.0.0.1:50801 [200]: GET /api/server-status.php
+[Wed Jul  1 01:43:54 2026] 127.0.0.1:50801 Closing
+[Wed Jul  1 01:44:54 2026] 127.0.0.1:55292 Accepted
+[Wed Jul  1 01:44:54 2026] 127.0.0.1:55292 [200]: GET /api/server-status.php
+[Wed Jul  1 01:44:54 2026] 127.0.0.1:55292 Closing
+[Wed Jul  1 01:44:54 2026] 127.0.0.1:58909 Accepted
+[Wed Jul  1 01:44:54 2026] 127.0.0.1:58909 [200]: GET /api/server-status.php
+[Wed Jul  1 01:44:54 2026] 127.0.0.1:58909 Closing
+[Wed Jul  1 01:45:54 2026] 127.0.0.1:50945 Accepted
+[Wed Jul  1 01:45:54 2026] 127.0.0.1:50945 [200]: GET /api/server-status.php
+[Wed Jul  1 01:45:54 2026] 127.0.0.1:50945 Closing
+[Wed Jul  1 01:45:54 2026] 127.0.0.1:53550 Accepted
+[Wed Jul  1 01:45:54 2026] 127.0.0.1:53550 [200]: GET /api/server-status.php
+[Wed Jul  1 01:45:54 2026] 127.0.0.1:53550 Closing
+[Wed Jul  1 01:46:54 2026] 127.0.0.1:56150 Accepted
+[Wed Jul  1 01:46:54 2026] 127.0.0.1:64550 Accepted
+[Wed Jul  1 01:46:54 2026] 127.0.0.1:56150 [200]: GET /api/server-status.php
+[Wed Jul  1 01:46:54 2026] 127.0.0.1:56150 Closing
+[Wed Jul  1 01:46:54 2026] 127.0.0.1:64550 [200]: GET /api/server-status.php
+[Wed Jul  1 01:46:54 2026] 127.0.0.1:64550 Closing
+[Wed Jul  1 01:47:54 2026] 127.0.0.1:62339 Accepted
+[Wed Jul  1 01:47:54 2026] 127.0.0.1:50775 Accepted
+[Wed Jul  1 01:47:55 2026] 127.0.0.1:62339 [200]: GET /api/server-status.php
+[Wed Jul  1 01:47:55 2026] 127.0.0.1:62339 Closing
+[Wed Jul  1 01:47:55 2026] 127.0.0.1:50775 [200]: GET /api/server-status.php
+[Wed Jul  1 01:47:55 2026] 127.0.0.1:50775 Closing
+[Wed Jul  1 01:48:54 2026] 127.0.0.1:57600 Accepted
+[Wed Jul  1 01:48:54 2026] 127.0.0.1:57600 [200]: GET /api/server-status.php
+[Wed Jul  1 01:48:54 2026] 127.0.0.1:57600 Closing
+[Wed Jul  1 01:48:54 2026] 127.0.0.1:56249 Accepted
+[Wed Jul  1 01:48:54 2026] 127.0.0.1:56249 [200]: GET /api/server-status.php
+[Wed Jul  1 01:48:54 2026] 127.0.0.1:56249 Closing
+[Wed Jul  1 01:49:54 2026] 127.0.0.1:56557 Accepted
+[Wed Jul  1 01:49:54 2026] 127.0.0.1:51745 Accepted
+[Wed Jul  1 01:49:55 2026] 127.0.0.1:56557 [200]: GET /api/server-status.php
+[Wed Jul  1 01:49:55 2026] 127.0.0.1:56557 Closing
+[Wed Jul  1 01:49:55 2026] 127.0.0.1:51745 [200]: GET /api/server-status.php
+[Wed Jul  1 01:49:55 2026] 127.0.0.1:51745 Closing
+[Wed Jul  1 01:50:54 2026] 127.0.0.1:59701 Accepted
+[Wed Jul  1 01:50:54 2026] 127.0.0.1:59701 [200]: GET /api/server-status.php
+[Wed Jul  1 01:50:54 2026] 127.0.0.1:59701 Closing
+[Wed Jul  1 01:50:54 2026] 127.0.0.1:59233 Accepted
+[Wed Jul  1 01:50:54 2026] 127.0.0.1:59233 [200]: GET /api/server-status.php
+[Wed Jul  1 01:50:54 2026] 127.0.0.1:59233 Closing
+[Wed Jul  1 01:51:54 2026] 127.0.0.1:52930 Accepted
+[Wed Jul  1 01:51:55 2026] 127.0.0.1:52930 [200]: GET /api/server-status.php
+[Wed Jul  1 01:51:55 2026] 127.0.0.1:52930 Closing
+[Wed Jul  1 01:51:55 2026] 127.0.0.1:52725 Accepted
+[Wed Jul  1 01:51:55 2026] 127.0.0.1:52725 [200]: GET /api/server-status.php
+[Wed Jul  1 01:51:55 2026] 127.0.0.1:52725 Closing
+[Wed Jul  1 01:52:54 2026] 127.0.0.1:55123 Accepted
+[Wed Jul  1 01:52:54 2026] 127.0.0.1:55123 [200]: GET /api/server-status.php
+[Wed Jul  1 01:52:54 2026] 127.0.0.1:55123 Closing
+[Wed Jul  1 01:52:54 2026] 127.0.0.1:63812 Accepted
+[Wed Jul  1 01:52:54 2026] 127.0.0.1:63812 [200]: GET /api/server-status.php
+[Wed Jul  1 01:52:54 2026] 127.0.0.1:63812 Closing
+[Wed Jul  1 01:53:54 2026] 127.0.0.1:54881 Accepted
+[Wed Jul  1 01:53:54 2026] 127.0.0.1:54881 [200]: GET /api/server-status.php
+[Wed Jul  1 01:53:54 2026] 127.0.0.1:54881 Closing
+[Wed Jul  1 01:53:54 2026] 127.0.0.1:64734 Accepted
+[Wed Jul  1 01:53:54 2026] 127.0.0.1:64734 [200]: GET /api/server-status.php
+[Wed Jul  1 01:53:54 2026] 127.0.0.1:64734 Closing
+[Wed Jul  1 01:54:54 2026] 127.0.0.1:62522 Accepted
+[Wed Jul  1 01:54:55 2026] 127.0.0.1:62522 [200]: GET /api/server-status.php
+[Wed Jul  1 01:54:55 2026] 127.0.0.1:62522 Closing
+[Wed Jul  1 01:54:55 2026] 127.0.0.1:58911 Accepted
+[Wed Jul  1 01:54:55 2026] 127.0.0.1:58911 [200]: GET /api/server-status.php
+[Wed Jul  1 01:54:55 2026] 127.0.0.1:58911 Closing
+[Wed Jul  1 01:55:54 2026] 127.0.0.1:52873 Accepted
+[Wed Jul  1 01:55:54 2026] 127.0.0.1:52873 [200]: GET /api/server-status.php
+[Wed Jul  1 01:55:54 2026] 127.0.0.1:52873 Closing
+[Wed Jul  1 01:55:54 2026] 127.0.0.1:55479 Accepted
+[Wed Jul  1 01:55:54 2026] 127.0.0.1:55479 [200]: GET /api/server-status.php
+[Wed Jul  1 01:55:54 2026] 127.0.0.1:55479 Closing
+[Wed Jul  1 01:56:54 2026] 127.0.0.1:58342 Accepted
+[Wed Jul  1 01:56:55 2026] 127.0.0.1:58342 [200]: GET /api/server-status.php
+[Wed Jul  1 01:56:55 2026] 127.0.0.1:58342 Closing
+[Wed Jul  1 01:56:55 2026] 127.0.0.1:60136 Accepted
+[Wed Jul  1 01:56:55 2026] 127.0.0.1:60136 [200]: GET /api/server-status.php
+[Wed Jul  1 01:56:55 2026] 127.0.0.1:60136 Closing
+[Wed Jul  1 01:57:54 2026] 127.0.0.1:54914 Accepted
+[Wed Jul  1 01:57:54 2026] 127.0.0.1:54914 [200]: GET /api/server-status.php
+[Wed Jul  1 01:57:54 2026] 127.0.0.1:54914 Closing
+[Wed Jul  1 01:57:54 2026] 127.0.0.1:55205 Accepted
+[Wed Jul  1 01:57:54 2026] 127.0.0.1:55205 [200]: GET /api/server-status.php
+[Wed Jul  1 01:57:54 2026] 127.0.0.1:55205 Closing
+[Wed Jul  1 01:58:54 2026] 127.0.0.1:58496 Accepted
+[Wed Jul  1 01:58:54 2026] 127.0.0.1:58496 [200]: GET /api/server-status.php
+[Wed Jul  1 01:58:54 2026] 127.0.0.1:58496 Closing
+[Wed Jul  1 01:58:54 2026] 127.0.0.1:52032 Accepted
+[Wed Jul  1 01:58:54 2026] 127.0.0.1:52032 [200]: GET /api/server-status.php
+[Wed Jul  1 01:58:54 2026] 127.0.0.1:52032 Closing
+[Wed Jul  1 01:59:54 2026] 127.0.0.1:58983 Accepted
+[Wed Jul  1 01:59:55 2026] 127.0.0.1:58983 [200]: GET /api/server-status.php
+[Wed Jul  1 01:59:55 2026] 127.0.0.1:58983 Closing
+[Wed Jul  1 01:59:55 2026] 127.0.0.1:56216 Accepted
+[Wed Jul  1 01:59:55 2026] 127.0.0.1:56216 [200]: GET /api/server-status.php
+[Wed Jul  1 01:59:55 2026] 127.0.0.1:56216 Closing
+[Wed Jul  1 02:00:54 2026] 127.0.0.1:55546 Accepted
+[Wed Jul  1 02:00:54 2026] 127.0.0.1:55546 [200]: GET /api/server-status.php
+[Wed Jul  1 02:00:54 2026] 127.0.0.1:55546 Closing
+[Wed Jul  1 02:00:54 2026] 127.0.0.1:51985 Accepted
+[Wed Jul  1 02:00:54 2026] 127.0.0.1:51985 [200]: GET /api/server-status.php
+[Wed Jul  1 02:00:54 2026] 127.0.0.1:51985 Closing
+[Wed Jul  1 02:01:54 2026] 127.0.0.1:49848 Accepted
+[Wed Jul  1 02:01:54 2026] 127.0.0.1:49848 [200]: GET /api/server-status.php
+[Wed Jul  1 02:01:54 2026] 127.0.0.1:49848 Closing
+[Wed Jul  1 02:01:54 2026] 127.0.0.1:52053 Accepted
+[Wed Jul  1 02:01:54 2026] 127.0.0.1:52053 [200]: GET /api/server-status.php
+[Wed Jul  1 02:01:54 2026] 127.0.0.1:52053 Closing
+[Wed Jul  1 02:02:54 2026] 127.0.0.1:59205 Accepted
+[Wed Jul  1 02:02:54 2026] 127.0.0.1:59205 [200]: GET /api/server-status.php
+[Wed Jul  1 02:02:54 2026] 127.0.0.1:59205 Closing
+[Wed Jul  1 02:02:54 2026] 127.0.0.1:55415 Accepted
+[Wed Jul  1 02:02:54 2026] 127.0.0.1:55415 [200]: GET /api/server-status.php
+[Wed Jul  1 02:02:54 2026] 127.0.0.1:55415 Closing
+[Wed Jul  1 02:03:54 2026] 127.0.0.1:53705 Accepted
+[Wed Jul  1 02:03:54 2026] 127.0.0.1:58858 Accepted
+[Wed Jul  1 02:03:55 2026] 127.0.0.1:53705 [200]: GET /api/server-status.php
+[Wed Jul  1 02:03:55 2026] 127.0.0.1:53705 Closing
+[Wed Jul  1 02:03:55 2026] 127.0.0.1:58858 [200]: GET /api/server-status.php
+[Wed Jul  1 02:03:55 2026] 127.0.0.1:58858 Closing
+[Wed Jul  1 02:04:54 2026] 127.0.0.1:49372 Accepted
+[Wed Jul  1 02:04:54 2026] 127.0.0.1:51580 Accepted
+[Wed Jul  1 02:04:54 2026] 127.0.0.1:49372 [200]: GET /api/server-status.php
+[Wed Jul  1 02:04:54 2026] 127.0.0.1:49372 Closing
+[Wed Jul  1 02:04:54 2026] 127.0.0.1:51580 [200]: GET /api/server-status.php
+[Wed Jul  1 02:04:54 2026] 127.0.0.1:51580 Closing
+[Wed Jul  1 02:05:54 2026] 127.0.0.1:53775 Accepted
+[Wed Jul  1 02:05:54 2026] 127.0.0.1:53775 [200]: GET /api/server-status.php
+[Wed Jul  1 02:05:54 2026] 127.0.0.1:53775 Closing
+[Wed Jul  1 02:05:54 2026] 127.0.0.1:54514 Accepted
+[Wed Jul  1 02:05:54 2026] 127.0.0.1:54514 [200]: GET /api/server-status.php
+[Wed Jul  1 02:05:54 2026] 127.0.0.1:54514 Closing
+[Wed Jul  1 02:06:54 2026] 127.0.0.1:57522 Accepted
+[Wed Jul  1 02:06:54 2026] 127.0.0.1:57522 [200]: GET /api/server-status.php
+[Wed Jul  1 02:06:54 2026] 127.0.0.1:57522 Closing
+[Wed Jul  1 02:06:54 2026] 127.0.0.1:55438 Accepted
+[Wed Jul  1 02:06:54 2026] 127.0.0.1:55438 [200]: GET /api/server-status.php
+[Wed Jul  1 02:06:54 2026] 127.0.0.1:55438 Closing
+[Wed Jul  1 02:07:54 2026] 127.0.0.1:51417 Accepted
+[Wed Jul  1 02:07:54 2026] 127.0.0.1:51417 [200]: GET /api/server-status.php
+[Wed Jul  1 02:07:54 2026] 127.0.0.1:51417 Closing
+[Wed Jul  1 02:07:54 2026] 127.0.0.1:53627 Accepted
+[Wed Jul  1 02:07:54 2026] 127.0.0.1:53627 [200]: GET /api/server-status.php
+[Wed Jul  1 02:07:54 2026] 127.0.0.1:53627 Closing
+[Wed Jul  1 02:08:54 2026] 127.0.0.1:50614 Accepted
+[Wed Jul  1 02:08:54 2026] 127.0.0.1:56410 Accepted
+[Wed Jul  1 02:08:54 2026] 127.0.0.1:50614 [200]: GET /api/server-status.php
+[Wed Jul  1 02:08:54 2026] 127.0.0.1:50614 Closing
+[Wed Jul  1 02:08:54 2026] 127.0.0.1:56410 [200]: GET /api/server-status.php
+[Wed Jul  1 02:08:54 2026] 127.0.0.1:56410 Closing
+[Wed Jul  1 02:09:54 2026] 127.0.0.1:57193 Accepted
+[Wed Jul  1 02:09:55 2026] 127.0.0.1:57193 [200]: GET /api/server-status.php
+[Wed Jul  1 02:09:55 2026] 127.0.0.1:57193 Closing
+[Wed Jul  1 02:09:55 2026] 127.0.0.1:56680 Accepted
+[Wed Jul  1 02:09:55 2026] 127.0.0.1:56680 [200]: GET /api/server-status.php
+[Wed Jul  1 02:09:55 2026] 127.0.0.1:56680 Closing
+[Wed Jul  1 02:10:54 2026] 127.0.0.1:63612 Accepted
+[Wed Jul  1 02:10:54 2026] 127.0.0.1:63612 [200]: GET /api/server-status.php
+[Wed Jul  1 02:10:54 2026] 127.0.0.1:63612 Closing
+[Wed Jul  1 02:10:54 2026] 127.0.0.1:56084 Accepted
+[Wed Jul  1 02:10:54 2026] 127.0.0.1:56084 [200]: GET /api/server-status.php
+[Wed Jul  1 02:10:54 2026] 127.0.0.1:56084 Closing
+[Wed Jul  1 02:11:54 2026] 127.0.0.1:56859 Accepted
+[Wed Jul  1 02:11:55 2026] 127.0.0.1:56859 [200]: GET /api/server-status.php
+[Wed Jul  1 02:11:55 2026] 127.0.0.1:56859 Closing
+[Wed Jul  1 02:11:55 2026] 127.0.0.1:57332 Accepted
+[Wed Jul  1 02:11:55 2026] 127.0.0.1:57332 [200]: GET /api/server-status.php
+[Wed Jul  1 02:11:55 2026] 127.0.0.1:57332 Closing
+[Wed Jul  1 02:12:54 2026] 127.0.0.1:59033 Accepted
+[Wed Jul  1 02:12:54 2026] 127.0.0.1:59033 [200]: GET /api/server-status.php
+[Wed Jul  1 02:12:54 2026] 127.0.0.1:59033 Closing
+[Wed Jul  1 02:12:54 2026] 127.0.0.1:64624 Accepted
+[Wed Jul  1 02:12:54 2026] 127.0.0.1:64624 [200]: GET /api/server-status.php
+[Wed Jul  1 02:12:54 2026] 127.0.0.1:64624 Closing
+[Wed Jul  1 02:13:54 2026] 127.0.0.1:61410 Accepted
+[Wed Jul  1 02:13:55 2026] 127.0.0.1:61410 [200]: GET /api/server-status.php
+[Wed Jul  1 02:13:55 2026] 127.0.0.1:61410 Closing
+[Wed Jul  1 02:13:55 2026] 127.0.0.1:53570 Accepted
+[Wed Jul  1 02:13:55 2026] 127.0.0.1:53570 [200]: GET /api/server-status.php
+[Wed Jul  1 02:13:55 2026] 127.0.0.1:53570 Closing
+[Wed Jul  1 02:14:54 2026] 127.0.0.1:54455 Accepted
+[Wed Jul  1 02:14:54 2026] 127.0.0.1:54455 [200]: GET /api/server-status.php
+[Wed Jul  1 02:14:54 2026] 127.0.0.1:54455 Closing
+[Wed Jul  1 02:14:54 2026] 127.0.0.1:60188 Accepted
+[Wed Jul  1 02:14:54 2026] 127.0.0.1:60188 [200]: GET /api/server-status.php
+[Wed Jul  1 02:14:54 2026] 127.0.0.1:60188 Closing
+[Wed Jul  1 02:15:54 2026] 127.0.0.1:58247 Accepted
+[Wed Jul  1 02:15:54 2026] 127.0.0.1:58247 [200]: GET /api/server-status.php
+[Wed Jul  1 02:15:54 2026] 127.0.0.1:58247 Closing
+[Wed Jul  1 02:15:54 2026] 127.0.0.1:63402 Accepted
+[Wed Jul  1 02:15:55 2026] 127.0.0.1:63402 [200]: GET /api/server-status.php
+[Wed Jul  1 02:15:55 2026] 127.0.0.1:63402 Closing
+[Wed Jul  1 02:16:54 2026] 127.0.0.1:57922 Accepted
+[Wed Jul  1 02:16:54 2026] 127.0.0.1:57922 [200]: GET /api/server-status.php
+[Wed Jul  1 02:16:54 2026] 127.0.0.1:57922 Closing
+[Wed Jul  1 02:16:54 2026] 127.0.0.1:56190 Accepted
+[Wed Jul  1 02:16:54 2026] 127.0.0.1:56190 [200]: GET /api/server-status.php
+[Wed Jul  1 02:16:54 2026] 127.0.0.1:56190 Closing
+[Wed Jul  1 02:17:54 2026] 127.0.0.1:56646 Accepted
+[Wed Jul  1 02:17:55 2026] 127.0.0.1:56646 [200]: GET /api/server-status.php
+[Wed Jul  1 02:17:55 2026] 127.0.0.1:56646 Closing
+[Wed Jul  1 02:17:55 2026] 127.0.0.1:49246 Accepted
+[Wed Jul  1 02:17:55 2026] 127.0.0.1:49246 [200]: GET /api/server-status.php
+[Wed Jul  1 02:17:55 2026] 127.0.0.1:49246 Closing
+[Wed Jul  1 02:18:54 2026] 127.0.0.1:51330 Accepted
+[Wed Jul  1 02:18:54 2026] 127.0.0.1:51330 [200]: GET /api/server-status.php
+[Wed Jul  1 02:18:54 2026] 127.0.0.1:51330 Closing
+[Wed Jul  1 02:18:54 2026] 127.0.0.1:55812 Accepted
+[Wed Jul  1 02:18:54 2026] 127.0.0.1:55812 [200]: GET /api/server-status.php
+[Wed Jul  1 02:18:54 2026] 127.0.0.1:55812 Closing
+[Wed Jul  1 02:19:54 2026] 127.0.0.1:61875 Accepted
+[Wed Jul  1 02:19:54 2026] 127.0.0.1:57279 Accepted
+[Wed Jul  1 02:19:54 2026] 127.0.0.1:61875 [200]: GET /api/server-status.php
+[Wed Jul  1 02:19:54 2026] 127.0.0.1:61875 Closing
+[Wed Jul  1 02:19:54 2026] 127.0.0.1:57279 [200]: GET /api/server-status.php
+[Wed Jul  1 02:19:54 2026] 127.0.0.1:57279 Closing
+[Wed Jul  1 02:20:54 2026] 127.0.0.1:56161 Accepted
+[Wed Jul  1 02:20:54 2026] 127.0.0.1:56161 [200]: GET /api/server-status.php
+[Wed Jul  1 02:20:54 2026] 127.0.0.1:56161 Closing
+[Wed Jul  1 02:20:54 2026] 127.0.0.1:55740 Accepted
+[Wed Jul  1 02:20:54 2026] 127.0.0.1:55740 [200]: GET /api/server-status.php
+[Wed Jul  1 02:20:54 2026] 127.0.0.1:55740 Closing
+[Wed Jul  1 02:21:54 2026] 127.0.0.1:55807 Accepted
+[Wed Jul  1 02:21:55 2026] 127.0.0.1:55807 [200]: GET /api/server-status.php
+[Wed Jul  1 02:21:55 2026] 127.0.0.1:55807 Closing
+[Wed Jul  1 02:21:55 2026] 127.0.0.1:65035 Accepted
+[Wed Jul  1 02:21:55 2026] 127.0.0.1:65035 [200]: GET /api/server-status.php
+[Wed Jul  1 02:21:55 2026] 127.0.0.1:65035 Closing
+[Wed Jul  1 02:22:54 2026] 127.0.0.1:60902 Accepted
+[Wed Jul  1 02:22:54 2026] 127.0.0.1:60902 [200]: GET /api/server-status.php
+[Wed Jul  1 02:22:54 2026] 127.0.0.1:60902 Closing
+[Wed Jul  1 02:22:54 2026] 127.0.0.1:54668 Accepted
+[Wed Jul  1 02:22:54 2026] 127.0.0.1:54668 [200]: GET /api/server-status.php
+[Wed Jul  1 02:22:54 2026] 127.0.0.1:54668 Closing
+[Wed Jul  1 02:23:54 2026] 127.0.0.1:61429 Accepted
+[Wed Jul  1 02:23:54 2026] 127.0.0.1:61429 [200]: GET /api/server-status.php
+[Wed Jul  1 02:23:54 2026] 127.0.0.1:61429 Closing
+[Wed Jul  1 02:23:54 2026] 127.0.0.1:49551 Accepted
+[Wed Jul  1 02:23:54 2026] 127.0.0.1:49551 [200]: GET /api/server-status.php
+[Wed Jul  1 02:23:54 2026] 127.0.0.1:49551 Closing
+[Wed Jul  1 02:24:54 2026] 127.0.0.1:57393 Accepted
+[Wed Jul  1 02:24:54 2026] 127.0.0.1:52942 Accepted
+[Wed Jul  1 02:24:54 2026] 127.0.0.1:57393 [200]: GET /api/server-status.php
+[Wed Jul  1 02:24:54 2026] 127.0.0.1:57393 Closing
+[Wed Jul  1 02:24:54 2026] 127.0.0.1:52942 [200]: GET /api/server-status.php
+[Wed Jul  1 02:24:54 2026] 127.0.0.1:52942 Closing
+[Wed Jul  1 02:25:54 2026] 127.0.0.1:62730 Accepted
+[Wed Jul  1 02:25:55 2026] 127.0.0.1:62730 [200]: GET /api/server-status.php
+[Wed Jul  1 02:25:55 2026] 127.0.0.1:62730 Closing
+[Wed Jul  1 02:25:55 2026] 127.0.0.1:52256 Accepted
+[Wed Jul  1 02:25:55 2026] 127.0.0.1:52256 [200]: GET /api/server-status.php
+[Wed Jul  1 02:25:55 2026] 127.0.0.1:52256 Closing
+[Wed Jul  1 02:26:54 2026] 127.0.0.1:59970 Accepted
+[Wed Jul  1 02:26:54 2026] 127.0.0.1:59970 [200]: GET /api/server-status.php
+[Wed Jul  1 02:26:54 2026] 127.0.0.1:59970 Closing
+[Wed Jul  1 02:26:54 2026] 127.0.0.1:57543 Accepted
+[Wed Jul  1 02:26:54 2026] 127.0.0.1:57543 [200]: GET /api/server-status.php
+[Wed Jul  1 02:26:54 2026] 127.0.0.1:57543 Closing
+[Wed Jul  1 02:27:54 2026] 127.0.0.1:55495 Accepted
+[Wed Jul  1 02:27:54 2026] 127.0.0.1:55495 [200]: GET /api/server-status.php
+[Wed Jul  1 02:27:54 2026] 127.0.0.1:55495 Closing
+[Wed Jul  1 02:27:54 2026] 127.0.0.1:58700 Accepted
+[Wed Jul  1 02:27:54 2026] 127.0.0.1:58700 [200]: GET /api/server-status.php
+[Wed Jul  1 02:27:54 2026] 127.0.0.1:58700 Closing
+[Wed Jul  1 02:28:54 2026] 127.0.0.1:49419 Accepted
+[Wed Jul  1 02:28:54 2026] 127.0.0.1:49419 [200]: GET /api/server-status.php
+[Wed Jul  1 02:28:54 2026] 127.0.0.1:49419 Closing
+[Wed Jul  1 02:28:54 2026] 127.0.0.1:62647 Accepted
+[Wed Jul  1 02:28:54 2026] 127.0.0.1:62647 [200]: GET /api/server-status.php
+[Wed Jul  1 02:28:54 2026] 127.0.0.1:62647 Closing
+[Wed Jul  1 02:29:54 2026] 127.0.0.1:52964 Accepted
+[Wed Jul  1 02:29:55 2026] 127.0.0.1:52964 [200]: GET /api/server-status.php
+[Wed Jul  1 02:29:55 2026] 127.0.0.1:52964 Closing
+[Wed Jul  1 02:29:55 2026] 127.0.0.1:59240 Accepted
+[Wed Jul  1 02:29:55 2026] 127.0.0.1:59240 [200]: GET /api/server-status.php
+[Wed Jul  1 02:29:55 2026] 127.0.0.1:59240 Closing
+[Wed Jul  1 02:30:54 2026] 127.0.0.1:52498 Accepted
+[Wed Jul  1 02:30:54 2026] 127.0.0.1:52498 [200]: GET /api/server-status.php
+[Wed Jul  1 02:30:54 2026] 127.0.0.1:52498 Closing
+[Wed Jul  1 02:30:54 2026] 127.0.0.1:57545 Accepted
+[Wed Jul  1 02:30:54 2026] 127.0.0.1:57545 [200]: GET /api/server-status.php
+[Wed Jul  1 02:30:54 2026] 127.0.0.1:57545 Closing
+[Wed Jul  1 02:31:54 2026] 127.0.0.1:64005 Accepted
+[Wed Jul  1 02:31:55 2026] 127.0.0.1:64005 [200]: GET /api/server-status.php
+[Wed Jul  1 02:31:55 2026] 127.0.0.1:64005 Closing
+[Wed Jul  1 02:31:55 2026] 127.0.0.1:52411 Accepted
+[Wed Jul  1 02:31:55 2026] 127.0.0.1:52411 [200]: GET /api/server-status.php
+[Wed Jul  1 02:31:55 2026] 127.0.0.1:52411 Closing
+[Wed Jul  1 02:32:54 2026] 127.0.0.1:64732 Accepted
+[Wed Jul  1 02:32:54 2026] 127.0.0.1:64732 [200]: GET /api/server-status.php
+[Wed Jul  1 02:32:54 2026] 127.0.0.1:64732 Closing
+[Wed Jul  1 02:32:54 2026] 127.0.0.1:58036 Accepted
+[Wed Jul  1 02:32:54 2026] 127.0.0.1:58036 [200]: GET /api/server-status.php
+[Wed Jul  1 02:32:54 2026] 127.0.0.1:58036 Closing
+[Wed Jul  1 02:33:54 2026] 127.0.0.1:51705 Accepted
+[Wed Jul  1 02:33:55 2026] 127.0.0.1:51705 [200]: GET /api/server-status.php
+[Wed Jul  1 02:33:55 2026] 127.0.0.1:51705 Closing
+[Wed Jul  1 02:33:55 2026] 127.0.0.1:63598 Accepted
+[Wed Jul  1 02:33:55 2026] 127.0.0.1:63598 [200]: GET /api/server-status.php
+[Wed Jul  1 02:33:55 2026] 127.0.0.1:63598 Closing
+[Wed Jul  1 02:34:54 2026] 127.0.0.1:58956 Accepted
+[Wed Jul  1 02:34:54 2026] 127.0.0.1:58956 [200]: GET /api/server-status.php
+[Wed Jul  1 02:34:54 2026] 127.0.0.1:58956 Closing
+[Wed Jul  1 02:34:54 2026] 127.0.0.1:53373 Accepted
+[Wed Jul  1 02:34:54 2026] 127.0.0.1:53373 [200]: GET /api/server-status.php
+[Wed Jul  1 02:34:54 2026] 127.0.0.1:53373 Closing
+[Wed Jul  1 02:35:54 2026] 127.0.0.1:59557 Accepted
+[Wed Jul  1 02:35:54 2026] 127.0.0.1:59557 [200]: GET /api/server-status.php
+[Wed Jul  1 02:35:55 2026] 127.0.0.1:59557 Closing
+[Wed Jul  1 02:35:55 2026] 127.0.0.1:54106 Accepted
+[Wed Jul  1 02:35:55 2026] 127.0.0.1:54106 [200]: GET /api/server-status.php
+[Wed Jul  1 02:35:55 2026] 127.0.0.1:54106 Closing
+[Wed Jul  1 02:36:54 2026] 127.0.0.1:57873 Accepted
+[Wed Jul  1 02:36:55 2026] 127.0.0.1:57873 [200]: GET /api/server-status.php
+[Wed Jul  1 02:36:55 2026] 127.0.0.1:57873 Closing
+[Wed Jul  1 02:36:55 2026] 127.0.0.1:49528 Accepted
+[Wed Jul  1 02:36:55 2026] 127.0.0.1:49528 [200]: GET /api/server-status.php
+[Wed Jul  1 02:36:55 2026] 127.0.0.1:49528 Closing
+[Wed Jul  1 02:37:54 2026] 127.0.0.1:58287 Accepted
+[Wed Jul  1 02:37:54 2026] 127.0.0.1:58287 [200]: GET /api/server-status.php
+[Wed Jul  1 02:37:54 2026] 127.0.0.1:58287 Closing
+[Wed Jul  1 02:37:54 2026] 127.0.0.1:60897 Accepted
+[Wed Jul  1 02:37:54 2026] 127.0.0.1:60897 [200]: GET /api/server-status.php
+[Wed Jul  1 02:37:54 2026] 127.0.0.1:60897 Closing
+[Wed Jul  1 02:38:54 2026] 127.0.0.1:61468 Accepted
+[Wed Jul  1 02:38:54 2026] 127.0.0.1:61468 [200]: GET /api/server-status.php
+[Wed Jul  1 02:38:54 2026] 127.0.0.1:61468 Closing
+[Wed Jul  1 02:38:54 2026] 127.0.0.1:57779 Accepted
+[Wed Jul  1 02:38:54 2026] 127.0.0.1:57779 [200]: GET /api/server-status.php
+[Wed Jul  1 02:38:54 2026] 127.0.0.1:57779 Closing
+[Wed Jul  1 02:39:54 2026] 127.0.0.1:61230 Accepted
+[Wed Jul  1 02:39:55 2026] 127.0.0.1:61230 [200]: GET /api/server-status.php
+[Wed Jul  1 02:39:55 2026] 127.0.0.1:61230 Closing
+[Wed Jul  1 02:39:55 2026] 127.0.0.1:61971 Accepted
+[Wed Jul  1 02:39:55 2026] 127.0.0.1:61971 [200]: GET /api/server-status.php
+[Wed Jul  1 02:39:55 2026] 127.0.0.1:61971 Closing
+[Wed Jul  1 02:40:54 2026] 127.0.0.1:57261 Accepted
+[Wed Jul  1 02:40:54 2026] 127.0.0.1:57261 [200]: GET /api/server-status.php
+[Wed Jul  1 02:40:54 2026] 127.0.0.1:57261 Closing
+[Wed Jul  1 02:40:54 2026] 127.0.0.1:58434 Accepted
+[Wed Jul  1 02:40:54 2026] 127.0.0.1:58434 [200]: GET /api/server-status.php
+[Wed Jul  1 02:40:54 2026] 127.0.0.1:58434 Closing
+[Wed Jul  1 02:41:54 2026] 127.0.0.1:62115 Accepted
+[Wed Jul  1 02:41:54 2026] 127.0.0.1:62115 [200]: GET /api/server-status.php
+[Wed Jul  1 02:41:54 2026] 127.0.0.1:62115 Closing
+[Wed Jul  1 02:41:54 2026] 127.0.0.1:60711 Accepted
+[Wed Jul  1 02:41:54 2026] 127.0.0.1:60711 [200]: GET /api/server-status.php
+[Wed Jul  1 02:41:54 2026] 127.0.0.1:60711 Closing
+[Wed Jul  1 02:42:54 2026] 127.0.0.1:51768 Accepted
+[Wed Jul  1 02:42:54 2026] 127.0.0.1:51768 [200]: GET /api/server-status.php
+[Wed Jul  1 02:42:54 2026] 127.0.0.1:51768 Closing
+[Wed Jul  1 02:42:54 2026] 127.0.0.1:54625 Accepted
+[Wed Jul  1 02:42:54 2026] 127.0.0.1:54625 [200]: GET /api/server-status.php
+[Wed Jul  1 02:42:54 2026] 127.0.0.1:54625 Closing
+[Wed Jul  1 02:43:54 2026] 127.0.0.1:50221 Accepted
+[Wed Jul  1 02:43:55 2026] 127.0.0.1:50221 [200]: GET /api/server-status.php
+[Wed Jul  1 02:43:55 2026] 127.0.0.1:50221 Closing
+[Wed Jul  1 02:43:55 2026] 127.0.0.1:51277 Accepted
+[Wed Jul  1 02:43:55 2026] 127.0.0.1:51277 [200]: GET /api/server-status.php
+[Wed Jul  1 02:43:55 2026] 127.0.0.1:51277 Closing
+[Wed Jul  1 02:44:54 2026] 127.0.0.1:51895 Accepted
+[Wed Jul  1 02:44:54 2026] 127.0.0.1:51895 [200]: GET /api/server-status.php
+[Wed Jul  1 02:44:54 2026] 127.0.0.1:51895 Closing
+[Wed Jul  1 02:44:54 2026] 127.0.0.1:59054 Accepted
+[Wed Jul  1 02:44:54 2026] 127.0.0.1:59054 [200]: GET /api/server-status.php
+[Wed Jul  1 02:44:54 2026] 127.0.0.1:59054 Closing
+[Wed Jul  1 02:45:54 2026] 127.0.0.1:57910 Accepted
+[Wed Jul  1 02:45:55 2026] 127.0.0.1:57910 [200]: GET /api/server-status.php
+[Wed Jul  1 02:45:55 2026] 127.0.0.1:57910 Closing
+[Wed Jul  1 02:45:55 2026] 127.0.0.1:57456 Accepted
+[Wed Jul  1 02:45:55 2026] 127.0.0.1:57456 [200]: GET /api/server-status.php
+[Wed Jul  1 02:45:55 2026] 127.0.0.1:57456 Closing
+[Wed Jul  1 02:46:54 2026] 127.0.0.1:63392 Accepted
+[Wed Jul  1 02:46:54 2026] 127.0.0.1:63392 [200]: GET /api/server-status.php
+[Wed Jul  1 02:46:54 2026] 127.0.0.1:63392 Closing
+[Wed Jul  1 02:46:54 2026] 127.0.0.1:56705 Accepted
+[Wed Jul  1 02:46:54 2026] 127.0.0.1:56705 [200]: GET /api/server-status.php
+[Wed Jul  1 02:46:54 2026] 127.0.0.1:56705 Closing
+[Wed Jul  1 02:47:54 2026] 127.0.0.1:60176 Accepted
+[Wed Jul  1 02:47:54 2026] 127.0.0.1:63593 Accepted
+[Wed Jul  1 02:47:55 2026] 127.0.0.1:60176 [200]: GET /api/server-status.php
+[Wed Jul  1 02:47:55 2026] 127.0.0.1:60176 Closing
+[Wed Jul  1 02:47:55 2026] 127.0.0.1:63593 [200]: GET /api/server-status.php
+[Wed Jul  1 02:47:55 2026] 127.0.0.1:63593 Closing
+[Wed Jul  1 02:48:54 2026] 127.0.0.1:57746 Accepted
+[Wed Jul  1 02:48:54 2026] 127.0.0.1:63356 Accepted
+[Wed Jul  1 02:48:54 2026] 127.0.0.1:57746 [200]: GET /api/server-status.php
+[Wed Jul  1 02:48:54 2026] 127.0.0.1:57746 Closing
+[Wed Jul  1 02:48:54 2026] 127.0.0.1:63356 [200]: GET /api/server-status.php
+[Wed Jul  1 02:48:54 2026] 127.0.0.1:63356 Closing
+[Wed Jul  1 02:49:54 2026] 127.0.0.1:57260 Accepted
+[Wed Jul  1 02:49:55 2026] 127.0.0.1:57260 [200]: GET /api/server-status.php
+[Wed Jul  1 02:49:55 2026] 127.0.0.1:57260 Closing
+[Wed Jul  1 02:49:55 2026] 127.0.0.1:65415 Accepted
+[Wed Jul  1 02:49:55 2026] 127.0.0.1:65415 [200]: GET /api/server-status.php
+[Wed Jul  1 02:49:55 2026] 127.0.0.1:65415 Closing
+[Wed Jul  1 02:50:54 2026] 127.0.0.1:59765 Accepted
+[Wed Jul  1 02:50:54 2026] 127.0.0.1:59765 [200]: GET /api/server-status.php
+[Wed Jul  1 02:50:54 2026] 127.0.0.1:59765 Closing
+[Wed Jul  1 02:50:54 2026] 127.0.0.1:57487 Accepted
+[Wed Jul  1 02:50:54 2026] 127.0.0.1:57487 [200]: GET /api/server-status.php
+[Wed Jul  1 02:50:54 2026] 127.0.0.1:57487 Closing
+[Wed Jul  1 02:51:54 2026] 127.0.0.1:59733 Accepted
+[Wed Jul  1 02:51:55 2026] 127.0.0.1:59733 [200]: GET /api/server-status.php
+[Wed Jul  1 02:51:55 2026] 127.0.0.1:59733 Closing
+[Wed Jul  1 02:51:55 2026] 127.0.0.1:49475 Accepted
+[Wed Jul  1 02:51:55 2026] 127.0.0.1:49475 [200]: GET /api/server-status.php
+[Wed Jul  1 02:51:55 2026] 127.0.0.1:49475 Closing
+[Wed Jul  1 02:52:54 2026] 127.0.0.1:62908 Accepted
+[Wed Jul  1 02:52:54 2026] 127.0.0.1:62908 [200]: GET /api/server-status.php
+[Wed Jul  1 02:52:54 2026] 127.0.0.1:62908 Closing
+[Wed Jul  1 02:52:54 2026] 127.0.0.1:65126 Accepted
+[Wed Jul  1 02:52:54 2026] 127.0.0.1:65126 [200]: GET /api/server-status.php
+[Wed Jul  1 02:52:54 2026] 127.0.0.1:65126 Closing
+[Wed Jul  1 02:53:54 2026] 127.0.0.1:59644 Accepted
+[Wed Jul  1 02:53:55 2026] 127.0.0.1:59644 [200]: GET /api/server-status.php
+[Wed Jul  1 02:53:55 2026] 127.0.0.1:59644 Closing
+[Wed Jul  1 02:53:55 2026] 127.0.0.1:60732 Accepted
+[Wed Jul  1 02:53:55 2026] 127.0.0.1:60732 [200]: GET /api/server-status.php
+[Wed Jul  1 02:53:55 2026] 127.0.0.1:60732 Closing
+[Wed Jul  1 02:54:54 2026] 127.0.0.1:64339 Accepted
+[Wed Jul  1 02:54:54 2026] 127.0.0.1:64339 [200]: GET /api/server-status.php
+[Wed Jul  1 02:54:54 2026] 127.0.0.1:64339 Closing
+[Wed Jul  1 02:54:54 2026] 127.0.0.1:50096 Accepted
+[Wed Jul  1 02:54:54 2026] 127.0.0.1:50096 [200]: GET /api/server-status.php
+[Wed Jul  1 02:54:54 2026] 127.0.0.1:50096 Closing
+[Wed Jul  1 02:55:54 2026] 127.0.0.1:59389 Accepted
+[Wed Jul  1 02:55:55 2026] 127.0.0.1:59389 [200]: GET /api/server-status.php
+[Wed Jul  1 02:55:55 2026] 127.0.0.1:59389 Closing
+[Wed Jul  1 02:55:55 2026] 127.0.0.1:51175 Accepted
+[Wed Jul  1 02:55:55 2026] 127.0.0.1:51175 [200]: GET /api/server-status.php
+[Wed Jul  1 02:55:55 2026] 127.0.0.1:51175 Closing
+[Wed Jul  1 02:56:54 2026] 127.0.0.1:54362 Accepted
+[Wed Jul  1 02:56:54 2026] 127.0.0.1:54362 [200]: GET /api/server-status.php
+[Wed Jul  1 02:56:54 2026] 127.0.0.1:54362 Closing
+[Wed Jul  1 02:56:54 2026] 127.0.0.1:64597 Accepted
+[Wed Jul  1 02:56:54 2026] 127.0.0.1:64597 [200]: GET /api/server-status.php
+[Wed Jul  1 02:56:54 2026] 127.0.0.1:64597 Closing
+[Wed Jul  1 02:57:54 2026] 127.0.0.1:60374 Accepted
+[Wed Jul  1 02:57:55 2026] 127.0.0.1:60374 [200]: GET /api/server-status.php
+[Wed Jul  1 02:57:55 2026] 127.0.0.1:60374 Closing
+[Wed Jul  1 02:57:55 2026] 127.0.0.1:50725 Accepted
+[Wed Jul  1 02:57:55 2026] 127.0.0.1:50725 [200]: GET /api/server-status.php
+[Wed Jul  1 02:57:55 2026] 127.0.0.1:50725 Closing
+[Wed Jul  1 02:58:54 2026] 127.0.0.1:54102 Accepted
+[Wed Jul  1 02:58:54 2026] 127.0.0.1:54102 [200]: GET /api/server-status.php
+[Wed Jul  1 02:58:54 2026] 127.0.0.1:54102 Closing
+[Wed Jul  1 02:58:54 2026] 127.0.0.1:62138 Accepted
+[Wed Jul  1 02:58:54 2026] 127.0.0.1:62138 [200]: GET /api/server-status.php
+[Wed Jul  1 02:58:54 2026] 127.0.0.1:62138 Closing
+[Wed Jul  1 02:59:54 2026] 127.0.0.1:52894 Accepted
+[Wed Jul  1 02:59:55 2026] 127.0.0.1:52894 [200]: GET /api/server-status.php
+[Wed Jul  1 02:59:55 2026] 127.0.0.1:52894 Closing
+[Wed Jul  1 02:59:55 2026] 127.0.0.1:54132 Accepted
+[Wed Jul  1 02:59:55 2026] 127.0.0.1:54132 [200]: GET /api/server-status.php
+[Wed Jul  1 02:59:55 2026] 127.0.0.1:54132 Closing
+[Wed Jul  1 03:00:54 2026] 127.0.0.1:51776 Accepted
+[Wed Jul  1 03:00:54 2026] 127.0.0.1:51776 [200]: GET /api/server-status.php
+[Wed Jul  1 03:00:54 2026] 127.0.0.1:51776 Closing
+[Wed Jul  1 03:00:54 2026] 127.0.0.1:52807 Accepted
+[Wed Jul  1 03:00:54 2026] 127.0.0.1:52807 [200]: GET /api/server-status.php
+[Wed Jul  1 03:00:54 2026] 127.0.0.1:52807 Closing
+[Wed Jul  1 03:01:54 2026] 127.0.0.1:61053 Accepted
+[Wed Jul  1 03:01:54 2026] 127.0.0.1:61053 [200]: GET /api/server-status.php
+[Wed Jul  1 03:01:54 2026] 127.0.0.1:61053 Closing
+[Wed Jul  1 03:01:54 2026] 127.0.0.1:58238 Accepted
+[Wed Jul  1 03:01:54 2026] 127.0.0.1:58238 [200]: GET /api/server-status.php
+[Wed Jul  1 03:01:54 2026] 127.0.0.1:58238 Closing
+[Wed Jul  1 03:02:54 2026] 127.0.0.1:54144 Accepted
+[Wed Jul  1 03:02:54 2026] 127.0.0.1:54144 [200]: GET /api/server-status.php
+[Wed Jul  1 03:02:54 2026] 127.0.0.1:54144 Closing
+[Wed Jul  1 03:02:54 2026] 127.0.0.1:49723 Accepted
+[Wed Jul  1 03:02:54 2026] 127.0.0.1:49723 [200]: GET /api/server-status.php
+[Wed Jul  1 03:02:54 2026] 127.0.0.1:49723 Closing
+[Wed Jul  1 03:03:54 2026] 127.0.0.1:59248 Accepted
+[Wed Jul  1 03:03:55 2026] 127.0.0.1:59248 [200]: GET /api/server-status.php
+[Wed Jul  1 03:03:55 2026] 127.0.0.1:59248 Closing
+[Wed Jul  1 03:03:55 2026] 127.0.0.1:56472 Accepted
+[Wed Jul  1 03:03:55 2026] 127.0.0.1:56472 [200]: GET /api/server-status.php
+[Wed Jul  1 03:03:55 2026] 127.0.0.1:56472 Closing
+[Wed Jul  1 03:04:54 2026] 127.0.0.1:52511 Accepted
+[Wed Jul  1 03:04:54 2026] 127.0.0.1:52511 [200]: GET /api/server-status.php
+[Wed Jul  1 03:04:54 2026] 127.0.0.1:52511 Closing
+[Wed Jul  1 03:04:54 2026] 127.0.0.1:56994 Accepted
+[Wed Jul  1 03:04:54 2026] 127.0.0.1:56994 [200]: GET /api/server-status.php
+[Wed Jul  1 03:04:54 2026] 127.0.0.1:56994 Closing
+[Wed Jul  1 03:05:54 2026] 127.0.0.1:58451 Accepted
+[Wed Jul  1 03:05:54 2026] 127.0.0.1:58451 [200]: GET /api/server-status.php
+[Wed Jul  1 03:05:54 2026] 127.0.0.1:58451 Closing
+[Wed Jul  1 03:05:54 2026] 127.0.0.1:51175 Accepted
+[Wed Jul  1 03:05:54 2026] 127.0.0.1:51175 [200]: GET /api/server-status.php
+[Wed Jul  1 03:05:54 2026] 127.0.0.1:51175 Closing
+[Wed Jul  1 03:06:54 2026] 127.0.0.1:62829 Accepted
+[Wed Jul  1 03:06:55 2026] 127.0.0.1:62829 [200]: GET /api/server-status.php
+[Wed Jul  1 03:06:55 2026] 127.0.0.1:62829 Closing
+[Wed Jul  1 03:06:55 2026] 127.0.0.1:55254 Accepted
+[Wed Jul  1 03:06:55 2026] 127.0.0.1:55254 [200]: GET /api/server-status.php
+[Wed Jul  1 03:06:55 2026] 127.0.0.1:55254 Closing
+[Wed Jul  1 03:07:54 2026] 127.0.0.1:54725 Accepted
+[Wed Jul  1 03:07:54 2026] 127.0.0.1:54161 Accepted
+[Wed Jul  1 03:07:54 2026] 127.0.0.1:54725 [200]: GET /api/server-status.php
+[Wed Jul  1 03:07:54 2026] 127.0.0.1:54725 Closing
+[Wed Jul  1 03:07:54 2026] 127.0.0.1:54161 [200]: GET /api/server-status.php
+[Wed Jul  1 03:07:54 2026] 127.0.0.1:54161 Closing
+[Wed Jul  1 03:08:54 2026] 127.0.0.1:55378 Accepted
+[Wed Jul  1 03:08:54 2026] 127.0.0.1:60137 Accepted
+[Wed Jul  1 03:08:54 2026] 127.0.0.1:55378 [200]: GET /api/server-status.php
+[Wed Jul  1 03:08:54 2026] 127.0.0.1:55378 Closing
+[Wed Jul  1 03:08:54 2026] 127.0.0.1:60137 [200]: GET /api/server-status.php
+[Wed Jul  1 03:08:54 2026] 127.0.0.1:60137 Closing
+[Wed Jul  1 03:09:54 2026] 127.0.0.1:61522 Accepted
+[Wed Jul  1 03:09:54 2026] 127.0.0.1:61522 [200]: GET /api/server-status.php
+[Wed Jul  1 03:09:54 2026] 127.0.0.1:61522 Closing
+[Wed Jul  1 03:09:54 2026] 127.0.0.1:52139 Accepted
+[Wed Jul  1 03:09:54 2026] 127.0.0.1:52139 [200]: GET /api/server-status.php
+[Wed Jul  1 03:09:54 2026] 127.0.0.1:52139 Closing
+[Wed Jul  1 03:10:54 2026] 127.0.0.1:51135 Accepted
+[Wed Jul  1 03:10:54 2026] 127.0.0.1:57767 Accepted
+[Wed Jul  1 03:10:55 2026] 127.0.0.1:51135 [200]: GET /api/server-status.php
+[Wed Jul  1 03:10:55 2026] 127.0.0.1:51135 Closing
+[Wed Jul  1 03:10:55 2026] 127.0.0.1:57767 [200]: GET /api/server-status.php
+[Wed Jul  1 03:10:55 2026] 127.0.0.1:57767 Closing
+[Wed Jul  1 03:11:54 2026] 127.0.0.1:52025 Accepted
+[Wed Jul  1 03:11:54 2026] 127.0.0.1:52025 [200]: GET /api/server-status.php
+[Wed Jul  1 03:11:54 2026] 127.0.0.1:52025 Closing
+[Wed Jul  1 03:11:54 2026] 127.0.0.1:52050 Accepted
+[Wed Jul  1 03:11:54 2026] 127.0.0.1:52050 [200]: GET /api/server-status.php
+[Wed Jul  1 03:11:54 2026] 127.0.0.1:52050 Closing
+[Wed Jul  1 03:12:54 2026] 127.0.0.1:53449 Accepted
+[Wed Jul  1 03:12:54 2026] 127.0.0.1:53449 [200]: GET /api/server-status.php
+[Wed Jul  1 03:12:54 2026] 127.0.0.1:53449 Closing
+[Wed Jul  1 03:12:54 2026] 127.0.0.1:54671 Accepted
+[Wed Jul  1 03:12:54 2026] 127.0.0.1:54671 [200]: GET /api/server-status.php
+[Wed Jul  1 03:12:54 2026] 127.0.0.1:54671 Closing
+[Wed Jul  1 03:13:54 2026] 127.0.0.1:57775 Accepted
+[Wed Jul  1 03:13:54 2026] 127.0.0.1:57775 [200]: GET /api/server-status.php
+[Wed Jul  1 03:13:54 2026] 127.0.0.1:57775 Closing
+[Wed Jul  1 03:13:54 2026] 127.0.0.1:62840 Accepted
+[Wed Jul  1 03:13:54 2026] 127.0.0.1:62840 [200]: GET /api/server-status.php
+[Wed Jul  1 03:13:54 2026] 127.0.0.1:62840 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:50644 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:50644 [200]: GET /
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:50644 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:50322 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:60263 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:50322 [200]: GET /assets/media/loading/battlefield-background.webp
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:63867 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:60263 [200]: GET /assets/media/loading/breach-ring.webp
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:62847 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:63867 [200]: GET /assets/css/loader.css
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:52571 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:62847 [200]: GET /assets/css/styles.css
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:50322 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:53355 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:52571 [200]: GET /assets/media/website-hero-raid-overlook-v4.webp
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:60263 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:54341 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:53355 [200]: GET /assets/js/raidlands-loader.js
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:63867 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:54341 [200]: GET /assets/media/nav-logo.png
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:62847 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:52571 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:53355 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:49310 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:54341 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:49310 [200]: GET /assets/media/raidlands-logo.webp
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:49310 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:64447 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:64447 [200]: GET /assets/media/loading/raidlands-vfx-01-ground-blast-green.png
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:62015 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:54091 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:51244 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:62015 [200]: GET /assets/media/loading/raidlands-vfx-02-fireball-core-green.png
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:54091 [200]: GET /assets/media/loading/raidlands-vfx-03-molten-debris-burst-green.png
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:51244 [200]: GET /assets/media/loading/raidlands-vfx-04-smoke-plume-green.png
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:59739 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:59852 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:64447 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:59739 [200]: GET /assets/media/loading/raidlands-vfx-05-shockwave-ring-green.png
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:59852 [200]: GET /assets/media/loading/raidlands-vfx-06-ember-field-green.png
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:59852 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:59066 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:57141 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:54091 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:59066 [200]: GET /api/server-status.php
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:59066 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:57141 [200]: GET /assets/js/site.js
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:57141 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:62015 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:59739 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:50996 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:50996 [200]: GET /assets/media/texture-metal.svg
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:50996 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:51244 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:53785 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:53785 [200]: GET /assets/media/pattern-bg.png
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:53785 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:51487 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:51487 [200]: GET /assets/media/texture-grunge.svg
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:56812 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:57360 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:51487 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:56812 [200]: GET /assets/media/plate-seams.svg
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:57360 [200]: GET /assets/media/loading/terminal-frame.webp
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:56812 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:57360 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:59841 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:50597 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:59841 [200]: GET /assets/media/loading/fine-hud-ring.webp
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:50597 [200]: GET /assets/media/loading/spark-burst.webp
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:59841 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:50597 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:52032 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:63425 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:52032 [200]: GET /assets/media/ember-flare-overlay.webp
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:62736 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:63425 [200]: GET /assets/media/nav-plate-seams.webp
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:62247 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:62736 [200]: GET /assets/media/nav-burnt-metal-base.webp
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:50638 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:62247 [200]: GET /assets/media/nav-active-ember.webp
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:52032 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:64217 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:50638 [200]: GET /assets/media/section-divider.svg
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:63425 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:64217 [200]: GET /assets/media/console-scan.svg
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:62736 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:62247 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:50638 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:64217 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:55740 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:55740 [200]: GET /assets/media/wipe-countdown-panel-v2.jpg
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:55740 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:51420 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:51420 [200]: GET /assets/media/wipe-day-rust-v2.png
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:52458 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:52458 [200]: GET /assets/media/discord-banner-rust-v2.png
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:52458 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:51420 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:62972 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:61293 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:62972 [200]: GET /assets/media/feature-icons/gather.png
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:62055 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:54931 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:61293 [200]: GET /assets/media/feature-icons/pvp.png
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:62972 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:53461 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:63125 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:62055 [200]: GET /assets/media/feature-icons/kit.png
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:54931 [200]: GET /assets/media/feature-icons/teleport.png
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:53461 [200]: GET /assets/media/feature-icons/clan.png
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:63125 [200]: GET /assets/media/feature-icons/skinbox.png
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:61293 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:62055 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:54931 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:53461 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:63125 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:62946 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:53776 Accepted
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:62946 [200]: GET /assets/media/feature-icons/backpacks.png
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:53776 [200]: GET /assets/media/feature-icons/mini.png
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:62946 Closing
+[Wed Jul  1 03:14:28 2026] 127.0.0.1:53776 Closing
+[Wed Jul  1 03:14:29 2026] 127.0.0.1:62881 Accepted
+[Wed Jul  1 03:14:29 2026] 127.0.0.1:59478 Accepted
+[Wed Jul  1 03:14:29 2026] 127.0.0.1:62881 [200]: GET /assets/media/loading/target-reticle.webp
+[Wed Jul  1 03:14:29 2026] 127.0.0.1:59478 [200]: GET /assets/media/loading/target-silhouette.webp
+[Wed Jul  1 03:14:29 2026] 127.0.0.1:62881 Closing
+[Wed Jul  1 03:14:29 2026] 127.0.0.1:59478 Closing
+[Wed Jul  1 03:14:48 2026] 127.0.0.1:53950 Accepted
+[Wed Jul  1 03:14:48 2026] 127.0.0.1:59058 Accepted
+[Wed Jul  1 03:14:48 2026] 127.0.0.1:53950 [200]: GET /assets/media/feature-icons/gather.png
+[Wed Jul  1 03:14:48 2026] 127.0.0.1:59058 [200]: GET /assets/media/feature-icons/kit.png
+[Wed Jul  1 03:14:48 2026] 127.0.0.1:59971 Accepted
+[Wed Jul  1 03:14:48 2026] 127.0.0.1:53950 Closing
+[Wed Jul  1 03:14:48 2026] 127.0.0.1:56221 Accepted
+[Wed Jul  1 03:14:48 2026] 127.0.0.1:59971 [200]: GET /assets/media/feature-icons/teleport.png
+[Wed Jul  1 03:14:48 2026] 127.0.0.1:59058 Closing
+[Wed Jul  1 03:14:48 2026] 127.0.0.1:63904 Accepted
+[Wed Jul  1 03:14:48 2026] 127.0.0.1:56221 [200]: GET /assets/media/feature-icons/clan.png
+[Wed Jul  1 03:14:48 2026] 127.0.0.1:63904 [200]: GET /assets/media/feature-icons/skinbox.png
+[Wed Jul  1 03:14:48 2026] 127.0.0.1:59971 Closing
+[Wed Jul  1 03:14:48 2026] 127.0.0.1:50125 Accepted
+[Wed Jul  1 03:14:48 2026] 127.0.0.1:56221 Closing
+[Wed Jul  1 03:14:48 2026] 127.0.0.1:50125 [200]: GET /assets/media/feature-icons/backpacks.png
+[Wed Jul  1 03:14:48 2026] 127.0.0.1:63904 Closing
+[Wed Jul  1 03:14:48 2026] 127.0.0.1:50125 Closing
+[Wed Jul  1 03:14:48 2026] 127.0.0.1:57163 Accepted
+[Wed Jul  1 03:14:48 2026] 127.0.0.1:57163 [200]: GET /assets/media/feature-icons/fast-raids.png
+[Wed Jul  1 03:14:48 2026] 127.0.0.1:57163 Closing
+[Wed Jul  1 03:14:48 2026] 127.0.0.1:63632 Accepted
+[Wed Jul  1 03:14:48 2026] 127.0.0.1:63632 [200]: GET /assets/media/feature-icons/active-staff.png
+[Wed Jul  1 03:14:48 2026] 127.0.0.1:63632 Closing
+[Wed Jul  1 03:14:48 2026] 127.0.0.1:49675 Accepted
+[Wed Jul  1 03:14:48 2026] 127.0.0.1:49675 [200]: GET /assets/media/wipe-count-box-black-glass-v2.jpg
+[Wed Jul  1 03:14:48 2026] 127.0.0.1:49675 Closing
+[Wed Jul  1 03:14:54 2026] 127.0.0.1:50719 Accepted
+[Wed Jul  1 03:14:54 2026] 127.0.0.1:50719 [200]: GET /api/server-status.php
+[Wed Jul  1 03:14:54 2026] 127.0.0.1:50719 Closing
+[Wed Jul  1 03:14:54 2026] 127.0.0.1:50098 Accepted
+[Wed Jul  1 03:14:54 2026] 127.0.0.1:50098 [200]: GET /api/server-status.php
+[Wed Jul  1 03:14:54 2026] 127.0.0.1:50098 Closing
+[Wed Jul  1 03:15:28 2026] 127.0.0.1:64371 Accepted
+[Wed Jul  1 03:15:29 2026] 127.0.0.1:64371 [200]: GET /api/server-status.php
+[Wed Jul  1 03:15:29 2026] 127.0.0.1:64371 Closing
+[Wed Jul  1 03:15:54 2026] 127.0.0.1:57761 Accepted
+[Wed Jul  1 03:15:54 2026] 127.0.0.1:52708 Accepted
+[Wed Jul  1 03:15:54 2026] 127.0.0.1:57761 [200]: GET /api/server-status.php
+[Wed Jul  1 03:15:54 2026] 127.0.0.1:57761 Closing
+[Wed Jul  1 03:15:54 2026] 127.0.0.1:52708 [200]: GET /api/server-status.php
+[Wed Jul  1 03:15:54 2026] 127.0.0.1:52708 Closing
+[Wed Jul  1 03:15:59 2026] 127.0.0.1:64030 Accepted
+[Wed Jul  1 03:15:59 2026] 127.0.0.1:51706 Accepted
+[Wed Jul  1 03:15:59 2026] 127.0.0.1:64030 [200]: GET /assets/media/feature-icons/play.png
+[Wed Jul  1 03:15:59 2026] 127.0.0.1:58977 Accepted
+[Wed Jul  1 03:15:59 2026] 127.0.0.1:51706 [200]: GET /assets/media/feature-icons/command.png
+[Wed Jul  1 03:15:59 2026] 127.0.0.1:63626 Accepted
+[Wed Jul  1 03:15:59 2026] 127.0.0.1:58977 [200]: GET /assets/media/feature-icons/search.png
+[Wed Jul  1 03:15:59 2026] 127.0.0.1:50024 Accepted
+[Wed Jul  1 03:15:59 2026] 127.0.0.1:63626 [200]: GET /assets/media/feature-icons/id.png
+[Wed Jul  1 03:15:59 2026] 127.0.0.1:50024 [200]: GET /assets/media/feature-icons/active-staff.png
+[Wed Jul  1 03:15:59 2026] 127.0.0.1:64030 Closing
+[Wed Jul  1 03:15:59 2026] 127.0.0.1:51706 Closing
+[Wed Jul  1 03:15:59 2026] 127.0.0.1:58977 Closing
+[Wed Jul  1 03:15:59 2026] 127.0.0.1:63626 Closing
+[Wed Jul  1 03:15:59 2026] 127.0.0.1:50024 Closing
+[Wed Jul  1 03:16:54 2026] 127.0.0.1:57321 Accepted
+[Wed Jul  1 03:16:54 2026] 127.0.0.1:50287 Accepted
+[Wed Jul  1 03:16:55 2026] 127.0.0.1:57321 [200]: GET /api/server-status.php
+[Wed Jul  1 03:16:55 2026] 127.0.0.1:57321 Closing
+[Wed Jul  1 03:16:55 2026] 127.0.0.1:50287 [200]: GET /api/server-status.php
+[Wed Jul  1 03:16:55 2026] 127.0.0.1:50287 Closing
+[Wed Jul  1 03:17:54 2026] 127.0.0.1:58409 Accepted
+[Wed Jul  1 03:17:54 2026] 127.0.0.1:58409 [200]: GET /api/server-status.php
+[Wed Jul  1 03:17:54 2026] 127.0.0.1:58409 Closing
+[Wed Jul  1 03:17:54 2026] 127.0.0.1:63552 Accepted
+[Wed Jul  1 03:17:54 2026] 127.0.0.1:63552 [200]: GET /api/server-status.php
+[Wed Jul  1 03:17:54 2026] 127.0.0.1:63552 Closing
+[Wed Jul  1 03:18:54 2026] 127.0.0.1:64533 Accepted
+[Wed Jul  1 03:18:54 2026] 127.0.0.1:64533 [200]: GET /api/server-status.php
+[Wed Jul  1 03:18:54 2026] 127.0.0.1:64533 Closing
+[Wed Jul  1 03:18:54 2026] 127.0.0.1:58997 Accepted
+[Wed Jul  1 03:18:54 2026] 127.0.0.1:58997 [200]: GET /api/server-status.php
+[Wed Jul  1 03:18:54 2026] 127.0.0.1:58997 Closing
+[Wed Jul  1 03:19:54 2026] 127.0.0.1:59538 Accepted
+[Wed Jul  1 03:19:55 2026] 127.0.0.1:59538 [200]: GET /api/server-status.php
+[Wed Jul  1 03:19:55 2026] 127.0.0.1:59538 Closing
+[Wed Jul  1 03:19:55 2026] 127.0.0.1:58585 Accepted
+[Wed Jul  1 03:19:55 2026] 127.0.0.1:58585 [200]: GET /api/server-status.php
+[Wed Jul  1 03:19:55 2026] 127.0.0.1:58585 Closing
+[Wed Jul  1 03:20:54 2026] 127.0.0.1:50118 Accepted
+[Wed Jul  1 03:20:54 2026] 127.0.0.1:50118 [200]: GET /api/server-status.php
+[Wed Jul  1 03:20:54 2026] 127.0.0.1:50118 Closing
+[Wed Jul  1 03:20:54 2026] 127.0.0.1:58704 Accepted
+[Wed Jul  1 03:20:54 2026] 127.0.0.1:58704 [200]: GET /api/server-status.php
+[Wed Jul  1 03:20:54 2026] 127.0.0.1:58704 Closing
+[Wed Jul  1 03:21:54 2026] 127.0.0.1:57407 Accepted
+[Wed Jul  1 03:21:54 2026] 127.0.0.1:49875 Accepted
+[Wed Jul  1 03:21:55 2026] 127.0.0.1:57407 [200]: GET /api/server-status.php
+[Wed Jul  1 03:21:55 2026] 127.0.0.1:57407 Closing
+[Wed Jul  1 03:21:55 2026] 127.0.0.1:49875 [200]: GET /api/server-status.php
+[Wed Jul  1 03:21:55 2026] 127.0.0.1:49875 Closing
+[Wed Jul  1 03:22:54 2026] 127.0.0.1:54444 Accepted
+[Wed Jul  1 03:22:54 2026] 127.0.0.1:54444 [200]: GET /api/server-status.php
+[Wed Jul  1 03:22:54 2026] 127.0.0.1:54444 Closing
+[Wed Jul  1 03:22:54 2026] 127.0.0.1:64948 Accepted
+[Wed Jul  1 03:22:54 2026] 127.0.0.1:64948 [200]: GET /api/server-status.php
+[Wed Jul  1 03:22:54 2026] 127.0.0.1:64948 Closing
+[Wed Jul  1 03:23:54 2026] 127.0.0.1:57302 Accepted
+[Wed Jul  1 03:23:56 2026] 127.0.0.1:57302 [200]: GET /api/server-status.php
+[Wed Jul  1 03:23:56 2026] 127.0.0.1:57302 Closing
+[Wed Jul  1 03:23:56 2026] 127.0.0.1:53220 Accepted
+[Wed Jul  1 03:23:56 2026] 127.0.0.1:53220 [200]: GET /api/server-status.php
+[Wed Jul  1 03:23:56 2026] 127.0.0.1:53220 Closing
+[Wed Jul  1 03:24:54 2026] 127.0.0.1:55095 Accepted
+[Wed Jul  1 03:24:54 2026] 127.0.0.1:55095 [200]: GET /api/server-status.php
+[Wed Jul  1 03:24:54 2026] 127.0.0.1:55095 Closing
+[Wed Jul  1 03:24:54 2026] 127.0.0.1:62975 Accepted
+[Wed Jul  1 03:24:54 2026] 127.0.0.1:62975 [200]: GET /api/server-status.php
+[Wed Jul  1 03:24:54 2026] 127.0.0.1:62975 Closing
+[Wed Jul  1 03:25:54 2026] 127.0.0.1:50203 Accepted
+[Wed Jul  1 03:25:54 2026] 127.0.0.1:53511 Accepted
+[Wed Jul  1 03:25:55 2026] 127.0.0.1:50203 [200]: GET /api/server-status.php
+[Wed Jul  1 03:25:55 2026] 127.0.0.1:50203 Closing
+[Wed Jul  1 03:25:55 2026] 127.0.0.1:53511 [200]: GET /api/server-status.php
+[Wed Jul  1 03:25:55 2026] 127.0.0.1:53511 Closing
+[Wed Jul  1 03:26:54 2026] 127.0.0.1:54438 Accepted
+[Wed Jul  1 03:26:54 2026] 127.0.0.1:60528 Accepted
+[Wed Jul  1 03:26:54 2026] 127.0.0.1:54438 [200]: GET /api/server-status.php
+[Wed Jul  1 03:26:54 2026] 127.0.0.1:54438 Closing
+[Wed Jul  1 03:26:54 2026] 127.0.0.1:60528 [200]: GET /api/server-status.php
+[Wed Jul  1 03:26:54 2026] 127.0.0.1:60528 Closing
+[Wed Jul  1 03:27:54 2026] 127.0.0.1:51649 Accepted
+[Wed Jul  1 03:27:55 2026] 127.0.0.1:51649 [200]: GET /api/server-status.php
+[Wed Jul  1 03:27:55 2026] 127.0.0.1:51649 Closing
+[Wed Jul  1 03:27:55 2026] 127.0.0.1:65343 Accepted
+[Wed Jul  1 03:27:55 2026] 127.0.0.1:65343 [200]: GET /api/server-status.php
+[Wed Jul  1 03:27:55 2026] 127.0.0.1:65343 Closing
+[Wed Jul  1 03:28:54 2026] 127.0.0.1:50005 Accepted
+[Wed Jul  1 03:28:54 2026] 127.0.0.1:50005 [200]: GET /api/server-status.php
+[Wed Jul  1 03:28:54 2026] 127.0.0.1:50005 Closing
+[Wed Jul  1 03:28:54 2026] 127.0.0.1:62750 Accepted
+[Wed Jul  1 03:28:54 2026] 127.0.0.1:62750 [200]: GET /api/server-status.php
+[Wed Jul  1 03:28:54 2026] 127.0.0.1:62750 Closing
+[Wed Jul  1 03:29:54 2026] 127.0.0.1:61751 Accepted
+[Wed Jul  1 03:29:54 2026] 127.0.0.1:61751 [200]: GET /api/server-status.php
+[Wed Jul  1 03:29:54 2026] 127.0.0.1:61751 Closing
+[Wed Jul  1 03:29:54 2026] 127.0.0.1:53804 Accepted
+[Wed Jul  1 03:29:54 2026] 127.0.0.1:53804 [200]: GET /api/server-status.php
+[Wed Jul  1 03:29:54 2026] 127.0.0.1:53804 Closing
+[Wed Jul  1 03:30:54 2026] 127.0.0.1:60104 Accepted
+[Wed Jul  1 03:30:54 2026] 127.0.0.1:60104 [200]: GET /api/server-status.php
+[Wed Jul  1 03:30:54 2026] 127.0.0.1:60104 Closing
+[Wed Jul  1 03:30:54 2026] 127.0.0.1:61750 Accepted
+[Wed Jul  1 03:30:54 2026] 127.0.0.1:61750 [200]: GET /api/server-status.php
+[Wed Jul  1 03:30:54 2026] 127.0.0.1:61750 Closing
+[Wed Jul  1 03:31:54 2026] 127.0.0.1:53189 Accepted
+[Wed Jul  1 03:31:54 2026] 127.0.0.1:64191 Accepted
+[Wed Jul  1 03:31:54 2026] 127.0.0.1:53189 [200]: GET /api/server-status.php
+[Wed Jul  1 03:31:54 2026] 127.0.0.1:53189 Closing
+[Wed Jul  1 03:31:54 2026] 127.0.0.1:64191 [200]: GET /api/server-status.php
+[Wed Jul  1 03:31:54 2026] 127.0.0.1:64191 Closing
+[Wed Jul  1 03:32:54 2026] 127.0.0.1:59057 Accepted
+[Wed Jul  1 03:32:54 2026] 127.0.0.1:59057 [200]: GET /api/server-status.php
+[Wed Jul  1 03:32:54 2026] 127.0.0.1:59057 Closing
+[Wed Jul  1 03:32:54 2026] 127.0.0.1:65222 Accepted
+[Wed Jul  1 03:32:54 2026] 127.0.0.1:65222 [200]: GET /api/server-status.php
+[Wed Jul  1 03:32:54 2026] 127.0.0.1:65222 Closing
+[Wed Jul  1 03:33:54 2026] 127.0.0.1:56131 Accepted
+[Wed Jul  1 03:33:55 2026] 127.0.0.1:56131 [200]: GET /api/server-status.php
+[Wed Jul  1 03:33:55 2026] 127.0.0.1:56131 Closing
+[Wed Jul  1 03:33:55 2026] 127.0.0.1:65008 Accepted
+[Wed Jul  1 03:33:55 2026] 127.0.0.1:65008 [200]: GET /api/server-status.php
+[Wed Jul  1 03:33:55 2026] 127.0.0.1:65008 Closing
+[Wed Jul  1 03:34:54 2026] 127.0.0.1:58545 Accepted
+[Wed Jul  1 03:34:54 2026] 127.0.0.1:58545 [200]: GET /api/server-status.php
+[Wed Jul  1 03:34:54 2026] 127.0.0.1:58545 Closing
+[Wed Jul  1 03:34:54 2026] 127.0.0.1:51130 Accepted
+[Wed Jul  1 03:34:54 2026] 127.0.0.1:51130 [200]: GET /api/server-status.php
+[Wed Jul  1 03:34:54 2026] 127.0.0.1:51130 Closing
+[Wed Jul  1 03:35:54 2026] 127.0.0.1:57884 Accepted
+[Wed Jul  1 03:35:57 2026] 127.0.0.1:57884 [200]: GET /api/server-status.php
+[Wed Jul  1 03:35:57 2026] 127.0.0.1:57884 Closing
+[Wed Jul  1 03:35:57 2026] 127.0.0.1:51002 Accepted
+[Wed Jul  1 03:35:57 2026] 127.0.0.1:51002 [200]: GET /api/server-status.php
+[Wed Jul  1 03:35:57 2026] 127.0.0.1:51002 Closing
+[Wed Jul  1 03:36:54 2026] 127.0.0.1:58886 Accepted
+[Wed Jul  1 03:36:54 2026] 127.0.0.1:58886 [200]: GET /api/server-status.php
+[Wed Jul  1 03:36:54 2026] 127.0.0.1:58886 Closing
+[Wed Jul  1 03:36:54 2026] 127.0.0.1:61258 Accepted
+[Wed Jul  1 03:36:54 2026] 127.0.0.1:61258 [200]: GET /api/server-status.php
+[Wed Jul  1 03:36:54 2026] 127.0.0.1:61258 Closing
+[Wed Jul  1 03:37:54 2026] 127.0.0.1:64552 Accepted
+[Wed Jul  1 03:37:55 2026] 127.0.0.1:64552 [200]: GET /api/server-status.php
+[Wed Jul  1 03:37:55 2026] 127.0.0.1:64552 Closing
+[Wed Jul  1 03:37:55 2026] 127.0.0.1:51477 Accepted
+[Wed Jul  1 03:37:55 2026] 127.0.0.1:51477 [200]: GET /api/server-status.php
+[Wed Jul  1 03:37:55 2026] 127.0.0.1:51477 Closing
+[Wed Jul  1 03:38:54 2026] 127.0.0.1:52946 Accepted
+[Wed Jul  1 03:38:54 2026] 127.0.0.1:52946 [200]: GET /api/server-status.php
+[Wed Jul  1 03:38:54 2026] 127.0.0.1:52946 Closing
+[Wed Jul  1 03:38:54 2026] 127.0.0.1:49506 Accepted
+[Wed Jul  1 03:38:54 2026] 127.0.0.1:49506 [200]: GET /api/server-status.php
+[Wed Jul  1 03:38:54 2026] 127.0.0.1:49506 Closing
+[Wed Jul  1 03:39:54 2026] 127.0.0.1:58010 Accepted
+[Wed Jul  1 03:39:55 2026] 127.0.0.1:58010 [200]: GET /api/server-status.php
+[Wed Jul  1 03:39:55 2026] 127.0.0.1:58010 Closing
+[Wed Jul  1 03:39:55 2026] 127.0.0.1:54718 Accepted
+[Wed Jul  1 03:39:55 2026] 127.0.0.1:54718 [200]: GET /api/server-status.php
+[Wed Jul  1 03:39:55 2026] 127.0.0.1:54718 Closing
+[Wed Jul  1 03:40:54 2026] 127.0.0.1:64849 Accepted
+[Wed Jul  1 03:40:54 2026] 127.0.0.1:64849 [200]: GET /api/server-status.php
+[Wed Jul  1 03:40:54 2026] 127.0.0.1:64849 Closing
+[Wed Jul  1 03:40:54 2026] 127.0.0.1:64598 Accepted
+[Wed Jul  1 03:40:54 2026] 127.0.0.1:64598 [200]: GET /api/server-status.php
+[Wed Jul  1 03:40:54 2026] 127.0.0.1:64598 Closing
+[Wed Jul  1 03:41:54 2026] 127.0.0.1:58529 Accepted
+[Wed Jul  1 03:41:55 2026] 127.0.0.1:58529 [200]: GET /api/server-status.php
+[Wed Jul  1 03:41:55 2026] 127.0.0.1:58529 Closing
+[Wed Jul  1 03:41:55 2026] 127.0.0.1:61167 Accepted
+[Wed Jul  1 03:41:55 2026] 127.0.0.1:61167 [200]: GET /api/server-status.php
+[Wed Jul  1 03:41:55 2026] 127.0.0.1:61167 Closing
+[Wed Jul  1 03:42:54 2026] 127.0.0.1:51626 Accepted
+[Wed Jul  1 03:42:54 2026] 127.0.0.1:51626 [200]: GET /api/server-status.php
+[Wed Jul  1 03:42:54 2026] 127.0.0.1:51626 Closing
+[Wed Jul  1 03:42:54 2026] 127.0.0.1:54902 Accepted
+[Wed Jul  1 03:42:54 2026] 127.0.0.1:54902 [200]: GET /api/server-status.php
+[Wed Jul  1 03:42:54 2026] 127.0.0.1:54902 Closing
+[Wed Jul  1 03:43:54 2026] 127.0.0.1:58454 Accepted
+[Wed Jul  1 03:43:54 2026] 127.0.0.1:58454 [200]: GET /api/server-status.php
+[Wed Jul  1 03:43:54 2026] 127.0.0.1:58454 Closing
+[Wed Jul  1 03:43:54 2026] 127.0.0.1:59461 Accepted
+[Wed Jul  1 03:43:55 2026] 127.0.0.1:59461 [200]: GET /api/server-status.php
+[Wed Jul  1 03:43:55 2026] 127.0.0.1:59461 Closing
+[Wed Jul  1 03:44:54 2026] 127.0.0.1:56126 Accepted
+[Wed Jul  1 03:44:54 2026] 127.0.0.1:56126 [200]: GET /api/server-status.php
+[Wed Jul  1 03:44:54 2026] 127.0.0.1:56126 Closing
+[Wed Jul  1 03:44:54 2026] 127.0.0.1:61558 Accepted
+[Wed Jul  1 03:44:54 2026] 127.0.0.1:61558 [200]: GET /api/server-status.php
+[Wed Jul  1 03:44:54 2026] 127.0.0.1:61558 Closing
+[Wed Jul  1 03:45:54 2026] 127.0.0.1:55700 Accepted
+[Wed Jul  1 03:45:55 2026] 127.0.0.1:55700 [200]: GET /api/server-status.php
+[Wed Jul  1 03:45:55 2026] 127.0.0.1:55700 Closing
+[Wed Jul  1 03:45:55 2026] 127.0.0.1:61248 Accepted
+[Wed Jul  1 03:45:55 2026] 127.0.0.1:61248 [200]: GET /api/server-status.php
+[Wed Jul  1 03:45:55 2026] 127.0.0.1:61248 Closing
+[Wed Jul  1 03:46:54 2026] 127.0.0.1:63599 Accepted
+[Wed Jul  1 03:46:54 2026] 127.0.0.1:63599 [200]: GET /api/server-status.php
+[Wed Jul  1 03:46:54 2026] 127.0.0.1:63599 Closing
+[Wed Jul  1 03:46:54 2026] 127.0.0.1:60944 Accepted
+[Wed Jul  1 03:46:54 2026] 127.0.0.1:60944 [200]: GET /api/server-status.php
+[Wed Jul  1 03:46:54 2026] 127.0.0.1:60944 Closing
+[Wed Jul  1 03:47:54 2026] 127.0.0.1:60374 Accepted
+[Wed Jul  1 03:47:54 2026] 127.0.0.1:60374 [200]: GET /api/server-status.php
+[Wed Jul  1 03:47:54 2026] 127.0.0.1:60374 Closing
+[Wed Jul  1 03:47:54 2026] 127.0.0.1:56546 Accepted
+[Wed Jul  1 03:47:54 2026] 127.0.0.1:56546 [200]: GET /api/server-status.php
+[Wed Jul  1 03:47:54 2026] 127.0.0.1:56546 Closing
+[Wed Jul  1 03:48:54 2026] 127.0.0.1:55346 Accepted
+[Wed Jul  1 03:48:54 2026] 127.0.0.1:55346 [200]: GET /api/server-status.php
+[Wed Jul  1 03:48:54 2026] 127.0.0.1:55346 Closing
+[Wed Jul  1 03:48:54 2026] 127.0.0.1:53006 Accepted
+[Wed Jul  1 03:48:54 2026] 127.0.0.1:53006 [200]: GET /api/server-status.php
+[Wed Jul  1 03:48:54 2026] 127.0.0.1:53006 Closing
+[Wed Jul  1 03:49:54 2026] 127.0.0.1:61379 Accepted
+[Wed Jul  1 03:49:55 2026] 127.0.0.1:61379 [200]: GET /api/server-status.php
+[Wed Jul  1 03:49:55 2026] 127.0.0.1:61379 Closing
+[Wed Jul  1 03:49:55 2026] 127.0.0.1:54511 Accepted
+[Wed Jul  1 03:49:55 2026] 127.0.0.1:54511 [200]: GET /api/server-status.php
+[Wed Jul  1 03:49:55 2026] 127.0.0.1:54511 Closing
+[Wed Jul  1 03:50:54 2026] 127.0.0.1:49732 Accepted
+[Wed Jul  1 03:50:54 2026] 127.0.0.1:49732 [200]: GET /api/server-status.php
+[Wed Jul  1 03:50:54 2026] 127.0.0.1:49732 Closing
+[Wed Jul  1 03:50:54 2026] 127.0.0.1:62751 Accepted
+[Wed Jul  1 03:50:54 2026] 127.0.0.1:62751 [200]: GET /api/server-status.php
+[Wed Jul  1 03:50:54 2026] 127.0.0.1:62751 Closing
+[Wed Jul  1 03:51:54 2026] 127.0.0.1:57260 Accepted
+[Wed Jul  1 03:51:55 2026] 127.0.0.1:57260 [200]: GET /api/server-status.php
+[Wed Jul  1 03:51:55 2026] 127.0.0.1:57260 Closing
+[Wed Jul  1 03:51:55 2026] 127.0.0.1:51372 Accepted
+[Wed Jul  1 03:51:55 2026] 127.0.0.1:51372 [200]: GET /api/server-status.php
+[Wed Jul  1 03:51:55 2026] 127.0.0.1:51372 Closing
+[Wed Jul  1 03:52:54 2026] 127.0.0.1:59902 Accepted
+[Wed Jul  1 03:52:54 2026] 127.0.0.1:59902 [200]: GET /api/server-status.php
+[Wed Jul  1 03:52:54 2026] 127.0.0.1:59902 Closing
+[Wed Jul  1 03:52:54 2026] 127.0.0.1:61884 Accepted
+[Wed Jul  1 03:52:54 2026] 127.0.0.1:61884 [200]: GET /api/server-status.php
+[Wed Jul  1 03:52:54 2026] 127.0.0.1:61884 Closing
+[Wed Jul  1 03:53:54 2026] 127.0.0.1:63576 Accepted
+[Wed Jul  1 03:53:54 2026] 127.0.0.1:59665 Accepted
+[Wed Jul  1 03:53:55 2026] 127.0.0.1:63576 [200]: GET /api/server-status.php
+[Wed Jul  1 03:53:55 2026] 127.0.0.1:63576 Closing
+[Wed Jul  1 03:53:55 2026] 127.0.0.1:59665 [200]: GET /api/server-status.php
+[Wed Jul  1 03:53:55 2026] 127.0.0.1:59665 Closing
+[Wed Jul  1 03:54:54 2026] 127.0.0.1:54843 Accepted
+[Wed Jul  1 03:54:54 2026] 127.0.0.1:54843 [200]: GET /api/server-status.php
+[Wed Jul  1 03:54:54 2026] 127.0.0.1:54843 Closing
+[Wed Jul  1 03:54:54 2026] 127.0.0.1:62981 Accepted
+[Wed Jul  1 03:54:54 2026] 127.0.0.1:62981 [200]: GET /api/server-status.php
+[Wed Jul  1 03:54:54 2026] 127.0.0.1:62981 Closing
+[Wed Jul  1 03:55:54 2026] 127.0.0.1:63210 Accepted
+[Wed Jul  1 03:55:55 2026] 127.0.0.1:63210 [200]: GET /api/server-status.php
+[Wed Jul  1 03:55:55 2026] 127.0.0.1:63210 Closing
+[Wed Jul  1 03:55:55 2026] 127.0.0.1:52367 Accepted
+[Wed Jul  1 03:55:55 2026] 127.0.0.1:52367 [200]: GET /api/server-status.php
+[Wed Jul  1 03:55:55 2026] 127.0.0.1:52367 Closing
+[Wed Jul  1 03:56:54 2026] 127.0.0.1:61491 Accepted
+[Wed Jul  1 03:56:54 2026] 127.0.0.1:61491 [200]: GET /api/server-status.php
+[Wed Jul  1 03:56:54 2026] 127.0.0.1:61491 Closing
+[Wed Jul  1 03:56:54 2026] 127.0.0.1:57230 Accepted
+[Wed Jul  1 03:56:54 2026] 127.0.0.1:57230 [200]: GET /api/server-status.php
+[Wed Jul  1 03:56:54 2026] 127.0.0.1:57230 Closing
+[Wed Jul  1 03:57:54 2026] 127.0.0.1:62464 Accepted
+[Wed Jul  1 03:57:55 2026] 127.0.0.1:62464 [200]: GET /api/server-status.php
+[Wed Jul  1 03:57:55 2026] 127.0.0.1:62464 Closing
+[Wed Jul  1 03:57:55 2026] 127.0.0.1:56429 Accepted
+[Wed Jul  1 03:57:55 2026] 127.0.0.1:56429 [200]: GET /api/server-status.php
+[Wed Jul  1 03:57:55 2026] 127.0.0.1:56429 Closing
+[Wed Jul  1 03:58:54 2026] 127.0.0.1:50879 Accepted
+[Wed Jul  1 03:58:54 2026] 127.0.0.1:50879 [200]: GET /api/server-status.php
+[Wed Jul  1 03:58:54 2026] 127.0.0.1:50879 Closing
+[Wed Jul  1 03:58:54 2026] 127.0.0.1:53152 Accepted
+[Wed Jul  1 03:58:54 2026] 127.0.0.1:53152 [200]: GET /api/server-status.php
+[Wed Jul  1 03:58:54 2026] 127.0.0.1:53152 Closing
+[Wed Jul  1 03:59:54 2026] 127.0.0.1:55038 Accepted
+[Wed Jul  1 03:59:55 2026] 127.0.0.1:55038 [200]: GET /api/server-status.php
+[Wed Jul  1 03:59:55 2026] 127.0.0.1:55038 Closing
+[Wed Jul  1 03:59:55 2026] 127.0.0.1:50112 Accepted
+[Wed Jul  1 03:59:55 2026] 127.0.0.1:50112 [200]: GET /api/server-status.php
+[Wed Jul  1 03:59:55 2026] 127.0.0.1:50112 Closing
+[Wed Jul  1 04:00:54 2026] 127.0.0.1:50596 Accepted
+[Wed Jul  1 04:00:54 2026] 127.0.0.1:50596 [200]: GET /api/server-status.php
+[Wed Jul  1 04:00:54 2026] 127.0.0.1:50596 Closing
+[Wed Jul  1 04:00:54 2026] 127.0.0.1:53989 Accepted
+[Wed Jul  1 04:00:54 2026] 127.0.0.1:53989 [200]: GET /api/server-status.php
+[Wed Jul  1 04:00:54 2026] 127.0.0.1:53989 Closing
+[Wed Jul  1 04:01:54 2026] 127.0.0.1:54357 Accepted
+[Wed Jul  1 04:01:54 2026] 127.0.0.1:55377 Accepted
+[Wed Jul  1 04:01:55 2026] 127.0.0.1:54357 [200]: GET /api/server-status.php
+[Wed Jul  1 04:01:55 2026] 127.0.0.1:54357 Closing
+[Wed Jul  1 04:01:55 2026] 127.0.0.1:55377 [200]: GET /api/server-status.php
+[Wed Jul  1 04:01:55 2026] 127.0.0.1:55377 Closing
+[Wed Jul  1 04:02:54 2026] 127.0.0.1:56223 Accepted
+[Wed Jul  1 04:02:54 2026] 127.0.0.1:56223 [200]: GET /api/server-status.php
+[Wed Jul  1 04:02:54 2026] 127.0.0.1:56223 Closing
+[Wed Jul  1 04:02:54 2026] 127.0.0.1:56111 Accepted
+[Wed Jul  1 04:02:54 2026] 127.0.0.1:56111 [200]: GET /api/server-status.php
+[Wed Jul  1 04:02:54 2026] 127.0.0.1:56111 Closing
+[Wed Jul  1 04:03:54 2026] 127.0.0.1:64491 Accepted
+[Wed Jul  1 04:03:54 2026] 127.0.0.1:56235 Accepted
+[Wed Jul  1 04:03:55 2026] 127.0.0.1:64491 [200]: GET /api/server-status.php
+[Wed Jul  1 04:03:55 2026] 127.0.0.1:64491 Closing
+[Wed Jul  1 04:03:55 2026] 127.0.0.1:56235 [200]: GET /api/server-status.php
+[Wed Jul  1 04:03:55 2026] 127.0.0.1:56235 Closing
+[Wed Jul  1 04:04:54 2026] 127.0.0.1:55223 Accepted
+[Wed Jul  1 04:04:54 2026] 127.0.0.1:55223 [200]: GET /api/server-status.php
+[Wed Jul  1 04:04:54 2026] 127.0.0.1:55223 Closing
+[Wed Jul  1 04:04:54 2026] 127.0.0.1:64461 Accepted
+[Wed Jul  1 04:04:54 2026] 127.0.0.1:64461 [200]: GET /api/server-status.php
+[Wed Jul  1 04:04:54 2026] 127.0.0.1:64461 Closing
+[Wed Jul  1 04:05:54 2026] 127.0.0.1:63805 Accepted
+[Wed Jul  1 04:05:55 2026] 127.0.0.1:63805 [200]: GET /api/server-status.php
+[Wed Jul  1 04:05:55 2026] 127.0.0.1:63805 Closing
+[Wed Jul  1 04:05:55 2026] 127.0.0.1:51071 Accepted
+[Wed Jul  1 04:05:55 2026] 127.0.0.1:51071 [200]: GET /api/server-status.php
+[Wed Jul  1 04:05:55 2026] 127.0.0.1:51071 Closing
+[Wed Jul  1 04:06:54 2026] 127.0.0.1:64875 Accepted
+[Wed Jul  1 04:06:54 2026] 127.0.0.1:64875 [200]: GET /api/server-status.php
+[Wed Jul  1 04:06:54 2026] 127.0.0.1:64875 Closing
+[Wed Jul  1 04:06:54 2026] 127.0.0.1:62143 Accepted
+[Wed Jul  1 04:06:54 2026] 127.0.0.1:62143 [200]: GET /api/server-status.php
+[Wed Jul  1 04:06:54 2026] 127.0.0.1:62143 Closing
+[Wed Jul  1 04:07:54 2026] 127.0.0.1:57583 Accepted
+[Wed Jul  1 04:07:54 2026] 127.0.0.1:49446 Accepted
+[Wed Jul  1 04:07:55 2026] 127.0.0.1:57583 [200]: GET /api/server-status.php
+[Wed Jul  1 04:07:55 2026] 127.0.0.1:57583 Closing
+[Wed Jul  1 04:07:55 2026] 127.0.0.1:49446 [200]: GET /api/server-status.php
+[Wed Jul  1 04:07:55 2026] 127.0.0.1:49446 Closing
+[Wed Jul  1 04:08:54 2026] 127.0.0.1:59640 Accepted
+[Wed Jul  1 04:08:54 2026] 127.0.0.1:59640 [200]: GET /api/server-status.php
+[Wed Jul  1 04:08:54 2026] 127.0.0.1:59640 Closing
+[Wed Jul  1 04:08:54 2026] 127.0.0.1:64995 Accepted
+[Wed Jul  1 04:08:54 2026] 127.0.0.1:64995 [200]: GET /api/server-status.php
+[Wed Jul  1 04:08:54 2026] 127.0.0.1:64995 Closing
+[Wed Jul  1 04:09:54 2026] 127.0.0.1:63337 Accepted
+[Wed Jul  1 04:09:55 2026] 127.0.0.1:63337 [200]: GET /api/server-status.php
+[Wed Jul  1 04:09:55 2026] 127.0.0.1:63337 Closing
+[Wed Jul  1 04:09:55 2026] 127.0.0.1:57215 Accepted
+[Wed Jul  1 04:09:55 2026] 127.0.0.1:57215 [200]: GET /api/server-status.php
+[Wed Jul  1 04:09:55 2026] 127.0.0.1:57215 Closing
+[Wed Jul  1 04:10:54 2026] 127.0.0.1:54776 Accepted
+[Wed Jul  1 04:10:54 2026] 127.0.0.1:54776 [200]: GET /api/server-status.php
+[Wed Jul  1 04:10:54 2026] 127.0.0.1:54776 Closing
+[Wed Jul  1 04:10:54 2026] 127.0.0.1:55847 Accepted
+[Wed Jul  1 04:10:54 2026] 127.0.0.1:55847 [200]: GET /api/server-status.php
+[Wed Jul  1 04:10:54 2026] 127.0.0.1:55847 Closing
+[Wed Jul  1 04:11:54 2026] 127.0.0.1:52759 Accepted
+[Wed Jul  1 04:11:55 2026] 127.0.0.1:52759 [200]: GET /api/server-status.php
+[Wed Jul  1 04:11:55 2026] 127.0.0.1:52759 Closing
+[Wed Jul  1 04:11:55 2026] 127.0.0.1:59765 Accepted
+[Wed Jul  1 04:11:55 2026] 127.0.0.1:59765 [200]: GET /api/server-status.php
+[Wed Jul  1 04:11:55 2026] 127.0.0.1:59765 Closing
+[Wed Jul  1 04:12:54 2026] 127.0.0.1:52086 Accepted
+[Wed Jul  1 04:12:54 2026] 127.0.0.1:52086 [200]: GET /api/server-status.php
+[Wed Jul  1 04:12:54 2026] 127.0.0.1:52086 Closing
+[Wed Jul  1 04:12:54 2026] 127.0.0.1:60400 Accepted
+[Wed Jul  1 04:12:54 2026] 127.0.0.1:60400 [200]: GET /api/server-status.php
+[Wed Jul  1 04:12:54 2026] 127.0.0.1:60400 Closing
+[Wed Jul  1 04:13:54 2026] 127.0.0.1:52342 Accepted
+[Wed Jul  1 04:13:55 2026] 127.0.0.1:52342 [200]: GET /api/server-status.php
+[Wed Jul  1 04:13:55 2026] 127.0.0.1:52342 Closing
+[Wed Jul  1 04:13:55 2026] 127.0.0.1:49673 Accepted
+[Wed Jul  1 04:13:55 2026] 127.0.0.1:49673 [200]: GET /api/server-status.php
+[Wed Jul  1 04:13:55 2026] 127.0.0.1:49673 Closing
+[Wed Jul  1 04:14:54 2026] 127.0.0.1:58912 Accepted
+[Wed Jul  1 04:14:54 2026] 127.0.0.1:58912 [200]: GET /api/server-status.php
+[Wed Jul  1 04:14:54 2026] 127.0.0.1:58912 Closing
+[Wed Jul  1 04:14:54 2026] 127.0.0.1:55960 Accepted
+[Wed Jul  1 04:14:54 2026] 127.0.0.1:55960 [200]: GET /api/server-status.php
+[Wed Jul  1 04:14:54 2026] 127.0.0.1:55960 Closing
+[Wed Jul  1 04:15:54 2026] 127.0.0.1:49348 Accepted
+[Wed Jul  1 04:15:55 2026] 127.0.0.1:49348 [200]: GET /api/server-status.php
+[Wed Jul  1 04:15:55 2026] 127.0.0.1:49348 Closing
+[Wed Jul  1 04:15:55 2026] 127.0.0.1:63548 Accepted
+[Wed Jul  1 04:15:55 2026] 127.0.0.1:63548 [200]: GET /api/server-status.php
+[Wed Jul  1 04:15:55 2026] 127.0.0.1:63548 Closing
+[Wed Jul  1 04:16:54 2026] 127.0.0.1:50077 Accepted
+[Wed Jul  1 04:16:54 2026] 127.0.0.1:50077 [200]: GET /api/server-status.php
+[Wed Jul  1 04:16:54 2026] 127.0.0.1:50077 Closing
+[Wed Jul  1 04:16:54 2026] 127.0.0.1:63672 Accepted
+[Wed Jul  1 04:16:54 2026] 127.0.0.1:63672 [200]: GET /api/server-status.php
+[Wed Jul  1 04:16:54 2026] 127.0.0.1:63672 Closing
+[Wed Jul  1 04:17:54 2026] 127.0.0.1:54742 Accepted
+[Wed Jul  1 04:17:55 2026] 127.0.0.1:54742 [200]: GET /api/server-status.php
+[Wed Jul  1 04:17:55 2026] 127.0.0.1:54742 Closing
+[Wed Jul  1 04:17:55 2026] 127.0.0.1:64191 Accepted
+[Wed Jul  1 04:17:55 2026] 127.0.0.1:64191 [200]: GET /api/server-status.php
+[Wed Jul  1 04:17:55 2026] 127.0.0.1:64191 Closing
+[Wed Jul  1 04:18:54 2026] 127.0.0.1:63271 Accepted
+[Wed Jul  1 04:18:54 2026] 127.0.0.1:59955 Accepted
+[Wed Jul  1 04:18:54 2026] 127.0.0.1:63271 [200]: GET /api/server-status.php
+[Wed Jul  1 04:18:54 2026] 127.0.0.1:63271 Closing
+[Wed Jul  1 04:18:54 2026] 127.0.0.1:59955 [200]: GET /api/server-status.php
+[Wed Jul  1 04:18:54 2026] 127.0.0.1:59955 Closing
+[Wed Jul  1 04:19:54 2026] 127.0.0.1:65408 Accepted
+[Wed Jul  1 04:19:55 2026] 127.0.0.1:65408 [200]: GET /api/server-status.php
+[Wed Jul  1 04:19:55 2026] 127.0.0.1:65408 Closing
+[Wed Jul  1 04:19:55 2026] 127.0.0.1:58876 Accepted
+[Wed Jul  1 04:19:55 2026] 127.0.0.1:58876 [200]: GET /api/server-status.php
+[Wed Jul  1 04:19:55 2026] 127.0.0.1:58876 Closing
+[Wed Jul  1 04:20:54 2026] 127.0.0.1:62820 Accepted
+[Wed Jul  1 04:20:54 2026] 127.0.0.1:62820 [200]: GET /api/server-status.php
+[Wed Jul  1 04:20:54 2026] 127.0.0.1:62820 Closing
+[Wed Jul  1 04:20:54 2026] 127.0.0.1:59282 Accepted
+[Wed Jul  1 04:20:54 2026] 127.0.0.1:59282 [200]: GET /api/server-status.php
+[Wed Jul  1 04:20:54 2026] 127.0.0.1:59282 Closing
+[Wed Jul  1 04:21:54 2026] 127.0.0.1:49258 Accepted
+[Wed Jul  1 04:21:54 2026] 127.0.0.1:61674 Accepted
+[Wed Jul  1 04:21:55 2026] 127.0.0.1:49258 [200]: GET /api/server-status.php
+[Wed Jul  1 04:21:55 2026] 127.0.0.1:49258 Closing
+[Wed Jul  1 04:21:55 2026] 127.0.0.1:61674 [200]: GET /api/server-status.php
+[Wed Jul  1 04:21:55 2026] 127.0.0.1:61674 Closing
+[Wed Jul  1 04:22:54 2026] 127.0.0.1:51941 Accepted
+[Wed Jul  1 04:22:54 2026] 127.0.0.1:51941 [200]: GET /api/server-status.php
+[Wed Jul  1 04:22:54 2026] 127.0.0.1:51941 Closing
+[Wed Jul  1 04:22:54 2026] 127.0.0.1:59304 Accepted
+[Wed Jul  1 04:22:54 2026] 127.0.0.1:59304 [200]: GET /api/server-status.php
+[Wed Jul  1 04:22:54 2026] 127.0.0.1:59304 Closing
+[Wed Jul  1 04:23:54 2026] 127.0.0.1:56833 Accepted
+[Wed Jul  1 04:23:56 2026] 127.0.0.1:56833 [200]: GET /api/server-status.php
+[Wed Jul  1 04:23:56 2026] 127.0.0.1:56833 Closing
+[Wed Jul  1 04:23:56 2026] 127.0.0.1:63809 Accepted
+[Wed Jul  1 04:23:56 2026] 127.0.0.1:63809 [200]: GET /api/server-status.php
+[Wed Jul  1 04:23:56 2026] 127.0.0.1:63809 Closing
+[Wed Jul  1 04:24:54 2026] 127.0.0.1:64122 Accepted
+[Wed Jul  1 04:24:54 2026] 127.0.0.1:64122 [200]: GET /api/server-status.php
+[Wed Jul  1 04:24:54 2026] 127.0.0.1:64122 Closing
+[Wed Jul  1 04:24:54 2026] 127.0.0.1:62701 Accepted
+[Wed Jul  1 04:24:54 2026] 127.0.0.1:62701 [200]: GET /api/server-status.php
+[Wed Jul  1 04:24:54 2026] 127.0.0.1:62701 Closing
+[Wed Jul  1 04:25:54 2026] 127.0.0.1:51658 Accepted
+[Wed Jul  1 04:25:54 2026] 127.0.0.1:51691 Accepted
+[Wed Jul  1 04:25:55 2026] 127.0.0.1:51658 [200]: GET /api/server-status.php
+[Wed Jul  1 04:25:55 2026] 127.0.0.1:51658 Closing
+[Wed Jul  1 04:25:55 2026] 127.0.0.1:51691 [200]: GET /api/server-status.php
+[Wed Jul  1 04:25:55 2026] 127.0.0.1:51691 Closing
+[Wed Jul  1 04:26:54 2026] 127.0.0.1:60411 Accepted
+[Wed Jul  1 04:26:54 2026] 127.0.0.1:60411 [200]: GET /api/server-status.php
+[Wed Jul  1 04:26:54 2026] 127.0.0.1:60411 Closing
+[Wed Jul  1 04:26:54 2026] 127.0.0.1:55041 Accepted
+[Wed Jul  1 04:26:54 2026] 127.0.0.1:55041 [200]: GET /api/server-status.php
+[Wed Jul  1 04:26:54 2026] 127.0.0.1:55041 Closing
+[Wed Jul  1 04:27:54 2026] 127.0.0.1:49659 Accepted
+[Wed Jul  1 04:27:55 2026] 127.0.0.1:49659 [200]: GET /api/server-status.php
+[Wed Jul  1 04:27:55 2026] 127.0.0.1:49659 Closing
+[Wed Jul  1 04:27:55 2026] 127.0.0.1:60970 Accepted
+[Wed Jul  1 04:27:55 2026] 127.0.0.1:60970 [200]: GET /api/server-status.php
+[Wed Jul  1 04:27:55 2026] 127.0.0.1:60970 Closing
+[Wed Jul  1 04:28:54 2026] 127.0.0.1:59033 Accepted
+[Wed Jul  1 04:28:54 2026] 127.0.0.1:59033 [200]: GET /api/server-status.php
+[Wed Jul  1 04:28:54 2026] 127.0.0.1:59033 Closing
+[Wed Jul  1 04:28:54 2026] 127.0.0.1:57425 Accepted
+[Wed Jul  1 04:28:54 2026] 127.0.0.1:57425 [200]: GET /api/server-status.php
+[Wed Jul  1 04:28:54 2026] 127.0.0.1:57425 Closing
+[Wed Jul  1 04:29:54 2026] 127.0.0.1:51595 Accepted
+[Wed Jul  1 04:29:55 2026] 127.0.0.1:51595 [200]: GET /api/server-status.php
+[Wed Jul  1 04:29:55 2026] 127.0.0.1:51595 Closing
+[Wed Jul  1 04:29:55 2026] 127.0.0.1:64828 Accepted
+[Wed Jul  1 04:29:55 2026] 127.0.0.1:64828 [200]: GET /api/server-status.php
+[Wed Jul  1 04:29:55 2026] 127.0.0.1:64828 Closing
+[Wed Jul  1 04:30:54 2026] 127.0.0.1:65106 Accepted
+[Wed Jul  1 04:30:54 2026] 127.0.0.1:65106 [200]: GET /api/server-status.php
+[Wed Jul  1 04:30:54 2026] 127.0.0.1:65106 Closing
+[Wed Jul  1 04:30:54 2026] 127.0.0.1:62897 Accepted
+[Wed Jul  1 04:30:54 2026] 127.0.0.1:62897 [200]: GET /api/server-status.php
+[Wed Jul  1 04:30:54 2026] 127.0.0.1:62897 Closing
+[Wed Jul  1 04:31:54 2026] 127.0.0.1:52349 Accepted
+[Wed Jul  1 04:31:55 2026] 127.0.0.1:52349 [200]: GET /api/server-status.php
+[Wed Jul  1 04:31:55 2026] 127.0.0.1:52349 Closing
+[Wed Jul  1 04:31:55 2026] 127.0.0.1:50077 Accepted
+[Wed Jul  1 04:31:55 2026] 127.0.0.1:50077 [200]: GET /api/server-status.php
+[Wed Jul  1 04:31:55 2026] 127.0.0.1:50077 Closing
+[Wed Jul  1 04:32:54 2026] 127.0.0.1:58421 Accepted
+[Wed Jul  1 04:32:54 2026] 127.0.0.1:58421 [200]: GET /api/server-status.php
+[Wed Jul  1 04:32:54 2026] 127.0.0.1:58421 Closing
+[Wed Jul  1 04:32:54 2026] 127.0.0.1:57026 Accepted
+[Wed Jul  1 04:32:54 2026] 127.0.0.1:57026 [200]: GET /api/server-status.php
+[Wed Jul  1 04:32:54 2026] 127.0.0.1:57026 Closing
+[Wed Jul  1 04:33:54 2026] 127.0.0.1:63359 Accepted
+[Wed Jul  1 04:33:55 2026] 127.0.0.1:63359 [200]: GET /api/server-status.php
+[Wed Jul  1 04:33:55 2026] 127.0.0.1:63359 Closing
+[Wed Jul  1 04:33:55 2026] 127.0.0.1:54269 Accepted
+[Wed Jul  1 04:33:55 2026] 127.0.0.1:54269 [200]: GET /api/server-status.php
+[Wed Jul  1 04:33:55 2026] 127.0.0.1:54269 Closing
+[Wed Jul  1 04:34:54 2026] 127.0.0.1:50417 Accepted
+[Wed Jul  1 04:34:54 2026] 127.0.0.1:50718 Accepted
+[Wed Jul  1 04:34:54 2026] 127.0.0.1:50417 [200]: GET /api/server-status.php
+[Wed Jul  1 04:34:54 2026] 127.0.0.1:50417 Closing
+[Wed Jul  1 04:34:54 2026] 127.0.0.1:50718 [200]: GET /api/server-status.php
+[Wed Jul  1 04:34:54 2026] 127.0.0.1:50718 Closing
+[Wed Jul  1 04:35:54 2026] 127.0.0.1:50137 Accepted
+[Wed Jul  1 04:35:54 2026] 127.0.0.1:49409 Accepted
+[Wed Jul  1 04:35:55 2026] 127.0.0.1:50137 [200]: GET /api/server-status.php
+[Wed Jul  1 04:35:55 2026] 127.0.0.1:50137 Closing
+[Wed Jul  1 04:35:55 2026] 127.0.0.1:49409 [200]: GET /api/server-status.php
+[Wed Jul  1 04:35:55 2026] 127.0.0.1:49409 Closing
+[Wed Jul  1 04:36:54 2026] 127.0.0.1:55942 Accepted
+[Wed Jul  1 04:36:54 2026] 127.0.0.1:55942 [200]: GET /api/server-status.php
+[Wed Jul  1 04:36:54 2026] 127.0.0.1:55942 Closing
+[Wed Jul  1 04:36:54 2026] 127.0.0.1:49612 Accepted
+[Wed Jul  1 04:36:54 2026] 127.0.0.1:49612 [200]: GET /api/server-status.php
+[Wed Jul  1 04:36:54 2026] 127.0.0.1:49612 Closing
+[Wed Jul  1 04:37:54 2026] 127.0.0.1:60957 Accepted
+[Wed Jul  1 04:37:54 2026] 127.0.0.1:52775 Accepted
+[Wed Jul  1 04:37:55 2026] 127.0.0.1:60957 [200]: GET /api/server-status.php
+[Wed Jul  1 04:37:55 2026] 127.0.0.1:60957 Closing
+[Wed Jul  1 04:37:55 2026] 127.0.0.1:52775 [200]: GET /api/server-status.php
+[Wed Jul  1 04:37:55 2026] 127.0.0.1:52775 Closing
+[Wed Jul  1 04:38:54 2026] 127.0.0.1:58917 Accepted
+[Wed Jul  1 04:38:54 2026] 127.0.0.1:58917 [200]: GET /api/server-status.php
+[Wed Jul  1 04:38:54 2026] 127.0.0.1:58917 Closing
+[Wed Jul  1 04:38:54 2026] 127.0.0.1:55534 Accepted
+[Wed Jul  1 04:38:54 2026] 127.0.0.1:55534 [200]: GET /api/server-status.php
+[Wed Jul  1 04:38:54 2026] 127.0.0.1:55534 Closing
+[Wed Jul  1 04:39:54 2026] 127.0.0.1:57047 Accepted
+[Wed Jul  1 04:39:54 2026] 127.0.0.1:54120 Accepted
+[Wed Jul  1 04:39:55 2026] 127.0.0.1:57047 [200]: GET /api/server-status.php
+[Wed Jul  1 04:39:55 2026] 127.0.0.1:57047 Closing
+[Wed Jul  1 04:39:55 2026] 127.0.0.1:54120 [200]: GET /api/server-status.php
+[Wed Jul  1 04:39:55 2026] 127.0.0.1:54120 Closing
+[Wed Jul  1 04:40:54 2026] 127.0.0.1:52204 Accepted
+[Wed Jul  1 04:40:54 2026] 127.0.0.1:52204 [200]: GET /api/server-status.php
+[Wed Jul  1 04:40:54 2026] 127.0.0.1:52204 Closing
+[Wed Jul  1 04:40:54 2026] 127.0.0.1:51216 Accepted
+[Wed Jul  1 04:40:54 2026] 127.0.0.1:51216 [200]: GET /api/server-status.php
+[Wed Jul  1 04:40:54 2026] 127.0.0.1:51216 Closing
+[Wed Jul  1 04:41:54 2026] 127.0.0.1:57672 Accepted
+[Wed Jul  1 04:41:55 2026] 127.0.0.1:57672 [200]: GET /api/server-status.php
+[Wed Jul  1 04:41:55 2026] 127.0.0.1:57672 Closing
+[Wed Jul  1 04:41:55 2026] 127.0.0.1:64176 Accepted
+[Wed Jul  1 04:41:55 2026] 127.0.0.1:64176 [200]: GET /api/server-status.php
+[Wed Jul  1 04:41:55 2026] 127.0.0.1:64176 Closing
+[Wed Jul  1 04:42:54 2026] 127.0.0.1:60830 Accepted
+[Wed Jul  1 04:42:54 2026] 127.0.0.1:52496 Accepted
+[Wed Jul  1 04:42:54 2026] 127.0.0.1:60830 [200]: GET /api/server-status.php
+[Wed Jul  1 04:42:54 2026] 127.0.0.1:60830 Closing
+[Wed Jul  1 04:42:54 2026] 127.0.0.1:52496 [200]: GET /api/server-status.php
+[Wed Jul  1 04:42:54 2026] 127.0.0.1:52496 Closing
+[Wed Jul  1 04:43:54 2026] 127.0.0.1:50644 Accepted
+[Wed Jul  1 04:43:54 2026] 127.0.0.1:64547 Accepted
+[Wed Jul  1 04:43:55 2026] 127.0.0.1:50644 [200]: GET /api/server-status.php
+[Wed Jul  1 04:43:55 2026] 127.0.0.1:50644 Closing
+[Wed Jul  1 04:43:55 2026] 127.0.0.1:64547 [200]: GET /api/server-status.php
+[Wed Jul  1 04:43:55 2026] 127.0.0.1:64547 Closing
+[Wed Jul  1 04:44:54 2026] 127.0.0.1:53805 Accepted
+[Wed Jul  1 04:44:54 2026] 127.0.0.1:53805 [200]: GET /api/server-status.php
+[Wed Jul  1 04:44:54 2026] 127.0.0.1:53805 Closing
+[Wed Jul  1 04:44:54 2026] 127.0.0.1:61201 Accepted
+[Wed Jul  1 04:44:54 2026] 127.0.0.1:61201 [200]: GET /api/server-status.php
+[Wed Jul  1 04:44:54 2026] 127.0.0.1:61201 Closing
+[Wed Jul  1 04:45:54 2026] 127.0.0.1:52295 Accepted
+[Wed Jul  1 04:45:55 2026] 127.0.0.1:52295 [200]: GET /api/server-status.php
+[Wed Jul  1 04:45:55 2026] 127.0.0.1:52295 Closing
+[Wed Jul  1 04:45:55 2026] 127.0.0.1:58133 Accepted
+[Wed Jul  1 04:45:55 2026] 127.0.0.1:58133 [200]: GET /api/server-status.php
+[Wed Jul  1 04:45:55 2026] 127.0.0.1:58133 Closing
+[Wed Jul  1 04:46:54 2026] 127.0.0.1:51757 Accepted
+[Wed Jul  1 04:46:54 2026] 127.0.0.1:51757 [200]: GET /api/server-status.php
+[Wed Jul  1 04:46:54 2026] 127.0.0.1:51757 Closing
+[Wed Jul  1 04:46:54 2026] 127.0.0.1:53093 Accepted
+[Wed Jul  1 04:46:54 2026] 127.0.0.1:53093 [200]: GET /api/server-status.php
+[Wed Jul  1 04:46:54 2026] 127.0.0.1:53093 Closing
+[Wed Jul  1 04:47:54 2026] 127.0.0.1:60330 Accepted
+[Wed Jul  1 04:47:55 2026] 127.0.0.1:60330 [200]: GET /api/server-status.php
+[Wed Jul  1 04:47:55 2026] 127.0.0.1:60330 Closing
+[Wed Jul  1 04:47:55 2026] 127.0.0.1:61227 Accepted
+[Wed Jul  1 04:47:55 2026] 127.0.0.1:61227 [200]: GET /api/server-status.php
+[Wed Jul  1 04:47:55 2026] 127.0.0.1:61227 Closing
+[Wed Jul  1 04:48:54 2026] 127.0.0.1:57031 Accepted
+[Wed Jul  1 04:48:54 2026] 127.0.0.1:57031 [200]: GET /api/server-status.php
+[Wed Jul  1 04:48:54 2026] 127.0.0.1:57031 Closing
+[Wed Jul  1 04:48:54 2026] 127.0.0.1:60449 Accepted
+[Wed Jul  1 04:48:54 2026] 127.0.0.1:60449 [200]: GET /api/server-status.php
+[Wed Jul  1 04:48:54 2026] 127.0.0.1:60449 Closing
+[Wed Jul  1 04:49:54 2026] 127.0.0.1:61597 Accepted
+[Wed Jul  1 04:49:55 2026] 127.0.0.1:61597 [200]: GET /api/server-status.php
+[Wed Jul  1 04:49:55 2026] 127.0.0.1:61597 Closing
+[Wed Jul  1 04:49:55 2026] 127.0.0.1:50342 Accepted
+[Wed Jul  1 04:49:55 2026] 127.0.0.1:50342 [200]: GET /api/server-status.php
+[Wed Jul  1 04:49:55 2026] 127.0.0.1:50342 Closing
+[Wed Jul  1 04:50:54 2026] 127.0.0.1:61334 Accepted
+[Wed Jul  1 04:50:54 2026] 127.0.0.1:58296 Accepted
+[Wed Jul  1 04:50:54 2026] 127.0.0.1:61334 [200]: GET /api/server-status.php
+[Wed Jul  1 04:50:54 2026] 127.0.0.1:61334 Closing
+[Wed Jul  1 04:50:54 2026] 127.0.0.1:58296 [200]: GET /api/server-status.php
+[Wed Jul  1 04:50:54 2026] 127.0.0.1:58296 Closing
+[Wed Jul  1 04:51:54 2026] 127.0.0.1:51007 Accepted
+[Wed Jul  1 04:51:55 2026] 127.0.0.1:51007 [200]: GET /api/server-status.php
+[Wed Jul  1 04:51:55 2026] 127.0.0.1:51007 Closing
+[Wed Jul  1 04:51:55 2026] 127.0.0.1:65240 Accepted
+[Wed Jul  1 04:51:55 2026] 127.0.0.1:65240 [200]: GET /api/server-status.php
+[Wed Jul  1 04:51:55 2026] 127.0.0.1:65240 Closing
+[Wed Jul  1 04:52:54 2026] 127.0.0.1:62847 Accepted
+[Wed Jul  1 04:52:54 2026] 127.0.0.1:62847 [200]: GET /api/server-status.php
+[Wed Jul  1 04:52:54 2026] 127.0.0.1:62847 Closing
+[Wed Jul  1 04:52:54 2026] 127.0.0.1:55268 Accepted
+[Wed Jul  1 04:52:54 2026] 127.0.0.1:55268 [200]: GET /api/server-status.php
+[Wed Jul  1 04:52:54 2026] 127.0.0.1:55268 Closing
+[Wed Jul  1 04:53:54 2026] 127.0.0.1:64679 Accepted
+[Wed Jul  1 04:53:55 2026] 127.0.0.1:64679 [200]: GET /api/server-status.php
+[Wed Jul  1 04:53:55 2026] 127.0.0.1:64679 Closing
+[Wed Jul  1 04:53:55 2026] 127.0.0.1:62052 Accepted
+[Wed Jul  1 04:53:55 2026] 127.0.0.1:62052 [200]: GET /api/server-status.php
+[Wed Jul  1 04:53:55 2026] 127.0.0.1:62052 Closing
+[Wed Jul  1 04:54:54 2026] 127.0.0.1:64916 Accepted
+[Wed Jul  1 04:54:54 2026] 127.0.0.1:64916 [200]: GET /api/server-status.php
+[Wed Jul  1 04:54:54 2026] 127.0.0.1:64916 Closing
+[Wed Jul  1 04:54:54 2026] 127.0.0.1:64946 Accepted
+[Wed Jul  1 04:54:54 2026] 127.0.0.1:64946 [200]: GET /api/server-status.php
+[Wed Jul  1 04:54:54 2026] 127.0.0.1:64946 Closing
+[Wed Jul  1 04:55:54 2026] 127.0.0.1:53822 Accepted
+[Wed Jul  1 04:55:55 2026] 127.0.0.1:53822 [200]: GET /api/server-status.php
+[Wed Jul  1 04:55:55 2026] 127.0.0.1:53822 Closing
+[Wed Jul  1 04:55:55 2026] 127.0.0.1:51295 Accepted
+[Wed Jul  1 04:55:55 2026] 127.0.0.1:51295 [200]: GET /api/server-status.php
+[Wed Jul  1 04:55:55 2026] 127.0.0.1:51295 Closing
+[Wed Jul  1 04:56:54 2026] 127.0.0.1:65283 Accepted
+[Wed Jul  1 04:56:54 2026] 127.0.0.1:65283 [200]: GET /api/server-status.php
+[Wed Jul  1 04:56:54 2026] 127.0.0.1:65283 Closing
+[Wed Jul  1 04:56:54 2026] 127.0.0.1:60754 Accepted
+[Wed Jul  1 04:56:54 2026] 127.0.0.1:60754 [200]: GET /api/server-status.php
+[Wed Jul  1 04:56:54 2026] 127.0.0.1:60754 Closing
+[Wed Jul  1 04:57:54 2026] 127.0.0.1:56166 Accepted
+[Wed Jul  1 04:57:55 2026] 127.0.0.1:56166 [200]: GET /api/server-status.php
+[Wed Jul  1 04:57:55 2026] 127.0.0.1:56166 Closing
+[Wed Jul  1 04:57:55 2026] 127.0.0.1:57239 Accepted
+[Wed Jul  1 04:57:55 2026] 127.0.0.1:57239 [200]: GET /api/server-status.php
+[Wed Jul  1 04:57:55 2026] 127.0.0.1:57239 Closing
+[Wed Jul  1 04:58:54 2026] 127.0.0.1:62905 Accepted
+[Wed Jul  1 04:58:54 2026] 127.0.0.1:62905 [200]: GET /api/server-status.php
+[Wed Jul  1 04:58:54 2026] 127.0.0.1:62905 Closing
+[Wed Jul  1 04:58:54 2026] 127.0.0.1:62433 Accepted
+[Wed Jul  1 04:58:54 2026] 127.0.0.1:62433 [200]: GET /api/server-status.php
+[Wed Jul  1 04:58:54 2026] 127.0.0.1:62433 Closing
+[Wed Jul  1 04:59:54 2026] 127.0.0.1:53249 Accepted
+[Wed Jul  1 04:59:54 2026] 127.0.0.1:60729 Accepted
+[Wed Jul  1 04:59:55 2026] 127.0.0.1:53249 [200]: GET /api/server-status.php
+[Wed Jul  1 04:59:55 2026] 127.0.0.1:53249 Closing
+[Wed Jul  1 04:59:55 2026] 127.0.0.1:60729 [200]: GET /api/server-status.php
+[Wed Jul  1 04:59:55 2026] 127.0.0.1:60729 Closing
+[Wed Jul  1 05:00:54 2026] 127.0.0.1:64253 Accepted
+[Wed Jul  1 05:00:54 2026] 127.0.0.1:64253 [200]: GET /api/server-status.php
+[Wed Jul  1 05:00:54 2026] 127.0.0.1:64253 Closing
+[Wed Jul  1 05:00:54 2026] 127.0.0.1:61052 Accepted
+[Wed Jul  1 05:00:54 2026] 127.0.0.1:61052 [200]: GET /api/server-status.php
+[Wed Jul  1 05:00:54 2026] 127.0.0.1:61052 Closing
+[Wed Jul  1 05:01:54 2026] 127.0.0.1:61676 Accepted
+[Wed Jul  1 05:01:56 2026] 127.0.0.1:61676 [200]: GET /api/server-status.php
+[Wed Jul  1 05:01:56 2026] 127.0.0.1:61676 Closing
+[Wed Jul  1 05:01:56 2026] 127.0.0.1:55513 Accepted
+[Wed Jul  1 05:01:56 2026] 127.0.0.1:55513 [200]: GET /api/server-status.php
+[Wed Jul  1 05:01:56 2026] 127.0.0.1:55513 Closing
+[Wed Jul  1 05:02:54 2026] 127.0.0.1:59062 Accepted
+[Wed Jul  1 05:02:54 2026] 127.0.0.1:59062 [200]: GET /api/server-status.php
+[Wed Jul  1 05:02:54 2026] 127.0.0.1:59062 Closing
+[Wed Jul  1 05:02:54 2026] 127.0.0.1:63678 Accepted
+[Wed Jul  1 05:02:54 2026] 127.0.0.1:63678 [200]: GET /api/server-status.php
+[Wed Jul  1 05:02:54 2026] 127.0.0.1:63678 Closing
+[Wed Jul  1 05:03:54 2026] 127.0.0.1:50005 Accepted
+[Wed Jul  1 05:03:55 2026] 127.0.0.1:50005 [200]: GET /api/server-status.php
+[Wed Jul  1 05:03:55 2026] 127.0.0.1:50005 Closing
+[Wed Jul  1 05:03:55 2026] 127.0.0.1:58241 Accepted
+[Wed Jul  1 05:03:55 2026] 127.0.0.1:58241 [200]: GET /api/server-status.php
+[Wed Jul  1 05:03:55 2026] 127.0.0.1:58241 Closing
+[Wed Jul  1 05:04:54 2026] 127.0.0.1:55051 Accepted
+[Wed Jul  1 05:04:54 2026] 127.0.0.1:55051 [200]: GET /api/server-status.php
+[Wed Jul  1 05:04:54 2026] 127.0.0.1:55051 Closing
+[Wed Jul  1 05:04:54 2026] 127.0.0.1:55302 Accepted
+[Wed Jul  1 05:04:54 2026] 127.0.0.1:55302 [200]: GET /api/server-status.php
+[Wed Jul  1 05:04:54 2026] 127.0.0.1:55302 Closing
+[Wed Jul  1 05:05:54 2026] 127.0.0.1:64567 Accepted
+[Wed Jul  1 05:05:55 2026] 127.0.0.1:64567 [200]: GET /api/server-status.php
+[Wed Jul  1 05:05:55 2026] 127.0.0.1:64567 Closing
+[Wed Jul  1 05:05:55 2026] 127.0.0.1:61705 Accepted
+[Wed Jul  1 05:05:55 2026] 127.0.0.1:61705 [200]: GET /api/server-status.php
+[Wed Jul  1 05:05:55 2026] 127.0.0.1:61705 Closing
+[Wed Jul  1 05:06:54 2026] 127.0.0.1:51506 Accepted
+[Wed Jul  1 05:06:54 2026] 127.0.0.1:51506 [200]: GET /api/server-status.php
+[Wed Jul  1 05:06:54 2026] 127.0.0.1:51506 Closing
+[Wed Jul  1 05:06:54 2026] 127.0.0.1:65496 Accepted
+[Wed Jul  1 05:06:54 2026] 127.0.0.1:65496 [200]: GET /api/server-status.php
+[Wed Jul  1 05:06:54 2026] 127.0.0.1:65496 Closing
+[Wed Jul  1 05:07:54 2026] 127.0.0.1:61557 Accepted
+[Wed Jul  1 05:07:55 2026] 127.0.0.1:61557 [200]: GET /api/server-status.php
+[Wed Jul  1 05:07:55 2026] 127.0.0.1:61557 Closing
+[Wed Jul  1 05:07:55 2026] 127.0.0.1:50027 Accepted
+[Wed Jul  1 05:07:55 2026] 127.0.0.1:50027 [200]: GET /api/server-status.php
+[Wed Jul  1 05:07:55 2026] 127.0.0.1:50027 Closing
+[Wed Jul  1 05:08:54 2026] 127.0.0.1:58972 Accepted
+[Wed Jul  1 05:08:54 2026] 127.0.0.1:58972 [200]: GET /api/server-status.php
+[Wed Jul  1 05:08:54 2026] 127.0.0.1:58972 Closing
+[Wed Jul  1 05:08:54 2026] 127.0.0.1:50503 Accepted
+[Wed Jul  1 05:08:54 2026] 127.0.0.1:50503 [200]: GET /api/server-status.php
+[Wed Jul  1 05:08:54 2026] 127.0.0.1:50503 Closing
+[Wed Jul  1 05:09:54 2026] 127.0.0.1:65214 Accepted
+[Wed Jul  1 05:09:55 2026] 127.0.0.1:65214 [200]: GET /api/server-status.php
+[Wed Jul  1 05:09:55 2026] 127.0.0.1:65214 Closing
+[Wed Jul  1 05:09:55 2026] 127.0.0.1:55461 Accepted
+[Wed Jul  1 05:09:55 2026] 127.0.0.1:55461 [200]: GET /api/server-status.php
+[Wed Jul  1 05:09:55 2026] 127.0.0.1:55461 Closing
+[Wed Jul  1 05:10:54 2026] 127.0.0.1:59035 Accepted
+[Wed Jul  1 05:10:54 2026] 127.0.0.1:59035 [200]: GET /api/server-status.php
+[Wed Jul  1 05:10:54 2026] 127.0.0.1:59035 Closing
+[Wed Jul  1 05:10:54 2026] 127.0.0.1:59964 Accepted
+[Wed Jul  1 05:10:54 2026] 127.0.0.1:59964 [200]: GET /api/server-status.php
+[Wed Jul  1 05:10:54 2026] 127.0.0.1:59964 Closing
+[Wed Jul  1 05:11:54 2026] 127.0.0.1:52243 Accepted
+[Wed Jul  1 05:11:55 2026] 127.0.0.1:52243 [200]: GET /api/server-status.php
+[Wed Jul  1 05:11:55 2026] 127.0.0.1:52243 Closing
+[Wed Jul  1 05:11:55 2026] 127.0.0.1:62907 Accepted
+[Wed Jul  1 05:11:55 2026] 127.0.0.1:62907 [200]: GET /api/server-status.php
+[Wed Jul  1 05:11:55 2026] 127.0.0.1:62907 Closing
+[Wed Jul  1 05:12:54 2026] 127.0.0.1:58017 Accepted
+[Wed Jul  1 05:12:54 2026] 127.0.0.1:58017 [200]: GET /api/server-status.php
+[Wed Jul  1 05:12:54 2026] 127.0.0.1:58017 Closing
+[Wed Jul  1 05:12:54 2026] 127.0.0.1:49553 Accepted
+[Wed Jul  1 05:12:54 2026] 127.0.0.1:49553 [200]: GET /api/server-status.php
+[Wed Jul  1 05:12:54 2026] 127.0.0.1:49553 Closing
+[Wed Jul  1 05:13:54 2026] 127.0.0.1:54169 Accepted
+[Wed Jul  1 05:13:55 2026] 127.0.0.1:54169 [200]: GET /api/server-status.php
+[Wed Jul  1 05:13:55 2026] 127.0.0.1:54169 Closing
+[Wed Jul  1 05:13:55 2026] 127.0.0.1:55918 Accepted
+[Wed Jul  1 05:13:55 2026] 127.0.0.1:55918 [200]: GET /api/server-status.php
+[Wed Jul  1 05:13:55 2026] 127.0.0.1:55918 Closing
+[Wed Jul  1 05:14:54 2026] 127.0.0.1:62981 Accepted
+[Wed Jul  1 05:14:54 2026] 127.0.0.1:62981 [200]: GET /api/server-status.php
+[Wed Jul  1 05:14:54 2026] 127.0.0.1:62981 Closing
+[Wed Jul  1 05:14:54 2026] 127.0.0.1:59360 Accepted
+[Wed Jul  1 05:14:54 2026] 127.0.0.1:59360 [200]: GET /api/server-status.php
+[Wed Jul  1 05:14:54 2026] 127.0.0.1:59360 Closing
+[Wed Jul  1 05:15:54 2026] 127.0.0.1:56848 Accepted
+[Wed Jul  1 05:15:55 2026] 127.0.0.1:56848 [200]: GET /api/server-status.php
+[Wed Jul  1 05:15:55 2026] 127.0.0.1:56848 Closing
+[Wed Jul  1 05:15:55 2026] 127.0.0.1:54536 Accepted
+[Wed Jul  1 05:15:55 2026] 127.0.0.1:54536 [200]: GET /api/server-status.php
+[Wed Jul  1 05:15:55 2026] 127.0.0.1:54536 Closing
+[Wed Jul  1 05:16:54 2026] 127.0.0.1:60637 Accepted
+[Wed Jul  1 05:16:54 2026] 127.0.0.1:60637 [200]: GET /api/server-status.php
+[Wed Jul  1 05:16:54 2026] 127.0.0.1:60637 Closing
+[Wed Jul  1 05:16:54 2026] 127.0.0.1:59838 Accepted
+[Wed Jul  1 05:16:54 2026] 127.0.0.1:59838 [200]: GET /api/server-status.php
+[Wed Jul  1 05:16:54 2026] 127.0.0.1:59838 Closing
+[Wed Jul  1 05:17:54 2026] 127.0.0.1:58230 Accepted
+[Wed Jul  1 05:17:54 2026] 127.0.0.1:60047 Accepted
+[Wed Jul  1 05:17:55 2026] 127.0.0.1:58230 [200]: GET /api/server-status.php
+[Wed Jul  1 05:17:55 2026] 127.0.0.1:58230 Closing
+[Wed Jul  1 05:17:55 2026] 127.0.0.1:60047 [200]: GET /api/server-status.php
+[Wed Jul  1 05:17:55 2026] 127.0.0.1:60047 Closing
+[Wed Jul  1 05:18:54 2026] 127.0.0.1:61911 Accepted
+[Wed Jul  1 05:18:54 2026] 127.0.0.1:61911 [200]: GET /api/server-status.php
+[Wed Jul  1 05:18:54 2026] 127.0.0.1:61911 Closing
+[Wed Jul  1 05:18:54 2026] 127.0.0.1:60536 Accepted
+[Wed Jul  1 05:18:54 2026] 127.0.0.1:60536 [200]: GET /api/server-status.php
+[Wed Jul  1 05:18:54 2026] 127.0.0.1:60536 Closing
+[Wed Jul  1 05:19:54 2026] 127.0.0.1:51639 Accepted
+[Wed Jul  1 05:19:55 2026] 127.0.0.1:51639 [200]: GET /api/server-status.php
+[Wed Jul  1 05:19:55 2026] 127.0.0.1:51639 Closing
+[Wed Jul  1 05:19:55 2026] 127.0.0.1:53677 Accepted
+[Wed Jul  1 05:19:55 2026] 127.0.0.1:53677 [200]: GET /api/server-status.php
+[Wed Jul  1 05:19:55 2026] 127.0.0.1:53677 Closing
+[Wed Jul  1 05:20:54 2026] 127.0.0.1:56809 Accepted
+[Wed Jul  1 05:20:54 2026] 127.0.0.1:56809 [200]: GET /api/server-status.php
+[Wed Jul  1 05:20:54 2026] 127.0.0.1:56809 Closing
+[Wed Jul  1 05:20:54 2026] 127.0.0.1:60452 Accepted
+[Wed Jul  1 05:20:54 2026] 127.0.0.1:60452 [200]: GET /api/server-status.php
+[Wed Jul  1 05:20:54 2026] 127.0.0.1:60452 Closing
+[Wed Jul  1 05:21:54 2026] 127.0.0.1:56785 Accepted
+[Wed Jul  1 05:21:55 2026] 127.0.0.1:56785 [200]: GET /api/server-status.php
+[Wed Jul  1 05:21:55 2026] 127.0.0.1:56785 Closing
+[Wed Jul  1 05:21:55 2026] 127.0.0.1:58257 Accepted
+[Wed Jul  1 05:21:55 2026] 127.0.0.1:58257 [200]: GET /api/server-status.php
+[Wed Jul  1 05:21:55 2026] 127.0.0.1:58257 Closing
+[Wed Jul  1 05:22:54 2026] 127.0.0.1:64104 Accepted
+[Wed Jul  1 05:22:54 2026] 127.0.0.1:64104 [200]: GET /api/server-status.php
+[Wed Jul  1 05:22:54 2026] 127.0.0.1:64104 Closing
+[Wed Jul  1 05:22:54 2026] 127.0.0.1:60420 Accepted
+[Wed Jul  1 05:22:54 2026] 127.0.0.1:60420 [200]: GET /api/server-status.php
+[Wed Jul  1 05:22:54 2026] 127.0.0.1:60420 Closing
+[Wed Jul  1 05:23:54 2026] 127.0.0.1:63375 Accepted
+[Wed Jul  1 05:23:55 2026] 127.0.0.1:63375 [200]: GET /api/server-status.php
+[Wed Jul  1 05:23:55 2026] 127.0.0.1:63375 Closing
+[Wed Jul  1 05:23:55 2026] 127.0.0.1:53429 Accepted
+[Wed Jul  1 05:23:55 2026] 127.0.0.1:53429 [200]: GET /api/server-status.php
+[Wed Jul  1 05:23:55 2026] 127.0.0.1:53429 Closing
+[Wed Jul  1 05:24:54 2026] 127.0.0.1:59617 Accepted
+[Wed Jul  1 05:24:54 2026] 127.0.0.1:64319 Accepted
+[Wed Jul  1 05:24:54 2026] 127.0.0.1:59617 [200]: GET /api/server-status.php
+[Wed Jul  1 05:24:54 2026] 127.0.0.1:59617 Closing
+[Wed Jul  1 05:24:54 2026] 127.0.0.1:64319 [200]: GET /api/server-status.php
+[Wed Jul  1 05:24:54 2026] 127.0.0.1:64319 Closing
+[Wed Jul  1 05:25:54 2026] 127.0.0.1:53764 Accepted
+[Wed Jul  1 05:25:55 2026] 127.0.0.1:53764 [200]: GET /api/server-status.php
+[Wed Jul  1 05:25:55 2026] 127.0.0.1:53764 Closing
+[Wed Jul  1 05:25:55 2026] 127.0.0.1:63244 Accepted
+[Wed Jul  1 05:25:55 2026] 127.0.0.1:63244 [200]: GET /api/server-status.php
+[Wed Jul  1 05:25:55 2026] 127.0.0.1:63244 Closing
+[Wed Jul  1 05:26:54 2026] 127.0.0.1:53463 Accepted
+[Wed Jul  1 05:26:54 2026] 127.0.0.1:53463 [200]: GET /api/server-status.php
+[Wed Jul  1 05:26:54 2026] 127.0.0.1:53463 Closing
+[Wed Jul  1 05:26:54 2026] 127.0.0.1:62684 Accepted
+[Wed Jul  1 05:26:54 2026] 127.0.0.1:62684 [200]: GET /api/server-status.php
+[Wed Jul  1 05:26:54 2026] 127.0.0.1:62684 Closing
+[Wed Jul  1 05:27:54 2026] 127.0.0.1:65348 Accepted
+[Wed Jul  1 05:27:55 2026] 127.0.0.1:65348 [200]: GET /api/server-status.php
+[Wed Jul  1 05:27:55 2026] 127.0.0.1:65348 Closing
+[Wed Jul  1 05:27:55 2026] 127.0.0.1:60566 Accepted
+[Wed Jul  1 05:27:55 2026] 127.0.0.1:60566 [200]: GET /api/server-status.php
+[Wed Jul  1 05:27:55 2026] 127.0.0.1:60566 Closing
+[Wed Jul  1 05:28:54 2026] 127.0.0.1:59532 Accepted
+[Wed Jul  1 05:28:54 2026] 127.0.0.1:59532 [200]: GET /api/server-status.php
+[Wed Jul  1 05:28:54 2026] 127.0.0.1:59532 Closing
+[Wed Jul  1 05:28:54 2026] 127.0.0.1:64770 Accepted
+[Wed Jul  1 05:28:54 2026] 127.0.0.1:64770 [200]: GET /api/server-status.php
+[Wed Jul  1 05:28:54 2026] 127.0.0.1:64770 Closing
+[Wed Jul  1 05:29:54 2026] 127.0.0.1:63308 Accepted
+[Wed Jul  1 05:29:54 2026] 127.0.0.1:55699 Accepted
+[Wed Jul  1 05:29:55 2026] 127.0.0.1:63308 [200]: GET /api/server-status.php
+[Wed Jul  1 05:29:55 2026] 127.0.0.1:63308 Closing
+[Wed Jul  1 05:29:55 2026] 127.0.0.1:55699 [200]: GET /api/server-status.php
+[Wed Jul  1 05:29:55 2026] 127.0.0.1:55699 Closing
+[Wed Jul  1 05:30:54 2026] 127.0.0.1:53404 Accepted
+[Wed Jul  1 05:30:54 2026] 127.0.0.1:53404 [200]: GET /api/server-status.php
+[Wed Jul  1 05:30:54 2026] 127.0.0.1:53404 Closing
+[Wed Jul  1 05:30:54 2026] 127.0.0.1:60319 Accepted
+[Wed Jul  1 05:30:54 2026] 127.0.0.1:60319 [200]: GET /api/server-status.php
+[Wed Jul  1 05:30:54 2026] 127.0.0.1:60319 Closing
+[Wed Jul  1 05:31:54 2026] 127.0.0.1:63060 Accepted
+[Wed Jul  1 05:31:54 2026] 127.0.0.1:58451 Accepted
+[Wed Jul  1 05:31:55 2026] 127.0.0.1:63060 [200]: GET /api/server-status.php
+[Wed Jul  1 05:31:55 2026] 127.0.0.1:63060 Closing
+[Wed Jul  1 05:31:55 2026] 127.0.0.1:58451 [200]: GET /api/server-status.php
+[Wed Jul  1 05:31:55 2026] 127.0.0.1:58451 Closing
+[Wed Jul  1 05:32:54 2026] 127.0.0.1:58721 Accepted
+[Wed Jul  1 05:32:54 2026] 127.0.0.1:58721 [200]: GET /api/server-status.php
+[Wed Jul  1 05:32:54 2026] 127.0.0.1:58721 Closing
+[Wed Jul  1 05:32:54 2026] 127.0.0.1:50529 Accepted
+[Wed Jul  1 05:32:54 2026] 127.0.0.1:50529 [200]: GET /api/server-status.php
+[Wed Jul  1 05:32:54 2026] 127.0.0.1:50529 Closing
+[Wed Jul  1 05:33:54 2026] 127.0.0.1:50241 Accepted
+[Wed Jul  1 05:33:55 2026] 127.0.0.1:50241 [200]: GET /api/server-status.php
+[Wed Jul  1 05:33:55 2026] 127.0.0.1:50241 Closing
+[Wed Jul  1 05:33:55 2026] 127.0.0.1:53137 Accepted
+[Wed Jul  1 05:33:55 2026] 127.0.0.1:53137 [200]: GET /api/server-status.php
+[Wed Jul  1 05:33:55 2026] 127.0.0.1:53137 Closing
+[Wed Jul  1 05:34:54 2026] 127.0.0.1:50740 Accepted
+[Wed Jul  1 05:34:54 2026] 127.0.0.1:50740 [200]: GET /api/server-status.php
+[Wed Jul  1 05:34:54 2026] 127.0.0.1:50740 Closing
+[Wed Jul  1 05:34:54 2026] 127.0.0.1:59720 Accepted
+[Wed Jul  1 05:34:54 2026] 127.0.0.1:59720 [200]: GET /api/server-status.php
+[Wed Jul  1 05:34:54 2026] 127.0.0.1:59720 Closing
+[Wed Jul  1 05:35:54 2026] 127.0.0.1:51921 Accepted
+[Wed Jul  1 05:35:54 2026] 127.0.0.1:64451 Accepted
+[Wed Jul  1 05:35:55 2026] 127.0.0.1:51921 [200]: GET /api/server-status.php
+[Wed Jul  1 05:35:55 2026] 127.0.0.1:51921 Closing
+[Wed Jul  1 05:35:55 2026] 127.0.0.1:64451 [200]: GET /api/server-status.php
+[Wed Jul  1 05:35:55 2026] 127.0.0.1:64451 Closing
+[Wed Jul  1 05:36:54 2026] 127.0.0.1:57869 Accepted
+[Wed Jul  1 05:36:54 2026] 127.0.0.1:57869 [200]: GET /api/server-status.php
+[Wed Jul  1 05:36:54 2026] 127.0.0.1:57869 Closing
+[Wed Jul  1 05:36:54 2026] 127.0.0.1:62938 Accepted
+[Wed Jul  1 05:36:54 2026] 127.0.0.1:62938 [200]: GET /api/server-status.php
+[Wed Jul  1 05:36:54 2026] 127.0.0.1:62938 Closing
+[Wed Jul  1 05:37:54 2026] 127.0.0.1:50974 Accepted
+[Wed Jul  1 05:37:55 2026] 127.0.0.1:50974 [200]: GET /api/server-status.php
+[Wed Jul  1 05:37:55 2026] 127.0.0.1:50974 Closing
+[Wed Jul  1 05:37:55 2026] 127.0.0.1:49435 Accepted
+[Wed Jul  1 05:37:55 2026] 127.0.0.1:49435 [200]: GET /api/server-status.php
+[Wed Jul  1 05:37:55 2026] 127.0.0.1:49435 Closing
+[Wed Jul  1 05:38:54 2026] 127.0.0.1:61143 Accepted
+[Wed Jul  1 05:38:54 2026] 127.0.0.1:61143 [200]: GET /api/server-status.php
+[Wed Jul  1 05:38:54 2026] 127.0.0.1:61143 Closing
+[Wed Jul  1 05:38:54 2026] 127.0.0.1:61247 Accepted
+[Wed Jul  1 05:38:54 2026] 127.0.0.1:61247 [200]: GET /api/server-status.php
+[Wed Jul  1 05:38:54 2026] 127.0.0.1:61247 Closing
+[Wed Jul  1 05:39:54 2026] 127.0.0.1:62302 Accepted
+[Wed Jul  1 05:39:54 2026] 127.0.0.1:52100 Accepted
+[Wed Jul  1 05:39:55 2026] 127.0.0.1:62302 [200]: GET /api/server-status.php
+[Wed Jul  1 05:39:55 2026] 127.0.0.1:62302 Closing
+[Wed Jul  1 05:39:55 2026] 127.0.0.1:52100 [200]: GET /api/server-status.php
+[Wed Jul  1 05:39:55 2026] 127.0.0.1:52100 Closing
+[Wed Jul  1 05:40:54 2026] 127.0.0.1:57705 Accepted
+[Wed Jul  1 05:40:54 2026] 127.0.0.1:57705 [200]: GET /api/server-status.php
+[Wed Jul  1 05:40:54 2026] 127.0.0.1:57705 Closing
+[Wed Jul  1 05:40:54 2026] 127.0.0.1:54180 Accepted
+[Wed Jul  1 05:40:54 2026] 127.0.0.1:54180 [200]: GET /api/server-status.php
+[Wed Jul  1 05:40:54 2026] 127.0.0.1:54180 Closing
+[Wed Jul  1 05:41:54 2026] 127.0.0.1:52196 Accepted
+[Wed Jul  1 05:41:55 2026] 127.0.0.1:52196 [200]: GET /api/server-status.php
+[Wed Jul  1 05:41:55 2026] 127.0.0.1:52196 Closing
+[Wed Jul  1 05:41:55 2026] 127.0.0.1:65358 Accepted
+[Wed Jul  1 05:41:55 2026] 127.0.0.1:65358 [200]: GET /api/server-status.php
+[Wed Jul  1 05:41:55 2026] 127.0.0.1:65358 Closing
+[Wed Jul  1 05:42:54 2026] 127.0.0.1:64933 Accepted
+[Wed Jul  1 05:42:54 2026] 127.0.0.1:64933 [200]: GET /api/server-status.php
+[Wed Jul  1 05:42:54 2026] 127.0.0.1:64933 Closing
+[Wed Jul  1 05:42:54 2026] 127.0.0.1:64048 Accepted
+[Wed Jul  1 05:42:54 2026] 127.0.0.1:64048 [200]: GET /api/server-status.php
+[Wed Jul  1 05:42:54 2026] 127.0.0.1:64048 Closing
+[Wed Jul  1 05:43:54 2026] 127.0.0.1:58745 Accepted
+[Wed Jul  1 05:43:55 2026] 127.0.0.1:58745 [200]: GET /api/server-status.php
+[Wed Jul  1 05:43:55 2026] 127.0.0.1:58745 Closing
+[Wed Jul  1 05:43:55 2026] 127.0.0.1:49962 Accepted
+[Wed Jul  1 05:43:55 2026] 127.0.0.1:49962 [200]: GET /api/server-status.php
+[Wed Jul  1 05:43:55 2026] 127.0.0.1:49962 Closing
+[Wed Jul  1 05:44:54 2026] 127.0.0.1:61945 Accepted
+[Wed Jul  1 05:44:54 2026] 127.0.0.1:61945 [200]: GET /api/server-status.php
+[Wed Jul  1 05:44:54 2026] 127.0.0.1:61945 Closing
+[Wed Jul  1 05:44:54 2026] 127.0.0.1:62874 Accepted
+[Wed Jul  1 05:44:54 2026] 127.0.0.1:62874 [200]: GET /api/server-status.php
+[Wed Jul  1 05:44:54 2026] 127.0.0.1:62874 Closing
+[Wed Jul  1 05:45:54 2026] 127.0.0.1:61276 Accepted
+[Wed Jul  1 05:45:54 2026] 127.0.0.1:55686 Accepted
+[Wed Jul  1 05:45:55 2026] 127.0.0.1:61276 [200]: GET /api/server-status.php
+[Wed Jul  1 05:45:55 2026] 127.0.0.1:61276 Closing
+[Wed Jul  1 05:45:55 2026] 127.0.0.1:55686 [200]: GET /api/server-status.php
+[Wed Jul  1 05:45:55 2026] 127.0.0.1:55686 Closing
+[Wed Jul  1 05:46:54 2026] 127.0.0.1:54719 Accepted
+[Wed Jul  1 05:46:54 2026] 127.0.0.1:54719 [200]: GET /api/server-status.php
+[Wed Jul  1 05:46:54 2026] 127.0.0.1:54719 Closing
+[Wed Jul  1 05:46:54 2026] 127.0.0.1:56754 Accepted
+[Wed Jul  1 05:46:54 2026] 127.0.0.1:56754 [200]: GET /api/server-status.php
+[Wed Jul  1 05:46:54 2026] 127.0.0.1:56754 Closing
+[Wed Jul  1 05:47:54 2026] 127.0.0.1:51816 Accepted
+[Wed Jul  1 05:47:55 2026] 127.0.0.1:51816 [200]: GET /api/server-status.php
+[Wed Jul  1 05:47:55 2026] 127.0.0.1:51816 Closing
+[Wed Jul  1 05:47:55 2026] 127.0.0.1:64745 Accepted
+[Wed Jul  1 05:47:55 2026] 127.0.0.1:64745 [200]: GET /api/server-status.php
+[Wed Jul  1 05:47:55 2026] 127.0.0.1:64745 Closing
+[Wed Jul  1 05:48:54 2026] 127.0.0.1:53352 Accepted
+[Wed Jul  1 05:48:54 2026] 127.0.0.1:53352 [200]: GET /api/server-status.php
+[Wed Jul  1 05:48:54 2026] 127.0.0.1:53352 Closing
+[Wed Jul  1 05:48:54 2026] 127.0.0.1:50907 Accepted
+[Wed Jul  1 05:48:54 2026] 127.0.0.1:50907 [200]: GET /api/server-status.php
+[Wed Jul  1 05:48:54 2026] 127.0.0.1:50907 Closing
+[Wed Jul  1 05:49:54 2026] 127.0.0.1:58339 Accepted
+[Wed Jul  1 05:49:55 2026] 127.0.0.1:58339 [200]: GET /api/server-status.php
+[Wed Jul  1 05:49:55 2026] 127.0.0.1:58339 Closing
+[Wed Jul  1 05:49:55 2026] 127.0.0.1:51119 Accepted
+[Wed Jul  1 05:49:55 2026] 127.0.0.1:51119 [200]: GET /api/server-status.php
+[Wed Jul  1 05:49:55 2026] 127.0.0.1:51119 Closing
+[Wed Jul  1 05:50:54 2026] 127.0.0.1:58542 Accepted
+[Wed Jul  1 05:50:54 2026] 127.0.0.1:58542 [200]: GET /api/server-status.php
+[Wed Jul  1 05:50:54 2026] 127.0.0.1:58542 Closing
+[Wed Jul  1 05:50:54 2026] 127.0.0.1:51019 Accepted
+[Wed Jul  1 05:50:54 2026] 127.0.0.1:51019 [200]: GET /api/server-status.php
+[Wed Jul  1 05:50:54 2026] 127.0.0.1:51019 Closing
+[Wed Jul  1 05:51:54 2026] 127.0.0.1:55297 Accepted
+[Wed Jul  1 05:51:55 2026] 127.0.0.1:55297 [200]: GET /api/server-status.php
+[Wed Jul  1 05:51:55 2026] 127.0.0.1:55297 Closing
+[Wed Jul  1 05:51:55 2026] 127.0.0.1:52177 Accepted
+[Wed Jul  1 05:51:55 2026] 127.0.0.1:52177 [200]: GET /api/server-status.php
+[Wed Jul  1 05:51:55 2026] 127.0.0.1:52177 Closing
+[Wed Jul  1 05:52:54 2026] 127.0.0.1:55060 Accepted
+[Wed Jul  1 05:52:54 2026] 127.0.0.1:55060 [200]: GET /api/server-status.php
+[Wed Jul  1 05:52:54 2026] 127.0.0.1:55060 Closing
+[Wed Jul  1 05:52:54 2026] 127.0.0.1:49556 Accepted
+[Wed Jul  1 05:52:54 2026] 127.0.0.1:49556 [200]: GET /api/server-status.php
+[Wed Jul  1 05:52:54 2026] 127.0.0.1:49556 Closing
+[Wed Jul  1 05:53:54 2026] 127.0.0.1:62862 Accepted
+[Wed Jul  1 05:53:55 2026] 127.0.0.1:62862 [200]: GET /api/server-status.php
+[Wed Jul  1 05:53:55 2026] 127.0.0.1:62862 Closing
+[Wed Jul  1 05:53:55 2026] 127.0.0.1:56266 Accepted
+[Wed Jul  1 05:53:55 2026] 127.0.0.1:56266 [200]: GET /api/server-status.php
+[Wed Jul  1 05:53:55 2026] 127.0.0.1:56266 Closing
+[Wed Jul  1 05:54:54 2026] 127.0.0.1:62575 Accepted
+[Wed Jul  1 05:54:54 2026] 127.0.0.1:62575 [200]: GET /api/server-status.php
+[Wed Jul  1 05:54:54 2026] 127.0.0.1:62575 Closing
+[Wed Jul  1 05:54:54 2026] 127.0.0.1:63687 Accepted
+[Wed Jul  1 05:54:54 2026] 127.0.0.1:63687 [200]: GET /api/server-status.php
+[Wed Jul  1 05:54:54 2026] 127.0.0.1:63687 Closing
+[Wed Jul  1 05:55:54 2026] 127.0.0.1:63475 Accepted
+[Wed Jul  1 05:55:55 2026] 127.0.0.1:63475 [200]: GET /api/server-status.php
+[Wed Jul  1 05:55:55 2026] 127.0.0.1:63475 Closing
+[Wed Jul  1 05:55:55 2026] 127.0.0.1:59299 Accepted
+[Wed Jul  1 05:55:55 2026] 127.0.0.1:59299 [200]: GET /api/server-status.php
+[Wed Jul  1 05:55:55 2026] 127.0.0.1:59299 Closing
+[Wed Jul  1 05:56:54 2026] 127.0.0.1:56473 Accepted
+[Wed Jul  1 05:56:54 2026] 127.0.0.1:56473 [200]: GET /api/server-status.php
+[Wed Jul  1 05:56:54 2026] 127.0.0.1:56473 Closing
+[Wed Jul  1 05:56:54 2026] 127.0.0.1:53295 Accepted
+[Wed Jul  1 05:56:54 2026] 127.0.0.1:53295 [200]: GET /api/server-status.php
+[Wed Jul  1 05:56:54 2026] 127.0.0.1:53295 Closing
+[Wed Jul  1 05:57:54 2026] 127.0.0.1:61199 Accepted
+[Wed Jul  1 05:57:55 2026] 127.0.0.1:61199 [200]: GET /api/server-status.php
+[Wed Jul  1 05:57:55 2026] 127.0.0.1:61199 Closing
+[Wed Jul  1 05:57:55 2026] 127.0.0.1:53497 Accepted
+[Wed Jul  1 05:57:55 2026] 127.0.0.1:53497 [200]: GET /api/server-status.php
+[Wed Jul  1 05:57:55 2026] 127.0.0.1:53497 Closing
+[Wed Jul  1 05:58:54 2026] 127.0.0.1:55557 Accepted
+[Wed Jul  1 05:58:54 2026] 127.0.0.1:55557 [200]: GET /api/server-status.php
+[Wed Jul  1 05:58:54 2026] 127.0.0.1:55557 Closing
+[Wed Jul  1 05:58:54 2026] 127.0.0.1:55114 Accepted
+[Wed Jul  1 05:58:54 2026] 127.0.0.1:55114 [200]: GET /api/server-status.php
+[Wed Jul  1 05:58:54 2026] 127.0.0.1:55114 Closing
+[Wed Jul  1 05:59:54 2026] 127.0.0.1:51077 Accepted
+[Wed Jul  1 05:59:55 2026] 127.0.0.1:51077 [200]: GET /api/server-status.php
+[Wed Jul  1 05:59:55 2026] 127.0.0.1:51077 Closing
+[Wed Jul  1 05:59:55 2026] 127.0.0.1:58310 Accepted
+[Wed Jul  1 05:59:55 2026] 127.0.0.1:58310 [200]: GET /api/server-status.php
+[Wed Jul  1 05:59:55 2026] 127.0.0.1:58310 Closing
+[Wed Jul  1 06:00:54 2026] 127.0.0.1:53945 Accepted
+[Wed Jul  1 06:00:54 2026] 127.0.0.1:53945 [200]: GET /api/server-status.php
+[Wed Jul  1 06:00:54 2026] 127.0.0.1:53945 Closing
+[Wed Jul  1 06:00:54 2026] 127.0.0.1:61989 Accepted
+[Wed Jul  1 06:00:54 2026] 127.0.0.1:61989 [200]: GET /api/server-status.php
+[Wed Jul  1 06:00:54 2026] 127.0.0.1:61989 Closing
+[Wed Jul  1 06:01:54 2026] 127.0.0.1:63492 Accepted
+[Wed Jul  1 06:01:55 2026] 127.0.0.1:63492 [200]: GET /api/server-status.php
+[Wed Jul  1 06:01:55 2026] 127.0.0.1:63492 Closing
+[Wed Jul  1 06:01:55 2026] 127.0.0.1:53878 Accepted
+[Wed Jul  1 06:01:55 2026] 127.0.0.1:53878 [200]: GET /api/server-status.php
+[Wed Jul  1 06:01:55 2026] 127.0.0.1:53878 Closing
+[Wed Jul  1 06:02:54 2026] 127.0.0.1:62092 Accepted
+[Wed Jul  1 06:02:54 2026] 127.0.0.1:54599 Accepted
+[Wed Jul  1 06:02:54 2026] 127.0.0.1:62092 [200]: GET /api/server-status.php
+[Wed Jul  1 06:02:54 2026] 127.0.0.1:62092 Closing
+[Wed Jul  1 06:02:54 2026] 127.0.0.1:54599 [200]: GET /api/server-status.php
+[Wed Jul  1 06:02:54 2026] 127.0.0.1:54599 Closing
+[Wed Jul  1 06:03:54 2026] 127.0.0.1:55435 Accepted
+[Wed Jul  1 06:03:55 2026] 127.0.0.1:55435 [200]: GET /api/server-status.php
+[Wed Jul  1 06:03:55 2026] 127.0.0.1:55435 Closing
+[Wed Jul  1 06:03:55 2026] 127.0.0.1:52534 Accepted
+[Wed Jul  1 06:03:55 2026] 127.0.0.1:52534 [200]: GET /api/server-status.php
+[Wed Jul  1 06:03:55 2026] 127.0.0.1:52534 Closing
+[Wed Jul  1 06:04:54 2026] 127.0.0.1:53400 Accepted
+[Wed Jul  1 06:04:54 2026] 127.0.0.1:53400 [200]: GET /api/server-status.php
+[Wed Jul  1 06:04:54 2026] 127.0.0.1:53400 Closing
+[Wed Jul  1 06:04:54 2026] 127.0.0.1:59206 Accepted
+[Wed Jul  1 06:04:54 2026] 127.0.0.1:59206 [200]: GET /api/server-status.php
+[Wed Jul  1 06:04:54 2026] 127.0.0.1:59206 Closing
+[Wed Jul  1 06:05:54 2026] 127.0.0.1:58290 Accepted
+[Wed Jul  1 06:05:54 2026] 127.0.0.1:58290 [200]: GET /api/server-status.php
+[Wed Jul  1 06:05:54 2026] 127.0.0.1:58290 Closing
+[Wed Jul  1 06:05:54 2026] 127.0.0.1:57165 Accepted
+[Wed Jul  1 06:05:54 2026] 127.0.0.1:57165 [200]: GET /api/server-status.php
+[Wed Jul  1 06:05:54 2026] 127.0.0.1:57165 Closing
+[Wed Jul  1 06:06:54 2026] 127.0.0.1:50476 Accepted
+[Wed Jul  1 06:06:55 2026] 127.0.0.1:50476 [200]: GET /api/server-status.php
+[Wed Jul  1 06:06:55 2026] 127.0.0.1:50476 Closing
+[Wed Jul  1 06:06:55 2026] 127.0.0.1:50158 Accepted
+[Wed Jul  1 06:06:55 2026] 127.0.0.1:50158 [200]: GET /api/server-status.php
+[Wed Jul  1 06:06:55 2026] 127.0.0.1:50158 Closing
+[Wed Jul  1 06:07:54 2026] 127.0.0.1:58394 Accepted
+[Wed Jul  1 06:07:54 2026] 127.0.0.1:58394 [200]: GET /api/server-status.php
+[Wed Jul  1 06:07:54 2026] 127.0.0.1:58394 Closing
+[Wed Jul  1 06:07:54 2026] 127.0.0.1:52485 Accepted
+[Wed Jul  1 06:07:54 2026] 127.0.0.1:52485 [200]: GET /api/server-status.php
+[Wed Jul  1 06:07:54 2026] 127.0.0.1:52485 Closing
+[Wed Jul  1 06:08:54 2026] 127.0.0.1:63093 Accepted
+[Wed Jul  1 06:08:55 2026] 127.0.0.1:63093 [200]: GET /api/server-status.php
+[Wed Jul  1 06:08:55 2026] 127.0.0.1:63093 Closing
+[Wed Jul  1 06:08:55 2026] 127.0.0.1:58031 Accepted
+[Wed Jul  1 06:08:55 2026] 127.0.0.1:58031 [200]: GET /api/server-status.php
+[Wed Jul  1 06:08:55 2026] 127.0.0.1:58031 Closing
+[Wed Jul  1 06:09:54 2026] 127.0.0.1:60480 Accepted
+[Wed Jul  1 06:09:54 2026] 127.0.0.1:64351 Accepted
+[Wed Jul  1 06:09:54 2026] 127.0.0.1:60480 [200]: GET /api/server-status.php
+[Wed Jul  1 06:09:54 2026] 127.0.0.1:60480 Closing
+[Wed Jul  1 06:09:54 2026] 127.0.0.1:64351 [200]: GET /api/server-status.php
+[Wed Jul  1 06:09:54 2026] 127.0.0.1:64351 Closing
+[Wed Jul  1 06:10:54 2026] 127.0.0.1:51743 Accepted
+[Wed Jul  1 06:10:55 2026] 127.0.0.1:51743 [200]: GET /api/server-status.php
+[Wed Jul  1 06:10:55 2026] 127.0.0.1:51743 Closing
+[Wed Jul  1 06:10:55 2026] 127.0.0.1:55034 Accepted
+[Wed Jul  1 06:10:55 2026] 127.0.0.1:55034 [200]: GET /api/server-status.php
+[Wed Jul  1 06:10:55 2026] 127.0.0.1:55034 Closing
+[Wed Jul  1 06:11:54 2026] 127.0.0.1:53596 Accepted
+[Wed Jul  1 06:11:54 2026] 127.0.0.1:53596 [200]: GET /api/server-status.php
+[Wed Jul  1 06:11:54 2026] 127.0.0.1:53596 Closing
+[Wed Jul  1 06:11:54 2026] 127.0.0.1:50383 Accepted
+[Wed Jul  1 06:11:54 2026] 127.0.0.1:50383 [200]: GET /api/server-status.php
+[Wed Jul  1 06:11:54 2026] 127.0.0.1:50383 Closing
+[Wed Jul  1 06:12:54 2026] 127.0.0.1:51249 Accepted
+[Wed Jul  1 06:12:55 2026] 127.0.0.1:51249 [200]: GET /api/server-status.php
+[Wed Jul  1 06:12:55 2026] 127.0.0.1:51249 Closing
+[Wed Jul  1 06:12:55 2026] 127.0.0.1:61944 Accepted
+[Wed Jul  1 06:12:55 2026] 127.0.0.1:61944 [200]: GET /api/server-status.php
+[Wed Jul  1 06:12:55 2026] 127.0.0.1:61944 Closing
+[Wed Jul  1 06:13:54 2026] 127.0.0.1:64729 Accepted
+[Wed Jul  1 06:13:54 2026] 127.0.0.1:64729 [200]: GET /api/server-status.php
+[Wed Jul  1 06:13:54 2026] 127.0.0.1:64729 Closing
+[Wed Jul  1 06:13:54 2026] 127.0.0.1:53114 Accepted
+[Wed Jul  1 06:13:54 2026] 127.0.0.1:53114 [200]: GET /api/server-status.php
+[Wed Jul  1 06:13:54 2026] 127.0.0.1:53114 Closing
+[Wed Jul  1 06:14:54 2026] 127.0.0.1:49324 Accepted
+[Wed Jul  1 06:14:55 2026] 127.0.0.1:49324 [200]: GET /api/server-status.php
+[Wed Jul  1 06:14:55 2026] 127.0.0.1:49324 Closing
+[Wed Jul  1 06:14:55 2026] 127.0.0.1:49388 Accepted
+[Wed Jul  1 06:14:55 2026] 127.0.0.1:49388 [200]: GET /api/server-status.php
+[Wed Jul  1 06:14:55 2026] 127.0.0.1:49388 Closing
+[Wed Jul  1 06:15:54 2026] 127.0.0.1:54129 Accepted
+[Wed Jul  1 06:15:54 2026] 127.0.0.1:54129 [200]: GET /api/server-status.php
+[Wed Jul  1 06:15:54 2026] 127.0.0.1:54129 Closing
+[Wed Jul  1 06:15:54 2026] 127.0.0.1:58683 Accepted
+[Wed Jul  1 06:15:54 2026] 127.0.0.1:58683 [200]: GET /api/server-status.php
+[Wed Jul  1 06:15:54 2026] 127.0.0.1:58683 Closing
+[Wed Jul  1 06:16:54 2026] 127.0.0.1:61910 Accepted
+[Wed Jul  1 06:16:55 2026] 127.0.0.1:61910 [200]: GET /api/server-status.php
+[Wed Jul  1 06:16:55 2026] 127.0.0.1:61910 Closing
+[Wed Jul  1 06:16:55 2026] 127.0.0.1:53270 Accepted
+[Wed Jul  1 06:16:55 2026] 127.0.0.1:53270 [200]: GET /api/server-status.php
+[Wed Jul  1 06:16:55 2026] 127.0.0.1:53270 Closing
+[Wed Jul  1 06:17:54 2026] 127.0.0.1:51415 Accepted
+[Wed Jul  1 06:17:54 2026] 127.0.0.1:51415 [200]: GET /api/server-status.php
+[Wed Jul  1 06:17:54 2026] 127.0.0.1:51415 Closing
+[Wed Jul  1 06:17:54 2026] 127.0.0.1:51954 Accepted
+[Wed Jul  1 06:17:54 2026] 127.0.0.1:51954 [200]: GET /api/server-status.php
+[Wed Jul  1 06:17:54 2026] 127.0.0.1:51954 Closing
+[Wed Jul  1 06:18:54 2026] 127.0.0.1:63253 Accepted
+[Wed Jul  1 06:18:55 2026] 127.0.0.1:63253 [200]: GET /api/server-status.php
+[Wed Jul  1 06:18:55 2026] 127.0.0.1:63253 Closing
+[Wed Jul  1 06:18:55 2026] 127.0.0.1:56889 Accepted
+[Wed Jul  1 06:18:55 2026] 127.0.0.1:56889 [200]: GET /api/server-status.php
+[Wed Jul  1 06:18:55 2026] 127.0.0.1:56889 Closing
+[Wed Jul  1 06:19:54 2026] 127.0.0.1:50800 Accepted
+[Wed Jul  1 06:19:54 2026] 127.0.0.1:50800 [200]: GET /api/server-status.php
+[Wed Jul  1 06:19:54 2026] 127.0.0.1:50800 Closing
+[Wed Jul  1 06:19:54 2026] 127.0.0.1:57177 Accepted
+[Wed Jul  1 06:19:54 2026] 127.0.0.1:57177 [200]: GET /api/server-status.php
+[Wed Jul  1 06:19:54 2026] 127.0.0.1:57177 Closing
+[Wed Jul  1 06:20:54 2026] 127.0.0.1:56948 Accepted
+[Wed Jul  1 06:20:54 2026] 127.0.0.1:58336 Accepted
+[Wed Jul  1 06:20:55 2026] 127.0.0.1:56948 [200]: GET /api/server-status.php
+[Wed Jul  1 06:20:55 2026] 127.0.0.1:56948 Closing
+[Wed Jul  1 06:20:55 2026] 127.0.0.1:58336 [200]: GET /api/server-status.php
+[Wed Jul  1 06:20:55 2026] 127.0.0.1:58336 Closing
+[Wed Jul  1 06:21:54 2026] 127.0.0.1:55406 Accepted
+[Wed Jul  1 06:21:54 2026] 127.0.0.1:55406 [200]: GET /api/server-status.php
+[Wed Jul  1 06:21:54 2026] 127.0.0.1:55406 Closing
+[Wed Jul  1 06:21:54 2026] 127.0.0.1:57778 Accepted
+[Wed Jul  1 06:21:54 2026] 127.0.0.1:57778 [200]: GET /api/server-status.php
+[Wed Jul  1 06:21:54 2026] 127.0.0.1:57778 Closing
+[Wed Jul  1 06:22:54 2026] 127.0.0.1:57644 Accepted
+[Wed Jul  1 06:22:54 2026] 127.0.0.1:54845 Accepted
+[Wed Jul  1 06:22:55 2026] 127.0.0.1:57644 [200]: GET /api/server-status.php
+[Wed Jul  1 06:22:55 2026] 127.0.0.1:57644 Closing
+[Wed Jul  1 06:22:55 2026] 127.0.0.1:54845 [200]: GET /api/server-status.php
+[Wed Jul  1 06:22:55 2026] 127.0.0.1:54845 Closing
+[Wed Jul  1 06:23:54 2026] 127.0.0.1:50595 Accepted
+[Wed Jul  1 06:23:54 2026] 127.0.0.1:52321 Accepted
+[Wed Jul  1 06:23:54 2026] 127.0.0.1:50595 [200]: GET /api/server-status.php
+[Wed Jul  1 06:23:54 2026] 127.0.0.1:50595 Closing
+[Wed Jul  1 06:23:54 2026] 127.0.0.1:52321 [200]: GET /api/server-status.php
+[Wed Jul  1 06:23:54 2026] 127.0.0.1:52321 Closing
+[Wed Jul  1 06:24:54 2026] 127.0.0.1:53620 Accepted
+[Wed Jul  1 06:24:55 2026] 127.0.0.1:53620 [200]: GET /api/server-status.php
+[Wed Jul  1 06:24:55 2026] 127.0.0.1:53620 Closing
+[Wed Jul  1 06:24:55 2026] 127.0.0.1:59785 Accepted
+[Wed Jul  1 06:24:55 2026] 127.0.0.1:59785 [200]: GET /api/server-status.php
+[Wed Jul  1 06:24:55 2026] 127.0.0.1:59785 Closing
+[Wed Jul  1 06:25:55 2026] 127.0.0.1:62731 Accepted
+[Wed Jul  1 06:25:55 2026] 127.0.0.1:62731 [200]: GET /api/server-status.php
+[Wed Jul  1 06:25:55 2026] 127.0.0.1:62731 Closing
+[Wed Jul  1 06:25:55 2026] 127.0.0.1:58822 Accepted
+[Wed Jul  1 06:25:55 2026] 127.0.0.1:58822 [200]: GET /api/server-status.php
+[Wed Jul  1 06:25:55 2026] 127.0.0.1:58822 Closing
+[Wed Jul  1 06:26:55 2026] 127.0.0.1:52829 Accepted
+[Wed Jul  1 06:26:55 2026] 127.0.0.1:55334 Accepted
+[Wed Jul  1 06:26:55 2026] 127.0.0.1:52829 [200]: GET /api/server-status.php
+[Wed Jul  1 06:26:55 2026] 127.0.0.1:52829 Closing
+[Wed Jul  1 06:26:55 2026] 127.0.0.1:55334 [200]: GET /api/server-status.php
+[Wed Jul  1 06:26:55 2026] 127.0.0.1:55334 Closing
+[Wed Jul  1 06:27:55 2026] 127.0.0.1:55093 Accepted
+[Wed Jul  1 06:27:55 2026] 127.0.0.1:55093 [200]: GET /api/server-status.php
+[Wed Jul  1 06:27:55 2026] 127.0.0.1:55093 Closing
+[Wed Jul  1 06:27:55 2026] 127.0.0.1:65375 Accepted
+[Wed Jul  1 06:27:55 2026] 127.0.0.1:65375 [200]: GET /api/server-status.php
+[Wed Jul  1 06:27:55 2026] 127.0.0.1:65375 Closing
+[Wed Jul  1 06:28:55 2026] 127.0.0.1:61952 Accepted
+[Wed Jul  1 06:28:55 2026] 127.0.0.1:61952 [200]: GET /api/server-status.php
+[Wed Jul  1 06:28:55 2026] 127.0.0.1:61952 Closing
+[Wed Jul  1 06:28:55 2026] 127.0.0.1:56004 Accepted
+[Wed Jul  1 06:28:55 2026] 127.0.0.1:56004 [200]: GET /api/server-status.php
+[Wed Jul  1 06:28:55 2026] 127.0.0.1:56004 Closing
+[Wed Jul  1 06:29:55 2026] 127.0.0.1:52816 Accepted
+[Wed Jul  1 06:29:55 2026] 127.0.0.1:52816 [200]: GET /api/server-status.php
+[Wed Jul  1 06:29:55 2026] 127.0.0.1:52816 Closing
+[Wed Jul  1 06:29:55 2026] 127.0.0.1:55305 Accepted
+[Wed Jul  1 06:29:55 2026] 127.0.0.1:55305 [200]: GET /api/server-status.php
+[Wed Jul  1 06:29:55 2026] 127.0.0.1:55305 Closing
+[Wed Jul  1 06:30:55 2026] 127.0.0.1:53945 Accepted
+[Wed Jul  1 06:30:55 2026] 127.0.0.1:53945 [200]: GET /api/server-status.php
+[Wed Jul  1 06:30:55 2026] 127.0.0.1:53945 Closing
+[Wed Jul  1 06:30:55 2026] 127.0.0.1:58963 Accepted
+[Wed Jul  1 06:30:55 2026] 127.0.0.1:58963 [200]: GET /api/server-status.php
+[Wed Jul  1 06:30:55 2026] 127.0.0.1:58963 Closing
+[Wed Jul  1 06:31:55 2026] 127.0.0.1:57397 Accepted
+[Wed Jul  1 06:31:55 2026] 127.0.0.1:58123 Accepted
+[Wed Jul  1 06:31:55 2026] 127.0.0.1:57397 [200]: GET /api/server-status.php
+[Wed Jul  1 06:31:55 2026] 127.0.0.1:57397 Closing
+[Wed Jul  1 06:31:55 2026] 127.0.0.1:58123 [200]: GET /api/server-status.php
+[Wed Jul  1 06:31:55 2026] 127.0.0.1:58123 Closing
+[Wed Jul  1 06:32:55 2026] 127.0.0.1:50016 Accepted
+[Wed Jul  1 06:32:55 2026] 127.0.0.1:56682 Accepted
+[Wed Jul  1 06:32:55 2026] 127.0.0.1:50016 [200]: GET /api/server-status.php
+[Wed Jul  1 06:32:55 2026] 127.0.0.1:50016 Closing
+[Wed Jul  1 06:32:55 2026] 127.0.0.1:56682 [200]: GET /api/server-status.php
+[Wed Jul  1 06:32:55 2026] 127.0.0.1:56682 Closing
+[Wed Jul  1 06:33:55 2026] 127.0.0.1:56878 Accepted
+[Wed Jul  1 06:33:55 2026] 127.0.0.1:56878 [200]: GET /api/server-status.php
+[Wed Jul  1 06:33:55 2026] 127.0.0.1:56878 Closing
+[Wed Jul  1 06:33:55 2026] 127.0.0.1:53870 Accepted
+[Wed Jul  1 06:33:55 2026] 127.0.0.1:53870 [200]: GET /api/server-status.php
+[Wed Jul  1 06:33:55 2026] 127.0.0.1:53870 Closing
+[Wed Jul  1 06:34:55 2026] 127.0.0.1:62046 Accepted
+[Wed Jul  1 06:34:55 2026] 127.0.0.1:62046 [200]: GET /api/server-status.php
+[Wed Jul  1 06:34:55 2026] 127.0.0.1:62046 Closing
+[Wed Jul  1 06:34:55 2026] 127.0.0.1:54756 Accepted
+[Wed Jul  1 06:34:55 2026] 127.0.0.1:54756 [200]: GET /api/server-status.php
+[Wed Jul  1 06:34:55 2026] 127.0.0.1:54756 Closing
+[Wed Jul  1 06:35:55 2026] 127.0.0.1:61264 Accepted
+[Wed Jul  1 06:35:55 2026] 127.0.0.1:61264 [200]: GET /api/server-status.php
+[Wed Jul  1 06:35:55 2026] 127.0.0.1:61264 Closing
+[Wed Jul  1 06:35:55 2026] 127.0.0.1:53553 Accepted
+[Wed Jul  1 06:35:55 2026] 127.0.0.1:53553 [200]: GET /api/server-status.php
+[Wed Jul  1 06:35:55 2026] 127.0.0.1:53553 Closing
+[Wed Jul  1 06:36:55 2026] 127.0.0.1:61430 Accepted
+[Wed Jul  1 06:36:55 2026] 127.0.0.1:61430 [200]: GET /api/server-status.php
+[Wed Jul  1 06:36:55 2026] 127.0.0.1:61430 Closing
+[Wed Jul  1 06:36:55 2026] 127.0.0.1:54943 Accepted
+[Wed Jul  1 06:36:55 2026] 127.0.0.1:54943 [200]: GET /api/server-status.php
+[Wed Jul  1 06:36:55 2026] 127.0.0.1:54943 Closing
+[Wed Jul  1 06:37:55 2026] 127.0.0.1:60636 Accepted
+[Wed Jul  1 06:37:55 2026] 127.0.0.1:60636 [200]: GET /api/server-status.php
+[Wed Jul  1 06:37:55 2026] 127.0.0.1:60636 Closing
+[Wed Jul  1 06:37:55 2026] 127.0.0.1:57192 Accepted
+[Wed Jul  1 06:37:55 2026] 127.0.0.1:57192 [200]: GET /api/server-status.php
+[Wed Jul  1 06:37:55 2026] 127.0.0.1:57192 Closing
+[Wed Jul  1 06:38:55 2026] 127.0.0.1:58467 Accepted
+[Wed Jul  1 06:38:55 2026] 127.0.0.1:54118 Accepted
+[Wed Jul  1 06:38:55 2026] 127.0.0.1:58467 [200]: GET /api/server-status.php
+[Wed Jul  1 06:38:55 2026] 127.0.0.1:58467 Closing
+[Wed Jul  1 06:38:55 2026] 127.0.0.1:54118 [200]: GET /api/server-status.php
+[Wed Jul  1 06:38:55 2026] 127.0.0.1:54118 Closing
+[Wed Jul  1 06:39:55 2026] 127.0.0.1:62395 Accepted
+[Wed Jul  1 06:39:55 2026] 127.0.0.1:62395 [200]: GET /api/server-status.php
+[Wed Jul  1 06:39:55 2026] 127.0.0.1:62395 Closing
+[Wed Jul  1 06:39:55 2026] 127.0.0.1:49416 Accepted
+[Wed Jul  1 06:39:55 2026] 127.0.0.1:49416 [200]: GET /api/server-status.php
+[Wed Jul  1 06:39:55 2026] 127.0.0.1:49416 Closing
+[Wed Jul  1 06:40:55 2026] 127.0.0.1:60731 Accepted
+[Wed Jul  1 06:40:55 2026] 127.0.0.1:60731 [200]: GET /api/server-status.php
+[Wed Jul  1 06:40:55 2026] 127.0.0.1:60731 Closing
+[Wed Jul  1 06:40:55 2026] 127.0.0.1:62667 Accepted
+[Wed Jul  1 06:40:55 2026] 127.0.0.1:62667 [200]: GET /api/server-status.php
+[Wed Jul  1 06:40:55 2026] 127.0.0.1:62667 Closing
+[Wed Jul  1 06:41:55 2026] 127.0.0.1:54919 Accepted
+[Wed Jul  1 06:41:55 2026] 127.0.0.1:54919 [200]: GET /api/server-status.php
+[Wed Jul  1 06:41:55 2026] 127.0.0.1:54919 Closing
+[Wed Jul  1 06:41:55 2026] 127.0.0.1:56939 Accepted
+[Wed Jul  1 06:41:55 2026] 127.0.0.1:56939 [200]: GET /api/server-status.php
+[Wed Jul  1 06:41:55 2026] 127.0.0.1:56939 Closing
+[Wed Jul  1 06:42:55 2026] 127.0.0.1:60009 Accepted
+[Wed Jul  1 06:42:55 2026] 127.0.0.1:60009 [200]: GET /api/server-status.php
+[Wed Jul  1 06:42:55 2026] 127.0.0.1:60009 Closing
+[Wed Jul  1 06:42:55 2026] 127.0.0.1:64059 Accepted
+[Wed Jul  1 06:42:55 2026] 127.0.0.1:64059 [200]: GET /api/server-status.php
+[Wed Jul  1 06:42:55 2026] 127.0.0.1:64059 Closing
+[Wed Jul  1 06:43:55 2026] 127.0.0.1:62799 Accepted
+[Wed Jul  1 06:43:55 2026] 127.0.0.1:62799 [200]: GET /api/server-status.php
+[Wed Jul  1 06:43:55 2026] 127.0.0.1:62799 Closing
+[Wed Jul  1 06:43:55 2026] 127.0.0.1:57485 Accepted
+[Wed Jul  1 06:43:55 2026] 127.0.0.1:57485 [200]: GET /api/server-status.php
+[Wed Jul  1 06:43:55 2026] 127.0.0.1:57485 Closing
+[Wed Jul  1 06:44:55 2026] 127.0.0.1:51601 Accepted
+[Wed Jul  1 06:44:55 2026] 127.0.0.1:51601 [200]: GET /api/server-status.php
+[Wed Jul  1 06:44:55 2026] 127.0.0.1:51601 Closing
+[Wed Jul  1 06:44:55 2026] 127.0.0.1:51739 Accepted
+[Wed Jul  1 06:44:55 2026] 127.0.0.1:51739 [200]: GET /api/server-status.php
+[Wed Jul  1 06:44:55 2026] 127.0.0.1:51739 Closing
+[Wed Jul  1 06:45:55 2026] 127.0.0.1:63858 Accepted
+[Wed Jul  1 06:45:55 2026] 127.0.0.1:63858 [200]: GET /api/server-status.php
+[Wed Jul  1 06:45:55 2026] 127.0.0.1:63858 Closing
+[Wed Jul  1 06:45:55 2026] 127.0.0.1:50970 Accepted
+[Wed Jul  1 06:45:55 2026] 127.0.0.1:50970 [200]: GET /api/server-status.php
+[Wed Jul  1 06:45:55 2026] 127.0.0.1:50970 Closing
+[Wed Jul  1 06:46:55 2026] 127.0.0.1:62150 Accepted
+[Wed Jul  1 06:46:55 2026] 127.0.0.1:63357 Accepted
+[Wed Jul  1 06:46:55 2026] 127.0.0.1:62150 [200]: GET /api/server-status.php
+[Wed Jul  1 06:46:55 2026] 127.0.0.1:62150 Closing
+[Wed Jul  1 06:46:55 2026] 127.0.0.1:63357 [200]: GET /api/server-status.php
+[Wed Jul  1 06:46:55 2026] 127.0.0.1:63357 Closing
+[Wed Jul  1 06:47:55 2026] 127.0.0.1:50977 Accepted
+[Wed Jul  1 06:47:55 2026] 127.0.0.1:50977 [200]: GET /api/server-status.php
+[Wed Jul  1 06:47:55 2026] 127.0.0.1:50977 Closing
+[Wed Jul  1 06:47:55 2026] 127.0.0.1:64401 Accepted
+[Wed Jul  1 06:47:55 2026] 127.0.0.1:64401 [200]: GET /api/server-status.php
+[Wed Jul  1 06:47:55 2026] 127.0.0.1:64401 Closing
+[Wed Jul  1 06:48:55 2026] 127.0.0.1:51506 Accepted
+[Wed Jul  1 06:48:55 2026] 127.0.0.1:51506 [200]: GET /api/server-status.php
+[Wed Jul  1 06:48:55 2026] 127.0.0.1:51506 Closing
+[Wed Jul  1 06:48:55 2026] 127.0.0.1:50216 Accepted
+[Wed Jul  1 06:48:55 2026] 127.0.0.1:50216 [200]: GET /api/server-status.php
+[Wed Jul  1 06:48:55 2026] 127.0.0.1:50216 Closing
+[Wed Jul  1 06:49:55 2026] 127.0.0.1:64566 Accepted
+[Wed Jul  1 06:49:55 2026] 127.0.0.1:64566 [200]: GET /api/server-status.php
+[Wed Jul  1 06:49:55 2026] 127.0.0.1:64566 Closing
+[Wed Jul  1 06:49:55 2026] 127.0.0.1:52994 Accepted
+[Wed Jul  1 06:49:55 2026] 127.0.0.1:52994 [200]: GET /api/server-status.php
+[Wed Jul  1 06:49:55 2026] 127.0.0.1:52994 Closing
+[Wed Jul  1 06:50:55 2026] 127.0.0.1:51139 Accepted
+[Wed Jul  1 06:50:55 2026] 127.0.0.1:56835 Accepted
+[Wed Jul  1 06:50:55 2026] 127.0.0.1:51139 [200]: GET /api/server-status.php
+[Wed Jul  1 06:50:55 2026] 127.0.0.1:51139 Closing
+[Wed Jul  1 06:50:55 2026] 127.0.0.1:56835 [200]: GET /api/server-status.php
+[Wed Jul  1 06:50:55 2026] 127.0.0.1:56835 Closing
+[Wed Jul  1 06:51:55 2026] 127.0.0.1:60117 Accepted
+[Wed Jul  1 06:51:55 2026] 127.0.0.1:60117 [200]: GET /api/server-status.php
+[Wed Jul  1 06:51:55 2026] 127.0.0.1:60117 Closing
+[Wed Jul  1 06:51:55 2026] 127.0.0.1:59029 Accepted
+[Wed Jul  1 06:51:55 2026] 127.0.0.1:59029 [200]: GET /api/server-status.php
+[Wed Jul  1 06:51:55 2026] 127.0.0.1:59029 Closing
+[Wed Jul  1 06:52:55 2026] 127.0.0.1:63893 Accepted
+[Wed Jul  1 06:52:55 2026] 127.0.0.1:63893 [200]: GET /api/server-status.php
+[Wed Jul  1 06:52:55 2026] 127.0.0.1:63893 Closing
+[Wed Jul  1 06:52:55 2026] 127.0.0.1:50613 Accepted
+[Wed Jul  1 06:52:55 2026] 127.0.0.1:50613 [200]: GET /api/server-status.php
+[Wed Jul  1 06:52:55 2026] 127.0.0.1:50613 Closing
+[Wed Jul  1 06:53:55 2026] 127.0.0.1:59804 Accepted
+[Wed Jul  1 06:53:55 2026] 127.0.0.1:59804 [200]: GET /api/server-status.php
+[Wed Jul  1 06:53:55 2026] 127.0.0.1:59804 Closing
+[Wed Jul  1 06:53:55 2026] 127.0.0.1:61369 Accepted
+[Wed Jul  1 06:53:55 2026] 127.0.0.1:61369 [200]: GET /api/server-status.php
+[Wed Jul  1 06:53:55 2026] 127.0.0.1:61369 Closing
+[Wed Jul  1 06:54:55 2026] 127.0.0.1:61560 Accepted
+[Wed Jul  1 06:54:55 2026] 127.0.0.1:61560 [200]: GET /api/server-status.php
+[Wed Jul  1 06:54:55 2026] 127.0.0.1:61560 Closing
+[Wed Jul  1 06:54:55 2026] 127.0.0.1:62962 Accepted
+[Wed Jul  1 06:54:55 2026] 127.0.0.1:62962 [200]: GET /api/server-status.php
+[Wed Jul  1 06:54:55 2026] 127.0.0.1:62962 Closing
+[Wed Jul  1 06:55:55 2026] 127.0.0.1:62700 Accepted
+[Wed Jul  1 06:55:55 2026] 127.0.0.1:62700 [200]: GET /api/server-status.php
+[Wed Jul  1 06:55:55 2026] 127.0.0.1:62700 Closing
+[Wed Jul  1 06:55:55 2026] 127.0.0.1:62089 Accepted
+[Wed Jul  1 06:55:55 2026] 127.0.0.1:62089 [200]: GET /api/server-status.php
+[Wed Jul  1 06:55:55 2026] 127.0.0.1:62089 Closing
+[Wed Jul  1 06:56:55 2026] 127.0.0.1:50573 Accepted
+[Wed Jul  1 06:56:55 2026] 127.0.0.1:50573 [200]: GET /api/server-status.php
+[Wed Jul  1 06:56:55 2026] 127.0.0.1:50573 Closing
+[Wed Jul  1 06:56:55 2026] 127.0.0.1:49793 Accepted
+[Wed Jul  1 06:56:55 2026] 127.0.0.1:49793 [200]: GET /api/server-status.php
+[Wed Jul  1 06:56:55 2026] 127.0.0.1:49793 Closing
+[Wed Jul  1 06:57:55 2026] 127.0.0.1:60320 Accepted
+[Wed Jul  1 06:57:55 2026] 127.0.0.1:60320 [200]: GET /api/server-status.php
+[Wed Jul  1 06:57:55 2026] 127.0.0.1:60320 Closing
+[Wed Jul  1 06:57:55 2026] 127.0.0.1:61135 Accepted
+[Wed Jul  1 06:57:55 2026] 127.0.0.1:61135 [200]: GET /api/server-status.php
+[Wed Jul  1 06:57:55 2026] 127.0.0.1:61135 Closing
+[Wed Jul  1 06:58:55 2026] 127.0.0.1:63041 Accepted
+[Wed Jul  1 06:58:55 2026] 127.0.0.1:63041 [200]: GET /api/server-status.php
+[Wed Jul  1 06:58:55 2026] 127.0.0.1:63041 Closing
+[Wed Jul  1 06:58:55 2026] 127.0.0.1:64899 Accepted
+[Wed Jul  1 06:58:55 2026] 127.0.0.1:64899 [200]: GET /api/server-status.php
+[Wed Jul  1 06:58:55 2026] 127.0.0.1:64899 Closing
+[Wed Jul  1 06:59:55 2026] 127.0.0.1:51951 Accepted
+[Wed Jul  1 06:59:55 2026] 127.0.0.1:51951 [200]: GET /api/server-status.php
+[Wed Jul  1 06:59:55 2026] 127.0.0.1:51951 Closing
+[Wed Jul  1 06:59:55 2026] 127.0.0.1:50122 Accepted
+[Wed Jul  1 06:59:55 2026] 127.0.0.1:50122 [200]: GET /api/server-status.php
+[Wed Jul  1 06:59:55 2026] 127.0.0.1:50122 Closing
+[Wed Jul  1 07:00:55 2026] 127.0.0.1:65418 Accepted
+[Wed Jul  1 07:00:55 2026] 127.0.0.1:65418 [200]: GET /api/server-status.php
+[Wed Jul  1 07:00:55 2026] 127.0.0.1:65418 Closing
+[Wed Jul  1 07:00:55 2026] 127.0.0.1:55166 Accepted
+[Wed Jul  1 07:00:55 2026] 127.0.0.1:55166 [200]: GET /api/server-status.php
+[Wed Jul  1 07:00:55 2026] 127.0.0.1:55166 Closing
+[Wed Jul  1 07:01:55 2026] 127.0.0.1:50443 Accepted
+[Wed Jul  1 07:01:55 2026] 127.0.0.1:50443 [200]: GET /api/server-status.php
+[Wed Jul  1 07:01:55 2026] 127.0.0.1:50443 Closing
+[Wed Jul  1 07:01:55 2026] 127.0.0.1:60628 Accepted
+[Wed Jul  1 07:01:55 2026] 127.0.0.1:60628 [200]: GET /api/server-status.php
+[Wed Jul  1 07:01:55 2026] 127.0.0.1:60628 Closing
+[Wed Jul  1 07:02:55 2026] 127.0.0.1:61513 Accepted
+[Wed Jul  1 07:02:55 2026] 127.0.0.1:53354 Accepted
+[Wed Jul  1 07:02:55 2026] 127.0.0.1:61513 [200]: GET /api/server-status.php
+[Wed Jul  1 07:02:55 2026] 127.0.0.1:61513 Closing
+[Wed Jul  1 07:02:55 2026] 127.0.0.1:53354 [200]: GET /api/server-status.php
+[Wed Jul  1 07:02:55 2026] 127.0.0.1:53354 Closing
+[Wed Jul  1 07:03:55 2026] 127.0.0.1:59496 Accepted
+[Wed Jul  1 07:03:55 2026] 127.0.0.1:59496 [200]: GET /api/server-status.php
+[Wed Jul  1 07:03:55 2026] 127.0.0.1:59496 Closing
+[Wed Jul  1 07:03:55 2026] 127.0.0.1:53408 Accepted
+[Wed Jul  1 07:03:55 2026] 127.0.0.1:53408 [200]: GET /api/server-status.php
+[Wed Jul  1 07:03:55 2026] 127.0.0.1:53408 Closing
+[Wed Jul  1 07:04:55 2026] 127.0.0.1:56974 Accepted
+[Wed Jul  1 07:04:55 2026] 127.0.0.1:56974 [200]: GET /api/server-status.php
+[Wed Jul  1 07:04:55 2026] 127.0.0.1:56974 Closing
+[Wed Jul  1 07:04:55 2026] 127.0.0.1:62456 Accepted
+[Wed Jul  1 07:04:55 2026] 127.0.0.1:62456 [200]: GET /api/server-status.php
+[Wed Jul  1 07:04:55 2026] 127.0.0.1:62456 Closing
+[Wed Jul  1 07:05:55 2026] 127.0.0.1:59267 Accepted
+[Wed Jul  1 07:05:55 2026] 127.0.0.1:59267 [200]: GET /api/server-status.php
+[Wed Jul  1 07:05:55 2026] 127.0.0.1:59267 Closing
+[Wed Jul  1 07:05:55 2026] 127.0.0.1:64906 Accepted
+[Wed Jul  1 07:05:55 2026] 127.0.0.1:64906 [200]: GET /api/server-status.php
+[Wed Jul  1 07:05:55 2026] 127.0.0.1:64906 Closing
+[Wed Jul  1 07:06:55 2026] 127.0.0.1:62681 Accepted
+[Wed Jul  1 07:06:55 2026] 127.0.0.1:62681 [200]: GET /api/server-status.php
+[Wed Jul  1 07:06:55 2026] 127.0.0.1:62681 Closing
+[Wed Jul  1 07:06:55 2026] 127.0.0.1:54884 Accepted
+[Wed Jul  1 07:06:55 2026] 127.0.0.1:54884 [200]: GET /api/server-status.php
+[Wed Jul  1 07:06:55 2026] 127.0.0.1:54884 Closing
+[Wed Jul  1 07:07:55 2026] 127.0.0.1:61217 Accepted
+[Wed Jul  1 07:07:55 2026] 127.0.0.1:61217 [200]: GET /api/server-status.php
+[Wed Jul  1 07:07:55 2026] 127.0.0.1:61217 Closing
+[Wed Jul  1 07:07:55 2026] 127.0.0.1:56924 Accepted
+[Wed Jul  1 07:07:55 2026] 127.0.0.1:56924 [200]: GET /api/server-status.php
+[Wed Jul  1 07:07:55 2026] 127.0.0.1:56924 Closing
+[Wed Jul  1 07:08:55 2026] 127.0.0.1:60303 Accepted
+[Wed Jul  1 07:08:55 2026] 127.0.0.1:60303 [200]: GET /api/server-status.php
+[Wed Jul  1 07:08:55 2026] 127.0.0.1:60303 Closing
+[Wed Jul  1 07:08:55 2026] 127.0.0.1:64086 Accepted
+[Wed Jul  1 07:08:55 2026] 127.0.0.1:64086 [200]: GET /api/server-status.php
+[Wed Jul  1 07:08:55 2026] 127.0.0.1:64086 Closing
+[Wed Jul  1 07:09:55 2026] 127.0.0.1:56693 Accepted
+[Wed Jul  1 07:09:55 2026] 127.0.0.1:56693 [200]: GET /api/server-status.php
+[Wed Jul  1 07:09:55 2026] 127.0.0.1:56693 Closing
+[Wed Jul  1 07:09:55 2026] 127.0.0.1:56661 Accepted
+[Wed Jul  1 07:09:55 2026] 127.0.0.1:56661 [200]: GET /api/server-status.php
+[Wed Jul  1 07:09:55 2026] 127.0.0.1:56661 Closing
+[Wed Jul  1 07:10:55 2026] 127.0.0.1:56440 Accepted
+[Wed Jul  1 07:10:55 2026] 127.0.0.1:56440 [200]: GET /api/server-status.php
+[Wed Jul  1 07:10:55 2026] 127.0.0.1:56440 Closing
+[Wed Jul  1 07:10:55 2026] 127.0.0.1:65276 Accepted
+[Wed Jul  1 07:10:55 2026] 127.0.0.1:65276 [200]: GET /api/server-status.php
+[Wed Jul  1 07:10:55 2026] 127.0.0.1:65276 Closing
+[Wed Jul  1 07:11:55 2026] 127.0.0.1:62321 Accepted
+[Wed Jul  1 07:11:55 2026] 127.0.0.1:62321 [200]: GET /api/server-status.php
+[Wed Jul  1 07:11:55 2026] 127.0.0.1:62321 Closing
+[Wed Jul  1 07:11:55 2026] 127.0.0.1:58708 Accepted
+[Wed Jul  1 07:11:55 2026] 127.0.0.1:58708 [200]: GET /api/server-status.php
+[Wed Jul  1 07:11:55 2026] 127.0.0.1:58708 Closing
+[Wed Jul  1 07:12:55 2026] 127.0.0.1:62724 Accepted
+[Wed Jul  1 07:12:55 2026] 127.0.0.1:62724 [200]: GET /api/server-status.php
+[Wed Jul  1 07:12:55 2026] 127.0.0.1:62724 Closing
+[Wed Jul  1 07:12:55 2026] 127.0.0.1:65129 Accepted
+[Wed Jul  1 07:12:55 2026] 127.0.0.1:65129 [200]: GET /api/server-status.php
+[Wed Jul  1 07:12:55 2026] 127.0.0.1:65129 Closing
+[Wed Jul  1 07:13:55 2026] 127.0.0.1:55323 Accepted
+[Wed Jul  1 07:13:55 2026] 127.0.0.1:55323 [200]: GET /api/server-status.php
+[Wed Jul  1 07:13:55 2026] 127.0.0.1:55323 Closing
+[Wed Jul  1 07:13:55 2026] 127.0.0.1:59851 Accepted
+[Wed Jul  1 07:13:55 2026] 127.0.0.1:59851 [200]: GET /api/server-status.php
+[Wed Jul  1 07:13:55 2026] 127.0.0.1:59851 Closing
+[Wed Jul  1 07:14:55 2026] 127.0.0.1:61418 Accepted
+[Wed Jul  1 07:14:55 2026] 127.0.0.1:61909 Accepted
+[Wed Jul  1 07:14:55 2026] 127.0.0.1:61418 [200]: GET /api/server-status.php
+[Wed Jul  1 07:14:55 2026] 127.0.0.1:61418 Closing
+[Wed Jul  1 07:14:55 2026] 127.0.0.1:61909 [200]: GET /api/server-status.php
+[Wed Jul  1 07:14:55 2026] 127.0.0.1:61909 Closing
+[Wed Jul  1 07:15:55 2026] 127.0.0.1:59475 Accepted
+[Wed Jul  1 07:15:55 2026] 127.0.0.1:59475 [200]: GET /api/server-status.php
+[Wed Jul  1 07:15:55 2026] 127.0.0.1:59475 Closing
+[Wed Jul  1 07:15:55 2026] 127.0.0.1:49929 Accepted
+[Wed Jul  1 07:15:55 2026] 127.0.0.1:49929 [200]: GET /api/server-status.php
+[Wed Jul  1 07:15:55 2026] 127.0.0.1:49929 Closing
+[Wed Jul  1 07:16:55 2026] 127.0.0.1:50575 Accepted
+[Wed Jul  1 07:16:55 2026] 127.0.0.1:50575 [200]: GET /api/server-status.php
+[Wed Jul  1 07:16:55 2026] 127.0.0.1:50575 Closing
+[Wed Jul  1 07:16:55 2026] 127.0.0.1:57053 Accepted
+[Wed Jul  1 07:16:55 2026] 127.0.0.1:57053 [200]: GET /api/server-status.php
+[Wed Jul  1 07:16:55 2026] 127.0.0.1:57053 Closing
+[Wed Jul  1 07:17:55 2026] 127.0.0.1:60933 Accepted
+[Wed Jul  1 07:17:55 2026] 127.0.0.1:60933 [200]: GET /api/server-status.php
+[Wed Jul  1 07:17:55 2026] 127.0.0.1:60933 Closing
+[Wed Jul  1 07:17:55 2026] 127.0.0.1:64612 Accepted
+[Wed Jul  1 07:17:55 2026] 127.0.0.1:64612 [200]: GET /api/server-status.php
+[Wed Jul  1 07:17:55 2026] 127.0.0.1:64612 Closing
+[Wed Jul  1 07:18:55 2026] 127.0.0.1:60790 Accepted
+[Wed Jul  1 07:18:55 2026] 127.0.0.1:60790 [200]: GET /api/server-status.php
+[Wed Jul  1 07:18:55 2026] 127.0.0.1:60790 Closing
+[Wed Jul  1 07:18:55 2026] 127.0.0.1:60074 Accepted
+[Wed Jul  1 07:18:55 2026] 127.0.0.1:60074 [200]: GET /api/server-status.php
+[Wed Jul  1 07:18:55 2026] 127.0.0.1:60074 Closing
+[Wed Jul  1 07:19:55 2026] 127.0.0.1:53870 Accepted
+[Wed Jul  1 07:19:55 2026] 127.0.0.1:53870 [200]: GET /api/server-status.php
+[Wed Jul  1 07:19:55 2026] 127.0.0.1:53870 Closing
+[Wed Jul  1 07:19:55 2026] 127.0.0.1:58086 Accepted
+[Wed Jul  1 07:19:55 2026] 127.0.0.1:58086 [200]: GET /api/server-status.php
+[Wed Jul  1 07:19:55 2026] 127.0.0.1:58086 Closing
+[Wed Jul  1 07:20:55 2026] 127.0.0.1:60142 Accepted
+[Wed Jul  1 07:20:55 2026] 127.0.0.1:60142 [200]: GET /api/server-status.php
+[Wed Jul  1 07:20:55 2026] 127.0.0.1:60142 Closing
+[Wed Jul  1 07:20:55 2026] 127.0.0.1:55580 Accepted
+[Wed Jul  1 07:20:55 2026] 127.0.0.1:55580 [200]: GET /api/server-status.php
+[Wed Jul  1 07:20:55 2026] 127.0.0.1:55580 Closing
+[Wed Jul  1 07:21:55 2026] 127.0.0.1:49972 Accepted
+[Wed Jul  1 07:21:55 2026] 127.0.0.1:49972 [200]: GET /api/server-status.php
+[Wed Jul  1 07:21:55 2026] 127.0.0.1:49972 Closing
+[Wed Jul  1 07:21:55 2026] 127.0.0.1:55917 Accepted
+[Wed Jul  1 07:21:55 2026] 127.0.0.1:55917 [200]: GET /api/server-status.php
+[Wed Jul  1 07:21:55 2026] 127.0.0.1:55917 Closing
+[Wed Jul  1 07:22:55 2026] 127.0.0.1:58387 Accepted
+[Wed Jul  1 07:22:55 2026] 127.0.0.1:58387 [200]: GET /api/server-status.php
+[Wed Jul  1 07:22:55 2026] 127.0.0.1:58387 Closing
+[Wed Jul  1 07:22:55 2026] 127.0.0.1:58269 Accepted
+[Wed Jul  1 07:22:55 2026] 127.0.0.1:58269 [200]: GET /api/server-status.php
+[Wed Jul  1 07:22:55 2026] 127.0.0.1:58269 Closing
+[Wed Jul  1 07:23:55 2026] 127.0.0.1:51731 Accepted
+[Wed Jul  1 07:23:55 2026] 127.0.0.1:60850 Accepted
+[Wed Jul  1 07:23:55 2026] 127.0.0.1:51731 [200]: GET /api/server-status.php
+[Wed Jul  1 07:23:55 2026] 127.0.0.1:51731 Closing
+[Wed Jul  1 07:23:55 2026] 127.0.0.1:60850 [200]: GET /api/server-status.php
+[Wed Jul  1 07:23:55 2026] 127.0.0.1:60850 Closing
+[Wed Jul  1 07:24:55 2026] 127.0.0.1:58895 Accepted
+[Wed Jul  1 07:24:57 2026] 127.0.0.1:58895 [200]: GET /api/server-status.php
+[Wed Jul  1 07:24:57 2026] 127.0.0.1:58895 Closing
+[Wed Jul  1 07:24:57 2026] 127.0.0.1:63771 Accepted
+[Wed Jul  1 07:24:57 2026] 127.0.0.1:63771 [200]: GET /api/server-status.php
+[Wed Jul  1 07:24:57 2026] 127.0.0.1:63771 Closing
+[Wed Jul  1 07:25:55 2026] 127.0.0.1:49458 Accepted
+[Wed Jul  1 07:25:55 2026] 127.0.0.1:49458 [200]: GET /api/server-status.php
+[Wed Jul  1 07:25:55 2026] 127.0.0.1:49458 Closing
+[Wed Jul  1 07:25:55 2026] 127.0.0.1:57438 Accepted
+[Wed Jul  1 07:25:55 2026] 127.0.0.1:57438 [200]: GET /api/server-status.php
+[Wed Jul  1 07:25:55 2026] 127.0.0.1:57438 Closing
+[Wed Jul  1 07:26:55 2026] 127.0.0.1:63190 Accepted
+[Wed Jul  1 07:26:55 2026] 127.0.0.1:54113 Accepted
+[Wed Jul  1 07:26:55 2026] 127.0.0.1:63190 [200]: GET /api/server-status.php
+[Wed Jul  1 07:26:55 2026] 127.0.0.1:63190 Closing
+[Wed Jul  1 07:26:55 2026] 127.0.0.1:54113 [200]: GET /api/server-status.php
+[Wed Jul  1 07:26:55 2026] 127.0.0.1:54113 Closing
+[Wed Jul  1 07:27:55 2026] 127.0.0.1:57769 Accepted
+[Wed Jul  1 07:27:55 2026] 127.0.0.1:57769 [200]: GET /api/server-status.php
+[Wed Jul  1 07:27:55 2026] 127.0.0.1:57769 Closing
+[Wed Jul  1 07:27:55 2026] 127.0.0.1:54094 Accepted
+[Wed Jul  1 07:27:55 2026] 127.0.0.1:54094 [200]: GET /api/server-status.php
+[Wed Jul  1 07:27:55 2026] 127.0.0.1:54094 Closing
+[Wed Jul  1 07:28:55 2026] 127.0.0.1:57832 Accepted
+[Wed Jul  1 07:28:55 2026] 127.0.0.1:56685 Accepted
+[Wed Jul  1 07:28:55 2026] 127.0.0.1:57832 [200]: GET /api/server-status.php
+[Wed Jul  1 07:28:55 2026] 127.0.0.1:57832 Closing
+[Wed Jul  1 07:28:55 2026] 127.0.0.1:56685 [200]: GET /api/server-status.php
+[Wed Jul  1 07:28:55 2026] 127.0.0.1:56685 Closing
+[Wed Jul  1 07:29:55 2026] 127.0.0.1:50533 Accepted
+[Wed Jul  1 07:29:55 2026] 127.0.0.1:52644 Accepted
+[Wed Jul  1 07:29:55 2026] 127.0.0.1:50533 [200]: GET /api/server-status.php
+[Wed Jul  1 07:29:55 2026] 127.0.0.1:50533 Closing
+[Wed Jul  1 07:29:55 2026] 127.0.0.1:52644 [200]: GET /api/server-status.php
+[Wed Jul  1 07:29:55 2026] 127.0.0.1:52644 Closing
+[Wed Jul  1 07:30:55 2026] 127.0.0.1:58202 Accepted
+[Wed Jul  1 07:30:56 2026] 127.0.0.1:58202 [200]: GET /api/server-status.php
+[Wed Jul  1 07:30:56 2026] 127.0.0.1:58202 Closing
+[Wed Jul  1 07:30:56 2026] 127.0.0.1:61873 Accepted
+[Wed Jul  1 07:30:56 2026] 127.0.0.1:61873 [200]: GET /api/server-status.php
+[Wed Jul  1 07:30:56 2026] 127.0.0.1:61873 Closing
+[Wed Jul  1 07:31:55 2026] 127.0.0.1:61088 Accepted
+[Wed Jul  1 07:31:55 2026] 127.0.0.1:61088 [200]: GET /api/server-status.php
+[Wed Jul  1 07:31:55 2026] 127.0.0.1:61088 Closing
+[Wed Jul  1 07:31:55 2026] 127.0.0.1:52674 Accepted
+[Wed Jul  1 07:31:55 2026] 127.0.0.1:52674 [200]: GET /api/server-status.php
+[Wed Jul  1 07:31:55 2026] 127.0.0.1:52674 Closing
+[Wed Jul  1 07:32:55 2026] 127.0.0.1:51569 Accepted
+[Wed Jul  1 07:32:55 2026] 127.0.0.1:51569 [200]: GET /api/server-status.php
+[Wed Jul  1 07:32:55 2026] 127.0.0.1:51569 Closing
+[Wed Jul  1 07:32:55 2026] 127.0.0.1:63628 Accepted
+[Wed Jul  1 07:32:55 2026] 127.0.0.1:63628 [200]: GET /api/server-status.php
+[Wed Jul  1 07:32:55 2026] 127.0.0.1:63628 Closing
+[Wed Jul  1 07:33:55 2026] 127.0.0.1:59475 Accepted
+[Wed Jul  1 07:33:55 2026] 127.0.0.1:59475 [200]: GET /api/server-status.php
+[Wed Jul  1 07:33:55 2026] 127.0.0.1:59475 Closing
+[Wed Jul  1 07:33:55 2026] 127.0.0.1:56343 Accepted
+[Wed Jul  1 07:33:55 2026] 127.0.0.1:56343 [200]: GET /api/server-status.php
+[Wed Jul  1 07:33:55 2026] 127.0.0.1:56343 Closing
+[Wed Jul  1 07:34:55 2026] 127.0.0.1:64704 Accepted
+[Wed Jul  1 07:34:55 2026] 127.0.0.1:60389 Accepted
+[Wed Jul  1 07:34:55 2026] 127.0.0.1:64704 [200]: GET /api/server-status.php
+[Wed Jul  1 07:34:55 2026] 127.0.0.1:64704 Closing
+[Wed Jul  1 07:34:55 2026] 127.0.0.1:60389 [200]: GET /api/server-status.php
+[Wed Jul  1 07:34:55 2026] 127.0.0.1:60389 Closing
+[Wed Jul  1 07:35:55 2026] 127.0.0.1:51957 Accepted
+[Wed Jul  1 07:35:55 2026] 127.0.0.1:51957 [200]: GET /api/server-status.php
+[Wed Jul  1 07:35:55 2026] 127.0.0.1:51957 Closing
+[Wed Jul  1 07:35:55 2026] 127.0.0.1:59000 Accepted
+[Wed Jul  1 07:35:55 2026] 127.0.0.1:59000 [200]: GET /api/server-status.php
+[Wed Jul  1 07:35:55 2026] 127.0.0.1:59000 Closing
+[Wed Jul  1 07:36:55 2026] 127.0.0.1:57243 Accepted
+[Wed Jul  1 07:36:55 2026] 127.0.0.1:57243 [200]: GET /api/server-status.php
+[Wed Jul  1 07:36:55 2026] 127.0.0.1:57243 Closing
+[Wed Jul  1 07:36:55 2026] 127.0.0.1:63320 Accepted
+[Wed Jul  1 07:36:55 2026] 127.0.0.1:63320 [200]: GET /api/server-status.php
+[Wed Jul  1 07:36:55 2026] 127.0.0.1:63320 Closing
+[Wed Jul  1 07:37:55 2026] 127.0.0.1:52100 Accepted
+[Wed Jul  1 07:37:56 2026] 127.0.0.1:52100 [200]: GET /api/server-status.php
+[Wed Jul  1 07:37:56 2026] 127.0.0.1:52100 Closing
+[Wed Jul  1 07:37:56 2026] 127.0.0.1:61626 Accepted
+[Wed Jul  1 07:37:56 2026] 127.0.0.1:61626 [200]: GET /api/server-status.php
+[Wed Jul  1 07:37:56 2026] 127.0.0.1:61626 Closing
+[Wed Jul  1 07:38:55 2026] 127.0.0.1:59726 Accepted
+[Wed Jul  1 07:38:55 2026] 127.0.0.1:60709 Accepted
+[Wed Jul  1 07:38:55 2026] 127.0.0.1:59726 [200]: GET /api/server-status.php
+[Wed Jul  1 07:38:55 2026] 127.0.0.1:59726 Closing
+[Wed Jul  1 07:38:55 2026] 127.0.0.1:60709 [200]: GET /api/server-status.php
+[Wed Jul  1 07:38:55 2026] 127.0.0.1:60709 Closing
+[Wed Jul  1 07:39:55 2026] 127.0.0.1:49614 Accepted
+[Wed Jul  1 07:39:55 2026] 127.0.0.1:63005 Accepted
+[Wed Jul  1 07:39:55 2026] 127.0.0.1:49614 [200]: GET /api/server-status.php
+[Wed Jul  1 07:39:55 2026] 127.0.0.1:49614 Closing
+[Wed Jul  1 07:39:55 2026] 127.0.0.1:63005 [200]: GET /api/server-status.php
+[Wed Jul  1 07:39:55 2026] 127.0.0.1:63005 Closing
+[Wed Jul  1 07:40:55 2026] 127.0.0.1:51582 Accepted
+[Wed Jul  1 07:40:56 2026] 127.0.0.1:51582 [200]: GET /api/server-status.php
+[Wed Jul  1 07:40:56 2026] 127.0.0.1:51582 Closing
+[Wed Jul  1 07:40:56 2026] 127.0.0.1:63127 Accepted
+[Wed Jul  1 07:40:56 2026] 127.0.0.1:63127 [200]: GET /api/server-status.php
+[Wed Jul  1 07:40:56 2026] 127.0.0.1:63127 Closing
+[Wed Jul  1 07:41:55 2026] 127.0.0.1:53828 Accepted
+[Wed Jul  1 07:41:55 2026] 127.0.0.1:53828 [200]: GET /api/server-status.php
+[Wed Jul  1 07:41:55 2026] 127.0.0.1:53828 Closing
+[Wed Jul  1 07:41:55 2026] 127.0.0.1:63655 Accepted
+[Wed Jul  1 07:41:55 2026] 127.0.0.1:63655 [200]: GET /api/server-status.php
+[Wed Jul  1 07:41:55 2026] 127.0.0.1:63655 Closing
+[Wed Jul  1 07:42:55 2026] 127.0.0.1:57287 Accepted
+[Wed Jul  1 07:42:55 2026] 127.0.0.1:54197 Accepted
+[Wed Jul  1 07:42:55 2026] 127.0.0.1:57287 [200]: GET /api/server-status.php
+[Wed Jul  1 07:42:55 2026] 127.0.0.1:57287 Closing
+[Wed Jul  1 07:42:55 2026] 127.0.0.1:54197 [200]: GET /api/server-status.php
+[Wed Jul  1 07:42:55 2026] 127.0.0.1:54197 Closing
+[Wed Jul  1 07:43:55 2026] 127.0.0.1:52065 Accepted
+[Wed Jul  1 07:43:55 2026] 127.0.0.1:52065 [200]: GET /api/server-status.php
+[Wed Jul  1 07:43:55 2026] 127.0.0.1:52065 Closing
+[Wed Jul  1 07:43:55 2026] 127.0.0.1:61858 Accepted
+[Wed Jul  1 07:43:55 2026] 127.0.0.1:61858 [200]: GET /api/server-status.php
+[Wed Jul  1 07:43:55 2026] 127.0.0.1:61858 Closing
+[Wed Jul  1 07:44:55 2026] 127.0.0.1:61769 Accepted
+[Wed Jul  1 07:44:55 2026] 127.0.0.1:61769 [200]: GET /api/server-status.php
+[Wed Jul  1 07:44:55 2026] 127.0.0.1:61769 Closing
+[Wed Jul  1 07:44:55 2026] 127.0.0.1:65463 Accepted
+[Wed Jul  1 07:44:55 2026] 127.0.0.1:65463 [200]: GET /api/server-status.php
+[Wed Jul  1 07:44:55 2026] 127.0.0.1:65463 Closing
+[Wed Jul  1 07:45:55 2026] 127.0.0.1:59254 Accepted
+[Wed Jul  1 07:45:56 2026] 127.0.0.1:59254 [200]: GET /api/server-status.php
+[Wed Jul  1 07:45:56 2026] 127.0.0.1:59254 Closing
+[Wed Jul  1 07:45:56 2026] 127.0.0.1:62315 Accepted
+[Wed Jul  1 07:45:56 2026] 127.0.0.1:62315 [200]: GET /api/server-status.php
+[Wed Jul  1 07:45:56 2026] 127.0.0.1:62315 Closing
+[Wed Jul  1 07:46:55 2026] 127.0.0.1:55786 Accepted
+[Wed Jul  1 07:46:55 2026] 127.0.0.1:55786 [200]: GET /api/server-status.php
+[Wed Jul  1 07:46:55 2026] 127.0.0.1:55786 Closing
+[Wed Jul  1 07:46:55 2026] 127.0.0.1:58269 Accepted
+[Wed Jul  1 07:46:55 2026] 127.0.0.1:58269 [200]: GET /api/server-status.php
+[Wed Jul  1 07:46:55 2026] 127.0.0.1:58269 Closing
+[Wed Jul  1 07:47:55 2026] 127.0.0.1:60538 Accepted
+[Wed Jul  1 07:47:55 2026] 127.0.0.1:60538 [200]: GET /api/server-status.php
+[Wed Jul  1 07:47:55 2026] 127.0.0.1:60538 Closing
+[Wed Jul  1 07:47:55 2026] 127.0.0.1:51601 Accepted
+[Wed Jul  1 07:47:55 2026] 127.0.0.1:51601 [200]: GET /api/server-status.php
+[Wed Jul  1 07:47:55 2026] 127.0.0.1:51601 Closing
+[Wed Jul  1 07:48:55 2026] 127.0.0.1:58452 Accepted
+[Wed Jul  1 07:48:55 2026] 127.0.0.1:58452 [200]: GET /api/server-status.php
+[Wed Jul  1 07:48:55 2026] 127.0.0.1:58452 Closing
+[Wed Jul  1 07:48:55 2026] 127.0.0.1:53631 Accepted
+[Wed Jul  1 07:48:55 2026] 127.0.0.1:53631 [200]: GET /api/server-status.php
+[Wed Jul  1 07:48:55 2026] 127.0.0.1:53631 Closing
+[Wed Jul  1 07:49:55 2026] 127.0.0.1:52643 Accepted
+[Wed Jul  1 07:49:55 2026] 127.0.0.1:62879 Accepted
+[Wed Jul  1 07:49:55 2026] 127.0.0.1:52643 [200]: GET /api/server-status.php
+[Wed Jul  1 07:49:55 2026] 127.0.0.1:52643 Closing
+[Wed Jul  1 07:49:55 2026] 127.0.0.1:62879 [200]: GET /api/server-status.php
+[Wed Jul  1 07:49:55 2026] 127.0.0.1:62879 Closing
+[Wed Jul  1 07:50:55 2026] 127.0.0.1:57083 Accepted
+[Wed Jul  1 07:50:55 2026] 127.0.0.1:57083 [200]: GET /api/server-status.php
+[Wed Jul  1 07:50:55 2026] 127.0.0.1:57083 Closing
+[Wed Jul  1 07:50:55 2026] 127.0.0.1:62532 Accepted
+[Wed Jul  1 07:50:55 2026] 127.0.0.1:62532 [200]: GET /api/server-status.php
+[Wed Jul  1 07:50:55 2026] 127.0.0.1:62532 Closing
+[Wed Jul  1 07:51:55 2026] 127.0.0.1:64868 Accepted
+[Wed Jul  1 07:51:55 2026] 127.0.0.1:55097 Accepted
+[Wed Jul  1 07:51:55 2026] 127.0.0.1:64868 [200]: GET /api/server-status.php
+[Wed Jul  1 07:51:55 2026] 127.0.0.1:64868 Closing
+[Wed Jul  1 07:51:55 2026] 127.0.0.1:55097 [200]: GET /api/server-status.php
+[Wed Jul  1 07:51:55 2026] 127.0.0.1:55097 Closing
+[Wed Jul  1 07:52:55 2026] 127.0.0.1:53028 Accepted
+[Wed Jul  1 07:52:55 2026] 127.0.0.1:53028 [200]: GET /api/server-status.php
+[Wed Jul  1 07:52:55 2026] 127.0.0.1:53028 Closing
+[Wed Jul  1 07:52:55 2026] 127.0.0.1:50699 Accepted
+[Wed Jul  1 07:52:55 2026] 127.0.0.1:50699 [200]: GET /api/server-status.php
+[Wed Jul  1 07:52:55 2026] 127.0.0.1:50699 Closing
+[Wed Jul  1 07:53:55 2026] 127.0.0.1:56600 Accepted
+[Wed Jul  1 07:53:55 2026] 127.0.0.1:56600 [200]: GET /api/server-status.php
+[Wed Jul  1 07:53:55 2026] 127.0.0.1:56600 Closing
+[Wed Jul  1 07:53:55 2026] 127.0.0.1:53650 Accepted
+[Wed Jul  1 07:53:55 2026] 127.0.0.1:53650 [200]: GET /api/server-status.php
+[Wed Jul  1 07:53:55 2026] 127.0.0.1:53650 Closing
+[Wed Jul  1 07:54:55 2026] 127.0.0.1:64620 Accepted
+[Wed Jul  1 07:54:55 2026] 127.0.0.1:64620 [200]: GET /api/server-status.php
+[Wed Jul  1 07:54:55 2026] 127.0.0.1:64620 Closing
+[Wed Jul  1 07:54:55 2026] 127.0.0.1:57553 Accepted
+[Wed Jul  1 07:54:55 2026] 127.0.0.1:57553 [200]: GET /api/server-status.php
+[Wed Jul  1 07:54:55 2026] 127.0.0.1:57553 Closing
+[Wed Jul  1 07:55:55 2026] 127.0.0.1:58919 Accepted
+[Wed Jul  1 07:55:55 2026] 127.0.0.1:58919 [200]: GET /api/server-status.php
+[Wed Jul  1 07:55:55 2026] 127.0.0.1:58919 Closing
+[Wed Jul  1 07:55:55 2026] 127.0.0.1:51007 Accepted
+[Wed Jul  1 07:55:55 2026] 127.0.0.1:51007 [200]: GET /api/server-status.php
+[Wed Jul  1 07:55:55 2026] 127.0.0.1:51007 Closing
+[Wed Jul  1 07:56:55 2026] 127.0.0.1:63695 Accepted
+[Wed Jul  1 07:56:55 2026] 127.0.0.1:63695 [200]: GET /api/server-status.php
+[Wed Jul  1 07:56:55 2026] 127.0.0.1:63695 Closing
+[Wed Jul  1 07:56:55 2026] 127.0.0.1:56009 Accepted
+[Wed Jul  1 07:56:55 2026] 127.0.0.1:56009 [200]: GET /api/server-status.php
+[Wed Jul  1 07:56:55 2026] 127.0.0.1:56009 Closing
+[Wed Jul  1 07:57:55 2026] 127.0.0.1:51559 Accepted
+[Wed Jul  1 07:57:55 2026] 127.0.0.1:51559 [200]: GET /api/server-status.php
+[Wed Jul  1 07:57:55 2026] 127.0.0.1:51559 Closing
+[Wed Jul  1 07:57:55 2026] 127.0.0.1:60226 Accepted
+[Wed Jul  1 07:57:55 2026] 127.0.0.1:60226 [200]: GET /api/server-status.php
+[Wed Jul  1 07:57:55 2026] 127.0.0.1:60226 Closing
+[Wed Jul  1 07:58:55 2026] 127.0.0.1:61156 Accepted
+[Wed Jul  1 07:58:55 2026] 127.0.0.1:61156 [200]: GET /api/server-status.php
+[Wed Jul  1 07:58:55 2026] 127.0.0.1:61156 Closing
+[Wed Jul  1 07:58:55 2026] 127.0.0.1:55921 Accepted
+[Wed Jul  1 07:58:55 2026] 127.0.0.1:55921 [200]: GET /api/server-status.php
+[Wed Jul  1 07:58:55 2026] 127.0.0.1:55921 Closing
+[Wed Jul  1 07:59:55 2026] 127.0.0.1:55311 Accepted
+[Wed Jul  1 07:59:55 2026] 127.0.0.1:56505 Accepted
+[Wed Jul  1 07:59:55 2026] 127.0.0.1:55311 [200]: GET /api/server-status.php
+[Wed Jul  1 07:59:55 2026] 127.0.0.1:55311 Closing
+[Wed Jul  1 07:59:55 2026] 127.0.0.1:56505 [200]: GET /api/server-status.php
+[Wed Jul  1 07:59:55 2026] 127.0.0.1:56505 Closing
+[Wed Jul  1 08:00:55 2026] 127.0.0.1:53458 Accepted
+[Wed Jul  1 08:00:55 2026] 127.0.0.1:53458 [200]: GET /api/server-status.php
+[Wed Jul  1 08:00:55 2026] 127.0.0.1:53458 Closing
+[Wed Jul  1 08:00:55 2026] 127.0.0.1:50443 Accepted
+[Wed Jul  1 08:00:55 2026] 127.0.0.1:50443 [200]: GET /api/server-status.php
+[Wed Jul  1 08:00:55 2026] 127.0.0.1:50443 Closing
+[Wed Jul  1 08:01:55 2026] 127.0.0.1:58989 Accepted
+[Wed Jul  1 08:01:55 2026] 127.0.0.1:58989 [200]: GET /api/server-status.php
+[Wed Jul  1 08:01:55 2026] 127.0.0.1:58989 Closing
+[Wed Jul  1 08:01:55 2026] 127.0.0.1:54576 Accepted
+[Wed Jul  1 08:01:55 2026] 127.0.0.1:54576 [200]: GET /api/server-status.php
+[Wed Jul  1 08:01:55 2026] 127.0.0.1:54576 Closing
+[Wed Jul  1 08:02:55 2026] 127.0.0.1:49612 Accepted
+[Wed Jul  1 08:02:55 2026] 127.0.0.1:49612 [200]: GET /api/server-status.php
+[Wed Jul  1 08:02:55 2026] 127.0.0.1:49612 Closing
+[Wed Jul  1 08:02:55 2026] 127.0.0.1:54482 Accepted
+[Wed Jul  1 08:02:55 2026] 127.0.0.1:54482 [200]: GET /api/server-status.php
+[Wed Jul  1 08:02:55 2026] 127.0.0.1:54482 Closing
+[Wed Jul  1 08:03:55 2026] 127.0.0.1:54472 Accepted
+[Wed Jul  1 08:03:55 2026] 127.0.0.1:54472 [200]: GET /api/server-status.php
+[Wed Jul  1 08:03:55 2026] 127.0.0.1:54472 Closing
+[Wed Jul  1 08:03:55 2026] 127.0.0.1:63249 Accepted
+[Wed Jul  1 08:03:55 2026] 127.0.0.1:63249 [200]: GET /api/server-status.php
+[Wed Jul  1 08:03:55 2026] 127.0.0.1:63249 Closing
+[Wed Jul  1 08:04:55 2026] 127.0.0.1:56673 Accepted
+[Wed Jul  1 08:04:55 2026] 127.0.0.1:56673 [200]: GET /api/server-status.php
+[Wed Jul  1 08:04:55 2026] 127.0.0.1:56673 Closing
+[Wed Jul  1 08:04:55 2026] 127.0.0.1:53211 Accepted
+[Wed Jul  1 08:04:55 2026] 127.0.0.1:53211 [200]: GET /api/server-status.php
+[Wed Jul  1 08:04:55 2026] 127.0.0.1:53211 Closing
+[Wed Jul  1 08:05:55 2026] 127.0.0.1:50312 Accepted
+[Wed Jul  1 08:05:55 2026] 127.0.0.1:50312 [200]: GET /api/server-status.php
+[Wed Jul  1 08:05:55 2026] 127.0.0.1:50312 Closing
+[Wed Jul  1 08:05:55 2026] 127.0.0.1:50597 Accepted
+[Wed Jul  1 08:05:55 2026] 127.0.0.1:50597 [200]: GET /api/server-status.php
+[Wed Jul  1 08:05:55 2026] 127.0.0.1:50597 Closing
+[Wed Jul  1 08:06:55 2026] 127.0.0.1:51658 Accepted
+[Wed Jul  1 08:06:55 2026] 127.0.0.1:51658 [200]: GET /api/server-status.php
+[Wed Jul  1 08:06:55 2026] 127.0.0.1:51658 Closing
+[Wed Jul  1 08:06:55 2026] 127.0.0.1:59648 Accepted
+[Wed Jul  1 08:06:55 2026] 127.0.0.1:59648 [200]: GET /api/server-status.php
+[Wed Jul  1 08:06:55 2026] 127.0.0.1:59648 Closing
+[Wed Jul  1 08:07:55 2026] 127.0.0.1:54402 Accepted
+[Wed Jul  1 08:07:55 2026] 127.0.0.1:50836 Accepted
+[Wed Jul  1 08:07:55 2026] 127.0.0.1:54402 [200]: GET /api/server-status.php
+[Wed Jul  1 08:07:55 2026] 127.0.0.1:54402 Closing
+[Wed Jul  1 08:07:55 2026] 127.0.0.1:50836 [200]: GET /api/server-status.php
+[Wed Jul  1 08:07:55 2026] 127.0.0.1:50836 Closing
+[Wed Jul  1 08:08:55 2026] 127.0.0.1:58342 Accepted
+[Wed Jul  1 08:08:55 2026] 127.0.0.1:58342 [200]: GET /api/server-status.php
+[Wed Jul  1 08:08:55 2026] 127.0.0.1:58342 Closing
+[Wed Jul  1 08:08:55 2026] 127.0.0.1:60774 Accepted
+[Wed Jul  1 08:08:56 2026] 127.0.0.1:60774 [200]: GET /api/server-status.php
+[Wed Jul  1 08:08:56 2026] 127.0.0.1:60774 Closing
+[Wed Jul  1 08:09:55 2026] 127.0.0.1:58498 Accepted
+[Wed Jul  1 08:09:55 2026] 127.0.0.1:58498 [200]: GET /api/server-status.php
+[Wed Jul  1 08:09:55 2026] 127.0.0.1:58498 Closing
+[Wed Jul  1 08:09:55 2026] 127.0.0.1:53235 Accepted
+[Wed Jul  1 08:09:55 2026] 127.0.0.1:53235 [200]: GET /api/server-status.php
+[Wed Jul  1 08:09:55 2026] 127.0.0.1:53235 Closing
+[Wed Jul  1 08:10:55 2026] 127.0.0.1:64896 Accepted
+[Wed Jul  1 08:10:55 2026] 127.0.0.1:64896 [200]: GET /api/server-status.php
+[Wed Jul  1 08:10:55 2026] 127.0.0.1:64896 Closing
+[Wed Jul  1 08:10:55 2026] 127.0.0.1:51677 Accepted
+[Wed Jul  1 08:10:55 2026] 127.0.0.1:51677 [200]: GET /api/server-status.php
+[Wed Jul  1 08:10:55 2026] 127.0.0.1:51677 Closing
+[Wed Jul  1 08:11:55 2026] 127.0.0.1:51050 Accepted
+[Wed Jul  1 08:11:55 2026] 127.0.0.1:51050 [200]: GET /api/server-status.php
+[Wed Jul  1 08:11:55 2026] 127.0.0.1:51050 Closing
+[Wed Jul  1 08:11:55 2026] 127.0.0.1:63847 Accepted
+[Wed Jul  1 08:11:55 2026] 127.0.0.1:63847 [200]: GET /api/server-status.php
+[Wed Jul  1 08:11:55 2026] 127.0.0.1:63847 Closing
+[Wed Jul  1 08:12:55 2026] 127.0.0.1:58751 Accepted
+[Wed Jul  1 08:12:55 2026] 127.0.0.1:58751 [200]: GET /api/server-status.php
+[Wed Jul  1 08:12:55 2026] 127.0.0.1:58751 Closing
+[Wed Jul  1 08:12:55 2026] 127.0.0.1:58058 Accepted
+[Wed Jul  1 08:12:55 2026] 127.0.0.1:58058 [200]: GET /api/server-status.php
+[Wed Jul  1 08:12:55 2026] 127.0.0.1:58058 Closing
+[Wed Jul  1 08:13:55 2026] 127.0.0.1:63780 Accepted
+[Wed Jul  1 08:13:55 2026] 127.0.0.1:63780 [200]: GET /api/server-status.php
+[Wed Jul  1 08:13:55 2026] 127.0.0.1:63780 Closing
+[Wed Jul  1 08:13:55 2026] 127.0.0.1:54708 Accepted
+[Wed Jul  1 08:13:55 2026] 127.0.0.1:54708 [200]: GET /api/server-status.php
+[Wed Jul  1 08:13:55 2026] 127.0.0.1:54708 Closing
+[Wed Jul  1 08:14:55 2026] 127.0.0.1:57070 Accepted
+[Wed Jul  1 08:14:55 2026] 127.0.0.1:57070 [200]: GET /api/server-status.php
+[Wed Jul  1 08:14:55 2026] 127.0.0.1:57070 Closing
+[Wed Jul  1 08:14:55 2026] 127.0.0.1:49871 Accepted
+[Wed Jul  1 08:14:55 2026] 127.0.0.1:49871 [200]: GET /api/server-status.php
+[Wed Jul  1 08:14:55 2026] 127.0.0.1:49871 Closing
+[Wed Jul  1 08:15:55 2026] 127.0.0.1:60932 Accepted
+[Wed Jul  1 08:15:55 2026] 127.0.0.1:50967 Accepted
+[Wed Jul  1 08:15:55 2026] 127.0.0.1:60932 [200]: GET /api/server-status.php
+[Wed Jul  1 08:15:55 2026] 127.0.0.1:60932 Closing
+[Wed Jul  1 08:15:55 2026] 127.0.0.1:50967 [200]: GET /api/server-status.php
+[Wed Jul  1 08:15:55 2026] 127.0.0.1:50967 Closing
+[Wed Jul  1 08:16:55 2026] 127.0.0.1:49891 Accepted
+[Wed Jul  1 08:16:55 2026] 127.0.0.1:49891 [200]: GET /api/server-status.php
+[Wed Jul  1 08:16:55 2026] 127.0.0.1:49891 Closing
+[Wed Jul  1 08:16:55 2026] 127.0.0.1:50558 Accepted
+[Wed Jul  1 08:16:55 2026] 127.0.0.1:50558 [200]: GET /api/server-status.php
+[Wed Jul  1 08:16:55 2026] 127.0.0.1:50558 Closing
+[Wed Jul  1 08:17:55 2026] 127.0.0.1:59761 Accepted
+[Wed Jul  1 08:17:55 2026] 127.0.0.1:58542 Accepted
+[Wed Jul  1 08:17:55 2026] 127.0.0.1:59761 [200]: GET /api/server-status.php
+[Wed Jul  1 08:17:55 2026] 127.0.0.1:59761 Closing
+[Wed Jul  1 08:17:55 2026] 127.0.0.1:58542 [200]: GET /api/server-status.php
+[Wed Jul  1 08:17:55 2026] 127.0.0.1:58542 Closing
+[Wed Jul  1 08:18:55 2026] 127.0.0.1:59379 Accepted
+[Wed Jul  1 08:18:55 2026] 127.0.0.1:59379 [200]: GET /api/server-status.php
+[Wed Jul  1 08:18:55 2026] 127.0.0.1:59379 Closing
+[Wed Jul  1 08:18:55 2026] 127.0.0.1:65017 Accepted
+[Wed Jul  1 08:18:55 2026] 127.0.0.1:65017 [200]: GET /api/server-status.php
+[Wed Jul  1 08:18:55 2026] 127.0.0.1:65017 Closing
+[Wed Jul  1 08:19:55 2026] 127.0.0.1:61876 Accepted
+[Wed Jul  1 08:19:55 2026] 127.0.0.1:61876 [200]: GET /api/server-status.php
+[Wed Jul  1 08:19:55 2026] 127.0.0.1:61876 Closing
+[Wed Jul  1 08:19:55 2026] 127.0.0.1:61407 Accepted
+[Wed Jul  1 08:19:55 2026] 127.0.0.1:61407 [200]: GET /api/server-status.php
+[Wed Jul  1 08:19:55 2026] 127.0.0.1:61407 Closing
+[Wed Jul  1 08:20:55 2026] 127.0.0.1:57044 Accepted
+[Wed Jul  1 08:20:55 2026] 127.0.0.1:58796 Accepted
+[Wed Jul  1 08:20:55 2026] 127.0.0.1:57044 [200]: GET /api/server-status.php
+[Wed Jul  1 08:20:55 2026] 127.0.0.1:57044 Closing
+[Wed Jul  1 08:20:56 2026] 127.0.0.1:58796 [200]: GET /api/server-status.php
+[Wed Jul  1 08:20:56 2026] 127.0.0.1:58796 Closing
+[Wed Jul  1 08:21:55 2026] 127.0.0.1:63697 Accepted
+[Wed Jul  1 08:21:55 2026] 127.0.0.1:63697 [200]: GET /api/server-status.php
+[Wed Jul  1 08:21:55 2026] 127.0.0.1:63697 Closing
+[Wed Jul  1 08:21:55 2026] 127.0.0.1:63475 Accepted
+[Wed Jul  1 08:21:55 2026] 127.0.0.1:63475 [200]: GET /api/server-status.php
+[Wed Jul  1 08:21:55 2026] 127.0.0.1:63475 Closing
+[Wed Jul  1 08:22:55 2026] 127.0.0.1:63803 Accepted
+[Wed Jul  1 08:22:55 2026] 127.0.0.1:58673 Accepted
+[Wed Jul  1 08:22:55 2026] 127.0.0.1:63803 [200]: GET /api/server-status.php
+[Wed Jul  1 08:22:55 2026] 127.0.0.1:63803 Closing
+[Wed Jul  1 08:22:55 2026] 127.0.0.1:58673 [200]: GET /api/server-status.php
+[Wed Jul  1 08:22:55 2026] 127.0.0.1:58673 Closing
+[Wed Jul  1 08:23:55 2026] 127.0.0.1:54657 Accepted
+[Wed Jul  1 08:23:55 2026] 127.0.0.1:54657 [200]: GET /api/server-status.php
+[Wed Jul  1 08:23:55 2026] 127.0.0.1:54657 Closing
+[Wed Jul  1 08:23:55 2026] 127.0.0.1:54950 Accepted
+[Wed Jul  1 08:23:55 2026] 127.0.0.1:54950 [200]: GET /api/server-status.php
+[Wed Jul  1 08:23:55 2026] 127.0.0.1:54950 Closing
+[Wed Jul  1 08:24:55 2026] 127.0.0.1:58110 Accepted
+[Wed Jul  1 08:24:55 2026] 127.0.0.1:58110 [200]: GET /api/server-status.php
+[Wed Jul  1 08:24:55 2026] 127.0.0.1:58110 Closing
+[Wed Jul  1 08:24:55 2026] 127.0.0.1:49678 Accepted
+[Wed Jul  1 08:24:55 2026] 127.0.0.1:49678 [200]: GET /api/server-status.php
+[Wed Jul  1 08:24:55 2026] 127.0.0.1:49678 Closing
+[Wed Jul  1 08:25:55 2026] 127.0.0.1:57917 Accepted
+[Wed Jul  1 08:25:55 2026] 127.0.0.1:57917 [200]: GET /api/server-status.php
+[Wed Jul  1 08:25:55 2026] 127.0.0.1:57917 Closing
+[Wed Jul  1 08:25:55 2026] 127.0.0.1:61741 Accepted
+[Wed Jul  1 08:25:55 2026] 127.0.0.1:61741 [200]: GET /api/server-status.php
+[Wed Jul  1 08:25:55 2026] 127.0.0.1:61741 Closing
+[Wed Jul  1 08:26:55 2026] 127.0.0.1:54638 Accepted
+[Wed Jul  1 08:26:55 2026] 127.0.0.1:54638 [200]: GET /api/server-status.php
+[Wed Jul  1 08:26:55 2026] 127.0.0.1:54638 Closing
+[Wed Jul  1 08:26:55 2026] 127.0.0.1:56650 Accepted
+[Wed Jul  1 08:26:55 2026] 127.0.0.1:56650 [200]: GET /api/server-status.php
+[Wed Jul  1 08:26:55 2026] 127.0.0.1:56650 Closing
+[Wed Jul  1 08:27:55 2026] 127.0.0.1:53960 Accepted
+[Wed Jul  1 08:27:55 2026] 127.0.0.1:53960 [200]: GET /api/server-status.php
+[Wed Jul  1 08:27:55 2026] 127.0.0.1:53960 Closing
+[Wed Jul  1 08:27:55 2026] 127.0.0.1:59270 Accepted
+[Wed Jul  1 08:27:55 2026] 127.0.0.1:59270 [200]: GET /api/server-status.php
+[Wed Jul  1 08:27:55 2026] 127.0.0.1:59270 Closing
+[Wed Jul  1 08:28:55 2026] 127.0.0.1:64658 Accepted
+[Wed Jul  1 08:28:55 2026] 127.0.0.1:64658 [200]: GET /api/server-status.php
+[Wed Jul  1 08:28:55 2026] 127.0.0.1:64658 Closing
+[Wed Jul  1 08:28:55 2026] 127.0.0.1:61322 Accepted
+[Wed Jul  1 08:28:55 2026] 127.0.0.1:61322 [200]: GET /api/server-status.php
+[Wed Jul  1 08:28:55 2026] 127.0.0.1:61322 Closing
+[Wed Jul  1 08:29:55 2026] 127.0.0.1:49669 Accepted
+[Wed Jul  1 08:29:55 2026] 127.0.0.1:49669 [200]: GET /api/server-status.php
+[Wed Jul  1 08:29:55 2026] 127.0.0.1:49669 Closing
+[Wed Jul  1 08:29:55 2026] 127.0.0.1:54997 Accepted
+[Wed Jul  1 08:29:55 2026] 127.0.0.1:54997 [200]: GET /api/server-status.php
+[Wed Jul  1 08:29:55 2026] 127.0.0.1:54997 Closing
+[Wed Jul  1 08:30:55 2026] 127.0.0.1:54781 Accepted
+[Wed Jul  1 08:30:55 2026] 127.0.0.1:54781 [200]: GET /api/server-status.php
+[Wed Jul  1 08:30:55 2026] 127.0.0.1:54781 Closing
+[Wed Jul  1 08:30:55 2026] 127.0.0.1:56062 Accepted
+[Wed Jul  1 08:30:55 2026] 127.0.0.1:56062 [200]: GET /api/server-status.php
+[Wed Jul  1 08:30:55 2026] 127.0.0.1:56062 Closing
+[Wed Jul  1 08:31:55 2026] 127.0.0.1:49162 Accepted
+[Wed Jul  1 08:31:55 2026] 127.0.0.1:49162 [200]: GET /api/server-status.php
+[Wed Jul  1 08:31:55 2026] 127.0.0.1:49162 Closing
+[Wed Jul  1 08:31:55 2026] 127.0.0.1:57078 Accepted
+[Wed Jul  1 08:31:55 2026] 127.0.0.1:57078 [200]: GET /api/server-status.php
+[Wed Jul  1 08:31:55 2026] 127.0.0.1:57078 Closing
+[Wed Jul  1 08:32:55 2026] 127.0.0.1:54092 Accepted
+[Wed Jul  1 08:32:55 2026] 127.0.0.1:54092 [200]: GET /api/server-status.php
+[Wed Jul  1 08:32:55 2026] 127.0.0.1:54092 Closing
+[Wed Jul  1 08:32:55 2026] 127.0.0.1:50876 Accepted
+[Wed Jul  1 08:32:55 2026] 127.0.0.1:50876 [200]: GET /api/server-status.php
+[Wed Jul  1 08:32:55 2026] 127.0.0.1:50876 Closing
+[Wed Jul  1 08:33:55 2026] 127.0.0.1:60343 Accepted
+[Wed Jul  1 08:33:55 2026] 127.0.0.1:60343 [200]: GET /api/server-status.php
+[Wed Jul  1 08:33:55 2026] 127.0.0.1:60343 Closing
+[Wed Jul  1 08:33:55 2026] 127.0.0.1:50286 Accepted
+[Wed Jul  1 08:33:55 2026] 127.0.0.1:50286 [200]: GET /api/server-status.php
+[Wed Jul  1 08:33:55 2026] 127.0.0.1:50286 Closing
+[Wed Jul  1 08:34:55 2026] 127.0.0.1:53592 Accepted
+[Wed Jul  1 08:34:55 2026] 127.0.0.1:53592 [200]: GET /api/server-status.php
+[Wed Jul  1 08:34:55 2026] 127.0.0.1:53592 Closing
+[Wed Jul  1 08:34:55 2026] 127.0.0.1:60035 Accepted
+[Wed Jul  1 08:34:55 2026] 127.0.0.1:60035 [200]: GET /api/server-status.php
+[Wed Jul  1 08:34:55 2026] 127.0.0.1:60035 Closing
+[Wed Jul  1 08:35:55 2026] 127.0.0.1:62058 Accepted
+[Wed Jul  1 08:35:55 2026] 127.0.0.1:62058 [200]: GET /api/server-status.php
+[Wed Jul  1 08:35:55 2026] 127.0.0.1:62058 Closing
+[Wed Jul  1 08:35:55 2026] 127.0.0.1:60000 Accepted
+[Wed Jul  1 08:35:55 2026] 127.0.0.1:60000 [200]: GET /api/server-status.php
+[Wed Jul  1 08:35:55 2026] 127.0.0.1:60000 Closing
+[Wed Jul  1 08:36:55 2026] 127.0.0.1:49913 Accepted
+[Wed Jul  1 08:36:55 2026] 127.0.0.1:60895 Accepted
+[Wed Jul  1 08:36:55 2026] 127.0.0.1:49913 [200]: GET /api/server-status.php
+[Wed Jul  1 08:36:55 2026] 127.0.0.1:49913 Closing
+[Wed Jul  1 08:36:55 2026] 127.0.0.1:60895 [200]: GET /api/server-status.php
+[Wed Jul  1 08:36:55 2026] 127.0.0.1:60895 Closing
+[Wed Jul  1 08:37:55 2026] 127.0.0.1:64127 Accepted
+[Wed Jul  1 08:37:55 2026] 127.0.0.1:57403 Accepted
+[Wed Jul  1 08:37:55 2026] 127.0.0.1:64127 [200]: GET /api/server-status.php
+[Wed Jul  1 08:37:55 2026] 127.0.0.1:64127 Closing
+[Wed Jul  1 08:37:55 2026] 127.0.0.1:57403 [200]: GET /api/server-status.php
+[Wed Jul  1 08:37:55 2026] 127.0.0.1:57403 Closing
+[Wed Jul  1 08:38:55 2026] 127.0.0.1:63046 Accepted
+[Wed Jul  1 08:38:55 2026] 127.0.0.1:54929 Accepted
+[Wed Jul  1 08:38:55 2026] 127.0.0.1:63046 [200]: GET /api/server-status.php
+[Wed Jul  1 08:38:55 2026] 127.0.0.1:63046 Closing
+[Wed Jul  1 08:38:55 2026] 127.0.0.1:54929 [200]: GET /api/server-status.php
+[Wed Jul  1 08:38:55 2026] 127.0.0.1:54929 Closing
+[Wed Jul  1 08:39:55 2026] 127.0.0.1:49162 Accepted
+[Wed Jul  1 08:39:55 2026] 127.0.0.1:49162 [200]: GET /api/server-status.php
+[Wed Jul  1 08:39:55 2026] 127.0.0.1:49162 Closing
+[Wed Jul  1 08:39:55 2026] 127.0.0.1:56785 Accepted
+[Wed Jul  1 08:39:55 2026] 127.0.0.1:56785 [200]: GET /api/server-status.php
+[Wed Jul  1 08:39:55 2026] 127.0.0.1:56785 Closing
+[Wed Jul  1 08:40:55 2026] 127.0.0.1:50273 Accepted
+[Wed Jul  1 08:40:55 2026] 127.0.0.1:50273 [200]: GET /api/server-status.php
+[Wed Jul  1 08:40:55 2026] 127.0.0.1:50273 Closing
+[Wed Jul  1 08:40:55 2026] 127.0.0.1:61347 Accepted
+[Wed Jul  1 08:40:55 2026] 127.0.0.1:61347 [200]: GET /api/server-status.php
+[Wed Jul  1 08:40:55 2026] 127.0.0.1:61347 Closing
+[Wed Jul  1 08:41:55 2026] 127.0.0.1:63750 Accepted
+[Wed Jul  1 08:41:55 2026] 127.0.0.1:63750 [200]: GET /api/server-status.php
+[Wed Jul  1 08:41:55 2026] 127.0.0.1:63750 Closing
+[Wed Jul  1 08:41:55 2026] 127.0.0.1:60880 Accepted
+[Wed Jul  1 08:41:55 2026] 127.0.0.1:60880 [200]: GET /api/server-status.php
+[Wed Jul  1 08:41:55 2026] 127.0.0.1:60880 Closing
+[Wed Jul  1 08:42:55 2026] 127.0.0.1:52308 Accepted
+[Wed Jul  1 08:42:55 2026] 127.0.0.1:57399 Accepted
+[Wed Jul  1 08:42:55 2026] 127.0.0.1:52308 [200]: GET /api/server-status.php
+[Wed Jul  1 08:42:55 2026] 127.0.0.1:52308 Closing
+[Wed Jul  1 08:42:55 2026] 127.0.0.1:57399 [200]: GET /api/server-status.php
+[Wed Jul  1 08:42:55 2026] 127.0.0.1:57399 Closing
+[Wed Jul  1 08:43:55 2026] 127.0.0.1:53248 Accepted
+[Wed Jul  1 08:43:55 2026] 127.0.0.1:64228 Accepted
+[Wed Jul  1 08:43:55 2026] 127.0.0.1:53248 [200]: GET /api/server-status.php
+[Wed Jul  1 08:43:55 2026] 127.0.0.1:53248 Closing
+[Wed Jul  1 08:43:55 2026] 127.0.0.1:64228 [200]: GET /api/server-status.php
+[Wed Jul  1 08:43:55 2026] 127.0.0.1:64228 Closing
+[Wed Jul  1 08:44:55 2026] 127.0.0.1:54639 Accepted
+[Wed Jul  1 08:44:55 2026] 127.0.0.1:54639 [200]: GET /api/server-status.php
+[Wed Jul  1 08:44:55 2026] 127.0.0.1:54639 Closing
+[Wed Jul  1 08:44:55 2026] 127.0.0.1:55588 Accepted
+[Wed Jul  1 08:44:55 2026] 127.0.0.1:55588 [200]: GET /api/server-status.php
+[Wed Jul  1 08:44:55 2026] 127.0.0.1:55588 Closing
+[Wed Jul  1 08:45:55 2026] 127.0.0.1:51723 Accepted
+[Wed Jul  1 08:45:55 2026] 127.0.0.1:51723 [200]: GET /api/server-status.php
+[Wed Jul  1 08:45:55 2026] 127.0.0.1:51723 Closing
+[Wed Jul  1 08:45:55 2026] 127.0.0.1:57807 Accepted
+[Wed Jul  1 08:45:55 2026] 127.0.0.1:57807 [200]: GET /api/server-status.php
+[Wed Jul  1 08:45:55 2026] 127.0.0.1:57807 Closing
+[Wed Jul  1 08:46:55 2026] 127.0.0.1:52354 Accepted
+[Wed Jul  1 08:46:55 2026] 127.0.0.1:59128 Accepted
+[Wed Jul  1 08:46:55 2026] 127.0.0.1:52354 [200]: GET /api/server-status.php
+[Wed Jul  1 08:46:55 2026] 127.0.0.1:52354 Closing
+[Wed Jul  1 08:46:55 2026] 127.0.0.1:59128 [200]: GET /api/server-status.php
+[Wed Jul  1 08:46:55 2026] 127.0.0.1:59128 Closing
+[Wed Jul  1 08:47:55 2026] 127.0.0.1:63420 Accepted
+[Wed Jul  1 08:47:55 2026] 127.0.0.1:65403 Accepted
+[Wed Jul  1 08:47:55 2026] 127.0.0.1:63420 [200]: GET /api/server-status.php
+[Wed Jul  1 08:47:55 2026] 127.0.0.1:63420 Closing
+[Wed Jul  1 08:47:55 2026] 127.0.0.1:65403 [200]: GET /api/server-status.php
+[Wed Jul  1 08:47:55 2026] 127.0.0.1:65403 Closing
+[Wed Jul  1 08:48:55 2026] 127.0.0.1:61854 Accepted
+[Wed Jul  1 08:48:55 2026] 127.0.0.1:62190 Accepted
+[Wed Jul  1 08:48:55 2026] 127.0.0.1:61854 [200]: GET /api/server-status.php
+[Wed Jul  1 08:48:55 2026] 127.0.0.1:61854 Closing
+[Wed Jul  1 08:48:55 2026] 127.0.0.1:62190 [200]: GET /api/server-status.php
+[Wed Jul  1 08:48:55 2026] 127.0.0.1:62190 Closing
+[Wed Jul  1 08:49:55 2026] 127.0.0.1:56109 Accepted
+[Wed Jul  1 08:49:55 2026] 127.0.0.1:56109 [200]: GET /api/server-status.php
+[Wed Jul  1 08:49:55 2026] 127.0.0.1:56109 Closing
+[Wed Jul  1 08:49:55 2026] 127.0.0.1:56377 Accepted
+[Wed Jul  1 08:49:55 2026] 127.0.0.1:56377 [200]: GET /api/server-status.php
+[Wed Jul  1 08:49:55 2026] 127.0.0.1:56377 Closing
+[Wed Jul  1 08:50:55 2026] 127.0.0.1:62256 Accepted
+[Wed Jul  1 08:50:55 2026] 127.0.0.1:62256 [200]: GET /api/server-status.php
+[Wed Jul  1 08:50:55 2026] 127.0.0.1:62256 Closing
+[Wed Jul  1 08:50:55 2026] 127.0.0.1:59932 Accepted
+[Wed Jul  1 08:50:55 2026] 127.0.0.1:59932 [200]: GET /api/server-status.php
+[Wed Jul  1 08:50:55 2026] 127.0.0.1:59932 Closing
+[Wed Jul  1 08:51:55 2026] 127.0.0.1:65234 Accepted
+[Wed Jul  1 08:51:55 2026] 127.0.0.1:65234 [200]: GET /api/server-status.php
+[Wed Jul  1 08:51:55 2026] 127.0.0.1:65234 Closing
+[Wed Jul  1 08:51:55 2026] 127.0.0.1:59773 Accepted
+[Wed Jul  1 08:51:55 2026] 127.0.0.1:59773 [200]: GET /api/server-status.php
+[Wed Jul  1 08:51:55 2026] 127.0.0.1:59773 Closing
+[Wed Jul  1 08:52:55 2026] 127.0.0.1:55385 Accepted
+[Wed Jul  1 08:52:55 2026] 127.0.0.1:51109 Accepted
+[Wed Jul  1 08:52:55 2026] 127.0.0.1:55385 [200]: GET /api/server-status.php
+[Wed Jul  1 08:52:55 2026] 127.0.0.1:55385 Closing
+[Wed Jul  1 08:52:55 2026] 127.0.0.1:51109 [200]: GET /api/server-status.php
+[Wed Jul  1 08:52:55 2026] 127.0.0.1:51109 Closing
+[Wed Jul  1 08:53:55 2026] 127.0.0.1:54416 Accepted
+[Wed Jul  1 08:53:55 2026] 127.0.0.1:54416 [200]: GET /api/server-status.php
+[Wed Jul  1 08:53:55 2026] 127.0.0.1:54416 Closing
+[Wed Jul  1 08:53:55 2026] 127.0.0.1:52325 Accepted
+[Wed Jul  1 08:53:55 2026] 127.0.0.1:52325 [200]: GET /api/server-status.php
+[Wed Jul  1 08:53:55 2026] 127.0.0.1:52325 Closing
+[Wed Jul  1 08:54:55 2026] 127.0.0.1:62959 Accepted
+[Wed Jul  1 08:54:55 2026] 127.0.0.1:62959 [200]: GET /api/server-status.php
+[Wed Jul  1 08:54:55 2026] 127.0.0.1:62959 Closing
+[Wed Jul  1 08:54:55 2026] 127.0.0.1:63400 Accepted
+[Wed Jul  1 08:54:55 2026] 127.0.0.1:63400 [200]: GET /api/server-status.php
+[Wed Jul  1 08:54:55 2026] 127.0.0.1:63400 Closing
+[Wed Jul  1 08:55:55 2026] 127.0.0.1:64179 Accepted
+[Wed Jul  1 08:55:55 2026] 127.0.0.1:64179 [200]: GET /api/server-status.php
+[Wed Jul  1 08:55:55 2026] 127.0.0.1:64179 Closing
+[Wed Jul  1 08:55:55 2026] 127.0.0.1:50393 Accepted
+[Wed Jul  1 08:55:55 2026] 127.0.0.1:50393 [200]: GET /api/server-status.php
+[Wed Jul  1 08:55:55 2026] 127.0.0.1:50393 Closing
+[Wed Jul  1 08:56:55 2026] 127.0.0.1:53283 Accepted
+[Wed Jul  1 08:56:56 2026] 127.0.0.1:53283 [200]: GET /api/server-status.php
+[Wed Jul  1 08:56:56 2026] 127.0.0.1:53283 Closing
+[Wed Jul  1 08:56:56 2026] 127.0.0.1:57277 Accepted
+[Wed Jul  1 08:56:56 2026] 127.0.0.1:57277 [200]: GET /api/server-status.php
+[Wed Jul  1 08:56:56 2026] 127.0.0.1:57277 Closing
+[Wed Jul  1 08:57:55 2026] 127.0.0.1:57156 Accepted
+[Wed Jul  1 08:57:55 2026] 127.0.0.1:57156 [200]: GET /api/server-status.php
+[Wed Jul  1 08:57:55 2026] 127.0.0.1:57156 Closing
+[Wed Jul  1 08:57:55 2026] 127.0.0.1:57977 Accepted
+[Wed Jul  1 08:57:55 2026] 127.0.0.1:57977 [200]: GET /api/server-status.php
+[Wed Jul  1 08:57:55 2026] 127.0.0.1:57977 Closing
+[Wed Jul  1 08:58:55 2026] 127.0.0.1:49365 Accepted
+[Wed Jul  1 08:58:55 2026] 127.0.0.1:49365 [200]: GET /api/server-status.php
+[Wed Jul  1 08:58:55 2026] 127.0.0.1:49365 Closing
+[Wed Jul  1 08:58:55 2026] 127.0.0.1:49656 Accepted
+[Wed Jul  1 08:58:55 2026] 127.0.0.1:49656 [200]: GET /api/server-status.php
+[Wed Jul  1 08:58:55 2026] 127.0.0.1:49656 Closing
+[Wed Jul  1 08:59:55 2026] 127.0.0.1:53982 Accepted
+[Wed Jul  1 08:59:56 2026] 127.0.0.1:53982 [200]: GET /api/server-status.php
+[Wed Jul  1 08:59:56 2026] 127.0.0.1:53982 Closing
+[Wed Jul  1 08:59:56 2026] 127.0.0.1:56839 Accepted
+[Wed Jul  1 08:59:56 2026] 127.0.0.1:56839 [200]: GET /api/server-status.php
+[Wed Jul  1 08:59:56 2026] 127.0.0.1:56839 Closing
+[Wed Jul  1 09:00:55 2026] 127.0.0.1:63545 Accepted
+[Wed Jul  1 09:00:55 2026] 127.0.0.1:63545 [200]: GET /api/server-status.php
+[Wed Jul  1 09:00:55 2026] 127.0.0.1:63545 Closing
+[Wed Jul  1 09:00:55 2026] 127.0.0.1:59862 Accepted
+[Wed Jul  1 09:00:55 2026] 127.0.0.1:59862 [200]: GET /api/server-status.php
+[Wed Jul  1 09:00:55 2026] 127.0.0.1:59862 Closing
+[Wed Jul  1 09:01:35 2026] 127.0.0.1:52775 Accepted
+[Wed Jul  1 09:01:35 2026] 127.0.0.1:52775 [200]: GET /api/server-status.php
+[Wed Jul  1 09:01:35 2026] 127.0.0.1:52775 Closing
+[Wed Jul  1 09:01:55 2026] 127.0.0.1:57105 Accepted
+[Wed Jul  1 09:01:55 2026] 127.0.0.1:57105 [200]: GET /api/server-status.php
+[Wed Jul  1 09:01:55 2026] 127.0.0.1:57105 Closing
+[Wed Jul  1 09:02:55 2026] 127.0.0.1:64952 Accepted
+[Wed Jul  1 09:02:55 2026] 127.0.0.1:64952 [200]: GET /api/server-status.php
+[Wed Jul  1 09:02:55 2026] 127.0.0.1:64952 Closing
+[Wed Jul  1 09:02:55 2026] 127.0.0.1:63990 Accepted
+[Wed Jul  1 09:02:55 2026] 127.0.0.1:63990 [200]: GET /api/server-status.php
+[Wed Jul  1 09:02:55 2026] 127.0.0.1:63990 Closing

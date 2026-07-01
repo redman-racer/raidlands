@@ -9,7 +9,15 @@ function asset_url(string $path): string
 {
     global $base_path;
 
-    return $base_path . 'assets/' . ltrim($path, '/');
+    $asset_path = ltrim($path, '/');
+    $url = $base_path . 'assets/' . $asset_path;
+    $absolute_path = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $asset_path);
+
+    if (preg_match('/\.(css|js)$/i', $asset_path) && is_file($absolute_path)) {
+        return $url . '?v=' . filemtime($absolute_path);
+    }
+
+    return $url;
 }
 
 function route_url(string $path = ''): string
@@ -106,8 +114,10 @@ function raidlands_loader_payload(): array
         'logoUrl' => asset_url('media/raidlands-logo.webp'),
         'serverStatusUrl' => $base_path . 'api/server-status.php',
         'statusProbeTimeoutMs' => 750,
-        'minVisibleMs' => 2300,
-        'fastTrackAfterMs' => 820,
+        'startupColdMs' => 340,
+        'startupMs' => 1500,
+        'minVisibleMs' => 1500,
+        'fastTrackAfterMs' => 260,
         'fadeMs' => 520,
         'fallbackStatus' => [
             'online' => (bool) ($site_config['serverOnline'] ?? false),
@@ -142,12 +152,12 @@ function raidlands_loader_payload(): array
             ['level' => 'ok', 'text' => '[OK] ' . $wipe_days . ' wipe window ' . $wipe_time . ' ' . $wipe_timezone],
             ['id' => 'dom-ready', 'level' => 'info', 'text' => 'Parsing battlefield route...', 'wait' => 'dom', 'successText' => '[OK] Route markup parsed'],
             ['id' => 'window-load', 'level' => 'info', 'text' => 'Loading visual assets...', 'wait' => 'load', 'successText' => '[OK] Visual assets mounted'],
-            ['level' => 'info', 'text' => 'Establishing breach route...'],
-            ['level' => 'info', 'text' => 'Compiling target intel...'],
-            ['level' => 'info', 'text' => 'Locating enemy silhouettes...'],
-            ['level' => 'warn', 'text' => 'Target acquired.'],
-            ['level' => 'warn', 'text' => 'Engaging...'],
-            ['level' => 'ok', 'text' => '[OK] Raidlands console ready'],
+            ['level' => 'info', 'text' => 'Establishing breach route...', 'decorative' => true],
+            ['level' => 'info', 'text' => 'Compiling target intel...', 'decorative' => true],
+            ['level' => 'info', 'text' => 'Locating enemy silhouettes...', 'decorative' => true],
+            ['level' => 'warn', 'text' => 'Target acquired.', 'decorative' => true],
+            ['level' => 'warn', 'text' => 'Engaging...', 'decorative' => true],
+            ['level' => 'ok', 'text' => '[OK] Raidlands console ready', 'decorative' => true],
         ],
     ];
 }
@@ -156,9 +166,10 @@ function render_raidlands_loader(array $payload): string
 {
     $tip = (string) ($payload['tips'][0] ?? 'Every wipe starts cleaner when your account is linked before checkout.');
 
-    return '<div class="raidlands-loader" data-raidlands-loader role="status" aria-live="polite" aria-label="Raidlands loading console">'
-        . '<div class="raidlands-loader-vfx raidlands-loader-vfx--core" aria-hidden="true"></div>'
+    return '<div class="raidlands-loader is-power-cold" data-raidlands-loader role="status" aria-live="polite" aria-label="Raidlands loading console">'
+        . '<div class="raidlands-loader-vfx raidlands-loader-vfx--ground" aria-hidden="true"></div>'
         . '<div class="raidlands-loader-vfx raidlands-loader-vfx--fireball" aria-hidden="true"></div>'
+        . '<div class="raidlands-loader-power-overlay" aria-hidden="true"></div>'
         . '<div class="raidlands-loader-frame">'
         . '<div class="raidlands-loader-targeting" data-loader-targeting aria-hidden="true"></div>'
         . '<div class="raidlands-loader-console" aria-hidden="true">'
@@ -184,10 +195,10 @@ function render_raidlands_loader(array $payload): string
         . '</div>'
         . '</div>'
         . '</div>'
+        . '<div class="raidlands-loader-vfx raidlands-loader-vfx--debris" aria-hidden="true"></div>'
         . '<div class="raidlands-loader-vfx raidlands-loader-vfx--smoke" aria-hidden="true"></div>'
-        . '<div class="raidlands-loader-vfx raidlands-loader-vfx--spark" aria-hidden="true"></div>'
+        . '<div class="raidlands-loader-vfx raidlands-loader-vfx--shockwave" aria-hidden="true"></div>'
         . '<div class="raidlands-loader-vfx raidlands-loader-vfx--embers" aria-hidden="true"></div>'
-        . '<div class="raidlands-loader-vfx raidlands-loader-vfx--flash" aria-hidden="true"></div>'
         . '</div>';
 }
 

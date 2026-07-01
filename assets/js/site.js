@@ -132,7 +132,8 @@
     if (!shell || shell.querySelector(".ambient-effects")) return;
 
     const field = document.createElement("div");
-    const particleCount = window.innerWidth < 640 ? 20 : 40;
+    const isMobile = window.innerWidth < 640;
+    const particleCount = isMobile ? 20 : 40;
     const particles = document.createDocumentFragment();
 
     field.className = "ambient-effects";
@@ -145,8 +146,8 @@
       const duration = isAsh ? randomBetween(22, 36) : randomBetween(16, 30);
 
       particle.className = `ember-particle ${isAsh ? "is-ash" : "is-spark"}`;
-      particle.style.setProperty("--x", `${randomBetween(-4, 104).toFixed(2)}%`);
-      particle.style.setProperty("--drift", `${randomBetween(-96, 96).toFixed(2)}px`);
+      particle.style.setProperty("--x", `${randomBetween(isMobile ? 8 : -4, isMobile ? 92 : 104).toFixed(2)}%`);
+      particle.style.setProperty("--drift", `${randomBetween(isMobile ? -28 : -96, isMobile ? 28 : 96).toFixed(2)}px`);
       particle.style.setProperty("--size", `${size.toFixed(2)}px`);
       particle.style.setProperty("--duration", `${duration.toFixed(2)}s`);
       particle.style.setProperty("--delay", `${randomBetween(-duration, 0).toFixed(2)}s`);

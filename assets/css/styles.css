@@ -41,12 +41,17 @@
 html {
   background: var(--bg);
   color: var(--white);
+  max-width: 100%;
+  overflow-x: hidden;
   scroll-behavior: smooth;
 }
 
 body {
   margin: 0;
   min-width: 320px;
+  width: 100%;
+  max-width: 100%;
+  overflow-x: hidden;
   font-family: var(--font-body);
   font-weight: 600;
   color: var(--white);
@@ -57,6 +62,11 @@ body {
     var(--metal-texture) center top / 320px repeat,
     url("../media/pattern-bg.png") center top / cover;
   letter-spacing: 0;
+}
+
+#raidlands-app {
+  max-width: 100%;
+  overflow-x: hidden;
 }
 
 body::before {
@@ -96,7 +106,8 @@ img {
 .app-shell {
   position: relative;
   min-height: 100vh;
-  overflow-x: clip;
+  max-width: 100%;
+  overflow-x: hidden;
   overflow-y: visible;
   isolation: isolate;
 }
@@ -173,6 +184,18 @@ img {
 
 .motion-ready .reveal-on-scroll.reveal-right.is-visible {
   animation-name: reveal-right;
+}
+
+@media (max-width: 860px) {
+  .motion-ready .reveal-on-scroll.reveal-left:not(.is-visible),
+  .motion-ready .reveal-on-scroll.reveal-right:not(.is-visible) {
+    transform: translate3d(0, 24px, 0);
+  }
+
+  .motion-ready .reveal-on-scroll.reveal-left.is-visible,
+  .motion-ready .reveal-on-scroll.reveal-right.is-visible {
+    animation-name: reveal-up;
+  }
 }
 
 .app-shell::before {
@@ -1124,14 +1147,14 @@ h3,
   border: 1px solid rgba(181, 170, 160, .25);
   border-radius: var(--radius);
   background:
-    radial-gradient(ellipse at 50% 79%, rgba(255, 90, 12, .36), transparent 47%),
+    radial-gradient(ellipse at 50% 79%, rgba(255, 90, 12, .2), transparent 42%),
     var(--grunge-texture) center / 420px repeat,
     var(--metal-texture) center / 260px repeat,
     linear-gradient(180deg, rgba(35, 33, 30, .94), rgba(10, 10, 10, .97)),
     repeating-linear-gradient(135deg, rgba(255, 138, 40, .07) 0 1px, transparent 1px 18px);
   clip-path: polygon(11px 0, calc(100% - 11px) 0, 100% 11px, 100% calc(100% - 11px), calc(100% - 11px) 100%, 11px 100%, 0 calc(100% - 11px), 0 11px);
   text-align: center;
-  box-shadow: inset 0 -10px 26px rgba(255, 90, 12, .13), inset 0 0 0 1px rgba(255, 255, 255, .04);
+  box-shadow: inset 0 -10px 22px rgba(255, 90, 12, .08), inset 0 0 0 1px rgba(255, 255, 255, .04);
   transition: border-color .16s ease, box-shadow .16s ease, transform .16s ease;
 }
 
@@ -1141,10 +1164,10 @@ h3,
   bottom: 8px;
   left: 10px;
   z-index: -1;
-  height: 20px;
+  height: 16px;
   content: "";
-  background: radial-gradient(ellipse, rgba(255, 90, 12, .72), transparent 70%);
-  filter: blur(5px);
+  background: radial-gradient(ellipse, rgba(255, 90, 12, .38), transparent 70%);
+  filter: blur(4px);
   animation: feature-ember-pulse 3.8s ease-in-out infinite;
 }
 
@@ -1193,6 +1216,18 @@ h3,
   filter: blur(4px);
 }
 
+.quick-feature .feature-symbol {
+  text-shadow: 0 0 8px rgba(255, 138, 40, .22);
+}
+
+.quick-feature .feature-symbol::before {
+  right: 15px;
+  left: 15px;
+  height: 7px;
+  background: radial-gradient(ellipse, rgba(255, 90, 12, .34), transparent 72%);
+  filter: blur(3px);
+}
+
 .feature-symbol-image {
   width: 78px;
   min-width: 78px;
@@ -1212,6 +1247,13 @@ h3,
     drop-shadow(0 10px 16px rgba(0, 0, 0, .34));
 }
 
+.quick-feature .feature-symbol-image img {
+  filter:
+    drop-shadow(0 4px 0 rgba(0, 0, 0, .62))
+    drop-shadow(0 0 7px rgba(255, 138, 40, .14))
+    drop-shadow(0 9px 12px rgba(0, 0, 0, .28));
+}
+
 .feature-symbol svg {
   position: relative;
   width: 58px;
@@ -1224,6 +1266,12 @@ h3,
   filter:
     drop-shadow(0 3px 0 rgba(0, 0, 0, .65))
     drop-shadow(0 0 10px rgba(255, 138, 40, .34));
+}
+
+.quick-feature .feature-symbol svg {
+  filter:
+    drop-shadow(0 3px 0 rgba(0, 0, 0, .65))
+    drop-shadow(0 0 6px rgba(255, 138, 40, .16));
 }
 
 .feature-symbol-label {
@@ -2751,12 +2799,12 @@ h3,
 @keyframes feature-ember-pulse {
   0%,
   100% {
-    opacity: .55;
+    opacity: .28;
     transform: scaleX(.78);
   }
 
   50% {
-    opacity: .95;
+    opacity: .52;
     transform: scaleX(1.04);
   }
 }

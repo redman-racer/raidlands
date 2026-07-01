@@ -30,17 +30,29 @@
   const targetingEl = loader.querySelector("[data-loader-targeting]");
   const reducedMotion = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   const startedAt = performance.now();
-  const minVisibleMs = reducedMotion ? 220 : clamp(Number(data.minVisibleMs) || 520, 260, 2600);
-  const fastTrackAfterMs = reducedMotion ? 0 : clamp(Number(data.fastTrackAfterMs) || 360, 160, 1200);
+  const bootSteps = Array.isArray(data.lines) ? data.lines : [];
+  const hasLoadGate = bootSteps.some(step => step && step.wait === "load");
+  const startupMs = reducedMotion ? 90 : clamp(Number(data.startupMs) || 1500, 700, 2200);
+  const startupColdMs = reducedMotion ? 0 : clamp(Number(data.startupColdMs) || 340, 120, Math.max(120, startupMs - 420));
+  const startupFlickerMs = Math.max(360, startupMs - startupColdMs);
+  const minVisibleMs = reducedMotion ? 120 : clamp(Number(data.minVisibleMs) || startupMs, startupMs, 2200);
+  const fastTrackAfterMs = reducedMotion ? 0 : clamp(Number(data.fastTrackAfterMs) || 260, 80, 800);
   const fadeMs = reducedMotion ? 80 : clamp(Number(data.fadeMs) || 360, 160, 640);
   const maxVisibleMs = clamp(Number(data.maxVisibleMs) || 5000, 2200, 10000);
   const domReadyPromise = waitForDomReady();
   const pageLoadPromise = waitForPageLoad();
   const statusResultPromise = requestServerStatus();
+  let releaseBootConsole = () => {};
+  const bootConsolePromise = new Promise(resolve => {
+    releaseBootConsole = resolve;
+  });
+  let bootProgressLocked = !reducedMotion;
+  const startupPromise = playStartupFlicker();
 
   let currentProgress = 0;
   let domReady = document.readyState !== "loading";
   let pageLoaded = document.readyState === "complete";
+  let loadGateComplete = !hasLoadGate && pageLoaded;
   let linesComplete = false;
   let closed = false;
   let typedLines = 0;
@@ -61,6 +73,9 @@
 
   pageLoadPromise.then(() => {
     pageLoaded = true;
+    if (!hasLoadGate) {
+      loadGateComplete = true;
+    }
     setProgress(Math.max(currentProgress, 86));
     queueScopeSimulation();
   });
@@ -110,17 +125,29 @@
   }
 
   async function runLoader() {
-    const steps = Array.isArray(data.lines) ? data.lines : [];
+    const steps = bootSteps;
     const totalLines = Math.max(1, steps.reduce((total, step) => total + (step.wait ? 2 : 1), 0));
     expectedLines = totalLines;
+    await bootConsolePromise;
 
-    for (const step of steps) {
+    for (let index = 0; index < steps.length; index += 1) {
+      const step = steps[index];
       if (closed) return;
+
+      if (isDecorativeStep(step) && canLeaveBootSequence()) {
+        break;
+      }
+
       await processStep(step, totalLines);
+
+      if (canLeaveBootSequence() && remainingStepsAreDecorative(steps, index + 1)) {
+        break;
+      }
     }
 
     linesComplete = true;
     await pageLoadPromise;
+    await startupPromise;
     await waitForElapsed(minVisibleMs);
     setProgress(100);
     updateState("Entering Raidlands");
@@ -162,6 +189,7 @@
         text: String(step.successText || "[OK] Visual assets mounted")
       });
       markLineComplete(totalLines);
+      loadGateComplete = true;
     }
   }
 
@@ -230,6 +258,52 @@
 
   function shouldFastTrack() {
     return pageLoaded || performance.now() - startedAt >= fastTrackAfterMs;
+  }
+
+  function playStartupFlicker() {
+    if (reducedMotion) {
+      loader.classList.remove("is-power-cold", "is-powering-on");
+      bootProgressLocked = false;
+      releaseBootConsole();
+      return delay(startupMs);
+    }
+
+    loader.classList.add("is-power-cold");
+    loader.classList.remove("is-powering-on");
+    loader.style.setProperty("--loader-startup-ms", `${startupFlickerMs}ms`);
+
+    return delay(startupColdMs)
+      .then(waitForNextPaint)
+      .then(() => {
+        loader.classList.remove("is-power-cold");
+        loader.getBoundingClientRect();
+        loader.classList.add("is-powering-on");
+        return delay(startupFlickerMs);
+      })
+      .then(() => {
+        loader.classList.remove("is-powering-on");
+        bootProgressLocked = false;
+        setProgress(0);
+        releaseBootConsole();
+      });
+  }
+
+  function canLeaveBootSequence() {
+    return loadGateComplete && pageLoaded;
+  }
+
+  function isDecorativeStep(step) {
+    return Boolean(step && step.decorative);
+  }
+
+  function remainingStepsAreDecorative(steps, startIndex) {
+    for (let index = startIndex; index < steps.length; index += 1) {
+      if (!isDecorativeStep(steps[index])) {
+        return false;
+      }
+    }
+
+    return true;
   }
 
   async function requestServerStatus() {
@@ -359,7 +433,7 @@
   }
 
   function setProgress(value) {
-    currentProgress = clamp(value, 0, 100);
+    currentProgress = bootProgressLocked ? 0 : clamp(value, 0, 100);
     const progressStartAngle = -90;
     const progressSweep = currentProgress * 3.6;
     const progressAngle = progressStartAngle + progressSweep;
@@ -644,6 +718,14 @@
     if (remaining > 0) {
       await delay(remaining);
     }
+  }
+
+  function waitForNextPaint() {
+    return new Promise(resolve => {
+      window.requestAnimationFrame(() => {
+        window.requestAnimationFrame(resolve);
+      });
+    });
   }
 
   function exitLoader() {
