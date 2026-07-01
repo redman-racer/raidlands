@@ -39,9 +39,13 @@
   const fastTrackAfterMs = reducedMotion ? 0 : clamp(Number(data.fastTrackAfterMs) || 260, 80, 800);
   const fadeMs = reducedMotion ? 80 : clamp(Number(data.fadeMs) || 360, 160, 640);
   const maxVisibleMs = clamp(Number(data.maxVisibleMs) || 5000, 2200, 10000);
+  const completeHoldMs = reducedMotion ? 120 : clamp(Number(data.completeHoldMs) || 520, 240, 1200);
+  const explosionAssetTimeoutMs = clamp(Number(data.explosionAssetTimeoutMs) || 6500, 1200, 9000);
+  const explosionAssetUrls = normalizeAssetUrls(data.explosionAssetUrls);
   const domReadyPromise = waitForDomReady();
   const pageLoadPromise = waitForPageLoad();
   const statusResultPromise = requestServerStatus();
+  const explosionAssetsPromise = preloadImageAssets(explosionAssetUrls, explosionAssetTimeoutMs);
   let releaseBootConsole = () => {};
   const bootConsolePromise = new Promise(resolve => {
     releaseBootConsole = resolve;
@@ -59,6 +63,7 @@
   let expectedLines = 1;
   let tipIndex = 0;
   let scopeCleanup = null;
+  let finishStarted = false;
   let exitStarted = false;
   let siteRevealDispatched = false;
 
@@ -84,7 +89,7 @@
   const tipTimer = startTipRotation();
   const hardStopTimer = window.setTimeout(() => {
     updateState("Load guard released");
-    exitLoader();
+    finishLoader();
   }, maxVisibleMs);
   const earlyScopeTimer = window.setTimeout(() => {
     if (!closed && !scopeCleanup && !reducedMotion && targetingEl) {
@@ -94,7 +99,7 @@
 
   runLoader().catch(error => {
     console.warn("Raidlands loader failed open.", error);
-    exitLoader();
+    finishLoader();
   });
 
   function readLoaderData(node) {
@@ -124,6 +129,16 @@
     }
   }
 
+  function normalizeAssetUrls(urls) {
+    if (!Array.isArray(urls)) {
+      return [];
+    }
+
+    return [...new Set(urls
+      .map(url => String(url || "").trim())
+      .filter(Boolean))];
+  }
+
   async function runLoader() {
     const steps = bootSteps;
     const totalLines = Math.max(1, steps.reduce((total, step) => total + (step.wait ? 2 : 1), 0));
@@ -149,11 +164,7 @@
     await pageLoadPromise;
     await startupPromise;
     await waitForElapsed(minVisibleMs);
-    setProgress(100);
-    updateState("Entering Raidlands");
-    await delay(reducedMotion ? 16 : 35);
-    window.clearTimeout(hardStopTimer);
-    exitLoader();
+    await finishLoader();
   }
 
   async function processStep(step, totalLines) {
@@ -692,6 +703,77 @@
     };
   }
 
+  function preloadImageAssets(urls, timeoutMs) {
+    if (!urls.length || typeof window.Image !== "function") {
+      return Promise.resolve({ loaded: 0, failed: 0 });
+    }
+
+    return Promise.all(urls.map(url => loadImageAsset(url, timeoutMs)))
+      .then(results => {
+        const failedAssets = results.filter(result => !result.loaded);
+
+        if (failedAssets.length) {
+          console.warn(
+            "Raidlands loader explosion assets were delayed or unavailable.",
+            failedAssets.map(result => `${result.url} (${result.reason})`)
+          );
+        }
+
+        return {
+          loaded: results.length - failedAssets.length,
+          failed: failedAssets.length
+        };
+      });
+  }
+
+  function loadImageAsset(url, timeoutMs) {
+    return new Promise(resolve => {
+      const image = new Image();
+      let settled = false;
+      let timeoutId = 0;
+
+      const finish = (loaded, reason) => {
+        if (settled) return;
+
+        settled = true;
+        window.clearTimeout(timeoutId);
+        image.onload = null;
+        image.onerror = null;
+
+        resolve({
+          url,
+          loaded,
+          reason
+        });
+      };
+
+      const completeLoad = () => {
+        if (typeof image.decode !== "function") {
+          finish(true, "loaded");
+          return;
+        }
+
+        image.decode()
+          .then(() => finish(true, "decoded"))
+          .catch(() => finish(true, "loaded"));
+      };
+
+      timeoutId = window.setTimeout(() => finish(false, "timeout"), timeoutMs);
+      image.decoding = "async";
+      image.onload = completeLoad;
+      image.onerror = () => finish(false, "error");
+      image.src = url;
+
+      if (image.complete) {
+        if (image.naturalWidth > 0 || image.naturalHeight > 0) {
+          completeLoad();
+        } else {
+          finish(false, "error");
+        }
+      }
+    });
+  }
+
   function waitForDomReady() {
     if (document.readyState !== "loading") {
       return Promise.resolve();
@@ -726,6 +808,29 @@
         window.requestAnimationFrame(resolve);
       });
     });
+  }
+
+  async function finishLoader() {
+    if (closed || finishStarted) return;
+
+    finishStarted = true;
+    window.clearTimeout(hardStopTimer);
+
+    try {
+      if (explosionAssetUrls.length) {
+        updateState("Arming breach charges");
+        await explosionAssetsPromise;
+      }
+    } catch (error) {
+      console.warn("Raidlands loader explosion asset gate failed open.", error);
+    }
+
+    if (closed) return;
+
+    setProgress(100);
+    updateState("Entering Raidlands");
+    await delay(completeHoldMs);
+    exitLoader();
   }
 
   function exitLoader() {

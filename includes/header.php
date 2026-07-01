@@ -35,12 +35,9 @@ $linked_player = raidlands_linked_player();
     <link rel="manifest" href="<?= e($base_path . 'site.webmanifest') ?>">
     <link rel="preload" as="image" href="<?= e(asset_url('media/loading/battlefield-background.webp')) ?>" fetchpriority="high">
     <link rel="preload" as="image" href="<?= e(asset_url('media/loading/breach-ring.webp')) ?>">
-    <link rel="preload" as="image" href="<?= e(asset_url('media/loading/raidlands-vfx-01-ground-blast-green.webp')) ?>">
-    <link rel="preload" as="image" href="<?= e(asset_url('media/loading/raidlands-vfx-02-fireball-core-green.webp')) ?>">
-    <link rel="preload" as="image" href="<?= e(asset_url('media/loading/raidlands-vfx-03-molten-debris-burst-green.webp')) ?>">
-    <link rel="preload" as="image" href="<?= e(asset_url('media/loading/raidlands-vfx-04-smoke-plume-green.webp')) ?>">
-    <link rel="preload" as="image" href="<?= e(asset_url('media/loading/raidlands-vfx-05-shockwave-ring-green.webp')) ?>">
-    <link rel="preload" as="image" href="<?= e(asset_url('media/loading/raidlands-vfx-06-ember-field-green.webp')) ?>">
+    <?php foreach ((array) ($loader_payload['explosionAssetUrls'] ?? []) as $explosion_asset_url) : ?>
+      <link rel="preload" as="image" href="<?= e((string) $explosion_asset_url) ?>">
+    <?php endforeach; ?>
     <?php if ($page_id === 'home') : ?>
       <link rel="preload" as="image" href="<?= e(asset_url('media/website-hero-raid-overlook-v4.webp')) ?>" fetchpriority="high">
       <link rel="preload" as="image" href="<?= e(asset_url('media/raidlands-logo.webp')) ?>">

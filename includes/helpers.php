@@ -88,6 +88,14 @@ function raidlands_loader_payload(): array
 {
     global $base_path, $page_copy, $page_id, $site_config;
 
+    $explosion_asset_urls = [
+        asset_url('media/loading/raidlands-vfx-01-ground-blast-green.webp'),
+        asset_url('media/loading/raidlands-vfx-02-fireball-core-green.webp'),
+        asset_url('media/loading/raidlands-vfx-03-molten-debris-burst-green.webp'),
+        asset_url('media/loading/raidlands-vfx-04-smoke-plume-green.webp'),
+        asset_url('media/loading/raidlands-vfx-05-shockwave-ring-green.webp'),
+        asset_url('media/loading/raidlands-vfx-06-ember-field-green.webp'),
+    ];
     $linked_player = raidlands_linked_player();
     $page_meta = $page_copy[$page_id] ?? $page_copy['home'];
     $player_name = '';
@@ -117,8 +125,11 @@ function raidlands_loader_payload(): array
         'startupColdMs' => 340,
         'startupMs' => 1500,
         'minVisibleMs' => 1500,
+        'completeHoldMs' => 560,
         'fastTrackAfterMs' => 260,
         'fadeMs' => 520,
+        'explosionAssetUrls' => $explosion_asset_urls,
+        'explosionAssetTimeoutMs' => 6500,
         'fallbackStatus' => [
             'online' => (bool) ($site_config['serverOnline'] ?? false),
             'statusLabel' => !empty($site_config['serverOnline']) ? 'Online' : 'Offline',
