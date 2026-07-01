@@ -119,6 +119,10 @@ function raidlands_loader_payload(): array
         asset_url('media/loading/raidlands-vfx-05-shockwave-ring-green.webp'),
         asset_url('media/loading/raidlands-vfx-06-ember-field-green.webp'),
     ];
+    $mobile_explosion_asset_urls = [
+        $explosion_asset_urls[0],
+        $explosion_asset_urls[3],
+    ];
     $linked_player = raidlands_linked_player();
     $page_meta = $page_copy[$page_id] ?? $page_copy['home'];
     $player_name = '';
@@ -152,6 +156,7 @@ function raidlands_loader_payload(): array
         'fastTrackAfterMs' => 260,
         'fadeMs' => 520,
         'explosionAssetUrls' => $explosion_asset_urls,
+        'mobileExplosionAssetUrls' => $mobile_explosion_asset_urls,
         'explosionAssetTimeoutMs' => 6500,
         'fallbackStatus' => [
             'online' => (bool) ($site_config['serverOnline'] ?? false),

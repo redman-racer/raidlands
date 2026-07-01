@@ -1816,6 +1816,55 @@ html.raidlands-loading .raidlands-loader.is-exploding {
   }
 }
 
+@keyframes raidlands-loader-mobile-fallback-ground {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 25%) scale(.54);
+    filter: saturate(1.14) brightness(.96) blur(.6px);
+  }
+
+  24% {
+    opacity: .92;
+    transform: translate(-50%, 24%) scale(.82);
+    filter: saturate(1.28) brightness(1.2) blur(.2px);
+  }
+
+  58% {
+    opacity: .72;
+    transform: translate(-50%, 24%) scale(.98);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 24%) scale(1.08);
+    filter: saturate(.82) brightness(.78) blur(5px);
+  }
+}
+
+@keyframes raidlands-loader-mobile-fallback-smoke {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -43%) scale(.5);
+    filter: saturate(.9) contrast(1.1) brightness(.88) blur(.4px);
+  }
+
+  34% {
+    opacity: .62;
+    transform: translate(-50%, -43%) scale(.72);
+  }
+
+  68% {
+    opacity: .48;
+    transform: translate(-50%, -43%) scale(.86);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -43%) scale(.96);
+    filter: saturate(.72) contrast(.96) brightness(.68) blur(6px);
+  }
+}
+
 @keyframes raidlands-loader-breach-bloom {
   0% {
     opacity: 0;
@@ -2472,6 +2521,38 @@ html.raidlands-loader-mobile-lite .raidlands-loader.is-exploding .raidlands-load
   display: none;
 }
 
+html.raidlands-loader-mobile-lite .raidlands-loader.is-mobile-explosion-fallback .raidlands-loader-vfx--ground {
+  background-image:
+    radial-gradient(ellipse at 50% 74%, rgba(245, 255, 182, .95) 0 4%, rgba(134, 255, 140, .68) 9%, rgba(255, 148, 52, .5) 17%, rgba(255, 92, 24, .22) 27%, transparent 48%),
+    radial-gradient(ellipse at 50% 92%, rgba(86, 255, 133, .36) 0 12%, rgba(255, 116, 34, .32) 28%, transparent 62%),
+    linear-gradient(90deg, transparent 0 14%, rgba(120, 255, 156, .2) 42%, rgba(255, 190, 92, .24) 50%, rgba(120, 255, 156, .2) 58%, transparent 86%);
+  background-size: 100% 100%;
+  filter:
+    saturate(1.22)
+    brightness(1.13)
+    blur(.2px)
+    drop-shadow(0 0 34px rgba(106, 255, 142, .24))
+    drop-shadow(0 0 46px rgba(255, 120, 32, .3));
+  mix-blend-mode: screen;
+}
+
+html.raidlands-loader-mobile-lite .raidlands-loader.is-mobile-explosion-fallback .raidlands-loader-vfx--smoke {
+  background-image:
+    radial-gradient(ellipse at 50% 58%, rgba(176, 194, 164, .34) 0 16%, rgba(73, 92, 74, .46) 35%, rgba(14, 20, 16, .48) 54%, transparent 74%),
+    radial-gradient(ellipse at 38% 64%, rgba(88, 255, 128, .18) 0 16%, transparent 45%),
+    radial-gradient(ellipse at 62% 62%, rgba(255, 136, 46, .2) 0 18%, transparent 48%);
+  background-size: 100% 100%;
+  filter: saturate(.9) contrast(1.12) brightness(.9) blur(.4px);
+}
+
+html.raidlands-loader-mobile-lite .raidlands-loader.is-mobile-explosion-fallback.is-exploding .raidlands-loader-vfx--ground {
+  animation: raidlands-loader-mobile-fallback-ground 540ms cubic-bezier(.12, .78, .2, 1) both !important;
+}
+
+html.raidlands-loader-mobile-lite .raidlands-loader.is-mobile-explosion-fallback.is-exploding .raidlands-loader-vfx--smoke {
+  animation: raidlands-loader-mobile-fallback-smoke 560ms 70ms ease-out both !important;
+}
+
 @media (prefers-reduced-motion: reduce) {
   .raidlands-loader,
   .raidlands-loader::before,
@@ -2523,6 +2604,14 @@ html.raidlands-loader-mobile-lite .raidlands-loader.is-exploding .raidlands-load
   .raidlands-loader.is-exploding .raidlands-loader-vfx--shockwave,
   .raidlands-loader.is-exploding .raidlands-loader-vfx--embers {
     display: none;
+  }
+
+  html.raidlands-loader-mobile-lite .raidlands-loader.is-mobile-explosion-fallback.is-exploding .raidlands-loader-vfx--ground {
+    animation: raidlands-loader-reduced-ground 520ms ease-out both !important;
+  }
+
+  html.raidlands-loader-mobile-lite .raidlands-loader.is-mobile-explosion-fallback.is-exploding .raidlands-loader-vfx--smoke {
+    animation: raidlands-loader-reduced-smoke 560ms 70ms ease-out both !important;
   }
 
   .raidlands-loader-breach {

@@ -42,11 +42,23 @@
   const maxVisibleMs = clamp(Number(data.maxVisibleMs) || 5000, 2200, 10000);
   const completeHoldMs = reducedMotion ? 120 : mobilePerformance ? clamp(Number(data.completeHoldMs) || 280, 180, 520) : clamp(Number(data.completeHoldMs) || 520, 240, 1200);
   const explosionAssetTimeoutMs = clamp(Number(data.explosionAssetTimeoutMs) || 6500, 1200, 9000);
-  const explosionAssetUrls = mobilePerformance ? [] : normalizeAssetUrls(data.explosionAssetUrls);
+  const allExplosionAssetUrls = normalizeAssetUrls(data.explosionAssetUrls);
+  const mobileExplosionAssetUrls = getMobileExplosionAssetUrls(data.mobileExplosionAssetUrls, allExplosionAssetUrls);
+  const explosionAssetUrls = mobilePerformance ? [] : allExplosionAssetUrls;
   const domReadyPromise = waitForDomReady();
   const pageLoadPromise = waitForPageLoad();
   const statusResultPromise = requestServerStatus();
   const explosionAssetsPromise = preloadImageAssets(explosionAssetUrls, explosionAssetTimeoutMs);
+  let mobileExplosionAssetsReady = false;
+  if (mobilePerformance) {
+    preloadImageAssets(mobileExplosionAssetUrls, explosionAssetTimeoutMs).then(result => {
+      mobileExplosionAssetsReady = mobileExplosionAssetUrls.length > 0
+        && result.loaded === mobileExplosionAssetUrls.length
+        && result.failed === 0;
+
+      return result;
+    });
+  }
   let releaseBootConsole = () => {};
   const bootConsolePromise = new Promise(resolve => {
     releaseBootConsole = resolve;
@@ -144,6 +156,16 @@
     return [...new Set(urls
       .map(url => String(url || "").trim())
       .filter(Boolean))];
+  }
+
+  function getMobileExplosionAssetUrls(urls, desktopUrls) {
+    const mobileUrls = normalizeAssetUrls(urls);
+
+    if (mobileUrls.length) {
+      return mobileUrls;
+    }
+
+    return [desktopUrls[0], desktopUrls[3]].filter(Boolean);
   }
 
   async function runLoader() {
@@ -904,6 +926,13 @@
     loader.style.setProperty("--breach-y", `${originY}%`);
     loader.style.setProperty("--explosion-origin-x", `${originX}%`);
     loader.style.setProperty("--explosion-origin-y", `${originY}%`);
+
+    if (mobilePerformance) {
+      loader.classList.toggle("is-mobile-explosion-ready", mobileExplosionAssetsReady);
+      loader.classList.toggle("is-mobile-explosion-fallback", !mobileExplosionAssetsReady);
+    } else {
+      loader.classList.remove("is-mobile-explosion-ready", "is-mobile-explosion-fallback");
+    }
 
     if (!reducedMotion && !mobilePerformance) {
       prepareLoaderElementBlast(originX, originY);

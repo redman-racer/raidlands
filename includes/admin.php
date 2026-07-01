@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/store.php';
+require_once __DIR__ . '/feedback.php';
 
 function raidlands_admin_boot(): void
 {
@@ -54,6 +55,12 @@ function raidlands_admin_handle_request(): void
                     $ends_at === '' ? null : $ends_at
                 );
                 raidlands_admin_set_flash('success', 'Manual entitlement granted.');
+            } elseif ($section === 'feedback') {
+                $updated = raidlands_feedback_admin_save_rows($_POST['feedback_rows'] ?? []);
+                $message = $updated === 0
+                    ? 'No feedback items changed.'
+                    : ($updated === 1 ? 'Feedback item updated.' : $updated . ' feedback items updated.');
+                raidlands_admin_set_flash('success', $message);
             } else {
                 raidlands_admin_save_content(raidlands_admin_build_content_from_post($_POST, $section));
                 raidlands_admin_set_flash('success', 'Site settings saved.');
@@ -183,7 +190,7 @@ function raidlands_admin_redirect(?string $section = null): void
 
 function raidlands_admin_section_keys(): array
 {
-    return ['identity', 'links', 'wipe', 'features', 'pages', 'seo', 'store', 'grants', 'sync'];
+    return ['identity', 'links', 'wipe', 'features', 'pages', 'seo', 'feedback', 'store', 'grants', 'sync'];
 }
 
 function raidlands_admin_clean_section($section): string

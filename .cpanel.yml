@@ -1,0 +1,27 @@
+---
+# Default target for a primary cPanel domain. For an addon domain or subdomain,
+# change this to that domain's document root, for example:
+# export DEPLOYPATH="$HOME/public_html/raidlands/"
+deployment:
+  tasks:
+    - 'export DEPLOYPATH="$HOME/public_html/"'
+    - '/bin/mkdir -p "$DEPLOYPATH"'
+
+    # Root web files. The live .env file is intentionally not deployed from Git.
+    - '/bin/cp .htaccess .env.example browserconfig.xml composer.json composer.lock favicon.ico index.php robots.txt site.webmanifest "$DEPLOYPATH"'
+
+    # Public routes, shared PHP includes, APIs, and assets.
+    - '/bin/cp -R admin api assets bans clans discord events features includes leaderboard link pages play privacy profile rules store support terms vote "$DEPLOYPATH"'
+
+    # Operator/setup references that are safe to publish with the site checkout.
+    - '/bin/cp -R database docs server-plugins "$DEPLOYPATH"'
+
+    # Protect private runtime data while preserving host-created JSON/secrets.
+    - '/bin/mkdir -p "$DEPLOYPATH/data"'
+    - '/bin/cp data/.htaccess data/raidlands-secrets.example.php "$DEPLOYPATH/data/"'
+
+    # vendor/ is ignored in Git. Copy it if present, otherwise install it on-host.
+    - 'if [ -d vendor ]; then /bin/cp -R vendor "$DEPLOYPATH"; fi'
+    - 'if [ ! -d "$DEPLOYPATH/vendor" ] && [ -x /opt/cpanel/composer/bin/composer ]; then cd "$DEPLOYPATH" && /opt/cpanel/composer/bin/composer install --no-dev --optimize-autoloader --no-interaction; fi'
+    - 'if [ ! -d "$DEPLOYPATH/vendor" ] && command -v composer >/dev/null 2>&1; then cd "$DEPLOYPATH" && composer install --no-dev --optimize-autoloader --no-interaction; fi'
+    - 'if [ ! -d "$DEPLOYPATH/vendor" ]; then echo "Raidlands deploy failed: vendor/ is missing. Run composer install on the host or upload vendor/ before deploying."; exit 1; fi'

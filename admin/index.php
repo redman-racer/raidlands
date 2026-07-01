@@ -25,6 +25,7 @@ $admin_sections = [
     'features' => ['label' => 'Features', 'kicker' => 'Content', 'title' => 'Feature Lists', 'summary' => 'Homepage feature chips, feature cards, and roadmap cards.'],
     'pages' => ['label' => 'Pages', 'kicker' => 'Copy', 'title' => 'Hero Copy', 'summary' => 'The title and intro text shown at the top of each page.'],
     'seo' => ['label' => 'SEO', 'kicker' => 'Search', 'title' => 'SEO Metadata', 'summary' => 'Browser titles, descriptions, and social sharing copy.'],
+    'feedback' => ['label' => 'Feedback', 'kicker' => 'Inbox', 'title' => 'Player Feedback', 'summary' => 'Bug reports, suggestions, and feature requests submitted from the support page.'],
     'store' => ['label' => 'Store', 'kicker' => 'VIP', 'title' => 'Products and Prices', 'summary' => 'VIP tiers, one-time perks, Stripe Price IDs, and managed Oxide groups.'],
     'grants' => ['label' => 'Grants', 'kicker' => 'Access', 'title' => 'Manual Entitlement Grant', 'summary' => 'Grant a product to a SteamID64 without going through Stripe.'],
     'sync' => ['label' => 'Sync', 'kicker' => 'Bridge', 'title' => 'WebsiteVipBridge State', 'summary' => 'Entitlement sync, stats ingest status, and server API endpoints.'],
@@ -36,6 +37,10 @@ $admin_store_error = '';
 $admin_store_rows = [];
 $admin_store_catalog = ['products' => []];
 $admin_sync_rows = [];
+$admin_feedback_rows = [];
+$admin_feedback_counts = [];
+$admin_feedback_ready = false;
+$admin_feedback_error = '';
 $admin_stats_summary = [
     'ready' => false,
     'active_wipe' => null,
@@ -62,6 +67,17 @@ try {
     if ($active_section === 'sync' && $admin_store_ready) {
         $admin_sync_rows = raidlands_store_recent_sync_rows(30);
         $admin_stats_summary = raidlands_stats_admin_summary();
+    }
+
+    if ($active_section === 'feedback') {
+        $admin_feedback_ready = raidlands_feedback_is_ready();
+
+        if ($admin_feedback_ready) {
+            $admin_feedback_rows = raidlands_feedback_submissions();
+            $admin_feedback_counts = raidlands_feedback_status_counts($admin_feedback_rows);
+        } else {
+            $admin_feedback_error = raidlands_feedback_readiness_message(true);
+        }
     }
 } catch (Throwable $error) {
     $admin_store_ready = false;
@@ -92,9 +108,132 @@ function admin_check_copy(string $label, string $help): string
         . '<small class="admin-help-text">' . e($help) . '</small></span>';
 }
 
+function admin_hint(string $text): string
+{
+    return '<small class="admin-inline-hint">' . e($text) . '</small>';
+}
+
+function admin_option_map(array $options, array $current_values = []): array
+{
+    $result = [];
+
+    foreach ($options as $value => $label) {
+        if (is_int($value)) {
+            $value = $label;
+        }
+
+        $value = trim((string) $value);
+        $label = trim((string) $label);
+
+        if ($value === '') {
+            continue;
+        }
+
+        $result[$value] = $label !== '' ? $label : $value;
+    }
+
+    foreach ($current_values as $value) {
+        $value = trim((string) $value);
+
+        if ($value !== '' && !isset($result[$value])) {
+            $result[$value] = $value . ' (custom)';
+        }
+    }
+
+    return $result;
+}
+
+function admin_render_options(array $options, string $selected = ''): string
+{
+    $selected = (string) $selected;
+    $html = '';
+
+    foreach (admin_option_map($options, [$selected]) as $value => $label) {
+        $html .= '<option value="' . e($value) . '"' . ($selected === $value ? ' selected' : '') . '>' . e($label) . '</option>';
+    }
+
+    return $html;
+}
+
+function admin_render_datalist(string $id, array $options, array $current_values = []): string
+{
+    $html = '<datalist id="' . e($id) . '">';
+
+    foreach (admin_option_map($options, $current_values) as $value => $label) {
+        $html .= '<option value="' . e($value) . '">' . e($label) . '</option>';
+    }
+
+    return $html . '</datalist>';
+}
+
 function admin_status_options(): array
 {
     return ['Launch target', 'Planned', 'Under review', 'In development', 'After launch', 'Live'];
+}
+
+function admin_feature_icon_options(array $current_values = []): array
+{
+    global $feature_icon_aliases, $feature_icon_assets;
+
+    $values = [];
+
+    foreach (array_keys((array) ($feature_icon_assets ?? [])) as $icon) {
+        $values[] = (string) $icon;
+    }
+
+    foreach ((array) ($feature_icon_aliases ?? []) as $alias => $canonical) {
+        $values[] = (string) $alias;
+        $values[] = (string) $canonical;
+    }
+
+    $values = admin_option_map($values, $current_values);
+    ksort($values, SORT_NATURAL | SORT_FLAG_CASE);
+
+    return $values;
+}
+
+function admin_status_provider_options(string $current = ''): array
+{
+    return admin_option_map([
+        'battlemetrics' => 'BattleMetrics',
+    ], [$current]);
+}
+
+function admin_timezone_options(string $current = ''): array
+{
+    return admin_option_map([
+        'America/Chicago' => 'America/Chicago',
+        'America/New_York' => 'America/New_York',
+        'America/Denver' => 'America/Denver',
+        'America/Los_Angeles' => 'America/Los_Angeles',
+        'Europe/London' => 'Europe/London',
+        'UTC' => 'UTC',
+    ], [$current]);
+}
+
+function admin_currency_options(array $current_values = []): array
+{
+    return admin_option_map([
+        'usd' => 'USD',
+        'cad' => 'CAD',
+        'eur' => 'EUR',
+        'gbp' => 'GBP',
+        'aud' => 'AUD',
+    ], $current_values);
+}
+
+function admin_price_label_options(array $current_values = []): array
+{
+    return admin_option_map(['Monthly', 'One-time', 'Lifetime', 'Wipe', 'Season', 'Limited'], $current_values);
+}
+
+function admin_product_type_options(): array
+{
+    return [
+        'vip_subscription' => 'Monthly VIP',
+        'one_time_perk' => 'One-time perk',
+        'one_time_kit_unlock' => 'One-time kit unlock',
+    ];
 }
 ?>
 <!doctype html>
@@ -214,20 +353,22 @@ function admin_status_options(): array
                   <section class="admin-section">
                     <div class="admin-grid three">
                       <label class="admin-field">
-                        <?= admin_field_head('Server name', 'Used in the browser config, status API fallback, and places where the site names the server.') ?>
-                        <input type="text" name="site_config[serverName]" value="<?= e((string) ($admin_site['serverName'] ?? '')) ?>">
+                        <?= admin_field_head('Server name', 'Public server name used in page headers, browser metadata, and status fallbacks.') ?>
+                        <input type="text" name="site_config[serverName]" maxlength="120" placeholder="Raidlands 1000x" value="<?= e((string) ($admin_site['serverName'] ?? '')) ?>">
+                        <?= admin_hint('Changes public brand text. It does not rename the Rust server inside BattleMetrics.') ?>
                       </label>
                       <label class="admin-field">
                         <?= admin_field_head('Tagline', 'Short brand line shown in page heroes and reusable headers.') ?>
-                        <input type="text" name="site_config[tagline]" value="<?= e((string) ($admin_site['tagline'] ?? '')) ?>">
+                        <input type="text" name="site_config[tagline]" maxlength="160" placeholder="Raid. Respawn. Rebuild. Repeat." value="<?= e((string) ($admin_site['tagline'] ?? '')) ?>">
                       </label>
                       <label class="admin-field">
                         <?= admin_field_head('Region', 'Shown in the server status panel so players know the server location.') ?>
-                        <input type="text" name="site_config[region]" value="<?= e((string) ($admin_site['region'] ?? '')) ?>">
+                        <input type="text" name="site_config[region]" maxlength="80" placeholder="US Central" value="<?= e((string) ($admin_site['region'] ?? '')) ?>">
                       </label>
                       <label class="admin-field">
-                        <?= admin_field_head('Map name', 'Fallback map label shown before live BattleMetrics data loads or when it is unavailable.') ?>
-                        <input type="text" name="site_config[mapName]" value="<?= e((string) ($admin_site['mapName'] ?? '')) ?>">
+                        <?= admin_field_head('Fallback map name', 'Map label shown before live BattleMetrics data loads or when it is unavailable.') ?>
+                        <input type="text" name="site_config[mapName]" maxlength="120" placeholder="Procedural Battlefield" value="<?= e((string) ($admin_site['mapName'] ?? '')) ?>">
+                        <?= admin_hint('Live status can override this when BattleMetrics responds.') ?>
                       </label>
                       <label class="admin-field">
                         <?= admin_field_head('Fallback players', 'Player count used only when the live server lookup cannot answer.') ?>
@@ -238,12 +379,12 @@ function admin_status_options(): array
                         <input type="number" min="1" max="9999" name="site_config[maxPlayers]" value="<?= e((string) ($admin_site['maxPlayers'] ?? 0)) ?>">
                       </label>
                       <label class="admin-field">
-                        <?= admin_field_head('Queue', 'Fallback queue count shown when live status is stale or unavailable.') ?>
+                        <?= admin_field_head('Fallback queue', 'Queue count shown only when live status is stale or unavailable.') ?>
                         <input type="number" min="0" max="9999" name="site_config[queue]" value="<?= e((string) ($admin_site['queue'] ?? 0)) ?>">
                       </label>
                       <label class="admin-field">
-                        <?= admin_field_head('Server FPS', 'Fallback performance label shown in the status panel before live FPS is available.') ?>
-                        <input type="text" name="site_config[serverFps]" value="<?= e((string) ($admin_site['serverFps'] ?? '')) ?>">
+                        <?= admin_field_head('Fallback server FPS', 'Performance label shown in the status panel before live FPS is available.') ?>
+                        <input type="text" name="site_config[serverFps]" maxlength="40" placeholder="Stable" value="<?= e((string) ($admin_site['serverFps'] ?? '')) ?>">
                       </label>
                       <label class="admin-check admin-check-field">
                         <input type="checkbox" name="site_config[serverOnline]" value="1" <?= !empty($admin_site['serverOnline']) ? 'checked' : '' ?>>
@@ -257,36 +398,38 @@ function admin_status_options(): array
                   <section class="admin-section">
                     <div class="admin-grid two">
                       <label class="admin-field">
-                        <?= admin_field_head('Connect command', 'The exact Rust console command copied by the site buttons.') ?>
-                        <input type="text" name="site_config[connectCommand]" value="<?= e((string) ($admin_site['connectCommand'] ?? '')) ?>">
+                        <?= admin_field_head('Connect command', 'The exact Rust console command copied by players from the site.') ?>
+                        <input type="text" name="site_config[connectCommand]" maxlength="180" placeholder="connect raidlands.net:25607" value="<?= e((string) ($admin_site['connectCommand'] ?? '')) ?>">
+                        <?= admin_hint('Used by copy buttons and fallback join instructions.') ?>
                       </label>
                       <label class="admin-field">
                         <?= admin_field_head('Steam connect URL', 'The steam:// link used by Join Server and Launch Rust buttons.') ?>
-                        <input type="text" name="site_config[steamConnectUrl]" value="<?= e((string) ($admin_site['steamConnectUrl'] ?? '')) ?>">
+                        <input type="text" name="site_config[steamConnectUrl]" maxlength="240" placeholder="steam://connect/raidlands.net:25607" value="<?= e((string) ($admin_site['steamConnectUrl'] ?? '')) ?>">
                       </label>
                       <label class="admin-field">
                         <?= admin_field_head('Discord invite URL', 'Every Discord call-to-action points here.') ?>
-                        <input type="url" name="site_config[discordInviteUrl]" value="<?= e((string) ($admin_site['discordInviteUrl'] ?? '')) ?>">
+                        <input type="url" name="site_config[discordInviteUrl]" maxlength="240" placeholder="https://discord.gg/..." value="<?= e((string) ($admin_site['discordInviteUrl'] ?? '')) ?>">
                       </label>
                       <label class="admin-field">
-                        <?= admin_field_head('BattleMetrics server ID', 'Numeric server ID used by api/server-status.php for live player and server data.') ?>
-                        <input type="text" name="site_config[serverStats][battleMetricsServerId]" value="<?= e((string) ($admin_site['serverStats']['battleMetricsServerId'] ?? '')) ?>">
+                        <?= admin_field_head('BattleMetrics server ID', 'Numeric BattleMetrics ID used by api/server-status.php for live players, queue, map, and FPS.') ?>
+                        <input type="text" inputmode="numeric" pattern="[0-9]*" name="site_config[serverStats][battleMetricsServerId]" placeholder="39516376" value="<?= e((string) ($admin_site['serverStats']['battleMetricsServerId'] ?? '')) ?>">
                       </label>
                       <label class="admin-field">
-                        <?= admin_field_head('Status provider', 'Currently expects battlemetrics; this leaves room for another provider later.') ?>
-                        <input type="text" name="site_config[serverStats][provider]" value="<?= e((string) ($admin_site['serverStats']['provider'] ?? 'battlemetrics')) ?>">
+                        <?= admin_field_head('Status provider', 'Live status currently expects BattleMetrics. Custom values are preserved for future integrations.') ?>
+                        <?= admin_render_datalist('admin-status-provider-options', admin_status_provider_options((string) ($admin_site['serverStats']['provider'] ?? 'battlemetrics'))) ?>
+                        <input type="text" list="admin-status-provider-options" name="site_config[serverStats][provider]" maxlength="40" value="<?= e((string) ($admin_site['serverStats']['provider'] ?? 'battlemetrics')) ?>">
                       </label>
                       <label class="admin-field">
                         <?= admin_field_head('Status cache seconds', 'How long the status API can reuse a BattleMetrics response before checking again.') ?>
                         <input type="number" min="30" max="3600" name="site_config[serverStats][cacheSeconds]" value="<?= e((string) ($admin_site['serverStats']['cacheSeconds'] ?? 60)) ?>">
                       </label>
                       <label class="admin-field">
-                        <?= admin_field_head('Steam OAuth URL', 'Legacy placeholder. Native Steam sign-in now uses Steam OpenID from /link/.') ?>
-                        <input type="url" name="site_config[auth][steamUrl]" value="<?= e((string) ($admin_site['auth']['steamUrl'] ?? '')) ?>">
+                        <?= admin_field_head('Steam OAuth URL', 'Legacy placeholder only. Native Steam sign-in now starts from /link/?action=steam.') ?>
+                        <input type="url" name="site_config[auth][steamUrl]" maxlength="240" placeholder="Leave blank unless a future custom Steam link needs it" value="<?= e((string) ($admin_site['auth']['steamUrl'] ?? '')) ?>">
                       </label>
                       <label class="admin-field">
                         <?= admin_field_head('Discord OAuth URL', 'Future account-link button destination. Leave blank until the Discord login backend exists.') ?>
-                        <input type="url" name="site_config[auth][discordUrl]" value="<?= e((string) ($admin_site['auth']['discordUrl'] ?? '')) ?>">
+                        <input type="url" name="site_config[auth][discordUrl]" maxlength="240" placeholder="Leave blank until Discord login exists" value="<?= e((string) ($admin_site['auth']['discordUrl'] ?? '')) ?>">
                       </label>
                     </div>
                   </section>
@@ -300,8 +443,10 @@ function admin_status_options(): array
                         <input type="time" name="site_config[wipe][time]" value="<?= e((string) ($admin_site['wipe']['time'] ?? '19:00')) ?>">
                       </label>
                       <label class="admin-field">
-                        <?= admin_field_head('Timezone', 'Timezone label used when calculating and displaying wipe times.') ?>
-                        <input type="text" name="site_config[wipe][timezone]" value="<?= e((string) ($admin_site['wipe']['timezone'] ?? 'America/Chicago')) ?>">
+                        <?= admin_field_head('Timezone', 'IANA timezone used when calculating and displaying wipe times.') ?>
+                        <?= admin_render_datalist('admin-timezone-options', admin_timezone_options((string) ($admin_site['wipe']['timezone'] ?? 'America/Chicago'))) ?>
+                        <input type="text" list="admin-timezone-options" name="site_config[wipe][timezone]" maxlength="80" placeholder="America/Chicago" value="<?= e((string) ($admin_site['wipe']['timezone'] ?? 'America/Chicago')) ?>">
+                        <?= admin_hint('Examples: America/Chicago, Europe/London, UTC. The countdown uses this value.') ?>
                       </label>
                       <div class="admin-field admin-span-all">
                         <?= admin_field_head('Wipe days', 'Selected days drive countdowns, next wipe labels, and schedule copy generated from config.') ?>
@@ -319,32 +464,49 @@ function admin_status_options(): array
                 <?php endif; ?>
 
                 <?php if ($active_section === 'features') : ?>
-                  <datalist id="admin-status-options">
-                    <?php foreach (admin_status_options() as $status_option) : ?>
-                      <option value="<?= e($status_option) ?>"></option>
-                    <?php endforeach; ?>
-                  </datalist>
+                  <?php
+                    $quick_rows = array_values($content['quick_features']);
+                    $feature_rows = array_values($content['feature_cards']);
+                    $roadmap_rows = array_values($content['roadmap_cards']);
+                    $admin_feature_icon_values = [];
+                    $admin_feature_status_values = [];
+
+                    foreach ($quick_rows as $row) {
+                        $admin_feature_icon_values[] = (string) ($row[0] ?? '');
+                    }
+
+                    foreach ($feature_rows as $row) {
+                        $admin_feature_icon_values[] = (string) ($row[0] ?? '');
+                        $admin_feature_status_values[] = (string) ($row[3] ?? '');
+                    }
+
+                    foreach ($roadmap_rows as $row) {
+                        $admin_feature_status_values[] = (string) ($row[2] ?? '');
+                    }
+
+                    echo admin_render_datalist('admin-feature-icon-options', admin_feature_icon_options($admin_feature_icon_values));
+                    echo admin_render_datalist('admin-status-options', admin_status_options(), $admin_feature_status_values);
+                  ?>
 
                   <section class="admin-section">
                     <div class="admin-subsection-head">
                       <h3>Quick Feature Chips</h3>
-                      <p>Small chips shown near the homepage hero. Use icon aliases like GATHER, KIT, TP, CLAN, SKIN, PACK, RAID, or STAFF.</p>
+                      <p>Small chips shown near the homepage hero. Icon suggestions come from the current Raidlands feature icon aliases.</p>
                     </div>
                     <div class="admin-repeat-list compact">
                       <?php
-                        $quick_rows = array_values($content['quick_features']);
                         $quick_total = count($quick_rows) + 4;
                       ?>
                       <?php for ($index = 0; $index < $quick_total; $index += 1) : ?>
                         <?php $row = $quick_rows[$index] ?? ['', '']; ?>
                         <article class="admin-repeat-row">
                           <label class="admin-field">
-                            <?= admin_field_head('Icon', 'The icon alias used by the chip. Unknown aliases render as text.') ?>
-                            <input type="text" name="quick_features_rows[<?= e((string) $index) ?>][icon]" value="<?= e((string) ($row[0] ?? '')) ?>">
+                            <?= admin_field_head('Icon alias', 'Icon alias used by the chip. Suggested aliases render image icons; custom text is preserved.') ?>
+                            <input type="text" list="admin-feature-icon-options" name="quick_features_rows[<?= e((string) $index) ?>][icon]" maxlength="24" placeholder="GATHER" value="<?= e((string) ($row[0] ?? '')) ?>">
                           </label>
                           <label class="admin-field">
                             <?= admin_field_head('Label', 'The short chip text players see.') ?>
-                            <input type="text" name="quick_features_rows[<?= e((string) $index) ?>][label]" value="<?= e((string) ($row[1] ?? '')) ?>">
+                            <input type="text" name="quick_features_rows[<?= e((string) $index) ?>][label]" maxlength="80" placeholder="1000x Gather" value="<?= e((string) ($row[1] ?? '')) ?>">
                           </label>
                           <?php if (isset($quick_rows[$index])) : ?>
                             <label class="admin-check admin-delete-check">
@@ -364,7 +526,6 @@ function admin_status_options(): array
                     </div>
                     <div class="admin-repeat-list">
                       <?php
-                        $feature_rows = array_values($content['feature_cards']);
                         $feature_total = count($feature_rows) + 3;
                       ?>
                       <?php for ($index = 0; $index < $feature_total; $index += 1) : ?>
@@ -381,20 +542,20 @@ function admin_status_options(): array
                           </div>
                           <div class="admin-grid feature-card-grid">
                             <label class="admin-field">
-                              <?= admin_field_head('Icon', 'Icon alias shown above the card title.') ?>
-                              <input type="text" name="feature_cards_rows[<?= e((string) $index) ?>][icon]" value="<?= e((string) ($row[0] ?? '')) ?>">
+                              <?= admin_field_head('Icon alias', 'Icon alias shown above the card title. Use suggestions like GATHER, PVP, KIT, TP, or STAFF.') ?>
+                              <input type="text" list="admin-feature-icon-options" name="feature_cards_rows[<?= e((string) $index) ?>][icon]" maxlength="24" placeholder="PVP" value="<?= e((string) ($row[0] ?? '')) ?>">
                             </label>
                             <label class="admin-field">
                               <?= admin_field_head('Title', 'Card heading shown to players.') ?>
-                              <input type="text" name="feature_cards_rows[<?= e((string) $index) ?>][title]" value="<?= e((string) ($row[1] ?? '')) ?>">
+                              <input type="text" name="feature_cards_rows[<?= e((string) $index) ?>][title]" maxlength="120" placeholder="Battlefield PvP" value="<?= e((string) ($row[1] ?? '')) ?>">
                             </label>
                             <label class="admin-field">
                               <?= admin_field_head('Status', 'Badge text shown on the card. You can type a custom status.') ?>
-                              <input type="text" list="admin-status-options" name="feature_cards_rows[<?= e((string) $index) ?>][status]" value="<?= e((string) ($row[3] ?? '')) ?>">
+                              <input type="text" list="admin-status-options" name="feature_cards_rows[<?= e((string) $index) ?>][status]" maxlength="80" placeholder="Live" value="<?= e((string) ($row[3] ?? '')) ?>">
                             </label>
                             <label class="admin-field admin-span-all">
                               <?= admin_field_head('Copy', 'Short card description. Keep it scan-friendly.') ?>
-                              <textarea name="feature_cards_rows[<?= e((string) $index) ?>][copy]" rows="3"><?= e((string) ($row[2] ?? '')) ?></textarea>
+                              <textarea name="feature_cards_rows[<?= e((string) $index) ?>][copy]" rows="3" maxlength="360"><?= e((string) ($row[2] ?? '')) ?></textarea>
                             </label>
                           </div>
                         </article>
@@ -409,7 +570,6 @@ function admin_status_options(): array
                     </div>
                     <div class="admin-repeat-list">
                       <?php
-                        $roadmap_rows = array_values($content['roadmap_cards']);
                         $roadmap_total = count($roadmap_rows) + 3;
                       ?>
                       <?php for ($index = 0; $index < $roadmap_total; $index += 1) : ?>
@@ -427,15 +587,15 @@ function admin_status_options(): array
                           <div class="admin-grid three">
                             <label class="admin-field">
                               <?= admin_field_head('Title', 'Roadmap item heading.') ?>
-                              <input type="text" name="roadmap_cards_rows[<?= e((string) $index) ?>][title]" value="<?= e((string) ($row[0] ?? '')) ?>">
+                              <input type="text" name="roadmap_cards_rows[<?= e((string) $index) ?>][title]" maxlength="120" placeholder="Vote Rewards" value="<?= e((string) ($row[0] ?? '')) ?>">
                             </label>
                             <label class="admin-field">
                               <?= admin_field_head('Status', 'Badge text shown beside the roadmap item.') ?>
-                              <input type="text" list="admin-status-options" name="roadmap_cards_rows[<?= e((string) $index) ?>][status]" value="<?= e((string) ($row[2] ?? '')) ?>">
+                              <input type="text" list="admin-status-options" name="roadmap_cards_rows[<?= e((string) $index) ?>][status]" maxlength="80" placeholder="Next web step" value="<?= e((string) ($row[2] ?? '')) ?>">
                             </label>
                             <label class="admin-field admin-span-all">
                               <?= admin_field_head('Copy', 'Short description of the planned system.') ?>
-                              <textarea name="roadmap_cards_rows[<?= e((string) $index) ?>][copy]" rows="3"><?= e((string) ($row[1] ?? '')) ?></textarea>
+                              <textarea name="roadmap_cards_rows[<?= e((string) $index) ?>][copy]" rows="3" maxlength="360"><?= e((string) ($row[1] ?? '')) ?></textarea>
                             </label>
                           </div>
                         </article>
@@ -448,16 +608,18 @@ function admin_status_options(): array
                   <section class="admin-section">
                     <div class="admin-details-grid">
                       <?php foreach ($admin_page_copy as $copy_key => $copy_row) : ?>
+                        <?php $copy_route = (string) $copy_key === 'home' ? '/' : '/' . (string) $copy_key . '/'; ?>
                         <details class="admin-details">
-                          <summary><?= e(admin_page_label((string) $copy_key)) ?></summary>
+                          <summary><?= e(admin_page_label((string) $copy_key)) ?> <small><?= e($copy_route) ?></small></summary>
+                          <p class="admin-detail-note">Changes the public hero title and intro copy for <?= e($copy_route) ?>.</p>
                           <div class="admin-grid two">
                             <label class="admin-field">
                               <?= admin_field_head('Title', 'Main page title for this route hero.') ?>
-                              <input type="text" name="page_copy[<?= e((string) $copy_key) ?>][title]" value="<?= e((string) ($copy_row['title'] ?? '')) ?>">
+                              <input type="text" name="page_copy[<?= e((string) $copy_key) ?>][title]" maxlength="160" value="<?= e((string) ($copy_row['title'] ?? '')) ?>">
                             </label>
                             <label class="admin-field">
                               <?= admin_field_head('Lede', 'Intro sentence or short paragraph shown under the page title.') ?>
-                              <textarea name="page_copy[<?= e((string) $copy_key) ?>][lede]" rows="3"><?= e((string) ($copy_row['lede'] ?? '')) ?></textarea>
+                              <textarea name="page_copy[<?= e((string) $copy_key) ?>][lede]" rows="3" maxlength="500"><?= e((string) ($copy_row['lede'] ?? '')) ?></textarea>
                             </label>
                           </div>
                         </details>
@@ -470,29 +632,145 @@ function admin_status_options(): array
                   <section class="admin-section">
                     <div class="admin-details-grid">
                       <?php foreach ($admin_seo_pages as $seo_key => $seo_row) : ?>
+                        <?php $seo_route = (string) $seo_key === 'home' ? '/' : '/' . (string) $seo_key . '/'; ?>
                         <details class="admin-details">
-                          <summary><?= e(admin_page_label((string) $seo_key)) ?></summary>
+                          <summary><?= e(admin_page_label((string) $seo_key)) ?> <small><?= e($seo_route) ?></small></summary>
+                          <p class="admin-detail-note">Search and share metadata for <?= e($seo_route) ?>. This does not change the visible page hero.</p>
                           <div class="admin-grid two">
                             <label class="admin-field">
                               <?= admin_field_head('Browser title', 'Text used in the browser tab and search result title.') ?>
-                              <input type="text" name="seo_pages[<?= e((string) $seo_key) ?>][title]" value="<?= e((string) ($seo_row['title'] ?? '')) ?>">
+                              <input type="text" name="seo_pages[<?= e((string) $seo_key) ?>][title]" maxlength="180" value="<?= e((string) ($seo_row['title'] ?? '')) ?>">
                             </label>
                             <label class="admin-field">
                               <?= admin_field_head('Meta description', 'Search engines often use this as the page summary.') ?>
-                              <textarea name="seo_pages[<?= e((string) $seo_key) ?>][description]" rows="3"><?= e((string) ($seo_row['description'] ?? '')) ?></textarea>
+                              <textarea name="seo_pages[<?= e((string) $seo_key) ?>][description]" rows="3" maxlength="320"><?= e((string) ($seo_row['description'] ?? '')) ?></textarea>
                             </label>
                             <label class="admin-field">
                               <?= admin_field_head('Open Graph title', 'Title used when the page is shared on apps that read Open Graph metadata.') ?>
-                              <input type="text" name="seo_pages[<?= e((string) $seo_key) ?>][ogTitle]" value="<?= e((string) ($seo_row['ogTitle'] ?? '')) ?>">
+                              <input type="text" name="seo_pages[<?= e((string) $seo_key) ?>][ogTitle]" maxlength="180" value="<?= e((string) ($seo_row['ogTitle'] ?? '')) ?>">
                             </label>
                             <label class="admin-field">
                               <?= admin_field_head('Open Graph description', 'Description used in social or chat previews when supported.') ?>
-                              <textarea name="seo_pages[<?= e((string) $seo_key) ?>][ogDescription]" rows="3"><?= e((string) ($seo_row['ogDescription'] ?? '')) ?></textarea>
+                              <textarea name="seo_pages[<?= e((string) $seo_key) ?>][ogDescription]" rows="3" maxlength="320"><?= e((string) ($seo_row['ogDescription'] ?? '')) ?></textarea>
                             </label>
                           </div>
                         </details>
                       <?php endforeach; ?>
                     </div>
+                  </section>
+                <?php endif; ?>
+
+                <?php if ($active_section === 'feedback') : ?>
+                  <?php if (!$admin_feedback_ready) : ?>
+                    <section class="admin-section">
+                      <div class="admin-alert warning"><?= e($admin_feedback_error) ?></div>
+                    </section>
+                  <?php else : ?>
+                    <section class="admin-section">
+                      <div class="admin-grid three">
+                        <?php foreach (raidlands_feedback_status_options() as $status_key => $status_label) : ?>
+                          <div class="metal-panel admin-feedback-stat">
+                            <p class="section-kicker"><?= e($status_label) ?></p>
+                            <h3><?= e((string) ($admin_feedback_counts[$status_key] ?? 0)) ?></h3>
+                            <p class="store-muted">Feedback items</p>
+                          </div>
+                        <?php endforeach; ?>
+                      </div>
+                    </section>
+                  <?php endif; ?>
+
+                  <section class="admin-section">
+                    <div class="admin-subsection-head">
+                      <h3>Support page submissions</h3>
+                      <p>Review new reports, keep a short internal note, and move each item as staff triages it.</p>
+                    </div>
+                    <?php if (!$admin_feedback_ready) : ?>
+                      <div class="admin-alert warning">The feedback inbox will appear here after the migration is installed.</div>
+                    <?php elseif ($admin_feedback_rows === []) : ?>
+                      <div class="admin-alert warning">No bug reports, suggestions, or feature requests have been submitted yet.</div>
+                    <?php else : ?>
+                      <div class="admin-repeat-list">
+                        <?php foreach ($admin_feedback_rows as $feedback_row) : ?>
+                          <?php
+                            $feedback_id = (string) ($feedback_row['id'] ?? '');
+                            $feedback_status = (string) ($feedback_row['status'] ?? 'open');
+                            $feedback_type = (string) ($feedback_row['type'] ?? 'bug');
+                            $feedback_contact = trim((string) ($feedback_row['contact_name'] ?? ''));
+                            $feedback_email = trim((string) ($feedback_row['contact_email'] ?? ''));
+                            $feedback_steam = trim((string) ($feedback_row['steam_id64'] ?? ''));
+                            $feedback_page = trim((string) ($feedback_row['page_url'] ?? ''));
+                            $feedback_browser = trim((string) ($feedback_row['browser'] ?? ''));
+                          ?>
+                          <article class="admin-repeat-card admin-feedback-card">
+                            <input type="hidden" name="feedback_rows[<?= e($feedback_id) ?>][id]" value="<?= e($feedback_id) ?>">
+                            <div class="admin-repeat-card-head admin-feedback-card-head">
+                              <div>
+                                <h3><?= e((string) ($feedback_row['summary'] ?? 'Untitled feedback')) ?></h3>
+                                <p class="admin-feedback-subtitle">
+                                  <?= e(raidlands_feedback_type_label($feedback_type)) ?> submitted <?= e((string) ($feedback_row['submitted_at'] ?? '')) ?>
+                                </p>
+                              </div>
+                              <span class="status-pill <?= e($feedback_status) ?>"><?= e(raidlands_feedback_status_label($feedback_status)) ?></span>
+                            </div>
+
+                            <div class="admin-feedback-body">
+                              <div class="admin-feedback-details"><?= nl2br(e((string) ($feedback_row['details'] ?? ''))) ?></div>
+                              <dl class="admin-feedback-meta">
+                                <div>
+                                  <dt>Contact</dt>
+                                  <dd><?= e($feedback_contact !== '' ? $feedback_contact : 'Not provided') ?></dd>
+                                </div>
+                                <div>
+                                  <dt>Email</dt>
+                                  <dd>
+                                    <?php if ($feedback_email !== '') : ?>
+                                      <a href="mailto:<?= e($feedback_email) ?>"><?= e($feedback_email) ?></a>
+                                    <?php else : ?>
+                                      Not provided
+                                    <?php endif; ?>
+                                  </dd>
+                                </div>
+                                <div>
+                                  <dt>SteamID64</dt>
+                                  <dd><?= $feedback_steam !== '' ? '<code>' . e($feedback_steam) . '</code>' : 'Not provided' ?></dd>
+                                </div>
+                                <div>
+                                  <dt>Page</dt>
+                                  <dd>
+                                    <?php if ($feedback_page !== '') : ?>
+                                      <a href="<?= e($feedback_page) ?>" target="_blank" rel="noopener noreferrer"><?= e($feedback_page) ?></a>
+                                    <?php else : ?>
+                                      Not provided
+                                    <?php endif; ?>
+                                  </dd>
+                                </div>
+                                <div>
+                                  <dt>Browser</dt>
+                                  <dd><?= e($feedback_browser !== '' ? $feedback_browser : 'Not provided') ?></dd>
+                                </div>
+                                <div>
+                                  <dt>Updated</dt>
+                                  <dd><?= e((string) ($feedback_row['updated_at'] ?? '')) ?></dd>
+                                </div>
+                              </dl>
+                            </div>
+
+                            <div class="admin-grid two">
+                              <label class="admin-field">
+                                <?= admin_field_head('Status', 'Moves the item through staff review. This status is internal to the admin inbox.') ?>
+                                <select name="feedback_rows[<?= e($feedback_id) ?>][status]">
+                                  <?= admin_render_options(raidlands_feedback_status_options(), $feedback_status) ?>
+                                </select>
+                              </label>
+                              <label class="admin-field">
+                                <?= admin_field_head('Staff note', 'Internal triage note. Keep player-facing replies in Discord or email for now.') ?>
+                                <textarea name="feedback_rows[<?= e($feedback_id) ?>][admin_note]" rows="3" maxlength="1600"><?= e((string) ($feedback_row['admin_note'] ?? '')) ?></textarea>
+                              </label>
+                            </div>
+                          </article>
+                        <?php endforeach; ?>
+                      </div>
+                    <?php endif; ?>
                   </section>
                 <?php endif; ?>
 
@@ -503,9 +781,27 @@ function admin_status_options(): array
                     </section>
                   <?php else : ?>
                     <section class="admin-section">
+                      <div class="admin-subsection-head">
+                        <h3>Store product rows</h3>
+                        <p>These rows control what appears in the public store and which Oxide group WebsiteVipBridge grants after checkout or manual grant.</p>
+                      </div>
                       <div class="admin-repeat-list">
                         <?php
                           $product_rows = array_values($admin_store_rows);
+                          $admin_store_price_labels = [];
+                          $admin_store_currencies = [];
+                          $admin_store_groups = raidlands_store_managed_groups();
+
+                          foreach ($product_rows as $product_row) {
+                              $admin_store_price_labels[] = (string) ($product_row['price_label'] ?? '');
+                              $admin_store_currencies[] = (string) ($product_row['currency'] ?? '');
+                              $admin_store_groups[] = (string) ($product_row['oxide_group'] ?? '');
+                          }
+
+                          echo admin_render_datalist('admin-price-label-options', admin_price_label_options($admin_store_price_labels));
+                          echo admin_render_datalist('admin-currency-options', admin_currency_options($admin_store_currencies));
+                          echo admin_render_datalist('admin-oxide-group-options', admin_option_map($admin_store_groups));
+
                           $product_total = count($product_rows) + 2;
                         ?>
                         <?php for ($index = 0; $index < $product_total; $index += 1) : ?>
@@ -547,23 +843,23 @@ function admin_status_options(): array
                             <div class="admin-grid three">
                               <label class="admin-field">
                                 <?= admin_field_head('Slug', 'Stable store identifier used by admin and support. Keep lowercase with hyphens.') ?>
-                                <input type="text" name="store_products[<?= e((string) $index) ?>][slug]" value="<?= e((string) ($row['slug'] ?? '')) ?>">
+                                <input type="text" name="store_products[<?= e((string) $index) ?>][slug]" maxlength="120" placeholder="vip-bronze" value="<?= e((string) ($row['slug'] ?? '')) ?>">
+                                <?= admin_hint('Changing an existing slug can affect support lookups and saved Stripe metadata.') ?>
                               </label>
                               <label class="admin-field">
                                 <?= admin_field_head('Name', 'Product title shown to players.') ?>
-                                <input type="text" name="store_products[<?= e((string) $index) ?>][name]" value="<?= e((string) ($row['name'] ?? '')) ?>">
+                                <input type="text" name="store_products[<?= e((string) $index) ?>][name]" maxlength="160" placeholder="Bronze VIP" value="<?= e((string) ($row['name'] ?? '')) ?>">
                               </label>
                               <label class="admin-field">
-                                <?= admin_field_head('Type', 'Monthly VIP creates Stripe subscription checkout. Other types create one-time checkout.') ?>
+                                <?= admin_field_head('Type', 'Monthly VIP creates Stripe subscription checkout. Other product types create one-time checkout.') ?>
                                 <select name="store_products[<?= e((string) $index) ?>][product_type]">
-                                  <?php foreach (['vip_subscription' => 'Monthly VIP', 'one_time_perk' => 'One-time perk', 'one_time_kit_unlock' => 'One-time kit unlock'] as $value => $label) : ?>
-                                    <option value="<?= e($value) ?>" <?= (string) ($row['product_type'] ?? '') === $value ? 'selected' : '' ?>><?= e($label) ?></option>
-                                  <?php endforeach; ?>
+                                  <?= admin_render_options(admin_product_type_options(), (string) ($row['product_type'] ?? 'one_time_perk')) ?>
                                 </select>
                               </label>
                               <label class="admin-field">
-                                <?= admin_field_head('Oxide group', 'WebsiteVipBridge will add this managed group while the entitlement is active.') ?>
-                                <input type="text" name="store_products[<?= e((string) $index) ?>][oxide_group]" value="<?= e((string) ($row['oxide_group'] ?? '')) ?>">
+                                <?= admin_field_head('Oxide group', 'WebsiteVipBridge adds this managed group while the entitlement is active.') ?>
+                                <input type="text" list="admin-oxide-group-options" name="store_products[<?= e((string) $index) ?>][oxide_group]" maxlength="120" placeholder="vip_bronze" value="<?= e((string) ($row['oxide_group'] ?? '')) ?>">
+                                <?= admin_hint('Use a group that also exists in the bridge managed group list, or add it to bridge config before relying on sync.') ?>
                               </label>
                               <label class="admin-field">
                                 <?= admin_field_head('Tier priority', 'Higher VIP priority revokes lower active VIP tier entitlements for the same player.') ?>
@@ -574,12 +870,12 @@ function admin_status_options(): array
                                 <input type="number" min="0" max="9999" name="store_products[<?= e((string) $index) ?>][sort_order]" value="<?= e((string) ($row['sort_order'] ?? 100)) ?>">
                               </label>
                               <label class="admin-field">
-                                <?= admin_field_head('Stripe Price ID', 'Use a real Stripe Price ID such as price_123. Placeholder values disable checkout.') ?>
-                                <input type="text" name="store_products[<?= e((string) $index) ?>][stripe_price_id]" value="<?= e((string) ($row['stripe_price_id'] ?? '')) ?>">
+                                <?= admin_field_head('Stripe Price ID', 'Use a real Stripe Price ID such as price_123. Blank or placeholder values disable checkout.') ?>
+                                <input type="text" name="store_products[<?= e((string) $index) ?>][stripe_price_id]" maxlength="160" placeholder="price_..." value="<?= e((string) ($row['stripe_price_id'] ?? '')) ?>">
                               </label>
                               <label class="admin-field">
                                 <?= admin_field_head('Price label', 'Small label near the product price, such as Monthly or One-time.') ?>
-                                <input type="text" name="store_products[<?= e((string) $index) ?>][price_label]" value="<?= e((string) ($row['price_label'] ?? '')) ?>">
+                                <input type="text" list="admin-price-label-options" name="store_products[<?= e((string) $index) ?>][price_label]" maxlength="120" placeholder="Monthly" value="<?= e((string) ($row['price_label'] ?? '')) ?>">
                               </label>
                               <label class="admin-field">
                                 <?= admin_field_head('Amount USD', 'Public display amount in dollars. Stripe still charges the configured Price ID amount.') ?>
@@ -587,15 +883,15 @@ function admin_status_options(): array
                               </label>
                               <label class="admin-field">
                                 <?= admin_field_head('Currency', 'Three-letter currency for display, usually usd.') ?>
-                                <input type="text" name="store_products[<?= e((string) $index) ?>][currency]" value="<?= e((string) ($row['currency'] ?? 'usd')) ?>">
+                                <input type="text" list="admin-currency-options" name="store_products[<?= e((string) $index) ?>][currency]" maxlength="3" placeholder="usd" value="<?= e((string) ($row['currency'] ?? 'usd')) ?>">
                               </label>
                               <label class="admin-check admin-check-field">
                                 <input type="checkbox" name="store_products[<?= e((string) $index) ?>][is_active]" value="1" <?= !empty($row['is_active']) ? 'checked' : '' ?>>
-                                <?= admin_check_copy('Product active', 'Active products can appear on the public store.') ?>
+                                <?= admin_check_copy('Product active', 'Controls whether this product can appear on the public store. Checkout also requires an active price.') ?>
                               </label>
                               <label class="admin-check admin-check-field">
                                 <input type="checkbox" name="store_products[<?= e((string) $index) ?>][price_is_active]" value="1" <?= !empty($row['price_is_active']) ? 'checked' : '' ?>>
-                                <?= admin_check_copy('Price active', 'Checkout is available only when both product and price are active.') ?>
+                                <?= admin_check_copy('Price active', 'Checkout is available only when product active, price active, and Stripe Price ID are all valid.') ?>
                               </label>
                               <label class="admin-check admin-check-field">
                                 <input type="checkbox" name="store_products[<?= e((string) $index) ?>][is_featured]" value="1" <?= !empty($row['is_featured']) ? 'checked' : '' ?>>
@@ -607,7 +903,7 @@ function admin_status_options(): array
                               </label>
                               <label class="admin-field admin-span-all">
                                 <?= admin_field_head('Short description', 'Brief copy shown on store cards.') ?>
-                                <input type="text" name="store_products[<?= e((string) $index) ?>][short_description]" value="<?= e((string) ($row['short_description'] ?? '')) ?>">
+                                <input type="text" name="store_products[<?= e((string) $index) ?>][short_description]" maxlength="255" value="<?= e((string) ($row['short_description'] ?? '')) ?>">
                               </label>
                               <label class="admin-field admin-span-all">
                                 <?= admin_field_head('Full description', 'Longer admin/support note for what this product should grant.') ?>
@@ -625,16 +921,21 @@ function admin_status_options(): array
                   <section class="admin-section">
                     <?php if (!$admin_store_ready) : ?>
                       <div class="admin-alert warning">MySQL must be configured before manual grants can be recorded. <?= $admin_store_error !== '' ? e($admin_store_error) : '' ?></div>
+                    <?php elseif (empty($admin_store_catalog['products'])) : ?>
+                      <div class="admin-alert warning">No products are available to grant yet. Add at least one active store product with an Oxide group before using manual grants.</div>
                     <?php else : ?>
+                      <?php $admin_grant_products = array_values($admin_store_catalog['products']); ?>
                       <div class="admin-grid two">
                         <label class="admin-field">
-                          <?= admin_field_head('SteamID64', 'The Rust player ID that should receive this entitlement.') ?>
-                          <input type="text" name="steam_id64" inputmode="numeric" placeholder="7656119XXXXXXXXXX" required>
+                          <?= admin_field_head('SteamID64', 'The 17-digit Rust player ID that should receive this entitlement.') ?>
+                          <input type="text" name="steam_id64" inputmode="numeric" pattern="[0-9]{17}" maxlength="17" placeholder="7656119XXXXXXXXXX" required>
+                          <?= admin_hint('Manual grants link directly to the selected player. Double-check the ID before saving.') ?>
                         </label>
                         <label class="admin-field">
-                          <?= admin_field_head('Product', 'The product controls the Oxide group WebsiteVipBridge will sync.') ?>
+                          <?= admin_field_head('Product', 'The selected product controls the Oxide group WebsiteVipBridge will sync.') ?>
                           <select name="product_id" required>
-                            <?php foreach ($admin_store_catalog['products'] as $product) : ?>
+                            <option value="" disabled selected>Choose a product to grant</option>
+                            <?php foreach ($admin_grant_products as $product) : ?>
                               <option value="<?= e((string) $product['id']) ?>"><?= e((string) $product['name']) ?> (<?= e((string) $product['oxide_group']) ?>)</option>
                             <?php endforeach; ?>
                           </select>
@@ -642,6 +943,7 @@ function admin_status_options(): array
                         <label class="admin-field">
                           <?= admin_field_head('Ends at', 'Optional MySQL datetime such as 2026-07-31 23:59:59. Leave blank for no scheduled expiration.') ?>
                           <input type="text" name="ends_at" placeholder="YYYY-MM-DD HH:MM:SS">
+                          <?= admin_hint('Monthly VIP should usually have an end date. Permanent one-time perks can stay blank.') ?>
                         </label>
                       </div>
                     <?php endif; ?>
@@ -654,6 +956,7 @@ function admin_status_options(): array
                       <div class="metal-panel">
                         <p class="section-kicker">Managed groups</p>
                         <h3>Bridge-controlled permissions</h3>
+                        <p class="store-muted">Only products using these groups should be expected to sync cleanly into Rust.</p>
                         <ul class="list-clean">
                           <?php foreach (raidlands_store_managed_groups() as $group) : ?>
                             <li><code><?= e($group) ?></code></li>
@@ -663,6 +966,7 @@ function admin_status_options(): array
                       <div class="metal-panel">
                         <p class="section-kicker">Bridge API</p>
                         <h3>Endpoints</h3>
+                        <p class="store-muted">WebsiteVipBridge calls these from the Rust server with the shared HMAC secret.</p>
                         <ul class="list-clean">
                           <li><code>/api/server/vip-player.php?steam_id64=...</code></li>
                           <li><code>/api/server/vip-changes.php?since=...</code></li>
@@ -676,7 +980,7 @@ function admin_status_options(): array
                   <section class="admin-section">
                     <div class="admin-subsection-head">
                       <h3>Stats ingest</h3>
-                      <p>Website leaderboards and profile RP use snapshots posted by WebsiteVipBridge.</p>
+                      <p>Website leaderboards and profile RP use snapshots posted by WebsiteVipBridge. The active wipe comes from the bridge wipe key, not this admin schedule form.</p>
                     </div>
                     <?php if (!$admin_store_ready) : ?>
                       <div class="admin-alert warning">MySQL is not configured yet. <?= $admin_store_error !== '' ? e($admin_store_error) : '' ?></div>
@@ -710,7 +1014,7 @@ function admin_status_options(): array
                   <section class="admin-section">
                     <div class="admin-subsection-head">
                       <h3>Recent entitlement changes</h3>
-                      <p>These rows drive the bridge change cursor and explain what should sync to Rust.</p>
+                      <p>These rows drive the bridge change cursor. A row here means the website recorded a grant, revoke, or expiration that Rust should pick up.</p>
                     </div>
                     <?php if (!$admin_store_ready) : ?>
                       <div class="admin-alert warning">MySQL is not configured yet. <?= $admin_store_error !== '' ? e($admin_store_error) : '' ?></div>
@@ -748,8 +1052,15 @@ function admin_status_options(): array
                 <?php endif; ?>
 
                 <div class="admin-savebar">
-                  <?php if ($active_section !== 'sync') : ?>
-                    <button class="btn btn-primary" type="submit">Save <?= e($active_meta['label']) ?></button>
+                  <?php
+                    $admin_save_hidden = $active_section === 'sync'
+                        || ($active_section === 'feedback' && (!$admin_feedback_ready || $admin_feedback_rows === []));
+                    $admin_save_disabled = ($active_section === 'store' && !$admin_store_ready)
+                        || ($active_section === 'grants' && (!$admin_store_ready || empty($admin_store_catalog['products'])));
+                    $admin_disabled_label = $active_section === 'store' ? 'Store Unavailable' : 'Grant Unavailable';
+                  ?>
+                  <?php if (!$admin_save_hidden) : ?>
+                    <button class="btn btn-primary" type="submit" <?= $admin_save_disabled ? 'disabled' : '' ?>><?= $admin_save_disabled ? e($admin_disabled_label) : 'Save ' . e($active_meta['label']) ?></button>
                   <?php endif; ?>
                   <a class="btn btn-secondary" href="<?= e(route_url()) ?>">View Site</a>
                 </div>

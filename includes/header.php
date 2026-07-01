@@ -38,6 +38,9 @@ $linked_player = raidlands_linked_player();
     <?php foreach ((array) ($loader_payload['explosionAssetUrls'] ?? []) as $explosion_asset_url) : ?>
       <link rel="preload" as="image" href="<?= e((string) $explosion_asset_url) ?>" media="(min-width: 701px)">
     <?php endforeach; ?>
+    <?php foreach ((array) ($loader_payload['mobileExplosionAssetUrls'] ?? []) as $mobile_explosion_asset_url) : ?>
+      <link rel="preload" as="image" href="<?= e((string) $mobile_explosion_asset_url) ?>" media="(max-width: 700px)">
+    <?php endforeach; ?>
     <?php if ($page_id === 'home') : ?>
       <link rel="preload" as="image" href="<?= e(asset_url('media/website-hero-raid-overlook-v4.webp')) ?>" fetchpriority="high">
       <link rel="preload" as="image" href="<?= e(asset_url('media/raidlands-logo.webp')) ?>">
