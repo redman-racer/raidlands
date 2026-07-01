@@ -20,6 +20,8 @@ $linked_player = raidlands_linked_player();
     <link rel="icon" href="<?= e(asset_url('icons/favicon.ico')) ?>">
     <link rel="apple-touch-icon" href="<?= e(asset_url('icons/apple-touch-icon.png')) ?>">
     <link rel="manifest" href="<?= e($base_path . 'site.webmanifest') ?>">
+    <link rel="preload" as="image" href="<?= e(asset_url('media/loading/battlefield-background.webp')) ?>" fetchpriority="high">
+    <link rel="preload" as="image" href="<?= e(asset_url('media/loading/breach-ring.webp')) ?>">
     <?php if ($page_id === 'home') : ?>
       <link rel="preload" as="image" href="<?= e(asset_url('media/website-hero-raid-overlook-v4.webp')) ?>" fetchpriority="high">
       <link rel="preload" as="image" href="<?= e(asset_url('media/raidlands-logo.webp')) ?>">

@@ -106,9 +106,9 @@ function raidlands_loader_payload(): array
         'logoUrl' => asset_url('media/raidlands-logo.webp'),
         'serverStatusUrl' => $base_path . 'api/server-status.php',
         'statusProbeTimeoutMs' => 750,
-        'minVisibleMs' => 520,
-        'fastTrackAfterMs' => 360,
-        'fadeMs' => 360,
+        'minVisibleMs' => 2300,
+        'fastTrackAfterMs' => 820,
+        'fadeMs' => 520,
         'fallbackStatus' => [
             'online' => (bool) ($site_config['serverOnline'] ?? false),
             'statusLabel' => !empty($site_config['serverOnline']) ? 'Online' : 'Offline',
@@ -142,6 +142,11 @@ function raidlands_loader_payload(): array
             ['level' => 'ok', 'text' => '[OK] ' . $wipe_days . ' wipe window ' . $wipe_time . ' ' . $wipe_timezone],
             ['id' => 'dom-ready', 'level' => 'info', 'text' => 'Parsing battlefield route...', 'wait' => 'dom', 'successText' => '[OK] Route markup parsed'],
             ['id' => 'window-load', 'level' => 'info', 'text' => 'Loading visual assets...', 'wait' => 'load', 'successText' => '[OK] Visual assets mounted'],
+            ['level' => 'info', 'text' => 'Establishing breach route...'],
+            ['level' => 'info', 'text' => 'Compiling target intel...'],
+            ['level' => 'info', 'text' => 'Locating enemy silhouettes...'],
+            ['level' => 'warn', 'text' => 'Target acquired.'],
+            ['level' => 'warn', 'text' => 'Engaging...'],
             ['level' => 'ok', 'text' => '[OK] Raidlands console ready'],
         ],
     ];
@@ -153,10 +158,23 @@ function render_raidlands_loader(array $payload): string
 
     return '<div class="raidlands-loader" data-raidlands-loader role="status" aria-live="polite" aria-label="Raidlands loading console">'
         . '<div class="raidlands-loader-frame">'
-        . '<div class="raidlands-loader-console" data-loader-console aria-hidden="true"></div>'
+        . '<div class="raidlands-loader-targeting" data-loader-targeting aria-hidden="true"></div>'
+        . '<div class="raidlands-loader-console" aria-hidden="true">'
+        . '<div class="raidlands-loader-console-lines" data-loader-console></div>'
+        . '</div>'
         . '<div class="raidlands-loader-core">'
-        . '<img class="raidlands-loader-logo" src="' . e((string) $payload['logoUrl']) . '" alt="Raidlands">'
-        . '<div class="raidlands-loader-progress" aria-hidden="true"><span data-loader-progress>00</span></div>'
+        . '<div class="raidlands-loader-progress" aria-hidden="true">'
+        . '<span class="raidlands-loader-hud-ring" aria-hidden="true"></span>'
+        . '<img class="raidlands-loader-logo" src="' . e((string) $payload['logoUrl']) . '" alt="">'
+        . '<span class="raidlands-loader-progress-mark is-top">270</span>'
+        . '<span class="raidlands-loader-progress-mark is-right">90</span>'
+        . '<span class="raidlands-loader-progress-mark is-bottom">180</span>'
+        . '<span class="raidlands-loader-progress-mark is-left">03</span>'
+        . '<span class="raidlands-loader-progress-value" data-loader-progress>00</span>'
+        . '<span class="raidlands-loader-progress-label">Loading</span>'
+        . '<span class="raidlands-loader-progress-route">&gt;&gt;&gt; Breach route &lt;&lt;&lt;</span>'
+        . '<span class="raidlands-loader-progress-tip" aria-hidden="true"></span>'
+        . '</div>'
         . '<p class="raidlands-loader-state" data-loader-state>Initializing</p>'
         . '<div class="raidlands-loader-tip">'
         . '<span>Wipe intel</span>'
@@ -204,10 +222,16 @@ function status_icon(string $name): string
 
 function render_feature_symbol(string $icon): string
 {
-    global $feature_icon_aliases, $feature_icons;
+    global $feature_icon_aliases, $feature_icon_assets, $feature_icons;
 
-    $key = $feature_icon_aliases[$icon] ?? $icon;
+    $icon_key = strtoupper($icon);
+    $key = $feature_icon_aliases[$icon] ?? $feature_icon_aliases[$icon_key] ?? $icon_key;
+    $asset = $feature_icon_assets[$key] ?? null;
     $svg = $feature_icons[$key] ?? null;
+
+    if ($asset !== null) {
+        return '<span class="feature-symbol feature-symbol-image" aria-hidden="true"><img src="' . e(asset_url($asset)) . '" alt="" loading="lazy" decoding="async"></span>';
+    }
 
     if ($svg !== null) {
         return '<span class="feature-symbol feature-symbol-svg" aria-hidden="true">' . icon_svg($svg) . '</span>';
@@ -336,9 +360,12 @@ function render_wipe_bar(): string
     $labels = ['Days', 'Hours', 'Minutes', 'Seconds'];
     $counts = '';
 
-    foreach ($labels as $label) {
+    foreach ($labels as $index => $label) {
         $key = strtolower($label);
         $counts .= '<div class="count-box"><strong data-count-' . e($key) . '>00</strong><span>' . e($label) . '</span></div>';
+        if ($index < count($labels) - 1) {
+            $counts .= '<span class="count-separator" aria-hidden="true">:</span>';
+        }
     }
 
     return '<div class="wipe-bar">'

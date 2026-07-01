@@ -11,7 +11,7 @@ using Oxide.Core.Libraries.Covalence;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteVipBridge", "Raidlands", "1.1.0")]
+    [Info("WebsiteVipBridge", "Raidlands", "1.2.0")]
     [Description("Syncs website VIP entitlements and player stats between Raidlands.net and the Rust server.")]
     public class WebsiteVipBridge : CovalencePlugin
     {
@@ -24,6 +24,10 @@ namespace Oxide.Plugins
         private class Configuration
         {
             public string ApiBaseUrl = "https://raidlands.net";
+            [JsonProperty("Website Asset Base Url")]
+            public string WebsiteAssetBaseUrl = "https://raidlands.net";
+            [JsonProperty("Assets")]
+            public AssetPaths Assets = new AssetPaths();
             public string ServerId = "raidlands-main";
             public string SharedSecret = "";
             public int SyncIntervalSeconds = 120;
@@ -44,6 +48,23 @@ namespace Oxide.Plugins
                 "perk_queue_priority",
                 "perk_supporter_badge"
             };
+        }
+
+        private class AssetPaths
+        {
+            public string Logo = "/assets/media/raidlands-logo.png";
+            public string NavLogo = "/assets/media/nav-logo.png";
+            public string Hero = "/assets/media/website-hero-raid-overlook-v4.webp";
+            public string Header = "/assets/media/header-bg-rust-v2.png";
+            public string WipePanel = "/assets/media/wipe-countdown-panel-v2.jpg";
+            public string BackpacksIcon = "/assets/media/feature-icons/backpacks.png";
+            public string KitsIcon = "/assets/media/feature-icons/kit.png";
+            public string TeleportIcon = "/assets/media/feature-icons/teleport.png";
+            public string ClanIcon = "/assets/media/feature-icons/clan.png";
+            public string SkinboxIcon = "/assets/media/feature-icons/skinbox.png";
+            public string FastRaidsIcon = "/assets/media/feature-icons/fast-raids.png";
+            public string GatherIcon = "/assets/media/feature-icons/gather.png";
+            public string StatsIcon = "/assets/media/feature-icons/stats.png";
         }
 
         private class PlayerResponse
@@ -138,6 +159,18 @@ namespace Oxide.Plugins
             }
 
             var defaults = new Configuration();
+
+            if (string.IsNullOrWhiteSpace(config.WebsiteAssetBaseUrl))
+            {
+                config.WebsiteAssetBaseUrl = defaults.WebsiteAssetBaseUrl;
+            }
+
+            if (config.Assets == null)
+            {
+                config.Assets = new AssetPaths();
+            }
+
+            ApplyAssetDefaults(config.Assets, defaults.Assets);
 
             if (config.ManagedGroups == null)
             {
@@ -495,6 +528,37 @@ namespace Oxide.Plugins
             return $"{config.ServerId}-current";
         }
 
+        private string AssetUrl(string configuredAssetPath)
+        {
+            return ResolveAssetUrl(configuredAssetPath, config?.WebsiteAssetBaseUrl);
+        }
+
+        private static string ResolveAssetUrl(string configuredAssetPath, string websiteAssetBaseUrl)
+        {
+            if (string.IsNullOrWhiteSpace(configuredAssetPath))
+            {
+                return "";
+            }
+
+            var assetPath = configuredAssetPath.Trim();
+
+            if (assetPath.StartsWith("http://", StringComparison.OrdinalIgnoreCase)
+                || assetPath.StartsWith("https://", StringComparison.OrdinalIgnoreCase))
+            {
+                return assetPath;
+            }
+
+            var baseUrl = TrimSlash(websiteAssetBaseUrl);
+            var normalizedPath = NormalizeAssetPath(assetPath).TrimStart('/');
+
+            if (string.IsNullOrWhiteSpace(baseUrl))
+            {
+                return normalizedPath;
+            }
+
+            return $"{baseUrl}/{normalizedPath}";
+        }
+
         private bool CanRequest()
         {
             if (string.IsNullOrWhiteSpace(config.ApiBaseUrl))
@@ -614,6 +678,28 @@ namespace Oxide.Plugins
             return string.IsNullOrWhiteSpace(current) ? (next ?? "").Trim() : current;
         }
 
+        private static string ConfiguredOrDefault(string value, string fallback)
+        {
+            return string.IsNullOrWhiteSpace(value) ? fallback : value;
+        }
+
+        private static void ApplyAssetDefaults(AssetPaths assets, AssetPaths defaults)
+        {
+            assets.Logo = ConfiguredOrDefault(assets.Logo, defaults.Logo);
+            assets.NavLogo = ConfiguredOrDefault(assets.NavLogo, defaults.NavLogo);
+            assets.Hero = ConfiguredOrDefault(assets.Hero, defaults.Hero);
+            assets.Header = ConfiguredOrDefault(assets.Header, defaults.Header);
+            assets.WipePanel = ConfiguredOrDefault(assets.WipePanel, defaults.WipePanel);
+            assets.BackpacksIcon = ConfiguredOrDefault(assets.BackpacksIcon, defaults.BackpacksIcon);
+            assets.KitsIcon = ConfiguredOrDefault(assets.KitsIcon, defaults.KitsIcon);
+            assets.TeleportIcon = ConfiguredOrDefault(assets.TeleportIcon, defaults.TeleportIcon);
+            assets.ClanIcon = ConfiguredOrDefault(assets.ClanIcon, defaults.ClanIcon);
+            assets.SkinboxIcon = ConfiguredOrDefault(assets.SkinboxIcon, defaults.SkinboxIcon);
+            assets.FastRaidsIcon = ConfiguredOrDefault(assets.FastRaidsIcon, defaults.FastRaidsIcon);
+            assets.GatherIcon = ConfiguredOrDefault(assets.GatherIcon, defaults.GatherIcon);
+            assets.StatsIcon = ConfiguredOrDefault(assets.StatsIcon, defaults.StatsIcon);
+        }
+
         private int ToInt(double value)
         {
             if (double.IsNaN(value) || double.IsInfinity(value) || value <= 0)
@@ -638,7 +724,14 @@ namespace Oxide.Plugins
 
         private static string TrimSlash(string value)
         {
-            return (value ?? "").TrimEnd('/');
+            return (value ?? "").Trim().TrimEnd('/');
+        }
+
+        private static string NormalizeAssetPath(string value)
+        {
+            return string.Join("/", (value ?? "")
+                .Replace('\\', '/')
+                .Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries));
         }
 
         private static string Sha256(string value)

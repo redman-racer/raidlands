@@ -91,6 +91,7 @@ $quick_features = [
 
 $feature_icon_aliases = [
     '1000x' => 'GATHER',
+    '1000X' => 'GATHER',
     'GATHER' => 'GATHER',
     'PVP' => 'PVP',
     'KIT' => 'KIT',
@@ -123,6 +124,34 @@ $feature_icon_aliases = [
     'EAC' => 'SAFE',
     'TIMEOUT' => 'CMD',
     'TICKET' => 'STAFF',
+];
+
+$feature_icon_assets = [
+    'GATHER' => 'media/feature-icons/gather.png',
+    'PVP' => 'media/feature-icons/pvp.png',
+    'KIT' => 'media/feature-icons/kit.png',
+    'TP' => 'media/feature-icons/teleport.png',
+    'CLAN' => 'media/feature-icons/clan.png',
+    'SKIN' => 'media/feature-icons/skinbox.png',
+    'PACK' => 'media/feature-icons/backpacks.png',
+    'RAID' => 'media/feature-icons/fast-raids.png',
+    'STAFF' => 'media/feature-icons/active-staff.png',
+    'MINI' => 'media/feature-icons/mini.png',
+    'SHOP' => 'media/feature-icons/shop.png',
+    'EVENT' => 'media/feature-icons/events.png',
+    'FPS' => 'media/feature-icons/performance.png',
+    'PLAY' => 'media/feature-icons/play.png',
+    'CMD' => 'media/feature-icons/command.png',
+    'SRCH' => 'media/feature-icons/search.png',
+    'FIX' => 'media/feature-icons/fix.png',
+    'ID' => 'media/feature-icons/id.png',
+    'ROLE' => 'media/feature-icons/role.png',
+    'STAT' => 'media/feature-icons/stats.png',
+    'SAFE' => 'media/feature-icons/safe.png',
+    'RISK' => 'media/feature-icons/risk.png',
+    'BAN' => 'media/feature-icons/ban.png',
+    'APPEAL' => 'media/feature-icons/appeal.png',
+    'EVID' => 'media/feature-icons/evidence.png',
 ];
 
 $feature_icons = [
