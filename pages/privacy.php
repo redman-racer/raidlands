@@ -2,9 +2,9 @@
 
 <section class="section">
   <div class="section-inner legal-copy">
-    <p>This policy is a launch-ready draft for the Raidlands website. Replace contact details, hosting details, and exact processors before public launch.</p>
+    <p>This policy explains the practical data handled by the Raidlands website, Rust server, Discord, support workflows, and account systems.</p>
     <h2>Data We May Collect</h2>
-    <p>Raidlands may collect website usage events, connect button clicks, copied command events, Steam account details, Discord account details, support ticket details, and moderation records when those systems are enabled.</p>
+    <p>Raidlands may collect website usage events, connect button clicks, copied command events, Steam account details, Discord account details, support ticket details, and moderation records when you use those systems.</p>
     <h2>Connected Accounts</h2>
     <p>Steam connection may store your Steam account ID, display name, avatar, and profile link. Discord connection may store your Discord user ID, username, avatar, server membership status, and when it was connected.</p>
     <h2>Analytics</h2>

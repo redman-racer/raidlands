@@ -7,7 +7,7 @@
   <div class="section-inner">
     <div class="grid three">
       <?= render_card('BAN', 'Ban Policy', 'Cheating, ban evasion, exploits, threats, doxxing, and severe harassment can lead to permanent bans.') ?>
-      <?= render_card('APPEAL', 'Appeal Path', 'At launch, appeals are handled in Discord. A structured appeal form is planned later.') ?>
+      <?= render_card('APPEAL', 'Appeal Path', 'Appeals are handled in Discord so staff can keep context, evidence, and follow-up in one place.') ?>
       <?= render_card('EVID', 'Evidence', 'Include your Steam name, 17-digit Steam ID if known, the ban reason, and any relevant context.') ?>
     </div>
   </div>

@@ -12,9 +12,9 @@
           'No severe harassment, hate speech, or targeted abuse.',
           'No abusing bugs or intentionally crashing systems.',
           'No impersonating staff or pretending to represent Raidlands.',
-          'No real-money trading unless Raidlands explicitly allows it later.',
+          'No real-money trading outside official Raidlands store systems.',
           'Follow staff instructions during investigations.',
-          'Respect group limits if any are added later.',
+          'Respect group limits and staff-posted wipe rules.',
       ]) ?>
       <?= render_rule_block('Gameplay Stance', [
           'Raidlands is a PvP battlefield.',
@@ -32,7 +32,7 @@
       <?= render_rule_block('Enforcement', [
           'Warnings, kicks, temporary bans, permanent bans, Discord removal, and appeal restrictions may be used.',
           'Severity, intent, account history, and evidence all matter.',
-          'Appeals start in Discord at launch.',
+          'Appeals start in Discord.',
       ]) ?>
     </div>
   </div>

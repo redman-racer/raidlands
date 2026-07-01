@@ -80,14 +80,14 @@
     <div class="metal-panel">
       <p class="section-kicker">Account linking</p>
       <h2>Keep your profile across wipes</h2>
-      <p class="section-lede"><?= e(raidlands_has_linked_account() ? 'Your Steam account is connected. Use your account page to check profile status, stats, and VIP access.' : 'Connect Steam and Discord early so Raidlands can support future leaderboards, rewards, roles, support, and profile features.') ?></p>
+      <p class="section-lede"><?= e(raidlands_has_linked_account() ? 'Your Steam account is connected. Use your account page to check profile status, stats, and VIP access.' : 'Connect Steam so leaderboards, rewards, roles, VIP ownership, and profile stats follow the right player.') ?></p>
       <div class="grid two">
         <?= render_auth_summary_card('steam') ?>
         <?= render_auth_summary_card('discord') ?>
       </div>
     </div>
     <div class="metal-panel">
-      <p class="section-kicker">Launch promise</p>
+      <p class="section-kicker">Account-linked perks</p>
       <h2>VIP follows your account</h2>
       <p class="section-lede">VIP kits, monthly ranks, and one-time perks stay tied to your Steam account, then update in game automatically.</p>
       <div class="button-row">
@@ -103,7 +103,7 @@
     <div class="metal-panel">
       <p class="section-kicker">Discord community</p>
       <h2>Wipe pings, teams, support</h2>
-      <p class="section-lede">Join Discord for wipe alerts, teammate finding, bug reports, ban appeals, feature votes, and launch announcements.</p>
+      <p class="section-lede">Join Discord for wipe alerts, teammate finding, bug reports, ban appeals, feature votes, and server announcements.</p>
       <div class="button-row">
         <a class="btn btn-discord" href="<?= e($site_config['discordInviteUrl']) ?>" target="_blank" rel="noreferrer" data-track="discord_invite_clicked">Join the Raidlands Discord</a>
         <a class="btn btn-secondary" href="<?= e(raidlands_account_url()) ?>"><?= e(raidlands_account_label('Connect Discord', 'Open Account')) ?></a>
@@ -116,9 +116,9 @@
 <section class="section alt">
   <div class="section-inner">
     <div class="section-header">
-      <p class="section-kicker">Coming soon</p>
-      <h2>A real home for the server</h2>
-      <p class="section-lede">More community tools are planned after launch, with the essentials kept clear and easy to use from day one.</p>
+      <p class="section-kicker">Live server systems</p>
+      <h2>The server stack is online</h2>
+      <p class="section-lede">Core gameplay, account linking, VIP sync, profile stats, and player rankings are live, with the website growing around the systems players already use.</p>
     </div>
     <div class="grid four">
       <?php foreach ($roadmap_cards as $card) : ?>

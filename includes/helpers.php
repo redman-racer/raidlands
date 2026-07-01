@@ -270,12 +270,18 @@ function render_feature_symbol(string $icon): string
 
 function status_class(string $status): string
 {
-    if ($status === 'Launch target') {
-        return 'review';
+    $normalized = strtolower($status);
+
+    if (str_starts_with($normalized, 'live')) {
+        return 'live';
     }
 
-    if ($status === 'Planned') {
+    if (str_contains($normalized, 'planned') || str_contains($normalized, 'future') || str_contains($normalized, 'later')) {
         return 'planned';
+    }
+
+    if (str_contains($normalized, 'review') || str_contains($normalized, 'next')) {
+        return 'review';
     }
 
     return 'review';
@@ -306,7 +312,7 @@ function render_roadmap_card(array $card): string
     return '<article class="metal-card roadmap-card">'
         . '<h3>' . e($title) . '</h3>'
         . '<p class="card-copy">' . e($copy) . '</p>'
-        . '<div class="tag-row"><span class="status-tag planned">' . e($status) . '</span></div>'
+        . '<div class="tag-row"><span class="status-tag ' . e(status_class($status)) . '">' . e($status) . '</span></div>'
         . '</article>';
 }
 

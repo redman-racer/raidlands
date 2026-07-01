@@ -197,18 +197,18 @@ $action_icons = [
 ];
 
 $feature_cards = [
-    ['1000x', '1000x Gather', 'Farm fast, gear fast, and spend more time fighting than waiting.', 'Launch target'],
-    ['PVP', 'Battlefield PvP', 'A high-rate battlefield tuned for counters, chaos, and quick returns.', 'Launch target'],
-    ['KIT', 'Kits', 'Fast starter and combat kits keep the pace moving after every death.', 'Launch target'],
-    ['TP', 'Teleport / Homes', 'Move between bases, fights, teammates, and rebuilds without dead time.', 'Launch target'],
-    ['CLAN', 'Clans', 'Build your team name around rivalries and wipe-long wars.', 'Planned'],
-    ['SKIN', 'Skinbox', 'Keep bases and gear looking sharp without breaking the battlefield pace.', 'Planned'],
-    ['PACK', 'Backpacks', 'Extra carry capacity for raiders, builders, and loot runners.', 'Launch target'],
-    ['MINI', 'Personal Mini', 'Fast map movement for scouts, counters, and strike teams.', 'Under review'],
-    ['SHOP', 'Shop', 'High-rate convenience economy for supplies, movement, and recovery.', 'Under review'],
-    ['EVENT', 'Custom Events', 'Wipe fights, clan clashes, and staff-run chaos after launch.', 'Planned'],
-    ['STAFF', 'Active Staff', 'Clear support, bug response, and rule enforcement without over-policing PvP.', 'Launch target'],
-    ['FPS', 'Performance Focused', 'Lean systems and practical moderation built around stable wipe nights.', 'Launch target'],
+    ['1000x', '1000x Gather', 'Farm fast, gear fast, and spend more time fighting than waiting.', 'Live'],
+    ['PVP', 'Battlefield PvP', 'A high-rate battlefield tuned for counters, chaos, and quick returns.', 'Live'],
+    ['KIT', 'Kits', 'Fast starter and combat kits keep the pace moving after every death.', 'Live'],
+    ['TP', 'Teleport / Homes', 'Move between bases, fights, teammates, and rebuilds without dead time.', 'Live'],
+    ['CLAN', 'Clans', 'Build your team name around rivalries and wipe-long wars.', 'Live'],
+    ['SKIN', 'Skinbox', 'Keep bases and gear looking sharp without breaking the battlefield pace.', 'Live'],
+    ['PACK', 'Backpacks', 'Extra carry capacity for raiders, builders, and loot runners.', 'Live'],
+    ['MINI', 'Personal Mini', 'Fast map movement for scouts, counters, and strike teams.', 'Live'],
+    ['SHOP', 'Shop', 'High-rate convenience economy for supplies, movement, and recovery.', 'Live'],
+    ['EVENT', 'Custom Events', 'Wipe fights, clan clashes, and staff-run chaos during live seasons.', 'Live'],
+    ['STAFF', 'Active Staff', 'Clear support, bug response, and rule enforcement without over-policing PvP.', 'Live'],
+    ['FPS', 'Performance Focused', 'Lean systems and practical moderation built around stable wipe nights.', 'Live'],
 ];
 
 $feature_groups = [
@@ -224,7 +224,7 @@ $feature_groups = [
     ],
     [
         'title' => 'Community and Clans',
-        'copy' => 'Raidlands is built around recurring rivalries, Discord, support channels, and future clan pages.',
+        'copy' => 'Raidlands is built around recurring rivalries, Discord, support channels, clans, events, and wipe alerts.',
         'items' => ['Clans', 'Team play', 'Discord account', 'Events', 'Staff support', 'Wipe alerts'],
     ],
     [
@@ -235,14 +235,14 @@ $feature_groups = [
 ];
 
 $roadmap_cards = [
-    ['Leaderboards', 'Player and clan rankings for kills, raids, K/D, explosives, and wipe MVPs.', 'Planned'],
-    ['Player Profiles', 'Connected Steam and Discord accounts with stats, wipe history, and rewards.', 'Planned'],
-    ['Clan Rankings', 'Clan pages, recruitment, rivalry records, and wipe archives.', 'After launch'],
-    ['Wipe Events', 'Thursday wipe events, staff battles, and community votes.', 'In development'],
-    ['VIP Kits', 'VIP tiers and one-time perks tied to your Steam account.', 'Live'],
-    ['Vote Rewards', 'Voting loops for discovery, population growth, and player rewards.', 'Planned'],
-    ['Ban Appeals', 'Structured appeal intake with Discord support as the first launch path.', 'Planned'],
-    ['Community Hub', 'Patch notes, announcements, wipe winners, and support workflows.', 'Planned'],
+    ['Leaderboards', 'Player rankings for kills, K/D, playtime, and RP sync from the game server.', 'Live'],
+    ['Player Profiles', 'Connected Steam profiles show VIP access, wipe stats, RP, and entitlement history.', 'Live'],
+    ['Account Linking', 'Native Steam sign-in ties stats, VIP, and perks to the right Rust player.', 'Live'],
+    ['VIP Kits', 'VIP tiers and one-time perks are tied to Steam and synced into the game.', 'Live'],
+    ['Clans', 'Clan play and rivalries are active in game, with richer website pages able to build on top.', 'Live in game'],
+    ['Wipe Events', 'Wipe fights, clan clashes, staff battles, and community chaos are part of the live cadence.', 'Live in game'],
+    ['Vote Rewards', 'Voting loops can plug into the connected account layer as the web hub expands.', 'Next web step'],
+    ['Appeals and Support', 'Discord remains the active path for tickets, reports, and ban appeals.', 'Live via Discord'],
 ];
 
 $page_copy = [
@@ -256,7 +256,7 @@ $page_copy = [
     ],
     'features' => [
         'title' => 'Server Features',
-        'lede' => 'Everything points toward fast progression, constant raiding, predictable wipes, and a real community layer.',
+        'lede' => 'Fast progression, constant raiding, predictable wipes, account-linked perks, and synced stats are live parts of the Raidlands stack.',
     ],
     'rules' => [
         'title' => 'Rules',
@@ -268,7 +268,7 @@ $page_copy = [
     ],
     'link' => [
         'title' => 'Link Account',
-        'lede' => 'Connect once and keep wipe stats, future rewards, roles, and VIP access with your Raidlands profile.',
+        'lede' => 'Connect once and keep wipe stats, rewards, roles, and VIP access with your Raidlands profile.',
     ],
     'support' => [
         'title' => 'Support',
@@ -276,11 +276,11 @@ $page_copy = [
     ],
     'privacy' => [
         'title' => 'Privacy Policy',
-        'lede' => 'How Raidlands handles website, Steam, Discord, support, analytics, and future account data.',
+        'lede' => 'How Raidlands handles website, Steam, Discord, support, analytics, and account data.',
     ],
     'terms' => [
         'title' => 'Terms of Service',
-        'lede' => 'Server access, account linking, bans, rules, appeals, and future supporter systems.',
+        'lede' => 'Server access, account linking, bans, rules, appeals, and supporter systems.',
     ],
     'leaderboard' => [
         'title' => 'Leaderboards',
@@ -292,19 +292,19 @@ $page_copy = [
     ],
     'events' => [
         'title' => 'Events',
-        'lede' => 'Future wipe fights, clan wars, staff events, and community chaos.',
+        'lede' => 'Wipe fights, clan wars, staff events, and community chaos live through the server and Discord.',
     ],
     'clans' => [
         'title' => 'Clans',
-        'lede' => 'Future clan pages, recruitment, rankings, and wipe history.',
+        'lede' => 'Clan systems are active in game; this page can grow into recruitment, rankings, and wipe history.',
     ],
     'vote' => [
         'title' => 'Vote Rewards',
-        'lede' => 'Future voting loops for discovery, rewards, and community growth.',
+        'lede' => 'Voting loops for discovery, rewards, and community growth can connect through linked accounts.',
     ],
     'bans' => [
         'title' => 'Bans and Appeals',
-        'lede' => 'Ban policy, appeal direction, and future public ban tooling.',
+        'lede' => 'Ban policy, appeal direction, and Discord-first moderation support.',
     ],
     'profile' => [
         'title' => 'Player Profile',
@@ -345,9 +345,9 @@ $seo_pages = [
     ],
     'link' => [
         'title' => 'Link Raidlands Account | Steam and Discord',
-        'description' => 'Prepare your Raidlands profile by connecting Steam and Discord for future leaderboards, rewards, and roles.',
+        'description' => 'Connect Steam for Raidlands leaderboards, rewards, roles, VIP ownership, and player profiles.',
         'ogTitle' => 'Link Raidlands Account',
-        'ogDescription' => 'Connect Steam and Discord once for future Raidlands profiles, rewards, and wipe systems.',
+        'ogDescription' => 'Connect Steam once for Raidlands profiles, rewards, VIP ownership, and wipe systems.',
     ],
     'support' => [
         'title' => 'Raidlands Support | Tickets, Bugs, Connection Help',
@@ -357,15 +357,15 @@ $seo_pages = [
     ],
     'privacy' => [
         'title' => 'Raidlands Privacy Policy',
-        'description' => 'Raidlands privacy policy for website analytics, Steam linking, Discord linking, support, and future community systems.',
+        'description' => 'Raidlands privacy policy for website analytics, Steam linking, Discord linking, support, and community systems.',
         'ogTitle' => 'Raidlands Privacy Policy',
         'ogDescription' => 'How Raidlands handles website, Steam, Discord, and support data.',
     ],
     'terms' => [
         'title' => 'Raidlands Terms of Service',
-        'description' => 'Raidlands terms covering server access, account linking, bans, appeals, rules, and future supporter systems.',
+        'description' => 'Raidlands terms covering server access, account linking, bans, appeals, rules, and supporter systems.',
         'ogTitle' => 'Raidlands Terms',
-        'ogDescription' => 'Terms for using the Raidlands website, Rust server, Discord, and future account systems.',
+        'ogDescription' => 'Terms for using the Raidlands website, Rust server, Discord, and account systems.',
     ],
     'leaderboard' => [
         'title' => 'Raidlands Leaderboards | Kills, K/D, Playtime, RP',
@@ -380,26 +380,26 @@ $seo_pages = [
         'ogDescription' => 'VIP tiers and one-time perks kept ready for the Raidlands Rust server.',
     ],
     'events' => [
-        'title' => 'Raidlands Events | Coming Soon',
-        'description' => 'Raidlands events are planned for wipe fights, clan wars, community votes, and server announcements.',
+        'title' => 'Raidlands Events | Wipe Fights and Clan Wars',
+        'description' => 'Raidlands events cover wipe fights, clan wars, community votes, and server announcements.',
         'ogTitle' => 'Raidlands Events',
-        'ogDescription' => 'Future wipe events and community battles for Raidlands.',
+        'ogDescription' => 'Wipe events and community battles for Raidlands.',
     ],
     'clans' => [
-        'title' => 'Raidlands Clans | Coming Soon',
-        'description' => 'Raidlands clan pages are planned for team profiles, rankings, recruitment, and wipe history.',
+        'title' => 'Raidlands Clans | Team Play and Rivalries',
+        'description' => 'Raidlands clans support team play, rivalry records, recruitment, and wipe history.',
         'ogTitle' => 'Raidlands Clans',
-        'ogDescription' => 'Future clan pages, clan rankings, and team profiles for Raidlands.',
+        'ogDescription' => 'Clan play, clan rankings, and team profiles for Raidlands.',
     ],
     'vote' => [
-        'title' => 'Raidlands Vote Rewards | Coming Soon',
-        'description' => 'Raidlands vote rewards are planned for future player retention and community growth systems.',
+        'title' => 'Raidlands Vote Rewards',
+        'description' => 'Raidlands vote rewards connect server discovery, player rewards, and community growth.',
         'ogTitle' => 'Raidlands Vote Rewards',
-        'ogDescription' => 'Future vote rewards for Raidlands players.',
+        'ogDescription' => 'Vote rewards for Raidlands players.',
     ],
     'bans' => [
         'title' => 'Raidlands Bans and Appeals',
-        'description' => 'Raidlands ban policy, appeal path, and future ban list placeholder.',
+        'description' => 'Raidlands ban policy, appeal path, and Discord-first moderation support.',
         'ogTitle' => 'Raidlands Bans',
         'ogDescription' => 'Ban policy and appeal information for Raidlands.',
     ],
@@ -418,24 +418,24 @@ $future_pages = [
         ['Clan Rankings', 'Team-wide performance and wipe history.'],
     ],
     'events' => [
-        ['Wipe Fights', 'Thursday event hooks.'],
-        ['Clan Wars', 'Scheduled rivalries and community brackets.'],
-        ['Community Votes', 'Let active players steer the next event.'],
+        ['Wipe Fights', 'Thursday event hooks and staff-led battles are part of the live server cadence.'],
+        ['Clan Wars', 'Scheduled rivalries and community brackets can be posted here as seasons unfold.'],
+        ['Community Votes', 'Active players can steer event formats through Discord.'],
     ],
     'clans' => [
-        ['Recruitment', 'Clan cards and member discovery.'],
-        ['Rivalries', 'Wipe-long conflicts and archived wins.'],
-        ['Rankings', 'Team stats when the data layer is live.'],
+        ['Recruitment', 'In-game clans can organize rosters and member discovery through the community hub.'],
+        ['Rivalries', 'Wipe-long conflicts and archived wins can build from live clan play.'],
+        ['Rankings', 'Team stats can plug into the website once public clan pages are expanded.'],
     ],
     'vote' => [
-        ['Vote Rewards', 'Future rewards for server discovery loops.'],
+        ['Vote Rewards', 'Rewards can connect server discovery loops to linked player accounts.'],
         ['Connected Accounts', 'Steam and Discord connections keep rewards clean.'],
         ['Growth', 'Voting can help keep wipe nights populated.'],
     ],
     'profile' => [
         ['Steam Account', 'VIP and reward ownership.'],
         ['Discord Account', 'Community roles and support.'],
-        ['Wipe History', 'Stats, rewards, and season records after launch.'],
+        ['Wipe History', 'Stats, rewards, and season records from live seasons.'],
     ],
 ];
 

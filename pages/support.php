@@ -6,9 +6,9 @@
 <section class="section">
   <div class="section-inner">
     <div class="grid three">
-      <?= render_card('TICKET', 'Support Tickets', 'Use Discord support channels for connection issues, reports, and staff help at launch.') ?>
+      <?= render_card('TICKET', 'Support Tickets', 'Use Discord support channels for connection issues, reports, and staff help.') ?>
       <?= render_card('BUG', 'Bug Reports', 'Include screenshots, error text, Steam name, steps to reproduce, and when it happened.') ?>
-      <?= render_card('APPEAL', 'Ban Appeals', 'Appeals start in Discord until the structured appeal route is connected.') ?>
+      <?= render_card('APPEAL', 'Ban Appeals', 'Appeals start in Discord so staff can keep moderation context organized.') ?>
       <?= render_card('EAC', 'EAC Issues', 'Restart Steam and Rust, verify files, then share the exact error in a ticket.') ?>
       <?= render_card('TIMEOUT', 'Timeouts', 'Try the console command first, then ask support if the server is online and reachable.') ?>
       <?= render_card('STAFF', 'Staff Contact', 'Keep moderation conversations in official channels so evidence stays organized.') ?>
