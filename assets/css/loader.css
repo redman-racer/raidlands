@@ -31,6 +31,8 @@ html.raidlands-loading .raidlands-loader {
     #050607;
   font-family: var(--font-countdown, "Arial Narrow", "Roboto Condensed", Impact, Arial, sans-serif);
   letter-spacing: 0;
+  overflow: hidden;
+  isolation: isolate;
   opacity: 1;
   transition: opacity var(--loader-fade-ms, 520ms) ease;
 }
@@ -46,7 +48,8 @@ html.raidlands-loader-fading .raidlands-loader {
   pointer-events: none;
 }
 
-html.raidlands-loading .raidlands-loader.is-breaching {
+html.raidlands-loading .raidlands-loader.is-breaching,
+html.raidlands-loading .raidlands-loader.is-exploding {
   background:
     radial-gradient(circle at var(--breach-x, 50%) var(--breach-y, 73%), rgba(255, 209, 102, .16), transparent 18%),
     radial-gradient(ellipse at 66% 48%, rgba(255, 138, 40, .18), transparent 36%),
@@ -89,6 +92,122 @@ html.raidlands-loading .raidlands-loader.is-breaching {
     radial-gradient(ellipse at center, transparent 46%, rgba(0, 0, 0, .58) 100%);
   mix-blend-mode: screen;
   opacity: .42;
+}
+
+.raidlands-loader-vfx {
+  position: absolute;
+  display: block;
+  pointer-events: none;
+  background-position: center;
+  background-repeat: no-repeat;
+  opacity: 0;
+  will-change: transform, opacity, filter;
+}
+
+.raidlands-loader-vfx--core {
+  left: var(--explosion-origin-x, 50%);
+  bottom: -16vmin;
+  z-index: 0;
+  width: clamp(520px, 94vmax, 1500px);
+  aspect-ratio: 1;
+  background-image: url("../media/loading/explosion-stack-01-core-blast-glow.webp");
+  background-size: contain;
+  filter: saturate(1.22) brightness(1.08) blur(.4px);
+  mix-blend-mode: screen;
+  transform: translate(-50%, 22%) scale(.34);
+  transform-origin: 50% 82%;
+}
+
+.raidlands-loader-vfx--fireball {
+  left: var(--explosion-origin-x, 50%);
+  bottom: -20vmin;
+  z-index: 0;
+  width: clamp(580px, 106vmax, 1700px);
+  aspect-ratio: 1;
+  background-image: url("../media/loading/explosion-stack-02-fireball-smoke.webp");
+  background-size: contain;
+  filter: saturate(1.06) contrast(1.05) brightness(.98);
+  transform: translate(-50%, 24%) scale(.42);
+  transform-origin: 50% 82%;
+}
+
+.raidlands-loader-vfx--smoke {
+  inset: -8vmin -5vmin -10vmin;
+  z-index: 6;
+  background-image: url("../media/loading/explosion-stack-03-smoke-veil.webp");
+  background-position: center bottom;
+  background-size: cover;
+  filter: saturate(1.05) contrast(1.08);
+  transform: translateY(14%) scale(1.04);
+}
+
+.raidlands-loader-vfx--spark {
+  left: var(--explosion-origin-x, 50%);
+  top: var(--explosion-origin-y, 76%);
+  z-index: 7;
+  width: clamp(440px, 76vmax, 1280px);
+  aspect-ratio: 1;
+  background-image: url("../media/loading/explosion-stack-04-radial-spark-burst.webp");
+  background-size: contain;
+  filter:
+    saturate(1.16)
+    contrast(1.08)
+    drop-shadow(0 0 32px rgba(255, 138, 40, .42));
+  mix-blend-mode: screen;
+  transform: translate(-50%, -50%) scale(.36) rotate(-6deg);
+  transform-origin: center;
+}
+
+.raidlands-loader-vfx--embers {
+  inset: -6vmin;
+  z-index: 8;
+  background-image: url("../media/loading/explosion-stack-05-ember-ash-field.webp");
+  background-position: center;
+  background-size: cover;
+  filter: saturate(1.08) brightness(1.1);
+  mix-blend-mode: screen;
+  transform: translateY(8%) scale(1.04);
+}
+
+.raidlands-loader-vfx--flash {
+  left: var(--explosion-origin-x, 50%);
+  top: var(--explosion-origin-y, 76%);
+  z-index: 9;
+  width: clamp(620px, 118vmax, 1850px);
+  aspect-ratio: 1;
+  background-image: url("../media/loading/explosion-stack-06-white-hot-flash.webp");
+  background-size: contain;
+  filter:
+    saturate(1.08)
+    brightness(1.22)
+    drop-shadow(0 0 64px rgba(255, 209, 102, .68));
+  mix-blend-mode: screen;
+  transform: translate(-50%, -50%) scale(.42);
+  transform-origin: center;
+}
+
+.raidlands-loader.is-exploding .raidlands-loader-vfx--core {
+  animation: raidlands-loader-explosion-core 1500ms cubic-bezier(.12, .78, .2, 1) both;
+}
+
+.raidlands-loader.is-exploding .raidlands-loader-vfx--fireball {
+  animation: raidlands-loader-explosion-fireball 1420ms 120ms cubic-bezier(.12, .74, .22, 1) both;
+}
+
+.raidlands-loader.is-exploding .raidlands-loader-vfx--smoke {
+  animation: raidlands-loader-explosion-smoke 1260ms 430ms ease-out both;
+}
+
+.raidlands-loader.is-exploding .raidlands-loader-vfx--spark {
+  animation: raidlands-loader-explosion-spark 820ms 500ms cubic-bezier(.13, .78, .24, 1) both;
+}
+
+.raidlands-loader.is-exploding .raidlands-loader-vfx--embers {
+  animation: raidlands-loader-explosion-embers 1320ms 690ms ease-out both;
+}
+
+.raidlands-loader.is-exploding .raidlands-loader-vfx--flash {
+  animation: raidlands-loader-explosion-flash 460ms 920ms ease-out both;
 }
 
 .raidlands-loader-frame {
@@ -148,9 +267,14 @@ html.raidlands-loading .raidlands-loader.is-breaching {
     raidlands-loader-static .42s steps(2, end) infinite;
 }
 
-.raidlands-loader.is-breaching .raidlands-loader-frame {
+.raidlands-loader.is-breaching .raidlands-loader-frame,
+.raidlands-loader.is-exploding .raidlands-loader-frame {
   overflow: hidden;
   animation: none;
+}
+
+.raidlands-loader.is-exploding .raidlands-loader-frame {
+  animation: raidlands-loader-explosion-shake 640ms cubic-bezier(.2, .8, .28, 1) both;
 }
 
 .raidlands-loader-targeting {
@@ -826,39 +950,53 @@ html.raidlands-loading .raidlands-loader.is-breaching {
   animation: raidlands-loader-breach-debris var(--duration, 1200ms) var(--delay, 0ms) cubic-bezier(.12, .72, .34, 1) both;
 }
 
-.raidlands-loader.is-breaching .raidlands-loader-logo {
+.raidlands-loader.is-breaching .raidlands-loader-logo,
+.raidlands-loader.is-exploding .raidlands-loader-logo {
   animation: none;
 }
 
 .raidlands-loader.is-breaching .raidlands-loader-progress,
 .raidlands-loader.is-breaching .raidlands-loader-state,
-.raidlands-loader.is-breaching .raidlands-loader-tip {
+.raidlands-loader.is-breaching .raidlands-loader-tip,
+.raidlands-loader.is-exploding .raidlands-loader-progress,
+.raidlands-loader.is-exploding .raidlands-loader-state,
+.raidlands-loader.is-exploding .raidlands-loader-tip {
   animation: none;
 }
 
-.raidlands-loader.is-breaching .raidlands-loader-console {
+.raidlands-loader.is-breaching .raidlands-loader-console,
+.raidlands-loader.is-exploding .raidlands-loader-console {
   overflow: hidden;
   mask-image: none;
   animation: none;
 }
 
-.raidlands-loader.is-breaching .raidlands-loader-scope {
+.raidlands-loader.is-breaching .raidlands-loader-scope,
+.raidlands-loader.is-exploding .raidlands-loader-scope {
   animation: none;
 }
 
-.raidlands-loader.is-breaching [data-loader-blast-piece] {
-  animation: none;
+.raidlands-loader.is-exploding [data-loader-blast-piece] {
+  will-change: transform, opacity, filter, clip-path;
 }
 
-.raidlands-loader.is-breaching [data-loader-blast-piece]:not(.raidlands-loader-scope) {
-  position: relative;
+.raidlands-loader.is-exploding [data-loader-blast-piece]:not(.raidlands-loader-scope) {
+  animation: raidlands-loader-element-blast var(--blast-duration, 1180ms) var(--blast-delay, 0ms) cubic-bezier(.12, .72, .24, 1) both;
 }
 
-.raidlands-loader.is-breaching .raidlands-loader-line[data-loader-blast-piece] {
+.raidlands-loader.is-exploding .raidlands-loader-console[data-loader-blast-piece] {
+  animation-name: raidlands-loader-console-breach;
+}
+
+.raidlands-loader.is-exploding .raidlands-loader-line[data-loader-blast-piece] {
   animation-name: raidlands-loader-console-line-blast;
 }
 
-.raidlands-loader.is-breaching .raidlands-loader-scope[data-loader-blast-piece] {
+.raidlands-loader.is-exploding .raidlands-loader-logo[data-loader-blast-piece] {
+  animation-name: raidlands-loader-logo-breach;
+}
+
+.raidlands-loader.is-exploding .raidlands-loader-scope[data-loader-blast-piece] {
   position: absolute;
   animation: raidlands-loader-scope-piece-blast var(--blast-duration, 1500ms) var(--blast-delay, 0ms) cubic-bezier(.13, .72, .18, 1) both;
 }
@@ -1365,6 +1503,240 @@ html.raidlands-loading .raidlands-loader.is-breaching {
   70% {
     transform: translate3d(-2px, 1px, 0);
     filter: brightness(1.08);
+  }
+}
+
+@keyframes raidlands-loader-explosion-shake {
+  0%,
+  100% {
+    transform: translate3d(0, 0, 0);
+    filter: none;
+  }
+
+  10% {
+    transform: translate3d(-2px, 1px, 0) rotate(-.06deg);
+  }
+
+  20% {
+    transform: translate3d(3px, -2px, 0) rotate(.08deg);
+    filter: brightness(1.12) saturate(1.08);
+  }
+
+  34% {
+    transform: translate3d(-3px, -1px, 0) rotate(-.05deg);
+  }
+
+  48% {
+    transform: translate3d(2px, 2px, 0) rotate(.04deg);
+  }
+
+  68% {
+    transform: translate3d(-1px, 1px, 0);
+    filter: brightness(1.06);
+  }
+}
+
+@keyframes raidlands-loader-explosion-core {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 22%) scale(.34);
+  }
+
+  12% {
+    opacity: 1;
+    transform: translate(-50%, 10%) scale(.86);
+  }
+
+  34% {
+    opacity: .98;
+    transform: translate(-50%, 1%) scale(1.18);
+  }
+
+  72% {
+    opacity: .58;
+    transform: translate(-50%, -6%) scale(1.42);
+    filter: saturate(1.28) brightness(1.12) blur(.8px);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -12%) scale(1.58);
+    filter: saturate(.92) brightness(.86) blur(4px);
+  }
+}
+
+@keyframes raidlands-loader-explosion-fireball {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 24%) scale(.42);
+    filter: saturate(1.08) brightness(.92) blur(1px);
+  }
+
+  18% {
+    opacity: .88;
+    transform: translate(-50%, 6%) scale(.86);
+  }
+
+  46% {
+    opacity: .94;
+    transform: translate(-50%, -5%) scale(1.22);
+    filter: saturate(1.14) brightness(1.02) blur(.2px);
+  }
+
+  78% {
+    opacity: .58;
+    transform: translate(-50%, -13%) scale(1.42);
+    filter: saturate(.92) brightness(.9) blur(2.4px);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -18%) scale(1.55);
+    filter: saturate(.7) brightness(.62) blur(7px);
+  }
+}
+
+@keyframes raidlands-loader-explosion-smoke {
+  0% {
+    opacity: 0;
+    transform: translateY(14%) scale(1.04);
+    filter: saturate(1.08) contrast(1.04) blur(0);
+  }
+
+  22% {
+    opacity: .74;
+  }
+
+  58% {
+    opacity: .84;
+    transform: translateY(-3%) scale(1.13);
+    filter: saturate(.98) contrast(1.08) blur(1.2px);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-13%) scale(1.2);
+    filter: saturate(.76) contrast(.95) blur(7px);
+  }
+}
+
+@keyframes raidlands-loader-explosion-spark {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(.36) rotate(-6deg);
+  }
+
+  15% {
+    opacity: 1;
+    transform: translate(-50%, -50%) scale(.82) rotate(2deg);
+  }
+
+  54% {
+    opacity: .9;
+    transform: translate(-50%, -50%) scale(1.46) rotate(10deg);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.78) rotate(18deg);
+    filter:
+      saturate(.9)
+      contrast(.96)
+      blur(3px)
+      drop-shadow(0 0 28px rgba(255, 138, 40, .32));
+  }
+}
+
+@keyframes raidlands-loader-explosion-embers {
+  0% {
+    opacity: 0;
+    transform: translateY(8%) scale(1.04);
+  }
+
+  24% {
+    opacity: .72;
+  }
+
+  72% {
+    opacity: .58;
+    transform: translateY(-5%) scale(1.08);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-12%) scale(1.11);
+    filter: saturate(.8) brightness(.86) blur(2px);
+  }
+}
+
+@keyframes raidlands-loader-explosion-flash {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(.42);
+  }
+
+  18% {
+    opacity: .98;
+    transform: translate(-50%, -50%) scale(.88);
+  }
+
+  45% {
+    opacity: .92;
+    transform: translate(-50%, -50%) scale(1.08);
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, -50%) scale(1.38);
+    filter:
+      saturate(.82)
+      brightness(.9)
+      blur(5px)
+      drop-shadow(0 0 42px rgba(255, 138, 40, .28));
+  }
+}
+
+@keyframes raidlands-loader-reduced-ui-exit {
+  0% {
+    opacity: 1;
+    filter: none;
+  }
+
+  100% {
+    opacity: 0;
+    filter: brightness(1.12) blur(2px);
+  }
+}
+
+@keyframes raidlands-loader-reduced-core {
+  0% {
+    opacity: 0;
+    transform: translate(-50%, 16%) scale(.72);
+  }
+
+  38% {
+    opacity: .5;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translate(-50%, 5%) scale(1);
+  }
+}
+
+@keyframes raidlands-loader-reduced-smoke {
+  0% {
+    opacity: 0;
+    transform: translateY(8%) scale(1);
+  }
+
+  40% {
+    opacity: .42;
+  }
+
+  100% {
+    opacity: 0;
+    transform: translateY(-2%) scale(1.04);
   }
 }
 
@@ -2007,6 +2379,29 @@ html.raidlands-loading .raidlands-loader.is-breaching {
   }
 
   .raidlands-loader-targeting {
+    display: none;
+  }
+
+  .raidlands-loader.is-exploding .raidlands-loader-frame {
+    animation: raidlands-loader-reduced-ui-exit 360ms ease both !important;
+  }
+
+  .raidlands-loader.is-exploding [data-loader-blast-piece] {
+    animation: none !important;
+  }
+
+  .raidlands-loader.is-exploding .raidlands-loader-vfx--core {
+    animation: raidlands-loader-reduced-core 520ms ease-out both !important;
+  }
+
+  .raidlands-loader.is-exploding .raidlands-loader-vfx--smoke {
+    animation: raidlands-loader-reduced-smoke 560ms 70ms ease-out both !important;
+  }
+
+  .raidlands-loader.is-exploding .raidlands-loader-vfx--fireball,
+  .raidlands-loader.is-exploding .raidlands-loader-vfx--spark,
+  .raidlands-loader.is-exploding .raidlands-loader-vfx--embers,
+  .raidlands-loader.is-exploding .raidlands-loader-vfx--flash {
     display: none;
   }
 

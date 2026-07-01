@@ -157,6 +157,8 @@ function render_raidlands_loader(array $payload): string
     $tip = (string) ($payload['tips'][0] ?? 'Every wipe starts cleaner when your account is linked before checkout.');
 
     return '<div class="raidlands-loader" data-raidlands-loader role="status" aria-live="polite" aria-label="Raidlands loading console">'
+        . '<div class="raidlands-loader-vfx raidlands-loader-vfx--core" aria-hidden="true"></div>'
+        . '<div class="raidlands-loader-vfx raidlands-loader-vfx--fireball" aria-hidden="true"></div>'
         . '<div class="raidlands-loader-frame">'
         . '<div class="raidlands-loader-targeting" data-loader-targeting aria-hidden="true"></div>'
         . '<div class="raidlands-loader-console" aria-hidden="true">'
@@ -182,6 +184,10 @@ function render_raidlands_loader(array $payload): string
         . '</div>'
         . '</div>'
         . '</div>'
+        . '<div class="raidlands-loader-vfx raidlands-loader-vfx--smoke" aria-hidden="true"></div>'
+        . '<div class="raidlands-loader-vfx raidlands-loader-vfx--spark" aria-hidden="true"></div>'
+        . '<div class="raidlands-loader-vfx raidlands-loader-vfx--embers" aria-hidden="true"></div>'
+        . '<div class="raidlands-loader-vfx raidlands-loader-vfx--flash" aria-hidden="true"></div>'
         . '</div>';
 }
 

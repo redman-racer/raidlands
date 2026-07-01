@@ -12128,3 +12128,1086 @@
 [Tue Jun 30 23:59:54 2026] 127.0.0.1:52808 Accepted
 [Tue Jun 30 23:59:54 2026] 127.0.0.1:52808 [200]: GET /api/server-status.php
 [Tue Jun 30 23:59:54 2026] 127.0.0.1:52808 Closing
+[Wed Jul  1 00:00:26 2026] 127.0.0.1:52762 Accepted
+[Wed Jul  1 00:00:28 2026] 127.0.0.1:52762 [200]: GET /api/server-status.php
+[Wed Jul  1 00:00:28 2026] 127.0.0.1:52762 Closing
+[Wed Jul  1 00:00:31 2026] 127.0.0.1:53509 Accepted
+[Wed Jul  1 00:00:31 2026] 127.0.0.1:62324 Accepted
+[Wed Jul  1 00:00:31 2026] 127.0.0.1:53509 [200]: GET /
+[Wed Jul  1 00:00:31 2026] 127.0.0.1:53509 Closing
+[Wed Jul  1 00:00:31 2026] 127.0.0.1:62324 [200]: GET /assets/media/loading/battlefield-background.webp
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:63020 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:57542 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:63020 [200]: GET /assets/css/loader.css
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:51903 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:57542 [200]: GET /assets/css/styles.css
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:62324 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:54613 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:51903 [200]: GET /assets/media/website-hero-raid-overlook-v4.webp
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:62989 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:54613 [200]: GET /assets/js/raidlands-loader.js
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:63020 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:62989 [200]: GET /assets/media/loading/breach-ring.webp
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:57542 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:57362 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:51903 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:57362 [200]: GET /assets/media/nav-logo.png
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:54613 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:62989 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:57362 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:61998 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:61998 [200]: GET /site.webmanifest
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:61998 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:50090 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:62237 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:50090 [200]: GET /assets/media/raidlands-logo.webp
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:62237 [200]: GET /assets/js/site.js
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:50090 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:62237 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:52860 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:52860 [200]: GET /api/server-status.php
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:52860 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:58615 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:58615 [200]: GET /assets/media/texture-metal.svg
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:56763 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:51206 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:57116 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:58615 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:56763 [200]: GET /assets/media/pattern-bg.png
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:51206 [200]: GET /assets/media/texture-grunge.svg
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:57116 [200]: GET /assets/media/plate-seams.svg
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:50988 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:51206 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:57116 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:50988 [200]: GET /assets/media/loading/terminal-frame.webp
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:50988 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:49845 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:56072 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:49845 [200]: GET /assets/media/loading/fine-hud-ring.webp
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:56072 [200]: GET /assets/media/loading/spark-burst.webp
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:56763 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:49845 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:56072 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:60143 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:60143 [200]: GET /assets/media/ember-flare-overlay.webp
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:60143 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:59635 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:62762 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:52942 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:49426 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:51858 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:59635 [200]: GET /assets/media/nav-plate-seams.webp
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:62762 [200]: GET /assets/media/nav-burnt-metal-base.webp
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:52942 [200]: GET /assets/media/nav-active-ember.webp
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:49426 [200]: GET /assets/media/section-divider.svg
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:51858 [200]: GET /assets/media/console-scan.svg
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:59635 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:62762 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:52942 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:49426 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:51858 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:60819 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:64134 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:60819 [200]: GET /assets/media/wipe-countdown-panel-v2.jpg
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:64134 [200]: GET /assets/media/wipe-day-rust-v2.png
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:60819 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:53283 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:53283 [200]: GET /assets/media/discord-banner-rust-v2.png
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:62697 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:64917 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:51530 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:55610 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:53283 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:62697 [200]: GET /assets/media/feature-icons/gather.png
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:64917 [200]: GET /assets/media/feature-icons/kit.png
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:51530 [200]: GET /assets/media/feature-icons/teleport.png
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:55610 [200]: GET /assets/media/feature-icons/clan.png
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:62697 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:64917 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:51530 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:55610 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:61321 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:49929 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:61321 [200]: GET /assets/media/feature-icons/skinbox.png
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:54339 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:49929 [200]: GET /assets/media/feature-icons/backpacks.png
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:57606 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:54339 [200]: GET /assets/media/feature-icons/fast-raids.png
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:56734 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:57606 [200]: GET /assets/media/feature-icons/active-staff.png
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:61321 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:56734 [200]: GET /assets/media/feature-icons/pvp.png
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:49929 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:54339 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:57606 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:56734 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:62031 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:62031 [200]: GET /assets/media/feature-icons/mini.png
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:62031 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:64134 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:52308 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:57782 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:52308 [200]: GET /assets/icons/favicon.ico
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:56808 Accepted
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:57782 [200]: GET /assets/media/loading/target-reticle.webp
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:56808 [200]: GET /assets/media/loading/target-silhouette.webp
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:52308 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:57782 Closing
+[Wed Jul  1 00:00:32 2026] 127.0.0.1:56808 Closing
+[Wed Jul  1 00:00:35 2026] 127.0.0.1:55116 Accepted
+[Wed Jul  1 00:00:35 2026] 127.0.0.1:55116 [200]: GET /assets/media/wipe-count-box-black-glass-v2.jpg
+[Wed Jul  1 00:00:35 2026] 127.0.0.1:55116 Closing
+[Wed Jul  1 00:00:41 2026] 127.0.0.1:50947 Accepted
+[Wed Jul  1 00:00:41 2026] 127.0.0.1:62855 Accepted
+[Wed Jul  1 00:00:41 2026] 127.0.0.1:50947 [200]: GET /
+[Wed Jul  1 00:00:41 2026] 127.0.0.1:50947 Closing
+[Wed Jul  1 00:00:54 2026] 127.0.0.1:54746 Accepted
+[Wed Jul  1 00:00:54 2026] 127.0.0.1:54746 [200]: GET /api/server-status.php
+[Wed Jul  1 00:00:54 2026] 127.0.0.1:54746 Closing
+[Wed Jul  1 00:00:54 2026] 127.0.0.1:55749 Accepted
+[Wed Jul  1 00:00:54 2026] 127.0.0.1:55749 [200]: GET /api/server-status.php
+[Wed Jul  1 00:00:54 2026] 127.0.0.1:55749 Closing
+[Wed Jul  1 00:01:54 2026] 127.0.0.1:57869 Accepted
+[Wed Jul  1 00:01:54 2026] 127.0.0.1:54044 Accepted
+[Wed Jul  1 00:01:55 2026] 127.0.0.1:57869 [200]: GET /api/server-status.php
+[Wed Jul  1 00:01:55 2026] 127.0.0.1:57869 Closing
+[Wed Jul  1 00:01:55 2026] 127.0.0.1:62855 Closed without sending a request; it was probably just an unused speculative preconnection
+[Wed Jul  1 00:01:55 2026] 127.0.0.1:62855 Closing
+[Wed Jul  1 00:01:55 2026] 127.0.0.1:54044 [200]: GET /api/server-status.php
+[Wed Jul  1 00:01:55 2026] 127.0.0.1:54044 Closing
+[Wed Jul  1 00:02:19 2026] 127.0.0.1:59506 Accepted
+[Wed Jul  1 00:02:19 2026] 127.0.0.1:59506 [200]: GET /?navqa=aspect-1782882139851-mobile-390-aspect
+[Wed Jul  1 00:02:19 2026] 127.0.0.1:59506 Closing
+[Wed Jul  1 00:02:19 2026] 127.0.0.1:50812 Accepted
+[Wed Jul  1 00:02:19 2026] 127.0.0.1:50812 [200]: GET /assets/media/loading/battlefield-background.webp
+[Wed Jul  1 00:02:19 2026] 127.0.0.1:59889 Accepted
+[Wed Jul  1 00:02:19 2026] 127.0.0.1:50812 Closing
+[Wed Jul  1 00:02:19 2026] 127.0.0.1:65108 Accepted
+[Wed Jul  1 00:02:19 2026] 127.0.0.1:63737 Accepted
+[Wed Jul  1 00:02:19 2026] 127.0.0.1:59889 [200]: GET /assets/media/website-hero-raid-overlook-v4.webp
+[Wed Jul  1 00:02:19 2026] 127.0.0.1:65108 [200]: GET /assets/js/raidlands-loader.js
+[Wed Jul  1 00:02:19 2026] 127.0.0.1:63737 [200]: GET /assets/media/loading/breach-ring.webp
+[Wed Jul  1 00:02:19 2026] 127.0.0.1:59889 Closing
+[Wed Jul  1 00:02:19 2026] 127.0.0.1:52544 Accepted
+[Wed Jul  1 00:02:19 2026] 127.0.0.1:65108 Closing
+[Wed Jul  1 00:02:19 2026] 127.0.0.1:63737 Closing
+[Wed Jul  1 00:02:19 2026] 127.0.0.1:52544 [200]: GET /assets/css/loader.css
+[Wed Jul  1 00:02:19 2026] 127.0.0.1:52544 Closing
+[Wed Jul  1 00:02:19 2026] 127.0.0.1:50039 Accepted
+[Wed Jul  1 00:02:19 2026] 127.0.0.1:64715 Accepted
+[Wed Jul  1 00:02:19 2026] 127.0.0.1:50039 [200]: GET /assets/css/styles.css
+[Wed Jul  1 00:02:19 2026] 127.0.0.1:64715 [200]: GET /assets/media/raidlands-logo.webp
+[Wed Jul  1 00:02:19 2026] 127.0.0.1:50039 Closing
+[Wed Jul  1 00:02:19 2026] 127.0.0.1:64715 Closing
+[Wed Jul  1 00:02:19 2026] 127.0.0.1:61163 Accepted
+[Wed Jul  1 00:02:19 2026] 127.0.0.1:61163 [200]: GET /assets/media/nav-logo.png
+[Wed Jul  1 00:02:19 2026] 127.0.0.1:61163 Closing
+[Wed Jul  1 00:02:19 2026] 127.0.0.1:65171 Accepted
+[Wed Jul  1 00:02:19 2026] 127.0.0.1:65171 [200]: GET /assets/js/site.js
+[Wed Jul  1 00:02:19 2026] 127.0.0.1:65171 Closing
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:51517 Accepted
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:54128 Accepted
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:51517 [200]: GET /assets/media/texture-metal.svg
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:63985 Accepted
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:54128 [200]: GET /assets/media/pattern-bg.png
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:63985 [200]: GET /assets/media/texture-grunge.svg
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:51517 Closing
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:63985 Closing
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:54128 Closing
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:62830 Accepted
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:58533 Accepted
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:62830 [200]: GET /api/server-status.php
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:62830 Closing
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:62792 Accepted
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:58533 [200]: GET /assets/media/ember-flare-overlay.webp
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:52725 Accepted
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:62792 [200]: GET /assets/media/nav-plate-seams.webp
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:60456 Accepted
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:52725 [200]: GET /assets/media/nav-burnt-metal-base.webp
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:59857 Accepted
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:60456 [200]: GET /assets/media/nav-active-ember.webp
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:58533 Closing
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:59857 [200]: GET /assets/media/section-divider.svg
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:62792 Closing
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:52725 Closing
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:60456 Closing
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:59857 Closing
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:50375 Accepted
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:50375 [200]: GET /assets/media/console-scan.svg
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:50375 Closing
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:50405 Accepted
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:50405 [200]: GET /assets/media/wipe-countdown-panel-v2.jpg
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:50405 Closing
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:50345 Accepted
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:50345 [200]: GET /assets/media/plate-seams.svg
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:50345 Closing
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:53650 Accepted
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:53650 [200]: GET /assets/media/wipe-day-rust-v2.png
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:63562 Accepted
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:63562 [200]: GET /assets/media/discord-banner-rust-v2.png
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:63562 Closing
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:53650 Closing
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:54604 Accepted
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:54604 [200]: GET /assets/icons/favicon.ico
+[Wed Jul  1 00:02:20 2026] 127.0.0.1:54604 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:54269 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:54269 [200]: GET /?navqa=aspect-1782882141568-desktop-1366-aspect
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:54269 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:50131 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:50131 [200]: GET /assets/media/loading/battlefield-background.webp
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:55377 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:50131 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:57655 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:61431 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:55377 [200]: GET /assets/media/website-hero-raid-overlook-v4.webp
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:57655 [200]: GET /assets/js/raidlands-loader.js
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:61431 [200]: GET /assets/media/loading/breach-ring.webp
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:57563 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:55377 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:57655 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:61431 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:57563 [200]: GET /assets/css/loader.css
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:57563 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:50840 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:63390 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:50840 [200]: GET /assets/css/styles.css
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:50840 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:63390 [200]: GET /assets/media/raidlands-logo.webp
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:63390 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:60813 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:60813 [200]: GET /assets/media/nav-logo.png
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:60813 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:62362 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:62362 [200]: GET /assets/js/site.js
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:62362 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:58606 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:50541 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:58606 [200]: GET /assets/media/texture-metal.svg
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:63623 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:50541 [200]: GET /assets/media/pattern-bg.png
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:63623 [200]: GET /assets/media/texture-grunge.svg
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:58606 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:63623 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:50541 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:54154 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:59916 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:54154 [200]: GET /api/server-status.php
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:54154 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:61027 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:59916 [200]: GET /assets/media/ember-flare-overlay.webp
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:63261 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:61027 [200]: GET /assets/media/nav-plate-seams.webp
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:64669 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:63261 [200]: GET /assets/media/nav-burnt-metal-base.webp
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:61961 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:64669 [200]: GET /assets/media/nav-active-ember.webp
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:59916 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:61914 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:61961 [200]: GET /assets/media/section-divider.svg
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:61027 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:63261 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:61914 [200]: GET /assets/media/console-scan.svg
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:64669 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:61961 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:61914 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:62333 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:62333 [200]: GET /assets/media/wipe-countdown-panel-v2.jpg
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:55597 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:62333 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:63803 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:55597 [200]: GET /assets/media/plate-seams.svg
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:63803 [200]: GET /assets/media/wipe-day-rust-v2.png
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:55597 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:58530 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:58530 [200]: GET /assets/media/discord-banner-rust-v2.png
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:58530 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:63803 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:55628 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:60559 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:55628 [200]: GET /assets/media/feature-icons/gather.png
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:59411 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:62167 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:60559 [200]: GET /assets/media/feature-icons/pvp.png
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:59411 [200]: GET /assets/media/feature-icons/kit.png
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:62167 [200]: GET /assets/media/feature-icons/teleport.png
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:55628 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:60559 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:59411 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:62167 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:57117 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:57117 [200]: GET /assets/media/feature-icons/clan.png
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:57382 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:57117 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:65196 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:57382 [200]: GET /assets/media/feature-icons/skinbox.png
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:65196 [200]: GET /assets/media/feature-icons/backpacks.png
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:57382 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:65196 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:60692 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:60692 [200]: GET /assets/media/feature-icons/mini.png
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:60692 Closing
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:59612 Accepted
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:59612 [200]: GET /assets/icons/favicon.ico
+[Wed Jul  1 00:02:21 2026] 127.0.0.1:59612 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:55520 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:55520 [200]: GET /?navqa=aspect-1782882143235-desktop-1920-aspect
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:55520 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:62060 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:62060 [200]: GET /assets/media/loading/battlefield-background.webp
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:61843 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:62060 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:54915 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:53646 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:61843 [200]: GET /assets/media/website-hero-raid-overlook-v4.webp
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:54915 [200]: GET /assets/js/raidlands-loader.js
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:53646 [200]: GET /assets/media/loading/breach-ring.webp
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:61843 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:59292 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:54915 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:53646 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:59292 [200]: GET /assets/css/loader.css
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:59292 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:52874 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:62180 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:52874 [200]: GET /assets/css/styles.css
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:62180 [200]: GET /assets/media/raidlands-logo.webp
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:64403 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:64403 [200]: GET /assets/media/nav-logo.png
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:52874 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:62180 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:64403 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:56574 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:56574 [200]: GET /assets/js/site.js
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:56574 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:52737 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:56263 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:52737 [200]: GET /assets/media/texture-metal.svg
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:57155 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:56263 [200]: GET /assets/media/pattern-bg.png
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:57155 [200]: GET /assets/media/texture-grunge.svg
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:52737 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:57155 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:56263 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:53160 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:65180 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:53160 [200]: GET /assets/media/ember-flare-overlay.webp
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:62298 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:65180 [200]: GET /assets/media/nav-plate-seams.webp
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:59051 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:62298 [200]: GET /assets/media/nav-burnt-metal-base.webp
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:60029 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:59051 [200]: GET /assets/media/nav-active-ember.webp
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:53160 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:60029 [200]: GET /assets/media/section-divider.svg
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:65180 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:62298 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:59051 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:60029 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:60751 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:60751 [200]: GET /assets/media/console-scan.svg
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:54206 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:60751 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:61976 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:54206 [200]: GET /assets/media/wipe-countdown-panel-v2.jpg
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:61976 [200]: GET /assets/media/plate-seams.svg
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:62841 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:54206 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:61976 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:62841 [200]: GET /assets/media/wipe-day-rust-v2.png
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:56064 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:56064 [200]: GET /assets/media/discord-banner-rust-v2.png
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:56064 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:60450 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:59061 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:60450 [200]: GET /assets/media/feature-icons/gather.png
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:51974 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:59061 [200]: GET /assets/media/feature-icons/kit.png
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:51946 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:51974 [200]: GET /assets/media/feature-icons/teleport.png
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:62630 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:51946 [200]: GET /assets/media/feature-icons/clan.png
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:60450 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:62630 [200]: GET /assets/media/feature-icons/skinbox.png
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:59061 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:51974 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:51946 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:62630 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:59853 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:50589 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:59853 [200]: GET /assets/media/feature-icons/backpacks.png
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:50589 [200]: GET /assets/media/feature-icons/fast-raids.png
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:60467 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:59853 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:50589 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:60467 [200]: GET /assets/media/feature-icons/active-staff.png
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:60467 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:49902 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:53307 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:62841 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:49902 [200]: GET /assets/media/feature-icons/pvp.png
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:53307 [200]: GET /assets/media/feature-icons/mini.png
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:49902 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:53307 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:51992 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:51992 [200]: GET /api/server-status.php
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:51992 Closing
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:49671 Accepted
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:49671 [200]: GET /assets/icons/favicon.ico
+[Wed Jul  1 00:02:23 2026] 127.0.0.1:49671 Closing
+[Wed Jul  1 00:02:24 2026] 127.0.0.1:58897 Accepted
+[Wed Jul  1 00:02:24 2026] 127.0.0.1:58897 [200]: GET /?navqa=aspect-1782882144937-desktop-2560-aspect
+[Wed Jul  1 00:02:24 2026] 127.0.0.1:58897 Closing
+[Wed Jul  1 00:02:24 2026] 127.0.0.1:60742 Accepted
+[Wed Jul  1 00:02:24 2026] 127.0.0.1:60742 [200]: GET /assets/media/loading/battlefield-background.webp
+[Wed Jul  1 00:02:24 2026] 127.0.0.1:55294 Accepted
+[Wed Jul  1 00:02:24 2026] 127.0.0.1:60742 Closing
+[Wed Jul  1 00:02:24 2026] 127.0.0.1:56513 Accepted
+[Wed Jul  1 00:02:24 2026] 127.0.0.1:60848 Accepted
+[Wed Jul  1 00:02:24 2026] 127.0.0.1:55294 [200]: GET /assets/media/website-hero-raid-overlook-v4.webp
+[Wed Jul  1 00:02:24 2026] 127.0.0.1:56513 [200]: GET /assets/js/raidlands-loader.js
+[Wed Jul  1 00:02:24 2026] 127.0.0.1:60848 [200]: GET /assets/media/loading/breach-ring.webp
+[Wed Jul  1 00:02:24 2026] 127.0.0.1:64182 Accepted
+[Wed Jul  1 00:02:24 2026] 127.0.0.1:55294 Closing
+[Wed Jul  1 00:02:24 2026] 127.0.0.1:56513 Closing
+[Wed Jul  1 00:02:24 2026] 127.0.0.1:60848 Closing
+[Wed Jul  1 00:02:24 2026] 127.0.0.1:64182 [200]: GET /assets/css/loader.css
+[Wed Jul  1 00:02:24 2026] 127.0.0.1:64182 Closing
+[Wed Jul  1 00:02:24 2026] 127.0.0.1:64242 Accepted
+[Wed Jul  1 00:02:24 2026] 127.0.0.1:59939 Accepted
+[Wed Jul  1 00:02:24 2026] 127.0.0.1:64242 [200]: GET /assets/css/styles.css
+[Wed Jul  1 00:02:24 2026] 127.0.0.1:59939 [200]: GET /assets/media/raidlands-logo.webp
+[Wed Jul  1 00:02:24 2026] 127.0.0.1:64242 Closing
+[Wed Jul  1 00:02:24 2026] 127.0.0.1:61276 Accepted
+[Wed Jul  1 00:02:24 2026] 127.0.0.1:59939 Closing
+[Wed Jul  1 00:02:24 2026] 127.0.0.1:61276 [200]: GET /assets/media/nav-logo.png
+[Wed Jul  1 00:02:24 2026] 127.0.0.1:61276 Closing
+[Wed Jul  1 00:02:24 2026] 127.0.0.1:52663 Accepted
+[Wed Jul  1 00:02:24 2026] 127.0.0.1:52663 [200]: GET /assets/js/site.js
+[Wed Jul  1 00:02:24 2026] 127.0.0.1:52663 Closing
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:64659 Accepted
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:55436 Accepted
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:64659 [200]: GET /assets/media/texture-metal.svg
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:59703 Accepted
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:55436 [200]: GET /assets/media/pattern-bg.png
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:59703 [200]: GET /assets/media/texture-grunge.svg
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:64659 Closing
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:59703 Closing
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:55436 Closing
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:55320 Accepted
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:54328 Accepted
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:55320 [200]: GET /api/server-status.php
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:55320 Closing
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:63382 Accepted
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:54328 [200]: GET /assets/media/ember-flare-overlay.webp
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:49643 Accepted
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:63382 [200]: GET /assets/media/nav-plate-seams.webp
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:50420 Accepted
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:49643 [200]: GET /assets/media/nav-burnt-metal-base.webp
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:65141 Accepted
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:50420 [200]: GET /assets/media/nav-active-ember.webp
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:54328 Closing
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:64763 Accepted
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:65141 [200]: GET /assets/media/section-divider.svg
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:63382 Closing
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:53398 Accepted
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:64763 [200]: GET /assets/media/console-scan.svg
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:49643 Closing
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:54381 Accepted
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:50420 Closing
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:65141 Closing
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:64763 Closing
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:53398 [200]: GET /assets/media/wipe-countdown-panel-v2.jpg
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:53398 Closing
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:62730 Accepted
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:63922 Accepted
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:54381 [200]: GET /assets/media/plate-seams.svg
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:54381 Closing
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:62730 [200]: GET /assets/media/wipe-day-rust-v2.png
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:63922 [200]: GET /assets/media/discord-banner-rust-v2.png
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:63922 Closing
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:50627 Accepted
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:53604 Accepted
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:50627 [200]: GET /assets/media/feature-icons/gather.png
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:53431 Accepted
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:51045 Accepted
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:53604 [200]: GET /assets/media/feature-icons/pvp.png
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:53431 [200]: GET /assets/media/feature-icons/kit.png
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:51045 [200]: GET /assets/media/feature-icons/teleport.png
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:50627 Closing
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:53604 Closing
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:53431 Closing
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:51045 Closing
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:59752 Accepted
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:59752 [200]: GET /assets/media/feature-icons/clan.png
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:59752 Closing
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:62302 Accepted
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:54885 Accepted
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:62302 [200]: GET /assets/media/feature-icons/skinbox.png
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:54885 [200]: GET /assets/media/feature-icons/backpacks.png
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:58063 Accepted
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:62302 Closing
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:54885 Closing
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:58063 [200]: GET /assets/media/feature-icons/mini.png
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:58063 Closing
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:62730 Closing
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:58554 Accepted
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:58554 [200]: GET /assets/icons/favicon.ico
+[Wed Jul  1 00:02:25 2026] 127.0.0.1:58554 Closing
+[Wed Jul  1 00:02:54 2026] 127.0.0.1:64323 Accepted
+[Wed Jul  1 00:02:54 2026] 127.0.0.1:64323 [200]: GET /api/server-status.php
+[Wed Jul  1 00:02:54 2026] 127.0.0.1:64323 Closing
+[Wed Jul  1 00:02:54 2026] 127.0.0.1:51845 Accepted
+[Wed Jul  1 00:02:54 2026] 127.0.0.1:51845 [200]: GET /api/server-status.php
+[Wed Jul  1 00:02:54 2026] 127.0.0.1:51845 Closing
+[Wed Jul  1 00:03:34 2026] 127.0.0.1:59525 Accepted
+[Wed Jul  1 00:03:34 2026] 127.0.0.1:59525 [200]: GET /?navqa=final-1782882214394-mobile-390-final
+[Wed Jul  1 00:03:34 2026] 127.0.0.1:59525 Closing
+[Wed Jul  1 00:03:34 2026] 127.0.0.1:49686 Accepted
+[Wed Jul  1 00:03:34 2026] 127.0.0.1:50578 Accepted
+[Wed Jul  1 00:03:34 2026] 127.0.0.1:64767 Accepted
+[Wed Jul  1 00:03:34 2026] 127.0.0.1:62624 Accepted
+[Wed Jul  1 00:03:34 2026] 127.0.0.1:49686 [200]: GET /assets/media/loading/battlefield-background.webp
+[Wed Jul  1 00:03:34 2026] 127.0.0.1:50578 [200]: GET /assets/media/website-hero-raid-overlook-v4.webp
+[Wed Jul  1 00:03:34 2026] 127.0.0.1:64767 [200]: GET /assets/js/raidlands-loader.js
+[Wed Jul  1 00:03:34 2026] 127.0.0.1:62624 [200]: GET /assets/media/loading/breach-ring.webp
+[Wed Jul  1 00:03:34 2026] 127.0.0.1:51771 Accepted
+[Wed Jul  1 00:03:34 2026] 127.0.0.1:64608 Accepted
+[Wed Jul  1 00:03:34 2026] 127.0.0.1:51771 [200]: GET /assets/css/loader.css
+[Wed Jul  1 00:03:34 2026] 127.0.0.1:49686 Closing
+[Wed Jul  1 00:03:34 2026] 127.0.0.1:64608 [200]: GET /assets/css/styles.css
+[Wed Jul  1 00:03:34 2026] 127.0.0.1:50578 Closing
+[Wed Jul  1 00:03:34 2026] 127.0.0.1:64767 Closing
+[Wed Jul  1 00:03:34 2026] 127.0.0.1:62624 Closing
+[Wed Jul  1 00:03:34 2026] 127.0.0.1:58534 Accepted
+[Wed Jul  1 00:03:34 2026] 127.0.0.1:63048 Accepted
+[Wed Jul  1 00:03:34 2026] 127.0.0.1:58534 [200]: GET /assets/media/raidlands-logo.webp
+[Wed Jul  1 00:03:34 2026] 127.0.0.1:51771 Closing
+[Wed Jul  1 00:03:34 2026] 127.0.0.1:57041 Accepted
+[Wed Jul  1 00:03:34 2026] 127.0.0.1:63048 [200]: GET /assets/media/nav-logo.png
+[Wed Jul  1 00:03:34 2026] 127.0.0.1:64608 Closing
+[Wed Jul  1 00:03:34 2026] 127.0.0.1:57041 [200]: GET /assets/js/site.js
+[Wed Jul  1 00:03:34 2026] 127.0.0.1:58534 Closing
+[Wed Jul  1 00:03:34 2026] 127.0.0.1:63048 Closing
+[Wed Jul  1 00:03:34 2026] 127.0.0.1:57041 Closing
+[Wed Jul  1 00:03:34 2026] 127.0.0.1:55572 Accepted
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:55572 [200]: GET /api/server-status.php
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:55572 Closing
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:63217 Accepted
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:51454 Accepted
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:63217 [200]: GET /assets/media/texture-metal.svg
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:61106 Accepted
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:51454 [200]: GET /assets/media/pattern-bg.png
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:64154 Accepted
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:61106 [200]: GET /assets/media/texture-grunge.svg
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:49593 Accepted
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:64154 [200]: GET /assets/media/ember-flare-overlay.webp
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:63217 Closing
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:62126 Accepted
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:49593 [200]: GET /assets/media/nav-plate-seams.webp
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:54859 Accepted
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:62126 [200]: GET /assets/media/nav-active-ember.webp
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:61106 Closing
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:63461 Accepted
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:54859 [200]: GET /assets/media/nav-burnt-metal-base.webp
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:51454 Closing
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:64154 Closing
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:49222 Accepted
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:49593 Closing
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:62126 Closing
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:54859 Closing
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:63461 [200]: GET /assets/media/console-scan.svg
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:63461 Closing
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:50459 Accepted
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:49188 Accepted
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:49222 [200]: GET /assets/media/section-divider.svg
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:49222 Closing
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:64317 Accepted
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:51844 Accepted
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:50459 [200]: GET /assets/media/wipe-countdown-panel-v2.jpg
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:49188 [200]: GET /assets/media/plate-seams.svg
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:64317 [200]: GET /assets/media/wipe-day-rust-v2.png
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:51844 [200]: GET /assets/media/discord-banner-rust-v2.png
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:50459 Closing
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:49188 Closing
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:51844 Closing
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:64317 Closing
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:63760 Accepted
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:63760 [200]: GET /assets/icons/favicon.ico
+[Wed Jul  1 00:03:36 2026] 127.0.0.1:63760 Closing
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:50336 Accepted
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:50336 [200]: GET /?navqa=final-1782882218125-tablet-1180-final
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:50336 Closing
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:50434 Accepted
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:50434 [200]: GET /assets/media/loading/battlefield-background.webp
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:62454 Accepted
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:50434 Closing
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:64241 Accepted
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:49342 Accepted
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:62454 [200]: GET /assets/media/website-hero-raid-overlook-v4.webp
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:64241 [200]: GET /assets/js/raidlands-loader.js
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:49342 [200]: GET /assets/media/loading/breach-ring.webp
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:64341 Accepted
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:62454 Closing
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:64241 Closing
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:49342 Closing
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:64341 [200]: GET /assets/css/loader.css
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:64341 Closing
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:64112 Accepted
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:49930 Accepted
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:64112 [200]: GET /assets/css/styles.css
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:49930 [200]: GET /assets/media/raidlands-logo.webp
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:64112 Closing
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:55331 Accepted
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:49930 Closing
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:55331 [200]: GET /assets/media/nav-logo.png
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:55331 Closing
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:50016 Accepted
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:50016 [200]: GET /assets/js/site.js
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:50016 Closing
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:63283 Accepted
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:53037 Accepted
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:63283 [200]: GET /assets/media/texture-metal.svg
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:62590 Accepted
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:53037 [200]: GET /assets/media/pattern-bg.png
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:62590 [200]: GET /assets/media/texture-grunge.svg
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:63283 Closing
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:62590 Closing
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:53037 Closing
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:56125 Accepted
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:64498 Accepted
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:56125 [200]: GET /api/server-status.php
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:56125 Closing
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:58473 Accepted
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:64498 [200]: GET /assets/media/ember-flare-overlay.webp
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:51215 Accepted
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:58473 [200]: GET /assets/media/nav-plate-seams.webp
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:50391 Accepted
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:51215 [200]: GET /assets/media/nav-burnt-metal-base.webp
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:59519 Accepted
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:50391 [200]: GET /assets/media/nav-active-ember.webp
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:64498 Closing
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:59993 Accepted
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:59519 [200]: GET /assets/media/section-divider.svg
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:58473 Closing
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:59993 [200]: GET /assets/media/console-scan.svg
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:51215 Closing
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:50391 Closing
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:59519 Closing
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:59993 Closing
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:60421 Accepted
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:60421 [200]: GET /assets/media/wipe-countdown-panel-v2.jpg
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:60421 Closing
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:62987 Accepted
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:62987 [200]: GET /assets/media/plate-seams.svg
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:62987 Closing
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:52275 Accepted
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:61476 Accepted
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:52275 [200]: GET /assets/media/wipe-day-rust-v2.png
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:61476 [200]: GET /assets/media/discord-banner-rust-v2.png
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:61476 Closing
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:50767 Accepted
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:63006 Accepted
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:50767 [200]: GET /assets/media/feature-icons/gather.png
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:60510 Accepted
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:62241 Accepted
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:60510 [200]: GET /assets/media/feature-icons/pvp.png
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:63006 [200]: GET /assets/media/feature-icons/kit.png
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:62241 [200]: GET /assets/media/feature-icons/teleport.png
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:50767 Closing
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:60510 Closing
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:63006 Closing
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:62241 Closing
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:52275 Closing
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:50329 Accepted
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:50329 [200]: GET /assets/icons/favicon.ico
+[Wed Jul  1 00:03:38 2026] 127.0.0.1:50329 Closing
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:54208 Accepted
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:54208 [200]: GET /?navqa=final-1782882219831-desktop-1366-final
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:54208 Closing
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:61024 Accepted
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:61024 [200]: GET /assets/media/loading/battlefield-background.webp
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:64015 Accepted
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:61040 Accepted
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:61024 Closing
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:62329 Accepted
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:64015 [200]: GET /assets/media/website-hero-raid-overlook-v4.webp
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:61040 [200]: GET /assets/js/raidlands-loader.js
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:62329 [200]: GET /assets/media/loading/breach-ring.webp
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:63376 Accepted
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:62403 Accepted
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:64015 Closing
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:65052 Accepted
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:61040 Closing
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:62329 Closing
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:63376 [200]: GET /assets/css/loader.css
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:62403 [200]: GET /assets/css/styles.css
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:63376 Closing
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:65052 [200]: GET /assets/media/raidlands-logo.webp
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:62403 Closing
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:65052 Closing
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:51857 Accepted
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:51857 [200]: GET /assets/media/nav-logo.png
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:50939 Accepted
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:51857 Closing
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:50939 [200]: GET /assets/js/site.js
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:50939 Closing
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:60710 Accepted
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:60289 Accepted
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:60710 [200]: GET /assets/media/texture-metal.svg
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:49547 Accepted
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:60289 [200]: GET /assets/media/pattern-bg.png
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:49547 [200]: GET /assets/media/texture-grunge.svg
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:60710 Closing
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:49547 Closing
+[Wed Jul  1 00:03:39 2026] 127.0.0.1:60289 Closing
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:65247 Accepted
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:53915 Accepted
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:65247 [200]: GET /api/server-status.php
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:65247 Closing
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:60723 Accepted
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:53915 [200]: GET /assets/media/ember-flare-overlay.webp
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:64890 Accepted
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:60723 [200]: GET /assets/media/nav-plate-seams.webp
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:52195 Accepted
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:64890 [200]: GET /assets/media/nav-burnt-metal-base.webp
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:52349 Accepted
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:52195 [200]: GET /assets/media/nav-active-ember.webp
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:53915 Closing
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:56899 Accepted
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:52349 [200]: GET /assets/media/section-divider.svg
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:60723 Closing
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:60810 Accepted
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:56899 [200]: GET /assets/media/console-scan.svg
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:64890 Closing
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:50640 Accepted
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:52195 Closing
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:60810 [200]: GET /assets/media/wipe-countdown-panel-v2.jpg
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:52349 Closing
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:56048 Accepted
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:56899 Closing
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:60810 Closing
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:59180 Accepted
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:50640 [200]: GET /assets/media/plate-seams.svg
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:56048 [200]: GET /assets/media/wipe-day-rust-v2.png
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:50640 Closing
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:59180 [200]: GET /assets/media/discord-banner-rust-v2.png
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:59180 Closing
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:60932 Accepted
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:49423 Accepted
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:60932 [200]: GET /assets/media/feature-icons/gather.png
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:53776 Accepted
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:55756 Accepted
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:49423 [200]: GET /assets/media/feature-icons/pvp.png
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:53776 [200]: GET /assets/media/feature-icons/kit.png
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:55756 [200]: GET /assets/media/feature-icons/teleport.png
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:60932 Closing
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:53172 Accepted
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:53172 [200]: GET /assets/media/feature-icons/clan.png
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:60647 Accepted
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:49423 Closing
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:53776 Closing
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:55756 Closing
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:53172 Closing
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:60647 [200]: GET /assets/media/feature-icons/skinbox.png
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:60647 Closing
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:62627 Accepted
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:62914 Accepted
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:62627 [200]: GET /assets/media/feature-icons/backpacks.png
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:62914 [200]: GET /assets/media/feature-icons/mini.png
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:56048 Closing
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:62627 Closing
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:62914 Closing
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:54980 Accepted
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:54980 [200]: GET /assets/icons/favicon.ico
+[Wed Jul  1 00:03:40 2026] 127.0.0.1:54980 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:56668 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:56668 [200]: GET /?navqa=final-1782882221512-desktop-1920-final
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:56668 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:57648 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:57648 [200]: GET /assets/media/loading/battlefield-background.webp
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:56257 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:57648 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:50701 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:61325 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:56257 [200]: GET /assets/media/website-hero-raid-overlook-v4.webp
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:50701 [200]: GET /assets/js/raidlands-loader.js
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:61325 [200]: GET /assets/media/loading/breach-ring.webp
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:65137 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:56257 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:50701 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:61325 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:65137 [200]: GET /assets/css/loader.css
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:65137 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:56108 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:58985 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:56108 [200]: GET /assets/css/styles.css
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:58985 [200]: GET /assets/media/raidlands-logo.webp
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:52286 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:56108 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:52286 [200]: GET /assets/media/nav-logo.png
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:58985 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:52286 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:60839 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:60839 [200]: GET /assets/js/site.js
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:60839 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:64552 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:61380 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:64552 [200]: GET /assets/media/texture-metal.svg
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:57463 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:61380 [200]: GET /assets/media/pattern-bg.png
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:57463 [200]: GET /assets/media/texture-grunge.svg
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:64552 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:57463 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:61380 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:65145 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:63099 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:65145 [200]: GET /api/server-status.php
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:65145 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:51173 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:63099 [200]: GET /assets/media/ember-flare-overlay.webp
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:60288 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:51173 [200]: GET /assets/media/nav-plate-seams.webp
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:56110 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:60288 [200]: GET /assets/media/nav-burnt-metal-base.webp
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:65144 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:56110 [200]: GET /assets/media/nav-active-ember.webp
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:63099 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:63215 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:65144 [200]: GET /assets/media/section-divider.svg
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:51173 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:63507 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:63215 [200]: GET /assets/media/console-scan.svg
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:60288 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:61744 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:56110 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:60687 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:63507 [200]: GET /assets/media/wipe-countdown-panel-v2.jpg
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:65144 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:63215 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:61744 [200]: GET /assets/media/plate-seams.svg
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:63507 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:54194 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:61744 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:60687 [200]: GET /assets/media/wipe-day-rust-v2.png
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:54194 [200]: GET /assets/media/discord-banner-rust-v2.png
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:54194 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:55281 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:55281 [200]: GET /assets/media/feature-icons/gather.png
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:64327 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:55281 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:64394 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:63356 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:64327 [200]: GET /assets/media/feature-icons/pvp.png
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:64394 [200]: GET /assets/media/feature-icons/kit.png
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:63356 [200]: GET /assets/media/feature-icons/teleport.png
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:60366 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:64327 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:60366 [200]: GET /assets/media/feature-icons/clan.png
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:64394 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:63356 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:60366 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:50139 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:52318 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:50139 [200]: GET /assets/media/feature-icons/skinbox.png
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:52318 [200]: GET /assets/media/feature-icons/backpacks.png
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:52215 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:52215 [200]: GET /assets/media/feature-icons/mini.png
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:50139 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:52318 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:52215 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:60687 Closing
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:51819 Accepted
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:51819 [200]: GET /assets/icons/favicon.ico
+[Wed Jul  1 00:03:41 2026] 127.0.0.1:51819 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:63164 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:63164 [200]: GET /?navqa=final-1782882223058-desktop-2560-final
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:63164 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:52458 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:52458 [200]: GET /assets/media/loading/battlefield-background.webp
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:52458 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:53342 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:62296 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:56643 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:53342 [200]: GET /assets/media/website-hero-raid-overlook-v4.webp
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:62296 [200]: GET /assets/js/raidlands-loader.js
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:56643 [200]: GET /assets/media/loading/breach-ring.webp
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:53342 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:56764 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:62296 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:56643 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:56764 [200]: GET /assets/css/loader.css
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:56764 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:58521 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:64979 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:58521 [200]: GET /assets/css/styles.css
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:64979 [200]: GET /assets/media/raidlands-logo.webp
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:51666 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:58521 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:64979 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:51666 [200]: GET /assets/media/nav-logo.png
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:51666 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:61630 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:61630 [200]: GET /assets/js/site.js
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:61630 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:61683 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:58434 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:61683 [200]: GET /assets/media/texture-metal.svg
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:55202 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:58434 [200]: GET /assets/media/pattern-bg.png
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:55202 [200]: GET /assets/media/texture-grunge.svg
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:61683 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:55202 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:58434 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:51102 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:53564 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:51102 [200]: GET /api/server-status.php
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:51102 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:62127 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:53564 [200]: GET /assets/media/ember-flare-overlay.webp
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:52849 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:62127 [200]: GET /assets/media/nav-plate-seams.webp
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:58422 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:52849 [200]: GET /assets/media/nav-burnt-metal-base.webp
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:63820 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:58422 [200]: GET /assets/media/nav-active-ember.webp
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:53564 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:53577 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:63820 [200]: GET /assets/media/section-divider.svg
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:62127 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:53577 [200]: GET /assets/media/console-scan.svg
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:52849 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:58422 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:63820 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:53577 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:52863 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:52863 [200]: GET /assets/media/wipe-countdown-panel-v2.jpg
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:52863 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:57968 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:49424 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:57968 [200]: GET /assets/media/plate-seams.svg
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:49424 [200]: GET /assets/media/wipe-day-rust-v2.png
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:57968 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:63993 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:63993 [200]: GET /assets/media/discord-banner-rust-v2.png
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:63993 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:49424 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:58659 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:65491 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:58659 [200]: GET /assets/media/feature-icons/gather.png
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:58659 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:57690 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:58732 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:65491 [200]: GET /assets/media/feature-icons/pvp.png
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:57690 [200]: GET /assets/media/feature-icons/kit.png
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:58732 [200]: GET /assets/media/feature-icons/teleport.png
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:65491 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:64109 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:57690 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:58732 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:64109 [200]: GET /assets/media/feature-icons/clan.png
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:64109 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:57200 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:51809 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:57200 [200]: GET /assets/media/feature-icons/skinbox.png
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:51809 [200]: GET /assets/media/feature-icons/backpacks.png
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:62121 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:57200 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:51809 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:62121 [200]: GET /assets/media/feature-icons/mini.png
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:62121 Closing
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:54797 Accepted
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:54797 [200]: GET /assets/icons/favicon.ico
+[Wed Jul  1 00:03:43 2026] 127.0.0.1:54797 Closing
+[Wed Jul  1 00:03:54 2026] 127.0.0.1:65000 Accepted
+[Wed Jul  1 00:03:54 2026] 127.0.0.1:65000 [200]: GET /api/server-status.php
+[Wed Jul  1 00:03:54 2026] 127.0.0.1:65000 Closing
+[Wed Jul  1 00:03:54 2026] 127.0.0.1:58304 Accepted
+[Wed Jul  1 00:03:54 2026] 127.0.0.1:58304 [200]: GET /api/server-status.php
+[Wed Jul  1 00:03:54 2026] 127.0.0.1:58304 Closing
+[Wed Jul  1 00:04:54 2026] 127.0.0.1:64665 Accepted
+[Wed Jul  1 00:04:55 2026] 127.0.0.1:64665 [200]: GET /api/server-status.php
+[Wed Jul  1 00:04:55 2026] 127.0.0.1:64665 Closing
+[Wed Jul  1 00:04:55 2026] 127.0.0.1:56921 Accepted
+[Wed Jul  1 00:04:55 2026] 127.0.0.1:56921 [200]: GET /api/server-status.php
+[Wed Jul  1 00:04:55 2026] 127.0.0.1:56921 Closing
+[Wed Jul  1 00:05:54 2026] 127.0.0.1:60878 Accepted
+[Wed Jul  1 00:05:54 2026] 127.0.0.1:60878 [200]: GET /api/server-status.php
+[Wed Jul  1 00:05:54 2026] 127.0.0.1:60878 Closing
+[Wed Jul  1 00:05:54 2026] 127.0.0.1:64723 Accepted
+[Wed Jul  1 00:05:54 2026] 127.0.0.1:64723 [200]: GET /api/server-status.php
+[Wed Jul  1 00:05:54 2026] 127.0.0.1:64723 Closing
+[Wed Jul  1 00:06:54 2026] 127.0.0.1:49181 Accepted
+[Wed Jul  1 00:06:56 2026] 127.0.0.1:49181 [200]: GET /api/server-status.php
+[Wed Jul  1 00:06:56 2026] 127.0.0.1:49181 Closing
+[Wed Jul  1 00:06:56 2026] 127.0.0.1:56174 Accepted
+[Wed Jul  1 00:06:56 2026] 127.0.0.1:56174 [200]: GET /api/server-status.php
+[Wed Jul  1 00:06:56 2026] 127.0.0.1:56174 Closing
+[Wed Jul  1 00:07:54 2026] 127.0.0.1:63428 Accepted
+[Wed Jul  1 00:07:54 2026] 127.0.0.1:63428 [200]: GET /api/server-status.php
+[Wed Jul  1 00:07:54 2026] 127.0.0.1:63428 Closing
+[Wed Jul  1 00:07:54 2026] 127.0.0.1:54959 Accepted
+[Wed Jul  1 00:07:54 2026] 127.0.0.1:54959 [200]: GET /api/server-status.php
+[Wed Jul  1 00:07:54 2026] 127.0.0.1:54959 Closing
+[Wed Jul  1 00:08:54 2026] 127.0.0.1:57872 Accepted
+[Wed Jul  1 00:08:56 2026] 127.0.0.1:57872 [200]: GET /api/server-status.php
+[Wed Jul  1 00:08:56 2026] 127.0.0.1:57872 Closing
+[Wed Jul  1 00:08:56 2026] 127.0.0.1:50836 Accepted
+[Wed Jul  1 00:08:56 2026] 127.0.0.1:50836 [200]: GET /api/server-status.php
+[Wed Jul  1 00:08:56 2026] 127.0.0.1:50836 Closing
+[Wed Jul  1 00:09:54 2026] 127.0.0.1:56427 Accepted
+[Wed Jul  1 00:09:54 2026] 127.0.0.1:59015 Accepted
+[Wed Jul  1 00:09:54 2026] 127.0.0.1:56427 [200]: GET /api/server-status.php
+[Wed Jul  1 00:09:54 2026] 127.0.0.1:56427 Closing
+[Wed Jul  1 00:09:54 2026] 127.0.0.1:59015 [200]: GET /api/server-status.php
+[Wed Jul  1 00:09:54 2026] 127.0.0.1:59015 Closing
+[Wed Jul  1 00:10:54 2026] 127.0.0.1:50761 Accepted
+[Wed Jul  1 00:10:55 2026] 127.0.0.1:50761 [200]: GET /api/server-status.php
+[Wed Jul  1 00:10:55 2026] 127.0.0.1:50761 Closing
+[Wed Jul  1 00:10:55 2026] 127.0.0.1:52096 Accepted
+[Wed Jul  1 00:10:55 2026] 127.0.0.1:52096 [200]: GET /api/server-status.php
+[Wed Jul  1 00:10:55 2026] 127.0.0.1:52096 Closing
+[Wed Jul  1 00:11:54 2026] 127.0.0.1:49657 Accepted
+[Wed Jul  1 00:11:54 2026] 127.0.0.1:49657 [200]: GET /api/server-status.php
+[Wed Jul  1 00:11:54 2026] 127.0.0.1:49657 Closing
+[Wed Jul  1 00:11:54 2026] 127.0.0.1:60493 Accepted
+[Wed Jul  1 00:11:54 2026] 127.0.0.1:60493 [200]: GET /api/server-status.php
+[Wed Jul  1 00:11:54 2026] 127.0.0.1:60493 Closing
+[Wed Jul  1 00:12:54 2026] 127.0.0.1:50532 Accepted
+[Wed Jul  1 00:12:55 2026] 127.0.0.1:50532 [200]: GET /api/server-status.php
+[Wed Jul  1 00:12:55 2026] 127.0.0.1:50532 Closing
+[Wed Jul  1 00:12:55 2026] 127.0.0.1:55094 Accepted
+[Wed Jul  1 00:12:55 2026] 127.0.0.1:55094 [200]: GET /api/server-status.php
+[Wed Jul  1 00:12:55 2026] 127.0.0.1:55094 Closing
+[Wed Jul  1 00:13:54 2026] 127.0.0.1:61815 Accepted
+[Wed Jul  1 00:13:54 2026] 127.0.0.1:61815 [200]: GET /api/server-status.php
+[Wed Jul  1 00:13:54 2026] 127.0.0.1:61815 Closing
+[Wed Jul  1 00:13:54 2026] 127.0.0.1:52856 Accepted
+[Wed Jul  1 00:13:54 2026] 127.0.0.1:52856 [200]: GET /api/server-status.php
+[Wed Jul  1 00:13:54 2026] 127.0.0.1:52856 Closing
+[Wed Jul  1 00:14:54 2026] 127.0.0.1:56346 Accepted
+[Wed Jul  1 00:14:55 2026] 127.0.0.1:56346 [200]: GET /api/server-status.php
+[Wed Jul  1 00:14:55 2026] 127.0.0.1:56346 Closing
+[Wed Jul  1 00:14:55 2026] 127.0.0.1:57554 Accepted
+[Wed Jul  1 00:14:55 2026] 127.0.0.1:57554 [200]: GET /api/server-status.php
+[Wed Jul  1 00:14:55 2026] 127.0.0.1:57554 Closing
+[Wed Jul  1 00:15:54 2026] 127.0.0.1:60775 Accepted
+[Wed Jul  1 00:15:54 2026] 127.0.0.1:60775 [200]: GET /api/server-status.php
+[Wed Jul  1 00:15:54 2026] 127.0.0.1:60775 Closing
+[Wed Jul  1 00:15:54 2026] 127.0.0.1:54409 Accepted
+[Wed Jul  1 00:15:54 2026] 127.0.0.1:54409 [200]: GET /api/server-status.php
+[Wed Jul  1 00:15:54 2026] 127.0.0.1:54409 Closing
+[Wed Jul  1 00:16:37 2026] 127.0.0.1:51074 Accepted
+[Wed Jul  1 00:16:37 2026] 127.0.0.1:51074 [200]: GET /?codex_ping=1
+[Wed Jul  1 00:16:37 2026] 127.0.0.1:51074 Closing
+[Wed Jul  1 00:16:54 2026] 127.0.0.1:65031 Accepted
+[Wed Jul  1 00:16:58 2026] 127.0.0.1:65031 [200]: GET /api/server-status.php
+[Wed Jul  1 00:16:58 2026] 127.0.0.1:65031 Closing
+[Wed Jul  1 00:16:58 2026] 127.0.0.1:50255 Accepted
+[Wed Jul  1 00:16:58 2026] 127.0.0.1:50255 [200]: GET /api/server-status.php
+[Wed Jul  1 00:16:58 2026] 127.0.0.1:50255 Closing
+[Wed Jul  1 00:17:54 2026] 127.0.0.1:51591 Accepted
+[Wed Jul  1 00:17:54 2026] 127.0.0.1:51591 [200]: GET /api/server-status.php
+[Wed Jul  1 00:17:54 2026] 127.0.0.1:51591 Closing
+[Wed Jul  1 00:17:54 2026] 127.0.0.1:64804 Accepted
+[Wed Jul  1 00:17:54 2026] 127.0.0.1:64804 [200]: GET /api/server-status.php
+[Wed Jul  1 00:17:54 2026] 127.0.0.1:64804 Closing

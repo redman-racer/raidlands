@@ -664,9 +664,9 @@
       scopeCleanup = null;
     }
 
-    const exitFadeMs = reducedMotion ? fadeMs : Math.max(fadeMs, 900);
-    const breachLeadMs = reducedMotion ? 0 : 420;
-    const siteRevealDelayMs = reducedMotion ? 0 : breachLeadMs + Math.round(exitFadeMs * .32);
+    const exitFadeMs = reducedMotion ? Math.max(fadeMs, 320) : Math.max(fadeMs, 420);
+    const breachLeadMs = reducedMotion ? 260 : 1220;
+    const siteRevealDelayMs = reducedMotion ? 240 : 1320;
 
     setProgress(100);
     updateState("Raidlands breach confirmed");
@@ -700,87 +700,22 @@
   }
 
   function playExitBreach() {
-    if (reducedMotion || loader.querySelector(".raidlands-loader-breach")) return;
+    if (loader.classList.contains("is-exploding")) return;
 
-    const breach = document.createElement("div");
-    const flash = document.createElement("div");
-    const fireball = document.createElement("div");
-    const fragments = document.createDocumentFragment();
-    const particleTotal = window.innerWidth < 700 ? 28 : 48;
-    const smokeTotal = window.innerWidth < 700 ? 5 : 8;
-    const debrisTotal = window.innerWidth < 700 ? 6 : 12;
     const breachOrigin = getBreachOrigin();
     const originX = breachOrigin.x;
     const originY = breachOrigin.y;
 
-    breach.className = "raidlands-loader-breach";
-    breach.setAttribute("aria-hidden", "true");
-    breach.style.setProperty("--breach-x", `${originX}%`);
-    breach.style.setProperty("--breach-y", `${originY}%`);
     loader.style.setProperty("--breach-x", `${originX}%`);
     loader.style.setProperty("--breach-y", `${originY}%`);
-    flash.className = "raidlands-loader-breach-flash";
-    fireball.className = "raidlands-loader-breach-core";
+    loader.style.setProperty("--explosion-origin-x", `${originX}%`);
+    loader.style.setProperty("--explosion-origin-y", `${originY}%`);
 
-    for (let index = 0; index < 3; index += 1) {
-      const wave = document.createElement("span");
-      wave.className = "raidlands-loader-breach-wave";
-      wave.style.setProperty("--delay", `${(index * 92).toFixed(0)}ms`);
-      wave.style.setProperty("--wave-scale", (1.15 + index * .24).toFixed(2));
-      fragments.appendChild(wave);
+    if (!reducedMotion) {
+      prepareLoaderElementBlast(originX, originY);
     }
 
-    for (let index = 0; index < particleTotal; index += 1) {
-      const spark = document.createElement("span");
-      const angle = randomBetween(0, Math.PI * 2);
-      const distance = randomBetween(82, window.innerWidth < 700 ? 240 : 410);
-      const size = randomBetween(2, 7);
-      const vertical = Math.sin(angle) * distance * .58 - Math.max(0, Math.cos(angle)) * randomBetween(8, 44);
-
-      spark.className = "raidlands-loader-breach-spark";
-      spark.style.setProperty("--tx", `${Math.cos(angle) * distance}px`);
-      spark.style.setProperty("--ty", `${vertical}px`);
-      spark.style.setProperty("--size", `${size}px`);
-      spark.style.setProperty("--spin", `${randomBetween(-220, 220).toFixed(0)}deg`);
-      spark.style.setProperty("--delay", `${randomBetween(0, 90).toFixed(0)}ms`);
-      spark.style.setProperty("--duration", `${randomBetween(650, 1050).toFixed(0)}ms`);
-      fragments.appendChild(spark);
-    }
-
-    for (let index = 0; index < smokeTotal; index += 1) {
-      const smoke = document.createElement("span");
-      const angle = randomBetween(0, Math.PI * 2);
-      const distance = randomBetween(46, window.innerWidth < 700 ? 150 : 250);
-
-      smoke.className = "raidlands-loader-breach-smoke";
-      smoke.style.setProperty("--tx", `${Math.cos(angle) * distance}px`);
-      smoke.style.setProperty("--ty", `${Math.sin(angle) * distance * .42 - randomBetween(34, 96)}px`);
-      smoke.style.setProperty("--scale", randomBetween(1, 2.1).toFixed(2));
-      smoke.style.setProperty("--delay", `${randomBetween(45, 190).toFixed(0)}ms`);
-      smoke.style.setProperty("--duration", `${randomBetween(850, 1280).toFixed(0)}ms`);
-      fragments.appendChild(smoke);
-    }
-
-    for (let index = 0; index < debrisTotal; index += 1) {
-      const debris = document.createElement("span");
-      const angle = randomBetween(0, Math.PI * 2);
-      const distance = randomBetween(70, window.innerWidth < 700 ? 220 : 340);
-      const debrisLift = randomBetween(18, 86);
-
-      debris.className = "raidlands-loader-breach-debris";
-      debris.style.setProperty("--tx", `${Math.cos(angle) * distance}px`);
-      debris.style.setProperty("--ty", `${Math.sin(angle) * distance * .54 - debrisLift}px`);
-      debris.style.setProperty("--w", `${randomBetween(5, 20)}px`);
-      debris.style.setProperty("--h", `${randomBetween(2, 6)}px`);
-      debris.style.setProperty("--spin", `${randomBetween(-540, 540).toFixed(0)}deg`);
-      debris.style.setProperty("--delay", `${randomBetween(0, 110).toFixed(0)}ms`);
-      debris.style.setProperty("--duration", `${randomBetween(680, 1120).toFixed(0)}ms`);
-      fragments.appendChild(debris);
-    }
-
-    breach.append(flash, fireball, fragments);
-    loader.appendChild(breach);
-    loader.classList.add("is-breaching");
+    loader.classList.add("is-breaching", "is-exploding");
   }
 
   function prepareLoaderElementBlast(originXPercent, originYPercent) {
@@ -790,8 +725,10 @@
     const diagonal = Math.hypot(loaderRect.width, loaderRect.height) || 1;
     const progressShell = progressEl ? progressEl.closest(".raidlands-loader-progress") : null;
     const tipShell = tipEl ? tipEl.closest(".raidlands-loader-tip") : null;
+    const consoleShell = consoleEl ? consoleEl.closest(".raidlands-loader-console") : null;
     const pieces = [
       ...loader.querySelectorAll(".raidlands-loader-line"),
+      consoleShell,
       loader.querySelector(".raidlands-loader-logo"),
       progressShell,
       stateEl,
@@ -850,20 +787,9 @@
   }
 
   function getBreachOrigin() {
-    const progressShell = progressEl ? progressEl.closest(".raidlands-loader-progress") : null;
-    const loaderRect = loader.getBoundingClientRect();
-    const progressRect = progressShell ? progressShell.getBoundingClientRect() : null;
-
-    if (!progressRect || !loaderRect.width || !loaderRect.height) {
-      return {
-        x: 50,
-        y: window.innerWidth < 700 ? 70 : 73
-      };
-    }
-
     return {
-      x: clamp(((progressRect.left + progressRect.width * .82 - loaderRect.left) / loaderRect.width) * 100, 18, 88),
-      y: clamp(((progressRect.top + progressRect.height * .66 - loaderRect.top) / loaderRect.height) * 100, 20, 86)
+      x: 50,
+      y: window.innerWidth < 700 ? 78 : 76
     };
   }
 

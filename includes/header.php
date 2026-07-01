@@ -22,6 +22,12 @@ $linked_player = raidlands_linked_player();
     <link rel="manifest" href="<?= e($base_path . 'site.webmanifest') ?>">
     <link rel="preload" as="image" href="<?= e(asset_url('media/loading/battlefield-background.webp')) ?>" fetchpriority="high">
     <link rel="preload" as="image" href="<?= e(asset_url('media/loading/breach-ring.webp')) ?>">
+    <link rel="preload" as="image" href="<?= e(asset_url('media/loading/explosion-stack-01-core-blast-glow.webp')) ?>">
+    <link rel="preload" as="image" href="<?= e(asset_url('media/loading/explosion-stack-02-fireball-smoke.webp')) ?>">
+    <link rel="preload" as="image" href="<?= e(asset_url('media/loading/explosion-stack-03-smoke-veil.webp')) ?>">
+    <link rel="preload" as="image" href="<?= e(asset_url('media/loading/explosion-stack-04-radial-spark-burst.webp')) ?>">
+    <link rel="preload" as="image" href="<?= e(asset_url('media/loading/explosion-stack-05-ember-ash-field.webp')) ?>">
+    <link rel="preload" as="image" href="<?= e(asset_url('media/loading/explosion-stack-06-white-hot-flash.webp')) ?>">
     <?php if ($page_id === 'home') : ?>
       <link rel="preload" as="image" href="<?= e(asset_url('media/website-hero-raid-overlook-v4.webp')) ?>" fetchpriority="high">
       <link rel="preload" as="image" href="<?= e(asset_url('media/raidlands-logo.webp')) ?>">
