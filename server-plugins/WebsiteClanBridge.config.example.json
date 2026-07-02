@@ -1,7 +1,7 @@
 {
   "ApiBaseUrl": "https://raidlands.net",
   "ServerId": "raidlands-main",
-  "SharedSecret": "replace-with-the-same-value-as-RAIDLANDS_BRIDGE_SHARED_SECRET",
+  "SharedSecret": "",
   "ClanActionsEnabled": true,
   "SnapshotSyncEnabled": true,
   "PollIntervalSeconds": 30,
