@@ -11,7 +11,7 @@ using Oxide.Core.Libraries.Covalence;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteVipBridge", "Raidlands", "1.2.0")]
+    [Info("WebsiteVipBridge", "Raidlands", "1.3.0")]
     [Description("Syncs website VIP entitlements and player stats between Raidlands.net and the Rust server.")]
     public class WebsiteVipBridge : CovalencePlugin
     {
@@ -28,6 +28,8 @@ namespace Oxide.Plugins
             public string WebsiteAssetBaseUrl = "https://raidlands.net";
             [JsonProperty("Assets")]
             public AssetPaths Assets = new AssetPaths();
+            [JsonProperty("Brand")]
+            public BrandConfig Brand = new BrandConfig();
             public string ServerId = "raidlands-main";
             public string SharedSecret = "";
             public int SyncIntervalSeconds = 120;
@@ -65,6 +67,73 @@ namespace Oxide.Plugins
             public string FastRaidsIcon = "/assets/media/feature-icons/fast-raids.png";
             public string GatherIcon = "/assets/media/feature-icons/gather.png";
             public string StatsIcon = "/assets/media/feature-icons/stats.png";
+        }
+
+        private class BrandConfig
+        {
+            [JsonProperty("CUI Colors")]
+            public BrandCuiColors CuiColors = new BrandCuiColors();
+            [JsonProperty("Hex Colors")]
+            public BrandHexColors HexColors = new BrandHexColors();
+            [JsonProperty("Styles")]
+            public BrandStyles Styles = new BrandStyles();
+        }
+
+        private class BrandCuiColors
+        {
+            public string Background = "0.020 0.024 0.027 0.96";
+            public string BackgroundAlt = "0.043 0.051 0.055 0.96";
+            public string Panel = "0.063 0.071 0.078 0.94";
+            public string PanelAlt = "0.090 0.106 0.118 0.94";
+            public string Steel = "0.337 0.380 0.416 1";
+            public string SteelDim = "0.165 0.196 0.220 1";
+            public string Accent = "1.000 0.541 0.157 1";
+            public string AccentDark = "0.788 0.341 0.133 1";
+            public string Danger = "0.702 0.149 0.118 1";
+            public string Warning = "1.000 0.820 0.400 1";
+            public string Success = "0.486 1.000 0.420 1";
+            public string Text = "0.953 0.933 0.890 1";
+            public string Muted = "0.710 0.667 0.627 1";
+            public string Dim = "0.502 0.463 0.427 1";
+            public string Black = "0 0 0 1";
+            public string Border = "1.000 0.541 0.157 0.32";
+        }
+
+        private class BrandHexColors
+        {
+            public string Background = "#050607";
+            public string BackgroundAlt = "#0b0d0e";
+            public string Panel = "#101214";
+            public string PanelAlt = "#171b1e";
+            public string Steel = "#56616a";
+            public string SteelDim = "#2a3238";
+            public string Accent = "#ff8a28";
+            public string AccentDark = "#c95722";
+            public string Danger = "#b3261e";
+            public string Warning = "#ffd166";
+            public string Success = "#7cff6b";
+            public string Text = "#f3eee3";
+            public string Muted = "#b5aaa0";
+            public string Dim = "#80766d";
+            public string Black = "#000000";
+            public string Border = "#ff8a28";
+        }
+
+        private class BrandStyles
+        {
+            public string PanelMaterial = "assets/content/ui/uibackgroundblur.mat";
+            public string OverlayMaterial = "assets/content/ui/uibackgroundblur.mat";
+            public int TitleFontSize = 22;
+            public int HeadingFontSize = 18;
+            public int BodyFontSize = 14;
+            public int CaptionFontSize = 12;
+            public int ButtonFontSize = 15;
+            public int Padding = 12;
+            public int Gap = 8;
+            public int Radius = 6;
+            public int Cut = 14;
+            public string PanelAlpha = "0.94";
+            public string BorderAlpha = "0.32";
         }
 
         private class PlayerResponse
@@ -171,6 +240,13 @@ namespace Oxide.Plugins
             }
 
             ApplyAssetDefaults(config.Assets, defaults.Assets);
+
+            if (config.Brand == null)
+            {
+                config.Brand = new BrandConfig();
+            }
+
+            ApplyBrandDefaults(config.Brand, defaults.Brand);
 
             if (config.ManagedGroups == null)
             {
@@ -533,6 +609,267 @@ namespace Oxide.Plugins
             return ResolveAssetUrl(configuredAssetPath, config?.WebsiteAssetBaseUrl);
         }
 
+        private string GetAssetUrl(string key)
+        {
+            var assets = config?.Assets ?? new AssetPaths();
+
+            switch (NormalizeKey(key))
+            {
+                case "logo":
+                    return AssetUrl(assets.Logo);
+                case "navlogo":
+                    return AssetUrl(assets.NavLogo);
+                case "hero":
+                    return AssetUrl(assets.Hero);
+                case "header":
+                    return AssetUrl(assets.Header);
+                case "wipepanel":
+                    return AssetUrl(assets.WipePanel);
+                case "backpacksicon":
+                case "backpackicon":
+                    return AssetUrl(assets.BackpacksIcon);
+                case "kitsicon":
+                case "kiticon":
+                    return AssetUrl(assets.KitsIcon);
+                case "teleporticon":
+                    return AssetUrl(assets.TeleportIcon);
+                case "clanicon":
+                    return AssetUrl(assets.ClanIcon);
+                case "skinboxicon":
+                    return AssetUrl(assets.SkinboxIcon);
+                case "fastraidsicon":
+                case "fastraidicon":
+                    return AssetUrl(assets.FastRaidsIcon);
+                case "gathericon":
+                    return AssetUrl(assets.GatherIcon);
+                case "statsicon":
+                    return AssetUrl(assets.StatsIcon);
+                default:
+                    return "";
+            }
+        }
+
+        private Dictionary<string, string> GetAssetUrls()
+        {
+            return new Dictionary<string, string>
+            {
+                ["Logo"] = GetAssetUrl("Logo"),
+                ["NavLogo"] = GetAssetUrl("NavLogo"),
+                ["Hero"] = GetAssetUrl("Hero"),
+                ["Header"] = GetAssetUrl("Header"),
+                ["WipePanel"] = GetAssetUrl("WipePanel"),
+                ["BackpacksIcon"] = GetAssetUrl("BackpacksIcon"),
+                ["KitsIcon"] = GetAssetUrl("KitsIcon"),
+                ["TeleportIcon"] = GetAssetUrl("TeleportIcon"),
+                ["ClanIcon"] = GetAssetUrl("ClanIcon"),
+                ["SkinboxIcon"] = GetAssetUrl("SkinboxIcon"),
+                ["FastRaidsIcon"] = GetAssetUrl("FastRaidsIcon"),
+                ["GatherIcon"] = GetAssetUrl("GatherIcon"),
+                ["StatsIcon"] = GetAssetUrl("StatsIcon")
+            };
+        }
+
+        private string GetBrandColor(string key)
+        {
+            var colors = config?.Brand?.CuiColors ?? new BrandCuiColors();
+
+            switch (NormalizeKey(key))
+            {
+                case "background":
+                    return colors.Background;
+                case "backgroundalt":
+                    return colors.BackgroundAlt;
+                case "panel":
+                    return colors.Panel;
+                case "panelalt":
+                    return colors.PanelAlt;
+                case "steel":
+                    return colors.Steel;
+                case "steeldim":
+                    return colors.SteelDim;
+                case "accent":
+                case "orange":
+                    return colors.Accent;
+                case "accentdark":
+                case "orangedark":
+                    return colors.AccentDark;
+                case "danger":
+                case "red":
+                    return colors.Danger;
+                case "warning":
+                case "yellow":
+                    return colors.Warning;
+                case "success":
+                case "green":
+                    return colors.Success;
+                case "text":
+                case "white":
+                    return colors.Text;
+                case "muted":
+                    return colors.Muted;
+                case "dim":
+                    return colors.Dim;
+                case "black":
+                    return colors.Black;
+                case "border":
+                    return colors.Border;
+                default:
+                    return "";
+            }
+        }
+
+        private Dictionary<string, string> GetBrandColors()
+        {
+            return new Dictionary<string, string>
+            {
+                ["Background"] = GetBrandColor("Background"),
+                ["BackgroundAlt"] = GetBrandColor("BackgroundAlt"),
+                ["Panel"] = GetBrandColor("Panel"),
+                ["PanelAlt"] = GetBrandColor("PanelAlt"),
+                ["Steel"] = GetBrandColor("Steel"),
+                ["SteelDim"] = GetBrandColor("SteelDim"),
+                ["Accent"] = GetBrandColor("Accent"),
+                ["AccentDark"] = GetBrandColor("AccentDark"),
+                ["Danger"] = GetBrandColor("Danger"),
+                ["Warning"] = GetBrandColor("Warning"),
+                ["Success"] = GetBrandColor("Success"),
+                ["Text"] = GetBrandColor("Text"),
+                ["Muted"] = GetBrandColor("Muted"),
+                ["Dim"] = GetBrandColor("Dim"),
+                ["Black"] = GetBrandColor("Black"),
+                ["Border"] = GetBrandColor("Border")
+            };
+        }
+
+        private string GetBrandHexColor(string key)
+        {
+            var colors = config?.Brand?.HexColors ?? new BrandHexColors();
+
+            switch (NormalizeKey(key))
+            {
+                case "background":
+                    return colors.Background;
+                case "backgroundalt":
+                    return colors.BackgroundAlt;
+                case "panel":
+                    return colors.Panel;
+                case "panelalt":
+                    return colors.PanelAlt;
+                case "steel":
+                    return colors.Steel;
+                case "steeldim":
+                    return colors.SteelDim;
+                case "accent":
+                case "orange":
+                    return colors.Accent;
+                case "accentdark":
+                case "orangedark":
+                    return colors.AccentDark;
+                case "danger":
+                case "red":
+                    return colors.Danger;
+                case "warning":
+                case "yellow":
+                    return colors.Warning;
+                case "success":
+                case "green":
+                    return colors.Success;
+                case "text":
+                case "white":
+                    return colors.Text;
+                case "muted":
+                    return colors.Muted;
+                case "dim":
+                    return colors.Dim;
+                case "black":
+                    return colors.Black;
+                case "border":
+                    return colors.Border;
+                default:
+                    return "";
+            }
+        }
+
+        private Dictionary<string, string> GetBrandHexColors()
+        {
+            return new Dictionary<string, string>
+            {
+                ["Background"] = GetBrandHexColor("Background"),
+                ["BackgroundAlt"] = GetBrandHexColor("BackgroundAlt"),
+                ["Panel"] = GetBrandHexColor("Panel"),
+                ["PanelAlt"] = GetBrandHexColor("PanelAlt"),
+                ["Steel"] = GetBrandHexColor("Steel"),
+                ["SteelDim"] = GetBrandHexColor("SteelDim"),
+                ["Accent"] = GetBrandHexColor("Accent"),
+                ["AccentDark"] = GetBrandHexColor("AccentDark"),
+                ["Danger"] = GetBrandHexColor("Danger"),
+                ["Warning"] = GetBrandHexColor("Warning"),
+                ["Success"] = GetBrandHexColor("Success"),
+                ["Text"] = GetBrandHexColor("Text"),
+                ["Muted"] = GetBrandHexColor("Muted"),
+                ["Dim"] = GetBrandHexColor("Dim"),
+                ["Black"] = GetBrandHexColor("Black"),
+                ["Border"] = GetBrandHexColor("Border")
+            };
+        }
+
+        private object GetBrandStyle(string key)
+        {
+            var styles = config?.Brand?.Styles ?? new BrandStyles();
+
+            switch (NormalizeKey(key))
+            {
+                case "panelmaterial":
+                    return styles.PanelMaterial;
+                case "overlaymaterial":
+                    return styles.OverlayMaterial;
+                case "titlefontsize":
+                    return styles.TitleFontSize;
+                case "headingfontsize":
+                    return styles.HeadingFontSize;
+                case "bodyfontsize":
+                    return styles.BodyFontSize;
+                case "captionfontsize":
+                    return styles.CaptionFontSize;
+                case "buttonfontsize":
+                    return styles.ButtonFontSize;
+                case "padding":
+                    return styles.Padding;
+                case "gap":
+                    return styles.Gap;
+                case "radius":
+                    return styles.Radius;
+                case "cut":
+                    return styles.Cut;
+                case "panelalpha":
+                    return styles.PanelAlpha;
+                case "borderalpha":
+                    return styles.BorderAlpha;
+                default:
+                    return null;
+            }
+        }
+
+        private Dictionary<string, object> GetBrandStyles()
+        {
+            return new Dictionary<string, object>
+            {
+                ["PanelMaterial"] = GetBrandStyle("PanelMaterial"),
+                ["OverlayMaterial"] = GetBrandStyle("OverlayMaterial"),
+                ["TitleFontSize"] = GetBrandStyle("TitleFontSize"),
+                ["HeadingFontSize"] = GetBrandStyle("HeadingFontSize"),
+                ["BodyFontSize"] = GetBrandStyle("BodyFontSize"),
+                ["CaptionFontSize"] = GetBrandStyle("CaptionFontSize"),
+                ["ButtonFontSize"] = GetBrandStyle("ButtonFontSize"),
+                ["Padding"] = GetBrandStyle("Padding"),
+                ["Gap"] = GetBrandStyle("Gap"),
+                ["Radius"] = GetBrandStyle("Radius"),
+                ["Cut"] = GetBrandStyle("Cut"),
+                ["PanelAlpha"] = GetBrandStyle("PanelAlpha"),
+                ["BorderAlpha"] = GetBrandStyle("BorderAlpha")
+            };
+        }
+
         private static string ResolveAssetUrl(string configuredAssetPath, string websiteAssetBaseUrl)
         {
             if (string.IsNullOrWhiteSpace(configuredAssetPath))
@@ -683,6 +1020,11 @@ namespace Oxide.Plugins
             return string.IsNullOrWhiteSpace(value) ? fallback : value;
         }
 
+        private static int ConfiguredOrDefault(int value, int fallback)
+        {
+            return value <= 0 ? fallback : value;
+        }
+
         private static void ApplyAssetDefaults(AssetPaths assets, AssetPaths defaults)
         {
             assets.Logo = ConfiguredOrDefault(assets.Logo, defaults.Logo);
@@ -698,6 +1040,85 @@ namespace Oxide.Plugins
             assets.FastRaidsIcon = ConfiguredOrDefault(assets.FastRaidsIcon, defaults.FastRaidsIcon);
             assets.GatherIcon = ConfiguredOrDefault(assets.GatherIcon, defaults.GatherIcon);
             assets.StatsIcon = ConfiguredOrDefault(assets.StatsIcon, defaults.StatsIcon);
+        }
+
+        private static void ApplyBrandDefaults(BrandConfig brand, BrandConfig defaults)
+        {
+            if (brand.CuiColors == null)
+            {
+                brand.CuiColors = new BrandCuiColors();
+            }
+
+            if (brand.HexColors == null)
+            {
+                brand.HexColors = new BrandHexColors();
+            }
+
+            if (brand.Styles == null)
+            {
+                brand.Styles = new BrandStyles();
+            }
+
+            ApplyBrandCuiColorDefaults(brand.CuiColors, defaults.CuiColors);
+            ApplyBrandHexColorDefaults(brand.HexColors, defaults.HexColors);
+            ApplyBrandStyleDefaults(brand.Styles, defaults.Styles);
+        }
+
+        private static void ApplyBrandCuiColorDefaults(BrandCuiColors colors, BrandCuiColors defaults)
+        {
+            colors.Background = ConfiguredOrDefault(colors.Background, defaults.Background);
+            colors.BackgroundAlt = ConfiguredOrDefault(colors.BackgroundAlt, defaults.BackgroundAlt);
+            colors.Panel = ConfiguredOrDefault(colors.Panel, defaults.Panel);
+            colors.PanelAlt = ConfiguredOrDefault(colors.PanelAlt, defaults.PanelAlt);
+            colors.Steel = ConfiguredOrDefault(colors.Steel, defaults.Steel);
+            colors.SteelDim = ConfiguredOrDefault(colors.SteelDim, defaults.SteelDim);
+            colors.Accent = ConfiguredOrDefault(colors.Accent, defaults.Accent);
+            colors.AccentDark = ConfiguredOrDefault(colors.AccentDark, defaults.AccentDark);
+            colors.Danger = ConfiguredOrDefault(colors.Danger, defaults.Danger);
+            colors.Warning = ConfiguredOrDefault(colors.Warning, defaults.Warning);
+            colors.Success = ConfiguredOrDefault(colors.Success, defaults.Success);
+            colors.Text = ConfiguredOrDefault(colors.Text, defaults.Text);
+            colors.Muted = ConfiguredOrDefault(colors.Muted, defaults.Muted);
+            colors.Dim = ConfiguredOrDefault(colors.Dim, defaults.Dim);
+            colors.Black = ConfiguredOrDefault(colors.Black, defaults.Black);
+            colors.Border = ConfiguredOrDefault(colors.Border, defaults.Border);
+        }
+
+        private static void ApplyBrandHexColorDefaults(BrandHexColors colors, BrandHexColors defaults)
+        {
+            colors.Background = ConfiguredOrDefault(colors.Background, defaults.Background);
+            colors.BackgroundAlt = ConfiguredOrDefault(colors.BackgroundAlt, defaults.BackgroundAlt);
+            colors.Panel = ConfiguredOrDefault(colors.Panel, defaults.Panel);
+            colors.PanelAlt = ConfiguredOrDefault(colors.PanelAlt, defaults.PanelAlt);
+            colors.Steel = ConfiguredOrDefault(colors.Steel, defaults.Steel);
+            colors.SteelDim = ConfiguredOrDefault(colors.SteelDim, defaults.SteelDim);
+            colors.Accent = ConfiguredOrDefault(colors.Accent, defaults.Accent);
+            colors.AccentDark = ConfiguredOrDefault(colors.AccentDark, defaults.AccentDark);
+            colors.Danger = ConfiguredOrDefault(colors.Danger, defaults.Danger);
+            colors.Warning = ConfiguredOrDefault(colors.Warning, defaults.Warning);
+            colors.Success = ConfiguredOrDefault(colors.Success, defaults.Success);
+            colors.Text = ConfiguredOrDefault(colors.Text, defaults.Text);
+            colors.Muted = ConfiguredOrDefault(colors.Muted, defaults.Muted);
+            colors.Dim = ConfiguredOrDefault(colors.Dim, defaults.Dim);
+            colors.Black = ConfiguredOrDefault(colors.Black, defaults.Black);
+            colors.Border = ConfiguredOrDefault(colors.Border, defaults.Border);
+        }
+
+        private static void ApplyBrandStyleDefaults(BrandStyles styles, BrandStyles defaults)
+        {
+            styles.PanelMaterial = ConfiguredOrDefault(styles.PanelMaterial, defaults.PanelMaterial);
+            styles.OverlayMaterial = ConfiguredOrDefault(styles.OverlayMaterial, defaults.OverlayMaterial);
+            styles.TitleFontSize = ConfiguredOrDefault(styles.TitleFontSize, defaults.TitleFontSize);
+            styles.HeadingFontSize = ConfiguredOrDefault(styles.HeadingFontSize, defaults.HeadingFontSize);
+            styles.BodyFontSize = ConfiguredOrDefault(styles.BodyFontSize, defaults.BodyFontSize);
+            styles.CaptionFontSize = ConfiguredOrDefault(styles.CaptionFontSize, defaults.CaptionFontSize);
+            styles.ButtonFontSize = ConfiguredOrDefault(styles.ButtonFontSize, defaults.ButtonFontSize);
+            styles.Padding = ConfiguredOrDefault(styles.Padding, defaults.Padding);
+            styles.Gap = ConfiguredOrDefault(styles.Gap, defaults.Gap);
+            styles.Radius = ConfiguredOrDefault(styles.Radius, defaults.Radius);
+            styles.Cut = ConfiguredOrDefault(styles.Cut, defaults.Cut);
+            styles.PanelAlpha = ConfiguredOrDefault(styles.PanelAlpha, defaults.PanelAlpha);
+            styles.BorderAlpha = ConfiguredOrDefault(styles.BorderAlpha, defaults.BorderAlpha);
         }
 
         private int ToInt(double value)
@@ -732,6 +1153,14 @@ namespace Oxide.Plugins
             return string.Join("/", (value ?? "")
                 .Replace('\\', '/')
                 .Split(new[] { '/' }, StringSplitOptions.RemoveEmptyEntries));
+        }
+
+        private static string NormalizeKey(string value)
+        {
+            return new string((value ?? "")
+                .Where(char.IsLetterOrDigit)
+                .Select(char.ToLowerInvariant)
+                .ToArray());
         }
 
         private static string Sha256(string value)

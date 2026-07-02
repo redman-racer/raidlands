@@ -63,7 +63,7 @@ $steam_api_config = [
 
 $vip_bridge_config = [
     'serverId' => raidlands_env('RAIDLANDS_BRIDGE_SERVER_ID', 'raidlands-main'),
-    'sharedSecret' => raidlands_env('RAIDLANDS_BRIDGE_SHARED_SECRET', ''),
+    'sharedSecret' => trim(raidlands_env('RAIDLANDS_BRIDGE_SHARED_SECRET', '')),
     'hmacSkewSeconds' => raidlands_env_int('RAIDLANDS_BRIDGE_HMAC_SKEW_SECONDS', 300),
     'managedGroups' => raidlands_env_csv('RAIDLANDS_BRIDGE_MANAGED_GROUPS', [
         'vip_bronze',

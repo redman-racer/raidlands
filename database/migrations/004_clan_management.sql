@@ -1,0 +1,60 @@
+CREATE TABLE IF NOT EXISTS clan_snapshots (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  server_id VARCHAR(120) NOT NULL,
+  clan_tag VARCHAR(32) NOT NULL,
+  description TEXT NULL,
+  owner_steam_id64 VARCHAR(32) NOT NULL DEFAULT '',
+  tag_color VARCHAR(16) NOT NULL DEFAULT '',
+  moderators_json LONGTEXT NOT NULL,
+  members_json LONGTEXT NOT NULL,
+  member_invites_json LONGTEXT NOT NULL,
+  allies_json LONGTEXT NOT NULL,
+  invited_allies_json LONGTEXT NOT NULL,
+  member_count INT UNSIGNED NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_clan_snapshots_server_tag (server_id, clan_tag),
+  KEY idx_clan_snapshots_owner (server_id, owner_steam_id64),
+  KEY idx_clan_snapshots_updated (updated_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS clan_members (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  server_id VARCHAR(120) NOT NULL,
+  clan_tag VARCHAR(32) NOT NULL,
+  steam_id64 VARCHAR(32) NOT NULL,
+  display_name VARCHAR(120) NOT NULL DEFAULT '',
+  role ENUM('owner', 'moderator', 'member') NOT NULL DEFAULT 'member',
+  is_online TINYINT(1) NOT NULL DEFAULT 0,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_clan_members_server_player (server_id, steam_id64),
+  KEY idx_clan_members_clan (server_id, clan_tag, role),
+  KEY idx_clan_members_updated (updated_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS clan_action_queue (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  server_id VARCHAR(120) NOT NULL,
+  action_type VARCHAR(40) NOT NULL,
+  clan_tag VARCHAR(32) NOT NULL DEFAULT '',
+  actor_steam_id64 VARCHAR(32) NOT NULL,
+  actor_display_name VARCHAR(120) NOT NULL DEFAULT '',
+  target_steam_id64 VARCHAR(32) NOT NULL DEFAULT '',
+  target_display_name VARCHAR(120) NOT NULL DEFAULT '',
+  payload_json LONGTEXT NULL,
+  status ENUM('queued', 'processing', 'succeeded', 'failed') NOT NULL DEFAULT 'queued',
+  error_message TEXT NULL,
+  result_json LONGTEXT NULL,
+  attempts INT UNSIGNED NOT NULL DEFAULT 0,
+  claimed_at TIMESTAMP NULL DEFAULT NULL,
+  completed_at TIMESTAMP NULL DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_clan_action_queue_poll (server_id, status, id),
+  KEY idx_clan_action_queue_actor (server_id, actor_steam_id64, created_at),
+  KEY idx_clan_action_queue_clan (server_id, clan_tag, created_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
