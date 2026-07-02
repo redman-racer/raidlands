@@ -2828,6 +2828,54 @@ a.leaderboard-steam:hover,
   align-items: center;
 }
 
+.clan-queue-monitor {
+  margin-top: 18px;
+}
+
+.clan-queue-head {
+  display: flex;
+  gap: 16px;
+  align-items: flex-start;
+  justify-content: space-between;
+}
+
+.clan-queue-head h2 {
+  margin: 0;
+}
+
+.clan-queue-list {
+  margin-top: 14px;
+}
+
+.clan-queue-empty {
+  margin-bottom: 0;
+}
+
+.clan-resolution-stack {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.clan-resolution {
+  margin: 0;
+  transition: opacity .24s ease, transform .24s ease;
+}
+
+.clan-resolution.is-clearing {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+
+.clan-action-form.is-submitting,
+.clan-inline-form.is-submitting {
+  opacity: .76;
+}
+
+.btn.is-loading {
+  cursor: wait;
+}
+
 .clan-table {
   min-width: 900px;
 }
@@ -3705,6 +3753,15 @@ a.leaderboard-steam:hover,
   .clan-list-item {
     align-items: stretch;
     flex-direction: column;
+  }
+
+  .clan-queue-head {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .clan-queue-head .status-pill {
+    align-self: flex-start;
   }
 
   .clan-inline-form,

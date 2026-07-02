@@ -29,6 +29,15 @@ $clan_tag = is_array($clan_snapshot) ? (string) ($clan_snapshot['clan_tag'] ?? '
 $clan_is_stale = !empty($clan_context['is_stale']);
 $clan_can_manage = !empty($clan_context['can_manage']) && !$clan_is_stale;
 $clan_is_owner = !empty($clan_context['can_owner_manage']) && !$clan_is_stale;
+$clan_recent_actions = (array) $clan_context['recent_actions'];
+$clan_active_actions = array_values(array_filter($clan_recent_actions, static function (array $action_row): bool {
+    return in_array((string) ($action_row['status'] ?? ''), ['queued', 'processing'], true);
+}));
+$clan_action_state_json = $clan_player !== null
+    ? json_encode([
+        'recent_actions' => array_map('raidlands_clans_public_action_payload', $clan_recent_actions),
+    ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES)
+    : '{}';
 
 function raidlands_clans_page_action_label(string $action): string
 {
@@ -40,7 +49,7 @@ function raidlands_clans_page_action_label(string $action): string
 
 function raidlands_clans_page_action_form(string $csrf, string $clan_tag, string $action, string $target_steam_id64, string $target_display_name, string $label, string $button_class = 'btn-secondary'): string
 {
-    return '<form class="clan-inline-form" method="post" action="' . e(route_url('clans')) . '">'
+    return '<form class="clan-inline-form" method="post" action="' . e(route_url('clans')) . '" data-clan-queue-form>'
         . '<input type="hidden" name="form_action" value="queue_clan_action">'
         . '<input type="hidden" name="csrf" value="' . e($csrf) . '">'
         . '<input type="hidden" name="action" value="' . e($action) . '">'
@@ -49,6 +58,35 @@ function raidlands_clans_page_action_form(string $csrf, string $clan_tag, string
         . '<input type="hidden" name="target_display_name" value="' . e($target_display_name) . '">'
         . '<button class="btn ' . e($button_class) . '" type="submit">' . e($label) . '</button>'
         . '</form>';
+}
+
+function raidlands_clans_page_action_target(array $action_row): string
+{
+    $target = trim((string) ($action_row['target_display_name'] ?? ''));
+
+    if ($target !== '') {
+        return $target;
+    }
+
+    $target = trim((string) ($action_row['target_steam_id64'] ?? ''));
+
+    return $target !== '' ? $target : (string) ($action_row['clan_tag'] ?? '');
+}
+
+function raidlands_clans_page_action_item(array $action_row): string
+{
+    $status = (string) ($action_row['status'] ?? 'queued');
+    $error = trim((string) ($action_row['error_message'] ?? ''));
+    $meta = raidlands_clans_page_action_target($action_row);
+
+    return '<div class="clan-list-item clan-queue-item" data-clan-action-id="' . e((string) ($action_row['id'] ?? '')) . '">'
+        . '<span>'
+        . '<strong>' . e(raidlands_clans_page_action_label((string) ($action_row['action_type'] ?? ''))) . '</strong>'
+        . '<code>' . e($meta) . '</code>'
+        . ($error !== '' ? '<small>' . e($error) . '</small>' : '')
+        . '</span>'
+        . '<span class="status-pill ' . e($status) . '">' . e($status) . '</span>'
+        . '</div>';
 }
 ?>
 <?= render_page_hero('clans',
@@ -114,6 +152,28 @@ function raidlands_clans_page_action_form(string $csrf, string $clan_tag, string
           <?php endif; ?>
         </div>
       </div>
+
+      <div
+        class="metal-panel clan-queue-monitor<?= $clan_active_actions === [] ? ' is-idle' : '' ?>"
+        data-clan-action-monitor
+        data-poll-url="<?= e($base_path . 'api/clans/me.php') ?>"
+        data-action-url="<?= e($base_path . 'api/clans/action.php') ?>">
+        <div class="clan-queue-head">
+          <div>
+            <p class="section-kicker">Action queue</p>
+            <h2>Server actions</h2>
+          </div>
+          <span class="status-pill queued" data-clan-queue-count><?= e((string) count($clan_active_actions)) ?> active</span>
+        </div>
+        <div class="clan-resolution-stack" data-clan-resolution-stack aria-live="polite"></div>
+        <div class="clan-list-stack clan-queue-list" data-clan-queue-list<?= $clan_active_actions === [] ? ' hidden' : '' ?>>
+          <?php foreach ($clan_active_actions as $action_row) : ?>
+            <?= raidlands_clans_page_action_item($action_row) ?>
+          <?php endforeach; ?>
+        </div>
+        <p class="section-lede clan-queue-empty" data-clan-queue-empty<?= $clan_active_actions !== [] ? ' hidden' : '' ?>>No website clan actions are waiting on the server.</p>
+      </div>
+      <script type="application/json" id="clan-action-state"><?= $clan_action_state_json ?: '{}' ?></script>
     <?php endif; ?>
   </div>
 </section>
@@ -129,21 +189,23 @@ function raidlands_clans_page_action_form(string $csrf, string $clan_tag, string
         </div>
 
         <?php if ($clan_is_stale) : ?>
-          <div class="form-status warning">Clan actions are disabled until the game server posts a fresh snapshot.</div>
+          <div class="form-status warning" data-clan-stale-warning>Clan actions are disabled until the game server posts a fresh snapshot.</div>
+        <?php else : ?>
+          <div class="form-status warning" data-clan-stale-warning hidden>Clan actions are disabled until the game server posts a fresh snapshot.</div>
         <?php endif; ?>
 
         <div class="profile-stat-grid clan-stat-grid">
-          <article class="stat-tile"><span>Members</span><strong><?= e((string) count((array) ($clan_snapshot['members'] ?? []))) ?></strong></article>
-          <article class="stat-tile"><span>Pending Invites</span><strong><?= e((string) count((array) ($clan_snapshot['member_invites'] ?? []))) ?></strong></article>
-          <article class="stat-tile"><span>Allies</span><strong><?= e((string) count((array) ($clan_snapshot['allies'] ?? []))) ?></strong></article>
-          <article class="stat-tile"><span>Your Role</span><strong><?= e((string) ($clan_role['role'] ?? 'member')) ?></strong></article>
+          <article class="stat-tile"><span>Members</span><strong data-clan-stat="members"><?= e((string) count((array) ($clan_snapshot['members'] ?? []))) ?></strong></article>
+          <article class="stat-tile"><span>Pending Invites</span><strong data-clan-stat="invites"><?= e((string) count((array) ($clan_snapshot['member_invites'] ?? []))) ?></strong></article>
+          <article class="stat-tile"><span>Allies</span><strong data-clan-stat="allies"><?= e((string) count((array) ($clan_snapshot['allies'] ?? []))) ?></strong></article>
+          <article class="stat-tile"><span>Your Role</span><strong data-clan-stat="role"><?= e((string) ($clan_role['role'] ?? 'member')) ?></strong></article>
         </div>
 
         <?php if ($clan_can_manage) : ?>
           <div class="metal-panel clan-invite-panel">
             <p class="section-kicker">Invite player</p>
             <h3>Queue a clan invite</h3>
-            <form class="clan-action-form" method="post" action="<?= e(route_url('clans')) ?>">
+            <form class="clan-action-form" method="post" action="<?= e(route_url('clans')) ?>" data-clan-queue-form>
               <input type="hidden" name="form_action" value="queue_clan_action">
               <input type="hidden" name="csrf" value="<?= e($clan_csrf) ?>">
               <input type="hidden" name="action" value="invite">
@@ -172,7 +234,7 @@ function raidlands_clans_page_action_form(string $csrf, string $clan_tag, string
                 <th>Actions</th>
               </tr>
             </thead>
-            <tbody>
+            <tbody data-clan-members>
               <?php foreach ((array) ($clan_snapshot['members'] ?? []) as $member) : ?>
                 <?php
                   $member_steam = raidlands_clans_normalize_steam_id((string) ($member['steam_id64'] ?? ''));
@@ -214,30 +276,27 @@ function raidlands_clans_page_action_form(string $csrf, string $clan_tag, string
         <div class="metal-panel">
           <p class="section-kicker">Pending invites</p>
           <h2>Invited players</h2>
-          <?php if (empty($clan_snapshot['member_invites'])) : ?>
-            <p class="section-lede">No player invites are pending.</p>
-          <?php else : ?>
-            <div class="clan-list-stack">
-              <?php foreach ((array) $clan_snapshot['member_invites'] as $invite) : ?>
-                <?php
-                  $invite_steam = raidlands_clans_normalize_steam_id((string) ($invite['steam_id64'] ?? ''));
-                  $invite_name = trim((string) ($invite['display_name'] ?? '')) ?: $invite_steam;
-                ?>
-                <div class="clan-list-item">
-                  <span><strong><?= e($invite_name) ?></strong><code><?= e($invite_steam) ?></code></span>
-                  <?php if ($clan_can_manage) : ?>
-                    <?= raidlands_clans_page_action_form($clan_csrf, $clan_tag, 'withdraw_invite', $invite_steam, $invite_name, 'Withdraw', 'btn-secondary') ?>
-                  <?php endif; ?>
-                </div>
-              <?php endforeach; ?>
-            </div>
-          <?php endif; ?>
+          <p class="section-lede" data-clan-invites-empty<?= empty($clan_snapshot['member_invites']) ? '' : ' hidden' ?>>No player invites are pending.</p>
+          <div class="clan-list-stack" data-clan-invites<?= empty($clan_snapshot['member_invites']) ? ' hidden' : '' ?>>
+            <?php foreach ((array) $clan_snapshot['member_invites'] as $invite) : ?>
+              <?php
+                $invite_steam = raidlands_clans_normalize_steam_id((string) ($invite['steam_id64'] ?? ''));
+                $invite_name = trim((string) ($invite['display_name'] ?? '')) ?: $invite_steam;
+              ?>
+              <div class="clan-list-item">
+                <span><strong><?= e($invite_name) ?></strong><code><?= e($invite_steam) ?></code></span>
+                <?php if ($clan_can_manage) : ?>
+                  <?= raidlands_clans_page_action_form($clan_csrf, $clan_tag, 'withdraw_invite', $invite_steam, $invite_name, 'Withdraw', 'btn-secondary') ?>
+                <?php endif; ?>
+              </div>
+            <?php endforeach; ?>
+          </div>
         </div>
 
         <div class="metal-panel">
           <p class="section-kicker">Alliances</p>
           <h2>Clan relations</h2>
-          <div class="tag-row">
+          <div class="tag-row" data-clan-allies>
             <?php foreach ((array) ($clan_snapshot['allies'] ?? []) as $ally) : ?>
               <span class="tag"><?= e((string) $ally) ?></span>
             <?php endforeach; ?>
@@ -246,7 +305,9 @@ function raidlands_clans_page_action_form(string $csrf, string $clan_tag, string
             <?php endif; ?>
           </div>
           <?php if (!empty($clan_snapshot['invited_allies'])) : ?>
-            <p class="store-muted">Pending ally invites: <?= e(implode(', ', array_map('strval', (array) $clan_snapshot['invited_allies']))) ?></p>
+            <p class="store-muted" data-clan-pending-allies>Pending ally invites: <?= e(implode(', ', array_map('strval', (array) $clan_snapshot['invited_allies']))) ?></p>
+          <?php else : ?>
+            <p class="store-muted" data-clan-pending-allies hidden></p>
           <?php endif; ?>
         </div>
       </div>
@@ -259,7 +320,7 @@ function raidlands_clans_page_action_form(string $csrf, string $clan_tag, string
             <p class="section-kicker">Owner action</p>
             <h2>Disband clan</h2>
             <p class="section-lede">This queues a destructive server action. Type the clan tag exactly to confirm.</p>
-            <form class="clan-action-form" method="post" action="<?= e(route_url('clans')) ?>">
+            <form class="clan-action-form" method="post" action="<?= e(route_url('clans')) ?>" data-clan-queue-form>
               <input type="hidden" name="form_action" value="queue_clan_action">
               <input type="hidden" name="csrf" value="<?= e($clan_csrf) ?>">
               <input type="hidden" name="action" value="disband">
@@ -323,24 +384,12 @@ function raidlands_clans_page_action_form(string $csrf, string $clan_tag, string
       <div class="metal-panel">
         <p class="section-kicker">Recent queue</p>
         <h2>Action history</h2>
-        <?php if ($clan_context['recent_actions'] === []) : ?>
-          <p class="section-lede">No website clan actions have been queued from this Steam account yet.</p>
-        <?php else : ?>
-          <div class="clan-list-stack">
-            <?php foreach ($clan_context['recent_actions'] as $action_row) : ?>
-              <div class="clan-list-item">
-                <span>
-                  <strong><?= e(raidlands_clans_page_action_label((string) $action_row['action_type'])) ?></strong>
-                  <code><?= e((string) ($action_row['target_steam_id64'] ?: $action_row['clan_tag'])) ?></code>
-                  <?php if (!empty($action_row['error_message'])) : ?>
-                    <small><?= e((string) $action_row['error_message']) ?></small>
-                  <?php endif; ?>
-                </span>
-                <span class="status-pill <?= e((string) $action_row['status']) ?>"><?= e((string) $action_row['status']) ?></span>
-              </div>
-            <?php endforeach; ?>
-          </div>
-        <?php endif; ?>
+        <p class="section-lede" data-clan-action-history-empty<?= $clan_recent_actions === [] ? '' : ' hidden' ?>>No website clan actions have been queued from this Steam account yet.</p>
+        <div class="clan-list-stack" data-clan-action-history<?= $clan_recent_actions === [] ? ' hidden' : '' ?>>
+          <?php foreach ($clan_recent_actions as $action_row) : ?>
+            <?= raidlands_clans_page_action_item($action_row) ?>
+          <?php endforeach; ?>
+        </div>
       </div>
     </div>
   </section>

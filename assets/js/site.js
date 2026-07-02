@@ -65,6 +65,7 @@
   function init() {
     bindNav();
     bindActions();
+    initClanManagement();
     initEffectsWhenLoaderReveals();
     hydrateDates();
     hydrateServerStatus();
@@ -289,6 +290,579 @@
         showToast(`${provider === "steam" ? "Steam" : "Discord"} is not connected on this browser.`);
       });
     });
+  }
+
+  function initClanManagement() {
+    if (pageId !== "clans" || !window.fetch) return;
+
+    const monitor = app.querySelector("[data-clan-action-monitor]");
+
+    if (!monitor) return;
+
+    const state = {
+      monitor,
+      pollUrl: monitor.dataset.pollUrl || `${doc.dataset.base || "./"}api/clans/me.php`,
+      actionUrl: monitor.dataset.actionUrl || `${doc.dataset.base || "./"}api/clans/action.php`,
+      csrf: getClanCsrfToken(),
+      actions: new Map(),
+      watched: loadClanWatchedActions(),
+      pollTimer: null,
+      polling: false,
+      refreshUntil: 0
+    };
+    const initial = readJsonNode("clan-action-state", { recent_actions: [] });
+
+    (initial.recent_actions || []).forEach(action => {
+      const normalized = normalizeClanAction(action);
+
+      if (!normalized.id) return;
+
+      state.actions.set(normalized.id, normalized);
+
+      if (isActiveClanAction(normalized) && !state.watched[normalized.id]) {
+        state.watched[normalized.id] = normalized;
+      }
+    });
+
+    Object.values(state.watched).forEach(action => {
+      const normalized = normalizeClanAction(action);
+
+      if (normalized.id && !state.actions.has(normalized.id)) {
+        state.actions.set(normalized.id, normalized);
+      }
+    });
+
+    saveClanWatchedActions(state.watched);
+    bindClanActionForms(state);
+    renderClanQueue(state);
+
+    if (hasPendingClanWork(state)) {
+      scheduleClanPoll(state, 1600);
+    }
+  }
+
+  function bindClanActionForms(state) {
+    app.addEventListener("submit", event => {
+      const form = event.target;
+
+      if (!(form instanceof HTMLFormElement) || !form.matches("[data-clan-queue-form]")) {
+        return;
+      }
+
+      const formAction = form.querySelector('[name="form_action"]');
+
+      if (!formAction || formAction.value !== "queue_clan_action") {
+        return;
+      }
+
+      event.preventDefault();
+      queueClanAction(form, state);
+    });
+  }
+
+  async function queueClanAction(form, state) {
+    const button = form.querySelector('[type="submit"]');
+    const payload = formDataToObject(new FormData(form));
+
+    if (button) {
+      button.disabled = true;
+      button.classList.add("is-loading");
+    }
+
+    form.classList.add("is-submitting");
+
+    try {
+      const response = await fetch(state.actionUrl, {
+        method: "POST",
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: {
+          Accept: "application/json",
+          "Content-Type": "application/json"
+        },
+        body: JSON.stringify(payload)
+      });
+      const data = await readJsonResponse(response);
+
+      if (!response.ok || !data.ok) {
+        throw new Error(data.error || `Clan action failed with HTTP ${response.status}.`);
+      }
+
+      const action = normalizeClanAction({
+        ...payload,
+        ...(data.action || {}),
+        action_type: (data.action && (data.action.action || data.action.action_type)) || payload.action,
+        target_steam_id64: payload.target_steam_id64 || "",
+        target_display_name: payload.target_display_name || "",
+        status: (data.action && data.action.status) || "queued",
+        created_at: new Date().toISOString()
+      });
+
+      if (action.id) {
+        state.actions.set(action.id, action);
+        state.watched[action.id] = action;
+        saveClanWatchedActions(state.watched);
+        renderClanQueue(state);
+      }
+
+      form.reset();
+      showToast("Clan action queued.");
+      scheduleClanPoll(state, 1000);
+    } catch (error) {
+      showToast(error.message || "Clan action could not be queued.");
+      showClanResolution(state, {
+        id: `local-${Date.now()}`,
+        action_type: payload.action || "action",
+        target_steam_id64: payload.target_steam_id64 || "",
+        target_display_name: payload.target_display_name || "",
+        clan_tag: payload.clan_tag || "",
+        status: "failed",
+        error_message: error.message || "Clan action could not be queued."
+      });
+    } finally {
+      form.classList.remove("is-submitting");
+
+      if (button) {
+        button.disabled = false;
+        button.classList.remove("is-loading");
+      }
+    }
+  }
+
+  async function pollClanState(state) {
+    if (state.polling) return;
+
+    state.polling = true;
+
+    try {
+      const response = await fetch(state.pollUrl, {
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: {
+          Accept: "application/json"
+        }
+      });
+      const data = await readJsonResponse(response);
+
+      if (!response.ok || !data.ok || !data.context) {
+        throw new Error(data.error || `Clan refresh failed with HTTP ${response.status}.`);
+      }
+
+      applyClanContext(state, data.context);
+      handleClanActionTransitions(state, data.context.recent_actions || []);
+      renderClanQueue(state);
+    } catch (error) {
+      console.info("Raidlands clan queue could not be refreshed.", error);
+    } finally {
+      state.polling = false;
+
+      if (hasPendingClanWork(state)) {
+        scheduleClanPoll(state, 2400);
+      }
+    }
+  }
+
+  function handleClanActionTransitions(state, recentActions) {
+    recentActions.map(normalizeClanAction).forEach(action => {
+      if (!action.id) return;
+
+      state.actions.set(action.id, action);
+
+      const watched = state.watched[action.id];
+
+      if (!watched) return;
+
+      state.watched[action.id] = {
+        ...watched,
+        ...action
+      };
+
+      if (isTerminalClanAction(action) && !watched.notified) {
+        state.watched[action.id].notified = true;
+        showClanResolution(state, action);
+
+        if (action.status === "succeeded") {
+          state.refreshUntil = Date.now() + 18000;
+        }
+
+        window.setTimeout(() => {
+          delete state.watched[action.id];
+          saveClanWatchedActions(state.watched);
+          renderClanQueue(state);
+        }, 5200);
+      }
+    });
+
+    saveClanWatchedActions(state.watched);
+  }
+
+  function applyClanContext(state, context) {
+    const clan = context.clan;
+    const recentActions = (context.recent_actions || []).map(normalizeClanAction).filter(action => action.id);
+
+    recentActions.forEach(action => state.actions.set(action.id, action));
+    updateClanHistory(recentActions);
+
+    if (!clan) return;
+
+    const members = Array.isArray(clan.members) ? clan.members : [];
+    const invites = Array.isArray(clan.member_invites) ? clan.member_invites : [];
+    const allies = Array.isArray(clan.allies) ? clan.allies : [];
+    const invitedAllies = Array.isArray(clan.invited_allies) ? clan.invited_allies : [];
+
+    setClanStat("members", members.length);
+    setClanStat("invites", invites.length);
+    setClanStat("allies", allies.length);
+    setClanStat("role", context.role || "member");
+
+    const staleWarning = app.querySelector("[data-clan-stale-warning]");
+
+    if (staleWarning) {
+      staleWarning.hidden = !clan.is_stale;
+    }
+
+    renderClanMembers(members, context);
+    renderClanInvites(invites, context);
+    renderClanAllies(allies, invitedAllies);
+  }
+
+  function renderClanQueue(state) {
+    const list = state.monitor.querySelector("[data-clan-queue-list]");
+    const empty = state.monitor.querySelector("[data-clan-queue-empty]");
+    const count = state.monitor.querySelector("[data-clan-queue-count]");
+    const active = Array.from(state.actions.values())
+      .filter(isActiveClanAction)
+      .sort(sortClanActions);
+
+    state.monitor.classList.toggle("is-idle", active.length === 0);
+
+    if (count) {
+      count.textContent = `${active.length} active`;
+    }
+
+    if (list) {
+      list.hidden = active.length === 0;
+      list.innerHTML = active.map(renderClanActionItem).join("");
+    }
+
+    if (empty) {
+      empty.hidden = active.length > 0;
+    }
+  }
+
+  function renderClanMembers(members, context) {
+    const body = app.querySelector("[data-clan-members]");
+
+    if (!body) return;
+
+    body.innerHTML = members.map(member => renderClanMemberRow(member, context)).join("");
+  }
+
+  function renderClanMemberRow(member, context) {
+    const steamId = digitsOnly(member.steam_id64 || "");
+    const role = String(member.role || "member").toLowerCase();
+    const name = String(member.display_name || "").trim() || steamId;
+    const online = member.is_online ? "Online" : "Offline";
+
+    return `<tr>
+      <td>${escapeHtml(name)}</td>
+      <td><code>${escapeHtml(steamId)}</code></td>
+      <td><span class="status-pill ${escapeAttr(role)}">${escapeHtml(role)}</span></td>
+      <td>${online}</td>
+      <td><div class="clan-action-row">${renderClanMemberActions({ steamId, role, name }, context)}</div></td>
+    </tr>`;
+  }
+
+  function renderClanMemberActions(member, context) {
+    const clan = context.clan || {};
+    const actions = Array.isArray(context.allowed_actions) ? context.allowed_actions : [];
+    const playerSteamId = digitsOnly((context.player && context.player.steam_id64) || "");
+    const isSelf = member.steamId === playerSteamId;
+    const canManage = !clan.is_stale && actions.includes("kick");
+    const isOwner = !clan.is_stale && actions.includes("promote");
+    const forms = [];
+
+    if (canManage && !isSelf && member.role !== "owner" && (member.role !== "moderator" || isOwner)) {
+      forms.push(renderClanActionForm("kick", member.steamId, member.name, "Kick", "btn-secondary", clan.tag));
+    }
+
+    if (isOwner && !isSelf && member.role === "member") {
+      forms.push(renderClanActionForm("promote", member.steamId, member.name, "Promote", "btn-secondary", clan.tag));
+    }
+
+    if (isOwner && !isSelf && member.role === "moderator") {
+      forms.push(renderClanActionForm("demote", member.steamId, member.name, "Demote", "btn-ghost", clan.tag));
+    }
+
+    return forms.length ? forms.join("") : '<span class="store-muted">No action</span>';
+  }
+
+  function renderClanInvites(invites, context) {
+    const list = app.querySelector("[data-clan-invites]");
+    const empty = app.querySelector("[data-clan-invites-empty]");
+
+    if (!list || !empty) return;
+
+    const clan = context.clan || {};
+    const actions = Array.isArray(context.allowed_actions) ? context.allowed_actions : [];
+    const canManage = !clan.is_stale && actions.includes("withdraw_invite");
+
+    empty.hidden = invites.length > 0;
+    list.hidden = invites.length === 0;
+    list.innerHTML = invites.map(invite => {
+      const steamId = digitsOnly(invite.steam_id64 || "");
+      const name = String(invite.display_name || "").trim() || steamId;
+      const control = canManage
+        ? renderClanActionForm("withdraw_invite", steamId, name, "Withdraw", "btn-secondary", clan.tag)
+        : "";
+
+      return `<div class="clan-list-item"><span><strong>${escapeHtml(name)}</strong><code>${escapeHtml(steamId)}</code></span>${control}</div>`;
+    }).join("");
+  }
+
+  function renderClanAllies(allies, invitedAllies) {
+    const list = app.querySelector("[data-clan-allies]");
+    const pending = app.querySelector("[data-clan-pending-allies]");
+
+    if (list) {
+      list.innerHTML = allies.length
+        ? allies.map(ally => `<span class="tag">${escapeHtml(String(ally))}</span>`).join("")
+        : '<span class="tag">No allies synced</span>';
+    }
+
+    if (pending) {
+      pending.hidden = invitedAllies.length === 0;
+      pending.textContent = invitedAllies.length ? `Pending ally invites: ${invitedAllies.join(", ")}` : "";
+    }
+  }
+
+  function updateClanHistory(actions) {
+    const list = app.querySelector("[data-clan-action-history]");
+    const empty = app.querySelector("[data-clan-action-history-empty]");
+
+    if (!list || !empty) return;
+
+    const sorted = actions.slice().sort(sortClanActions);
+
+    empty.hidden = sorted.length > 0;
+    list.hidden = sorted.length === 0;
+    list.innerHTML = sorted.map(renderClanActionItem).join("");
+  }
+
+  function renderClanActionForm(action, targetSteamId, targetDisplayName, label, buttonClass, clanTag) {
+    return `<form class="clan-inline-form" method="post" action="${escapeAttr(window.location.pathname)}" data-clan-queue-form>
+      <input type="hidden" name="form_action" value="queue_clan_action">
+      <input type="hidden" name="csrf" value="${escapeAttr(getClanCsrfToken())}">
+      <input type="hidden" name="action" value="${escapeAttr(action)}">
+      <input type="hidden" name="clan_tag" value="${escapeAttr(clanTag || "")}">
+      <input type="hidden" name="target_steam_id64" value="${escapeAttr(targetSteamId)}">
+      <input type="hidden" name="target_display_name" value="${escapeAttr(targetDisplayName)}">
+      <button class="btn ${escapeAttr(buttonClass)}" type="submit">${escapeHtml(label)}</button>
+    </form>`;
+  }
+
+  function renderClanActionItem(action) {
+    const status = action.status || "queued";
+    const error = action.error_message || "";
+    const meta = clanActionMeta(action);
+
+    return `<div class="clan-list-item clan-queue-item" data-clan-action-id="${escapeAttr(action.id)}">
+      <span>
+        <strong>${escapeHtml(formatClanActionLabel(action.action_type || action.action))}</strong>
+        <code>${escapeHtml(meta)}</code>
+        ${error ? `<small>${escapeHtml(error)}</small>` : ""}
+      </span>
+      <span class="status-pill ${escapeAttr(status)}">${escapeHtml(status)}</span>
+    </div>`;
+  }
+
+  function showClanResolution(state, action) {
+    const stack = state.monitor.querySelector("[data-clan-resolution-stack]");
+
+    if (!stack) return;
+
+    const success = action.status === "succeeded";
+    const item = document.createElement("div");
+    const label = formatClanActionLabel(action.action_type || action.action);
+    const target = clanActionMeta(action);
+    const detail = success
+      ? `${label} resolved for ${target}.`
+      : `${label} failed${action.error_message ? `: ${action.error_message}` : "."}`;
+
+    item.className = `form-status ${success ? "success" : "error"} clan-resolution`;
+    item.textContent = detail;
+    stack.prepend(item);
+    showToast(detail);
+
+    window.setTimeout(() => {
+      item.classList.add("is-clearing");
+    }, 4200);
+
+    window.setTimeout(() => {
+      item.remove();
+    }, 4800);
+  }
+
+  function scheduleClanPoll(state, delay) {
+    if (state.pollTimer) return;
+
+    state.pollTimer = window.setTimeout(() => {
+      state.pollTimer = null;
+      pollClanState(state);
+    }, delay);
+  }
+
+  function hasPendingClanWork(state) {
+    if (Date.now() < state.refreshUntil) {
+      return true;
+    }
+
+    return Array.from(state.actions.values()).some(isActiveClanAction)
+      || Object.values(state.watched).some(action => !action.notified);
+  }
+
+  function normalizeClanAction(action) {
+    const actionType = String(action.action_type || action.action || "").trim();
+    const status = String(action.status || "queued").trim().toLowerCase();
+
+    return {
+      ...action,
+      id: String(action.id || ""),
+      action_type: actionType,
+      action: actionType,
+      status,
+      clan_tag: String(action.clan_tag || ""),
+      target_steam_id64: digitsOnly(action.target_steam_id64 || ""),
+      target_display_name: String(action.target_display_name || "").trim(),
+      error_message: String(action.error_message || action.error || "").trim(),
+      created_at: String(action.created_at || ""),
+      updated_at: String(action.updated_at || ""),
+      completed_at: String(action.completed_at || ""),
+      notified: Boolean(action.notified)
+    };
+  }
+
+  function isActiveClanAction(action) {
+    return action.status === "queued" || action.status === "processing";
+  }
+
+  function isTerminalClanAction(action) {
+    return action.status === "succeeded" || action.status === "failed";
+  }
+
+  function sortClanActions(a, b) {
+    return Number(b.id || 0) - Number(a.id || 0);
+  }
+
+  function clanActionMeta(action) {
+    return action.target_display_name || action.target_steam_id64 || action.clan_tag || "clan";
+  }
+
+  function formatClanActionLabel(action) {
+    const labels = {
+      withdraw_invite: "Withdraw Invite"
+    };
+
+    if (labels[action]) {
+      return labels[action];
+    }
+
+    return String(action || "Action")
+      .replace(/_/g, " ")
+      .replace(/\b\w/g, letter => letter.toUpperCase());
+  }
+
+  function setClanStat(name, value) {
+    app.querySelectorAll(`[data-clan-stat="${name}"]`).forEach(item => {
+      item.textContent = String(value);
+    });
+  }
+
+  function getClanCsrfToken() {
+    const input = app.querySelector('[data-clan-queue-form] [name="csrf"], .clan-action-form [name="csrf"]');
+
+    return input ? input.value : "";
+  }
+
+  function formDataToObject(formData) {
+    const payload = {};
+
+    formData.forEach((value, key) => {
+      payload[key] = String(value);
+    });
+
+    return payload;
+  }
+
+  async function readJsonResponse(response) {
+    try {
+      return await response.json();
+    } catch (error) {
+      return {
+        ok: false,
+        error: "The server returned an unreadable response."
+      };
+    }
+  }
+
+  function readJsonNode(id, fallback) {
+    const node = document.getElementById(id);
+
+    if (!node) return fallback;
+
+    try {
+      return JSON.parse(node.textContent || "{}");
+    } catch (error) {
+      return fallback;
+    }
+  }
+
+  function loadClanWatchedActions() {
+    try {
+      const parsed = JSON.parse(window.sessionStorage.getItem("raidlands_clan_actions") || "{}");
+      const now = Date.now();
+      const watched = {};
+
+      Object.entries(parsed).forEach(([id, action]) => {
+        const normalized = normalizeClanAction(action);
+        const updatedAt = Date.parse(normalized.updated_at || normalized.created_at || "");
+
+        if (!normalized.id || (Number.isFinite(updatedAt) && now - updatedAt > 86400000)) {
+          return;
+        }
+
+        watched[id] = normalized;
+      });
+
+      return watched;
+    } catch (error) {
+      return {};
+    }
+  }
+
+  function saveClanWatchedActions(actions) {
+    try {
+      window.sessionStorage.setItem("raidlands_clan_actions", JSON.stringify(actions));
+    } catch (error) {
+      // Session storage is optional for the queue UI.
+    }
+  }
+
+  function digitsOnly(value) {
+    return String(value).replace(/\D+/g, "");
+  }
+
+  function escapeHtml(value) {
+    return String(value)
+      .replace(/&/g, "&amp;")
+      .replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;")
+      .replace(/"/g, "&quot;")
+      .replace(/'/g, "&#039;");
+  }
+
+  function escapeAttr(value) {
+    return escapeHtml(value);
   }
 
   async function copyText(text) {

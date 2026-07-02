@@ -723,7 +723,7 @@ function raidlands_clans_recent_actions_for_actor(string $steam_id64, int $limit
 
     try {
         return raidlands_db_fetch_all(
-            'SELECT id, action_type, clan_tag, target_steam_id64, target_display_name, status, error_message, attempts, created_at, completed_at
+            'SELECT id, action_type, clan_tag, target_steam_id64, target_display_name, status, error_message, attempts, created_at, updated_at, completed_at
              FROM clan_action_queue
              WHERE server_id = :server_id AND actor_steam_id64 = :actor_steam_id64
              ORDER BY created_at DESC, id DESC
@@ -746,7 +746,7 @@ function raidlands_clans_recent_actions(int $limit = 20): array
 
     try {
         return raidlands_db_fetch_all(
-            'SELECT id, action_type, clan_tag, actor_steam_id64, target_steam_id64, target_display_name, status, error_message, attempts, created_at, completed_at
+            'SELECT id, action_type, clan_tag, actor_steam_id64, target_steam_id64, target_display_name, status, error_message, attempts, created_at, updated_at, completed_at
              FROM clan_action_queue
              WHERE server_id = :server_id
              ORDER BY created_at DESC, id DESC
@@ -820,6 +820,26 @@ function raidlands_clans_allowed_actions_for_role(string $role): array
     return $actions;
 }
 
+function raidlands_clans_public_action_payload(array $action): array
+{
+    $action_type = (string) ($action['action_type'] ?? $action['action'] ?? '');
+
+    return [
+        'id' => (int) ($action['id'] ?? 0),
+        'action_type' => $action_type,
+        'action' => $action_type,
+        'clan_tag' => (string) ($action['clan_tag'] ?? ''),
+        'target_steam_id64' => (string) ($action['target_steam_id64'] ?? ''),
+        'target_display_name' => (string) ($action['target_display_name'] ?? ''),
+        'status' => (string) ($action['status'] ?? ''),
+        'error_message' => (string) ($action['error_message'] ?? ''),
+        'attempts' => (int) ($action['attempts'] ?? 0),
+        'created_at' => (string) ($action['created_at'] ?? ''),
+        'updated_at' => (string) ($action['updated_at'] ?? ''),
+        'completed_at' => (string) ($action['completed_at'] ?? ''),
+    ];
+}
+
 function raidlands_clans_public_context_payload(array $player): array
 {
     $context = raidlands_clans_context_for_player($player);
@@ -835,6 +855,7 @@ function raidlands_clans_public_context_payload(array $player): array
         ],
         'role' => $role !== null ? (string) ($role['role'] ?? 'member') : null,
         'allowed_actions' => $role !== null ? raidlands_clans_allowed_actions_for_role((string) ($role['role'] ?? 'member')) : [],
+        'recent_actions' => array_map('raidlands_clans_public_action_payload', (array) $context['recent_actions']),
         'clan' => null,
     ];
 
