@@ -25,20 +25,23 @@ http://127.0.0.1:4177/
 
 ## Structure
 
-- `includes/config.php` loads the root `.env`, owns navigation, page metadata, and reusable content data.
+- `includes/config.php` loads the root `.env` plus optional `.env.local` overrides, owns navigation, page metadata, and reusable content data.
 - `includes/header.php` renders the shared document head and site header.
 - `includes/footer.php` renders the shared footer and toast region.
 - `pages/` contains one content template per page.
 - Each route has a small `index.php` that loads bootstrap, header, content, and footer.
 - `assets/js/site.js` handles behavior only: mobile nav, copy buttons, auth placeholders, reveal effects, metrics, and wipe countdowns.
 - `includes/database.php` and `includes/store.php` provide the MySQL, Stripe, SteamID64, entitlement, and WebsiteVipBridge API layer.
-- `database/` contains the VIP store migration, stats migration, and seed data.
+- `database/` contains the VIP store, stats, clan management/API-key migrations, and seed data.
 - `server-plugins/WebsiteVipBridge.cs` is the uMod/Oxide bridge plugin for syncing website entitlements to Rust permission groups and player stats to leaderboards.
+- `server-plugins/WebsiteClanBridge.cs` is the uMod/Oxide bridge plugin for syncing clan snapshots and processing public clan API actions.
 
 ## Important Config
 
 Launch and credential values live in the root `.env` file. Copy `.env.example`
 to `.env` for a new environment, then fill in the local or hosted values.
+For local-only WAMP overrides, create `.env.local`; values in that file win
+over `.env` and stay ignored by Git.
 
 - `RAIDLANDS_ADMIN_USERNAME`
 - `RAIDLANDS_ADMIN_PASSWORD` or `RAIDLANDS_ADMIN_PASSWORD_HASH`
@@ -65,10 +68,12 @@ The store uses MySQL as the source of truth and Stripe Checkout for payments.
 2. Create a MySQL database.
 3. Run `database/migrations/001_vip_store.sql`.
 4. Run `database/migrations/002_player_stats.sql`.
-5. Run `database/seeds/001_store_products.sql`.
-6. Copy `.env.example` to `.env`.
-7. Fill in MySQL, Stripe, Steam API, and bridge secret values.
-8. Configure product Stripe Price IDs in `/admin/?section=store`.
+5. Run `database/migrations/004_clan_management.sql`.
+6. Run `database/migrations/005_clan_api_keys.sql`.
+7. Run `database/seeds/001_store_products.sql`.
+8. Copy `.env.example` to `.env`.
+9. Fill in MySQL, Stripe, Steam API, bridge secret, and clan API limit values.
+10. Configure product Stripe Price IDs in `/admin/?section=store`.
 
 Public store flow:
 
@@ -77,15 +82,19 @@ Public store flow:
 - `/store/checkout.php` creates Stripe Checkout Sessions.
 - `/api/stripe-webhook.php` records paid orders, subscriptions, refunds, and entitlement changes.
 - `/profile/` shows active groups and entitlement history for the linked SteamID64.
+- `/clans/` resolves the linked SteamID64 to synced clan data, queues allowed clan actions, and creates/revokes public clan API keys.
+- `/api-docs/` documents the public clan API for external websites and Discord bots.
 
 Game-server flow:
 
 - Install Rust Kits by k1lly0u.
 - Put `server-plugins/WebsiteVipBridge.cs` into the uMod/Oxide plugins folder.
+- Put `server-plugins/WebsiteClanBridge.cs` into the uMod/Oxide plugins folder when clan website/API management is enabled.
 - Configure the plugin with the same `ApiBaseUrl`, `ServerId`, and `SharedSecret` as the website. Use `server-plugins/WebsiteVipBridge.config.example.json` as the shape of the generated plugin config.
 - Configure `WipeKey` after each wipe if you want a clean current-wipe leaderboard boundary; leave it blank only if one continuous current season is acceptable.
 - The plugin calls `/api/server/vip-player.php` and `/api/server/vip-changes.php`, then adds/removes managed Oxide groups.
 - The plugin posts `/api/server/stats-snapshot.php` with KDRScoreboard kills/deaths, PlaytimeTracker playtime, and ServerRewards RP for `/leaderboard/` and `/profile/`.
+- WebsiteClanBridge posts `/api/server/clan-snapshot.php`, polls `/api/server/clan-actions.php`, and reports `/api/server/clan-action-result.php`.
 
 ## Admin Panel
 

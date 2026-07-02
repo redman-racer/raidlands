@@ -2,8 +2,12 @@
 
 $raidlands_root = dirname(__DIR__);
 $raidlands_env_file = $raidlands_root . '/.env';
+$raidlands_env_local_file = $raidlands_root . '/.env.local';
+$raidlands_has_env_file = is_file($raidlands_env_file);
+$raidlands_has_env_local_file = is_file($raidlands_env_local_file);
 
 raidlands_load_env($raidlands_env_file);
+raidlands_load_env($raidlands_env_local_file, true);
 
 $site_config = [
     'serverName' => raidlands_env('RAIDLANDS_SERVER_NAME', 'Raidlands 1000x'),
@@ -77,12 +81,18 @@ $vip_bridge_config = [
     ]),
 ];
 
+$clan_api_config = [
+    'rateLimitPerMinute' => raidlands_env_int('RAIDLANDS_CLAN_API_RATE_LIMIT_PER_MINUTE', 60),
+    'keyLimitPerPlayer' => raidlands_env_int('RAIDLANDS_CLAN_API_KEY_LIMIT_PER_PLAYER', 5),
+];
+
 $primary_nav = [
     ['home', '', 'Home'],
     ['play', 'play', 'Play'],
     ['features', 'features', 'Features'],
     ['rules', 'rules', 'Rules'],
     ['discord', 'discord', 'Discord'],
+    ['clans', 'clans', 'Clans'],
     ['link', 'link', 'Link Account'],
     ['store', 'store', 'Store'],
     ['leaderboard', 'leaderboard', 'Leaderboards'],
@@ -307,7 +317,11 @@ $page_copy = [
     ],
     'clans' => [
         'title' => 'Clans',
-        'lede' => 'Clan systems are active in game; this page can grow into recruitment, rankings, and wipe history.',
+        'lede' => 'Manage your synced clan roster, invites, and public API access from your linked Steam account.',
+    ],
+    'api-docs' => [
+        'title' => 'Clan API Docs',
+        'lede' => 'Public clan API authentication, rate limits, and request shapes for websites, bots, and Discord tools.',
     ],
     'vote' => [
         'title' => 'Vote Rewards',
@@ -398,9 +412,15 @@ $seo_pages = [
     ],
     'clans' => [
         'title' => 'Raidlands Clans | Team Play and Rivalries',
-        'description' => 'Raidlands clans support team play, rivalry records, recruitment, and wipe history.',
+        'description' => 'Manage Raidlands clans from the website or public clan API with Steam-linked API keys.',
         'ogTitle' => 'Raidlands Clans',
-        'ogDescription' => 'Clan play, clan rankings, and team profiles for Raidlands.',
+        'ogDescription' => 'Steam-linked clan management and public API access for Raidlands.',
+    ],
+    'api-docs' => [
+        'title' => 'Raidlands Clan API Documentation',
+        'description' => 'Use the Raidlands public clan API with Steam-linked API keys, safe rate limits, and clan management endpoints.',
+        'ogTitle' => 'Raidlands Clan API',
+        'ogDescription' => 'Public clan API docs for Raidlands websites, bots, and Discord tools.',
     ],
     'vote' => [
         'title' => 'Raidlands Vote Rewards',
@@ -452,7 +472,7 @@ $future_pages = [
 
 $raidlands_secrets_file = $raidlands_root . '/data/raidlands-secrets.php';
 
-if (!is_file($raidlands_env_file) && is_file($raidlands_secrets_file)) {
+if (!$raidlands_has_env_file && !$raidlands_has_env_local_file && is_file($raidlands_secrets_file)) {
     require $raidlands_secrets_file;
 }
 
@@ -526,7 +546,7 @@ function raidlands_is_assoc(array $value): bool
     return array_keys($value) !== range(0, count($value) - 1);
 }
 
-function raidlands_load_env(string $path): void
+function raidlands_load_env(string $path, bool $override = false): void
 {
     if (!is_file($path)) {
         return;
@@ -561,7 +581,7 @@ function raidlands_load_env(string $path): void
             continue;
         }
 
-        if (getenv($key) !== false) {
+        if (!$override && getenv($key) !== false) {
             continue;
         }
 

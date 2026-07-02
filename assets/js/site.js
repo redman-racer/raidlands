@@ -254,6 +254,15 @@
       });
     });
 
+    app.querySelectorAll("[data-copy-value]").forEach(button => {
+      button.addEventListener("click", async () => {
+        const value = button.dataset.copyValue || "";
+        const copied = await copyText(value);
+        track("api_key_copied");
+        showToast(copied ? "Copied." : "Copy blocked.");
+      });
+    });
+
     app.querySelectorAll("[data-track]").forEach(item => {
       item.addEventListener("click", () => track(item.dataset.track));
     });

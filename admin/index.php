@@ -6,6 +6,7 @@ $base_path = '../';
 require dirname(__DIR__) . '/includes/bootstrap.php';
 require $site_root . '/includes/admin.php';
 require_once $site_root . '/includes/stats.php';
+require_once $site_root . '/includes/clans.php';
 
 raidlands_admin_handle_request();
 
@@ -47,6 +48,16 @@ $admin_stats_summary = [
     'latest_ingest' => null,
     'current_players' => 0,
 ];
+$admin_clan_summary = [
+    'ready' => false,
+    'message' => '',
+    'clan_count' => 0,
+    'member_count' => 0,
+    'active_api_keys' => 0,
+    'latest_snapshot' => null,
+    'latest_action' => null,
+    'recent_actions' => [],
+];
 
 try {
     $admin_store_ready = raidlands_db_is_configured() && raidlands_db() instanceof PDO;
@@ -64,9 +75,13 @@ try {
         }
     }
 
-    if ($active_section === 'sync' && $admin_store_ready) {
-        $admin_sync_rows = raidlands_store_recent_sync_rows(30);
-        $admin_stats_summary = raidlands_stats_admin_summary();
+    if ($active_section === 'sync') {
+        $admin_clan_summary = raidlands_clans_admin_summary();
+
+        if ($admin_store_ready) {
+            $admin_sync_rows = raidlands_store_recent_sync_rows(30);
+            $admin_stats_summary = raidlands_stats_admin_summary();
+        }
     }
 
     if ($active_section === 'feedback') {
@@ -971,6 +986,9 @@ function admin_product_type_options(): array
                           <li><code>/api/server/vip-player.php?steam_id64=...</code></li>
                           <li><code>/api/server/vip-changes.php?since=...</code></li>
                           <li><code>/api/server/stats-snapshot.php</code></li>
+                          <li><code>/api/server/clan-snapshot.php</code></li>
+                          <li><code>/api/server/clan-actions.php?limit=...</code></li>
+                          <li><code>/api/server/clan-action-result.php</code></li>
                           <li>Requests require Raidlands HMAC headers.</li>
                         </ul>
                       </div>
@@ -1008,6 +1026,61 @@ function admin_product_type_options(): array
                           <p class="store-muted"><?= e((string) ($latest_ingest['players_accepted'] ?? 0)) ?> accepted / <?= e((string) ($latest_ingest['players_received'] ?? 0)) ?> received</p>
                         </div>
                       </div>
+                    <?php endif; ?>
+                  </section>
+
+                  <section class="admin-section">
+                    <div class="admin-subsection-head">
+                      <h3>Clan bridge</h3>
+                      <p>WebsiteClanBridge posts roster snapshots, claims queued website/API actions, and sends action results back after the Rust server processes them.</p>
+                    </div>
+                    <?php if (empty($admin_clan_summary['ready'])) : ?>
+                      <div class="admin-alert warning"><?= e((string) ($admin_clan_summary['message'] ?: 'Clan tables are not ready. Run database/migrations/004_clan_management.sql.')) ?></div>
+                    <?php else : ?>
+                      <div class="admin-grid three">
+                        <div class="metal-panel">
+                          <p class="section-kicker">Synced clans</p>
+                          <h3><?= e((string) $admin_clan_summary['clan_count']) ?></h3>
+                          <p class="store-muted"><?= e((string) $admin_clan_summary['member_count']) ?> member rows</p>
+                        </div>
+                        <div class="metal-panel">
+                          <p class="section-kicker">Last clan snapshot</p>
+                          <h3><?= e((string) ($admin_clan_summary['latest_snapshot'] ?? 'Pending')) ?></h3>
+                          <p class="store-muted">Actions disable after ten stale minutes.</p>
+                        </div>
+                        <div class="metal-panel">
+                          <p class="section-kicker">Public API keys</p>
+                          <h3><?= e((string) $admin_clan_summary['active_api_keys']) ?></h3>
+                          <p class="store-muted">Active Steam-linked keys</p>
+                        </div>
+                      </div>
+
+                      <?php if ($admin_clan_summary['recent_actions'] !== []) : ?>
+                        <div class="store-table-wrap admin-clan-actions">
+                          <table class="store-table">
+                            <thead>
+                              <tr>
+                                <th>Action</th>
+                                <th>Actor</th>
+                                <th>Target</th>
+                                <th>Status</th>
+                                <th>Changed</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <?php foreach ($admin_clan_summary['recent_actions'] as $row) : ?>
+                                <tr>
+                                  <td><?= e(ucwords(str_replace('_', ' ', (string) $row['action_type']))) ?> <code><?= e((string) $row['clan_tag']) ?></code></td>
+                                  <td><code><?= e((string) $row['actor_steam_id64']) ?></code></td>
+                                  <td><code><?= e((string) ($row['target_steam_id64'] ?: 'Clan')) ?></code></td>
+                                  <td><span class="status-pill <?= e((string) $row['status']) ?>"><?= e((string) $row['status']) ?></span></td>
+                                  <td><?= e((string) ($row['completed_at'] ?: $row['created_at'])) ?></td>
+                                </tr>
+                              <?php endforeach; ?>
+                            </tbody>
+                          </table>
+                        </div>
+                      <?php endif; ?>
                     <?php endif; ?>
                   </section>
 

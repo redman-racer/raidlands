@@ -1,6 +1,8 @@
 Options -Indexes
 DirectoryIndex index.php index.html
 
+SetEnvIf Authorization "(.+)" HTTP_AUTHORIZATION=$1
+
 <FilesMatch "^\.env">
   Require all denied
 </FilesMatch>

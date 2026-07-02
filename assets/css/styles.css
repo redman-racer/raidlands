@@ -2739,7 +2739,8 @@ a.leaderboard-steam:hover,
   color: var(--green);
 }
 
-.status-pill.pending {
+.status-pill.pending,
+.status-pill.queued {
   border-color: rgba(255, 209, 102, .5);
   color: var(--yellow);
 }
@@ -2765,6 +2766,142 @@ a.leaderboard-steam:hover,
 .status-pill.closed {
   border-color: rgba(179, 38, 30, .55);
   color: #ffb3ad;
+}
+
+.status-pill.owner {
+  border-color: rgba(255, 138, 40, .56);
+  color: var(--orange);
+}
+
+.status-pill.moderator,
+.status-pill.processing {
+  border-color: rgba(255, 209, 102, .5);
+  color: var(--yellow);
+}
+
+.status-pill.member,
+.status-pill.succeeded {
+  border-color: rgba(124, 255, 107, .42);
+  color: var(--green);
+}
+
+.status-pill.failed {
+  border-color: rgba(179, 38, 30, .55);
+  color: #ffb3ad;
+}
+
+.clan-stat-grid {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  margin-bottom: 18px;
+}
+
+.clan-invite-panel {
+  margin-bottom: 18px;
+}
+
+.clan-action-form {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr)) auto;
+  gap: 14px;
+  align-items: end;
+}
+
+.clan-action-form .btn {
+  min-height: 46px;
+}
+
+.clan-inline-form {
+  display: inline-flex;
+  margin: 0;
+}
+
+.clan-inline-form .btn {
+  min-height: 36px;
+  padding: 8px 12px;
+  font-size: .76rem;
+}
+
+.clan-action-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  align-items: center;
+}
+
+.clan-table {
+  min-width: 900px;
+}
+
+.clan-list-stack {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.clan-list-item {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  justify-content: space-between;
+  padding: 12px;
+  border: 1px solid rgba(181, 170, 160, .16);
+  border-radius: var(--radius);
+  background:
+    var(--console-scan) center / 220px repeat,
+    rgba(0, 0, 0, .24);
+}
+
+.clan-list-item span {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+}
+
+.clan-list-item strong {
+  color: var(--white);
+}
+
+.clan-list-item small {
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: .8rem;
+}
+
+.clan-api-secret {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  align-items: center;
+}
+
+.clan-api-secret code,
+.api-doc-card code,
+.clan-list-item code {
+  color: var(--white);
+  font-family: Consolas, "Liberation Mono", monospace;
+  overflow-wrap: anywhere;
+}
+
+.api-doc-card {
+  align-content: start;
+}
+
+.api-doc-card pre {
+  overflow-x: auto;
+  margin: 16px 0;
+  padding: 14px;
+  border: 1px solid rgba(181, 170, 160, .18);
+  border-radius: var(--radius);
+  background:
+    var(--console-scan) center / 220px repeat,
+    rgba(0, 0, 0, .38);
+  color: var(--white);
+  font-size: .86rem;
+  line-height: 1.55;
+}
+
+.danger-panel {
+  border-color: rgba(179, 38, 30, .46);
 }
 
 .roadmap-card {
@@ -3276,6 +3413,14 @@ a.leaderboard-steam:hover,
   .profile-stat-grid {
     grid-template-columns: repeat(3, minmax(0, 1fr));
   }
+
+  .clan-stat-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .clan-action-form {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 860px) {
@@ -3551,6 +3696,20 @@ a.leaderboard-steam:hover,
 
   .profile-stat-grid {
     grid-template-columns: 1fr;
+  }
+
+  .clan-stat-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .clan-list-item {
+    align-items: stretch;
+    flex-direction: column;
+  }
+
+  .clan-inline-form,
+  .clan-inline-form .btn {
+    width: 100%;
   }
 }
 

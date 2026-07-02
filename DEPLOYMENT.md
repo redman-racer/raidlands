@@ -85,6 +85,7 @@ the host or upload it through a private channel.
    - `RAIDLANDS_DB_DSN`
    - `RAIDLANDS_STRIPE_SECRET_KEY`
    - `RAIDLANDS_BRIDGE_SHARED_SECRET`
+   - `RAIDLANDS_CLAN_API_RATE_LIMIT_PER_MINUTE`
 
 3. Install PHP dependencies.
 
@@ -102,6 +103,9 @@ the host or upload it through a private channel.
    Import:
 
    - `database/migrations/001_vip_store.sql`
+   - `database/migrations/002_player_stats.sql`
+   - `database/migrations/004_clan_management.sql`
+   - `database/migrations/005_clan_api_keys.sql`
    - `database/seeds/001_store_products.sql`
 
    Then configure Stripe Price IDs in `/admin/?section=store`.
@@ -136,6 +140,7 @@ Compress-Archive -Force -DestinationPath .\dist\raidlands-godaddy.zip -Path `
   .\composer.json, `
   .\composer.lock, `
   .\admin, `
+  .\api-docs, `
   .\api, `
   .\includes, `
   .\pages, `

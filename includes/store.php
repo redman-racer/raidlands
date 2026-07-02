@@ -60,7 +60,7 @@ function raidlands_store_absolute_url(string $path = ''): string
     $scheme = $https ? 'https' : 'http';
     $host = (string) ($_SERVER['HTTP_HOST'] ?? 'localhost');
     $script_dir = str_replace('\\', '/', dirname((string) ($_SERVER['SCRIPT_NAME'] ?? '/')));
-    $root = preg_replace('#/(admin|api|store|profile|link)$#', '', rtrim($script_dir, '/')) ?? '';
+    $root = preg_replace('#/(admin|api(?:/.*)?|api-docs|bans|clans|discord|events|features|leaderboard|link|play|privacy|profile|rules|store|support|terms|vote)$#', '', rtrim($script_dir, '/')) ?? '';
     $root = $root === '/' ? '' : $root;
 
     return $scheme . '://' . $host . $root . '/' . ltrim($path, '/');

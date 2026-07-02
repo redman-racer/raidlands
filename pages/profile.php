@@ -31,6 +31,7 @@ $profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_
 ?>
 <?= render_page_hero('profile',
     '<a class="btn btn-primary" href="' . e(route_url('store')) . '">Shop VIP</a>'
+    . '<a class="btn btn-secondary" href="' . e(route_url('clans')) . '">Manage Clan</a>'
     . '<a class="btn btn-secondary" href="' . e(raidlands_account_url()) . '">' . e(raidlands_account_label('Connect Steam', 'Account')) . '</a>'
 ) ?>
 
@@ -83,6 +84,7 @@ $profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_
           <p class="section-lede">These are the VIP perks Raidlands should apply when you connect. Updates may take a short moment after checkout or renewal.</p>
           <div class="button-row">
             <a class="btn btn-primary" href="<?= e(route_url('store')) ?>">Add Perks</a>
+            <a class="btn btn-secondary" href="<?= e(route_url('clans')) ?>">Clan Tools</a>
             <a class="btn btn-secondary" href="<?= e(route_url('discord')) ?>">Need Help?</a>
           </div>
         </div>

@@ -13,26 +13,28 @@ try {
         $payload = $_POST;
     }
 
-    $csrf = (string) ($payload['csrf'] ?? $_SERVER['HTTP_X_CSRF_TOKEN'] ?? '');
-
-    if (!raidlands_store_validate_csrf($csrf)) {
-        raidlands_store_json_response(['ok' => false, 'error' => 'Invalid request token.'], 403);
-    }
-
-    $player = raidlands_store_current_player();
-
-    if ($player === null || empty($player['steam_id64'])) {
-        raidlands_store_json_response(['ok' => false, 'error' => 'Link your Steam account before managing a clan.'], 401);
-    }
+    $auth = raidlands_clans_authenticate_action_request($payload);
+    $player = $auth['player'];
 
     $result = raidlands_clans_queue_action($payload, $player);
 
     raidlands_store_json_response([
         'ok' => true,
         'action' => $result,
+        'auth_type' => $auth['auth_type'],
     ]);
 } catch (InvalidArgumentException $error) {
-    raidlands_store_json_response(['ok' => false, 'error' => $error->getMessage()], 422);
+    $status = str_contains($error->getMessage(), 'request token') ? 403 : 422;
+    raidlands_store_json_response(['ok' => false, 'error' => $error->getMessage()], $status);
 } catch (Throwable $error) {
-    raidlands_store_json_response(['ok' => false, 'error' => $error->getMessage()], 500);
+    $message = $error->getMessage();
+    $status = 422;
+
+    if (str_contains($message, 'Rate limit exceeded')) {
+        $status = 429;
+    } elseif (str_contains($message, 'API key') || str_contains($message, 'Link your Steam') || str_contains($message, 'linked Steam')) {
+        $status = 401;
+    }
+
+    raidlands_store_json_response(['ok' => false, 'error' => $error->getMessage()], $status);
 }

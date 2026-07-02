@@ -4,9 +4,12 @@
 
 1. Create a MySQL database and user.
 2. Run `database/migrations/001_vip_store.sql`.
-3. Run `database/seeds/001_store_products.sql`.
-4. Copy the root `.env.example` file to `.env`.
-5. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
+3. Run `database/migrations/002_player_stats.sql`.
+4. Run `database/migrations/004_clan_management.sql`.
+5. Run `database/migrations/005_clan_api_keys.sql`.
+6. Run `database/seeds/001_store_products.sql`.
+7. Copy the root `.env.example` file to `.env`.
+8. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
 
 The root `.env` file is ignored by Git and protected from direct web access by the root `.htaccess`.
 
@@ -23,8 +26,9 @@ The root `.env` file is ignored by Git and protected from direct web access by t
 1. Install Rust Kits by k1lly0u.
 2. Configure kit contents, cooldowns, max uses, hidden kit behavior, and kit permission strings in Rust Kits.
 3. Put `server-plugins/WebsiteVipBridge.cs` in the uMod/Oxide plugins folder.
-4. Set `ApiBaseUrl`, `ServerId`, and `SharedSecret` in the generated plugin config. `ServerId` must match `RAIDLANDS_BRIDGE_SERVER_ID`, and `SharedSecret` must match `RAIDLANDS_BRIDGE_SHARED_SECRET`.
-5. Match Website product groups to Rust Kits permissions through Oxide groups:
+4. Put `server-plugins/WebsiteClanBridge.cs` in the uMod/Oxide plugins folder if website or public API clan management should be live.
+5. Set `ApiBaseUrl`, `ServerId`, and `SharedSecret` in the generated plugin configs. `ServerId` must match `RAIDLANDS_BRIDGE_SERVER_ID`, and `SharedSecret` must match `RAIDLANDS_BRIDGE_SHARED_SECRET`.
+6. Match Website product groups to Rust Kits permissions through Oxide groups:
    - `vip_bronze`
    - `vip_gold`
    - `vip_elite`
@@ -35,3 +39,10 @@ The root `.env` file is ignored by Git and protected from direct web access by t
    - `perk_supporter_badge`
 
 The website owns expiration and revocation. WebsiteVipBridge makes the game server match the current website state.
+
+## Clan API
+
+- `/clans/` lets Steam-linked players create and revoke public clan API keys.
+- `/api-docs/` documents `GET /api/clans/me.php` and `POST /api/clans/action.php`.
+- API keys are stored as hashes and rate-limited by `RAIDLANDS_CLAN_API_RATE_LIMIT_PER_MINUTE`.
+- WebsiteClanBridge requires k1lly0u Clans with the Raidlands `RaidlandsClanAction` and `RaidlandsClanSnapshot` hooks.
