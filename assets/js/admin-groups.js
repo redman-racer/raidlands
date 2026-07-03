@@ -8,6 +8,28 @@
   const toArray = nodes => Array.prototype.slice.call(nodes || []);
   const itemInput = item => item.querySelector('input[type="checkbox"]');
 
+  function activeTabPrefix(workbench) {
+    const active = workbench.querySelector("[data-permission-tab].is-active");
+    const first = workbench.querySelector("[data-permission-tab]");
+
+    return (active || first || {}).dataset ? (active || first).dataset.tabPrefix || "" : "";
+  }
+
+  function activateTab(workbench, prefix) {
+    const tabs = toArray(workbench.querySelectorAll("[data-permission-tab]"));
+
+    if (!prefix && tabs.length) {
+      prefix = tabs[0].dataset.tabPrefix || "";
+    }
+
+    tabs.forEach(tab => {
+      const isActive = (tab.dataset.tabPrefix || "") === prefix;
+
+      tab.classList.toggle("is-active", isActive);
+      tab.setAttribute("aria-selected", isActive ? "true" : "false");
+    });
+  }
+
   function updateStateLabel(item, input) {
     const state = item.querySelector("[data-permission-state]");
     const isLive = item.getAttribute("data-permission-live") === "1";
@@ -88,6 +110,7 @@
     const empty = workbench.querySelector("[data-permission-empty]");
     const items = toArray(workbench.querySelectorAll("[data-permission-item]"));
     const prefixes = toArray(workbench.querySelectorAll("[data-permission-prefix]"));
+    const activePrefix = activeTabPrefix(workbench);
     const query = ((search && search.value) || "").trim().toLowerCase();
     const onlySelected = Boolean(selectedOnly && selectedOnly.checked);
     let visibleTotal = 0;
@@ -106,7 +129,8 @@
         item.getAttribute("data-permission-plugin") || ""
       ].join(" ").toLowerCase();
       const selected = input.checked;
-      const visible = (!query || haystack.includes(query)) && (!onlySelected || selected);
+      const prefix = item.getAttribute("data-permission-prefix") || "";
+      const visible = prefix === activePrefix && (!query || haystack.includes(query)) && (!onlySelected || selected);
 
       if (selected) {
         selectedTotal += 1;
@@ -123,6 +147,10 @@
     prefixes.forEach(prefix => {
       const prefixItems = toArray(prefix.querySelectorAll("[data-permission-item]"));
       const count = prefix.querySelector("[data-prefix-count]");
+      const prefixName = prefix.getAttribute("data-prefix") || "";
+      const tab = toArray(workbench.querySelectorAll("[data-permission-tab]")).find(candidate => {
+        return (candidate.dataset.tabPrefix || "") === prefixName;
+      });
       let selected = 0;
       let visible = 0;
 
@@ -138,10 +166,18 @@
         }
       });
 
-      prefix.hidden = visible === 0;
+      prefix.hidden = prefixName !== activePrefix || visible === 0;
 
       if (count) {
         count.textContent = `${selected} / ${prefixItems.length} selected`;
+      }
+
+      if (tab) {
+        const tabCount = tab.querySelector("[data-tab-count]");
+
+        if (tabCount) {
+          tabCount.textContent = `${selected} / ${prefixItems.length}`;
+        }
       }
     });
 
@@ -163,6 +199,15 @@
   toArray(workbenches).forEach(workbench => {
     const search = workbench.querySelector("[data-permission-search]");
     const selectedOnly = workbench.querySelector("[data-permission-selected-only]");
+
+    activateTab(workbench, activeTabPrefix(workbench));
+
+    toArray(workbench.querySelectorAll("[data-permission-tab]")).forEach(tab => {
+      tab.addEventListener("click", () => {
+        activateTab(workbench, tab.dataset.tabPrefix || "");
+        updateWorkbench(workbench);
+      });
+    });
 
     if (search) {
       search.addEventListener("input", () => updateWorkbench(workbench));

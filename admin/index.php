@@ -1825,6 +1825,20 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             $extra_live = array_values(array_diff($live_permissions, $desired_permissions));
                             $is_read_only = !empty($row['is_read_only']);
                             $card_title = $group_name !== '' ? $group_name : 'New Group';
+                            $active_permission_prefix = '';
+
+                            foreach ($permission_catalog_groups as $prefix_group) {
+                                foreach ((array) $prefix_group['permissions'] as $permission_meta) {
+                                    if (isset($desired_set[(string) $permission_meta['name']])) {
+                                        $active_permission_prefix = (string) $prefix_group['prefix'];
+                                        break 2;
+                                    }
+                                }
+                            }
+
+                            if ($active_permission_prefix === '' && $permission_catalog_groups !== []) {
+                                $active_permission_prefix = (string) array_key_first($permission_catalog_groups);
+                            }
                           ?>
                           <article class="admin-repeat-card">
                             <input type="hidden" name="permission_groups[<?= e((string) $index) ?>][id]" value="<?= e((string) ($row['id'] ?? '')) ?>">
@@ -1894,7 +1908,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               <div class="admin-permission-workbench" data-permission-workbench>
                                 <div class="admin-permission-toolbar">
                                   <label class="admin-field admin-permission-search">
-                                    <?= admin_field_head('Find permissions', 'Filter by plugin prefix, plugin name, or exact permission.') ?>
+                                    <?= admin_field_head('Find permissions', 'Filter the active permission tab by plugin prefix, plugin name, or exact permission.') ?>
                                     <input type="search" data-permission-search placeholder="backpacks, teleport, kits.raid">
                                   </label>
                                   <label class="admin-check admin-permission-filter">
@@ -1915,7 +1929,32 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                   <div class="admin-permission-chip-list" data-permission-selected-list></div>
                                 </div>
 
-                                <div class="admin-permission-empty" data-permission-empty hidden>No matching permissions in this catalog.</div>
+                                <div class="admin-permission-tabs" role="tablist" aria-label="Permission sections">
+                                  <?php foreach ($permission_catalog_groups as $prefix_group) : ?>
+                                    <?php
+                                      $prefix = (string) $prefix_group['prefix'];
+                                      $prefix_permissions = (array) $prefix_group['permissions'];
+                                      $prefix_selected = count(array_filter(
+                                          $prefix_permissions,
+                                          static fn (array $permission): bool => isset($desired_set[(string) $permission['name']])
+                                      ));
+                                      $prefix_label = admin_permission_prefix_label($prefix, (string) ($prefix_group['plugin_name'] ?? ''));
+                                      $prefix_is_active = $prefix === $active_permission_prefix;
+                                    ?>
+                                    <button
+                                      class="admin-permission-tab<?= $prefix_is_active ? ' is-active' : '' ?>"
+                                      type="button"
+                                      role="tab"
+                                      aria-selected="<?= $prefix_is_active ? 'true' : 'false' ?>"
+                                      data-permission-tab
+                                      data-tab-prefix="<?= e($prefix) ?>">
+                                      <span><?= e($prefix_label) ?></span>
+                                      <small data-tab-count><?= e((string) $prefix_selected) ?> / <?= e((string) count($prefix_permissions)) ?></small>
+                                    </button>
+                                  <?php endforeach; ?>
+                                </div>
+
+                                <div class="admin-permission-empty" data-permission-empty hidden>No matching permissions in this tab.</div>
 
                                 <div class="admin-permission-prefix-list">
                                   <?php foreach ($permission_catalog_groups as $prefix_group) : ?>
@@ -1940,12 +1979,14 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                           static fn (array $permission): bool => isset($desired_set[(string) $permission['name']])
                                       ));
                                       $prefix_label = admin_permission_prefix_label($prefix, (string) ($prefix_group['plugin_name'] ?? ''));
+                                      $prefix_is_active = $prefix === $active_permission_prefix;
                                     ?>
                                     <section
                                       class="admin-permission-prefix"
                                       data-permission-prefix
                                       data-prefix="<?= e($prefix) ?>"
-                                      data-prefix-label="<?= e($prefix_label) ?>">
+                                      data-prefix-label="<?= e($prefix_label) ?>"
+                                      <?= $prefix_is_active ? '' : 'hidden' ?>>
                                       <div class="admin-permission-prefix-head">
                                         <div>
                                           <h4><?= e($prefix_label) ?></h4>
