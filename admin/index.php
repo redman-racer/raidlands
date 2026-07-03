@@ -1034,13 +1034,42 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                     }
 
                     $feature_option_map = [];
+                    $admin_feature_category_options = [];
+
                     foreach ($feature_rows as $row) {
+                        $feature_category = trim((string) ($row['category'] ?? ''));
+
+                        if ($feature_category !== '') {
+                            $admin_feature_category_options[$feature_category] = $feature_category;
+                        }
+
                         if ((string) ($row['public_status'] ?? '') === 'archived') {
                             continue;
                         }
 
                         $feature_option_map[(string) ($row['id'] ?? '')] = (string) ($row['title'] ?? 'Feature #' . (string) ($row['id'] ?? ''));
                     }
+
+                    uksort($admin_feature_category_options, 'strnatcasecmp');
+
+                    $pending_suggestion_source_options = [];
+                    foreach ($pending_suggestions as $suggestion) {
+                        $source_key = (string) ($suggestion['source_type'] ?? 'public');
+                        $pending_suggestion_source_options[$source_key] = ucwords(str_replace('_', ' ', $source_key));
+                    }
+
+                    ksort($pending_suggestion_source_options);
+
+                    $grouped_suggestion_status_options = [];
+                    foreach ($grouped_suggestions as $suggestion) {
+                        $status_key = (string) ($suggestion['status'] ?? '');
+
+                        if ($status_key !== '') {
+                            $grouped_suggestion_status_options[$status_key] = ucwords(str_replace('_', ' ', $status_key));
+                        }
+                    }
+
+                    ksort($grouped_suggestion_status_options);
 
                     echo admin_render_datalist('admin-feature-icon-options', admin_feature_icon_options($admin_feature_icon_values));
                   ?>
@@ -1120,6 +1149,18 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             $feature_support_score = (int) ($row['support_score'] ?? 0);
                             $feature_vote_count = (int) ($row['vote_count'] ?? 0);
                             $feature_suggestion_count = (int) ($row['suggestion_count'] ?? 0);
+                            $feature_category_value = trim((string) ($row['category'] ?? ''));
+                            $feature_sort_order = (int) ($row['sort_order'] ?? 100);
+                            $feature_updated_at = (string) ($row['updated_at'] ?? '');
+                            $feature_search_text = trim(implode(' ', [
+                                (string) ($row['title'] ?? ''),
+                                (string) ($row['summary'] ?? ''),
+                                $feature_category_value,
+                                $feature_status_key,
+                                $feature_status_label,
+                                $feature_visibility,
+                                $feature_vote_state,
+                            ]));
                             $feature_meta = $feature_is_existing
                                 ? $feature_status_label . ' / ' . $feature_visibility . ', ' . $feature_vote_state . ' / score ' . (string) $feature_support_score
                                 : 'Draft slot / blank rows are ignored';
@@ -1131,6 +1172,16 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 'is_active' => $feature_is_active_panel,
                                 'is_draft' => !$feature_is_existing,
                                 'is_archived' => $feature_is_archived,
+                                'status' => $feature_status_key,
+                                'category' => $feature_category_value,
+                                'visibility' => !empty($row['is_public']) ? 'public' : 'hidden',
+                                'voting' => $feature_status_key === 'voting' && !empty($row['is_voteable']) ? 'voting' : 'not-voting',
+                                'support_score' => $feature_support_score,
+                                'vote_count' => $feature_vote_count,
+                                'suggestion_count' => $feature_suggestion_count,
+                                'sort_order' => $feature_sort_order,
+                                'updated_at' => $feature_updated_at,
+                                'search' => $feature_search_text,
                             ];
                           ?>
                           <article
@@ -1171,11 +1222,11 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                   </label>
                                   <label class="admin-field">
                                     <?= admin_field_head('Category', 'Loose internal/public grouping for scanning.') ?>
-                                    <input type="text" name="feature_items[<?= e($row_key) ?>][category]" maxlength="120" placeholder="Player Suggestions" value="<?= e((string) ($row['category'] ?? '')) ?>">
+                                    <input type="text" name="feature_items[<?= e($row_key) ?>][category]" maxlength="120" placeholder="Player Suggestions" value="<?= e((string) ($row['category'] ?? '')) ?>" data-feature-category-input>
                                   </label>
                                   <label class="admin-field admin-span-all">
                                     <?= admin_field_head('Summary', 'Short player-facing explanation. Keep it scan-friendly.') ?>
-                                    <textarea name="feature_items[<?= e($row_key) ?>][summary]" rows="3" maxlength="500"><?= e((string) ($row['summary'] ?? '')) ?></textarea>
+                                    <textarea name="feature_items[<?= e($row_key) ?>][summary]" rows="3" maxlength="500" data-feature-summary-input><?= e((string) ($row['summary'] ?? '')) ?></textarea>
                                   </label>
                                 </div>
                               </details>
@@ -1191,7 +1242,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                   </label>
                                   <label class="admin-field">
                                     <?= admin_field_head('Sort order', 'Lower numbers appear earlier within the same status group.') ?>
-                                    <input type="number" name="feature_items[<?= e($row_key) ?>][sort_order]" min="0" max="9999" step="1" value="<?= e((string) ($row['sort_order'] ?? 100)) ?>">
+                                    <input type="number" name="feature_items[<?= e($row_key) ?>][sort_order]" min="0" max="9999" step="1" value="<?= e((string) ($row['sort_order'] ?? 100)) ?>" data-feature-sort-input>
                                   </label>
                                   <label class="admin-check admin-check-field">
                                     <input type="checkbox" name="feature_items[<?= e($row_key) ?>][is_public]" value="1" <?= !empty($row['is_public']) ? 'checked' : '' ?> data-feature-public-input>
@@ -1226,6 +1277,57 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             </div>
                             <button class="btn btn-secondary" type="button" data-feature-add>Add Feature</button>
                           </div>
+                          <div class="admin-feature-picker-controls">
+                            <label class="admin-field">
+                              <span>Search</span>
+                              <input type="search" maxlength="120" placeholder="Title, category, or summary" data-feature-search>
+                            </label>
+                            <div class="admin-feature-filter-grid">
+                              <label class="admin-field">
+                                <span>Status</span>
+                                <select data-feature-status-filter>
+                                  <option value="">All statuses</option>
+                                  <?= admin_render_keyed_options(raidlands_features_status_options()) ?>
+                                </select>
+                              </label>
+                              <label class="admin-field">
+                                <span>Category</span>
+                                <select data-feature-category-filter>
+                                  <option value="">All categories</option>
+                                  <?= admin_render_keyed_options($admin_feature_category_options) ?>
+                                </select>
+                              </label>
+                              <label class="admin-field">
+                                <span>Visibility</span>
+                                <select data-feature-visibility-filter>
+                                  <option value="">Public and hidden</option>
+                                  <option value="public">Public</option>
+                                  <option value="hidden">Hidden</option>
+                                </select>
+                              </label>
+                              <label class="admin-field">
+                                <span>Voting</span>
+                                <select data-feature-voting-filter>
+                                  <option value="">Any voting state</option>
+                                  <option value="voting">Voting open</option>
+                                  <option value="not-voting">Not in voting</option>
+                                </select>
+                              </label>
+                              <label class="admin-field">
+                                <span>Sort</span>
+                                <select data-feature-sort>
+                                  <option value="staff">Staff order</option>
+                                  <option value="title">Title A-Z</option>
+                                  <option value="support">Most support</option>
+                                  <option value="votes">Most votes</option>
+                                  <option value="updated">Recently updated</option>
+                                </select>
+                              </label>
+                              <button class="btn btn-secondary admin-feature-filter-reset" type="button" data-feature-reset>Clear</button>
+                            </div>
+                            <p class="admin-feature-filter-count" data-feature-result-count><?= e((string) count($feature_selector_items)) ?> features shown</p>
+                            <div class="admin-alert warning admin-feature-empty" data-feature-empty hidden>No features match these controls.</div>
+                          </div>
                           <div class="admin-feature-picker-list">
                             <?php foreach ($feature_selector_items as $selector_item) : ?>
                               <button
@@ -1233,6 +1335,16 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 type="button"
                                 data-feature-select
                                 data-feature-index="<?= e((string) $selector_item['index']) ?>"
+                                data-feature-status="<?= e((string) ($selector_item['status'] ?? 'under_review')) ?>"
+                                data-feature-category="<?= e((string) ($selector_item['category'] ?? '')) ?>"
+                                data-feature-visibility="<?= e((string) ($selector_item['visibility'] ?? 'public')) ?>"
+                                data-feature-voting="<?= e((string) ($selector_item['voting'] ?? 'not-voting')) ?>"
+                                data-feature-support="<?= e((string) ($selector_item['support_score'] ?? 0)) ?>"
+                                data-feature-votes="<?= e((string) ($selector_item['vote_count'] ?? 0)) ?>"
+                                data-feature-suggestions="<?= e((string) ($selector_item['suggestion_count'] ?? 0)) ?>"
+                                data-feature-order="<?= e((string) ($selector_item['sort_order'] ?? 100)) ?>"
+                                data-feature-updated="<?= e((string) ($selector_item['updated_at'] ?? '')) ?>"
+                                data-feature-search="<?= e((string) ($selector_item['search'] ?? '')) ?>"
                                 <?= !empty($selector_item['is_active']) ? 'aria-current="true"' : '' ?>>
                                 <span data-feature-select-label><?= e((string) $selector_item['label']) ?></span>
                                 <small data-feature-select-meta><?= e((string) $selector_item['meta']) ?></small>
@@ -1259,18 +1371,61 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                       <?php if ($pending_suggestions === []) : ?>
                         <div class="admin-alert warning">No pending feature suggestions are waiting for review.</div>
                       <?php else : ?>
-                        <div class="admin-repeat-list">
+                        <div class="admin-feature-queue" data-feature-queue>
+                          <div class="admin-feature-queue-toolbar">
+                            <label class="admin-field">
+                              <span>Search</span>
+                              <input type="search" maxlength="120" placeholder="Suggestion title, source, or details" data-feature-queue-search>
+                            </label>
+                            <label class="admin-field">
+                              <span>Source</span>
+                              <select data-feature-queue-source>
+                                <option value="">All sources</option>
+                                <?= admin_render_keyed_options($pending_suggestion_source_options) ?>
+                              </select>
+                            </label>
+                            <label class="admin-field">
+                              <span>Sort</span>
+                              <select data-feature-queue-sort>
+                                <option value="newest">Newest</option>
+                                <option value="oldest">Oldest</option>
+                                <option value="title">Title A-Z</option>
+                                <option value="source">Source</option>
+                              </select>
+                            </label>
+                            <button class="btn btn-secondary" type="button" data-feature-queue-reset>Clear</button>
+                            <p data-feature-queue-count><?= e((string) count($pending_suggestions)) ?> suggestions shown</p>
+                          </div>
+                          <div class="admin-alert warning admin-feature-queue-empty" data-feature-queue-empty hidden>No pending suggestions match these controls.</div>
+                          <div class="admin-repeat-list" data-feature-queue-list>
                           <?php foreach ($pending_suggestions as $suggestion) : ?>
                             <?php
                               $suggestion_id = (int) ($suggestion['id'] ?? 0);
                               $matches = array_values((array) ($suggestion['matches'] ?? []));
+                              $suggestion_source = (string) ($suggestion['source_type'] ?? 'public');
+                              $suggestion_source_label = ucwords(str_replace('_', ' ', $suggestion_source));
+                              $suggestion_search_text = trim(implode(' ', [
+                                  (string) ($suggestion['title'] ?? ''),
+                                  (string) ($suggestion['details'] ?? ''),
+                                  $suggestion_source,
+                                  $suggestion_source_label,
+                                  (string) ($suggestion['steam_id64'] ?? ''),
+                              ]));
                             ?>
-                            <article class="admin-repeat-card admin-feature-suggestion-card">
+                            <article
+                              class="admin-repeat-card admin-feature-suggestion-card"
+                              data-feature-queue-item
+                              data-feature-queue-status="pending"
+                              data-feature-queue-source="<?= e($suggestion_source) ?>"
+                              data-feature-queue-title="<?= e((string) ($suggestion['title'] ?? '')) ?>"
+                              data-feature-queue-created="<?= e((string) ($suggestion['created_at'] ?? '')) ?>"
+                              data-feature-queue-updated="<?= e((string) ($suggestion['updated_at'] ?? '')) ?>"
+                              data-feature-queue-search="<?= e($suggestion_search_text) ?>">
                               <div class="admin-repeat-card-head admin-feedback-card-head">
                                 <div>
                                   <h3><?= e((string) ($suggestion['title'] ?? 'Feature suggestion')) ?></h3>
                                   <p class="admin-feedback-subtitle">
-                                    <?= e(ucwords(str_replace('_', ' ', (string) ($suggestion['source_type'] ?? 'public')))) ?>
+                                    <?= e($suggestion_source_label) ?>
                                     suggestion from <code><?= e((string) ($suggestion['steam_id64'] ?? RAIDLANDS_FEATURE_OWNER_STEAM_ID64)) ?></code>
                                   </p>
                                 </div>
@@ -1312,6 +1467,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               </div>
                             </article>
                           <?php endforeach; ?>
+                          </div>
                         </div>
                       <?php endif; ?>
                     </section>
@@ -1324,29 +1480,71 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                       <?php if ($grouped_suggestions === []) : ?>
                         <div class="admin-alert warning">No suggestion decisions have been recorded yet.</div>
                       <?php else : ?>
-                        <div class="store-table-wrap">
-                          <table class="store-table">
-                            <thead>
-                              <tr>
-                                <th>Suggestion</th>
-                                <th>Feature</th>
-                                <th>Source</th>
-                                <th>Status</th>
-                                <th>Updated</th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              <?php foreach ($grouped_suggestions as $suggestion) : ?>
+                        <div class="admin-feature-queue" data-feature-queue>
+                          <div class="admin-feature-queue-toolbar">
+                            <label class="admin-field">
+                              <span>Search</span>
+                              <input type="search" maxlength="120" placeholder="Suggestion, feature, or player" data-feature-queue-search>
+                            </label>
+                            <label class="admin-field">
+                              <span>Status</span>
+                              <select data-feature-queue-status>
+                                <option value="">All statuses</option>
+                                <?= admin_render_keyed_options($grouped_suggestion_status_options) ?>
+                              </select>
+                            </label>
+                            <label class="admin-field">
+                              <span>Sort</span>
+                              <select data-feature-queue-sort>
+                                <option value="newest">Newest</option>
+                                <option value="oldest">Oldest</option>
+                                <option value="title">Title A-Z</option>
+                                <option value="status">Status</option>
+                              </select>
+                            </label>
+                            <button class="btn btn-secondary" type="button" data-feature-queue-reset>Clear</button>
+                            <p data-feature-queue-count><?= e((string) count($grouped_suggestions)) ?> decisions shown</p>
+                          </div>
+                          <div class="admin-alert warning admin-feature-queue-empty" data-feature-queue-empty hidden>No suggestion decisions match these controls.</div>
+                          <div class="store-table-wrap">
+                            <table class="store-table">
+                              <thead>
                                 <tr>
+                                  <th>Suggestion</th>
+                                  <th>Feature</th>
+                                  <th>Source</th>
+                                  <th>Status</th>
+                                  <th>Updated</th>
+                                </tr>
+                              </thead>
+                              <tbody data-feature-queue-list>
+                                <?php foreach ($grouped_suggestions as $suggestion) : ?>
+                                  <?php
+                                    $decision_status = (string) ($suggestion['status'] ?? 'pending');
+                                    $decision_search_text = trim(implode(' ', [
+                                        (string) ($suggestion['title'] ?? ''),
+                                        (string) ($suggestion['feature_title'] ?? ''),
+                                        $decision_status,
+                                        (string) ($suggestion['steam_id64'] ?? ''),
+                                    ]));
+                                  ?>
+                                  <tr
+                                    data-feature-queue-item
+                                    data-feature-queue-status="<?= e($decision_status) ?>"
+                                    data-feature-queue-title="<?= e((string) ($suggestion['title'] ?? '')) ?>"
+                                    data-feature-queue-created="<?= e((string) ($suggestion['created_at'] ?? '')) ?>"
+                                    data-feature-queue-updated="<?= e((string) ($suggestion['updated_at'] ?? '')) ?>"
+                                    data-feature-queue-search="<?= e($decision_search_text) ?>">
                                   <td><?= e((string) ($suggestion['title'] ?? 'Feature suggestion')) ?></td>
                                   <td><?= e((string) (($suggestion['feature_title'] ?? '') ?: 'None')) ?></td>
                                   <td><code><?= e((string) ($suggestion['steam_id64'] ?? '')) ?></code></td>
-                                  <td><span class="status-pill <?= e((string) ($suggestion['status'] ?? 'pending')) ?>"><?= e((string) ($suggestion['status'] ?? 'pending')) ?></span></td>
+                                  <td><span class="status-pill <?= e($decision_status) ?>"><?= e($decision_status) ?></span></td>
                                   <td><?= e((string) ($suggestion['updated_at'] ?? '')) ?></td>
-                                </tr>
-                              <?php endforeach; ?>
-                            </tbody>
-                          </table>
+                                  </tr>
+                                <?php endforeach; ?>
+                              </tbody>
+                            </table>
+                          </div>
                         </div>
                       <?php endif; ?>
                     </section>

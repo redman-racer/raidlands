@@ -174,6 +174,12 @@ function raidlands_features_handle_public_request(): void
     }
 
     $target = strtok((string) ($_SERVER['REQUEST_URI'] ?? './'), '?') ?: './';
+    $query = raidlands_features_public_filter_query(raidlands_features_public_filter_state($_POST));
+
+    if ($query !== '') {
+        $target .= '?' . $query;
+    }
+
     header('Location: ' . $target . '#feature-voting', true, 303);
     exit;
 }
@@ -428,12 +434,19 @@ function raidlands_features_current_wipe_window(?DateTimeImmutable $now = null):
 
 function raidlands_features_public_state(): array
 {
+    $filters = raidlands_features_public_filter_state($_GET ?? []);
+
     if (!raidlands_features_is_ready()) {
         return [
             'ready' => false,
             'message' => raidlands_features_readiness_message(false),
             'sections' => [],
             'voteable' => [],
+            'filters' => $filters,
+            'filter_options' => raidlands_features_public_filter_options([]),
+            'total' => 0,
+            'filtered_total' => 0,
+            'has_active_filters' => raidlands_features_public_has_active_filters($filters),
             'user_votes' => [],
             'votes_remaining' => 0,
             'window' => raidlands_features_current_wipe_window(),
@@ -443,7 +456,11 @@ function raidlands_features_public_state(): array
     raidlands_features_seed_defaults();
 
     $window = raidlands_features_current_wipe_window();
-    $features = raidlands_features_public_items($window);
+    $all_features = raidlands_features_public_items($window);
+    $filter_options = raidlands_features_public_filter_options($all_features);
+    $filters = raidlands_features_public_normalize_filter_options($filters, $filter_options);
+    $features = raidlands_features_filter_public_items($all_features, $filters);
+    $features = raidlands_features_sort_public_items($features, (string) $filters['sort']);
     $identity = raidlands_features_current_player_identity(false);
     $user_votes = [];
 
@@ -481,24 +498,227 @@ function raidlands_features_public_state(): array
         }
     }
 
-    usort(
-        $voteable,
-        static fn (array $a, array $b): int => ((int) ($b['support_score'] ?? 0) <=> (int) ($a['support_score'] ?? 0))
-            ?: ((int) ($b['suggestion_count'] ?? 0) <=> (int) ($a['suggestion_count'] ?? 0))
-            ?: ((int) ($a['sort_order'] ?? 100) <=> (int) ($b['sort_order'] ?? 100))
-            ?: strnatcasecmp((string) ($a['title'] ?? ''), (string) ($b['title'] ?? ''))
-    );
-
     return [
         'ready' => true,
         'message' => '',
         'sections' => $sections,
         'voteable' => $voteable,
+        'filters' => $filters,
+        'filter_options' => $filter_options,
+        'total' => count($all_features),
+        'filtered_total' => count($features),
+        'has_active_filters' => raidlands_features_public_has_active_filters($filters),
         'identity' => $identity,
         'user_votes' => $user_votes,
         'votes_remaining' => max(0, 3 - count($user_votes)),
         'window' => $window,
     ];
+}
+
+function raidlands_features_public_status_options(): array
+{
+    $options = raidlands_features_status_options();
+    unset($options['archived']);
+
+    return $options;
+}
+
+function raidlands_features_public_sort_options(): array
+{
+    return [
+        'staff' => 'Staff Order',
+        'support' => 'Most Support',
+        'votes' => 'Most Votes',
+        'title' => 'Title A-Z',
+        'updated' => 'Recently Updated',
+    ];
+}
+
+function raidlands_features_public_filter_state(array $source): array
+{
+    $query = raidlands_features_clean_text($source['q'] ?? '', 120);
+    $status = strtolower(raidlands_features_clean_text($source['status'] ?? '', 40));
+    $category = raidlands_features_clean_text($source['category'] ?? '', 120);
+    $sort = strtolower(raidlands_features_clean_text($source['sort'] ?? '', 40));
+
+    if (!isset(raidlands_features_public_status_options()[$status])) {
+        $status = '';
+    }
+
+    if (!isset(raidlands_features_public_sort_options()[$sort])) {
+        $sort = 'staff';
+    }
+
+    return [
+        'q' => $query,
+        'status' => $status,
+        'category' => $category,
+        'sort' => $sort,
+    ];
+}
+
+function raidlands_features_public_filter_options(array $items): array
+{
+    $categories = [];
+    $status_options = raidlands_features_public_status_options();
+
+    foreach ($items as $item) {
+        $category = trim((string) ($item['category'] ?? ''));
+
+        if ($category !== '') {
+            $categories[$category] = $category;
+        }
+    }
+
+    uksort($categories, 'strnatcasecmp');
+
+    return [
+        'statuses' => $status_options,
+        'categories' => array_values($categories),
+        'sorts' => raidlands_features_public_sort_options(),
+    ];
+}
+
+function raidlands_features_public_normalize_filter_options(array $filters, array $options): array
+{
+    $categories = array_fill_keys(array_map('strval', (array) ($options['categories'] ?? [])), true);
+
+    if ((string) ($filters['category'] ?? '') !== '' && !isset($categories[(string) $filters['category']])) {
+        $filters['category'] = '';
+    }
+
+    return $filters;
+}
+
+function raidlands_features_public_has_active_filters(array $filters): bool
+{
+    return (string) ($filters['q'] ?? '') !== ''
+        || (string) ($filters['status'] ?? '') !== ''
+        || (string) ($filters['category'] ?? '') !== ''
+        || (string) ($filters['sort'] ?? 'staff') !== 'staff';
+}
+
+function raidlands_features_public_filter_query(array $filters, array $overrides = []): string
+{
+    $filters = array_merge($filters, $overrides);
+    $params = [];
+
+    foreach (['q', 'status', 'category'] as $key) {
+        $value = trim((string) ($filters[$key] ?? ''));
+
+        if ($value !== '') {
+            $params[$key] = $value;
+        }
+    }
+
+    $sort = (string) ($filters['sort'] ?? 'staff');
+
+    if ($sort !== 'staff' && isset(raidlands_features_public_sort_options()[$sort])) {
+        $params['sort'] = $sort;
+    }
+
+    return http_build_query($params);
+}
+
+function raidlands_features_filter_public_items(array $items, array $filters): array
+{
+    $query = strtolower((string) ($filters['q'] ?? ''));
+    $terms = $query === '' ? [] : array_values(array_filter(preg_split('/\s+/', $query) ?: []));
+    $status_filter = (string) ($filters['status'] ?? '');
+    $category_filter = (string) ($filters['category'] ?? '');
+    $filtered = [];
+
+    foreach ($items as $item) {
+        $status = (string) ($item['public_status'] ?? 'under_review');
+
+        if ($status_filter !== '' && $status !== $status_filter) {
+            continue;
+        }
+
+        if ($category_filter !== '' && (string) ($item['category'] ?? '') !== $category_filter) {
+            continue;
+        }
+
+        if ($terms !== []) {
+            $search_text = strtolower(
+                (string) ($item['title'] ?? '') . ' '
+                . (string) ($item['summary'] ?? '') . ' '
+                . (string) ($item['category'] ?? '') . ' '
+                . $status . ' '
+                . raidlands_features_status_label($status)
+            );
+
+            $matches_all = true;
+
+            foreach ($terms as $term) {
+                if ($term !== '' && !str_contains($search_text, $term)) {
+                    $matches_all = false;
+                    break;
+                }
+            }
+
+            if (!$matches_all) {
+                continue;
+            }
+        }
+
+        $filtered[] = $item;
+    }
+
+    return $filtered;
+}
+
+function raidlands_features_sort_public_items(array $items, string $sort): array
+{
+    usort(
+        $items,
+        static function (array $a, array $b) use ($sort): int {
+            if ($sort === 'support') {
+                return ((int) ($b['support_score'] ?? 0) <=> (int) ($a['support_score'] ?? 0))
+                    ?: ((int) ($b['suggestion_count'] ?? 0) <=> (int) ($a['suggestion_count'] ?? 0))
+                    ?: ((int) ($b['vote_count'] ?? 0) <=> (int) ($a['vote_count'] ?? 0))
+                    ?: raidlands_features_compare_staff_order($a, $b);
+            }
+
+            if ($sort === 'votes') {
+                return ((int) ($b['vote_count'] ?? 0) <=> (int) ($a['vote_count'] ?? 0))
+                    ?: ((int) ($b['support_score'] ?? 0) <=> (int) ($a['support_score'] ?? 0))
+                    ?: raidlands_features_compare_staff_order($a, $b);
+            }
+
+            if ($sort === 'title') {
+                return strnatcasecmp((string) ($a['title'] ?? ''), (string) ($b['title'] ?? ''))
+                    ?: raidlands_features_compare_staff_order($a, $b);
+            }
+
+            if ($sort === 'updated') {
+                return strcmp((string) ($b['updated_at'] ?? ''), (string) ($a['updated_at'] ?? ''))
+                    ?: strcmp((string) ($b['created_at'] ?? ''), (string) ($a['created_at'] ?? ''))
+                    ?: raidlands_features_compare_staff_order($a, $b);
+            }
+
+            return raidlands_features_compare_staff_order($a, $b);
+        }
+    );
+
+    return $items;
+}
+
+function raidlands_features_compare_staff_order(array $a, array $b): int
+{
+    $status_rank = [
+        'active' => 10,
+        'voting' => 20,
+        'in_development' => 30,
+        'planned' => 40,
+        'under_review' => 50,
+        'archived' => 60,
+    ];
+
+    return (($status_rank[(string) ($a['public_status'] ?? 'under_review')] ?? 99) <=> ($status_rank[(string) ($b['public_status'] ?? 'under_review')] ?? 99))
+        ?: ((int) ($a['sort_order'] ?? 100) <=> (int) ($b['sort_order'] ?? 100))
+        ?: strnatcasecmp((string) ($a['title'] ?? ''), (string) ($b['title'] ?? ''))
+        ?: ((int) ($a['id'] ?? 0) <=> (int) ($b['id'] ?? 0));
 }
 
 function raidlands_features_public_items(array $window): array

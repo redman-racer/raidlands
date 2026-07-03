@@ -13,6 +13,32 @@
   $feature_user_votes = is_array($feature_state['user_votes'] ?? null) ? $feature_state['user_votes'] : [];
   $feature_votes_remaining = (int) ($feature_state['votes_remaining'] ?? 0);
   $feature_window = is_array($feature_state['window'] ?? null) ? $feature_state['window'] : [];
+  $feature_filters = is_array($feature_state['filters'] ?? null) ? $feature_state['filters'] : raidlands_features_public_filter_state([]);
+  $feature_filter_options = is_array($feature_state['filter_options'] ?? null) ? $feature_state['filter_options'] : raidlands_features_public_filter_options([]);
+  $feature_status_options = is_array($feature_filter_options['statuses'] ?? null) ? $feature_filter_options['statuses'] : [];
+  $feature_category_options = is_array($feature_filter_options['categories'] ?? null) ? $feature_filter_options['categories'] : [];
+  $feature_sort_options = is_array($feature_filter_options['sorts'] ?? null) ? $feature_filter_options['sorts'] : raidlands_features_public_sort_options();
+  $feature_total = (int) ($feature_state['total'] ?? 0);
+  $feature_filtered_total = (int) ($feature_state['filtered_total'] ?? 0);
+  $feature_has_active_filters = !empty($feature_state['has_active_filters']);
+  $feature_query = raidlands_features_public_filter_query($feature_filters);
+  $feature_post_action = route_url('features') . ($feature_query !== '' ? '?' . $feature_query : '');
+  $feature_show_metrics = in_array((string) ($feature_filters['sort'] ?? 'staff'), ['support', 'votes'], true);
+  $feature_filter_hidden_inputs = static function (array $filters): string {
+      $html = '';
+
+      foreach (['q', 'status', 'category', 'sort'] as $key) {
+          $value = trim((string) ($filters[$key] ?? ''));
+
+          if ($value === '' || ($key === 'sort' && $value === 'staff')) {
+              continue;
+          }
+
+          $html .= '<input type="hidden" name="' . e($key) . '" value="' . e($value) . '">';
+      }
+
+      return $html;
+  };
   $feature_card_markup = static function (array $feature, bool $show_metrics = false): string {
       $status = (string) ($feature['status_label'] ?? raidlands_features_status_label((string) ($feature['public_status'] ?? 'under_review')));
       $extra = '<div class="tag-row"><span class="status-tag ' . e(status_class($status)) . '">' . e($status) . '</span>';
@@ -57,8 +83,62 @@
     $planned_features = $feature_sections['planned'] ?? [];
     $review_features = $feature_sections['under_review'] ?? [];
     $voteable_features = is_array($feature_state['voteable'] ?? null) ? $feature_state['voteable'] : [];
+    $planning_features = array_merge($development_features, $planned_features, $review_features);
   ?>
 
+  <section class="section feature-browser-section">
+    <div class="section-inner">
+      <form class="feature-filter-toolbar metal-panel" method="get" action="<?= e(route_url('features')) ?>">
+        <label class="feature-filter-field feature-filter-search">
+          <span>Search</span>
+          <input type="search" name="q" maxlength="120" placeholder="Feature name, category, or status" value="<?= e((string) ($feature_filters['q'] ?? '')) ?>">
+        </label>
+        <label class="feature-filter-field">
+          <span>Status</span>
+          <select name="status">
+            <option value="">All statuses</option>
+            <?php foreach ($feature_status_options as $status_key => $status_label) : ?>
+              <option value="<?= e((string) $status_key) ?>" <?= (string) ($feature_filters['status'] ?? '') === (string) $status_key ? 'selected' : '' ?>><?= e((string) $status_label) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </label>
+        <label class="feature-filter-field">
+          <span>Category</span>
+          <select name="category">
+            <option value="">All categories</option>
+            <?php foreach ($feature_category_options as $category) : ?>
+              <option value="<?= e((string) $category) ?>" <?= (string) ($feature_filters['category'] ?? '') === (string) $category ? 'selected' : '' ?>><?= e((string) $category) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </label>
+        <label class="feature-filter-field">
+          <span>Sort</span>
+          <select name="sort">
+            <?php foreach ($feature_sort_options as $sort_key => $sort_label) : ?>
+              <option value="<?= e((string) $sort_key) ?>" <?= (string) ($feature_filters['sort'] ?? 'staff') === (string) $sort_key ? 'selected' : '' ?>><?= e((string) $sort_label) ?></option>
+            <?php endforeach; ?>
+          </select>
+        </label>
+        <div class="feature-filter-actions">
+          <button class="btn btn-primary" type="submit">Apply</button>
+          <a class="btn btn-secondary" href="<?= e(route_url('features')) ?>">Clear</a>
+        </div>
+        <p class="feature-filter-results">
+          Showing <?= e((string) $feature_filtered_total) ?> of <?= e((string) $feature_total) ?> feature<?= $feature_total === 1 ? '' : 's' ?><?= $feature_has_active_filters ? ' for this view' : '' ?>.
+        </p>
+      </form>
+    </div>
+  </section>
+
+  <?php if ($feature_filtered_total === 0) : ?>
+    <section class="section">
+      <div class="section-inner">
+        <div class="form-status warning">No features match the current search or filters.</div>
+      </div>
+    </section>
+  <?php endif; ?>
+
+  <?php if ($feature_filtered_total > 0 && ($active_features !== [] || !$feature_has_active_filters)) : ?>
   <section class="section">
     <div class="section-inner">
       <div class="section-header">
@@ -66,15 +146,20 @@
         <h2>Live on Raidlands</h2>
         <p class="section-lede">These are the systems players can already use on the server or through the connected website.</p>
       </div>
-      <div class="grid three">
-        <?php foreach ($active_features as $feature) : ?>
-          <?= $feature_card_markup($feature) ?>
-        <?php endforeach; ?>
-      </div>
+      <?php if ($active_features === []) : ?>
+        <div class="form-status warning">No active features match this view.</div>
+      <?php else : ?>
+        <div class="grid three">
+          <?php foreach ($active_features as $feature) : ?>
+            <?= $feature_card_markup($feature, $feature_show_metrics) ?>
+          <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
     </div>
   </section>
+  <?php endif; ?>
 
-  <?php if ($development_features !== [] || $planned_features !== [] || $review_features !== []) : ?>
+  <?php if ($planning_features !== []) : ?>
     <section class="section alt">
       <div class="section-inner">
         <div class="section-header">
@@ -83,8 +168,8 @@
           <p class="section-lede">Planned and reviewed features stay visible here as staff moves them from idea to implementation.</p>
         </div>
         <div class="grid three">
-          <?php foreach (array_merge($development_features, $planned_features, $review_features) as $feature) : ?>
-            <?= $feature_card_markup($feature) ?>
+          <?php foreach ($planning_features as $feature) : ?>
+            <?= $feature_card_markup($feature, $feature_show_metrics) ?>
           <?php endforeach; ?>
         </div>
       </div>
@@ -114,7 +199,7 @@
       </div>
 
       <?php if ($voteable_features === []) : ?>
-        <div class="form-status warning">No public feature votes are open right now.</div>
+        <div class="form-status warning"><?= $feature_has_active_filters ? 'No voting candidates match this search or filter.' : 'No public feature votes are open right now.' ?></div>
       <?php else : ?>
         <div class="grid three feature-vote-grid">
           <?php foreach ($voteable_features as $feature) : ?>
@@ -138,6 +223,7 @@
               <form method="post" action="<?= e(route_url('features')) ?>#feature-voting">
                 <input type="hidden" name="csrf" value="<?= e($feature_csrf) ?>">
                 <input type="hidden" name="feature_id" value="<?= e((string) $feature_id) ?>">
+                <?= $feature_filter_hidden_inputs($feature_filters) ?>
                 <button class="btn <?= $has_vote ? 'btn-secondary' : 'btn-primary' ?>" type="submit" name="action" value="<?= $has_vote ? 'unvote_feature' : 'vote_feature' ?>" <?= $can_vote ? '' : 'disabled' ?>>
                   <?= $has_vote ? 'Remove Vote' : ($feature_identity === null ? 'Link Steam First' : ($feature_votes_remaining > 0 ? 'Vote' : 'Votes Used')) ?>
                 </button>
@@ -160,9 +246,10 @@
           <div class="form-status warning">Link your Steam account before submitting a feature suggestion.</div>
           <a class="btn btn-primary" href="<?= e(route_url('link')) ?>">Link Steam</a>
         <?php else : ?>
-          <form class="feedback-form" method="post" action="<?= e(route_url('features')) ?>#feature-voting">
+          <form class="feedback-form" method="post" action="<?= e($feature_post_action) ?>#feature-voting">
             <input type="hidden" name="action" value="submit_feature_suggestion">
             <input type="hidden" name="csrf" value="<?= e($feature_csrf) ?>">
+            <?= $feature_filter_hidden_inputs($feature_filters) ?>
             <label class="feedback-honeypot">
               Website
               <input type="text" name="website" tabindex="-1" autocomplete="off">
