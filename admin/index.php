@@ -35,7 +35,7 @@ $admin_sections_all = [
     'identity' => ['label' => 'Identity', 'kicker' => 'Core', 'title' => 'Server Identity', 'summary' => 'Names, fallback status, map, region, and the numbers used when live status is unavailable.'],
     'links' => ['label' => 'Links', 'kicker' => 'Launch', 'title' => 'Links and Integrations', 'summary' => 'Join buttons, Discord invites, live status settings, and future OAuth links.'],
     'wipe' => ['label' => 'Wipe', 'kicker' => 'Schedule', 'title' => 'Wipe Settings', 'summary' => 'The wipe days and time used by countdowns and schedule text.'],
-    'features' => ['label' => 'Features', 'kicker' => 'Content', 'title' => 'Feature Lists', 'summary' => 'Homepage feature chips, feature cards, and roadmap cards.'],
+    'features' => ['label' => 'Features', 'kicker' => 'Content', 'title' => 'Feature Lists', 'summary' => 'Public feature planning records, voting candidates, and suggestion review.'],
     'pages' => ['label' => 'Pages', 'kicker' => 'Copy', 'title' => 'Hero Copy', 'summary' => 'The title and intro text shown at the top of each page.'],
     'seo' => ['label' => 'SEO', 'kicker' => 'Search', 'title' => 'SEO Metadata', 'summary' => 'Browser titles, descriptions, and social sharing copy.'],
     'feedback' => ['label' => 'Feedback', 'kicker' => 'Inbox', 'title' => 'Player Feedback', 'summary' => 'Bug reports, suggestions, and feature requests submitted from the support page.'],
@@ -1040,11 +1040,16 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
 
                     <section class="admin-section">
                       <div class="admin-subsection-head">
-                        <h3>Feature planning records</h3>
-                        <p>These rows drive the public Features page. Active rows describe live systems; voteable rows appear in the next-feature voting section.</p>
+                        <h3>Feature editor</h3>
+                        <p>Select one feature at a time, then configure its public copy, status, voting visibility, and archived state.</p>
                       </div>
-                      <div class="admin-repeat-list">
-                        <?php $feature_total = count($feature_rows) + 3; ?>
+                      <?php
+                        $feature_total = count($feature_rows) + 1;
+                        $feature_selector_items = [];
+                        $feature_has_active_panel = false;
+                      ?>
+                      <div class="admin-feature-editor-shell" data-admin-feature-editor>
+                        <div class="admin-feature-panels">
                         <?php for ($index = 0; $index < $feature_total; $index += 1) : ?>
                           <?php
                             $row = $feature_rows[$index] ?? [
@@ -1058,71 +1063,146 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 'is_public' => 1,
                                 'is_voteable' => 1,
                                 'sort_order' => 500 + $index,
+                                'support_score' => 0,
+                                'vote_count' => 0,
+                                'suggestion_count' => 0,
                             ];
-                            $row_key = (int) ($row['id'] ?? 0) > 0 ? (string) $row['id'] : 'new_' . (string) $index;
+                            $feature_is_existing = (int) ($row['id'] ?? 0) > 0;
+                            $row_key = $feature_is_existing ? (string) $row['id'] : 'new_' . (string) $index;
+                            $feature_panel_key = $feature_is_existing ? 'feature-' . (int) $row['id'] : 'new-' . $index;
+                            $feature_panel_id = 'admin-feature-panel-' . (preg_replace('/[^a-zA-Z0-9_-]+/', '-', $feature_panel_key) ?: (string) $index);
+                            $feature_is_active_panel = !$feature_has_active_panel;
+                            $feature_has_active_panel = true;
+                            $feature_title = trim((string) ($row['title'] ?? ''));
+                            $feature_label = $feature_title !== '' ? $feature_title : 'New Feature';
+                            $feature_status_key = (string) ($row['public_status'] ?? 'under_review');
+                            $feature_status_label = raidlands_features_status_label($feature_status_key);
+                            $feature_is_archived = $feature_status_key === 'archived';
+                            $feature_visibility = !empty($row['is_public']) ? 'Public' : 'Hidden';
+                            $feature_vote_state = !empty($row['is_voteable']) && !$feature_is_archived ? 'voteable' : 'not voteable';
+                            $feature_support_score = (int) ($row['support_score'] ?? 0);
+                            $feature_vote_count = (int) ($row['vote_count'] ?? 0);
+                            $feature_suggestion_count = (int) ($row['suggestion_count'] ?? 0);
+                            $feature_meta = $feature_is_existing
+                                ? $feature_status_label . ' / ' . $feature_visibility . ', ' . $feature_vote_state . ' / score ' . (string) $feature_support_score
+                                : 'Draft slot / blank rows are ignored';
+
+                            $feature_selector_items[] = [
+                                'index' => (string) $index,
+                                'label' => $feature_label,
+                                'meta' => $feature_meta,
+                                'is_active' => $feature_is_active_panel,
+                                'is_draft' => !$feature_is_existing,
+                                'is_archived' => $feature_is_archived,
+                            ];
                           ?>
-                          <article class="admin-repeat-card admin-feature-planner-card">
+                          <article
+                            class="admin-repeat-card admin-feature-planner-card admin-feature-panel<?= $feature_is_active_panel ? ' is-active' : '' ?>"
+                            id="<?= e($feature_panel_id) ?>"
+                            data-feature-panel
+                            data-feature-index="<?= e((string) $index) ?>"
+                            <?= $feature_is_active_panel ? '' : 'hidden' ?>>
                             <input type="hidden" name="feature_items[<?= e($row_key) ?>][id]" value="<?= e((string) ($row['id'] ?? 0)) ?>">
                             <div class="admin-repeat-card-head">
                               <div>
-                                <h3><?= (int) ($row['id'] ?? 0) > 0 ? e((string) ($row['title'] ?? 'Feature')) : 'New Feature' ?></h3>
-                                <p class="admin-feedback-subtitle"><?= (int) ($row['id'] ?? 0) > 0 ? 'Slug: ' . e((string) ($row['slug'] ?? '')) : 'Blank rows are ignored until you add a title.' ?></p>
+                                <h3 data-feature-card-title><?= e($feature_label) ?></h3>
+                                <p class="admin-feedback-subtitle" data-feature-card-subtitle><?= $feature_is_existing ? 'Slug: ' . e((string) ($row['slug'] ?? '')) . ' / ' . e($feature_status_label) : 'Blank rows are ignored until you add a title.' ?></p>
                               </div>
-                              <?php if ((int) ($row['id'] ?? 0) > 0) : ?>
+                              <?php if ($feature_is_existing) : ?>
                                 <label class="admin-check admin-delete-check">
                                   <input type="checkbox" name="feature_items[<?= e($row_key) ?>][archived]" value="1">
-                                  <span>Archive</span>
+                                  <span>Archive on Save</span>
                                 </label>
                               <?php endif; ?>
                             </div>
-                            <div class="admin-grid feature-planner-grid">
-                              <label class="admin-field">
-                                <?= admin_field_head('Icon alias', 'Icon shown above the card title. Suggested aliases render image icons; custom text is preserved.') ?>
-                                <input type="text" list="admin-feature-icon-options" name="feature_items[<?= e($row_key) ?>][icon_alias]" maxlength="32" placeholder="EVENT" value="<?= e((string) ($row['icon_alias'] ?? '')) ?>">
-                              </label>
-                              <label class="admin-field">
-                                <?= admin_field_head('Title', 'Public feature title.') ?>
-                                <input type="text" name="feature_items[<?= e($row_key) ?>][title]" maxlength="180" placeholder="Vote Rewards" value="<?= e((string) ($row['title'] ?? '')) ?>">
-                              </label>
-                              <label class="admin-field">
-                                <?= admin_field_head('Slug', 'Stable internal URL-safe key. Leave blank for a generated slug on new rows.') ?>
-                                <input type="text" name="feature_items[<?= e($row_key) ?>][slug]" maxlength="140" placeholder="vote-rewards" value="<?= e((string) ($row['slug'] ?? '')) ?>">
-                              </label>
-                              <label class="admin-field">
-                                <?= admin_field_head('Status', 'Public status bucket used for grouping and badge color.') ?>
-                                <select name="feature_items[<?= e($row_key) ?>][public_status]">
-                                  <?= admin_render_options(raidlands_features_status_options(), (string) ($row['public_status'] ?? 'under_review')) ?>
-                                </select>
-                              </label>
-                              <label class="admin-field">
-                                <?= admin_field_head('Category', 'Loose internal/public grouping for scanning.') ?>
-                                <input type="text" name="feature_items[<?= e($row_key) ?>][category]" maxlength="120" placeholder="Player Suggestions" value="<?= e((string) ($row['category'] ?? '')) ?>">
-                              </label>
-                              <label class="admin-field">
-                                <?= admin_field_head('Sort order', 'Lower numbers appear earlier within the same status group.') ?>
-                                <input type="number" name="feature_items[<?= e($row_key) ?>][sort_order]" min="0" max="9999" step="1" value="<?= e((string) ($row['sort_order'] ?? 100)) ?>">
-                              </label>
-                              <div class="admin-field">
-                                <span class="admin-label-row"><span>Visibility</span></span>
-                                <label class="admin-check">
-                                  <input type="checkbox" name="feature_items[<?= e($row_key) ?>][is_public]" value="1" <?= !empty($row['is_public']) ? 'checked' : '' ?>>
-                                  <?= admin_check_copy('Public', 'Shows this feature on the public Features page.') ?>
-                                </label>
-                              </div>
-                              <div class="admin-field">
-                                <span class="admin-label-row"><span>Voting</span></span>
-                                <label class="admin-check">
-                                  <input type="checkbox" name="feature_items[<?= e($row_key) ?>][is_voteable]" value="1" <?= !empty($row['is_voteable']) ? 'checked' : '' ?>>
-                                  <?= admin_check_copy('Voteable', 'Allows linked players to spend one of their current-wipe votes on this feature.') ?>
-                                </label>
-                              </div>
-                              <label class="admin-field admin-span-all">
-                                <?= admin_field_head('Summary', 'Short player-facing explanation. Keep it scan-friendly.') ?>
-                                <textarea name="feature_items[<?= e($row_key) ?>][summary]" rows="3" maxlength="500"><?= e((string) ($row['summary'] ?? '')) ?></textarea>
-                              </label>
+
+                            <div class="admin-feature-section-stack">
+                              <details class="admin-details admin-feature-details" open>
+                                <summary>Public card <small>Icon, title, category, and summary</small></summary>
+                                <div class="admin-grid feature-planner-grid">
+                                  <label class="admin-field">
+                                    <?= admin_field_head('Icon alias', 'Icon shown above the card title. Suggested aliases render image icons; custom text is preserved.') ?>
+                                    <input type="text" list="admin-feature-icon-options" name="feature_items[<?= e($row_key) ?>][icon_alias]" maxlength="32" placeholder="EVENT" value="<?= e((string) ($row['icon_alias'] ?? '')) ?>">
+                                  </label>
+                                  <label class="admin-field">
+                                    <?= admin_field_head('Title', 'Public feature title.') ?>
+                                    <input type="text" name="feature_items[<?= e($row_key) ?>][title]" maxlength="180" placeholder="Vote Rewards" value="<?= e((string) ($row['title'] ?? '')) ?>" data-feature-title-input>
+                                  </label>
+                                  <label class="admin-field">
+                                    <?= admin_field_head('Slug', 'Stable internal URL-safe key. Leave blank for a generated slug on new rows.') ?>
+                                    <input type="text" name="feature_items[<?= e($row_key) ?>][slug]" maxlength="140" placeholder="vote-rewards" value="<?= e((string) ($row['slug'] ?? '')) ?>">
+                                  </label>
+                                  <label class="admin-field">
+                                    <?= admin_field_head('Category', 'Loose internal/public grouping for scanning.') ?>
+                                    <input type="text" name="feature_items[<?= e($row_key) ?>][category]" maxlength="120" placeholder="Player Suggestions" value="<?= e((string) ($row['category'] ?? '')) ?>">
+                                  </label>
+                                  <label class="admin-field admin-span-all">
+                                    <?= admin_field_head('Summary', 'Short player-facing explanation. Keep it scan-friendly.') ?>
+                                    <textarea name="feature_items[<?= e($row_key) ?>][summary]" rows="3" maxlength="500"><?= e((string) ($row['summary'] ?? '')) ?></textarea>
+                                  </label>
+                                </div>
+                              </details>
+
+                              <details class="admin-details admin-feature-details" open>
+                                <summary>Publishing and voting <small>Status, placement, and public controls</small></summary>
+                                <div class="admin-grid three">
+                                  <label class="admin-field">
+                                    <?= admin_field_head('Status', 'Public status bucket used for grouping and badge color.') ?>
+                                    <select name="feature_items[<?= e($row_key) ?>][public_status]" data-feature-status-select>
+                                      <?= admin_render_options(raidlands_features_status_options(), $feature_status_key) ?>
+                                    </select>
+                                  </label>
+                                  <label class="admin-field">
+                                    <?= admin_field_head('Sort order', 'Lower numbers appear earlier within the same status group.') ?>
+                                    <input type="number" name="feature_items[<?= e($row_key) ?>][sort_order]" min="0" max="9999" step="1" value="<?= e((string) ($row['sort_order'] ?? 100)) ?>">
+                                  </label>
+                                  <label class="admin-check admin-check-field">
+                                    <input type="checkbox" name="feature_items[<?= e($row_key) ?>][is_public]" value="1" <?= !empty($row['is_public']) ? 'checked' : '' ?> data-feature-public-input>
+                                    <?= admin_check_copy('Public', 'Shows this feature on the public Features page.') ?>
+                                  </label>
+                                  <label class="admin-check admin-check-field">
+                                    <input type="checkbox" name="feature_items[<?= e($row_key) ?>][is_voteable]" value="1" <?= !empty($row['is_voteable']) ? 'checked' : '' ?> data-feature-voteable-input>
+                                    <?= admin_check_copy('Voteable', 'Allows linked players to spend one of their current-wipe votes on this feature.') ?>
+                                  </label>
+                                </div>
+                              </details>
+
+                              <?php if ($feature_is_existing) : ?>
+                                <details class="admin-details admin-feature-details">
+                                  <summary>Player signal <small>Votes and grouped suggestions</small></summary>
+                                  <div class="admin-feature-signal-grid">
+                                    <span><strong><?= e((string) $feature_support_score) ?></strong> support score</span>
+                                    <span><strong><?= e((string) $feature_vote_count) ?></strong> current votes</span>
+                                    <span><strong><?= e((string) $feature_suggestion_count) ?></strong> grouped suggestions</span>
+                                  </div>
+                                </details>
+                              <?php endif; ?>
                             </div>
                           </article>
                         <?php endfor; ?>
+                        </div>
+                        <aside class="admin-feature-picker" aria-label="Feature selector">
+                          <div class="admin-feature-picker-head">
+                            <div>
+                              <h3>Features</h3>
+                              <p><?= e((string) count($feature_rows)) ?> saved<?= $feature_rows === [] ? '' : ' plus new draft slot' ?></p>
+                            </div>
+                            <button class="btn btn-secondary" type="button" data-feature-add>Add Feature</button>
+                          </div>
+                          <div class="admin-feature-picker-list">
+                            <?php foreach ($feature_selector_items as $selector_item) : ?>
+                              <button
+                                class="admin-feature-picker-button<?= !empty($selector_item['is_active']) ? ' is-active' : '' ?><?= !empty($selector_item['is_draft']) ? ' is-draft' : '' ?><?= !empty($selector_item['is_archived']) ? ' is-archived' : '' ?>"
+                                type="button"
+                                data-feature-select
+                                data-feature-index="<?= e((string) $selector_item['index']) ?>"
+                                <?= !empty($selector_item['is_active']) ? 'aria-current="true"' : '' ?>>
+                                <span data-feature-select-label><?= e((string) $selector_item['label']) ?></span>
+                                <small data-feature-select-meta><?= e((string) $selector_item['meta']) ?></small>
+                              </button>
+                            <?php endforeach; ?>
+                          </div>
+                        </aside>
                       </div>
                     </section>
 
@@ -2927,6 +3007,9 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
       <?php endif; ?>
       <?php if ($active_section === 'store') : ?>
         <script src="<?= e(asset_url('js/admin-store.js')) ?>" defer></script>
+      <?php endif; ?>
+      <?php if ($active_section === 'features') : ?>
+        <script src="<?= e(asset_url('js/admin-features.js')) ?>" defer></script>
       <?php endif; ?>
     <?php endif; ?>
   </body>
