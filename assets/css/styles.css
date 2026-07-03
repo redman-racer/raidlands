@@ -4353,6 +4353,12 @@ button.admin-permission-chip:focus-visible {
   font-weight: 800;
 }
 
+.admin-permission-empty[hidden],
+.admin-permission-prefix[hidden],
+.admin-permission-option[hidden] {
+  display: none !important;
+}
+
 .admin-permission-prefix-list {
   display: grid;
   gap: 14px;
