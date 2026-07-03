@@ -7,6 +7,8 @@
   const pageId = doc.dataset.page || "home";
   const CONFIG = getSiteConfig();
   const MOBILE_PERFORMANCE_QUERY = "(max-width: 700px), (pointer: coarse)";
+  let serverHistoryPayload = null;
+  let serverHistoryResizeTimer = null;
 
   function getSiteConfig() {
     const basePath = doc.dataset.base || "./";
@@ -15,6 +17,7 @@
       steamConnectUrl: "steam://connect/raidlands.net:25607",
       discordInviteUrl: "https://discord.gg/raidlands",
       serverStatusUrl: `${basePath}api/server-status.php`,
+      serverStatusHistoryUrl: `${basePath}api/server-status-history.php`,
       serverStats: {
         provider: "raidlands",
         cacheSeconds: 60,
@@ -69,12 +72,22 @@
     initEffectsWhenLoaderReveals();
     hydrateDates();
     hydrateServerStatus();
+    hydrateServerHistory();
     updateCountdowns();
     window.setInterval(updateCountdowns, 1000);
 
     if (window.fetch && CONFIG.serverStatusUrl) {
       const refreshSeconds = Math.max(30, Number(CONFIG.serverStats.cacheSeconds) || 60);
       window.setInterval(hydrateServerStatus, refreshSeconds * 1000);
+    }
+
+    if (window.fetch && CONFIG.serverStatusHistoryUrl && app.querySelector("[data-server-history]")) {
+      const refreshSeconds = Math.max(30, Number(CONFIG.serverStats.cacheSeconds) || 60);
+      window.setInterval(hydrateServerHistory, refreshSeconds * 1000);
+      window.addEventListener("resize", () => {
+        window.clearTimeout(serverHistoryResizeTimer);
+        serverHistoryResizeTimer = window.setTimeout(() => drawServerHistoryChart(serverHistoryPayload), 120);
+      });
     }
   }
 
@@ -976,7 +989,7 @@
     setPanelText("[data-server-players]", statValue(status.players, "0"));
     setPanelText("[data-server-max-players]", statValue(status.maxPlayers, "0"));
     setPanelText("[data-server-queue]", statValue(status.queue, "0"));
-    setPanelText("[data-server-fps]", statValue(status.serverFps, "Unknown"));
+    setPanelText("[data-server-health]", serverHealthLabel(status));
     setPanelText("[data-server-map]", statValue(status.mapName, "Unknown"));
     setPanelText("[data-server-updated]", formatServerUpdated(status));
   }
@@ -1026,6 +1039,247 @@
     }
 
     return "site fallback";
+  }
+
+  function serverHealthLabel(status) {
+    if (!status) {
+      return "Pending";
+    }
+
+    if (status.stale === true) {
+      return "Delayed";
+    }
+
+    if (status.source === "fallback") {
+      return "Fallback";
+    }
+
+    if (status.online === true) {
+      return "Ready";
+    }
+
+    if (status.online === false) {
+      return "Offline";
+    }
+
+    return status.statusLabel || "Pending";
+  }
+
+  async function hydrateServerHistory() {
+    const panel = app.querySelector("[data-server-history]");
+
+    if (!panel || !window.fetch || !CONFIG.serverStatusHistoryUrl) return;
+
+    try {
+      const response = await fetch(CONFIG.serverStatusHistoryUrl, {
+        cache: "no-store",
+        headers: {
+          Accept: "application/json"
+        }
+      });
+
+      if (!response.ok) {
+        throw new Error(`History request failed with ${response.status}.`);
+      }
+
+      applyServerHistory(await response.json());
+    } catch (error) {
+      console.info("Raidlands server history could not be loaded.", error);
+      applyServerHistory({
+        ok: false,
+        samples: [],
+        windowMinutes: 360,
+        error: "Server history is waiting for live heartbeat samples."
+      });
+    }
+  }
+
+  function applyServerHistory(payload) {
+    const panel = app.querySelector("[data-server-history]");
+
+    if (!panel) return;
+
+    const samples = Array.isArray(payload && payload.samples) ? payload.samples : [];
+    const empty = panel.querySelector("[data-server-history-empty]");
+    serverHistoryPayload = {
+      ...payload,
+      samples
+    };
+
+    panel.classList.toggle("is-empty", samples.length === 0);
+
+    if (empty) {
+      empty.hidden = samples.length > 0;
+      empty.textContent = payload && payload.error ? payload.error : "Waiting for live heartbeat samples.";
+    }
+
+    setPanelText("[data-history-window]", formatHistoryWindow(payload && payload.windowMinutes));
+    setPanelText("[data-history-uptime]", payload && payload.uptimePercent !== null && payload.uptimePercent !== undefined ? `${payload.uptimePercent}%` : "Waiting");
+    setPanelText("[data-history-peak]", statValue(payload && payload.peakPlayers, "0"));
+    setPanelText("[data-history-average]", payload && payload.averagePlayers !== null && payload.averagePlayers !== undefined ? String(payload.averagePlayers) : "0");
+    setPanelText("[data-history-samples]", String(samples.length));
+    drawServerHistoryChart(serverHistoryPayload);
+  }
+
+  function formatHistoryWindow(minutes) {
+    const value = Math.max(30, Number(minutes) || 360);
+
+    if (value >= 1440) {
+      return "24 hours";
+    }
+
+    if (value >= 60) {
+      const hours = value / 60;
+      return Number.isInteger(hours) ? `${hours} hours` : `${value} minutes`;
+    }
+
+    return `${value} minutes`;
+  }
+
+  function drawServerHistoryChart(payload) {
+    const panel = app.querySelector("[data-server-history]");
+    const canvas = panel ? panel.querySelector("[data-server-history-chart]") : null;
+
+    if (!panel || !canvas || !payload || !Array.isArray(payload.samples)) return;
+
+    const samples = payload.samples;
+    const rect = canvas.getBoundingClientRect();
+    const width = Math.max(320, Math.floor(rect.width || 0));
+    const height = Math.max(220, Math.floor(rect.height || 0));
+    const dpr = Math.max(1, Math.min(2, window.devicePixelRatio || 1));
+    const ctx = canvas.getContext("2d");
+
+    if (!ctx) return;
+
+    canvas.width = Math.floor(width * dpr);
+    canvas.height = Math.floor(height * dpr);
+    ctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    ctx.clearRect(0, 0, width, height);
+
+    const pad = { top: 20, right: 18, bottom: 38, left: 42 };
+    const plotWidth = width - pad.left - pad.right;
+    const plotHeight = height - pad.top - pad.bottom - 18;
+    const plotBottom = pad.top + plotHeight;
+    const statusTop = plotBottom + 12;
+    const statusHeight = 8;
+
+    drawChartGrid(ctx, width, height, pad, plotBottom, plotHeight);
+
+    if (samples.length === 0) {
+      ctx.fillStyle = "rgba(243, 238, 227, .62)";
+      ctx.font = "700 13px Inter, Arial, sans-serif";
+      ctx.fillText("Waiting for live heartbeat samples", pad.left, pad.top + 24);
+      return;
+    }
+
+    const maxPopulation = Math.max(
+      1,
+      ...samples.map(sample => Math.max(
+        Number(sample.maxPlayers) || 0,
+        Number(sample.players) || 0,
+        Number(sample.queue) || 0
+      ))
+    );
+    const xFor = index => pad.left + (samples.length === 1 ? plotWidth : (plotWidth * index) / (samples.length - 1));
+    const yFor = value => plotBottom - (Math.max(0, Number(value) || 0) / maxPopulation) * plotHeight;
+
+    samples.forEach((sample, index) => {
+      const nextX = index < samples.length - 1 ? xFor(index + 1) : pad.left + plotWidth;
+      const x = xFor(index);
+      const segmentWidth = Math.max(2, nextX - x);
+      ctx.fillStyle = sample.online === true
+        ? "rgba(124, 255, 107, .72)"
+        : sample.online === false
+          ? "rgba(255, 107, 95, .72)"
+          : "rgba(255, 209, 102, .65)";
+      ctx.fillRect(x, statusTop, segmentWidth, statusHeight);
+    });
+
+    drawHistoryArea(ctx, samples, xFor, yFor, plotBottom, "players", "rgba(255, 138, 40, .18)", "rgba(255, 138, 40, .95)");
+    drawHistoryLine(ctx, samples, xFor, yFor, "queue", "rgba(255, 209, 102, .92)", 2);
+
+    const firstTime = sampleDate(samples[0]);
+    const lastTime = sampleDate(samples[samples.length - 1]);
+    ctx.fillStyle = "rgba(243, 238, 227, .62)";
+    ctx.font = "700 11px Inter, Arial, sans-serif";
+    ctx.fillText(firstTime, pad.left, height - 10);
+    ctx.textAlign = "right";
+    ctx.fillText(lastTime, width - pad.right, height - 10);
+    ctx.textAlign = "left";
+
+    ctx.fillStyle = "rgba(243, 238, 227, .5)";
+    ctx.fillText(String(maxPopulation), 8, pad.top + 4);
+    ctx.fillText("0", 18, plotBottom + 4);
+  }
+
+  function drawChartGrid(ctx, width, height, pad, plotBottom, plotHeight) {
+    ctx.fillStyle = "rgba(0, 0, 0, .2)";
+    ctx.fillRect(0, 0, width, height);
+    ctx.strokeStyle = "rgba(243, 238, 227, .11)";
+    ctx.lineWidth = 1;
+
+    for (let index = 0; index <= 4; index += 1) {
+      const y = plotBottom - (plotHeight * index) / 4;
+      ctx.beginPath();
+      ctx.moveTo(pad.left, y);
+      ctx.lineTo(width - pad.right, y);
+      ctx.stroke();
+    }
+  }
+
+  function drawHistoryArea(ctx, samples, xFor, yFor, plotBottom, key, fill, stroke) {
+    ctx.beginPath();
+    samples.forEach((sample, index) => {
+      const x = xFor(index);
+      const y = yFor(sample[key]);
+
+      if (index === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    });
+
+    ctx.lineTo(xFor(samples.length - 1), plotBottom);
+    ctx.lineTo(xFor(0), plotBottom);
+    ctx.closePath();
+    ctx.fillStyle = fill;
+    ctx.fill();
+    drawHistoryLine(ctx, samples, xFor, yFor, key, stroke, 2.5);
+  }
+
+  function drawHistoryLine(ctx, samples, xFor, yFor, key, stroke, width) {
+    ctx.beginPath();
+    samples.forEach((sample, index) => {
+      const x = xFor(index);
+      const y = yFor(sample[key]);
+
+      if (index === 0) {
+        ctx.moveTo(x, y);
+      } else {
+        ctx.lineTo(x, y);
+      }
+    });
+
+    ctx.strokeStyle = stroke;
+    ctx.lineWidth = width;
+    ctx.lineJoin = "round";
+    ctx.lineCap = "round";
+    ctx.stroke();
+  }
+
+  function sampleDate(sample) {
+    const value = sample && (sample.time || sample.generatedAt);
+    const date = value ? new Date(value) : null;
+
+    if (!date || Number.isNaN(date.getTime())) {
+      return "";
+    }
+
+    return date.toLocaleTimeString([], {
+      hour: "numeric",
+      minute: "2-digit"
+    });
   }
 
   function updateCountdowns() {

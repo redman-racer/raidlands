@@ -211,6 +211,7 @@ $feature_icons = [
 
 $status_icons = [
     'players' => '<circle cx="23" cy="25" r="7"></circle><circle cx="42" cy="25" r="7"></circle><path d="M11 51c1-10 6-17 12-17s11 7 12 17"></path><path d="M29 51c1-10 6-17 13-17s11 7 12 17"></path>',
+    'health' => '<path d="M32 10l18 8v13c0 12-8 19-18 23-10-4-18-11-18-23V18z"></path><path d="M23 33l6 6 13-15"></path>',
     'map' => '<path d="M12 15l14-5 12 5 14-5v39l-14 5-12-5-14 5z"></path><path d="M26 10v39M38 15v39"></path><path d="M17 28l7-3 8 5 8-4 7 3"></path>',
     'wipe' => '<path d="M15 16h34v36H15z"></path><path d="M15 26h34M23 11v10M41 11v10"></path><path d="M24 36h5M35 36h5M24 45h5M35 45h5"></path>',
     'cycle' => '<path d="M47 22a18 18 0 0 0-31-4"></path><path d="M47 12v10H37"></path><path d="M17 42a18 18 0 0 0 31 4"></path><path d="M17 52V42h10"></path>',

@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS server_status_samples (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  server_id VARCHAR(120) NOT NULL,
+  generated_at TIMESTAMP NULL DEFAULT NULL,
+  received_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  online TINYINT(1) NULL DEFAULT NULL,
+  status VARCHAR(40) NOT NULL DEFAULT 'unknown',
+  players INT UNSIGNED NOT NULL DEFAULT 0,
+  max_players INT UNSIGNED NOT NULL DEFAULT 0,
+  queue INT UNSIGNED NOT NULL DEFAULT 0,
+  joining INT UNSIGNED NOT NULL DEFAULT 0,
+  sleepers INT UNSIGNED NOT NULL DEFAULT 0,
+  map_name VARCHAR(120) NOT NULL DEFAULT '',
+  payload_hash CHAR(64) NOT NULL DEFAULT '',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_server_status_samples_payload (server_id, generated_at, payload_hash),
+  KEY idx_server_status_samples_server_received (server_id, received_at),
+  KEY idx_server_status_samples_status (server_id, online, received_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

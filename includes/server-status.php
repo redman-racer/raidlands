@@ -32,6 +32,20 @@ function raidlands_server_status_is_ready(): bool
     }
 }
 
+function raidlands_server_status_history_is_ready(): bool
+{
+    if (!raidlands_db_is_configured()) {
+        return false;
+    }
+
+    try {
+        raidlands_db_fetch_one('SELECT id FROM server_status_samples LIMIT 1');
+        return true;
+    } catch (Throwable $error) {
+        return false;
+    }
+}
+
 function raidlands_server_status_clean_text($value, int $max_length = 120): string
 {
     $text = trim(str_replace("\0", '', (string) $value));
@@ -180,6 +194,30 @@ function raidlands_server_status_ingest_heartbeat(array $payload, string $header
     $generated_at = raidlands_server_status_timestamp($payload['generated_at'] ?? null) ?? gmdate('Y-m-d H:i:s');
     $received_at = gmdate('Y-m-d H:i:s');
     $wipe_started_at = raidlands_server_status_timestamp($payload['wipe_started_at'] ?? null);
+    $values = [
+        'server_id' => $header_server_id,
+        'name' => raidlands_server_status_clean_text($payload['name'] ?? '', 180),
+        'online' => $online === null ? null : ($online ? 1 : 0),
+        'status' => $status,
+        'status_label' => $status_label,
+        'generated_at' => $generated_at,
+        'received_at' => $received_at,
+        'players' => raidlands_server_status_int($payload['players'] ?? 0, 0),
+        'max_players' => raidlands_server_status_int($payload['max_players'] ?? 0, 0),
+        'queue' => raidlands_server_status_int($payload['queue'] ?? 0, 0),
+        'joining' => raidlands_server_status_int($payload['joining'] ?? 0, 0),
+        'sleepers' => raidlands_server_status_int($payload['sleepers'] ?? 0, 0),
+        'server_fps' => raidlands_server_status_stat_value($payload['server_fps'] ?? ''),
+        'server_fps_average' => raidlands_server_status_stat_value($payload['server_fps_average'] ?? ''),
+        'entity_count' => raidlands_server_status_int($payload['entity_count'] ?? 0, 0),
+        'map_name' => raidlands_server_status_clean_text($payload['map_name'] ?? '', 120),
+        'world_size' => raidlands_server_status_int($payload['world_size'] ?? 0, 0),
+        'seed' => raidlands_server_status_int($payload['seed'] ?? 0, 0),
+        'wipe_key' => raidlands_server_status_clean_text($payload['wipe_key'] ?? '', 160),
+        'wipe_started_at' => $wipe_started_at,
+        'payload_hash' => hash('sha256', $body),
+        'details_json' => $details_json,
+    ];
 
     $statement = raidlands_db_required()->prepare(
         'INSERT INTO server_status
@@ -215,36 +253,56 @@ function raidlands_server_status_ingest_heartbeat(array $payload, string $header
             updated_at = NOW()'
     );
 
-    $statement->execute([
-        'server_id' => $header_server_id,
-        'name' => raidlands_server_status_clean_text($payload['name'] ?? '', 180),
-        'online' => $online === null ? null : ($online ? 1 : 0),
-        'status' => $status,
-        'status_label' => $status_label,
-        'generated_at' => $generated_at,
-        'received_at' => $received_at,
-        'players' => raidlands_server_status_int($payload['players'] ?? 0, 0),
-        'max_players' => raidlands_server_status_int($payload['max_players'] ?? 0, 0),
-        'queue' => raidlands_server_status_int($payload['queue'] ?? 0, 0),
-        'joining' => raidlands_server_status_int($payload['joining'] ?? 0, 0),
-        'sleepers' => raidlands_server_status_int($payload['sleepers'] ?? 0, 0),
-        'server_fps' => raidlands_server_status_stat_value($payload['server_fps'] ?? ''),
-        'server_fps_average' => raidlands_server_status_stat_value($payload['server_fps_average'] ?? ''),
-        'entity_count' => raidlands_server_status_int($payload['entity_count'] ?? 0, 0),
-        'map_name' => raidlands_server_status_clean_text($payload['map_name'] ?? '', 120),
-        'world_size' => raidlands_server_status_int($payload['world_size'] ?? 0, 0),
-        'seed' => raidlands_server_status_int($payload['seed'] ?? 0, 0),
-        'wipe_key' => raidlands_server_status_clean_text($payload['wipe_key'] ?? '', 160),
-        'wipe_started_at' => $wipe_started_at,
-        'payload_hash' => hash('sha256', $body),
-        'details_json' => $details_json,
-    ]);
+    $statement->execute($values);
+    raidlands_server_status_insert_sample($values);
 
     return [
         'server_id' => $header_server_id,
         'generated_at' => $generated_at,
         'received_at' => gmdate('c', strtotime($received_at)),
     ];
+}
+
+function raidlands_server_status_insert_sample(array $values): void
+{
+    if (!raidlands_server_status_history_is_ready()) {
+        return;
+    }
+
+    try {
+        raidlands_db_execute(
+            'INSERT IGNORE INTO server_status_samples
+                (server_id, generated_at, received_at, online, status, players, max_players, queue, joining, sleepers, map_name, payload_hash)
+             VALUES
+                (:server_id, :generated_at, :received_at, :online, :status, :players, :max_players, :queue, :joining, :sleepers, :map_name, :payload_hash)',
+            [
+                'server_id' => $values['server_id'],
+                'generated_at' => $values['generated_at'],
+                'received_at' => $values['received_at'],
+                'online' => $values['online'],
+                'status' => $values['status'],
+                'players' => $values['players'],
+                'max_players' => $values['max_players'],
+                'queue' => $values['queue'],
+                'joining' => $values['joining'],
+                'sleepers' => $values['sleepers'],
+                'map_name' => $values['map_name'],
+                'payload_hash' => $values['payload_hash'],
+            ]
+        );
+
+        raidlands_db_execute(
+            'DELETE FROM server_status_samples
+             WHERE server_id = :server_id
+               AND received_at < :cutoff',
+            [
+                'server_id' => $values['server_id'],
+                'cutoff' => gmdate('Y-m-d H:i:s', time() - (7 * 24 * 60 * 60)),
+            ]
+        );
+    } catch (Throwable $error) {
+        // History is useful, but latest status should not fail because samples lag.
+    }
 }
 
 function raidlands_server_status_latest(?string $server_id = null): ?array
@@ -270,6 +328,97 @@ function raidlands_server_status_public(): array
     }
 
     return raidlands_server_status_row_public($row, raidlands_server_status_stale_seconds(), $site_config);
+}
+
+function raidlands_server_status_history_public(?int $minutes = null): array
+{
+    $window_minutes = max(30, min(1440, $minutes ?? 360));
+    $limit = min(1200, max(60, ($window_minutes * 2) + 10));
+
+    if (!raidlands_server_status_history_is_ready()) {
+        return raidlands_server_status_history_empty($window_minutes, 'Server status history is not available yet.');
+    }
+
+    try {
+        $rows = raidlands_db_fetch_all(
+            'SELECT *
+             FROM (
+                SELECT generated_at, received_at, online, status, players, max_players, queue, joining, sleepers, map_name
+                FROM server_status_samples
+                WHERE server_id = :server_id
+                  AND received_at >= :cutoff
+                ORDER BY received_at DESC
+                LIMIT ' . $limit . '
+             ) recent
+             ORDER BY COALESCE(generated_at, received_at) ASC, received_at ASC',
+            [
+                'server_id' => raidlands_server_status_server_id(),
+                'cutoff' => gmdate('Y-m-d H:i:s', time() - ($window_minutes * 60)),
+            ]
+        );
+    } catch (Throwable $error) {
+        return raidlands_server_status_history_empty($window_minutes, 'Server status history could not be loaded.');
+    }
+
+    $samples = [];
+    $online_count = 0;
+    $peak_players = 0;
+    $total_players = 0;
+
+    foreach ($rows as $row) {
+        $online = isset($row['online']) ? (bool) $row['online'] : null;
+        $players = (int) ($row['players'] ?? 0);
+        $peak_players = max($peak_players, $players);
+        $total_players += $players;
+
+        if ($online === true) {
+            $online_count += 1;
+        }
+
+        $samples[] = [
+            'time' => raidlands_server_status_iso($row['generated_at'] ?? $row['received_at'] ?? ''),
+            'generatedAt' => raidlands_server_status_iso($row['generated_at'] ?? ''),
+            'online' => $online,
+            'status' => (string) ($row['status'] ?? 'unknown'),
+            'players' => $players,
+            'maxPlayers' => (int) ($row['max_players'] ?? 0),
+            'queue' => (int) ($row['queue'] ?? 0),
+            'joining' => (int) ($row['joining'] ?? 0),
+            'sleepers' => (int) ($row['sleepers'] ?? 0),
+            'mapName' => (string) ($row['map_name'] ?? ''),
+        ];
+    }
+
+    $sample_count = count($samples);
+
+    return [
+        'ok' => true,
+        'source' => 'raidlands',
+        'sourceLabel' => 'Raidlands live feed',
+        'windowMinutes' => $window_minutes,
+        'sampleCount' => $sample_count,
+        'uptimePercent' => $sample_count > 0 ? round(($online_count / $sample_count) * 100, 1) : null,
+        'peakPlayers' => $peak_players,
+        'averagePlayers' => $sample_count > 0 ? round($total_players / $sample_count, 1) : null,
+        'samples' => $samples,
+        'error' => $sample_count > 0 ? '' : 'Waiting for the first stored server heartbeat sample.',
+    ];
+}
+
+function raidlands_server_status_history_empty(int $window_minutes, string $error): array
+{
+    return [
+        'ok' => false,
+        'source' => 'fallback',
+        'sourceLabel' => 'site fallback',
+        'windowMinutes' => $window_minutes,
+        'sampleCount' => 0,
+        'uptimePercent' => null,
+        'peakPlayers' => 0,
+        'averagePlayers' => null,
+        'samples' => [],
+        'error' => $error,
+    ];
 }
 
 function raidlands_server_status_row_public(array $row, int $stale_seconds, array $site_config): array
@@ -309,7 +458,6 @@ function raidlands_server_status_row_public(array $row, int $stale_seconds, arra
         'entityCount' => (int) ($row['entity_count'] ?? 0),
         'worldSize' => (int) ($row['world_size'] ?? 0),
         'seed' => (int) ($row['seed'] ?? 0),
-        'wipeKey' => (string) ($row['wipe_key'] ?? ''),
         'wipeStartedAt' => raidlands_server_status_iso($row['wipe_started_at'] ?? ''),
         'lastWipe' => raidlands_server_status_iso($row['wipe_started_at'] ?? ''),
         'nextWipe' => '',
@@ -349,7 +497,6 @@ function raidlands_server_status_fallback(string $error): array
         'entityCount' => 0,
         'worldSize' => 0,
         'seed' => 0,
-        'wipeKey' => '',
         'wipeStartedAt' => '',
         'lastWipe' => '',
         'nextWipe' => '',

@@ -14,6 +14,7 @@ $server_age = isset($server_status['ageSeconds']) ? max(0, (int) $server_status[
 $server_age_label = $server_age === null
     ? 'Waiting on first heartbeat'
     : ($server_age < 60 ? $server_age . 's old' : floor($server_age / 60) . 'm ' . str_pad((string) ($server_age % 60), 2, '0', STR_PAD_LEFT) . 's old');
+$server_health_label = raidlands_server_page_health_label($server_status);
 
 function raidlands_server_page_value($value, string $fallback = 'Pending'): string
 {
@@ -31,6 +32,38 @@ function raidlands_server_page_number($value, string $fallback = '0'): string
     }
 
     return number_format((int) $value);
+}
+
+function raidlands_server_page_health_label(array $status): string
+{
+    if (!empty($status['stale'])) {
+        return 'Delayed';
+    }
+
+    if (($status['source'] ?? '') === 'fallback') {
+        return 'Fallback';
+    }
+
+    if (($status['online'] ?? null) === true) {
+        return 'Ready';
+    }
+
+    if (($status['online'] ?? null) === false) {
+        return 'Offline';
+    }
+
+    return (string) ($status['statusLabel'] ?? 'Pending');
+}
+
+function raidlands_server_page_date($value, string $fallback = 'Pending'): string
+{
+    if ($value === null || $value === '') {
+        return $fallback;
+    }
+
+    $timestamp = strtotime((string) $value);
+
+    return $timestamp === false ? $fallback : date('M j, g:i A', $timestamp);
 }
 ?>
 
@@ -62,9 +95,9 @@ function raidlands_server_page_number($value, string $fallback = '0'): string
         <p class="store-muted"><?= e(raidlands_server_page_number($server_status['joining'] ?? 0)) ?> joining / <?= e(raidlands_server_page_number($server_status['sleepers'] ?? 0)) ?> sleepers</p>
       </article>
       <article class="metal-panel server-stat-panel">
-        <p class="section-kicker">Performance</p>
-        <h3><?= e(raidlands_server_page_value($server_status['serverFps'] ?? '', 'Pending')) ?></h3>
-        <p class="store-muted">Average <?= e(raidlands_server_page_value($server_status['serverFpsAverage'] ?? '', 'pending')) ?> FPS</p>
+        <p class="section-kicker">Health</p>
+        <h3><?= e($server_health_label) ?></h3>
+        <p class="store-muted">Heartbeat <?= e($server_age_label) ?></p>
       </article>
       <article class="metal-panel server-stat-panel">
         <p class="section-kicker">Map</p>
@@ -74,7 +107,7 @@ function raidlands_server_page_number($value, string $fallback = '0'): string
       <article class="metal-panel server-stat-panel">
         <p class="section-kicker">Wipe</p>
         <h3 data-next-wipe>Loading</h3>
-        <p class="store-muted">Started <?= e(raidlands_server_page_value($server_status['wipeStartedAt'] ?? '', 'pending')) ?></p>
+        <p class="store-muted">Started <?= e(raidlands_server_page_date($server_status['wipeStartedAt'] ?? '', 'pending')) ?></p>
       </article>
       <article class="metal-panel server-stat-panel">
         <p class="section-kicker">Updated</p>
@@ -86,6 +119,37 @@ function raidlands_server_page_number($value, string $fallback = '0'): string
 </section>
 
 <section class="section alt">
+  <div class="section-inner">
+    <div class="metal-panel server-history-panel" data-server-history>
+      <div class="server-history-head">
+        <div>
+          <p class="section-kicker">Live feed</p>
+          <h2>Recent server activity</h2>
+          <p class="section-lede">Population, queue, and availability from Raidlands heartbeats.</p>
+        </div>
+        <div class="server-history-metrics" aria-label="Recent server history summary">
+          <span><small>Window</small><strong data-history-window>6 hours</strong></span>
+          <span><small>Availability</small><strong data-history-uptime>Waiting</strong></span>
+          <span><small>Peak players</small><strong data-history-peak>0</strong></span>
+          <span><small>Avg players</small><strong data-history-average>0</strong></span>
+        </div>
+      </div>
+      <div class="server-history-chart-wrap">
+        <canvas data-server-history-chart width="960" height="300" aria-label="Recent Raidlands population, queue, and availability"></canvas>
+        <p class="server-history-empty" data-server-history-empty>Waiting for live heartbeat samples.</p>
+      </div>
+      <div class="server-history-legend" aria-label="Chart legend">
+        <span><i class="legend-population" aria-hidden="true"></i> Players</span>
+        <span><i class="legend-queue" aria-hidden="true"></i> Queue</span>
+        <span><i class="legend-online" aria-hidden="true"></i> Online</span>
+        <span><i class="legend-offline" aria-hidden="true"></i> Offline</span>
+        <span><small><span data-history-samples>0</span> samples</small></span>
+      </div>
+    </div>
+  </div>
+</section>
+
+<section class="section">
   <div class="section-inner split-panel">
     <div class="metal-panel server-detail-panel">
       <p class="section-kicker">Server details</p>
@@ -93,8 +157,9 @@ function raidlands_server_page_number($value, string $fallback = '0'): string
       <dl class="server-detail-list">
         <div><dt>Name</dt><dd><?= e(raidlands_server_page_value($server_status['name'] ?? $site_config['serverName'])) ?></dd></div>
         <div><dt>Region</dt><dd><?= e($site_config['region']) ?></dd></div>
-        <div><dt>Entities</dt><dd><?= e(raidlands_server_page_number($server_status['entityCount'] ?? 0, 'Pending')) ?></dd></div>
-        <div><dt>Wipe key</dt><dd><?= e(raidlands_server_page_value($server_status['wipeKey'] ?? '', 'Current schedule')) ?></dd></div>
+        <div><dt>Map</dt><dd><?= e(raidlands_server_page_value($server_status['mapName'] ?? $site_config['mapName'])) ?></dd></div>
+        <div><dt>World size</dt><dd><?= e(raidlands_server_page_number($server_status['worldSize'] ?? 0, 'Pending')) ?></dd></div>
+        <div><dt>Seed</dt><dd><?= e(raidlands_server_page_number($server_status['seed'] ?? 0, 'Pending')) ?></dd></div>
         <div><dt>Feed</dt><dd><?= e($server_source_label) ?></dd></div>
         <div><dt>Last update</dt><dd><?= e($server_updated_label) ?></dd></div>
       </dl>
