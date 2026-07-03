@@ -22,11 +22,37 @@ function raidlands_kits_table_exists(string $table): bool
     }
 }
 
+function raidlands_kits_column_exists(string $table, string $column): bool
+{
+    if (!raidlands_db_is_configured()) {
+        return false;
+    }
+
+    try {
+        $statement = raidlands_db_required()->prepare(
+            'SELECT COUNT(*)
+             FROM information_schema.columns
+             WHERE table_schema = DATABASE()
+               AND table_name = :table_name
+               AND column_name = :column_name'
+        );
+        $statement->execute([
+            'table_name' => $table,
+            'column_name' => $column,
+        ]);
+
+        return (int) $statement->fetchColumn() > 0;
+    } catch (Throwable $error) {
+        return false;
+    }
+}
+
 function raidlands_kits_is_ready(): bool
 {
     return raidlands_kits_table_exists('game_kits')
         && raidlands_kits_table_exists('game_kit_items')
-        && raidlands_kits_table_exists('game_kit_sync_log');
+        && raidlands_kits_table_exists('game_kit_sync_log')
+        && raidlands_kits_column_exists('game_kit_sync_log', 'payload_json');
 }
 
 function raidlands_kits_readiness_message(bool $admin = false): string
@@ -529,7 +555,6 @@ function raidlands_kits_admin_save(array $post, array $files = []): array
     $publish = (string) ($post['kit_save_mode'] ?? 'draft') === 'publish';
     $revision = raidlands_kits_next_revision($pdo);
     $changed = 0;
-    $touched_ids = [];
 
     $pdo->beginTransaction();
 
@@ -542,7 +567,6 @@ function raidlands_kits_admin_save(array $post, array $files = []): array
             if (!empty($row['delete']) && $id > 0) {
                 $statement = $pdo->prepare('UPDATE game_kits SET is_active = 0, draft_revision = :revision, updated_at = NOW() WHERE id = :id');
                 $statement->execute(['revision' => $revision, 'id' => $id]);
-                $touched_ids[] = $id;
                 $changed += 1;
                 continue;
             }
@@ -662,31 +686,31 @@ function raidlands_kits_admin_save(array $post, array $files = []): array
             raidlands_kits_save_groups($pdo, $kit_id, (array) ($row['groups'] ?? []));
             raidlands_kits_save_product_links($pdo, $kit_id, (array) ($row['store_product_ids'] ?? []));
 
-            $touched_ids[] = $kit_id;
             $changed += 1;
         }
 
-        if ($publish && $touched_ids !== []) {
-            $ids = array_values(array_unique(array_map('intval', $touched_ids)));
-            $placeholders = implode(',', array_fill(0, count($ids), '?'));
-            $statement = $pdo->prepare("UPDATE game_kits SET published_revision = ?, published_at = NOW(), updated_at = NOW() WHERE id IN ($placeholders)");
-            $statement->execute(array_merge([$revision], $ids));
+        if ($publish && $changed > 0) {
+            $statement = $pdo->prepare('UPDATE game_kits SET published_revision = :revision, published_at = NOW(), updated_at = NOW()');
+            $statement->execute(['revision' => $revision]);
         }
 
         $hash = '';
+        $payload_json = null;
 
         if ($publish) {
             $payload = raidlands_kits_sync_payload($revision);
-            $hash = hash('sha256', json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: '');
+            $payload_json = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+            $hash = hash('sha256', $payload_json ?: '');
         }
 
         $log = $pdo->prepare(
-            'INSERT INTO game_kit_sync_log (revision, status, payload_hash, message)
-             VALUES (:revision, :status, :payload_hash, :message)'
+            'INSERT INTO game_kit_sync_log (revision, status, payload_json, payload_hash, message)
+             VALUES (:revision, :status, :payload_json, :payload_hash, :message)'
         );
         $log->execute([
             'revision' => $revision,
             'status' => $publish ? 'pending' : 'draft',
+            'payload_json' => $payload_json,
             'payload_hash' => $hash,
             'message' => $publish ? 'Published from admin kit editor.' : 'Draft saved from admin kit editor.',
         ]);
@@ -817,9 +841,40 @@ function raidlands_kits_latest_published_revision(): int
         return 0;
     }
 
-    return (int) raidlands_db_required()
-        ->query('SELECT COALESCE(MAX(published_revision), 0) FROM game_kits')
-        ->fetchColumn();
+    $row = raidlands_db_fetch_one(
+        "SELECT COALESCE(MAX(revision), 0) AS revision
+         FROM game_kit_sync_log
+         WHERE payload_json IS NOT NULL
+           AND status IN ('pending', 'applied', 'failed')"
+    );
+
+    return (int) ($row['revision'] ?? 0);
+}
+
+function raidlands_kits_published_payload(int $revision): ?array
+{
+    if ($revision <= 0) {
+        return null;
+    }
+
+    $row = raidlands_db_fetch_one(
+        "SELECT payload_json
+         FROM game_kit_sync_log
+         WHERE revision = :revision
+           AND payload_json IS NOT NULL
+           AND status IN ('pending', 'applied', 'failed')
+         ORDER BY id DESC
+         LIMIT 1",
+        ['revision' => $revision]
+    );
+
+    if ($row === null || trim((string) ($row['payload_json'] ?? '')) === '') {
+        return null;
+    }
+
+    $payload = json_decode((string) $row['payload_json'], true);
+
+    return is_array($payload) ? $payload : null;
 }
 
 function raidlands_kits_pending_sync(int $since): array
@@ -840,7 +895,22 @@ function raidlands_kits_pending_sync(int $since): array
         ];
     }
 
-    return array_merge(['has_update' => true], raidlands_kits_sync_payload($revision));
+    $payload = raidlands_kits_published_payload($revision);
+
+    if ($payload === null) {
+        return [
+            'revision' => 0,
+            'has_update' => false,
+            'kits' => [],
+            'server_rewards_kits' => [],
+            'group_access' => [],
+        ];
+    }
+
+    $payload['revision'] = $revision;
+    $payload['has_update'] = true;
+
+    return $payload;
 }
 
 function raidlands_kits_insert_item_from_payload(PDO $pdo, int $kit_id, string $container, array $items): void

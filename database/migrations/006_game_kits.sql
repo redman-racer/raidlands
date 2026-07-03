@@ -88,6 +88,7 @@ CREATE TABLE IF NOT EXISTS game_kit_sync_log (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   revision BIGINT UNSIGNED NOT NULL,
   status ENUM('draft', 'pending', 'applied', 'failed', 'snapshot') NOT NULL DEFAULT 'pending',
+  payload_json JSON NULL,
   payload_hash CHAR(64) NOT NULL DEFAULT '',
   message VARCHAR(500) NOT NULL DEFAULT '',
   error_text TEXT NULL,

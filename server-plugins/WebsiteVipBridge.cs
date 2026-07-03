@@ -12,7 +12,7 @@ using Oxide.Core.Libraries.Covalence;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteVipBridge", "Raidlands", "1.3.1")]
+    [Info("WebsiteVipBridge", "Raidlands", "1.3.2")]
     [Description("Syncs website VIP entitlements and player stats between Raidlands.net and the Rust server.")]
     public class WebsiteVipBridge : CovalencePlugin
     {
@@ -1567,7 +1567,7 @@ namespace Oxide.Plugins
         private void ApplySimpleLogoBrand(JObject json)
         {
             var ui = EnsureObject(json, "UI");
-            ui["BackgroundMainURL"] = new JArray(FirstNonEmpty(BrandAssetUrl("SimpleLogo"), BrandAssetUrl("NavLogo"), BrandAssetUrl("Logo")));
+            ui["BackgroundMainURL"] = new JArray(FirstNonEmpty(BrandAssetUrl("SimpleLogo"), FirstNonEmpty(BrandAssetUrl("NavLogo"), BrandAssetUrl("Logo"))));
         }
 
         private void ApplyServerInfoBrand(JObject json)
