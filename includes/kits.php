@@ -643,6 +643,52 @@ function raidlands_kits_save_product_links(PDO $pdo, int $kit_id, array $product
     }
 }
 
+function raidlands_kits_queue_permission_publish(PDO $pdo, int $kit_revision): int
+{
+    $permissions_path = __DIR__ . '/permissions.php';
+
+    if (!is_file($permissions_path)) {
+        return 0;
+    }
+
+    require_once $permissions_path;
+
+    if (
+        !function_exists('raidlands_permissions_is_ready')
+        || !function_exists('raidlands_permissions_next_revision')
+        || !function_exists('raidlands_permissions_sync_payload')
+        || !raidlands_permissions_is_ready()
+    ) {
+        return 0;
+    }
+
+    $revision = raidlands_permissions_next_revision($pdo);
+
+    raidlands_db_execute(
+        'UPDATE oxide_groups
+         SET published_revision = :revision, published_at = NOW(), updated_at = NOW()
+         WHERE is_managed = 1 AND is_active = 1 AND is_read_only = 0',
+        ['revision' => $revision]
+    );
+
+    $payload = raidlands_permissions_sync_payload($revision);
+    $payload_json = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    $hash = hash('sha256', $payload_json ?: '');
+
+    raidlands_db_execute(
+        'INSERT INTO oxide_permission_sync_log (revision, status, payload_json, payload_hash, message)
+         VALUES (:revision, "pending", :payload_json, :payload_hash, :message)',
+        [
+            'revision' => $revision,
+            'payload_json' => $payload_json,
+            'payload_hash' => $hash,
+            'message' => 'Published automatically from admin kit editor revision ' . $kit_revision . '.',
+        ]
+    );
+
+    return $revision;
+}
+
 function raidlands_kits_admin_save(array $post, array $files = []): array
 {
     if (!raidlands_kits_is_ready()) {
@@ -815,11 +861,14 @@ function raidlands_kits_admin_save(array $post, array $files = []): array
             'message' => $publish ? 'Published from admin kit editor.' : 'Draft saved from admin kit editor.',
         ]);
 
+        $permission_revision = $publish ? raidlands_kits_queue_permission_publish($pdo, $revision) : 0;
+
         $pdo->commit();
 
         return [
             'changed' => $changed,
             'revision' => $revision,
+            'permission_revision' => $permission_revision,
             'published' => $publish,
         ];
     } catch (Throwable $error) {

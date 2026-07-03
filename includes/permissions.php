@@ -186,6 +186,7 @@ function raidlands_permissions_fallback_permissions(): array
         'kits.medical',
         'kits.raid',
         'kits.scuba',
+        'kits.paidpvpkit',
         'serverrewards.paidpvpkit',
     ];
 }

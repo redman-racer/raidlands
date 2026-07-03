@@ -1386,7 +1386,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                   <input type="text" name="kits[<?= e((string) $index) ?>][previous_kit_name]" maxlength="160" value="<?= e((string) ($row['previous_kit_name'] ?? '')) ?>">
                                 </label>
                                 <label class="admin-field">
-                                  <?= admin_field_head('Required permission', 'Permission needed to claim the kit, such as kits.raid or serverrewards.paidpvpkit.') ?>
+                                  <?= admin_field_head('Required permission', 'Permission needed to claim the kit, such as kits.raid or kits.paidpvpkit.') ?>
                                   <input type="text" name="kits[<?= e((string) $index) ?>][required_permission]" maxlength="160" placeholder="kits.raid" value="<?= e((string) ($row['required_permission'] ?? '')) ?>">
                                 </label>
                                 <label class="admin-field">

@@ -168,6 +168,7 @@ VALUES
   ('kits.medical', 'Kits', 'kits', 'seed', 1, NOW()),
   ('kits.raid', 'Kits', 'kits', 'seed', 1, NOW()),
   ('kits.scuba', 'Kits', 'kits', 'seed', 1, NOW()),
+  ('kits.paidpvpkit', 'Kits', 'kits', 'seed', 1, NOW()),
   ('serverrewards.paidpvpkit', 'ServerRewards', 'serverrewards', 'seed', 1, NOW())
 ON DUPLICATE KEY UPDATE
   plugin_name = IF(plugin_name = '', VALUES(plugin_name), plugin_name),
