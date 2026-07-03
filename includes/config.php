@@ -86,6 +86,12 @@ $vip_bridge_config = [
         'perk_raid_kit',
         'perk_queue_priority',
         'perk_supporter_badge',
+        'perk_pvp_light',
+        'perk_pvp_rifle',
+        'perk_pvp_roamer',
+        'perk_pvp_heavy',
+        'perk_pvp_elite',
+        'perk_pvp_breach',
     ]),
 ];
 

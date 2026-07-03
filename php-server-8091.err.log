@@ -17474,3 +17474,195 @@
 [Fri Jul  3 00:18:11 2026] 127.0.0.1:58876 Closing
 [Fri Jul  3 00:18:11 2026] 127.0.0.1:56992 Closing
 [Fri Jul  3 00:18:11 2026] 127.0.0.1:56856 Closing
+[Fri Jul  3 03:12:48 2026] 127.0.0.1:62098 Accepted
+[Fri Jul  3 03:12:48 2026] 127.0.0.1:62098 [200]: GET /server/
+[Fri Jul  3 03:12:48 2026] 127.0.0.1:62098 Closing
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:53815 Accepted
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:53815 [200]: GET /server/
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:53815 Closing
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:50242 Accepted
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:58685 Accepted
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:50242 [200]: GET /assets/media/loading/battlefield-background.webp
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:58685 [200]: GET /assets/media/loading/breach-ring.webp
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:65169 Accepted
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:52776 Accepted
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:50242 Closing
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:59443 Accepted
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:65169 [200]: GET /assets/css/loader.css?v=1782945392
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:52776 [200]: GET /assets/css/styles.css?v=1783066090
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:58685 Closing
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:64339 Accepted
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:59443 [200]: GET /assets/js/raidlands-loader.js?v=1783059814
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:64339 [200]: GET /assets/media/raidlands-logo.webp
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:65169 Closing
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:52776 Closing
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:59443 Closing
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:64339 Closing
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:58340 Accepted
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:64605 Accepted
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:58370 Accepted
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:58340 [200]: GET /assets/media/loading/raidlands-vfx-01-ground-blast-green.webp
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:64605 [200]: GET /assets/media/loading/raidlands-vfx-04-smoke-plume-green.webp
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:58370 [200]: GET /assets/js/site.js?v=1783066311
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:50903 Accepted
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:49818 Accepted
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:50903 [200]: GET /assets/media/loading/raidlands-vfx-02-fireball-core-green.webp
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:61474 Accepted
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:49818 [200]: GET /assets/media/loading/raidlands-vfx-03-molten-debris-burst-green.webp
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:58370 Closing
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:61474 [200]: GET /assets/media/loading/raidlands-vfx-05-shockwave-ring-green.webp
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:58340 Closing
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:63468 Accepted
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:63468 [200]: GET /api/server-status.php
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:63468 Closing
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:54358 Accepted
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:54358 [200]: GET /assets/media/ember-flare-overlay.webp
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:49818 Closing
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:50126 Accepted
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:50903 Closing
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:61474 Closing
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:50126 [200]: GET /assets/media/section-divider.svg
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:64605 Closing
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:54358 Closing
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:57019 Accepted
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:57019 [200]: GET /assets/media/loading/terminal-frame.webp
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:50126 Closing
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:57019 Closing
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:64703 Accepted
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:64703 [200]: GET /assets/media/nav-plate-seams.webp
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:64703 Closing
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:49655 Accepted
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:49655 [200]: GET /assets/media/header-bg-rust-v2.webp
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:54550 Accepted
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:54550 [200]: GET /assets/media/plate-seams.svg
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:54550 Closing
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:60808 Accepted
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:50138 Accepted
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:55580 Accepted
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:60808 [200]: GET /assets/media/texture-metal.svg
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:50138 [200]: GET /assets/media/texture-grunge.svg
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:55580 [200]: GET /assets/media/loading/raidlands-vfx-06-ember-field-green.webp
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:60808 Closing
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:50138 Closing
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:55580 Closing
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:62682 Accepted
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:49655 Closing
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:58089 Accepted
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:62682 [200]: GET /assets/media/nav-active-ember.webp
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:58089 [200]: GET /assets/media/pattern-bg.webp
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:62682 Closing
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:58089 Closing
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:58893 Accepted
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:54601 Accepted
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:58218 Accepted
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:58893 [200]: GET /assets/media/loading/spark-burst.webp
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:54601 [200]: GET /assets/media/nav-burnt-metal-base.webp
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:58218 [200]: GET /assets/media/loading/fine-hud-ring.webp
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:58893 Closing
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:54601 Closing
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:58218 Closing
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:56400 Accepted
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:56400 [200]: GET /assets/media/feature-icons/fix.webp
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:56400 Closing
+[Fri Jul  3 03:13:21 2026] 127.0.0.1:64686 Accepted
+[Fri Jul  3 03:13:22 2026] 127.0.0.1:64686 [200]: GET /api/server-status-history.php?range=6h
+[Fri Jul  3 03:13:22 2026] 127.0.0.1:64686 Closing
+[Fri Jul  3 03:13:22 2026] 127.0.0.1:62743 Accepted
+[Fri Jul  3 03:13:22 2026] 127.0.0.1:62743 [200]: GET /assets/media/console-scan.svg
+[Fri Jul  3 03:13:22 2026] 127.0.0.1:62743 Closing
+[Fri Jul  3 03:13:22 2026] 127.0.0.1:56877 Accepted
+[Fri Jul  3 03:13:22 2026] 127.0.0.1:52145 Accepted
+[Fri Jul  3 03:13:22 2026] 127.0.0.1:56877 [200]: GET /assets/media/loading/target-silhouette.webp
+[Fri Jul  3 03:13:22 2026] 127.0.0.1:52145 [200]: GET /assets/media/loading/target-reticle.webp
+[Fri Jul  3 03:13:22 2026] 127.0.0.1:56877 Closing
+[Fri Jul  3 03:13:22 2026] 127.0.0.1:52145 Closing
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:65482 Accepted
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:65482 [200]: GET /server/
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:65482 Closing
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:56910 Accepted
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:65279 Accepted
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:52523 Accepted
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:60806 Accepted
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:63987 Accepted
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:56910 [200]: GET /assets/css/styles.css?v=1783066412
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:59673 Accepted
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:65279 [200]: GET /assets/css/loader.css?v=1782945392
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:52523 [200]: GET /assets/media/loading/battlefield-background.webp
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:60806 [200]: GET /assets/js/raidlands-loader.js?v=1783059814
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:63987 [200]: GET /assets/media/loading/breach-ring.webp
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:59673 [200]: GET /assets/media/raidlands-logo.webp
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:56910 Closing
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:65279 Closing
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:52523 Closing
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:60806 Closing
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:63987 Closing
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:59673 Closing
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:55981 Accepted
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:51916 Accepted
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:55343 Accepted
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:56292 Accepted
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:55981 [200]: GET /assets/media/loading/raidlands-vfx-01-ground-blast-green.webp
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:51916 [200]: GET /assets/media/loading/raidlands-vfx-04-smoke-plume-green.webp
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:55343 [200]: GET /assets/js/site.js?v=1783066311
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:56292 [200]: GET /assets/media/loading/raidlands-vfx-02-fireball-core-green.webp
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:55343 Closing
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:59260 Accepted
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:54281 Accepted
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:59260 [200]: GET /assets/media/loading/raidlands-vfx-03-molten-debris-burst-green.webp
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:54281 [200]: GET /assets/media/loading/raidlands-vfx-05-shockwave-ring-green.webp
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:55981 Closing
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:59260 Closing
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:53249 Accepted
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:54281 Closing
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:56292 Closing
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:53249 [200]: GET /assets/media/loading/raidlands-vfx-06-ember-field-green.webp
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:51916 Closing
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:53249 Closing
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:60674 Accepted
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:60674 [200]: GET /api/server-status.php
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:60674 Closing
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:59226 Accepted
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:59226 [200]: GET /api/server-status-history.php?range=6h
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:59226 Closing
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:54159 Accepted
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:54159 [200]: GET /assets/media/texture-metal.svg
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:54159 Closing
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:55048 Accepted
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:55048 [200]: GET /assets/media/pattern-bg.webp
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:62997 Accepted
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:61963 Accepted
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:51977 Accepted
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:55048 Closing
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:62997 [200]: GET /assets/media/texture-grunge.svg
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:61963 [200]: GET /assets/media/ember-flare-overlay.webp
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:51977 [200]: GET /assets/media/nav-plate-seams.webp
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:62997 Closing
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:61963 Closing
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:57320 Accepted
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:51977 Closing
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:57320 [200]: GET /assets/media/nav-burnt-metal-base.webp
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:57320 Closing
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:51746 Accepted
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:52461 Accepted
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:51160 Accepted
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:51746 [200]: GET /assets/media/nav-active-ember.webp
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:52461 [200]: GET /assets/media/plate-seams.svg
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:51160 [200]: GET /assets/media/section-divider.svg
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:51746 Closing
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:52461 Closing
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:51160 Closing
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:64448 Accepted
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:64448 [200]: GET /assets/media/header-bg-rust-v2.webp
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:53216 Accepted
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:53216 [200]: GET /assets/media/console-scan.svg
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:53216 Closing
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:64448 Closing
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:50342 Accepted
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:50342 [200]: GET /assets/media/feature-icons/fix.webp
+[Fri Jul  3 03:13:34 2026] 127.0.0.1:50342 Closing
+[Fri Jul  3 03:13:44 2026] 127.0.0.1:60945 Accepted
+[Fri Jul  3 03:13:44 2026] 127.0.0.1:60945 [200]: GET /assets/media/horizontal-logo-xsm.webp
+[Fri Jul  3 03:13:44 2026] 127.0.0.1:60945 Closing
+[Fri Jul  3 03:13:44 2026] 127.0.0.1:61672 Accepted
+[Fri Jul  3 03:13:44 2026] 127.0.0.1:61672 [200]: GET /api/server-status-history.php?range=24h
+[Fri Jul  3 03:13:44 2026] 127.0.0.1:61672 Closing

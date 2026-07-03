@@ -514,10 +514,48 @@ function raidlands_store_money(int $amount_cents, string $currency = 'usd'): str
     return '$' . number_format($amount_cents / 100, 2) . ' ' . strtoupper($currency);
 }
 
+function raidlands_store_rp(int $amount): string
+{
+    return number_format(max(0, $amount)) . ' RP';
+}
+
+function raidlands_store_access_interval_label(string $interval): string
+{
+    return match ($interval) {
+        'day' => 'Daily',
+        'week' => 'Weekly',
+        'month' => 'Monthly',
+        'year' => 'Yearly',
+        default => 'One-time',
+    };
+}
+
+function raidlands_store_access_duration_seconds(string $interval): int
+{
+    return match ($interval) {
+        'day' => 86400,
+        'week' => 604800,
+        'month' => 2592000,
+        'year' => 31536000,
+        default => 0,
+    };
+}
+
+function raidlands_store_access_ends_at(int $duration_seconds, ?string $from = null): ?string
+{
+    if ($duration_seconds <= 0) {
+        return null;
+    }
+
+    $timestamp = $from !== null && strtotime($from) !== false ? (int) strtotime($from) : time();
+
+    return gmdate('Y-m-d H:i:s', $timestamp + $duration_seconds);
+}
+
 function raidlands_store_type_label(string $type): string
 {
     return match ($type) {
-        'vip_subscription' => 'Monthly VIP',
+        'vip_subscription' => 'VIP pass',
         'one_time_kit_unlock' => 'One-time kit',
         default => 'One-time perk',
     };
@@ -690,11 +728,16 @@ function raidlands_store_catalog(bool $active_only = true): array
             "SELECT
                 p.*,
                 pr.id AS price_id,
+                pr.payment_method,
                 pr.stripe_price_id,
                 pr.label AS price_label,
                 pr.amount_cents,
                 pr.currency,
+                pr.rp_cost,
                 pr.billing_interval,
+                pr.access_interval,
+                pr.access_duration_seconds,
+                pr.allow_auto_renew,
                 pr.is_active AS price_is_active,
                 pr.is_default AS price_is_default
              FROM store_products p
@@ -737,11 +780,16 @@ function raidlands_store_catalog(bool $active_only = true): array
         if ($row['price_id'] !== null) {
             $products[$id]['prices'][] = [
                 'id' => (int) $row['price_id'],
+                'payment_method' => (string) ($row['payment_method'] ?? 'stripe'),
                 'stripe_price_id' => (string) $row['stripe_price_id'],
                 'label' => (string) $row['price_label'],
                 'amount_cents' => (int) $row['amount_cents'],
                 'currency' => (string) $row['currency'],
+                'rp_cost' => (int) ($row['rp_cost'] ?? 0),
                 'billing_interval' => (string) $row['billing_interval'],
+                'access_interval' => (string) ($row['access_interval'] ?? 'one_time'),
+                'access_duration_seconds' => (int) ($row['access_duration_seconds'] ?? 0),
+                'allow_auto_renew' => (int) ($row['allow_auto_renew'] ?? 0),
                 'is_active' => (int) $row['price_is_active'],
                 'is_default' => (int) $row['price_is_default'],
             ];
@@ -767,7 +815,7 @@ function raidlands_store_products_by_type(array $products, string $type): array
 function raidlands_store_default_price(array $product): ?array
 {
     foreach ((array) ($product['prices'] ?? []) as $price) {
-        if (!empty($price['is_default'])) {
+        if (!empty($price['is_default']) && (string) ($price['payment_method'] ?? 'stripe') === 'stripe') {
             return $price;
         }
     }
@@ -775,9 +823,39 @@ function raidlands_store_default_price(array $product): ?array
     return $product['prices'][0] ?? null;
 }
 
+function raidlands_store_cash_offers(array $product): array
+{
+    return array_values(array_filter(
+        (array) ($product['prices'] ?? []),
+        static fn (array $price): bool => (string) ($price['payment_method'] ?? 'stripe') === 'stripe'
+    ));
+}
+
+function raidlands_store_rp_offers(array $product, bool $active_only = false): array
+{
+    $offers = array_values(array_filter(
+        (array) ($product['prices'] ?? []),
+        static fn (array $price): bool => (string) ($price['payment_method'] ?? 'stripe') === 'rp'
+            && (!$active_only || !empty($price['is_active']))
+    ));
+
+    usort($offers, static function (array $left, array $right): int {
+        $order = ['day' => 10, 'week' => 20, 'month' => 30, 'year' => 40, 'one_time' => 50];
+
+        return ($order[(string) ($left['access_interval'] ?? 'one_time')] ?? 99)
+            <=> ($order[(string) ($right['access_interval'] ?? 'one_time')] ?? 99);
+    });
+
+    return $offers;
+}
+
 function raidlands_store_price_is_buyable(?array $price): bool
 {
     if ($price === null) {
+        return false;
+    }
+
+    if ((string) ($price['payment_method'] ?? 'stripe') !== 'stripe') {
         return false;
     }
 
@@ -787,6 +865,20 @@ function raidlands_store_price_is_buyable(?array $price): bool
         && (int) ($price['amount_cents'] ?? 0) > 0
         && $stripe_price_id !== ''
         && !str_starts_with($stripe_price_id, 'configure_');
+}
+
+function raidlands_store_rp_offer_is_buyable(?array $price): bool
+{
+    if ($price === null || (string) ($price['payment_method'] ?? '') !== 'rp') {
+        return false;
+    }
+
+    $duration = (int) ($price['access_duration_seconds'] ?? 0);
+    $interval = (string) ($price['access_interval'] ?? 'one_time');
+
+    return !empty($price['is_active'])
+        && (int) ($price['rp_cost'] ?? 0) > 0
+        && ($interval === 'one_time' || $duration > 0);
 }
 
 function raidlands_store_current_player(): ?array
@@ -1072,6 +1164,490 @@ function raidlands_store_entitlements_for_player(int $player_id): array
     );
 }
 
+function raidlands_store_current_rp_balance(int $player_id): ?array
+{
+    if ($player_id <= 0 || !raidlands_db_is_configured()) {
+        return null;
+    }
+
+    try {
+        $row = raidlands_db_fetch_one(
+            'SELECT s.reward_points, s.last_seen_at, w.wipe_key, w.is_active
+             FROM player_wipe_stats s
+             INNER JOIN wipe_seasons w ON w.id = s.wipe_id
+             WHERE s.player_id = :player_id
+             ORDER BY w.is_active DESC, s.last_seen_at DESC, s.updated_at DESC
+             LIMIT 1',
+            ['player_id' => $player_id]
+        );
+    } catch (Throwable $error) {
+        return null;
+    }
+
+    if ($row === null) {
+        return null;
+    }
+
+    return [
+        'reward_points' => (int) ($row['reward_points'] ?? 0),
+        'last_seen_at' => (string) ($row['last_seen_at'] ?? ''),
+        'wipe_key' => (string) ($row['wipe_key'] ?? ''),
+        'is_active' => (int) ($row['is_active'] ?? 0),
+    ];
+}
+
+function raidlands_store_rp_requests_for_player(int $player_id, int $limit = 12): array
+{
+    if ($player_id <= 0 || !raidlands_db_is_configured()) {
+        return [];
+    }
+
+    try {
+        return raidlands_db_fetch_all(
+            'SELECT r.*, p.name AS product_name, p.product_type, sp.label AS price_label
+             FROM rp_purchase_requests r
+             INNER JOIN store_products p ON p.id = r.product_id
+             INNER JOIN store_prices sp ON sp.id = r.store_price_id
+             WHERE r.player_id = :player_id
+             ORDER BY r.created_at DESC, r.id DESC
+             LIMIT ' . max(1, min(50, $limit)),
+            ['player_id' => $player_id]
+        );
+    } catch (Throwable $error) {
+        return [];
+    }
+}
+
+function raidlands_store_rp_subscriptions_for_player(int $player_id): array
+{
+    if ($player_id <= 0 || !raidlands_db_is_configured()) {
+        return [];
+    }
+
+    try {
+        return raidlands_db_fetch_all(
+            'SELECT s.*, p.name AS product_name, p.slug AS product_slug, sp.label AS price_label
+             FROM rp_subscriptions s
+             INNER JOIN store_products p ON p.id = s.product_id
+             INNER JOIN store_prices sp ON sp.id = s.store_price_id
+             WHERE s.player_id = :player_id
+             ORDER BY FIELD(s.status, "active", "cancel_at_period_end", "past_due", "expired", "canceled"), s.current_period_end DESC, s.id DESC',
+            ['player_id' => $player_id]
+        );
+    } catch (Throwable $error) {
+        return [];
+    }
+}
+
+function raidlands_store_rp_price_by_id(int $price_id): ?array
+{
+    if ($price_id <= 0) {
+        return null;
+    }
+
+    return raidlands_db_fetch_one(
+        "SELECT
+            pr.*,
+            p.name,
+            p.slug,
+            p.product_type,
+            p.oxide_group,
+            p.is_active AS product_is_active
+         FROM store_prices pr
+         INNER JOIN store_products p ON p.id = pr.product_id
+         WHERE pr.id = :price_id AND pr.payment_method = 'rp'",
+        ['price_id' => $price_id]
+    );
+}
+
+function raidlands_store_create_rp_purchase_request(int $price_id, bool $auto_renew): array
+{
+    $player = raidlands_store_current_player();
+
+    if ($player === null || empty($player['id']) || empty($player['steam_id64'])) {
+        throw new RuntimeException('Connect your Steam account before using RP.');
+    }
+
+    $row = raidlands_store_rp_price_by_id($price_id);
+
+    if ($row === null || empty($row['product_is_active']) || empty($row['is_active'])) {
+        throw new RuntimeException('That RP offer is not active.');
+    }
+
+    $rp_cost = (int) ($row['rp_cost'] ?? 0);
+    $duration = (int) ($row['access_duration_seconds'] ?? 0);
+    $interval = (string) ($row['access_interval'] ?? 'one_time');
+
+    if ($rp_cost <= 0) {
+        throw new RuntimeException('That RP offer still needs a price.');
+    }
+
+    if ($interval !== 'one_time' && $duration <= 0) {
+        throw new RuntimeException('That RP offer still needs an access duration.');
+    }
+
+    if ($auto_renew && (empty($row['allow_auto_renew']) || (string) $row['product_type'] !== 'vip_subscription')) {
+        throw new RuntimeException('Auto-renew is not available for that RP offer.');
+    }
+
+    $token = bin2hex(random_bytes(16));
+
+    raidlands_db_execute(
+        'INSERT INTO rp_purchase_requests
+            (request_token, player_id, product_id, store_price_id, steam_id64, rp_cost, access_interval, access_duration_seconds, auto_renew_requested, status, expires_at)
+         VALUES
+            (:request_token, :player_id, :product_id, :store_price_id, :steam_id64, :rp_cost, :access_interval, :access_duration_seconds, :auto_renew_requested, "queued", DATE_ADD(NOW(), INTERVAL 1 HOUR))',
+        [
+            'request_token' => $token,
+            'player_id' => (int) $player['id'],
+            'product_id' => (int) $row['product_id'],
+            'store_price_id' => (int) $row['id'],
+            'steam_id64' => (string) $player['steam_id64'],
+            'rp_cost' => $rp_cost,
+            'access_interval' => $interval,
+            'access_duration_seconds' => $duration,
+            'auto_renew_requested' => $auto_renew ? 1 : 0,
+        ]
+    );
+
+    return [
+        'request_token' => $token,
+        'product_name' => (string) $row['name'],
+        'price_label' => (string) $row['label'],
+        'rp_cost' => $rp_cost,
+        'auto_renew' => $auto_renew,
+    ];
+}
+
+function raidlands_store_cancel_rp_subscription(int $subscription_id): void
+{
+    $player = raidlands_store_current_player();
+
+    if ($player === null || empty($player['id'])) {
+        throw new RuntimeException('Connect your Steam account before changing RP renewals.');
+    }
+
+    $updated = raidlands_db_execute(
+        "UPDATE rp_subscriptions
+         SET status = 'cancel_at_period_end',
+             cancel_at_period_end = 1,
+             canceled_at = NOW(),
+             updated_at = NOW()
+         WHERE id = :id
+           AND player_id = :player_id
+           AND status IN ('active', 'past_due')",
+        [
+            'id' => $subscription_id,
+            'player_id' => (int) $player['id'],
+        ]
+    );
+
+    if ($updated === 0) {
+        throw new RuntimeException('That RP renewal could not be canceled.');
+    }
+}
+
+function raidlands_store_queue_due_rp_renewals(): void
+{
+    if (!raidlands_db_is_configured()) {
+        return;
+    }
+
+    try {
+        raidlands_db_execute(
+            "UPDATE rp_subscriptions
+             SET status = CASE WHEN cancel_at_period_end = 1 THEN 'canceled' ELSE 'expired' END,
+                 updated_at = NOW()
+             WHERE status IN ('active', 'cancel_at_period_end')
+               AND current_period_end IS NOT NULL
+               AND current_period_end <= NOW()
+               AND (cancel_at_period_end = 1 OR next_renewal_at IS NULL)"
+        );
+
+        $subscriptions = raidlands_db_fetch_all(
+            "SELECT s.*
+             FROM rp_subscriptions s
+             WHERE s.status = 'active'
+               AND s.cancel_at_period_end = 0
+               AND s.next_renewal_at IS NOT NULL
+               AND s.next_renewal_at <= NOW()
+               AND NOT EXISTS (
+                 SELECT 1
+                 FROM rp_purchase_requests r
+                 WHERE r.rp_subscription_id = s.id
+                   AND r.status IN ('queued', 'processing')
+               )
+             ORDER BY s.next_renewal_at ASC
+             LIMIT 25"
+        );
+
+        foreach ($subscriptions as $subscription) {
+            $token = bin2hex(random_bytes(16));
+            raidlands_db_execute(
+                'INSERT INTO rp_purchase_requests
+                    (request_token, player_id, product_id, store_price_id, rp_subscription_id, steam_id64, rp_cost, access_interval, access_duration_seconds, auto_renew_requested, status, expires_at)
+                 VALUES
+                    (:request_token, :player_id, :product_id, :store_price_id, :subscription_id, :steam_id64, :rp_cost, :access_interval, :access_duration_seconds, 1, "queued", DATE_ADD(NOW(), INTERVAL 1 HOUR))',
+                [
+                    'request_token' => $token,
+                    'player_id' => (int) $subscription['player_id'],
+                    'product_id' => (int) $subscription['product_id'],
+                    'store_price_id' => (int) $subscription['store_price_id'],
+                    'subscription_id' => (int) $subscription['id'],
+                    'steam_id64' => (string) $subscription['steam_id64'],
+                    'rp_cost' => (int) $subscription['rp_cost'],
+                    'access_interval' => (string) $subscription['access_interval'],
+                    'access_duration_seconds' => (int) $subscription['access_duration_seconds'],
+                ]
+            );
+        }
+    } catch (Throwable $error) {
+        return;
+    }
+}
+
+function raidlands_store_bridge_rp_requests(int $limit = 25): array
+{
+    raidlands_store_queue_due_rp_renewals();
+
+    raidlands_db_execute(
+        "UPDATE rp_purchase_requests
+         SET status = 'expired', message = 'The server did not process this RP request before it expired.', updated_at = NOW()
+         WHERE status = 'queued' AND expires_at IS NOT NULL AND expires_at <= NOW()"
+    );
+    raidlands_db_execute(
+        "UPDATE rp_purchase_requests
+         SET status = 'queued', locked_at = NULL, updated_at = NOW()
+         WHERE status = 'processing' AND locked_at IS NOT NULL AND locked_at < DATE_SUB(NOW(), INTERVAL 10 MINUTE)"
+    );
+
+    $rows = raidlands_db_fetch_all(
+        'SELECT r.*, p.name AS product_name, p.slug AS product_slug, p.product_type, sp.label AS price_label
+         FROM rp_purchase_requests r
+         INNER JOIN store_products p ON p.id = r.product_id
+         INNER JOIN store_prices sp ON sp.id = r.store_price_id
+         WHERE r.status = "queued"
+         ORDER BY r.created_at ASC, r.id ASC
+         LIMIT ' . max(1, min(100, $limit))
+    );
+
+    if ($rows === []) {
+        return [];
+    }
+
+    $ids = array_map(static fn (array $row): int => (int) $row['id'], $rows);
+    [$placeholders, $params] = raidlands_store_sql_in_params($ids, 'request_id');
+    raidlands_db_execute(
+        'UPDATE rp_purchase_requests
+         SET status = "processing",
+             locked_at = NOW(),
+             bridge_attempts = bridge_attempts + 1,
+             updated_at = NOW()
+         WHERE id IN (' . implode(', ', $placeholders) . ')',
+        $params
+    );
+
+    return $rows;
+}
+
+function raidlands_store_rp_subscription_next_renewal(string $period_end): ?string
+{
+    $end = strtotime($period_end);
+
+    if ($end === false) {
+        return null;
+    }
+
+    return gmdate('Y-m-d H:i:s', max(time(), $end - 300));
+}
+
+function raidlands_store_activate_rp_request(PDO $pdo, array $request): array
+{
+    $duration = (int) ($request['access_duration_seconds'] ?? 0);
+    $period_start = gmdate('Y-m-d H:i:s');
+    $period_end = raidlands_store_access_ends_at($duration, $period_start);
+    $subscription_id = (int) ($request['rp_subscription_id'] ?? 0);
+
+    if (!empty($request['auto_renew_requested'])) {
+        if ($subscription_id > 0) {
+            $subscription = raidlands_db_fetch_one(
+                'SELECT * FROM rp_subscriptions WHERE id = :id FOR UPDATE',
+                ['id' => $subscription_id]
+            );
+
+            if ($subscription !== null) {
+                $current_end = trim((string) ($subscription['current_period_end'] ?? ''));
+                $period_start = $current_end !== '' && strtotime($current_end) !== false && strtotime($current_end) > time()
+                    ? $current_end
+                    : gmdate('Y-m-d H:i:s');
+                $period_end = raidlands_store_access_ends_at($duration, $period_start);
+            }
+        } else {
+            raidlands_db_execute(
+                'INSERT INTO rp_subscriptions
+                    (player_id, product_id, store_price_id, steam_id64, status, rp_cost, access_interval, access_duration_seconds, current_period_start, current_period_end, next_renewal_at)
+                 VALUES
+                    (:player_id, :product_id, :store_price_id, :steam_id64, "active", :rp_cost, :access_interval, :access_duration_seconds, :period_start, :period_end, :next_renewal_at)',
+                [
+                    'player_id' => (int) $request['player_id'],
+                    'product_id' => (int) $request['product_id'],
+                    'store_price_id' => (int) $request['store_price_id'],
+                    'steam_id64' => (string) $request['steam_id64'],
+                    'rp_cost' => (int) $request['rp_cost'],
+                    'access_interval' => (string) $request['access_interval'],
+                    'access_duration_seconds' => $duration,
+                    'period_start' => $period_start,
+                    'period_end' => $period_end,
+                    'next_renewal_at' => $period_end === null ? null : raidlands_store_rp_subscription_next_renewal($period_end),
+                ]
+            );
+            $subscription_id = (int) $pdo->lastInsertId();
+        }
+
+        if ($subscription_id > 0) {
+            raidlands_db_execute(
+                'UPDATE rp_subscriptions
+                 SET status = "active",
+                     current_period_start = :period_start,
+                     current_period_end = :period_end,
+                     next_renewal_at = :next_renewal_at,
+                     last_request_id = :request_id,
+                     failed_attempts = 0,
+                     updated_at = NOW()
+                 WHERE id = :subscription_id',
+                [
+                    'period_start' => $period_start,
+                    'period_end' => $period_end,
+                    'next_renewal_at' => $period_end === null ? null : raidlands_store_rp_subscription_next_renewal($period_end),
+                    'request_id' => (int) $request['id'],
+                    'subscription_id' => $subscription_id,
+                ]
+            );
+
+            raidlands_store_grant_entitlement(
+                (int) $request['player_id'],
+                (int) $request['product_id'],
+                'rp_subscription',
+                (string) $subscription_id,
+                $period_end
+            );
+
+            return ['source_type' => 'rp_subscription', 'source_id' => (string) $subscription_id, 'ends_at' => $period_end];
+        }
+    }
+
+    raidlands_store_grant_entitlement(
+        (int) $request['player_id'],
+        (int) $request['product_id'],
+        'rp_purchase',
+        (string) $request['request_token'],
+        $period_end
+    );
+
+    return ['source_type' => 'rp_purchase', 'source_id' => (string) $request['request_token'], 'ends_at' => $period_end];
+}
+
+function raidlands_store_record_rp_purchase_result(array $payload): array
+{
+    $token = trim((string) ($payload['request_id'] ?? $payload['request_token'] ?? ''));
+    $status = strtolower(trim((string) ($payload['status'] ?? '')));
+
+    if ($token === '') {
+        throw new InvalidArgumentException('RP purchase result is missing request_id.');
+    }
+
+    if (!in_array($status, ['confirmed', 'rejected', 'failed'], true)) {
+        throw new InvalidArgumentException('RP purchase result has an invalid status.');
+    }
+
+    $pdo = raidlands_db_required();
+    $owns_transaction = !$pdo->inTransaction();
+
+    if ($owns_transaction) {
+        $pdo->beginTransaction();
+    }
+
+    try {
+        $statement = $pdo->prepare('SELECT * FROM rp_purchase_requests WHERE request_token = :token FOR UPDATE');
+        $statement->execute(['token' => $token]);
+        $request = $statement->fetch(PDO::FETCH_ASSOC);
+
+        if (!is_array($request)) {
+            throw new RuntimeException('RP purchase request was not found.');
+        }
+
+        if (in_array((string) $request['status'], ['confirmed', 'rejected', 'failed'], true)) {
+            if ($owns_transaction) {
+                $pdo->commit();
+            }
+            return ['ok' => true, 'duplicate' => true, 'request_id' => $token, 'status' => (string) $request['status']];
+        }
+
+        $message = mb_substr(raidlands_store_clean_profile_text($payload['message'] ?? $payload['error'] ?? '', 500), 0, 500);
+        $fail_code = mb_substr(raidlands_store_clean_profile_text($payload['fail_code'] ?? $payload['reason'] ?? '', 80), 0, 80);
+        $balance_before = isset($payload['balance_before']) ? (int) $payload['balance_before'] : null;
+        $balance_after = isset($payload['balance_after']) ? (int) $payload['balance_after'] : null;
+
+        raidlands_db_execute(
+            'UPDATE rp_purchase_requests
+             SET status = :status,
+                 fail_code = :fail_code,
+                 message = :message,
+                 balance_before = :balance_before,
+                 balance_after = :balance_after,
+                 processed_at = NOW(),
+                 updated_at = NOW()
+             WHERE id = :id',
+            [
+                'status' => $status,
+                'fail_code' => $fail_code,
+                'message' => $message,
+                'balance_before' => $balance_before,
+                'balance_after' => $balance_after,
+                'id' => (int) $request['id'],
+            ]
+        );
+
+        if ($status === 'confirmed') {
+            $activation = raidlands_store_activate_rp_request($pdo, $request);
+
+            if ($owns_transaction) {
+                $pdo->commit();
+            }
+
+            return ['ok' => true, 'request_id' => $token, 'status' => $status] + $activation;
+        }
+
+        $subscription_id = (int) ($request['rp_subscription_id'] ?? 0);
+
+        if ($subscription_id > 0) {
+            $subscription_status = $status === 'rejected' ? 'past_due' : 'active';
+            raidlands_db_execute(
+                'UPDATE rp_subscriptions
+                 SET status = :status,
+                     failed_attempts = failed_attempts + 1,
+                     updated_at = NOW()
+                 WHERE id = :id',
+                [
+                    'status' => $subscription_status,
+                    'id' => $subscription_id,
+                ]
+            );
+        }
+
+        if ($owns_transaction) {
+            $pdo->commit();
+        }
+
+        return ['ok' => true, 'request_id' => $token, 'status' => $status];
+    } catch (Throwable $error) {
+        if ($owns_transaction) {
+            $pdo->rollBack();
+        }
+        throw $error;
+    }
+}
+
 function raidlands_store_recent_sync_rows(int $limit = 25): array
 {
     if (!raidlands_db_is_configured()) {
@@ -1282,7 +1858,11 @@ function raidlands_store_grant_entitlement(
     }
 
     $pdo = raidlands_db_required();
-    $pdo->beginTransaction();
+    $owns_transaction = !$pdo->inTransaction();
+
+    if ($owns_transaction) {
+        $pdo->beginTransaction();
+    }
 
     try {
         if ((string) $product['product_type'] === 'vip_subscription') {
@@ -1323,9 +1903,13 @@ function raidlands_store_grant_entitlement(
             'ends_at' => $ends_at,
         ]);
 
-        $pdo->commit();
+        if ($owns_transaction) {
+            $pdo->commit();
+        }
     } catch (Throwable $error) {
-        $pdo->rollBack();
+        if ($owns_transaction) {
+            $pdo->rollBack();
+        }
         throw $error;
     }
 }
@@ -1828,20 +2412,191 @@ function raidlands_store_admin_product_rows(): array
         return [];
     }
 
-    return raidlands_db_fetch_all(
+    $rows = raidlands_db_fetch_all(
         "SELECT
             p.*,
             pr.id AS price_id,
+            pr.payment_method,
             pr.stripe_price_id,
             pr.label AS price_label,
             pr.amount_cents,
             pr.currency,
+            pr.rp_cost,
             pr.billing_interval,
+            pr.access_interval,
+            pr.access_duration_seconds,
+            pr.allow_auto_renew,
             pr.is_active AS price_is_active
          FROM store_products p
-         LEFT JOIN store_prices pr ON pr.product_id = p.id AND pr.is_default = 1
+         LEFT JOIN store_prices pr ON pr.product_id = p.id AND pr.is_default = 1 AND pr.payment_method = 'stripe'
          ORDER BY p.sort_order ASC, p.id ASC"
     );
+
+    $product_ids = array_values(array_filter(array_map(static fn (array $row): int => (int) ($row['id'] ?? 0), $rows)));
+
+    if ($product_ids === []) {
+        return $rows;
+    }
+
+    [$placeholders, $params] = raidlands_store_sql_in_params($product_ids, 'product_id');
+    $rp_rows = raidlands_db_fetch_all(
+        'SELECT *
+         FROM store_prices
+         WHERE payment_method = "rp" AND product_id IN (' . implode(', ', $placeholders) . ')
+         ORDER BY product_id ASC, access_duration_seconds ASC, id ASC',
+        $params
+    );
+    $kit_rows = [];
+
+    try {
+        $kit_rows = raidlands_db_fetch_all(
+            'SELECT product_id, kit_id
+             FROM store_product_kits
+             WHERE product_id IN (' . implode(', ', $placeholders) . ')
+             ORDER BY product_id ASC, sort_order ASC, kit_id ASC',
+            $params
+        );
+    } catch (Throwable $error) {
+        $kit_rows = [];
+    }
+
+    $rp_by_product = [];
+    $kits_by_product = [];
+
+    foreach ($rp_rows as $rp_row) {
+        $product_id = (int) $rp_row['product_id'];
+        $interval = (string) ($rp_row['access_interval'] ?? 'one_time');
+        $rp_by_product[$product_id][$interval] = $rp_row;
+    }
+
+    foreach ($kit_rows as $kit_row) {
+        $kits_by_product[(int) $kit_row['product_id']][] = (int) $kit_row['kit_id'];
+    }
+
+    foreach ($rows as &$row) {
+        $product_id = (int) ($row['id'] ?? 0);
+        $row['rp_prices'] = $rp_by_product[$product_id] ?? [];
+        $row['kit_ids'] = $kits_by_product[$product_id] ?? [];
+    }
+    unset($row);
+
+    return $rows;
+}
+
+function raidlands_store_admin_price_intervals(string $product_type): array
+{
+    if ($product_type === 'vip_subscription') {
+        return ['day', 'week', 'month', 'year'];
+    }
+
+    return ['one_time'];
+}
+
+function raidlands_store_admin_save_product_kit_links(PDO $pdo, int $product_id, array $kit_ids): void
+{
+    try {
+        $pdo->prepare('DELETE FROM store_product_kits WHERE product_id = :product_id')->execute(['product_id' => $product_id]);
+        $insert = $pdo->prepare(
+            'INSERT INTO store_product_kits (product_id, kit_id, sort_order)
+             VALUES (:product_id, :kit_id, :sort_order)
+             ON DUPLICATE KEY UPDATE sort_order = VALUES(sort_order), updated_at = NOW()'
+        );
+
+        foreach (array_values(array_unique(array_map('intval', $kit_ids))) as $index => $kit_id) {
+            if ($kit_id <= 0) {
+                continue;
+            }
+
+            $insert->execute([
+                'product_id' => $product_id,
+                'kit_id' => $kit_id,
+                'sort_order' => ($index + 1) * 10,
+            ]);
+        }
+    } catch (Throwable $error) {
+        // Older installs may not have kit tables yet. Store rows should still save.
+    }
+}
+
+function raidlands_store_admin_save_rp_price(PDO $pdo, int $product_id, string $slug, string $product_type, string $interval, array $row): void
+{
+    $allowed = raidlands_store_admin_price_intervals($product_type);
+
+    if (!in_array($interval, $allowed, true)) {
+        return;
+    }
+
+    $price_id = (int) ($row['id'] ?? 0);
+    $duration = raidlands_store_access_duration_seconds($interval);
+    $label = trim(strip_tags((string) ($row['label'] ?? '')));
+
+    if ($label === '') {
+        $label = $interval === 'one_time'
+            ? 'One-time RP Unlock'
+            : raidlands_store_access_interval_label($interval) . ' RP Pass';
+    }
+
+    $price = [
+        'product_id' => $product_id,
+        'payment_method' => 'rp',
+        'stripe_price_id' => 'rp_' . $slug . '_' . $interval,
+        'label' => mb_substr($label, 0, 120),
+        'amount_cents' => 0,
+        'currency' => 'rp',
+        'rp_cost' => max(0, (int) ($row['rp_cost'] ?? 0)),
+        'billing_interval' => 'one_time',
+        'access_interval' => $interval,
+        'access_duration_seconds' => $duration,
+        'allow_auto_renew' => !empty($row['allow_auto_renew']) && $product_type === 'vip_subscription' && $duration > 0 ? 1 : 0,
+        'is_active' => empty($row['is_active']) ? 0 : 1,
+        'is_default' => 0,
+    ];
+
+    if ($price_id > 0) {
+        $price['id'] = $price_id;
+        $statement = $pdo->prepare(
+            'UPDATE store_prices
+             SET payment_method = :payment_method,
+                 stripe_price_id = :stripe_price_id,
+                 label = :label,
+                 amount_cents = :amount_cents,
+                 currency = :currency,
+                 rp_cost = :rp_cost,
+                 billing_interval = :billing_interval,
+                 access_interval = :access_interval,
+                 access_duration_seconds = :access_duration_seconds,
+                 allow_auto_renew = :allow_auto_renew,
+                 is_active = :is_active,
+                 is_default = :is_default,
+                 updated_at = NOW()
+             WHERE id = :id'
+        );
+        unset($price['product_id']);
+        $statement->execute($price);
+        return;
+    }
+
+    $statement = $pdo->prepare(
+        'INSERT INTO store_prices
+            (product_id, payment_method, stripe_price_id, label, amount_cents, currency, rp_cost, billing_interval, access_interval, access_duration_seconds, allow_auto_renew, is_active, is_default)
+         VALUES
+            (:product_id, :payment_method, :stripe_price_id, :label, :amount_cents, :currency, :rp_cost, :billing_interval, :access_interval, :access_duration_seconds, :allow_auto_renew, :is_active, :is_default)
+         ON DUPLICATE KEY UPDATE
+            product_id = VALUES(product_id),
+            payment_method = VALUES(payment_method),
+            label = VALUES(label),
+            amount_cents = VALUES(amount_cents),
+            currency = VALUES(currency),
+            rp_cost = VALUES(rp_cost),
+            billing_interval = VALUES(billing_interval),
+            access_interval = VALUES(access_interval),
+            access_duration_seconds = VALUES(access_duration_seconds),
+            allow_auto_renew = VALUES(allow_auto_renew),
+            is_active = VALUES(is_active),
+            is_default = VALUES(is_default),
+            updated_at = NOW()'
+    );
+    $statement->execute($price);
 }
 
 function raidlands_store_admin_save_product_rows($rows): void
@@ -1949,11 +2704,16 @@ function raidlands_store_admin_save_product_rows($rows): void
             $price_id = (int) ($row['price_id'] ?? 0);
             $price = [
                 'product_id' => $product_id,
+                'payment_method' => 'stripe',
                 'stripe_price_id' => trim(strip_tags((string) ($row['stripe_price_id'] ?? ''))),
                 'label' => mb_substr(trim(strip_tags((string) ($row['price_label'] ?? ''))), 0, 120),
                 'amount_cents' => max(0, (int) round(((float) ($row['amount_dollars'] ?? 0)) * 100)),
                 'currency' => strtolower(mb_substr(trim((string) ($row['currency'] ?? 'usd')), 0, 3)) ?: 'usd',
+                'rp_cost' => 0,
                 'billing_interval' => $type === 'vip_subscription' ? 'month' : 'one_time',
+                'access_interval' => $type === 'vip_subscription' ? 'month' : 'one_time',
+                'access_duration_seconds' => $type === 'vip_subscription' ? raidlands_store_access_duration_seconds('month') : 0,
+                'allow_auto_renew' => 0,
                 'is_active' => empty($row['price_is_active']) ? 0 : 1,
             ];
 
@@ -1969,11 +2729,16 @@ function raidlands_store_admin_save_product_rows($rows): void
                 $price['id'] = $price_id;
                 $statement = $pdo->prepare(
                     "UPDATE store_prices
-                     SET stripe_price_id = :stripe_price_id,
+                     SET payment_method = :payment_method,
+                         stripe_price_id = :stripe_price_id,
                          label = :label,
                          amount_cents = :amount_cents,
                          currency = :currency,
+                         rp_cost = :rp_cost,
                          billing_interval = :billing_interval,
+                         access_interval = :access_interval,
+                         access_duration_seconds = :access_duration_seconds,
+                         allow_auto_renew = :allow_auto_renew,
                          is_active = :is_active,
                          is_default = 1,
                          updated_at = NOW()
@@ -1984,19 +2749,45 @@ function raidlands_store_admin_save_product_rows($rows): void
             } else {
                 $statement = $pdo->prepare(
                     "INSERT INTO store_prices
-                        (product_id, stripe_price_id, label, amount_cents, currency, billing_interval, is_active, is_default)
+                        (product_id, payment_method, stripe_price_id, label, amount_cents, currency, rp_cost, billing_interval, access_interval, access_duration_seconds, allow_auto_renew, is_active, is_default)
                      VALUES
-                        (:product_id, :stripe_price_id, :label, :amount_cents, :currency, :billing_interval, :is_active, 1)
+                        (:product_id, :payment_method, :stripe_price_id, :label, :amount_cents, :currency, :rp_cost, :billing_interval, :access_interval, :access_duration_seconds, :allow_auto_renew, :is_active, 1)
                      ON DUPLICATE KEY UPDATE
                         product_id = VALUES(product_id),
+                        payment_method = VALUES(payment_method),
                         label = VALUES(label),
                         amount_cents = VALUES(amount_cents),
                         currency = VALUES(currency),
+                        rp_cost = VALUES(rp_cost),
                         billing_interval = VALUES(billing_interval),
+                        access_interval = VALUES(access_interval),
+                        access_duration_seconds = VALUES(access_duration_seconds),
+                        allow_auto_renew = VALUES(allow_auto_renew),
                         is_active = VALUES(is_active),
                         updated_at = NOW()"
                 );
                 $statement->execute($price);
+            }
+
+            foreach (raidlands_store_admin_price_intervals($type) as $interval) {
+                $rp_rows = (array) ($row['rp_prices'] ?? []);
+                $rp_row = (array) ($rp_rows[$interval] ?? []);
+                raidlands_store_admin_save_rp_price($pdo, $product_id, $slug, $type, $interval, $rp_row);
+            }
+
+            $allowed_intervals = raidlands_store_admin_price_intervals($type);
+            $interval_placeholders = implode(', ', array_fill(0, count($allowed_intervals), '?'));
+            $deactivate_params = array_merge([$product_id], $allowed_intervals);
+            $pdo->prepare(
+                "UPDATE store_prices
+                 SET is_active = 0, updated_at = NOW()
+                 WHERE product_id = ?
+                   AND payment_method = 'rp'
+                   AND access_interval NOT IN ($interval_placeholders)"
+            )->execute($deactivate_params);
+
+            if (array_key_exists('kit_ids', $row)) {
+                raidlands_store_admin_save_product_kit_links($pdo, $product_id, (array) ($row['kit_ids'] ?? []));
             }
         }
 

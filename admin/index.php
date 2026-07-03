@@ -75,6 +75,7 @@ $active_meta = $active_section === 'none'
 $admin_store_ready = false;
 $admin_store_error = '';
 $admin_store_rows = [];
+$admin_store_kit_options = [];
 $admin_store_catalog = ['products' => []];
 $admin_sync_rows = [];
 $admin_feedback_rows = [];
@@ -119,6 +120,10 @@ try {
 
     if ($active_section === 'store' && $admin_store_ready) {
         $admin_store_rows = raidlands_store_admin_product_rows();
+
+        if (raidlands_kits_is_ready()) {
+            $admin_store_kit_options = raidlands_kits_admin_rows();
+        }
     }
 
     if (in_array($active_section, ['grants', 'sync'], true)) {
@@ -414,13 +419,13 @@ function admin_currency_options(array $current_values = []): array
 
 function admin_price_label_options(array $current_values = []): array
 {
-    return admin_option_map(['Monthly', 'One-time', 'Lifetime', 'Wipe', 'Season', 'Limited'], $current_values);
+    return admin_option_map(['Daily RP Pass', 'Weekly RP Pass', 'Monthly RP Pass', 'Yearly RP Pass', 'One-time RP Unlock', 'Monthly', 'One-time', 'Lifetime', 'Wipe', 'Season', 'Limited'], $current_values);
 }
 
 function admin_product_type_options(): array
 {
     return [
-        'vip_subscription' => 'Monthly VIP',
+        'vip_subscription' => 'VIP package',
         'one_time_perk' => 'One-time perk',
         'one_time_kit_unlock' => 'One-time kit unlock',
     ];
@@ -1217,7 +1222,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                 <?php if ($active_section === 'store') : ?>
                   <?php if (!$admin_store_ready) : ?>
                     <section class="admin-section">
-                      <div class="admin-alert warning">MySQL is not configured or the VIP store tables are not available. Run <code>database/migrations/001_vip_store.sql</code>, then <code>database/seeds/001_store_products.sql</code>, and add credentials to <code>data/raidlands-secrets.php</code>. <?= $admin_store_error !== '' ? e($admin_store_error) : '' ?></div>
+                      <div class="admin-alert warning">Store tables are not ready yet. Run <code>database/migrations/001_vip_store.sql</code>, <code>database/migrations/012_rp_shop.sql</code>, <code>database/seeds/001_store_products.sql</code>, then <code>database/migrations/013_pvp_kit_permission_cleanup.sql</code>, and confirm the database credentials in your environment config. <?= $admin_store_error !== '' ? e($admin_store_error) : '' ?></div>
                     </section>
                   <?php else : ?>
                     <section class="admin-section">
@@ -1265,8 +1270,14 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 'amount_cents' => 0,
                                 'currency' => 'usd',
                                 'price_is_active' => 0,
+                                'rp_prices' => [],
+                                'kit_ids' => [],
                             ];
+                            $product_type_value = (string) ($row['product_type'] ?? 'one_time_perk');
                             $amount_dollars = ((int) ($row['amount_cents'] ?? 0)) / 100;
+                            $rp_prices = (array) ($row['rp_prices'] ?? []);
+                            $rp_intervals = raidlands_store_admin_price_intervals($product_type_value);
+                            $selected_kit_ids = array_map('intval', (array) ($row['kit_ids'] ?? []));
                           ?>
                           <article class="admin-repeat-card">
                             <input type="hidden" name="store_products[<?= e((string) $index) ?>][id]" value="<?= e((string) ($row['id'] ?? '')) ?>">
@@ -1291,9 +1302,9 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 <input type="text" name="store_products[<?= e((string) $index) ?>][name]" maxlength="160" placeholder="Bronze VIP" value="<?= e((string) ($row['name'] ?? '')) ?>">
                               </label>
                               <label class="admin-field">
-                                <?= admin_field_head('Type', 'Monthly VIP creates Stripe subscription checkout. Other product types create one-time checkout.') ?>
+                                <?= admin_field_head('Type', 'VIP packages can expose daily, weekly, monthly, and yearly RP passes. Other product types create one-time unlocks.') ?>
                                 <select name="store_products[<?= e((string) $index) ?>][product_type]">
-                                  <?= admin_render_options(admin_product_type_options(), (string) ($row['product_type'] ?? 'one_time_perk')) ?>
+                                  <?= admin_render_options(admin_product_type_options(), $product_type_value) ?>
                                 </select>
                               </label>
                               <label class="admin-field">
@@ -1310,7 +1321,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 <input type="number" min="0" max="9999" name="store_products[<?= e((string) $index) ?>][sort_order]" value="<?= e((string) ($row['sort_order'] ?? 100)) ?>">
                               </label>
                               <label class="admin-field">
-                                <?= admin_field_head('Stripe Price ID', 'Use a real Stripe Price ID such as price_123. Blank or placeholder values disable checkout.') ?>
+                                <?= admin_field_head('Stripe Price ID', 'Use a real Stripe Price ID such as price_123 later when cash checkout is ready. Placeholder values keep cash unavailable.') ?>
                                 <input type="text" name="store_products[<?= e((string) $index) ?>][stripe_price_id]" maxlength="160" placeholder="price_..." value="<?= e((string) ($row['stripe_price_id'] ?? '')) ?>">
                               </label>
                               <label class="admin-field">
@@ -1331,7 +1342,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               </label>
                               <label class="admin-check admin-check-field">
                                 <input type="checkbox" name="store_products[<?= e((string) $index) ?>][price_is_active]" value="1" <?= !empty($row['price_is_active']) ? 'checked' : '' ?>>
-                                <?= admin_check_copy('Price active', 'Checkout is available only when product active, price active, and Stripe Price ID are all valid.') ?>
+                                <?= admin_check_copy('Cash price active', 'Cash checkout remains unavailable until Stripe is configured and this price uses a real Stripe Price ID.') ?>
                               </label>
                               <label class="admin-check admin-check-field">
                                 <input type="checkbox" name="store_products[<?= e((string) $index) ?>][is_featured]" value="1" <?= !empty($row['is_featured']) ? 'checked' : '' ?>>
@@ -1341,6 +1352,56 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 <input type="checkbox" name="store_products[<?= e((string) $index) ?>][is_stackable]" value="1" <?= !empty($row['is_stackable']) ? 'checked' : '' ?>>
                                 <?= admin_check_copy('Stackable', 'One-time perks can stack. VIP tiers should usually be non-stackable.') ?>
                               </label>
+                              <div class="admin-field admin-span-all">
+                                <?= admin_field_head('RP offers', 'RP is the launch payment method. Enable only offers with final RP costs.') ?>
+                                <div class="admin-rp-offer-grid">
+                                  <?php foreach ($rp_intervals as $rp_interval) : ?>
+                                    <?php
+                                      $rp_row = (array) ($rp_prices[$rp_interval] ?? []);
+                                      $rp_label = (string) ($rp_row['label'] ?? ($rp_interval === 'one_time' ? 'One-time RP Unlock' : raidlands_store_access_interval_label($rp_interval) . ' RP Pass'));
+                                    ?>
+                                    <article class="admin-rp-offer-card">
+                                      <input type="hidden" name="store_products[<?= e((string) $index) ?>][rp_prices][<?= e($rp_interval) ?>][id]" value="<?= e((string) ($rp_row['id'] ?? '')) ?>">
+                                      <input type="hidden" name="store_products[<?= e((string) $index) ?>][rp_prices][<?= e($rp_interval) ?>][label]" value="<?= e($rp_label) ?>">
+                                      <div>
+                                        <strong><?= e($rp_label) ?></strong>
+                                        <small><?= e($rp_interval === 'one_time' ? 'Permanent unlock' : raidlands_store_access_duration_seconds($rp_interval) . ' seconds') ?></small>
+                                      </div>
+                                      <label>
+                                        <span>RP cost</span>
+                                        <input type="number" min="0" max="99999999" name="store_products[<?= e((string) $index) ?>][rp_prices][<?= e($rp_interval) ?>][rp_cost]" value="<?= e((string) ($rp_row['rp_cost'] ?? 0)) ?>">
+                                      </label>
+                                      <label class="admin-check">
+                                        <input type="checkbox" name="store_products[<?= e((string) $index) ?>][rp_prices][<?= e($rp_interval) ?>][is_active]" value="1" <?= !empty($rp_row['is_active']) ? 'checked' : '' ?>>
+                                        <span>Active</span>
+                                      </label>
+                                      <?php if ($product_type_value === 'vip_subscription' && $rp_interval !== 'one_time') : ?>
+                                        <label class="admin-check">
+                                          <input type="checkbox" name="store_products[<?= e((string) $index) ?>][rp_prices][<?= e($rp_interval) ?>][allow_auto_renew]" value="1" <?= !empty($rp_row['allow_auto_renew']) ? 'checked' : '' ?>>
+                                          <span>Allow auto-renew</span>
+                                        </label>
+                                      <?php endif; ?>
+                                    </article>
+                                  <?php endforeach; ?>
+                                </div>
+                              </div>
+                              <div class="admin-field admin-span-all">
+                                <?= admin_field_head('Linked kits', 'Selected kits appear on this product card. Their group permissions still come from the Kits and Groups sections.') ?>
+                                <?php if ($admin_store_kit_options === []) : ?>
+                                  <div class="admin-alert warning">Kit tables are not ready or no kits are available yet.</div>
+                                <?php else : ?>
+                                  <div class="admin-check-grid">
+                                    <?php foreach ($admin_store_kit_options as $kit_option) : ?>
+                                      <?php $kit_id = (int) ($kit_option['id'] ?? 0); ?>
+                                      <?php if ($kit_id <= 0) { continue; } ?>
+                                      <label class="admin-check">
+                                        <input type="checkbox" name="store_products[<?= e((string) $index) ?>][kit_ids][]" value="<?= e((string) $kit_id) ?>" <?= in_array($kit_id, $selected_kit_ids, true) ? 'checked' : '' ?>>
+                                        <span><?= e((string) ($kit_option['kit_name'] ?? 'Kit')) ?></span>
+                                      </label>
+                                    <?php endforeach; ?>
+                                  </div>
+                                <?php endif; ?>
+                              </div>
                               <label class="admin-field admin-span-all">
                                 <?= admin_field_head('Short description', 'Brief copy shown on store cards.') ?>
                                 <input type="text" name="store_products[<?= e((string) $index) ?>][short_description]" maxlength="255" value="<?= e((string) ($row['short_description'] ?? '')) ?>">
@@ -1577,7 +1638,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                   <input type="number" min="0" max="31536000" name="kits[<?= e((string) $index) ?>][reward_cooldown]" value="<?= e((string) ($row['reward_cooldown'] ?? 0)) ?>">
                                 </label>
                                 <label class="admin-field">
-                                  <?= admin_field_head('Shop permission', 'Optional ServerRewards purchase permission, such as serverrewards.paidpvpkit.') ?>
+                                  <?= admin_field_head('Shop permission', 'Optional ServerRewards purchase permission. PvP kit access should use unique kit permissions such as kits.pvp.light.') ?>
                                   <input type="text" name="kits[<?= e((string) $index) ?>][reward_permission]" maxlength="160" value="<?= e((string) ($row['reward_permission'] ?? '')) ?>">
                                 </label>
                                 <label class="admin-field">
@@ -1777,9 +1838,24 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                       $permission_catalog_groups = admin_permission_catalog_groups($admin_permission_options, $admin_permission_rows);
 
                       foreach ($permission_group_rows as $candidate_index => $candidate_row) {
-                          if (empty($candidate_row['is_read_only'])) {
+                          $candidate_name = (string) ($candidate_row['group_name'] ?? '');
+
+                          if (
+                              !raidlands_permissions_group_is_read_only($candidate_name)
+                              && !raidlands_permissions_group_has_forced_protection($candidate_name)
+                              && empty($candidate_row['is_protected'])
+                          ) {
                               $permission_group_active_index = (int) $candidate_index;
                               break;
+                          }
+                      }
+
+                      if ($permission_group_active_index === $permission_group_total - 1) {
+                          foreach ($permission_group_rows as $candidate_index => $candidate_row) {
+                              if (!raidlands_permissions_group_is_read_only((string) ($candidate_row['group_name'] ?? ''))) {
+                                  $permission_group_active_index = (int) $candidate_index;
+                                  break;
+                              }
                           }
                       }
                     ?>
@@ -2083,7 +2159,12 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                             data-permission-name="<?= e($permission_name) ?>"
                                             data-permission-prefix="<?= e($prefix) ?>"
                                             data-permission-plugin="<?= e($permission_plugin) ?>"
-                                            data-permission-live="<?= $permission_live ? '1' : '0' ?>">
+                                            data-permission-live="<?= $permission_live ? '1' : '0' ?>"
+                                            <?php if ($is_read_only) : ?>
+                                              data-guard-title="Direct grant locked"
+                                              data-guard-message="<?= e('This permission belongs to ' . $group_name . ', which is a read-only system group. Use a managed VIP, perk, or custom group when you need to add or remove direct grants.') ?>"
+                                              title="<?= e('Read-only system group. Click for why this grant cannot be changed.') ?>"
+                                            <?php endif; ?>>
                                             <input
                                               type="checkbox"
                                               name="permission_groups[<?= e((string) $index) ?>][permissions][]"
@@ -2134,21 +2215,49 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 $selector_has_drift = $selector_missing_live !== [] || $selector_extra_live !== [];
                                 $selector_is_active = $selector_index === $permission_group_active_index;
                                 $selector_is_read_only = raidlands_permissions_group_is_read_only($selector_name);
-                                $selector_is_protected = raidlands_permissions_group_has_forced_protection($selector_name) || !empty($selector_row['is_protected']);
+                                $selector_is_forced_protected = raidlands_permissions_group_has_forced_protection($selector_name);
+                                $selector_is_protected = $selector_is_forced_protected || !empty($selector_row['is_protected']);
                                 $selector_state = empty($selector_row['id'])
                                     ? 'Draft'
                                     : ($selector_is_read_only
                                         ? 'Read-only'
                                         : ($selector_is_protected ? 'Protected' : (empty($selector_row['is_active']) ? 'Inactive' : 'Active')));
+                                $selector_classes = 'admin-group-picker-button';
+                                $selector_classes .= $selector_is_active ? ' is-active' : '';
+                                $selector_classes .= $selector_has_drift ? ' has-drift' : '';
+                                $selector_classes .= $selector_is_read_only ? ' is-guarded is-read-only' : ($selector_is_protected ? ' is-guarded is-protected' : '');
+                                $selector_title = '';
+                                $selector_message = '';
+                                $selector_tooltip = '';
+
+                                if ($selector_is_read_only) {
+                                    $selector_title = 'Read-only system group';
+                                    $selector_message = 'The ' . ($selector_name !== '' ? $selector_name : 'selected') . ' group is snapshot-only. Its live permissions are visible, but the website will not add or remove grants for it. Choose a managed VIP, perk, or custom group when you need editable permissions.';
+                                    $selector_tooltip = 'Read-only system group. Click for why it cannot be edited.';
+                                } elseif ($selector_is_protected) {
+                                    $selector_title = $selector_is_forced_protected ? 'Protected built-in group' : 'Protected group';
+                                    $selector_message = $selector_is_forced_protected
+                                        ? 'The ' . ($selector_name !== '' ? $selector_name : 'selected') . ' group is protected by its group name. Direct grants can be reviewed, but normal structural editing is guarded; use a custom managed group for fully editable behavior.'
+                                        : 'Protected is turned on for ' . ($selector_name !== '' ? $selector_name : 'this group') . '. Clear the Protected checkbox and save if you want it to behave like a normal editable group.';
+                                    $selector_tooltip = 'Protected group. Click for what is guarded and how to change it.';
+                                }
+                                $selector_meta = e((string) count($selector_desired_permissions)) . ' desired / ' . e((string) count($selector_live_permissions)) . ' live / ' . e($selector_state . ($selector_has_drift ? ' / Drift' : ''));
                               ?>
                               <button
-                                class="admin-group-picker-button<?= $selector_is_active ? ' is-active' : '' ?><?= $selector_has_drift ? ' has-drift' : '' ?>"
+                                class="<?= e($selector_classes) ?>"
                                 type="button"
                                 data-group-select
                                 data-group-index="<?= e((string) $selector_index) ?>"
+                                <?php if ($selector_title !== '') : ?>
+                                  data-guard-title="<?= e($selector_title) ?>"
+                                  data-guard-message="<?= e($selector_message) ?>"
+                                  data-guard-open-label="<?= e($selector_is_read_only ? 'View read-only group' : 'Open protected group') ?>"
+                                  title="<?= e($selector_tooltip) ?>"
+                                  aria-label="<?= e(($selector_name !== '' ? $selector_name : 'New Group') . '. ' . $selector_tooltip) ?>"
+                                <?php endif; ?>
                                 <?= $selector_is_active ? 'aria-current="true"' : '' ?>>
                                 <span data-group-select-label><?= e($selector_name !== '' ? $selector_name : 'New Group') ?></span>
-                                <small><?= e((string) count($selector_desired_permissions)) ?> desired / <?= e((string) count($selector_live_permissions)) ?> live / <?= e($selector_has_drift ? 'Drift' : $selector_state) ?></small>
+                                <small><?= $selector_meta ?></small>
                               </button>
                             <?php endfor; ?>
                           </div>

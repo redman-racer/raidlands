@@ -1210,7 +1210,9 @@
 
     if (!panel || !canvas || !payload || !Array.isArray(payload.samples)) return;
 
-    const samples = payload.samples;
+    const realSamples = payload.samples;
+    const bounds = historyChartBounds(payload);
+    const samples = buildServerHistoryChartSamples(realSamples, bounds);
     const rect = canvas.getBoundingClientRect();
     const width = Math.max(320, Math.floor(rect.width || 0));
     const height = Math.max(220, Math.floor(rect.height || 0));
@@ -1249,12 +1251,17 @@
         Number(sample.queue) || 0
       ))
     );
-    const xFor = index => pad.left + (samples.length === 1 ? plotWidth : (plotWidth * index) / (samples.length - 1));
+    const xFor = sample => {
+      const span = Math.max(1, bounds.end - bounds.start);
+      const offset = Math.max(0, Math.min(span, (Number(sample.__chartTime) || bounds.start) - bounds.start));
+
+      return pad.left + (plotWidth * offset) / span;
+    };
     const yFor = value => plotBottom - (Math.max(0, Number(value) || 0) / maxPopulation) * plotHeight;
 
     samples.forEach((sample, index) => {
-      const nextX = index < samples.length - 1 ? xFor(index + 1) : pad.left + plotWidth;
-      const x = xFor(index);
+      const nextX = index < samples.length - 1 ? xFor(samples[index + 1]) : pad.left + plotWidth;
+      const x = xFor(sample);
       const segmentWidth = Math.max(2, nextX - x);
       ctx.fillStyle = sample.online === true
         ? "rgba(124, 255, 107, .72)"
@@ -1267,8 +1274,8 @@
     drawHistoryArea(ctx, samples, xFor, yFor, plotBottom, "players", "rgba(255, 138, 40, .18)", "rgba(255, 138, 40, .95)");
     drawHistoryLine(ctx, samples, xFor, yFor, "queue", "rgba(255, 209, 102, .92)", 2);
 
-    const firstTime = sampleDate(samples[0], payload.granularity);
-    const lastTime = sampleDate(samples[samples.length - 1], payload.granularity);
+    const firstTime = sampleDate({ time: new Date(bounds.start).toISOString() }, payload.granularity);
+    const lastTime = sampleDate({ time: new Date(bounds.end).toISOString() }, payload.granularity);
     ctx.fillStyle = "rgba(243, 238, 227, .62)";
     ctx.font = "700 11px Inter, Arial, sans-serif";
     ctx.fillText(firstTime, pad.left, height - 10);
@@ -1296,10 +1303,102 @@
     }
   }
 
+  function historyChartBounds(payload) {
+    let end = parseHistoryTimestamp(payload && payload.windowEnd);
+
+    if (!Number.isFinite(end)) {
+      end = Date.now();
+    }
+
+    const minutes = Math.max(30, Number(payload && payload.windowMinutes) || 360);
+    let start = parseHistoryTimestamp(payload && payload.windowStart);
+
+    if (!Number.isFinite(start) || start >= end) {
+      start = end - minutes * 60 * 1000;
+    }
+
+    return { start, end };
+  }
+
+  function buildServerHistoryChartSamples(samples, bounds) {
+    const normalized = samples
+      .map(sample => {
+        const time = historySampleTime(sample);
+
+        if (!Number.isFinite(time)) {
+          return null;
+        }
+
+        return {
+          ...sample,
+          __chartTime: Math.max(bounds.start, Math.min(bounds.end, time))
+        };
+      })
+      .filter(Boolean)
+      .sort((left, right) => left.__chartTime - right.__chartTime);
+
+    if (normalized.length === 0) {
+      return [];
+    }
+
+    const first = normalized[0];
+
+    if (first.__chartTime > bounds.start + 1000) {
+      const startZero = serverHistoryZeroSample(first, bounds.start);
+      const beforeFirstZero = serverHistoryZeroSample(first, first.__chartTime);
+      normalized.unshift(beforeFirstZero);
+      normalized.unshift(startZero);
+    }
+
+    const last = normalized[normalized.length - 1];
+
+    if (last.__chartTime < bounds.end - 1000) {
+      normalized.push({
+        ...last,
+        time: new Date(bounds.end).toISOString(),
+        generatedAt: new Date(bounds.end).toISOString(),
+        __chartTime: bounds.end,
+        __synthetic: true
+      });
+    }
+
+    return normalized;
+  }
+
+  function serverHistoryZeroSample(sample, time) {
+    return {
+      ...sample,
+      time: new Date(time).toISOString(),
+      generatedAt: new Date(time).toISOString(),
+      online: null,
+      players: 0,
+      peakPlayers: 0,
+      queue: 0,
+      joining: 0,
+      sleepers: 0,
+      __chartTime: time,
+      __synthetic: true
+    };
+  }
+
+  function historySampleTime(sample) {
+    return parseHistoryTimestamp(sample && (sample.time || sample.generatedAt || sample.bucket));
+  }
+
+  function parseHistoryTimestamp(value) {
+    if (!value) {
+      return Number.NaN;
+    }
+
+    const timestamp = new Date(value).getTime();
+
+    return Number.isFinite(timestamp) ? timestamp : Number.NaN;
+  }
+
   function drawHistoryArea(ctx, samples, xFor, yFor, plotBottom, key, fill, stroke) {
     ctx.beginPath();
     samples.forEach((sample, index) => {
-      const x = xFor(index);
+      const x = xFor(sample);
       const y = yFor(sample[key]);
 
       if (index === 0) {
@@ -1309,8 +1408,8 @@
       }
     });
 
-    ctx.lineTo(xFor(samples.length - 1), plotBottom);
-    ctx.lineTo(xFor(0), plotBottom);
+    ctx.lineTo(xFor(samples[samples.length - 1]), plotBottom);
+    ctx.lineTo(xFor(samples[0]), plotBottom);
     ctx.closePath();
     ctx.fillStyle = fill;
     ctx.fill();
@@ -1320,7 +1419,7 @@
   function drawHistoryLine(ctx, samples, xFor, yFor, key, stroke, width) {
     ctx.beginPath();
     samples.forEach((sample, index) => {
-      const x = xFor(index);
+      const x = xFor(sample);
       const y = yFor(sample[key]);
 
       if (index === 0) {

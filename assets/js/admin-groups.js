@@ -8,6 +8,110 @@
 
   const toArray = nodes => Array.prototype.slice.call(nodes || []);
   const itemInput = item => item.querySelector('input[type="checkbox"]');
+  let guardModal = null;
+  let guardModalAction = null;
+  let guardModalReturnFocus = null;
+
+  function ensureGuardModal() {
+    if (guardModal) {
+      return guardModal;
+    }
+
+    guardModal = document.createElement("div");
+    guardModal.className = "admin-guard-modal";
+    guardModal.hidden = true;
+    guardModal.innerHTML = [
+      '<div class="admin-guard-modal-backdrop" data-guard-close></div>',
+      '<section class="admin-guard-modal-panel" role="dialog" aria-modal="true" aria-labelledby="admin-guard-modal-title">',
+      '<header class="admin-guard-modal-head">',
+      '<div><p class="section-kicker">Group state</p><h3 id="admin-guard-modal-title" data-guard-title>Group locked</h3></div>',
+      '<button class="btn btn-ghost" type="button" data-guard-close>Close</button>',
+      '</header>',
+      '<div class="admin-guard-modal-body">',
+      '<p data-guard-message></p>',
+      '</div>',
+      '<footer class="admin-guard-modal-actions">',
+      '<button class="btn btn-secondary" type="button" data-guard-close>Cancel</button>',
+      '<button class="btn btn-primary" type="button" data-guard-open hidden>Open group</button>',
+      '</footer>',
+      '</section>'
+    ].join("");
+
+    guardModal.addEventListener("click", event => {
+      if (event.target.closest("[data-guard-close]")) {
+        closeGuardModal();
+        return;
+      }
+
+      if (event.target.closest("[data-guard-open]")) {
+        const action = guardModalAction;
+        closeGuardModal();
+
+        if (action) {
+          action();
+        }
+      }
+    });
+
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape" && guardModal && !guardModal.hidden) {
+        closeGuardModal();
+      }
+    });
+
+    document.body.appendChild(guardModal);
+    return guardModal;
+  }
+
+  function openGuardModal(source, action) {
+    const modal = ensureGuardModal();
+    const title = source.getAttribute("data-guard-title") || "Group locked";
+    const message = source.getAttribute("data-guard-message") || "This selection is guarded and cannot be changed from this control.";
+    const openLabel = source.getAttribute("data-guard-open-label") || "Open group";
+    const openButton = modal.querySelector("[data-guard-open]");
+    const closeButton = modal.querySelector("[data-guard-close]");
+    const titleNode = modal.querySelector("[data-guard-title]");
+    const messageNode = modal.querySelector("[data-guard-message]");
+
+    guardModalAction = action || null;
+    guardModalReturnFocus = source;
+
+    if (titleNode) {
+      titleNode.textContent = title;
+    }
+
+    if (messageNode) {
+      messageNode.textContent = message;
+    }
+
+    if (openButton) {
+      openButton.hidden = !guardModalAction;
+      openButton.textContent = openLabel;
+    }
+
+    modal.hidden = false;
+    document.body.classList.add("has-admin-guard-modal");
+
+    if (closeButton) {
+      closeButton.focus();
+    }
+  }
+
+  function closeGuardModal() {
+    if (!guardModal) {
+      return;
+    }
+
+    guardModal.hidden = true;
+    guardModalAction = null;
+    document.body.classList.remove("has-admin-guard-modal");
+
+    if (guardModalReturnFocus && typeof guardModalReturnFocus.focus === "function") {
+      guardModalReturnFocus.focus();
+    }
+
+    guardModalReturnFocus = null;
+  }
 
   function initGroupEditor(editor) {
     const panels = toArray(editor.querySelectorAll("[data-group-panel]"));
@@ -68,7 +172,15 @@
 
     selectors.forEach(selector => {
       selector.addEventListener("click", () => {
-        activateGroup(selector.getAttribute("data-group-index") || "0");
+        const guarded = selector.hasAttribute("data-guard-title") || selector.hasAttribute("data-guard-message");
+        const index = selector.getAttribute("data-group-index") || "0";
+
+        if (guarded) {
+          openGuardModal(selector, () => activateGroup(index));
+          return;
+        }
+
+        activateGroup(index);
       });
     });
 
@@ -379,7 +491,17 @@
       item.addEventListener("click", event => {
         const input = itemInput(item);
 
-        if (!input || input.disabled || event.target === input) {
+        if (!input) {
+          return;
+        }
+
+        if (input.disabled) {
+          event.preventDefault();
+          openGuardModal(item);
+          return;
+        }
+
+        if (event.target === input) {
           return;
         }
 

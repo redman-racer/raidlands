@@ -196,6 +196,12 @@ function raidlands_permissions_fallback_permissions(): array
         'kits.medical',
         'kits.raid',
         'kits.scuba',
+        'kits.pvp.light',
+        'kits.pvp.rifle',
+        'kits.pvp.roamer',
+        'kits.pvp.heavy',
+        'kits.pvp.elite',
+        'kits.pvp.breach',
         'kits.paidpvpkit',
         'serverrewards.paidpvpkit',
     ];
@@ -662,11 +668,59 @@ function raidlands_permissions_desired_map(): array
     return $map;
 }
 
+function raidlands_permissions_flatten_group_permissions(array $group_permissions, array $parent_map): array
+{
+    $resolved = [];
+    $resolving = [];
+
+    $resolve = static function (string $group) use (&$resolve, &$resolved, &$resolving, $group_permissions, $parent_map): array {
+        $group = raidlands_permissions_clean_group($group);
+
+        if ($group === '') {
+            return [];
+        }
+
+        if (isset($resolved[$group])) {
+            return $resolved[$group];
+        }
+
+        if (isset($resolving[$group])) {
+            return array_values(array_unique(array_map('strval', (array) ($group_permissions[$group] ?? []))));
+        }
+
+        $resolving[$group] = true;
+        $permissions = array_values(array_unique(array_map('strval', (array) ($group_permissions[$group] ?? []))));
+        $parent = raidlands_permissions_clean_group($parent_map[$group] ?? '');
+
+        if ($parent !== '' && isset($group_permissions[$parent])) {
+            $permissions = array_merge($resolve($parent), $permissions);
+        }
+
+        $permissions = array_values(array_unique(array_filter($permissions)));
+        sort($permissions, SORT_NATURAL | SORT_FLAG_CASE);
+        $resolved[$group] = $permissions;
+        unset($resolving[$group]);
+
+        return $permissions;
+    };
+
+    foreach (array_keys($group_permissions) as $group) {
+        $group = raidlands_permissions_clean_group($group);
+
+        if ($group !== '') {
+            $group_permissions[$group] = $resolve($group);
+        }
+    }
+
+    return $group_permissions;
+}
+
 function raidlands_permissions_sync_payload(?int $revision = null): array
 {
     $revision = $revision ?? raidlands_permissions_latest_published_revision();
     $groups = [];
     $group_permissions = raidlands_permissions_desired_map();
+    $parent_map = [];
 
     foreach (raidlands_permissions_group_rows() as $group) {
         if (empty($group['is_managed']) || empty($group['is_active']) || !empty($group['is_read_only'])) {
@@ -674,6 +728,7 @@ function raidlands_permissions_sync_payload(?int $revision = null): array
         }
 
         $group_name = (string) $group['group_name'];
+        $parent_map[$group_name] = (string) ($group['parent_group'] ?? '');
         $groups[] = [
             'name' => $group_name,
             'title' => (string) ($group['title'] ?: $group_name),
@@ -704,6 +759,8 @@ function raidlands_permissions_sync_payload(?int $revision = null): array
             }
         }
     }
+
+    $group_permissions = raidlands_permissions_flatten_group_permissions($group_permissions, $parent_map);
 
     foreach ($group_permissions as $group => $permissions) {
         $permissions = array_values(array_unique(array_filter(array_map('strval', (array) $permissions))));

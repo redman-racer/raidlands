@@ -584,6 +584,10 @@ function raidlands_server_status_history_range(string $range, ?int $minutes = nu
 function raidlands_server_status_history_recent_public(int $window_minutes, array $history_range): array
 {
     $window_minutes = max(30, min(1440, $window_minutes));
+    $now = time();
+    $window_start = $now - ($window_minutes * 60);
+    $history_range['windowStart'] = gmdate('c', $window_start);
+    $history_range['windowEnd'] = gmdate('c', $now);
     $limit = min(3000, max(60, ($window_minutes * 2) + 10));
 
     if (!raidlands_server_status_history_is_ready()) {
@@ -604,7 +608,7 @@ function raidlands_server_status_history_recent_public(int $window_minutes, arra
              ORDER BY COALESCE(generated_at, received_at) ASC, received_at ASC',
             [
                 'server_id' => raidlands_server_status_server_id(),
-                'cutoff' => gmdate('Y-m-d H:i:s', time() - ($window_minutes * 60)),
+                'cutoff' => gmdate('Y-m-d H:i:s', $window_start),
             ]
         );
     } catch (Throwable $error) {
@@ -674,11 +678,16 @@ function raidlands_server_status_history_recent_public(int $window_minutes, arra
 
 function raidlands_server_status_history_hourly_public(int $days, array $history_range): array
 {
+    $days = max(1, min(31, $days));
+    $now = time();
+    $window_start = intdiv($now - ($days * 24 * 60 * 60), 3600) * 3600;
+    $history_range['windowStart'] = gmdate('c', $window_start);
+    $history_range['windowEnd'] = gmdate('c', $now);
+
     if (!raidlands_server_status_rollups_are_ready()) {
         return raidlands_server_status_history_empty((int) ($history_range['minutes'] ?? 0), 'Server status rollups are not available yet. Run database/migrations/011_server_status_rollups.sql.', $history_range);
     }
 
-    $days = max(1, min(31, $days));
     $server_id = raidlands_server_status_server_id();
 
     try {
@@ -690,7 +699,7 @@ function raidlands_server_status_history_hourly_public(int $days, array $history
              ORDER BY bucket_hour ASC',
             [
                 'server_id' => $server_id,
-                'cutoff' => gmdate('Y-m-d H:00:00', time() - ($days * 24 * 60 * 60)),
+                'cutoff' => gmdate('Y-m-d H:00:00', $window_start),
             ]
         );
     } catch (Throwable $error) {
@@ -748,12 +757,17 @@ function raidlands_server_status_history_hourly_public(int $days, array $history
 
 function raidlands_server_status_history_daily_public(int $months, array $history_range): array
 {
+    $months = max(1, min(24, $months));
+    $now = time();
+    $cutoff = strtotime('-' . $months . ' months', $now);
+    $cutoff = $cutoff === false ? $now : $cutoff;
+    $window_start = gmmktime(0, 0, 0, (int) gmdate('n', $cutoff), (int) gmdate('j', $cutoff), (int) gmdate('Y', $cutoff));
+    $history_range['windowStart'] = gmdate('c', $window_start);
+    $history_range['windowEnd'] = gmdate('c', $now);
+
     if (!raidlands_server_status_rollups_are_ready()) {
         return raidlands_server_status_history_empty((int) ($history_range['minutes'] ?? 0), 'Server status rollups are not available yet. Run database/migrations/011_server_status_rollups.sql.', $history_range);
     }
-
-    $months = max(1, min(24, $months));
-    $cutoff = strtotime('-' . $months . ' months');
 
     try {
         $rows = raidlands_db_fetch_all(
@@ -765,7 +779,7 @@ function raidlands_server_status_history_daily_public(int $months, array $histor
              ORDER BY bucket_date ASC',
             [
                 'server_id' => raidlands_server_status_server_id(),
-                'cutoff' => gmdate('Y-m-d', $cutoff === false ? time() : $cutoff),
+                'cutoff' => gmdate('Y-m-d', $window_start),
             ]
         );
     } catch (Throwable $error) {
@@ -868,6 +882,8 @@ function raidlands_server_status_history_payload(array $history_range, array $pa
         'rangeLabel' => (string) ($history_range['label'] ?? '6 hours'),
         'granularity' => (string) ($history_range['granularity'] ?? 'sample'),
         'windowMinutes' => (int) ($history_range['minutes'] ?? 360),
+        'windowStart' => (string) ($history_range['windowStart'] ?? ''),
+        'windowEnd' => (string) ($history_range['windowEnd'] ?? ''),
         'sampleCount' => 0,
         'pointCount' => 0,
         'onlineSampleCount' => 0,

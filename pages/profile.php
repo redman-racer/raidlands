@@ -7,6 +7,9 @@ $profile_player = raidlands_store_current_player();
 $profile_entitlements = [];
 $profile_active_groups = [];
 $profile_stats = ['current' => null, 'all_time' => null, 'wipe' => null];
+$profile_rp_balance = null;
+$profile_rp_requests = [];
+$profile_rp_subscriptions = [];
 $profile_flash = raidlands_store_flash();
 
 if ($profile_player !== null && !empty($profile_player['id'])) {
@@ -14,6 +17,9 @@ if ($profile_player !== null && !empty($profile_player['id'])) {
     $state = raidlands_store_active_groups_for_steam((string) $profile_player['steam_id64']);
     $profile_active_groups = $state['groups'];
     $profile_stats = raidlands_stats_player_summary((int) $profile_player['id']);
+    $profile_rp_balance = raidlands_store_current_rp_balance((int) $profile_player['id']);
+    $profile_rp_requests = raidlands_store_rp_requests_for_player((int) $profile_player['id']);
+    $profile_rp_subscriptions = raidlands_store_rp_subscriptions_for_player((int) $profile_player['id']);
 }
 
 $profile_display_name = $profile_player !== null
@@ -126,6 +132,95 @@ $profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_
               <strong><?= e(is_int($value) ? raidlands_stats_format_number($value) : (string) $value) ?></strong>
             </article>
           <?php endforeach; ?>
+        </div>
+      <?php endif; ?>
+    </div>
+  </section>
+
+  <section class="section alt">
+    <div class="section-inner">
+      <div class="section-header">
+        <p class="section-kicker">RP shop</p>
+        <h2>Requests and renewals</h2>
+        <p class="section-lede">RP requests wait for the game server to confirm the live balance and debit before access changes.</p>
+      </div>
+
+      <div class="profile-stat-grid">
+        <article class="stat-tile">
+          <span>Synced RP</span>
+          <strong><?= e(raidlands_store_rp((int) ($profile_rp_balance['reward_points'] ?? 0))) ?></strong>
+        </article>
+        <article class="stat-tile">
+          <span>Pending Requests</span>
+          <strong><?= e((string) count(array_filter($profile_rp_requests, static fn (array $row): bool => in_array((string) $row['status'], ['queued', 'processing'], true)))) ?></strong>
+        </article>
+        <article class="stat-tile">
+          <span>Auto-Renew</span>
+          <strong><?= e((string) count(array_filter($profile_rp_subscriptions, static fn (array $row): bool => in_array((string) $row['status'], ['active', 'past_due'], true) && empty($row['cancel_at_period_end'])))) ?></strong>
+        </article>
+      </div>
+
+      <?php if ($profile_rp_subscriptions !== []) : ?>
+        <div class="store-table-wrap">
+          <table class="store-table">
+            <thead>
+              <tr>
+                <th>Renewal</th>
+                <th>Cost</th>
+                <th>Status</th>
+                <th>Period Ends</th>
+                <th>Action</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($profile_rp_subscriptions as $subscription) : ?>
+                <tr>
+                  <td><?= e((string) $subscription['product_name']) ?> / <?= e((string) $subscription['price_label']) ?></td>
+                  <td><?= e(raidlands_store_rp((int) $subscription['rp_cost'])) ?></td>
+                  <td><span class="status-pill <?= e((string) $subscription['status']) ?>"><?= e((string) $subscription['status']) ?></span></td>
+                  <td><?= e((string) ($subscription['current_period_end'] ?: 'No scheduled expiration')) ?></td>
+                  <td>
+                    <?php if (in_array((string) $subscription['status'], ['active', 'past_due'], true) && empty($subscription['cancel_at_period_end'])) : ?>
+                      <form method="post" action="<?= e(route_url('profile') . 'rp-subscription.php') ?>">
+                        <input type="hidden" name="csrf" value="<?= e(raidlands_store_csrf_token()) ?>">
+                        <input type="hidden" name="subscription_id" value="<?= e((string) $subscription['id']) ?>">
+                        <button class="btn btn-secondary" type="submit">Cancel Renewal</button>
+                      </form>
+                    <?php else : ?>
+                      <span class="store-muted">No action</span>
+                    <?php endif; ?>
+                  </td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+      <?php endif; ?>
+
+      <?php if ($profile_rp_requests !== []) : ?>
+        <div class="store-table-wrap">
+          <table class="store-table">
+            <thead>
+              <tr>
+                <th>Request</th>
+                <th>Cost</th>
+                <th>Status</th>
+                <th>Message</th>
+                <th>Created</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($profile_rp_requests as $request) : ?>
+                <tr>
+                  <td><?= e((string) $request['product_name']) ?> / <?= e((string) $request['price_label']) ?></td>
+                  <td><?= e(raidlands_store_rp((int) $request['rp_cost'])) ?></td>
+                  <td><span class="status-pill <?= e((string) $request['status']) ?>"><?= e((string) $request['status']) ?></span></td>
+                  <td><?= e((string) ($request['message'] ?: 'Waiting for server confirmation')) ?></td>
+                  <td><?= e((string) $request['created_at']) ?></td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
         </div>
       <?php endif; ?>
     </div>

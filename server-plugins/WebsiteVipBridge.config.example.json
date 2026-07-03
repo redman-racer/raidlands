@@ -29,6 +29,10 @@
   "StatsEnabled": true,
   "StatsSyncIntervalSeconds": 300,
   "StatsDebounceSeconds": 30,
+  "RpPurchasesEnabled": true,
+  "RpPurchasePollIntervalSeconds": 30,
+  "RpPurchasePollLimit": 10,
+  "RpPurchaseProcessedRetentionDays": 0,
   "KitSyncEnabled": true,
   "KitSyncIntervalSeconds": 180,
   "PermissionSyncEnabled": true,
@@ -44,7 +48,13 @@
     "perk_skinbox",
     "perk_raid_kit",
     "perk_queue_priority",
-    "perk_supporter_badge"
+    "perk_supporter_badge",
+    "perk_pvp_light",
+    "perk_pvp_rifle",
+    "perk_pvp_roamer",
+    "perk_pvp_heavy",
+    "perk_pvp_elite",
+    "perk_pvp_breach"
   ],
   "KitPermissionPrefixes": [
     "kits.",
@@ -60,6 +70,12 @@
     "perk_skinbox",
     "perk_raid_kit",
     "perk_queue_priority",
-    "perk_supporter_badge"
+    "perk_supporter_badge",
+    "perk_pvp_light",
+    "perk_pvp_rifle",
+    "perk_pvp_roamer",
+    "perk_pvp_heavy",
+    "perk_pvp_elite",
+    "perk_pvp_breach"
   ]
 }

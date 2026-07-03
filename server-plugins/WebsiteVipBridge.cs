@@ -10,11 +10,12 @@ using Newtonsoft.Json.Linq;
 using Oxide.Core;
 using Oxide.Core.Libraries;
 using Oxide.Core.Libraries.Covalence;
+using Oxide.Core.Plugins;
 using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteVipBridge", "Raidlands", "1.4.8")]
+    [Info("WebsiteVipBridge", "Raidlands", "1.4.9")]
     [Description("Syncs website VIP entitlements and player stats between Raidlands.net and the Rust server.")]
     public class WebsiteVipBridge : CovalencePlugin
     {
@@ -28,13 +29,22 @@ namespace Oxide.Plugins
         private Timer pendingKitSnapshotTimer;
         private Timer permissionSyncTimer;
         private Timer pendingPermissionSnapshotTimer;
+        private Timer rpPurchaseTimer;
         private long cursor;
         private long kitRevision;
         private long permissionRevision;
         private DateTime lastStatusHeartbeatAt = DateTime.MinValue;
         private Dictionary<string, string> secrets;
         private const string SecretsConfigName = "Secrets.local";
+        private const string RpPurchaseDataFile = "WebsiteVipBridge/rp_purchases";
         private string secretsConfigSource;
+        private RpPurchaseLedger rpPurchaseData;
+        private bool rpPurchasePollInFlight;
+        private readonly HashSet<string> rpResultPostsInFlight = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+        [PluginReference]
+        private Plugin ServerRewards;
+
         private static readonly HashSet<string> ProtectedGroups = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
             "default",
@@ -60,6 +70,10 @@ namespace Oxide.Plugins
             public bool StatsEnabled = true;
             public int StatsSyncIntervalSeconds = 300;
             public int StatsDebounceSeconds = 30;
+            public bool RpPurchasesEnabled = true;
+            public int RpPurchasePollIntervalSeconds = 30;
+            public int RpPurchasePollLimit = 10;
+            public int RpPurchaseProcessedRetentionDays = 0;
             public bool KitSyncEnabled = true;
             public int KitSyncIntervalSeconds = 180;
             public bool PermissionSyncEnabled = true;
@@ -76,7 +90,13 @@ namespace Oxide.Plugins
                 "perk_skinbox",
                 "perk_raid_kit",
                 "perk_queue_priority",
-                "perk_supporter_badge"
+                "perk_supporter_badge",
+                "perk_pvp_light",
+                "perk_pvp_rifle",
+                "perk_pvp_roamer",
+                "perk_pvp_heavy",
+                "perk_pvp_elite",
+                "perk_pvp_breach"
             };
             public List<string> KitPermissionPrefixes = new List<string>
             {
@@ -94,7 +114,13 @@ namespace Oxide.Plugins
                 "perk_skinbox",
                 "perk_raid_kit",
                 "perk_queue_priority",
-                "perk_supporter_badge"
+                "perk_supporter_badge",
+                "perk_pvp_light",
+                "perk_pvp_rifle",
+                "perk_pvp_roamer",
+                "perk_pvp_heavy",
+                "perk_pvp_elite",
+                "perk_pvp_breach"
             };
         }
 
@@ -190,6 +216,45 @@ namespace Oxide.Plugins
             public string title;
             public int rank;
             public string parent;
+        }
+
+        private class RpPurchaseRequest
+        {
+            public string request_id;
+            public string steam_id64;
+            public int rp_cost;
+            public bool auto_renew;
+            public bool renewal;
+            public string purchase_type;
+            public string subscription_id;
+        }
+
+        private class RpPurchaseLedger
+        {
+            public Dictionary<string, RpPurchaseLedgerEntry> processed = new Dictionary<string, RpPurchaseLedgerEntry>(StringComparer.OrdinalIgnoreCase);
+        }
+
+        private class RpPurchaseLedgerEntry
+        {
+            public string request_id;
+            public string steam_id64;
+            public int rp_cost;
+            public string status;
+            public string reason;
+            public string message;
+            public int balance_before;
+            public int balance_after;
+            public bool auto_renew;
+            public bool renewal;
+            public string purchase_type;
+            public string subscription_id;
+            public string subscription_status;
+            public string transaction_id;
+            public string processed_at;
+            public bool posted;
+            public string posted_at;
+            public int post_attempts;
+            public string last_post_error;
         }
 
         private class StatsSnapshot
@@ -311,6 +376,21 @@ namespace Oxide.Plugins
                 config.StatsDebounceSeconds = defaults.StatsDebounceSeconds;
             }
 
+            if (config.RpPurchasePollIntervalSeconds <= 0)
+            {
+                config.RpPurchasePollIntervalSeconds = defaults.RpPurchasePollIntervalSeconds;
+            }
+
+            if (config.RpPurchasePollLimit <= 0)
+            {
+                config.RpPurchasePollLimit = defaults.RpPurchasePollLimit;
+            }
+
+            if (config.RpPurchaseProcessedRetentionDays < 0)
+            {
+                config.RpPurchaseProcessedRetentionDays = defaults.RpPurchaseProcessedRetentionDays;
+            }
+
             if (config.StatusHeartbeatIntervalSeconds <= 0)
             {
                 config.StatusHeartbeatIntervalSeconds = defaults.StatusHeartbeatIntervalSeconds;
@@ -363,6 +443,7 @@ namespace Oxide.Plugins
             StartKitSync();
             StartPermissionSync();
             StartStatusHeartbeat();
+            StartRpPurchasePolling();
 
             var interval = Math.Max(30, config.SyncIntervalSeconds);
             syncTimer = timer.Every(interval, () => RunScheduled("VIP change sync timer", SyncChanges));
@@ -390,6 +471,8 @@ namespace Oxide.Plugins
             pendingKitSnapshotTimer?.Destroy();
             permissionSyncTimer?.Destroy();
             pendingPermissionSnapshotTimer?.Destroy();
+            rpPurchaseTimer?.Destroy();
+            SaveRpPurchaseData();
         }
 
         private void OnUserConnected(IPlayer player)
@@ -548,6 +631,36 @@ namespace Oxide.Plugins
             ReplyBridge(player, $"Status heartbeat enabled={config.StatusHeartbeatEnabled}, interval={interval}s, last success={last}. Current heartbeat requested.");
         }
 
+        [Command("websitevip.rp.sync")]
+        private void RpPurchaseSyncCommand(IPlayer player, string command, string[] args)
+        {
+            if (!CanRunBridgeCommand(player))
+            {
+                return;
+            }
+
+            SyncRpPurchases();
+            ReplyBridge(player, "Requested RP purchase sync from the website.");
+        }
+
+        [Command("websitevip.rp.status")]
+        private void RpPurchaseStatusCommand(IPlayer player, string command, string[] args)
+        {
+            if (!CanRunBridgeCommand(player))
+            {
+                return;
+            }
+
+            LoadRpPurchaseData();
+
+            var processed = rpPurchaseData?.processed?.Count ?? 0;
+            var unposted = rpPurchaseData?.processed?.Values.Count(entry => entry != null && !entry.posted) ?? 0;
+            var interval = Math.Max(10, config.RpPurchasePollIntervalSeconds);
+            var message = $"RP purchase polling enabled={config.RpPurchasesEnabled}, interval={interval}s, processed={processed}, unposted_results={unposted}.";
+
+            ReplyBridge(player, message);
+        }
+
         [Command("websitevip.kits.rollback")]
         private void KitRollbackCommand(IPlayer player, string command, string[] args)
         {
@@ -656,6 +769,534 @@ namespace Oxide.Plugins
                     cursor = payload.cursor;
                 }
             });
+        }
+
+        private void StartRpPurchasePolling()
+        {
+            LoadRpPurchaseData();
+            PruneRpPurchaseData();
+
+            if (!config.RpPurchasesEnabled)
+            {
+                Puts("WebsiteVipBridge RP purchase polling is disabled.");
+                return;
+            }
+
+            var interval = Math.Max(10, config.RpPurchasePollIntervalSeconds);
+            timer.Once(20f, () => RunScheduled("Initial RP purchase sync", SyncRpPurchases));
+            rpPurchaseTimer = timer.Every(interval, () => RunScheduled("RP purchase sync timer", SyncRpPurchases));
+            Puts($"WebsiteVipBridge polling RP purchases every {interval} seconds.");
+        }
+
+        private void SyncRpPurchases()
+        {
+            if (!config.RpPurchasesEnabled || !CanRequest())
+            {
+                return;
+            }
+
+            if (rpPurchasePollInFlight)
+            {
+                Puts("RP purchase sync skipped because a previous poll is still in flight.");
+                return;
+            }
+
+            LoadRpPurchaseData();
+            PruneRpPurchaseData();
+            PostPendingRpPurchaseResults();
+
+            rpPurchasePollInFlight = true;
+            var limit = Math.Max(1, config.RpPurchasePollLimit);
+            var url = $"{TrimSlash(config.ApiBaseUrl)}/api/server/rp-purchases.php?limit={limit}";
+
+            SendGet(url, (code, response) =>
+            {
+                try
+                {
+                    if (!IsSuccess(code, response, out var error))
+                    {
+                        PrintWarning($"RP purchase sync failed: {error}");
+                        return;
+                    }
+
+                    JObject payload;
+
+                    try
+                    {
+                        payload = JObject.Parse(response);
+                    }
+                    catch (Exception ex)
+                    {
+                        PrintWarning($"RP purchase sync failed: invalid response ({ex.Message})");
+                        return;
+                    }
+
+                    if (JsonToken(payload, "ok") != null && !JsonBool(payload, false, "ok"))
+                    {
+                        PrintWarning($"RP purchase sync failed: {JsonString(payload, "error", "message", "reason")}");
+                        return;
+                    }
+
+                    var requests = ExtractRpPurchaseRequests(payload);
+                    var handled = 0;
+
+                    foreach (var request in requests)
+                    {
+                        if (HandleRpPurchaseRequest(request))
+                        {
+                            handled++;
+                        }
+                    }
+
+                    if (handled > 0)
+                    {
+                        Puts($"Handled {handled} RP purchase request(s).");
+                    }
+                }
+                finally
+                {
+                    rpPurchasePollInFlight = false;
+                }
+            });
+        }
+
+        private List<JObject> ExtractRpPurchaseRequests(JObject payload)
+        {
+            var requests = new List<JObject>();
+            var array = JsonToken(payload, "requests", "purchases", "rp_purchases", "rp_purchase_requests") as JArray;
+
+            if (array == null)
+            {
+                return requests;
+            }
+
+            foreach (var item in array.OfType<JObject>())
+            {
+                requests.Add(item);
+            }
+
+            return requests;
+        }
+
+        private bool HandleRpPurchaseRequest(JObject item)
+        {
+            var request = ParseRpPurchaseRequest(item);
+
+            if (string.IsNullOrWhiteSpace(request.request_id))
+            {
+                PrintWarning("Ignored RP purchase request without request_id.");
+                return false;
+            }
+
+            LoadRpPurchaseData();
+
+            RpPurchaseLedgerEntry existing;
+
+            if (rpPurchaseData.processed.TryGetValue(request.request_id, out existing) && existing != null)
+            {
+                if (!string.Equals(existing.steam_id64, request.steam_id64, StringComparison.OrdinalIgnoreCase)
+                    || (request.rp_cost > 0 && existing.rp_cost != request.rp_cost))
+                {
+                    PrintWarning($"Duplicate RP purchase {request.request_id} changed request details; returning saved {existing.status} result.");
+                }
+
+                PostRpPurchaseResult(existing, true);
+                return true;
+            }
+
+            var entry = ProcessRpPurchaseRequest(request);
+            rpPurchaseData.processed[entry.request_id] = entry;
+            SaveRpPurchaseData();
+
+            Puts($"RP purchase {entry.request_id} {entry.status}: {entry.message}");
+            PostRpPurchaseResult(entry, true);
+
+            if (string.Equals(entry.status, "confirmed", StringComparison.OrdinalIgnoreCase))
+            {
+                QueueStatsSync();
+            }
+
+            return true;
+        }
+
+        private RpPurchaseRequest ParseRpPurchaseRequest(JObject item)
+        {
+            var purchaseType = JsonString(item, "purchase_type", "type", "kind", "mode");
+            var renewal = JsonBool(item, false, "renewal", "is_renewal", "isRenewal")
+                || ContainsWord(purchaseType, "renewal");
+            var autoRenew = JsonBool(item, false, "auto_renew", "autoRenew", "is_auto_renew", "isAutoRenew", "recurring")
+                || ContainsWord(purchaseType, "subscription")
+                || ContainsWord(purchaseType, "auto_renew");
+
+            return new RpPurchaseRequest
+            {
+                request_id = JsonString(item, "request_id", "id", "purchase_request_id", "rp_purchase_request_id"),
+                steam_id64 = JsonString(item, "steam_id64", "steam_id", "player_steam_id", "player_steam_id64"),
+                rp_cost = JsonInt(item, 0, "rp_cost", "cost_rp", "reward_points", "amount_rp", "amount"),
+                auto_renew = autoRenew,
+                renewal = renewal,
+                purchase_type = purchaseType,
+                subscription_id = JsonString(item, "subscription_id", "rp_subscription_id")
+            };
+        }
+
+        private RpPurchaseLedgerEntry ProcessRpPurchaseRequest(RpPurchaseRequest request)
+        {
+            if (!IsSteamId64(request.steam_id64))
+            {
+                return BuildRpPurchaseResult(request, "failed", "invalid_steam_id", "RP purchase request has an invalid SteamID64.", 0, 0);
+            }
+
+            if (request.rp_cost <= 0)
+            {
+                return BuildRpPurchaseResult(request, "failed", "invalid_rp_cost", "RP purchase request has an invalid RP cost.", 0, 0);
+            }
+
+            int balanceBefore;
+            string balanceError;
+
+            if (!TryGetServerRewardsBalance(request.steam_id64, out balanceBefore, out balanceError))
+            {
+                return BuildRpPurchaseResult(request, "failed", "server_rewards_unavailable", balanceError, 0, 0);
+            }
+
+            if (balanceBefore < request.rp_cost)
+            {
+                return BuildRpPurchaseResult(
+                    request,
+                    "rejected",
+                    "insufficient_rp",
+                    $"Insufficient RP: required {request.rp_cost}, available {balanceBefore}.",
+                    balanceBefore,
+                    balanceBefore);
+            }
+
+            string debitError;
+
+            if (!TryTakeServerRewardsPoints(request.steam_id64, request.rp_cost, out debitError))
+            {
+                int retryBalance;
+
+                if (TryGetServerRewardsBalance(request.steam_id64, out retryBalance, out balanceError) && retryBalance < request.rp_cost)
+                {
+                    return BuildRpPurchaseResult(
+                        request,
+                        "rejected",
+                        "insufficient_rp",
+                        $"Insufficient RP: required {request.rp_cost}, available {retryBalance}.",
+                        retryBalance,
+                        retryBalance);
+                }
+
+                return BuildRpPurchaseResult(request, "failed", "debit_failed", debitError, balanceBefore, balanceBefore);
+            }
+
+            int balanceAfter;
+
+            if (!TryGetServerRewardsBalance(request.steam_id64, out balanceAfter, out balanceError))
+            {
+                balanceAfter = Math.Max(0, balanceBefore - request.rp_cost);
+            }
+
+            return BuildRpPurchaseResult(
+                request,
+                "confirmed",
+                "confirmed",
+                $"Debited {request.rp_cost} RP from {request.steam_id64}.",
+                balanceBefore,
+                balanceAfter);
+        }
+
+        private RpPurchaseLedgerEntry BuildRpPurchaseResult(
+            RpPurchaseRequest request,
+            string status,
+            string reason,
+            string message,
+            int balanceBefore,
+            int balanceAfter)
+        {
+            var processedAt = DateTime.UtcNow.ToString("o");
+            var isPastDueRenewal = string.Equals(status, "rejected", StringComparison.OrdinalIgnoreCase)
+                && string.Equals(reason, "insufficient_rp", StringComparison.OrdinalIgnoreCase)
+                && request.renewal;
+
+            return new RpPurchaseLedgerEntry
+            {
+                request_id = request.request_id,
+                steam_id64 = request.steam_id64,
+                rp_cost = Math.Max(0, request.rp_cost),
+                status = status,
+                reason = reason,
+                message = message,
+                balance_before = Math.Max(0, balanceBefore),
+                balance_after = Math.Max(0, balanceAfter),
+                auto_renew = request.auto_renew,
+                renewal = request.renewal,
+                purchase_type = request.purchase_type,
+                subscription_id = request.subscription_id,
+                subscription_status = isPastDueRenewal ? "past_due" : "",
+                transaction_id = $"rp:{request.request_id}",
+                processed_at = processedAt,
+                posted = false,
+                posted_at = "",
+                post_attempts = 0,
+                last_post_error = ""
+            };
+        }
+
+        private void PostPendingRpPurchaseResults()
+        {
+            LoadRpPurchaseData();
+
+            var limit = Math.Max(1, config.RpPurchasePollLimit);
+            var pending = rpPurchaseData.processed.Values
+                .Where(entry => entry != null && !entry.posted)
+                .OrderBy(entry => entry.processed_at ?? "")
+                .Take(limit)
+                .ToList();
+
+            foreach (var entry in pending)
+            {
+                PostRpPurchaseResult(entry, false);
+            }
+        }
+
+        private void PostRpPurchaseResult(RpPurchaseLedgerEntry entry, bool force)
+        {
+            if (entry == null || string.IsNullOrWhiteSpace(entry.request_id))
+            {
+                return;
+            }
+
+            if (entry.posted && !force)
+            {
+                return;
+            }
+
+            if (rpResultPostsInFlight.Contains(entry.request_id))
+            {
+                return;
+            }
+
+            rpResultPostsInFlight.Add(entry.request_id);
+
+            var body = BuildRpPurchaseResultPayload(entry).ToString(Formatting.None);
+            var url = $"{TrimSlash(config.ApiBaseUrl)}/api/server/rp-purchase-result.php";
+
+            SendPost(url, body, (code, response) =>
+            {
+                rpResultPostsInFlight.Remove(entry.request_id);
+                entry.post_attempts++;
+
+                if (!IsSuccess(code, response, out var error))
+                {
+                    entry.last_post_error = error;
+                    SaveRpPurchaseData();
+                    PrintWarning($"RP purchase result post failed for {entry.request_id}: {error}");
+                    return;
+                }
+
+                JObject payload;
+
+                try
+                {
+                    payload = JObject.Parse(response);
+                }
+                catch (Exception ex)
+                {
+                    entry.last_post_error = $"invalid response ({ex.Message})";
+                    SaveRpPurchaseData();
+                    PrintWarning($"RP purchase result post failed for {entry.request_id}: {entry.last_post_error}");
+                    return;
+                }
+
+                if (JsonToken(payload, "ok") != null && !JsonBool(payload, false, "ok"))
+                {
+                    entry.last_post_error = JsonString(payload, "error", "message", "reason");
+                    SaveRpPurchaseData();
+                    PrintWarning($"RP purchase result post failed for {entry.request_id}: {entry.last_post_error}");
+                    return;
+                }
+
+                entry.posted = true;
+                entry.posted_at = DateTime.UtcNow.ToString("o");
+                entry.last_post_error = "";
+                SaveRpPurchaseData();
+            });
+        }
+
+        private JObject BuildRpPurchaseResultPayload(RpPurchaseLedgerEntry entry)
+        {
+            return new JObject
+            {
+                ["server_id"] = config.ServerId,
+                ["request_id"] = entry.request_id,
+                ["steam_id64"] = entry.steam_id64,
+                ["status"] = entry.status,
+                ["result"] = entry.status,
+                ["reason"] = entry.reason,
+                ["message"] = entry.message,
+                ["rp_cost"] = entry.rp_cost,
+                ["balance_before"] = entry.balance_before,
+                ["balance_after"] = entry.balance_after,
+                ["auto_renew"] = entry.auto_renew,
+                ["renewal"] = entry.renewal,
+                ["purchase_type"] = NullIfEmpty(entry.purchase_type),
+                ["subscription_id"] = NullIfEmpty(entry.subscription_id),
+                ["subscription_status"] = NullIfEmpty(entry.subscription_status),
+                ["transaction_id"] = entry.transaction_id,
+                ["processed_at"] = entry.processed_at
+            };
+        }
+
+        private bool TryGetServerRewardsBalance(string steamId, out int balance, out string error)
+        {
+            balance = 0;
+
+            if (ServerRewards == null)
+            {
+                error = "ServerRewards plugin is not loaded.";
+                return false;
+            }
+
+            try
+            {
+                var result = ServerRewards.Call("CheckPoints", steamId);
+
+                if (result == null)
+                {
+                    error = "ServerRewards CheckPoints returned no result.";
+                    return false;
+                }
+
+                balance = Math.Max(0, Convert.ToInt32(result));
+                error = "";
+                return true;
+            }
+            catch (Exception ex)
+            {
+                error = $"ServerRewards CheckPoints failed: {ex.Message}";
+                return false;
+            }
+        }
+
+        private bool TryTakeServerRewardsPoints(string steamId, int amount, out string error)
+        {
+            if (ServerRewards == null)
+            {
+                error = "ServerRewards plugin is not loaded.";
+                return false;
+            }
+
+            if (amount <= 0)
+            {
+                error = "RP amount must be positive.";
+                return false;
+            }
+
+            try
+            {
+                var result = ServerRewards.Call("TakePoints", steamId, amount);
+
+                if (result is bool && (bool)result)
+                {
+                    error = "";
+                    return true;
+                }
+
+                error = "ServerRewards rejected the RP debit.";
+                return false;
+            }
+            catch (Exception ex)
+            {
+                error = $"ServerRewards TakePoints failed: {ex.Message}";
+                return false;
+            }
+        }
+
+        private void LoadRpPurchaseData()
+        {
+            if (rpPurchaseData != null)
+            {
+                return;
+            }
+
+            rpPurchaseData = ReadDataFile<RpPurchaseLedger>(RpPurchaseDataFile) ?? new RpPurchaseLedger();
+
+            if (rpPurchaseData.processed == null)
+            {
+                rpPurchaseData.processed = new Dictionary<string, RpPurchaseLedgerEntry>(StringComparer.OrdinalIgnoreCase);
+                return;
+            }
+
+            var processed = new Dictionary<string, RpPurchaseLedgerEntry>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var entry in rpPurchaseData.processed)
+            {
+                if (!string.IsNullOrWhiteSpace(entry.Key) && entry.Value != null)
+                {
+                    processed[entry.Key] = entry.Value;
+                }
+            }
+
+            rpPurchaseData.processed = processed;
+        }
+
+        private void SaveRpPurchaseData()
+        {
+            if (rpPurchaseData == null)
+            {
+                return;
+            }
+
+            try
+            {
+                Interface.Oxide.DataFileSystem.WriteObject(RpPurchaseDataFile, rpPurchaseData, true);
+            }
+            catch (Exception ex)
+            {
+                PrintWarning($"Could not write data file {RpPurchaseDataFile}: {ex.Message}");
+            }
+        }
+
+        private void PruneRpPurchaseData()
+        {
+            LoadRpPurchaseData();
+
+            if (config.RpPurchaseProcessedRetentionDays <= 0)
+            {
+                return;
+            }
+
+            var cutoff = DateTime.UtcNow.AddDays(-Math.Max(1, config.RpPurchaseProcessedRetentionDays));
+            var remove = new List<string>();
+
+            foreach (var entry in rpPurchaseData.processed)
+            {
+                DateTime processedAt;
+
+                if (entry.Value == null || !entry.Value.posted || !DateTime.TryParse(entry.Value.processed_at, out processedAt))
+                {
+                    continue;
+                }
+
+                if (processedAt.ToUniversalTime() < cutoff)
+                {
+                    remove.Add(entry.Key);
+                }
+            }
+
+            if (remove.Count == 0)
+            {
+                return;
+            }
+
+            foreach (var requestId in remove)
+            {
+                rpPurchaseData.processed.Remove(requestId);
+            }
+
+            SaveRpPurchaseData();
         }
 
         private void StartStatusHeartbeat()
@@ -2626,6 +3267,93 @@ namespace Oxide.Plugins
             bool value;
 
             return token != null && bool.TryParse(token.ToString(), out value) ? value : fallback;
+        }
+
+        private static JToken JsonToken(JObject obj, params string[] keys)
+        {
+            if (obj == null || keys == null)
+            {
+                return null;
+            }
+
+            foreach (var key in keys)
+            {
+                if (string.IsNullOrWhiteSpace(key))
+                {
+                    continue;
+                }
+
+                var property = obj.Properties().FirstOrDefault(item =>
+                    string.Equals(item.Name, key, StringComparison.OrdinalIgnoreCase));
+                var token = property?.Value;
+
+                if (token != null)
+                {
+                    return token;
+                }
+            }
+
+            return null;
+        }
+
+        private static string JsonString(JObject obj, params string[] keys)
+        {
+            var token = JsonToken(obj, keys);
+            return token == null || token.Type == JTokenType.Null ? "" : token.ToString().Trim();
+        }
+
+        private static int JsonInt(JObject obj, int fallback, params string[] keys)
+        {
+            var token = JsonToken(obj, keys);
+            int value;
+
+            return token != null && int.TryParse(token.ToString(), out value) ? value : fallback;
+        }
+
+        private static bool JsonBool(JObject obj, bool fallback, params string[] keys)
+        {
+            var token = JsonToken(obj, keys);
+
+            if (token == null || token.Type == JTokenType.Null)
+            {
+                return fallback;
+            }
+
+            if (token.Type == JTokenType.Boolean)
+            {
+                return token.Value<bool>();
+            }
+
+            var value = token.ToString().Trim();
+
+            if (string.Equals(value, "1", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(value, "yes", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(value, "true", StringComparison.OrdinalIgnoreCase))
+            {
+                return true;
+            }
+
+            if (string.Equals(value, "0", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(value, "no", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(value, "false", StringComparison.OrdinalIgnoreCase))
+            {
+                return false;
+            }
+
+            return fallback;
+        }
+
+        private static bool ContainsWord(string value, string word)
+        {
+            if (string.IsNullOrWhiteSpace(value) || string.IsNullOrWhiteSpace(word))
+            {
+                return false;
+            }
+
+            var normalizedValue = value.Replace('-', '_').ToLowerInvariant();
+            var normalizedWord = word.Replace('-', '_').ToLowerInvariant();
+
+            return normalizedValue.Contains(normalizedWord);
         }
 
         private static JValue NullIfEmpty(string value)

@@ -2711,6 +2711,32 @@ h3,
   text-transform: uppercase;
 }
 
+.store-rp-status {
+  display: flex;
+  justify-content: space-between;
+  gap: 16px;
+  align-items: center;
+  margin-bottom: 22px;
+  padding: 14px 16px;
+  border: 1px solid rgba(255, 209, 102, .24);
+  border-radius: var(--radius);
+  background: rgba(0, 0, 0, .24);
+  color: var(--muted);
+  font-family: var(--font-body);
+}
+
+.store-rp-status p,
+.store-rp-status strong {
+  margin: 0;
+}
+
+.store-rp-status strong {
+  color: var(--yellow);
+  font-family: var(--font-countdown);
+  font-size: 1.6rem;
+  letter-spacing: 0;
+}
+
 .store-mini-list {
   display: grid;
   gap: 7px;
@@ -2777,14 +2803,66 @@ h3,
 }
 
 .store-card-actions {
-  display: flex;
+  display: grid;
   gap: 10px;
-  align-items: center;
   margin-top: auto;
   padding-top: 18px;
 }
 
-.store-card-actions form {
+.store-rp-offers {
+  display: grid;
+  gap: 10px;
+}
+
+.store-rp-offer {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 10px;
+  border: 1px solid rgba(181, 170, 160, .18);
+  background: rgba(0, 0, 0, .22);
+}
+
+.store-rp-offer strong,
+.store-rp-offer span {
+  display: block;
+}
+
+.store-rp-offer strong {
+  color: var(--white);
+  font-size: .92rem;
+}
+
+.store-rp-offer span {
+  color: var(--yellow);
+  font-size: .82rem;
+  font-weight: 900;
+}
+
+.store-renew-toggle {
+  display: flex;
+  gap: 6px;
+  align-items: center;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: .82rem;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.store-cash-note {
+  margin-top: 10px;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: .82rem;
+}
+
+.store-cash-note strong {
+  color: var(--white);
+}
+
+.store-card-actions form:not(.store-rp-offer) {
   width: 100%;
 }
 
@@ -4501,6 +4579,46 @@ a.leaderboard-steam:hover,
   background: rgba(179, 38, 30, .14);
 }
 
+.admin-rp-offer-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+  gap: 12px;
+}
+
+.admin-rp-offer-card {
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(181, 170, 160, .22);
+  border-radius: var(--radius);
+  background: rgba(0, 0, 0, .22);
+}
+
+.admin-rp-offer-card strong,
+.admin-rp-offer-card small,
+.admin-rp-offer-card label span {
+  display: block;
+}
+
+.admin-rp-offer-card strong {
+  color: var(--white);
+  font-size: .92rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.admin-rp-offer-card small,
+.admin-rp-offer-card label span {
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: .78rem;
+  font-weight: 800;
+}
+
+.admin-rp-offer-card input[type="number"] {
+  width: 100%;
+}
+
 .admin-permission-workbench {
   min-width: 0;
   max-width: 100%;
@@ -4853,6 +4971,80 @@ button.admin-permission-chip:focus-visible {
   font-family: Consolas, "Courier New", monospace;
   font-size: .86rem;
   resize: vertical;
+}
+
+.admin-guard-modal[hidden] {
+  display: none !important;
+}
+
+.admin-guard-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 140;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
+.admin-guard-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, .72);
+  backdrop-filter: blur(3px);
+}
+
+.admin-guard-modal-panel {
+  position: relative;
+  width: min(100%, 520px);
+  border: 1px solid rgba(181, 170, 160, .34);
+  border-radius: var(--radius);
+  background:
+    var(--console-scan) center / 220px repeat,
+    linear-gradient(180deg, rgba(28, 30, 31, .98), rgba(8, 9, 10, .98));
+  box-shadow: 0 24px 80px rgba(0, 0, 0, .72), inset 0 0 0 1px rgba(243, 238, 227, .05);
+}
+
+.admin-guard-modal-head,
+.admin-guard-modal-actions {
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-guard-modal-head {
+  border-bottom: 1px solid rgba(181, 170, 160, .18);
+}
+
+.admin-guard-modal-head h3 {
+  margin: 0;
+  color: var(--white);
+  font-size: 1.28rem;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.admin-guard-modal-body {
+  padding: 18px 16px;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: .96rem;
+  font-weight: 750;
+  line-height: 1.5;
+}
+
+.admin-guard-modal-body p {
+  margin: 0;
+}
+
+.admin-guard-modal-actions {
+  justify-content: flex-end;
+  border-top: 1px solid rgba(181, 170, 160, .18);
+}
+
+.has-admin-guard-modal {
+  overflow: hidden;
 }
 
 .admin-alert {
@@ -5296,6 +5488,47 @@ button.admin-permission-chip:focus-visible {
 
 .admin-group-picker-button.has-drift {
   border-color: rgba(255, 209, 102, .38);
+}
+
+.admin-group-picker-button.is-guarded {
+  border-color: rgba(181, 170, 160, .16);
+  background:
+    var(--metal-texture) center / 240px repeat,
+    rgba(38, 40, 40, .34);
+  color: rgba(243, 238, 227, .62);
+  filter: grayscale(.9);
+}
+
+.admin-group-picker-button.is-guarded:hover,
+.admin-group-picker-button.is-guarded:focus-visible {
+  border-color: rgba(181, 170, 160, .42);
+  outline: none;
+  background:
+    linear-gradient(90deg, rgba(181, 170, 160, .12), rgba(0, 0, 0, .28)),
+    var(--metal-texture) center / 240px repeat,
+    rgba(38, 40, 40, .44);
+}
+
+.admin-group-picker-button.is-guarded.is-active {
+  border-color: rgba(181, 170, 160, .50);
+  background:
+    linear-gradient(90deg, rgba(181, 170, 160, .16), rgba(0, 0, 0, .28)),
+    var(--metal-texture) center / 240px repeat,
+    rgba(38, 40, 40, .48);
+}
+
+.admin-group-picker-button.is-read-only {
+  cursor: not-allowed;
+  opacity: .72;
+}
+
+.admin-group-picker-button.is-protected {
+  opacity: .82;
+}
+
+.admin-group-picker-button.is-guarded span,
+.admin-group-picker-button.is-guarded small {
+  color: rgba(243, 238, 227, .62);
 }
 
 .admin-group-picker-button span,
@@ -5964,6 +6197,15 @@ button.admin-permission-chip:focus-visible {
 }
 
 @media (max-width: 900px) {
+  .store-rp-offer {
+    grid-template-columns: 1fr;
+    align-items: stretch;
+  }
+
+  .store-renew-toggle {
+    white-space: normal;
+  }
+
   .admin-topbar {
     position: relative;
     align-items: flex-start;

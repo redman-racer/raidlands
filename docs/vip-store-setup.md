@@ -7,13 +7,17 @@
 3. Run `database/migrations/002_player_stats.sql`.
 4. Run `database/migrations/004_clan_management.sql`.
 5. Run `database/migrations/005_clan_api_keys.sql`.
-6. Run `database/migrations/007_admin_auth.sql`.
-7. Run `database/migrations/009_server_status.sql`.
-8. Run `database/migrations/010_server_status_samples.sql`.
-9. Run `database/migrations/011_server_status_rollups.sql`.
-10. Run `database/seeds/001_store_products.sql`.
-11. Copy the root `.env.example` file to `.env`.
-12. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
+6. Run `database/migrations/006_game_kits.sql`.
+7. Run `database/migrations/007_admin_auth.sql`.
+8. Run `database/migrations/008_oxide_permissions.sql`.
+9. Run `database/migrations/009_server_status.sql`.
+10. Run `database/migrations/010_server_status_samples.sql`.
+11. Run `database/migrations/011_server_status_rollups.sql`.
+12. Run `database/migrations/012_rp_shop.sql`.
+13. Run `database/seeds/001_store_products.sql`.
+14. Run `database/migrations/013_pvp_kit_permission_cleanup.sql`.
+15. Copy the root `.env.example` file to `.env`.
+16. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
 
 The root `.env` file is ignored by Git and protected from direct web access by the root `.htaccess`.
 
@@ -25,11 +29,20 @@ The root `.env` file is ignored by Git and protected from direct web access by t
 
 ## Stripe
 
-- Create one recurring monthly Stripe Price for each VIP tier.
-- Create one one-time Stripe Price for each individual perk or kit unlock.
-- Paste those `price_...` IDs into Admin > Store.
+Cash checkout is intentionally inactive for the RP-first launch.
+
+- Keep Stripe prices inactive or placeholder-only until a payment processor is ready.
+- Later, create recurring or one-time Stripe Prices, paste those `price_...` IDs into Admin > Store, and enable the cash price.
 - Set the webhook URL to `/api/stripe-webhook.php`.
 - Configure `RAIDLANDS_STRIPE_PUBLISHABLE_KEY`, `RAIDLANDS_STRIPE_SECRET_KEY`, and `RAIDLANDS_STRIPE_WEBHOOK_SECRET` in `.env`.
+
+## RP shop
+
+- Admin > Store controls RP offers per product: RP cost, active flag, duration, and optional auto-renew for VIP packages.
+- The website queues RP purchases first. `WebsiteVipBridge` polls `/api/server/rp-purchases.php`, verifies and deducts live ServerRewards RP, then posts the result to `/api/server/rp-purchase-result.php`.
+- Entitlements activate only after the bridge confirms the debit.
+- Fixed purchases with insufficient RP are rejected. Auto-renew renewals with insufficient RP become past due and the current entitlement expires normally.
+- After running `013_pvp_kit_permission_cleanup.sql`, publish once from Admin > Kits or Admin > Groups so the server receives the unique PvP kit permissions.
 
 ## Rust server
 
@@ -47,6 +60,12 @@ The root `.env` file is ignored by Git and protected from direct web access by t
    - `perk_raid_kit`
    - `perk_queue_priority`
    - `perk_supporter_badge`
+   - `perk_pvp_light`
+   - `perk_pvp_rifle`
+   - `perk_pvp_roamer`
+   - `perk_pvp_heavy`
+   - `perk_pvp_elite`
+   - `perk_pvp_breach`
 
 The website owns expiration and revocation. WebsiteVipBridge makes the game server match the current website state.
 
