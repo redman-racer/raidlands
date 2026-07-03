@@ -2176,6 +2176,12 @@ h3,
   background: rgba(255, 209, 102, .08);
 }
 
+.status-tag.voting {
+  color: var(--orange);
+  border-color: rgba(255, 138, 40, .4);
+  background: rgba(255, 138, 40, .1);
+}
+
 .status-tag.review {
   color: var(--muted);
   border-color: rgba(181, 170, 160, .36);
@@ -6394,6 +6400,46 @@ button.admin-permission-chip:focus-visible {
   margin-bottom: 16px;
 }
 
+.admin-feedback-feature-workflow {
+  display: grid;
+  gap: 14px;
+  margin: 0 0 16px;
+  padding: 16px;
+  border: 1px solid rgba(255, 138, 40, .24);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(135deg, rgba(255, 138, 40, .1), rgba(124, 255, 107, .05)),
+    rgba(0, 0, 0, .22);
+}
+
+.admin-feedback-feature-head,
+.admin-feedback-feature-linked {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-feedback-feature-head h4 {
+  margin: 0;
+  color: var(--white);
+  font-family: var(--font-display);
+  font-size: 1.05rem;
+  line-height: 1.15;
+}
+
+.admin-feedback-feature-head p,
+.admin-feedback-feature-linked small {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-family: var(--font-body);
+  line-height: 1.4;
+}
+
+.admin-feedback-feature-actions {
+  margin-top: 0;
+}
+
 .admin-feedback-details {
   padding: 14px;
   border: 1px solid rgba(181, 170, 160, .18);
@@ -6839,6 +6885,11 @@ button.admin-permission-chip:focus-visible {
 
   .admin-action-alert {
     align-items: stretch;
+    flex-direction: column;
+  }
+
+  .admin-feedback-feature-head,
+  .admin-feedback-feature-linked {
     flex-direction: column;
   }
 

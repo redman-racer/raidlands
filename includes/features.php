@@ -8,6 +8,7 @@ function raidlands_features_status_options(): array
 {
     return [
         'active' => 'Active',
+        'voting' => 'Voting',
         'planned' => 'Planned',
         'in_development' => 'In Development',
         'under_review' => 'Under Review',
@@ -30,15 +31,24 @@ function raidlands_features_status_from_label(string $status): string
         return 'active';
     }
 
+    if (str_contains($normalized, 'vote') || str_contains($normalized, 'candidate') || str_contains($normalized, 'next') || str_contains($normalized, 'future')) {
+        return 'voting';
+    }
+
     if (str_contains($normalized, 'develop') || str_contains($normalized, 'progress')) {
         return 'in_development';
     }
 
-    if (str_contains($normalized, 'plan') || str_contains($normalized, 'next') || str_contains($normalized, 'future')) {
+    if (str_contains($normalized, 'plan') || str_contains($normalized, 'later')) {
         return 'planned';
     }
 
     return 'under_review';
+}
+
+function raidlands_features_feedback_types(): array
+{
+    return ['suggestion', 'feature_request'];
 }
 
 function raidlands_features_is_ready(bool $refresh = false): bool
@@ -272,7 +282,7 @@ function raidlands_features_voteable_feature(int $feature_id): array
          WHERE id = :id
            AND is_public = 1
            AND is_voteable = 1
-           AND public_status <> 'archived'
+           AND public_status = 'voting'
          LIMIT 1",
         ['id' => $feature_id]
     );
@@ -462,11 +472,11 @@ function raidlands_features_public_state(): array
     foreach ($features as $feature) {
         $status = (string) ($feature['public_status'] ?? 'under_review');
 
-        if (isset($sections[$status])) {
+        if ($status !== 'voting' && isset($sections[$status])) {
             $sections[$status][] = $feature;
         }
 
-        if (!empty($feature['is_voteable'])) {
+        if ($status === 'voting' && !empty($feature['is_voteable'])) {
             $voteable[] = $feature;
         }
     }
@@ -498,7 +508,7 @@ function raidlands_features_public_items(array $window): array
          FROM feature_items
          WHERE is_public = 1
            AND public_status <> 'archived'
-         ORDER BY FIELD(public_status, 'active', 'in_development', 'planned', 'under_review', 'archived'), sort_order ASC, title ASC"
+         ORDER BY FIELD(public_status, 'active', 'voting', 'in_development', 'planned', 'under_review', 'archived'), sort_order ASC, title ASC"
     );
 
     return raidlands_features_attach_scores($items, $window);
@@ -644,7 +654,7 @@ function raidlands_features_seed_defaults(): int
             'category' => raidlands_features_category_for_title($title),
             'public_status' => $status,
             'is_public' => 1,
-            'is_voteable' => $status !== 'active' ? 1 : 0,
+            'is_voteable' => $status === 'voting' ? 1 : 0,
             'sort_order' => $sort,
         ], null);
         $created += 1;
@@ -709,8 +719,65 @@ function raidlands_features_admin_items(): array
     return raidlands_db_fetch_all(
         "SELECT *
          FROM feature_items
-         ORDER BY FIELD(public_status, 'active', 'in_development', 'planned', 'under_review', 'archived'), sort_order ASC, title ASC, id ASC"
+         ORDER BY FIELD(public_status, 'active', 'voting', 'in_development', 'planned', 'under_review', 'archived'), sort_order ASC, title ASC, id ASC"
     );
+}
+
+function raidlands_features_feedback_workflow_state(array $feedback_ids): array
+{
+    if (!raidlands_features_is_ready()) {
+        return [];
+    }
+
+    $ids = [];
+
+    foreach ($feedback_ids as $feedback_id) {
+        $feedback_id = (int) $feedback_id;
+
+        if ($feedback_id > 0) {
+            $ids[$feedback_id] = $feedback_id;
+        }
+    }
+
+    if ($ids === []) {
+        return [];
+    }
+
+    $placeholders = [];
+    $params = [];
+
+    foreach (array_values($ids) as $index => $feedback_id) {
+        $key = 'feedback_id_' . $index;
+        $placeholders[] = ':' . $key;
+        $params[$key] = $feedback_id;
+    }
+
+    try {
+        $rows = raidlands_db_fetch_all(
+            "SELECT fs.*,
+                    fi.title AS feature_title,
+                    fi.slug AS feature_slug,
+                    fi.public_status AS feature_public_status
+             FROM feature_suggestions fs
+             LEFT JOIN feature_items fi ON fi.id = fs.feature_id
+             WHERE fs.support_feedback_id IN (" . implode(', ', $placeholders) . ")",
+            $params
+        );
+    } catch (Throwable $error) {
+        return [];
+    }
+
+    $state = [];
+
+    foreach ($rows as $row) {
+        $feedback_id = (int) ($row['support_feedback_id'] ?? 0);
+
+        if ($feedback_id > 0) {
+            $state[$feedback_id] = $row;
+        }
+    }
+
+    return $state;
 }
 
 function raidlands_features_admin_save(array $post): string
@@ -725,14 +792,115 @@ function raidlands_features_admin_save(array $post): string
         $imported = raidlands_features_import_feedback_requests();
 
         return $imported === 1
-            ? 'Imported 1 feature request from feedback.'
-            : 'Imported ' . $imported . ' feature requests from feedback.';
+            ? 'Imported 1 feedback idea as a pending feature suggestion.'
+            : 'Imported ' . $imported . ' feedback ideas as pending feature suggestions.';
     }
 
     $saved = raidlands_features_admin_save_items($post['feature_items'] ?? []);
     $suggestion_message = raidlands_features_admin_handle_suggestion_action($post);
 
     return trim('Feature planner saved. ' . $saved . ' feature row' . ($saved === 1 ? '' : 's') . ' updated. ' . $suggestion_message);
+}
+
+function raidlands_features_admin_handle_feedback_action(array $post): string
+{
+    $action = (string) ($post['feature_feedback_action'] ?? '');
+
+    if ($action === '' || !str_contains($action, ':')) {
+        return '';
+    }
+
+    if (!raidlands_features_is_ready()) {
+        throw new RuntimeException(raidlands_features_readiness_message(true));
+    }
+
+    [$verb, $id_text] = explode(':', $action, 2);
+    $feedback_id = (int) $id_text;
+
+    if ($feedback_id <= 0 || !in_array($verb, ['merge', 'new'], true)) {
+        return '';
+    }
+
+    $feedback = raidlands_features_feedback_source_row($feedback_id);
+
+    if ($feedback === null) {
+        throw new RuntimeException('That feedback item could not be found.');
+    }
+
+    if (!in_array((string) ($feedback['type'] ?? ''), raidlands_features_feedback_types(), true)) {
+        throw new RuntimeException('Only suggestions and feature requests can enter the feature workflow.');
+    }
+
+    $notes = is_array($post['feedback_feature_note'] ?? null) ? $post['feedback_feature_note'] : [];
+    $admin_note = raidlands_features_clean_multiline($notes[$feedback_id] ?? '', 1200);
+    $public_id = (string) (($feedback['public_id'] ?? '') ?: $feedback_id);
+    $feature_id = 0;
+    $feature_title = '';
+    $pdo = raidlands_db_required();
+    $owns_transaction = !$pdo->inTransaction();
+
+    if ($owns_transaction) {
+        $pdo->beginTransaction();
+    }
+
+    try {
+        if ($verb === 'merge') {
+            $targets = is_array($post['feedback_feature_id'] ?? null) ? $post['feedback_feature_id'] : [];
+            $feature_id = (int) ($targets[$feedback_id] ?? 0);
+
+            if ($feature_id <= 0) {
+                throw new RuntimeException('Choose a feature before merging this feedback item.');
+            }
+
+            $feature = raidlands_db_fetch_one(
+                'SELECT id, title FROM feature_items WHERE id = :id LIMIT 1',
+                ['id' => $feature_id]
+            );
+
+            if ($feature === null) {
+                throw new RuntimeException('The selected feature could not be found.');
+            }
+
+            $feature_title = (string) ($feature['title'] ?? 'feature');
+
+            if ($admin_note === '') {
+                $admin_note = 'Merged feedback ' . $public_id . ' into ' . $feature_title . '.';
+            }
+        } else {
+            $feature_title = raidlands_features_clean_text($feedback['summary'] ?? '', 180) ?: 'Feature request';
+            $feature_id = raidlands_features_save_item([
+                'icon_alias' => raidlands_features_icon_for_title($feature_title),
+                'title' => $feature_title,
+                'summary' => raidlands_features_clean_text($feedback['details'] ?? '', 500),
+                'category' => raidlands_features_category_for_title($feature_title),
+                'public_status' => 'voting',
+                'is_public' => 1,
+                'is_voteable' => 1,
+                'sort_order' => 500,
+            ], null);
+
+            if ($admin_note === '') {
+                $admin_note = 'Converted feedback ' . $public_id . ' into a new feature candidate.';
+            }
+        }
+
+        raidlands_features_upsert_feedback_suggestion($feedback, $feature_id, $admin_note);
+        raidlands_features_mark_feedback_planned($feedback_id, $admin_note);
+
+        if ($owns_transaction) {
+            $pdo->commit();
+        }
+    } catch (Throwable $error) {
+        if ($owns_transaction && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
+        throw $error;
+    }
+
+    return $verb === 'merge'
+        ? 'Feedback merged into "' . $feature_title . '".'
+        : 'Feedback converted into "' . $feature_title . '".';
 }
 
 function raidlands_features_admin_save_items($input): int
@@ -793,7 +961,7 @@ function raidlands_features_save_item(array $row, ?int $id): int
         'category' => raidlands_features_clean_text($row['category'] ?? '', 120),
         'public_status' => $status,
         'is_public' => empty($row['is_public']) ? 0 : 1,
-        'is_voteable' => empty($row['is_voteable']) || $status === 'archived' ? 0 : 1,
+        'is_voteable' => empty($row['is_voteable']) || $status !== 'voting' ? 0 : 1,
         'sort_order' => raidlands_features_int($row['sort_order'] ?? 100, 0, 9999),
         'created_by_steam_id64' => raidlands_features_admin_actor_steam(),
     ];
@@ -863,6 +1031,19 @@ function raidlands_features_admin_handle_suggestion_action(array $post): string
             throw new RuntimeException('Choose a feature to group the suggestion into.');
         }
 
+        $target = raidlands_db_fetch_one(
+            "SELECT id, title
+             FROM feature_items
+             WHERE id = :id
+               AND public_status <> 'archived'
+             LIMIT 1",
+            ['id' => $feature_id]
+        );
+
+        if ($target === null) {
+            throw new RuntimeException('Choose an active, voting, planned, in-development, or under-review feature to group the suggestion into.');
+        }
+
         raidlands_db_execute(
             "UPDATE feature_suggestions
              SET feature_id = :feature_id,
@@ -886,7 +1067,7 @@ function raidlands_features_admin_handle_suggestion_action(array $post): string
             'title' => (string) $suggestion['title'],
             'summary' => raidlands_features_clean_text($suggestion['details'] ?? '', 500),
             'category' => 'Player Suggestions',
-            'public_status' => 'under_review',
+            'public_status' => 'voting',
             'is_public' => 1,
             'is_voteable' => 1,
             'sort_order' => 500,
@@ -927,6 +1108,130 @@ function raidlands_features_admin_handle_suggestion_action(array $post): string
     return '';
 }
 
+function raidlands_features_feedback_source_row(int $feedback_id): ?array
+{
+    return raidlands_db_fetch_one(
+        "SELECT sf.*, p.steam_id64 AS player_steam_id64
+         FROM support_feedback sf
+         LEFT JOIN players p ON p.id = sf.player_id
+         WHERE sf.id = :id
+         LIMIT 1",
+        ['id' => $feedback_id]
+    );
+}
+
+function raidlands_features_upsert_feedback_suggestion(array $feedback, int $feature_id, string $admin_note): int
+{
+    $feedback_id = (int) ($feedback['id'] ?? 0);
+
+    if ($feedback_id <= 0 || $feature_id <= 0) {
+        throw new RuntimeException('Feedback and feature records are required for conversion.');
+    }
+
+    $steam_id64 = raidlands_features_valid_steam_or_owner((string) (($feedback['steam_id64'] ?? '') ?: ($feedback['player_steam_id64'] ?? '')));
+    $source_type = $steam_id64 === RAIDLANDS_FEATURE_OWNER_STEAM_ID64 && empty($feedback['steam_id64']) && empty($feedback['player_steam_id64'])
+        ? 'staff_import'
+        : 'feedback';
+    $player_id = (int) ($feedback['player_id'] ?? 0) > 0 ? (int) $feedback['player_id'] : null;
+    $title = raidlands_features_clean_text($feedback['summary'] ?? '', 180) ?: 'Feature request';
+    $details = raidlands_features_clean_multiline($feedback['details'] ?? '', 3000);
+    $existing = raidlands_db_fetch_one(
+        'SELECT id FROM feature_suggestions WHERE support_feedback_id = :support_feedback_id LIMIT 1',
+        ['support_feedback_id' => $feedback_id]
+    );
+
+    if ($existing !== null) {
+        $suggestion_id = (int) ($existing['id'] ?? 0);
+        raidlands_db_execute(
+            "UPDATE feature_suggestions
+             SET feature_id = :feature_id,
+                 player_id = :player_id,
+                 steam_id64 = :steam_id64,
+                 source_type = :source_type,
+                 status = 'grouped',
+                 title = :title,
+                 details = :details,
+                 admin_note = :admin_note,
+                 updated_at = NOW()
+             WHERE id = :id",
+            [
+                'feature_id' => $feature_id,
+                'player_id' => $player_id,
+                'steam_id64' => $steam_id64,
+                'source_type' => $source_type,
+                'title' => $title,
+                'details' => $details,
+                'admin_note' => $admin_note,
+                'id' => $suggestion_id,
+            ]
+        );
+
+        return $suggestion_id;
+    }
+
+    raidlands_db_execute(
+        'INSERT INTO feature_suggestions
+            (feature_id, support_feedback_id, player_id, steam_id64, source_type, status, title, details, admin_note, created_by_steam_id64, created_at, updated_at)
+         VALUES
+            (:feature_id, :support_feedback_id, :player_id, :steam_id64, :source_type, "grouped", :title, :details, :admin_note, :created_by, :created_at, :updated_at)',
+        [
+            'feature_id' => $feature_id,
+            'support_feedback_id' => $feedback_id,
+            'player_id' => $player_id,
+            'steam_id64' => $steam_id64,
+            'source_type' => $source_type,
+            'title' => $title,
+            'details' => $details,
+            'admin_note' => $admin_note,
+            'created_by' => raidlands_features_admin_actor_steam(),
+            'created_at' => (string) ($feedback['submitted_at'] ?? date('Y-m-d H:i:s')),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]
+    );
+
+    return (int) raidlands_db_required()->lastInsertId();
+}
+
+function raidlands_features_mark_feedback_planned(int $feedback_id, string $workflow_note): void
+{
+    $feedback = raidlands_db_fetch_one(
+        'SELECT admin_note FROM support_feedback WHERE id = :id LIMIT 1',
+        ['id' => $feedback_id]
+    );
+
+    if ($feedback === null) {
+        return;
+    }
+
+    raidlands_db_execute(
+        "UPDATE support_feedback
+         SET status = 'planned',
+             admin_note = :admin_note,
+             updated_at = NOW()
+         WHERE id = :id",
+        [
+            'admin_note' => raidlands_features_append_admin_note((string) ($feedback['admin_note'] ?? ''), $workflow_note),
+            'id' => $feedback_id,
+        ]
+    );
+}
+
+function raidlands_features_append_admin_note(string $existing, string $addition): string
+{
+    $existing = raidlands_features_clean_multiline($existing, 1600);
+    $addition = raidlands_features_clean_multiline($addition, 800);
+
+    if ($addition === '') {
+        return $existing;
+    }
+
+    if ($existing === '' || str_contains($existing, $addition)) {
+        return raidlands_features_limit($existing !== '' ? $existing : $addition, 1600);
+    }
+
+    return raidlands_features_limit($existing . "\n\n" . $addition, 1600);
+}
+
 function raidlands_features_import_feedback_requests(int $limit = 250): int
 {
     if (!raidlands_features_is_ready()) {
@@ -939,7 +1244,7 @@ function raidlands_features_import_feedback_requests(int $limit = 250): int
              FROM support_feedback sf
              LEFT JOIN players p ON p.id = sf.player_id
              LEFT JOIN feature_suggestions fs ON fs.support_feedback_id = sf.id
-             WHERE sf.type = 'feature_request'
+             WHERE sf.type IN ('suggestion', 'feature_request')
                AND fs.id IS NULL
              ORDER BY sf.submitted_at ASC, sf.id ASC
              LIMIT " . max(1, min(500, $limit))
@@ -987,7 +1292,7 @@ function raidlands_features_feedback_import_count(): int
             "SELECT COUNT(*) AS total
              FROM support_feedback sf
              LEFT JOIN feature_suggestions fs ON fs.support_feedback_id = sf.id
-             WHERE sf.type = 'feature_request'
+             WHERE sf.type IN ('suggestion', 'feature_request')
                AND fs.id IS NULL"
         );
 

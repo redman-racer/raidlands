@@ -305,6 +305,10 @@ function status_class(string $status): string
         return 'live';
     }
 
+    if (str_contains($normalized, 'voting') || str_contains($normalized, 'vote') || str_contains($normalized, 'candidate') || str_contains($normalized, 'next')) {
+        return 'voting';
+    }
+
     if (str_contains($normalized, 'planned') || str_contains($normalized, 'future') || str_contains($normalized, 'later')) {
         return 'planned';
     }

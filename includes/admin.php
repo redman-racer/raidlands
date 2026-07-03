@@ -106,9 +106,13 @@ function raidlands_admin_handle_request(): void
                 raidlands_admin_set_flash('success', 'Manual entitlement granted.');
             } elseif ($section === 'feedback') {
                 $updated = raidlands_feedback_admin_save_rows($_POST['feedback_rows'] ?? []);
-                $message = $updated === 0
+                $conversion_message = raidlands_features_admin_handle_feedback_action($_POST);
+                $feedback_message = $updated === 0
                     ? 'No feedback items changed.'
                     : ($updated === 1 ? 'Feedback item updated.' : $updated . ' feedback items updated.');
+                $message = $conversion_message !== ''
+                    ? trim(($updated > 0 ? $feedback_message . ' ' : '') . $conversion_message)
+                    : $feedback_message;
                 raidlands_admin_set_flash('success', $message);
             } else {
                 raidlands_admin_save_content(raidlands_admin_build_content_from_post($_POST, $section));

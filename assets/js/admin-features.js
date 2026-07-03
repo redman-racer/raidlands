@@ -33,8 +33,9 @@
     var isDraft = idInput && (!idInput.value || idInput.value === '0');
     var selectedOption = statusSelect ? statusSelect.options[statusSelect.selectedIndex] : null;
     var status = selectedOption ? selectedOption.text : 'Under Review';
+    var statusValue = statusSelect ? String(statusSelect.value || '').toLowerCase() : '';
     var visibility = publicInput && publicInput.checked ? 'Public' : 'Hidden';
-    var voting = voteableInput && voteableInput.checked && status.toLowerCase() !== 'archived' ? 'voteable' : 'not voteable';
+    var voting = statusValue === 'voting' && voteableInput && voteableInput.checked ? 'voting open' : 'not in voting';
     var copy = isDraft && !title ? 'Draft slot / blank rows are ignored' : status + ' / ' + visibility + ', ' + voting;
 
     if (meta) {

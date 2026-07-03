@@ -113,6 +113,10 @@ $admin_feedback_rows = [];
 $admin_feedback_counts = [];
 $admin_feedback_ready = false;
 $admin_feedback_error = '';
+$admin_feedback_feature_rows = [];
+$admin_feedback_feature_links = [];
+$admin_feedback_features_ready = false;
+$admin_feedback_features_error = '';
 $admin_features_state = [
     'ready' => false,
     'error' => '',
@@ -199,6 +203,20 @@ try {
         if ($admin_feedback_ready) {
             $admin_feedback_rows = raidlands_feedback_submissions();
             $admin_feedback_counts = raidlands_feedback_status_counts($admin_feedback_rows);
+            $admin_feedback_features_ready = raidlands_features_is_ready();
+
+            if ($admin_feedback_features_ready) {
+                try {
+                    raidlands_features_seed_defaults();
+                    $admin_feedback_feature_rows = raidlands_features_admin_items();
+                    $admin_feedback_feature_links = raidlands_features_feedback_workflow_state(array_column($admin_feedback_rows, 'id'));
+                } catch (Throwable $error) {
+                    $admin_feedback_features_ready = false;
+                    $admin_feedback_features_error = $error->getMessage();
+                }
+            } else {
+                $admin_feedback_features_error = raidlands_features_readiness_message(true);
+            }
         } else {
             $admin_feedback_error = raidlands_feedback_readiness_message(true);
         }
@@ -317,6 +335,25 @@ function admin_render_options(array $options, string $selected = ''): string
 
     foreach (admin_option_map($options, [$selected]) as $value => $label) {
         $html .= '<option value="' . e($value) . '"' . ($selected === $value ? ' selected' : '') . '>' . e($label) . '</option>';
+    }
+
+    return $html;
+}
+
+function admin_render_keyed_options(array $options, string $selected = ''): string
+{
+    $selected = (string) $selected;
+    $html = '';
+
+    foreach ($options as $value => $label) {
+        $value = trim((string) $value);
+        $label = trim((string) $label);
+
+        if ($value === '') {
+            continue;
+        }
+
+        $html .= '<option value="' . e($value) . '"' . ($selected === $value ? ' selected' : '') . '>' . e($label !== '' ? $label : $value) . '</option>';
     }
 
     return $html;
@@ -1021,8 +1058,8 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                           <p class="store-muted">visible features</p>
                         </div>
                         <div class="metal-panel admin-feedback-stat">
-                          <p class="section-kicker">Voteable</p>
-                          <h3><?= e((string) count(array_filter($feature_rows, static fn (array $row): bool => !empty($row['is_voteable']) && (string) ($row['public_status'] ?? '') !== 'archived'))) ?></h3>
+                          <p class="section-kicker">Voting</p>
+                          <h3><?= e((string) count(array_filter($feature_rows, static fn (array $row): bool => !empty($row['is_voteable']) && (string) ($row['public_status'] ?? '') === 'voting'))) ?></h3>
                           <p class="store-muted">open candidates</p>
                         </div>
                         <div class="metal-panel admin-feedback-stat">
@@ -1059,7 +1096,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 'title' => '',
                                 'summary' => '',
                                 'category' => '',
-                                'public_status' => 'under_review',
+                                'public_status' => 'voting',
                                 'is_public' => 1,
                                 'is_voteable' => 1,
                                 'sort_order' => 500 + $index,
@@ -1079,7 +1116,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             $feature_status_label = raidlands_features_status_label($feature_status_key);
                             $feature_is_archived = $feature_status_key === 'archived';
                             $feature_visibility = !empty($row['is_public']) ? 'Public' : 'Hidden';
-                            $feature_vote_state = !empty($row['is_voteable']) && !$feature_is_archived ? 'voteable' : 'not voteable';
+                            $feature_vote_state = $feature_status_key === 'voting' && !empty($row['is_voteable']) ? 'voting open' : 'not in voting';
                             $feature_support_score = (int) ($row['support_score'] ?? 0);
                             $feature_vote_count = (int) ($row['vote_count'] ?? 0);
                             $feature_suggestion_count = (int) ($row['suggestion_count'] ?? 0);
@@ -1147,7 +1184,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 <summary>Publishing and voting <small>Status, placement, and public controls</small></summary>
                                 <div class="admin-grid three">
                                   <label class="admin-field">
-                                    <?= admin_field_head('Status', 'Public status bucket used for grouping and badge color.') ?>
+                                    <?= admin_field_head('Status', 'Public status bucket used for grouping, voting placement, and badge color.') ?>
                                     <select name="feature_items[<?= e($row_key) ?>][public_status]" data-feature-status-select>
                                       <?= admin_render_options(raidlands_features_status_options(), $feature_status_key) ?>
                                     </select>
@@ -1162,7 +1199,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                   </label>
                                   <label class="admin-check admin-check-field">
                                     <input type="checkbox" name="feature_items[<?= e($row_key) ?>][is_voteable]" value="1" <?= !empty($row['is_voteable']) ? 'checked' : '' ?> data-feature-voteable-input>
-                                    <?= admin_check_copy('Voteable', 'Allows linked players to spend one of their current-wipe votes on this feature.') ?>
+                                    <?= admin_check_copy('Voteable', 'With Voting status, allows linked players to spend one of their current-wipe votes on this feature.') ?>
                                   </label>
                                 </div>
                               </details>
@@ -1214,8 +1251,8 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
 
                       <?php if ($feedback_import_count > 0) : ?>
                         <div class="admin-alert warning admin-action-alert">
-                          <span><?= e((string) $feedback_import_count) ?> feature request<?= $feedback_import_count === 1 ? '' : 's' ?> from the feedback inbox can be imported as pending suggestions.</span>
-                          <button class="btn btn-secondary" type="submit" name="features_admin_action" value="import_feedback">Import Feedback Requests</button>
+                          <span><?= e((string) $feedback_import_count) ?> feedback suggestion<?= $feedback_import_count === 1 ? '' : 's' ?> can be imported as pending feature ideas.</span>
+                          <button class="btn btn-secondary" type="submit" name="features_admin_action" value="import_feedback">Import Feedback Ideas</button>
                         </div>
                       <?php endif; ?>
 
@@ -1227,7 +1264,6 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             <?php
                               $suggestion_id = (int) ($suggestion['id'] ?? 0);
                               $matches = array_values((array) ($suggestion['matches'] ?? []));
-                              $match_default = $matches !== [] ? (string) ($matches[0]['feature']['id'] ?? '') : (string) array_key_first($feature_option_map);
                             ?>
                             <article class="admin-repeat-card admin-feature-suggestion-card">
                               <div class="admin-repeat-card-head admin-feedback-card-head">
@@ -1259,8 +1295,10 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 <label class="admin-field">
                                   <?= admin_field_head('Group into feature', 'Suggested matches are selected by keyword overlap, but staff confirms the final grouping.') ?>
                                   <select name="suggestion_feature_id[<?= e((string) $suggestion_id) ?>]">
-                                    <?= admin_render_options($feature_option_map, $match_default) ?>
+                                    <option value="" selected>Choose feature...</option>
+                                    <?= admin_render_keyed_options($feature_option_map) ?>
                                   </select>
+                                  <?= admin_hint('Choose the destination intentionally. Similar matches above are hints, not an automatic selection.') ?>
                                 </label>
                                 <label class="admin-field">
                                   <?= admin_field_head('Staff note', 'Internal review note for why the suggestion was grouped, approved, or rejected.') ?>
@@ -1400,6 +1438,25 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                     <?php elseif ($admin_feedback_rows === []) : ?>
                       <div class="admin-alert warning">No bug reports, suggestions, or feature requests have been submitted yet.</div>
                     <?php else : ?>
+                      <?php
+                        $feedback_feature_option_map = [];
+
+                        foreach ($admin_feedback_feature_rows as $feature_row) {
+                            if ((string) ($feature_row['public_status'] ?? '') === 'archived') {
+                                continue;
+                            }
+
+                            $feature_id = (int) ($feature_row['id'] ?? 0);
+
+                            if ($feature_id <= 0) {
+                                continue;
+                            }
+
+                            $feedback_feature_option_map[(string) $feature_id] = (string) ($feature_row['title'] ?? 'Feature')
+                                . ' / '
+                                . raidlands_features_status_label((string) ($feature_row['public_status'] ?? 'under_review'));
+                        }
+                      ?>
                       <div class="admin-repeat-list">
                         <?php foreach ($admin_feedback_rows as $feedback_row) : ?>
                           <?php
@@ -1411,6 +1468,32 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             $feedback_steam = trim((string) ($feedback_row['steam_id64'] ?? ''));
                             $feedback_page = trim((string) ($feedback_row['page_url'] ?? ''));
                             $feedback_browser = trim((string) ($feedback_row['browser'] ?? ''));
+                            $feedback_is_feature_candidate = in_array($feedback_type, raidlands_features_feedback_types(), true);
+                            $feedback_feature_link = $admin_feedback_feature_links[(int) $feedback_id] ?? null;
+                            $feedback_feature_link_title = trim((string) ($feedback_feature_link['feature_title'] ?? ''));
+                            $feedback_feature_default = (string) ((int) ($feedback_feature_link['feature_id'] ?? 0) > 0 ? (int) $feedback_feature_link['feature_id'] : '');
+                            $feedback_feature_matches = [];
+
+                            if ($feedback_is_feature_candidate && $admin_feedback_features_ready && $feedback_feature_default === '') {
+                                $feedback_feature_matches = raidlands_features_suggest_matches([
+                                    'title' => (string) ($feedback_row['summary'] ?? ''),
+                                    'details' => (string) ($feedback_row['details'] ?? ''),
+                                ], $admin_feedback_feature_rows);
+
+                                if ($feedback_feature_matches !== []) {
+                                    $feedback_feature_default = (string) ($feedback_feature_matches[0]['feature']['id'] ?? '');
+                                }
+                            }
+
+                            if ($feedback_feature_default === '' && $feedback_feature_option_map !== []) {
+                                $feedback_feature_default = (string) array_key_first($feedback_feature_option_map);
+                            }
+
+                            $feedback_feature_select_options = $feedback_feature_option_map;
+
+                            if ($feedback_feature_default !== '' && !isset($feedback_feature_select_options[$feedback_feature_default]) && $feedback_feature_link_title !== '') {
+                                $feedback_feature_select_options[$feedback_feature_default] = $feedback_feature_link_title . ' / linked';
+                            }
                           ?>
                           <article class="admin-repeat-card admin-feedback-card">
                             <input type="hidden" name="feedback_rows[<?= e($feedback_id) ?>][id]" value="<?= e($feedback_id) ?>">
@@ -1465,6 +1548,69 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 </div>
                               </dl>
                             </div>
+
+                            <?php if ($feedback_is_feature_candidate) : ?>
+                              <div class="admin-feedback-feature-workflow">
+                                <div class="admin-feedback-feature-head">
+                                  <div>
+                                    <h4>Feature workflow</h4>
+                                    <p>Promote this feedback into a voteable feature candidate or merge it into an existing feature signal.</p>
+                                  </div>
+                                  <?php if ($feedback_feature_link !== null) : ?>
+                                    <span class="status-pill <?= e((string) ($feedback_feature_link['status'] ?? 'grouped')) ?>"><?= e(ucwords(str_replace('_', ' ', (string) ($feedback_feature_link['status'] ?? 'grouped')))) ?></span>
+                                  <?php endif; ?>
+                                </div>
+
+                                <?php if (!$admin_feedback_features_ready) : ?>
+                                  <div class="admin-alert warning">Feature workflow is unavailable. <?= $admin_feedback_features_error !== '' ? e($admin_feedback_features_error) : 'Run the feature planning migration first.' ?></div>
+                                <?php else : ?>
+                                  <?php if ($feedback_feature_link !== null) : ?>
+                                    <div class="admin-feedback-feature-linked">
+                                      <span class="tag">
+                                        <span class="tag-label">Linked feature</span>
+                                        <span class="tag-value"><?= e($feedback_feature_link_title !== '' ? $feedback_feature_link_title : 'None') ?></span>
+                                      </span>
+                                      <?php if (!empty($feedback_feature_link['updated_at'])) : ?>
+                                        <small>Updated <?= e((string) $feedback_feature_link['updated_at']) ?></small>
+                                      <?php endif; ?>
+                                    </div>
+                                  <?php endif; ?>
+
+                                  <?php if ($feedback_feature_matches !== []) : ?>
+                                    <div class="feature-match-list">
+                                      <?php foreach ($feedback_feature_matches as $match) : ?>
+                                        <span class="tag">
+                                          <span class="tag-label">Match <?= e((string) ($match['score'] ?? 0)) ?></span>
+                                          <span class="tag-value"><?= e((string) ($match['feature']['title'] ?? 'Feature')) ?></span>
+                                        </span>
+                                      <?php endforeach; ?>
+                                    </div>
+                                  <?php endif; ?>
+
+                                  <?php if ($feedback_feature_option_map === []) : ?>
+                                    <div class="admin-alert warning">No saved features are available to merge yet. Converting to a new feature is still available.</div>
+                                  <?php endif; ?>
+
+                                  <div class="admin-grid two">
+                                    <label class="admin-field">
+                                      <?= admin_field_head('Merge into feature', 'Grouped feedback adds support signal to an existing public feature without creating another card.') ?>
+                                      <select name="feedback_feature_id[<?= e($feedback_id) ?>]" <?= $feedback_feature_option_map === [] ? 'disabled' : '' ?>>
+                                        <?= admin_render_options($feedback_feature_select_options, $feedback_feature_default) ?>
+                                      </select>
+                                    </label>
+                                    <label class="admin-field">
+                                      <?= admin_field_head('Workflow note', 'Optional internal note saved on the feature suggestion and feedback item.') ?>
+                                      <textarea name="feedback_feature_note[<?= e($feedback_id) ?>]" rows="3" maxlength="1200"><?= e((string) ($feedback_feature_link['admin_note'] ?? '')) ?></textarea>
+                                    </label>
+                                  </div>
+
+                                  <div class="button-row admin-feedback-feature-actions">
+                                    <button class="btn btn-primary" type="submit" name="feature_feedback_action" value="merge:<?= e($feedback_id) ?>" <?= $feedback_feature_option_map === [] ? 'disabled' : '' ?>>Merge into Feature</button>
+                                    <button class="btn btn-secondary" type="submit" name="feature_feedback_action" value="new:<?= e($feedback_id) ?>">Convert to New Feature</button>
+                                  </div>
+                                <?php endif; ?>
+                              </div>
+                            <?php endif; ?>
 
                             <div class="admin-grid two">
                               <label class="admin-field">

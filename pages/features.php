@@ -84,7 +84,7 @@
         </div>
         <div class="grid three">
           <?php foreach (array_merge($development_features, $planned_features, $review_features) as $feature) : ?>
-            <?= $feature_card_markup($feature, !empty($feature['is_voteable'])) ?>
+            <?= $feature_card_markup($feature) ?>
           <?php endforeach; ?>
         </div>
       </div>
@@ -127,6 +127,9 @@
               <?= render_feature_symbol((string) ($feature['icon_alias'] ?? 'EVENT')) ?>
               <h3><?= e((string) ($feature['title'] ?? 'Feature')) ?></h3>
               <p class="card-copy"><?= e((string) ($feature['summary'] ?? '')) ?></p>
+              <div class="tag-row">
+                <span class="status-tag voting"><?= e((string) ($feature['status_label'] ?? 'Voting')) ?></span>
+              </div>
               <div class="feature-score-grid">
                 <span><strong><?= e((string) ($feature['support_score'] ?? 0)) ?></strong> Score</span>
                 <span><strong><?= e((string) ($feature['vote_count'] ?? 0)) ?></strong> Votes</span>

@@ -5,7 +5,7 @@ CREATE TABLE IF NOT EXISTS feature_items (
   title VARCHAR(180) NOT NULL,
   summary VARCHAR(500) NOT NULL DEFAULT '',
   category VARCHAR(120) NOT NULL DEFAULT '',
-  public_status ENUM('active', 'planned', 'in_development', 'under_review', 'archived') NOT NULL DEFAULT 'under_review',
+  public_status ENUM('active', 'voting', 'planned', 'in_development', 'under_review', 'archived') NOT NULL DEFAULT 'under_review',
   is_public TINYINT(1) NOT NULL DEFAULT 1,
   is_voteable TINYINT(1) NOT NULL DEFAULT 0,
   sort_order INT NOT NULL DEFAULT 100,
@@ -79,9 +79,9 @@ VALUES
   ('player-profiles', 'ID', 'Player Profiles', 'Connected Steam profiles show VIP access, wipe stats, RP, and entitlement history.', 'Website Systems', 'active', 1, 0, 140, '76561198274680338'),
   ('account-linking', 'ID', 'Account Linking', 'Native Steam sign-in ties stats, VIP, and perks to the right Rust player.', 'Website Systems', 'active', 1, 0, 150, '76561198274680338'),
   ('vip-kits', 'KIT', 'VIP Kits', 'VIP tiers and one-time perks are tied to Steam and synced into the game.', 'Store and Rewards', 'active', 1, 0, 160, '76561198274680338'),
-  ('clan-web-pages', 'CLAN', 'Clan Website Pages', 'Clan play and rivalries are active in game, with richer website pages able to build on top.', 'Community and Clans', 'planned', 1, 1, 170, '76561198274680338'),
+  ('clan-web-pages', 'CLAN', 'Clan Website Pages', 'Clan play and rivalries are active in game, with richer website pages able to build on top.', 'Community and Clans', 'voting', 1, 1, 170, '76561198274680338'),
   ('wipe-events', 'EVENT', 'Wipe Events', 'Wipe fights, clan clashes, staff battles, and community chaos are part of the live cadence.', 'Community and Clans', 'active', 1, 0, 180, '76561198274680338'),
-  ('vote-rewards', 'PLAY', 'Vote Rewards', 'Voting loops can plug into the connected account layer as the web hub expands.', 'Store and Rewards', 'planned', 1, 1, 190, '76561198274680338'),
+  ('vote-rewards', 'PLAY', 'Vote Rewards', 'Voting loops can plug into the connected account layer as the web hub expands.', 'Store and Rewards', 'voting', 1, 1, 190, '76561198274680338'),
   ('appeals-and-support', 'APPEAL', 'Appeals and Support', 'Discord remains the active path for tickets, reports, and ban appeals.', 'Trust and Performance', 'active', 1, 0, 200, '76561198274680338')
 ON DUPLICATE KEY UPDATE
   icon_alias = VALUES(icon_alias),
@@ -117,7 +117,7 @@ SELECT
   sf.updated_at
 FROM support_feedback sf
 LEFT JOIN players p ON p.id = sf.player_id
-WHERE sf.type = 'feature_request'
+WHERE sf.type IN ('suggestion', 'feature_request')
 ON DUPLICATE KEY UPDATE
   title = VALUES(title),
   details = VALUES(details),
