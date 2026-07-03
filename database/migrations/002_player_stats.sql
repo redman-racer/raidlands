@@ -29,6 +29,7 @@ CREATE TABLE IF NOT EXISTS player_wipe_stats (
   baseline_deaths INT UNSIGNED NOT NULL DEFAULT 0,
   baseline_playtime_seconds INT UNSIGNED NOT NULL DEFAULT 0,
   baseline_afk_seconds INT UNSIGNED NOT NULL DEFAULT 0,
+  baseline_reward_points INT UNSIGNED NOT NULL DEFAULT 0,
   kills INT UNSIGNED NOT NULL DEFAULT 0,
   deaths INT UNSIGNED NOT NULL DEFAULT 0,
   playtime_seconds INT UNSIGNED NOT NULL DEFAULT 0,

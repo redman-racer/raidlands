@@ -113,6 +113,17 @@ $admin_feedback_rows = [];
 $admin_feedback_counts = [];
 $admin_feedback_ready = false;
 $admin_feedback_error = '';
+$admin_features_state = [
+    'ready' => false,
+    'error' => '',
+    'features' => [],
+    'pending_suggestions' => [],
+    'grouped_suggestions' => [],
+    'feedback_import_count' => 0,
+    'window' => [],
+];
+$admin_features_ready = false;
+$admin_features_error = '';
 $admin_kits_ready = false;
 $admin_kits_error = '';
 $admin_kit_rows = [];
@@ -176,6 +187,12 @@ try {
         }
     }
 
+    if ($active_section === 'features') {
+        $admin_features_state = raidlands_features_admin_state();
+        $admin_features_ready = !empty($admin_features_state['ready']);
+        $admin_features_error = (string) ($admin_features_state['error'] ?? '');
+    }
+
     if ($active_section === 'feedback') {
         $admin_feedback_ready = raidlands_feedback_is_ready();
 
@@ -218,6 +235,8 @@ try {
 } catch (Throwable $error) {
     $admin_store_ready = false;
     $admin_store_error = $error->getMessage();
+    $admin_features_ready = false;
+    $admin_features_error = $error->getMessage();
     $admin_kits_ready = false;
     $admin_kits_error = $error->getMessage();
     $admin_permissions_ready = false;
@@ -966,143 +985,254 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
 
                 <?php if ($active_section === 'features') : ?>
                   <?php
-                    $quick_rows = array_values($content['quick_features']);
-                    $feature_rows = array_values($content['feature_cards']);
-                    $roadmap_rows = array_values($content['roadmap_cards']);
+                    $feature_rows = array_values((array) ($admin_features_state['features'] ?? []));
+                    $pending_suggestions = array_values((array) ($admin_features_state['pending_suggestions'] ?? []));
+                    $grouped_suggestions = array_values((array) ($admin_features_state['grouped_suggestions'] ?? []));
+                    $feedback_import_count = (int) ($admin_features_state['feedback_import_count'] ?? 0);
+                    $feature_window = (array) ($admin_features_state['window'] ?? []);
                     $admin_feature_icon_values = [];
-                    $admin_feature_status_values = [];
-
-                    foreach ($quick_rows as $row) {
-                        $admin_feature_icon_values[] = (string) ($row[0] ?? '');
-                    }
 
                     foreach ($feature_rows as $row) {
-                        $admin_feature_icon_values[] = (string) ($row[0] ?? '');
-                        $admin_feature_status_values[] = (string) ($row[3] ?? '');
+                        $admin_feature_icon_values[] = (string) ($row['icon_alias'] ?? '');
                     }
 
-                    foreach ($roadmap_rows as $row) {
-                        $admin_feature_status_values[] = (string) ($row[2] ?? '');
+                    $feature_option_map = [];
+                    foreach ($feature_rows as $row) {
+                        if ((string) ($row['public_status'] ?? '') === 'archived') {
+                            continue;
+                        }
+
+                        $feature_option_map[(string) ($row['id'] ?? '')] = (string) ($row['title'] ?? 'Feature #' . (string) ($row['id'] ?? ''));
                     }
 
                     echo admin_render_datalist('admin-feature-icon-options', admin_feature_icon_options($admin_feature_icon_values));
-                    echo admin_render_datalist('admin-status-options', admin_status_options(), $admin_feature_status_values);
                   ?>
 
-                  <section class="admin-section">
-                    <div class="admin-subsection-head">
-                      <h3>Quick Feature Chips</h3>
-                      <p>Small chips shown near the homepage hero. Icon suggestions come from the current Raidlands feature icon aliases.</p>
-                    </div>
-                    <div class="admin-repeat-list compact">
-                      <?php
-                        $quick_total = count($quick_rows) + 4;
-                      ?>
-                      <?php for ($index = 0; $index < $quick_total; $index += 1) : ?>
-                        <?php $row = $quick_rows[$index] ?? ['', '']; ?>
-                        <article class="admin-repeat-row">
-                          <label class="admin-field">
-                            <?= admin_field_head('Icon alias', 'Icon alias used by the chip. Suggested aliases render image icons; custom text is preserved.') ?>
-                            <input type="text" list="admin-feature-icon-options" name="quick_features_rows[<?= e((string) $index) ?>][icon]" maxlength="24" placeholder="GATHER" value="<?= e((string) ($row[0] ?? '')) ?>">
-                          </label>
-                          <label class="admin-field">
-                            <?= admin_field_head('Label', 'The short chip text players see.') ?>
-                            <input type="text" name="quick_features_rows[<?= e((string) $index) ?>][label]" maxlength="80" placeholder="1000x Gather" value="<?= e((string) ($row[1] ?? '')) ?>">
-                          </label>
-                          <?php if (isset($quick_rows[$index])) : ?>
-                            <label class="admin-check admin-delete-check">
-                              <input type="checkbox" name="quick_features_rows[<?= e((string) $index) ?>][delete]" value="1">
-                              <span>Remove</span>
-                            </label>
-                          <?php endif; ?>
-                        </article>
-                      <?php endfor; ?>
-                    </div>
-                  </section>
+                  <?php if (!$admin_features_ready) : ?>
+                    <section class="admin-section">
+                      <div class="admin-alert warning"><?= e($admin_features_error) ?></div>
+                    </section>
+                  <?php else : ?>
+                    <section class="admin-section">
+                      <div class="admin-grid four">
+                        <div class="metal-panel admin-feedback-stat">
+                          <p class="section-kicker">Public</p>
+                          <h3><?= e((string) count(array_filter($feature_rows, static fn (array $row): bool => !empty($row['is_public']) && (string) ($row['public_status'] ?? '') !== 'archived'))) ?></h3>
+                          <p class="store-muted">visible features</p>
+                        </div>
+                        <div class="metal-panel admin-feedback-stat">
+                          <p class="section-kicker">Voteable</p>
+                          <h3><?= e((string) count(array_filter($feature_rows, static fn (array $row): bool => !empty($row['is_voteable']) && (string) ($row['public_status'] ?? '') !== 'archived'))) ?></h3>
+                          <p class="store-muted">open candidates</p>
+                        </div>
+                        <div class="metal-panel admin-feedback-stat">
+                          <p class="section-kicker">Pending</p>
+                          <h3><?= e((string) count($pending_suggestions)) ?></h3>
+                          <p class="store-muted">suggestions</p>
+                        </div>
+                        <div class="metal-panel admin-feedback-stat">
+                          <p class="section-kicker">Vote window</p>
+                          <h3><?= e((string) ($feature_window['expires_label'] ?? 'Current wipe')) ?></h3>
+                          <p class="store-muted">votes refresh here</p>
+                        </div>
+                      </div>
+                    </section>
 
-                  <section class="admin-section">
-                    <div class="admin-subsection-head">
-                      <h3>Feature Cards</h3>
-                      <p>Cards used on the homepage and Features page. The status controls the small badge at the bottom of each card.</p>
-                    </div>
-                    <div class="admin-repeat-list">
-                      <?php
-                        $feature_total = count($feature_rows) + 3;
-                      ?>
-                      <?php for ($index = 0; $index < $feature_total; $index += 1) : ?>
-                        <?php $row = $feature_rows[$index] ?? ['', '', '', '']; ?>
-                        <article class="admin-repeat-card">
-                          <div class="admin-repeat-card-head">
-                            <h3><?= isset($feature_rows[$index]) ? 'Feature Card ' . e((string) ($index + 1)) : 'New Feature Card' ?></h3>
-                            <?php if (isset($feature_rows[$index])) : ?>
-                              <label class="admin-check admin-delete-check">
-                                <input type="checkbox" name="feature_cards_rows[<?= e((string) $index) ?>][delete]" value="1">
-                                <span>Remove</span>
+                    <section class="admin-section">
+                      <div class="admin-subsection-head">
+                        <h3>Feature planning records</h3>
+                        <p>These rows drive the public Features page. Active rows describe live systems; voteable rows appear in the next-feature voting section.</p>
+                      </div>
+                      <div class="admin-repeat-list">
+                        <?php $feature_total = count($feature_rows) + 3; ?>
+                        <?php for ($index = 0; $index < $feature_total; $index += 1) : ?>
+                          <?php
+                            $row = $feature_rows[$index] ?? [
+                                'id' => 0,
+                                'slug' => '',
+                                'icon_alias' => '',
+                                'title' => '',
+                                'summary' => '',
+                                'category' => '',
+                                'public_status' => 'under_review',
+                                'is_public' => 1,
+                                'is_voteable' => 1,
+                                'sort_order' => 500 + $index,
+                            ];
+                            $row_key = (int) ($row['id'] ?? 0) > 0 ? (string) $row['id'] : 'new_' . (string) $index;
+                          ?>
+                          <article class="admin-repeat-card admin-feature-planner-card">
+                            <input type="hidden" name="feature_items[<?= e($row_key) ?>][id]" value="<?= e((string) ($row['id'] ?? 0)) ?>">
+                            <div class="admin-repeat-card-head">
+                              <div>
+                                <h3><?= (int) ($row['id'] ?? 0) > 0 ? e((string) ($row['title'] ?? 'Feature')) : 'New Feature' ?></h3>
+                                <p class="admin-feedback-subtitle"><?= (int) ($row['id'] ?? 0) > 0 ? 'Slug: ' . e((string) ($row['slug'] ?? '')) : 'Blank rows are ignored until you add a title.' ?></p>
+                              </div>
+                              <?php if ((int) ($row['id'] ?? 0) > 0) : ?>
+                                <label class="admin-check admin-delete-check">
+                                  <input type="checkbox" name="feature_items[<?= e($row_key) ?>][archived]" value="1">
+                                  <span>Archive</span>
+                                </label>
+                              <?php endif; ?>
+                            </div>
+                            <div class="admin-grid feature-planner-grid">
+                              <label class="admin-field">
+                                <?= admin_field_head('Icon alias', 'Icon shown above the card title. Suggested aliases render image icons; custom text is preserved.') ?>
+                                <input type="text" list="admin-feature-icon-options" name="feature_items[<?= e($row_key) ?>][icon_alias]" maxlength="32" placeholder="EVENT" value="<?= e((string) ($row['icon_alias'] ?? '')) ?>">
                               </label>
-                            <?php endif; ?>
-                          </div>
-                          <div class="admin-grid feature-card-grid">
-                            <label class="admin-field">
-                              <?= admin_field_head('Icon alias', 'Icon alias shown above the card title. Use suggestions like GATHER, PVP, KIT, TP, or STAFF.') ?>
-                              <input type="text" list="admin-feature-icon-options" name="feature_cards_rows[<?= e((string) $index) ?>][icon]" maxlength="24" placeholder="PVP" value="<?= e((string) ($row[0] ?? '')) ?>">
-                            </label>
-                            <label class="admin-field">
-                              <?= admin_field_head('Title', 'Card heading shown to players.') ?>
-                              <input type="text" name="feature_cards_rows[<?= e((string) $index) ?>][title]" maxlength="120" placeholder="Battlefield PvP" value="<?= e((string) ($row[1] ?? '')) ?>">
-                            </label>
-                            <label class="admin-field">
-                              <?= admin_field_head('Status', 'Badge text shown on the card. You can type a custom status.') ?>
-                              <input type="text" list="admin-status-options" name="feature_cards_rows[<?= e((string) $index) ?>][status]" maxlength="80" placeholder="Live" value="<?= e((string) ($row[3] ?? '')) ?>">
-                            </label>
-                            <label class="admin-field admin-span-all">
-                              <?= admin_field_head('Copy', 'Short card description. Keep it scan-friendly.') ?>
-                              <textarea name="feature_cards_rows[<?= e((string) $index) ?>][copy]" rows="3" maxlength="360"><?= e((string) ($row[2] ?? '')) ?></textarea>
-                            </label>
-                          </div>
-                        </article>
-                      <?php endfor; ?>
-                    </div>
-                  </section>
+                              <label class="admin-field">
+                                <?= admin_field_head('Title', 'Public feature title.') ?>
+                                <input type="text" name="feature_items[<?= e($row_key) ?>][title]" maxlength="180" placeholder="Vote Rewards" value="<?= e((string) ($row['title'] ?? '')) ?>">
+                              </label>
+                              <label class="admin-field">
+                                <?= admin_field_head('Slug', 'Stable internal URL-safe key. Leave blank for a generated slug on new rows.') ?>
+                                <input type="text" name="feature_items[<?= e($row_key) ?>][slug]" maxlength="140" placeholder="vote-rewards" value="<?= e((string) ($row['slug'] ?? '')) ?>">
+                              </label>
+                              <label class="admin-field">
+                                <?= admin_field_head('Status', 'Public status bucket used for grouping and badge color.') ?>
+                                <select name="feature_items[<?= e($row_key) ?>][public_status]">
+                                  <?= admin_render_options(raidlands_features_status_options(), (string) ($row['public_status'] ?? 'under_review')) ?>
+                                </select>
+                              </label>
+                              <label class="admin-field">
+                                <?= admin_field_head('Category', 'Loose internal/public grouping for scanning.') ?>
+                                <input type="text" name="feature_items[<?= e($row_key) ?>][category]" maxlength="120" placeholder="Player Suggestions" value="<?= e((string) ($row['category'] ?? '')) ?>">
+                              </label>
+                              <label class="admin-field">
+                                <?= admin_field_head('Sort order', 'Lower numbers appear earlier within the same status group.') ?>
+                                <input type="number" name="feature_items[<?= e($row_key) ?>][sort_order]" min="0" max="9999" step="1" value="<?= e((string) ($row['sort_order'] ?? 100)) ?>">
+                              </label>
+                              <div class="admin-field">
+                                <span class="admin-label-row"><span>Visibility</span></span>
+                                <label class="admin-check">
+                                  <input type="checkbox" name="feature_items[<?= e($row_key) ?>][is_public]" value="1" <?= !empty($row['is_public']) ? 'checked' : '' ?>>
+                                  <?= admin_check_copy('Public', 'Shows this feature on the public Features page.') ?>
+                                </label>
+                              </div>
+                              <div class="admin-field">
+                                <span class="admin-label-row"><span>Voting</span></span>
+                                <label class="admin-check">
+                                  <input type="checkbox" name="feature_items[<?= e($row_key) ?>][is_voteable]" value="1" <?= !empty($row['is_voteable']) ? 'checked' : '' ?>>
+                                  <?= admin_check_copy('Voteable', 'Allows linked players to spend one of their current-wipe votes on this feature.') ?>
+                                </label>
+                              </div>
+                              <label class="admin-field admin-span-all">
+                                <?= admin_field_head('Summary', 'Short player-facing explanation. Keep it scan-friendly.') ?>
+                                <textarea name="feature_items[<?= e($row_key) ?>][summary]" rows="3" maxlength="500"><?= e((string) ($row['summary'] ?? '')) ?></textarea>
+                              </label>
+                            </div>
+                          </article>
+                        <?php endfor; ?>
+                      </div>
+                    </section>
 
-                  <section class="admin-section">
-                    <div class="admin-subsection-head">
-                      <h3>Roadmap Cards</h3>
-                      <p>Cards used in the Coming Soon section to explain future systems without changing public routes.</p>
-                    </div>
-                    <div class="admin-repeat-list">
-                      <?php
-                        $roadmap_total = count($roadmap_rows) + 3;
-                      ?>
-                      <?php for ($index = 0; $index < $roadmap_total; $index += 1) : ?>
-                        <?php $row = $roadmap_rows[$index] ?? ['', '', '']; ?>
-                        <article class="admin-repeat-card">
-                          <div class="admin-repeat-card-head">
-                            <h3><?= isset($roadmap_rows[$index]) ? 'Roadmap Card ' . e((string) ($index + 1)) : 'New Roadmap Card' ?></h3>
-                            <?php if (isset($roadmap_rows[$index])) : ?>
-                              <label class="admin-check admin-delete-check">
-                                <input type="checkbox" name="roadmap_cards_rows[<?= e((string) $index) ?>][delete]" value="1">
-                                <span>Remove</span>
-                              </label>
-                            <?php endif; ?>
-                          </div>
-                          <div class="admin-grid three">
-                            <label class="admin-field">
-                              <?= admin_field_head('Title', 'Roadmap item heading.') ?>
-                              <input type="text" name="roadmap_cards_rows[<?= e((string) $index) ?>][title]" maxlength="120" placeholder="Vote Rewards" value="<?= e((string) ($row[0] ?? '')) ?>">
-                            </label>
-                            <label class="admin-field">
-                              <?= admin_field_head('Status', 'Badge text shown beside the roadmap item.') ?>
-                              <input type="text" list="admin-status-options" name="roadmap_cards_rows[<?= e((string) $index) ?>][status]" maxlength="80" placeholder="Next web step" value="<?= e((string) ($row[2] ?? '')) ?>">
-                            </label>
-                            <label class="admin-field admin-span-all">
-                              <?= admin_field_head('Copy', 'Short description of the planned system.') ?>
-                              <textarea name="roadmap_cards_rows[<?= e((string) $index) ?>][copy]" rows="3" maxlength="360"><?= e((string) ($row[1] ?? '')) ?></textarea>
-                            </label>
-                          </div>
-                        </article>
-                      <?php endfor; ?>
-                    </div>
-                  </section>
+                    <section class="admin-section">
+                      <div class="admin-subsection-head">
+                        <h3>Suggestion review</h3>
+                        <p>Approve new ideas, reject noise, or group similar suggestions into an existing feature. Grouped suggestions add support score without consuming player vote slots.</p>
+                      </div>
+
+                      <?php if ($feedback_import_count > 0) : ?>
+                        <div class="admin-alert warning admin-action-alert">
+                          <span><?= e((string) $feedback_import_count) ?> feature request<?= $feedback_import_count === 1 ? '' : 's' ?> from the feedback inbox can be imported as pending suggestions.</span>
+                          <button class="btn btn-secondary" type="submit" name="features_admin_action" value="import_feedback">Import Feedback Requests</button>
+                        </div>
+                      <?php endif; ?>
+
+                      <?php if ($pending_suggestions === []) : ?>
+                        <div class="admin-alert warning">No pending feature suggestions are waiting for review.</div>
+                      <?php else : ?>
+                        <div class="admin-repeat-list">
+                          <?php foreach ($pending_suggestions as $suggestion) : ?>
+                            <?php
+                              $suggestion_id = (int) ($suggestion['id'] ?? 0);
+                              $matches = array_values((array) ($suggestion['matches'] ?? []));
+                              $match_default = $matches !== [] ? (string) ($matches[0]['feature']['id'] ?? '') : (string) array_key_first($feature_option_map);
+                            ?>
+                            <article class="admin-repeat-card admin-feature-suggestion-card">
+                              <div class="admin-repeat-card-head admin-feedback-card-head">
+                                <div>
+                                  <h3><?= e((string) ($suggestion['title'] ?? 'Feature suggestion')) ?></h3>
+                                  <p class="admin-feedback-subtitle">
+                                    <?= e(ucwords(str_replace('_', ' ', (string) ($suggestion['source_type'] ?? 'public')))) ?>
+                                    suggestion from <code><?= e((string) ($suggestion['steam_id64'] ?? RAIDLANDS_FEATURE_OWNER_STEAM_ID64)) ?></code>
+                                  </p>
+                                </div>
+                                <span class="status-pill pending">Pending</span>
+                              </div>
+
+                              <div class="admin-feedback-body">
+                                <div class="admin-feedback-details"><?= nl2br(e((string) ($suggestion['details'] ?? ''))) ?></div>
+                                <?php if ($matches !== []) : ?>
+                                  <div class="feature-match-list">
+                                    <?php foreach ($matches as $match) : ?>
+                                      <span class="tag">
+                                        <span class="tag-label">Match <?= e((string) ($match['score'] ?? 0)) ?></span>
+                                        <span class="tag-value"><?= e((string) ($match['feature']['title'] ?? 'Feature')) ?></span>
+                                      </span>
+                                    <?php endforeach; ?>
+                                  </div>
+                                <?php endif; ?>
+                              </div>
+
+                              <div class="admin-grid two">
+                                <label class="admin-field">
+                                  <?= admin_field_head('Group into feature', 'Suggested matches are selected by keyword overlap, but staff confirms the final grouping.') ?>
+                                  <select name="suggestion_feature_id[<?= e((string) $suggestion_id) ?>]">
+                                    <?= admin_render_options($feature_option_map, $match_default) ?>
+                                  </select>
+                                </label>
+                                <label class="admin-field">
+                                  <?= admin_field_head('Staff note', 'Internal review note for why the suggestion was grouped, approved, or rejected.') ?>
+                                  <textarea name="suggestion_admin_note[<?= e((string) $suggestion_id) ?>]" rows="3" maxlength="1200"><?= e((string) ($suggestion['admin_note'] ?? '')) ?></textarea>
+                                </label>
+                              </div>
+                              <div class="button-row admin-suggestion-actions">
+                                <button class="btn btn-primary" type="submit" name="feature_suggestion_action" value="group:<?= e((string) $suggestion_id) ?>" <?= $feature_option_map === [] ? 'disabled' : '' ?>>Group</button>
+                                <button class="btn btn-secondary" type="submit" name="feature_suggestion_action" value="approve:<?= e((string) $suggestion_id) ?>">Approve as New</button>
+                                <button class="btn btn-secondary" type="submit" name="feature_suggestion_action" value="reject:<?= e((string) $suggestion_id) ?>">Reject</button>
+                              </div>
+                            </article>
+                          <?php endforeach; ?>
+                        </div>
+                      <?php endif; ?>
+                    </section>
+
+                    <section class="admin-section">
+                      <div class="admin-subsection-head">
+                        <h3>Recent suggestion decisions</h3>
+                        <p>Grouped suggestions count toward the destination feature. Rejected suggestions stay here briefly so staff can audit recent triage.</p>
+                      </div>
+                      <?php if ($grouped_suggestions === []) : ?>
+                        <div class="admin-alert warning">No suggestion decisions have been recorded yet.</div>
+                      <?php else : ?>
+                        <div class="store-table-wrap">
+                          <table class="store-table">
+                            <thead>
+                              <tr>
+                                <th>Suggestion</th>
+                                <th>Feature</th>
+                                <th>Source</th>
+                                <th>Status</th>
+                                <th>Updated</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <?php foreach ($grouped_suggestions as $suggestion) : ?>
+                                <tr>
+                                  <td><?= e((string) ($suggestion['title'] ?? 'Feature suggestion')) ?></td>
+                                  <td><?= e((string) (($suggestion['feature_title'] ?? '') ?: 'None')) ?></td>
+                                  <td><code><?= e((string) ($suggestion['steam_id64'] ?? '')) ?></code></td>
+                                  <td><span class="status-pill <?= e((string) ($suggestion['status'] ?? 'pending')) ?>"><?= e((string) ($suggestion['status'] ?? 'pending')) ?></span></td>
+                                  <td><?= e((string) ($suggestion['updated_at'] ?? '')) ?></td>
+                                </tr>
+                              <?php endforeach; ?>
+                            </tbody>
+                          </table>
+                        </div>
+                      <?php endif; ?>
+                    </section>
+                  <?php endif; ?>
                 <?php endif; ?>
 
                 <?php if ($active_section === 'pages') : ?>
@@ -2619,7 +2749,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                     <?php if (!$admin_store_ready) : ?>
                       <div class="admin-alert warning">MySQL is not configured yet. <?= $admin_store_error !== '' ? e($admin_store_error) : '' ?></div>
                     <?php elseif (empty($admin_stats_summary['ready'])) : ?>
-                      <div class="admin-alert warning">Stats tables are not installed yet. Run <code>database/migrations/002_player_stats.sql</code>.</div>
+                      <div class="admin-alert warning">Stats tables are not installed yet. Run <code>database/migrations/002_player_stats.sql</code>, then <code>database/migrations/016_player_stats_wipe_rp_baseline.sql</code>.</div>
                     <?php else : ?>
                       <?php
                         $active_wipe = $admin_stats_summary['active_wipe'];
@@ -2745,13 +2875,16 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                     $admin_save_allowed = raidlands_admin_can_save_section($active_section);
                     $admin_save_hidden = !$admin_save_allowed
                         || $active_section === 'sync'
-                        || ($active_section === 'feedback' && (!$admin_feedback_ready || $admin_feedback_rows === []));
+                        || ($active_section === 'feedback' && (!$admin_feedback_ready || $admin_feedback_rows === []))
+                        || ($active_section === 'features' && !$admin_features_ready);
                     $admin_save_disabled = ($active_section === 'store' && !$admin_store_ready)
+                        || ($active_section === 'features' && !$admin_features_ready)
                         || ($active_section === 'kits' && !$admin_kits_ready)
                         || ($active_section === 'groups' && !$admin_permissions_ready)
                         || ($active_section === 'grants' && (!$admin_store_ready || empty($admin_store_catalog['products'])));
                     $admin_disabled_label = match ($active_section) {
                         'store' => 'Store Unavailable',
+                        'features' => 'Features Unavailable',
                         'kits' => 'Kits Unavailable',
                         'groups' => 'Groups Unavailable',
                         default => 'Grant Unavailable',

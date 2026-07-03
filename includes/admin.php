@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/store.php';
 require_once __DIR__ . '/feedback.php';
+require_once __DIR__ . '/features.php';
 require_once __DIR__ . '/kits.php';
 require_once __DIR__ . '/permissions.php';
 
@@ -78,6 +79,8 @@ function raidlands_admin_handle_request(): void
             if ($section === 'store') {
                 raidlands_store_admin_save_product_rows($_POST['store_products'] ?? []);
                 raidlands_admin_set_flash('success', 'Store products saved.');
+            } elseif ($section === 'features') {
+                raidlands_admin_set_flash('success', raidlands_features_admin_save($_POST));
             } elseif ($section === 'kits') {
                 $result = raidlands_kits_admin_save($_POST, $_FILES ?? []);
                 if (!empty($result['published'])) {

@@ -17,8 +17,10 @@
 13. Run `database/seeds/001_store_products.sql`.
 14. Run `database/migrations/013_pvp_kit_permission_cleanup.sql`.
 15. Run `database/migrations/014_kit_group_delete_tombstones.sql`.
-16. Copy the root `.env.example` file to `.env`.
-17. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
+16. Run `database/migrations/015_feature_planning.sql`.
+17. Run `database/migrations/016_player_stats_wipe_rp_baseline.sql`.
+18. Copy the root `.env.example` file to `.env`.
+19. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
 
 The root `.env` file is ignored by Git and protected from direct web access by the root `.htaccess`.
 

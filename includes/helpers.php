@@ -301,7 +301,7 @@ function status_class(string $status): string
 {
     $normalized = strtolower($status);
 
-    if (str_starts_with($normalized, 'live')) {
+    if (str_starts_with($normalized, 'live') || str_contains($normalized, 'active')) {
         return 'live';
     }
 
@@ -309,7 +309,7 @@ function status_class(string $status): string
         return 'planned';
     }
 
-    if (str_contains($normalized, 'review') || str_contains($normalized, 'next')) {
+    if (str_contains($normalized, 'review') || str_contains($normalized, 'next') || str_contains($normalized, 'develop')) {
         return 'review';
     }
 

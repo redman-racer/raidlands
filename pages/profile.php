@@ -105,7 +105,7 @@ $profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_
       <div class="section-header">
         <p class="section-kicker">Player stats</p>
         <h2>RP, combat, and playtime</h2>
-        <p class="section-lede">These stats come from the game server. RP is your rewards balance; wipe stats follow the active season.</p>
+        <p class="section-lede">These stats come from the game server. Wipe RP follows the active season; your synced spendable RP balance is shown in the RP shop section.</p>
       </div>
 
       <?php if (!raidlands_stats_is_ready()) : ?>
@@ -118,7 +118,7 @@ $profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_
         <div class="profile-stat-grid">
           <?php
             $stat_cards = [
-                ['Current RP', $profile_stats['current']['reward_points'] ?? $profile_stats['all_time']['reward_points'] ?? 0],
+                ['Wipe RP', $profile_stats['current']['reward_points'] ?? 0],
                 ['Wipe Kills', $profile_stats['current']['kills'] ?? 0],
                 ['Wipe K/D', isset($profile_stats['current']) ? raidlands_stats_format_kdr($profile_stats['current']['kdr'] ?? 0) : '0.00'],
                 ['Wipe Playtime', isset($profile_stats['current']) ? raidlands_stats_format_duration($profile_stats['current']['playtime_seconds'] ?? 0) : '0m'],

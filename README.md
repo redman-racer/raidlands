@@ -83,10 +83,12 @@ The store uses MySQL as the source of truth and Stripe Checkout for payments.
 14. Run `database/seeds/001_store_products.sql`.
 15. Run `database/migrations/013_pvp_kit_permission_cleanup.sql`.
 16. Run `database/migrations/014_kit_group_delete_tombstones.sql`.
-17. Copy `.env.example` to `.env`.
-18. Fill in MySQL, Stripe, Steam API, bridge secret, and clan API limit values.
-19. Add at least one owner SteamID64 to `admin_users` and `admin_user_roles`.
-20. Configure product Stripe Price IDs in `/admin/?section=store`.
+17. Run `database/migrations/015_feature_planning.sql`.
+18. Run `database/migrations/016_player_stats_wipe_rp_baseline.sql`.
+19. Copy `.env.example` to `.env`.
+20. Fill in MySQL, Stripe, Steam API, bridge secret, and clan API limit values.
+21. Add at least one owner SteamID64 to `admin_users` and `admin_user_roles`.
+22. Configure product Stripe Price IDs in `/admin/?section=store`.
 
 Public store flow:
 

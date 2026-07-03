@@ -118,6 +118,8 @@ the host or upload it through a private channel.
    - `database/seeds/001_store_products.sql`
    - `database/migrations/013_pvp_kit_permission_cleanup.sql`
    - `database/migrations/014_kit_group_delete_tombstones.sql`
+   - `database/migrations/015_feature_planning.sql`
+   - `database/migrations/016_player_stats_wipe_rp_baseline.sql`
 
    Then configure Stripe Price IDs in `/admin/?section=store`.
 

@@ -1198,7 +1198,7 @@ function raidlands_store_current_rp_balance(int $player_id): ?array
 
     try {
         $row = raidlands_db_fetch_one(
-            'SELECT s.reward_points, s.last_seen_at, w.wipe_key, w.is_active
+            'SELECT s.raw_reward_points AS reward_points, s.reward_points AS wipe_reward_points, s.last_seen_at, w.wipe_key, w.is_active
              FROM player_wipe_stats s
              INNER JOIN wipe_seasons w ON w.id = s.wipe_id
              WHERE s.player_id = :player_id
@@ -1216,6 +1216,7 @@ function raidlands_store_current_rp_balance(int $player_id): ?array
 
     return [
         'reward_points' => (int) ($row['reward_points'] ?? 0),
+        'wipe_reward_points' => (int) ($row['wipe_reward_points'] ?? 0),
         'last_seen_at' => (string) ($row['last_seen_at'] ?? ''),
         'wipe_key' => (string) ($row['wipe_key'] ?? ''),
         'is_active' => (int) ($row['is_active'] ?? 0),
@@ -1255,7 +1256,7 @@ function raidlands_store_apply_reported_rp_balance(PDO $pdo, int $player_id, ?in
         $update = $pdo->prepare(
             'UPDATE player_wipe_stats
              SET raw_reward_points = :balance,
-                 reward_points = :balance,
+                 reward_points = GREATEST(0, :balance - baseline_reward_points),
                  last_seen_at = NOW(),
                  updated_at = NOW()
              WHERE id = :id'
@@ -1308,7 +1309,7 @@ function raidlands_store_refresh_reported_rp_balance(int $player_id): bool
         }
 
         $stats_statement = $pdo->prepare(
-            'SELECT s.id, s.reward_points, s.last_seen_at, s.updated_at
+            'SELECT s.id, s.raw_reward_points, s.last_seen_at, s.updated_at
              FROM player_wipe_stats s
              INNER JOIN wipe_seasons w ON w.id = s.wipe_id
              WHERE s.player_id = :player_id

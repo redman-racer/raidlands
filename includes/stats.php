@@ -19,6 +19,7 @@ function raidlands_stats_is_ready(): bool
 
     try {
         raidlands_db_fetch_one('SELECT id FROM wipe_seasons LIMIT 1');
+        raidlands_db_fetch_one('SELECT baseline_reward_points FROM player_wipe_stats LIMIT 1');
         return true;
     } catch (Throwable $error) {
         return false;
@@ -78,7 +79,7 @@ function raidlands_stats_wipe_key(string $wipe_key): string
 function raidlands_stats_ingest_snapshot(array $payload, string $server_id, string $body): array
 {
     if (!raidlands_stats_is_ready()) {
-        throw new RuntimeException('Player stats tables are not installed. Run database/migrations/002_player_stats.sql.');
+        throw new RuntimeException('Player stats tables are not installed. Run database/migrations/002_player_stats.sql, then database/migrations/016_player_stats_wipe_rp_baseline.sql.');
     }
 
     $server_id = raidlands_stats_clean_text($server_id !== '' ? $server_id : raidlands_stats_server_id(), 120);
@@ -260,6 +261,7 @@ function raidlands_stats_upsert_player_wipe(PDO $pdo, int $wipe_id, int $player_
         'deaths' => 0,
         'playtime_seconds' => 0,
         'afk_seconds' => 0,
+        'reward_points' => 0,
     ];
 
     if ($existing !== null) {
@@ -268,6 +270,7 @@ function raidlands_stats_upsert_player_wipe(PDO $pdo, int $wipe_id, int $player_
             'deaths' => (int) $existing['baseline_deaths'],
             'playtime_seconds' => (int) $existing['baseline_playtime_seconds'],
             'afk_seconds' => (int) $existing['baseline_afk_seconds'],
+            'reward_points' => (int) $existing['baseline_reward_points'],
         ];
     } elseif (!$is_first_season) {
         $baseline = [
@@ -275,6 +278,7 @@ function raidlands_stats_upsert_player_wipe(PDO $pdo, int $wipe_id, int $player_
             'deaths' => $raw['deaths'],
             'playtime_seconds' => $raw['playtime_seconds'],
             'afk_seconds' => $raw['afk_seconds'],
+            'reward_points' => $raw['reward_points'],
         ];
     }
 
@@ -282,16 +286,17 @@ function raidlands_stats_upsert_player_wipe(PDO $pdo, int $wipe_id, int $player_
     $deaths = max(0, $raw['deaths'] - $baseline['deaths']);
     $playtime = max(0, $raw['playtime_seconds'] - $baseline['playtime_seconds']);
     $afk = max(0, $raw['afk_seconds'] - $baseline['afk_seconds']);
+    $reward_points = max(0, $raw['reward_points'] - $baseline['reward_points']);
     $kdr = $deaths === 0 ? (float) $kills : round($kills / $deaths, 3);
 
     $statement = $pdo->prepare(
         'INSERT INTO player_wipe_stats
             (wipe_id, player_id, display_name, raw_kills, raw_deaths, raw_playtime_seconds, raw_afk_seconds, raw_reward_points,
-             baseline_kills, baseline_deaths, baseline_playtime_seconds, baseline_afk_seconds,
+             baseline_kills, baseline_deaths, baseline_playtime_seconds, baseline_afk_seconds, baseline_reward_points,
              kills, deaths, playtime_seconds, afk_seconds, reward_points, kdr, last_seen_at)
          VALUES
             (:wipe_id, :player_id, :display_name, :raw_kills, :raw_deaths, :raw_playtime_seconds, :raw_afk_seconds, :raw_reward_points,
-             :baseline_kills, :baseline_deaths, :baseline_playtime_seconds, :baseline_afk_seconds,
+             :baseline_kills, :baseline_deaths, :baseline_playtime_seconds, :baseline_afk_seconds, :baseline_reward_points,
              :kills, :deaths, :playtime_seconds, :afk_seconds, :reward_points, :kdr, NOW())
          ON DUPLICATE KEY UPDATE
             display_name = IF(VALUES(display_name) <> "", VALUES(display_name), display_name),
@@ -322,11 +327,12 @@ function raidlands_stats_upsert_player_wipe(PDO $pdo, int $wipe_id, int $player_
         'baseline_deaths' => $baseline['deaths'],
         'baseline_playtime_seconds' => $baseline['playtime_seconds'],
         'baseline_afk_seconds' => $baseline['afk_seconds'],
+        'baseline_reward_points' => $baseline['reward_points'],
         'kills' => $kills,
         'deaths' => $deaths,
         'playtime_seconds' => $playtime,
         'afk_seconds' => $afk,
-        'reward_points' => $raw['reward_points'],
+        'reward_points' => $reward_points,
         'kdr' => $kdr,
     ]);
 }
@@ -408,6 +414,7 @@ function raidlands_stats_leaderboard(string $metric = 'kills', string $scope = '
              FROM player_wipe_stats s
              INNER JOIN players p ON p.id = s.player_id
              WHERE s.wipe_id = :wipe_id
+               AND s.playtime_seconds > 0
              ORDER BY $order
              LIMIT $limit",
             ['wipe_id' => (int) $wipe['id']]
@@ -422,7 +429,7 @@ function raidlands_stats_leaderboard(string $metric = 'kills', string $scope = '
                 SUM(s.deaths) AS deaths,
                 CASE WHEN SUM(s.deaths) = 0 THEN SUM(s.kills) ELSE ROUND(SUM(s.kills) / SUM(s.deaths), 3) END AS kdr,
                 SUM(s.playtime_seconds) AS playtime_seconds,
-                MAX(s.reward_points) AS reward_points,
+                SUM(s.reward_points) AS reward_points,
                 MAX(s.last_seen_at) AS last_seen_at
              FROM player_wipe_stats s
              INNER JOIN players p ON p.id = s.player_id
@@ -473,7 +480,7 @@ function raidlands_stats_player_summary(int $player_id): array
             SUM(deaths) AS deaths,
             CASE WHEN SUM(deaths) = 0 THEN SUM(kills) ELSE ROUND(SUM(kills) / SUM(deaths), 3) END AS kdr,
             SUM(playtime_seconds) AS playtime_seconds,
-            MAX(reward_points) AS reward_points,
+            SUM(reward_points) AS reward_points,
             MAX(last_seen_at) AS last_seen_at
          FROM player_wipe_stats
          WHERE player_id = :player_id',
