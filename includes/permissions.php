@@ -22,13 +22,40 @@ function raidlands_permissions_table_exists(string $table): bool
     }
 }
 
+function raidlands_permissions_column_exists(string $table, string $column): bool
+{
+    if (!raidlands_db_is_configured()) {
+        return false;
+    }
+
+    try {
+        $statement = raidlands_db_required()->prepare(
+            'SELECT COUNT(*)
+             FROM information_schema.columns
+             WHERE table_schema = DATABASE()
+               AND table_name = :table_name
+               AND column_name = :column_name'
+        );
+        $statement->execute([
+            'table_name' => $table,
+            'column_name' => $column,
+        ]);
+
+        return (int) $statement->fetchColumn() > 0;
+    } catch (Throwable $error) {
+        return false;
+    }
+}
+
 function raidlands_permissions_is_ready(): bool
 {
     return raidlands_permissions_table_exists('oxide_groups')
         && raidlands_permissions_table_exists('oxide_permissions')
         && raidlands_permissions_table_exists('oxide_group_permission_grants')
         && raidlands_permissions_table_exists('oxide_group_permission_live')
-        && raidlands_permissions_table_exists('oxide_permission_sync_log');
+        && raidlands_permissions_table_exists('oxide_permission_sync_log')
+        && raidlands_permissions_column_exists('oxide_groups', 'deleted_at')
+        && raidlands_permissions_column_exists('oxide_groups', 'deleted_revision');
 }
 
 function raidlands_permissions_readiness_message(bool $admin = false): string
@@ -41,7 +68,7 @@ function raidlands_permissions_readiness_message(bool $admin = false): string
 
     if (!raidlands_permissions_is_ready()) {
         return $admin
-            ? 'Permission tables are not installed yet. Run database/migrations/008_oxide_permissions.sql.'
+            ? 'Permission tables are not installed yet. Run database/migrations/008_oxide_permissions.sql, then database/migrations/014_kit_group_delete_tombstones.sql.'
             : 'Group details are being prepared.';
     }
 
@@ -210,7 +237,7 @@ function raidlands_permissions_fallback_permissions(): array
 function raidlands_permissions_next_revision(PDO $pdo): int
 {
     $revision = (int) $pdo->query(
-        'SELECT COALESCE(MAX(GREATEST(draft_revision, published_revision)), 0) + 1 FROM oxide_groups'
+        'SELECT COALESCE(MAX(GREATEST(draft_revision, published_revision, deleted_revision)), 0) + 1 FROM oxide_groups'
     )->fetchColumn();
     $log_revision = (int) $pdo->query(
         "SELECT COALESCE(MAX(revision), 0) + 1 FROM oxide_permission_sync_log WHERE status <> 'snapshot'"
@@ -310,10 +337,16 @@ function raidlands_permissions_upsert_group(PDO $pdo, array $row, bool $from_sna
             is_active = VALUES(is_active),
             sort_order = VALUES(sort_order),
             notes = VALUES(notes),
-            last_seen_at = CASE WHEN :from_snapshot = 1 THEN NOW() ELSE last_seen_at END,
+            deleted_at = CASE WHEN :from_snapshot_deleted_at = 1 THEN deleted_at ELSE NULL END,
+            deleted_revision = CASE WHEN :from_snapshot_deleted_revision = 1 THEN deleted_revision ELSE 0 END,
+            last_seen_at = CASE WHEN :from_snapshot_seen = 1 THEN NOW() ELSE last_seen_at END,
             updated_at = NOW()'
     );
-    $statement->execute(array_merge($params, ['from_snapshot' => $from_snapshot ? 1 : 0]));
+    $statement->execute(array_merge($params, [
+        'from_snapshot_deleted_at' => $from_snapshot ? 1 : 0,
+        'from_snapshot_deleted_revision' => $from_snapshot ? 1 : 0,
+        'from_snapshot_seen' => $from_snapshot ? 1 : 0,
+    ]));
 
     return raidlands_permissions_group_id($pdo, $group_name);
 }
@@ -345,7 +378,7 @@ function raidlands_permissions_group_rows(): array
     }
 
     $groups = raidlands_db_fetch_all(
-        'SELECT * FROM oxide_groups ORDER BY sort_order ASC, group_name ASC'
+        'SELECT * FROM oxide_groups WHERE deleted_at IS NULL ORDER BY sort_order ASC, group_name ASC'
     );
 
     foreach ($groups as &$group) {
@@ -441,6 +474,173 @@ function raidlands_permissions_store_group_names(): array
     return array_values(array_unique(array_filter($groups)));
 }
 
+function raidlands_permissions_group_is_tombstoned(PDO $pdo, string $group_name): bool
+{
+    $group_name = raidlands_permissions_clean_group($group_name);
+
+    if ($group_name === '') {
+        return false;
+    }
+
+    $row = raidlands_db_fetch_one(
+        'SELECT deleted_at FROM oxide_groups WHERE group_name = :group_name',
+        ['group_name' => $group_name]
+    );
+
+    return $row !== null && trim((string) ($row['deleted_at'] ?? '')) !== '';
+}
+
+function raidlands_permissions_deleted_group_names(): array
+{
+    if (!raidlands_permissions_is_ready()) {
+        return [];
+    }
+
+    $rows = raidlands_db_fetch_all(
+        'SELECT group_name
+         FROM oxide_groups
+         WHERE deleted_at IS NOT NULL
+         ORDER BY group_name ASC'
+    );
+    $groups = array_map(static fn (array $row): string => (string) ($row['group_name'] ?? ''), $rows);
+    $groups = array_values(array_unique(array_filter(array_map('raidlands_permissions_clean_group', $groups))));
+    sort($groups, SORT_NATURAL | SORT_FLAG_CASE);
+
+    return $groups;
+}
+
+function raidlands_permissions_delete_blockers(PDO $pdo, string $group_name): array
+{
+    $group_name = raidlands_permissions_clean_group($group_name);
+    $blockers = [];
+
+    if ($group_name === '') {
+        return ['Group name is invalid.'];
+    }
+
+    if (raidlands_permissions_table_exists('store_products')) {
+        $row = raidlands_db_fetch_one(
+            'SELECT COUNT(*) AS total
+             FROM store_products
+             WHERE oxide_group = :group_name
+               AND is_active = 1',
+            ['group_name' => $group_name]
+        );
+        $total = (int) ($row['total'] ?? 0);
+
+        if ($total > 0) {
+            $blockers[] = $total === 1
+                ? '1 active store product still uses this group.'
+                : $total . ' active store products still use this group.';
+        }
+    }
+
+    if (raidlands_permissions_table_exists('entitlements')) {
+        $row = raidlands_db_fetch_one(
+            "SELECT COUNT(*) AS total
+             FROM entitlements
+             WHERE oxide_group = :group_name
+               AND status = 'active'
+               AND (ends_at IS NULL OR ends_at > NOW())",
+            ['group_name' => $group_name]
+        );
+        $total = (int) ($row['total'] ?? 0);
+
+        if ($total > 0) {
+            $blockers[] = $total === 1
+                ? '1 active entitlement still grants this group.'
+                : $total . ' active entitlements still grant this group.';
+        }
+    }
+
+    if (
+        raidlands_permissions_table_exists('game_kit_group_access')
+        && raidlands_permissions_table_exists('game_kits')
+        && raidlands_permissions_column_exists('game_kits', 'deleted_at')
+    ) {
+        $row = raidlands_db_fetch_one(
+            'SELECT COUNT(*) AS total
+             FROM game_kit_group_access gga
+             INNER JOIN game_kits gk ON gk.id = gga.kit_id
+             WHERE gga.oxide_group = :group_name
+               AND gga.is_granted = 1
+               AND gk.is_active = 1
+               AND gk.deleted_at IS NULL',
+            ['group_name' => $group_name]
+        );
+        $total = (int) ($row['total'] ?? 0);
+
+        if ($total > 0) {
+            $blockers[] = $total === 1
+                ? '1 active kit still grants access through this group.'
+                : $total . ' active kits still grant access through this group.';
+        }
+    }
+
+    return $blockers;
+}
+
+function raidlands_permissions_delete_group(PDO $pdo, string $group_name, int $revision): void
+{
+    $group_name = raidlands_permissions_clean_group($group_name);
+
+    if ($group_name === '') {
+        throw new InvalidArgumentException('Choose a valid group before deleting.');
+    }
+
+    $row = raidlands_db_fetch_one(
+        'SELECT * FROM oxide_groups WHERE group_name = :group_name',
+        ['group_name' => $group_name]
+    );
+
+    if ($row === null) {
+        throw new RuntimeException('That group no longer exists.');
+    }
+
+    if (
+        raidlands_permissions_group_is_read_only($group_name)
+        || raidlands_permissions_group_has_forced_protection($group_name)
+        || !empty($row['is_read_only'])
+        || !empty($row['is_protected'])
+    ) {
+        throw new RuntimeException('Protected or read-only groups cannot be deleted from the website.');
+    }
+
+    $blockers = raidlands_permissions_delete_blockers($pdo, $group_name);
+
+    if ($blockers !== []) {
+        throw new RuntimeException('Cannot delete ' . $group_name . ': ' . implode(' ', $blockers));
+    }
+
+    $group_id = (int) ($row['id'] ?? 0);
+
+    if ($group_id > 0) {
+        raidlands_db_execute(
+            'DELETE FROM oxide_group_permission_grants WHERE group_id = :group_id',
+            ['group_id' => $group_id]
+        );
+        raidlands_db_execute(
+            'DELETE FROM oxide_group_permission_live WHERE group_id = :group_id',
+            ['group_id' => $group_id]
+        );
+    }
+
+    raidlands_db_execute(
+        'UPDATE oxide_groups
+         SET is_active = 0,
+             is_managed = 0,
+             deleted_at = NOW(),
+             deleted_revision = :revision,
+             draft_revision = :revision,
+             updated_at = NOW()
+         WHERE group_name = :group_name',
+        [
+            'revision' => $revision,
+            'group_name' => $group_name,
+        ]
+    );
+}
+
 function raidlands_permissions_permission_rows(): array
 {
     if (!raidlands_permissions_is_ready()) {
@@ -501,7 +701,28 @@ function raidlands_permissions_admin_save(array $post): array
     try {
         foreach ((array) ($post['permission_groups'] ?? []) as $row) {
             $row = is_array($row) ? $row : [];
+            $id = (int) ($row['id'] ?? 0);
             $group_name = raidlands_permissions_clean_group($row['group_name'] ?? '');
+
+            if (!empty($row['delete'])) {
+                if ($id > 0) {
+                    $existing = raidlands_db_fetch_one(
+                        'SELECT group_name FROM oxide_groups WHERE id = :id',
+                        ['id' => $id]
+                    );
+
+                    if ($existing !== null) {
+                        $group_name = raidlands_permissions_clean_group($existing['group_name'] ?? $group_name);
+                    }
+                }
+
+                if ($group_name !== '') {
+                    raidlands_permissions_delete_group($pdo, $group_name, $revision);
+                    $changed += 1;
+                }
+
+                continue;
+            }
 
             if ($group_name === '') {
                 continue;
@@ -642,6 +863,7 @@ function raidlands_permissions_desired_map(): array
          LEFT JOIN oxide_permissions op ON op.id = ogpg.permission_id
          WHERE og.is_managed = 1
            AND og.is_active = 1
+           AND og.deleted_at IS NULL
            AND og.group_name NOT IN ("admin", "authenticated")
          ORDER BY og.group_name ASC, op.permission_name ASC'
     );
@@ -775,6 +997,7 @@ function raidlands_permissions_sync_payload(?int $revision = null): array
         'generated_at' => gmdate('c'),
         'managed_groups' => array_values(array_keys($group_permissions)),
         'read_only_groups' => raidlands_permissions_read_only_groups(),
+        'deleted_groups' => raidlands_permissions_deleted_group_names(),
         'groups' => $groups,
         'group_permissions' => (object) $group_permissions,
     ];
@@ -835,6 +1058,7 @@ function raidlands_permissions_pending_sync(int $since): array
             'revision' => $revision,
             'has_update' => false,
             'managed_groups' => [],
+            'deleted_groups' => [],
             'groups' => [],
             'group_permissions' => (object) [],
         ];
@@ -847,6 +1071,7 @@ function raidlands_permissions_pending_sync(int $since): array
             'revision' => 0,
             'has_update' => false,
             'managed_groups' => [],
+            'deleted_groups' => [],
             'groups' => [],
             'group_permissions' => (object) [],
         ];
@@ -854,6 +1079,7 @@ function raidlands_permissions_pending_sync(int $since): array
 
     $payload['revision'] = $revision;
     $payload['has_update'] = true;
+    $payload['deleted_groups'] = array_values(array_map('strval', (array) ($payload['deleted_groups'] ?? [])));
     $payload['group_permissions'] = (object) ($payload['group_permissions'] ?? []);
 
     return $payload;
@@ -924,6 +1150,10 @@ function raidlands_permissions_import_snapshot(array $payload): array
                 ];
             }
 
+            if (raidlands_permissions_group_is_tombstoned($pdo, $name)) {
+                continue;
+            }
+
             if (raidlands_permissions_upsert_group($pdo, $row, true) > 0) {
                 $groups_seen += 1;
             }
@@ -933,6 +1163,10 @@ function raidlands_permissions_import_snapshot(array $payload): array
             $group = raidlands_permissions_clean_group($group);
 
             if ($group === '') {
+                continue;
+            }
+
+            if (raidlands_permissions_group_is_tombstoned($pdo, $group)) {
                 continue;
             }
 

@@ -45,6 +45,12 @@ $admin_sections_all = [
     'grants' => ['label' => 'Grants', 'kicker' => 'Access', 'title' => 'Manual Entitlement Grant', 'summary' => 'Grant a product to a SteamID64 without going through Stripe.'],
     'sync' => ['label' => 'Sync', 'kicker' => 'Bridge', 'title' => 'WebsiteVipBridge State', 'summary' => 'Entitlement sync, stats ingest status, and server API endpoints.'],
 ];
+$admin_nav_groups = [
+    'site-setup' => ['label' => 'Site Setup', 'sections' => ['identity', 'links']],
+    'content' => ['label' => 'Content', 'sections' => ['features', 'pages', 'seo', 'feedback']],
+    'store-access' => ['label' => 'Store & Access', 'sections' => ['store', 'kits', 'groups', 'grants']],
+    'server-ops' => ['label' => 'Server Ops', 'sections' => ['wipe', 'sync']],
+];
 $admin_sections = $admin_sections_all;
 
 if ($authenticated) {
@@ -72,6 +78,31 @@ $active_meta = $active_section === 'none'
     : ($admin_sections[$active_section]
     ?? $admin_sections_all[$active_section]
     ?? ['label' => 'No Access', 'kicker' => 'Roles', 'title' => 'No Admin Sections Available', 'summary' => 'Your approved Steam account does not have a section permission yet.']);
+$admin_nav_groups_visible = [];
+$active_nav_group = '';
+
+foreach ($admin_nav_groups as $group_key => $group) {
+    $visible_group_sections = [];
+
+    foreach ($group['sections'] as $section_key) {
+        if (!isset($admin_sections[$section_key])) {
+            continue;
+        }
+
+        $visible_group_sections[$section_key] = $admin_sections[$section_key];
+
+        if ($section_key === $active_section) {
+            $active_nav_group = $group_key;
+        }
+    }
+
+    if ($visible_group_sections !== []) {
+        $admin_nav_groups_visible[$group_key] = [
+            'label' => $group['label'],
+            'sections' => $visible_group_sections,
+        ];
+    }
+}
 $admin_store_ready = false;
 $admin_store_error = '';
 $admin_store_rows = [];
@@ -649,6 +680,9 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
     <?php if ($active_section === 'kits') : ?>
       <link rel="stylesheet" href="<?= e(asset_url('css/admin-kits.css')) ?>">
     <?php endif; ?>
+    <?php if ($authenticated) : ?>
+      <script src="<?= e(asset_url('js/admin-nav.js')) ?>" defer></script>
+    <?php endif; ?>
   </head>
   <body class="admin-body">
     <?php if (!$authenticated) : ?>
@@ -700,34 +734,67 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
       </main>
     <?php else : ?>
       <header class="admin-topbar">
-        <a class="admin-brand" href="<?= e(route_url()) ?>">
-          <img
-            src="<?= e(asset_url('media/horizontal-logo-xsm.webp')) ?>"
-            srcset="<?= e(asset_url('media/horizontal-logo-xxsm.webp')) ?> 120w, <?= e(asset_url('media/horizontal-logo-xsm.webp')) ?> 300w, <?= e(asset_url('media/horizontal-logo-sm.webp')) ?> 550w, <?= e(asset_url('media/horizontal-logo-med.webp')) ?> 1100w"
-            sizes="(max-width: 520px) 136px, 168px"
-            width="300"
-            height="100"
-            alt="Raidlands"
-            decoding="async">
-          <span>Admin</span>
-        </a>
-        <div class="admin-topbar-actions">
-          <span class="admin-user-chip">
-            <strong><?= e($admin_user_role_label) ?></strong>
-            <?php if ($admin_user !== null) : ?>
-              <code><?= e((string) $admin_user['steam_id64']) ?></code>
-            <?php else : ?>
-              <code>setup fallback</code>
-            <?php endif; ?>
-          </span>
-          <a class="btn btn-secondary" href="<?= e(route_url()) ?>">View Site</a>
-          <form method="post" action="<?= e(admin_section_url($active_section)) ?>">
-            <input type="hidden" name="action" value="logout">
-            <input type="hidden" name="section" value="<?= e($active_section) ?>">
-            <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
-            <button class="btn btn-ghost" type="submit">Logout</button>
-          </form>
+        <div class="admin-topbar-main">
+          <a class="admin-brand" href="<?= e(route_url()) ?>">
+            <img
+              src="<?= e(asset_url('media/horizontal-logo-xsm.webp')) ?>"
+              srcset="<?= e(asset_url('media/horizontal-logo-xxsm.webp')) ?> 120w, <?= e(asset_url('media/horizontal-logo-xsm.webp')) ?> 300w, <?= e(asset_url('media/horizontal-logo-sm.webp')) ?> 550w, <?= e(asset_url('media/horizontal-logo-med.webp')) ?> 1100w"
+              sizes="(max-width: 520px) 136px, 168px"
+              width="300"
+              height="100"
+              alt="Raidlands"
+              decoding="async">
+            <span>Admin</span>
+          </a>
+          <div class="admin-topbar-actions">
+            <span class="admin-user-chip">
+              <strong><?= e($admin_user_role_label) ?></strong>
+              <?php if ($admin_user !== null) : ?>
+                <code><?= e((string) $admin_user['steam_id64']) ?></code>
+              <?php else : ?>
+                <code>setup fallback</code>
+              <?php endif; ?>
+            </span>
+            <a class="btn btn-secondary" href="<?= e(route_url()) ?>">View Site</a>
+            <form method="post" action="<?= e(admin_section_url($active_section)) ?>">
+              <input type="hidden" name="action" value="logout">
+              <input type="hidden" name="section" value="<?= e($active_section) ?>">
+              <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
+              <button class="btn btn-ghost" type="submit">Logout</button>
+            </form>
+          </div>
         </div>
+        <?php if ($admin_nav_groups_visible !== []) : ?>
+          <nav class="admin-top-nav" aria-label="Admin sections" data-admin-nav>
+            <?php foreach ($admin_nav_groups_visible as $group_key => $group) : ?>
+              <?php
+                $group_is_active = $group_key === $active_nav_group;
+                $group_sections = $group['sections'];
+                $section_count = count($group_sections);
+                $group_summary = $group_is_active
+                    ? (string) $active_meta['label']
+                    : (string) $section_count . ' section' . ($section_count === 1 ? '' : 's');
+              ?>
+              <details class="admin-nav-group<?= $group_is_active ? ' is-active' : '' ?>" data-admin-nav-group>
+                <summary class="admin-nav-group-toggle">
+                  <span><?= e((string) $group['label']) ?></span>
+                  <small><?= e($group_summary) ?></small>
+                </summary>
+                <div class="admin-nav-menu">
+                  <?php foreach ($group_sections as $section_key => $section) : ?>
+                    <a
+                      class="admin-nav-link<?= $section_key === $active_section ? ' is-active' : '' ?>"
+                      href="<?= e(admin_section_url((string) $section_key)) ?>"
+                      <?= $section_key === $active_section ? 'aria-current="page"' : '' ?>>
+                      <span><?= e($section['label']) ?></span>
+                      <small><?= e($section['summary']) ?></small>
+                    </a>
+                  <?php endforeach; ?>
+                </div>
+              </details>
+            <?php endforeach; ?>
+          </nav>
+        <?php endif; ?>
       </header>
 
       <main class="admin-shell">
@@ -750,17 +817,6 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
           <?php endif; ?>
 
           <div class="admin-layout">
-            <aside class="admin-sidebar" aria-label="Admin sections">
-              <nav class="admin-side-nav">
-                <?php foreach ($admin_sections as $section_key => $section) : ?>
-                  <a class="admin-nav-link<?= $section_key === $active_section ? ' is-active' : '' ?>" href="<?= e(admin_section_url((string) $section_key)) ?>">
-                    <span><?= e($section['label']) ?></span>
-                    <small><?= e($section['summary']) ?></small>
-                  </a>
-                <?php endforeach; ?>
-              </nav>
-            </aside>
-
             <section class="admin-workspace" aria-labelledby="admin-section-title">
               <div class="admin-section-head admin-workspace-head">
                 <div>
@@ -1596,7 +1652,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               <?php if (!empty($row['id'])) : ?>
                                 <label class="admin-check admin-delete-check">
                                   <input type="checkbox" name="kits[<?= e((string) $index) ?>][delete]" value="1">
-                                  <span>Deactivate</span>
+                                  <span>Delete Kit</span>
                                 </label>
                               <?php endif; ?>
                             </div>
@@ -1844,8 +1900,11 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                         </div>
                         <aside class="admin-kit-picker" aria-label="Kit selector">
                           <div class="admin-kit-picker-head">
-                            <h3>Kits</h3>
-                            <p><?= e((string) count($kit_rows)) ?> saved<?= $kit_rows === [] ? '' : ' plus new draft slot' ?></p>
+                            <div>
+                              <h3>Kits</h3>
+                              <p><?= e((string) count($kit_rows)) ?> saved<?= $kit_rows === [] ? '' : ' plus new draft slot' ?></p>
+                            </div>
+                            <button class="btn btn-secondary" type="button" data-kit-add>Add Kit</button>
                           </div>
                           <div class="admin-kit-picker-list">
                             <?php for ($selector_index = 0; $selector_index < $kit_total; $selector_index += 1) : ?>
@@ -2032,6 +2091,12 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                   <p class="admin-feedback-subtitle">Desired permissions match the latest live snapshot.</p>
                                 <?php endif; ?>
                               </div>
+                              <?php if (!empty($row['id']) && !$is_read_only && !$is_protected) : ?>
+                                <label class="admin-check admin-delete-check">
+                                  <input type="checkbox" name="permission_groups[<?= e((string) $index) ?>][delete]" value="1">
+                                  <span>Delete Group</span>
+                                </label>
+                              <?php endif; ?>
                             </div>
 
                             <div class="admin-grid three">
@@ -2276,8 +2341,11 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                         </div>
                         <aside class="admin-group-picker" aria-label="Group selector">
                           <div class="admin-group-picker-head">
-                            <h3>Groups</h3>
-                            <p><?= e((string) count($permission_group_rows)) ?> saved<?= $permission_group_rows === [] ? '' : ' plus new draft slot' ?></p>
+                            <div>
+                              <h3>Groups</h3>
+                              <p><?= e((string) count($permission_group_rows)) ?> saved<?= $permission_group_rows === [] ? '' : ' plus new draft slot' ?></p>
+                            </div>
+                            <button class="btn btn-secondary" type="button" data-group-add>Add Group</button>
                           </div>
                           <div class="admin-group-picker-list">
                             <?php for ($selector_index = 0; $selector_index < $permission_group_total; $selector_index += 1) : ?>

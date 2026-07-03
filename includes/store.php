@@ -1669,6 +1669,7 @@ function raidlands_store_managed_groups(): array
     global $vip_bridge_config;
 
     $groups = array_values(array_filter(array_map('strval', (array) ($vip_bridge_config['managedGroups'] ?? []))));
+    $deleted_groups = [];
 
     if (raidlands_db_is_configured()) {
         try {
@@ -1686,6 +1687,7 @@ function raidlands_store_managed_groups(): array
                 "SELECT group_name
                  FROM oxide_groups
                  WHERE is_active = 1
+                   AND deleted_at IS NULL
                    AND is_read_only = 0
                    AND category IN ('vip', 'perk', 'store')"
             );
@@ -1696,9 +1698,24 @@ function raidlands_store_managed_groups(): array
         } catch (Throwable $error) {
             // Permission catalog is optional for older installs.
         }
+
+        try {
+            $rows = raidlands_db_fetch_all(
+                "SELECT group_name
+                 FROM oxide_groups
+                 WHERE deleted_at IS NOT NULL"
+            );
+
+            foreach ($rows as $row) {
+                $deleted_groups[] = (string) $row['group_name'];
+            }
+        } catch (Throwable $error) {
+            // Older installs may not have group tombstones yet.
+        }
     }
 
-    $groups = array_values(array_unique($groups));
+    $deleted_set = array_fill_keys(array_map('strval', $deleted_groups), true);
+    $groups = array_values(array_filter(array_unique($groups), static fn (string $group): bool => !isset($deleted_set[$group])));
     sort($groups);
 
     return $groups;

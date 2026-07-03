@@ -52,7 +52,9 @@ function raidlands_kits_is_ready(): bool
     return raidlands_kits_table_exists('game_kits')
         && raidlands_kits_table_exists('game_kit_items')
         && raidlands_kits_table_exists('game_kit_sync_log')
-        && raidlands_kits_column_exists('game_kit_sync_log', 'payload_json');
+        && raidlands_kits_column_exists('game_kit_sync_log', 'payload_json')
+        && raidlands_kits_column_exists('game_kits', 'deleted_at')
+        && raidlands_kits_column_exists('game_kits', 'deleted_revision');
 }
 
 function raidlands_kits_readiness_message(bool $admin = false): string
@@ -65,7 +67,7 @@ function raidlands_kits_readiness_message(bool $admin = false): string
 
     if (!raidlands_kits_is_ready()) {
         return $admin
-            ? 'Kit tables are not installed yet. Run database/migrations/006_game_kits.sql.'
+            ? 'Kit tables are not installed yet. Run database/migrations/006_game_kits.sql, then database/migrations/014_kit_group_delete_tombstones.sql.'
             : 'Kit details are being prepared.';
     }
 
@@ -330,7 +332,7 @@ function raidlands_kits_store_uploaded_image(?array $file): string
 
 function raidlands_kits_next_revision(PDO $pdo): int
 {
-    $revision = (int) $pdo->query('SELECT COALESCE(MAX(GREATEST(draft_revision, published_revision)), 0) + 1 FROM game_kits')->fetchColumn();
+    $revision = (int) $pdo->query('SELECT COALESCE(MAX(GREATEST(draft_revision, published_revision, deleted_revision)), 0) + 1 FROM game_kits')->fetchColumn();
     $log_revision = (int) $pdo->query(
         "SELECT COALESCE(MAX(revision), 0) + 1 FROM game_kit_sync_log WHERE status <> 'snapshot'"
     )->fetchColumn();
@@ -338,13 +340,23 @@ function raidlands_kits_next_revision(PDO $pdo): int
     return max(1, $revision, $log_revision);
 }
 
-function raidlands_kits_fetch_all(bool $active_only = false): array
+function raidlands_kits_fetch_all(bool $active_only = false, bool $include_deleted = false): array
 {
     if (!raidlands_kits_is_ready()) {
         return [];
     }
 
-    $where = $active_only ? 'WHERE is_active = 1' : '';
+    $conditions = [];
+
+    if ($active_only) {
+        $conditions[] = 'is_active = 1';
+    }
+
+    if (!$include_deleted) {
+        $conditions[] = 'deleted_at IS NULL';
+    }
+
+    $where = $conditions === [] ? '' : 'WHERE ' . implode(' AND ', $conditions);
     $kits = raidlands_db_fetch_all(
         "SELECT * FROM game_kits $where ORDER BY sort_order ASC, id ASC"
     );
@@ -435,7 +447,13 @@ function raidlands_kits_available_groups(): array
 
     if (raidlands_kits_is_ready()) {
         try {
-            $rows = raidlands_db_fetch_all('SELECT DISTINCT oxide_group FROM game_kit_group_access WHERE oxide_group <> ""');
+            $rows = raidlands_db_fetch_all(
+                'SELECT DISTINCT gga.oxide_group
+                 FROM game_kit_group_access gga
+                 INNER JOIN game_kits gk ON gk.id = gga.kit_id
+                 WHERE gga.oxide_group <> ""
+                   AND gk.deleted_at IS NULL'
+            );
 
             foreach ($rows as $row) {
                 $groups[] = (string) $row['oxide_group'];
@@ -800,8 +818,18 @@ function raidlands_kits_admin_save(array $post, array $files = []): array
             $name = raidlands_kits_clean_text($row['kit_name'] ?? '', 160);
 
             if (!empty($row['delete']) && $id > 0) {
-                $statement = $pdo->prepare('UPDATE game_kits SET is_active = 0, draft_revision = :revision, updated_at = NOW() WHERE id = :id');
+                $statement = $pdo->prepare(
+                    'UPDATE game_kits
+                     SET is_active = 0,
+                         deleted_at = NOW(),
+                         deleted_revision = :revision,
+                         draft_revision = :revision,
+                         updated_at = NOW()
+                     WHERE id = :id'
+                );
                 $statement->execute(['revision' => $revision, 'id' => $id]);
+                $pdo->prepare('DELETE FROM game_kit_group_access WHERE kit_id = :id')->execute(['id' => $id]);
+                $pdo->prepare('DELETE FROM store_product_kits WHERE kit_id = :id')->execute(['id' => $id]);
                 $changed += 1;
                 continue;
             }
@@ -871,6 +899,8 @@ function raidlands_kits_admin_save(array $post, array $files = []): array
                          reward_icon_url = :reward_icon_url,
                          reward_permission = :reward_permission,
                          draft_revision = :draft_revision,
+                         deleted_at = NULL,
+                         deleted_revision = 0,
                          updated_at = NOW()
                      WHERE id = :id"
                 );
@@ -904,6 +934,8 @@ function raidlands_kits_admin_save(array $post, array $files = []): array
                         reward_icon_url = VALUES(reward_icon_url),
                         reward_permission = VALUES(reward_permission),
                         draft_revision = VALUES(draft_revision),
+                        deleted_at = NULL,
+                        deleted_revision = 0,
                         updated_at = NOW()"
                 );
                 $statement->execute($params);
@@ -1001,7 +1033,7 @@ function raidlands_kits_item_to_rust(array $item): array
 
 function raidlands_kits_sync_payload(?int $revision = null): array
 {
-    $kits = raidlands_kits_fetch_all(false);
+    $kits = raidlands_kits_fetch_all(false, true);
     $revision = $revision ?? raidlands_kits_latest_published_revision();
     $payload_kits = [];
     $reward_kits = [];
@@ -1050,7 +1082,7 @@ function raidlands_kits_sync_payload(?int $revision = null): array
 
         $permission = (string) $kit['required_permission'];
 
-        if ($permission !== '') {
+        if ($permission !== '' && !empty($kit['is_active']) && empty($kit['deleted_at'])) {
             foreach ((array) ($kit['groups'] ?? []) as $group) {
                 $group = raidlands_kits_clean_group($group);
 
@@ -1228,6 +1260,15 @@ function raidlands_kits_import_snapshot(array $payload): array
                 continue;
             }
 
+            $existing = raidlands_db_fetch_one(
+                'SELECT id, deleted_at FROM game_kits WHERE kit_name = :kit_name',
+                ['kit_name' => $name]
+            );
+
+            if ($existing !== null && trim((string) ($existing['deleted_at'] ?? '')) !== '') {
+                continue;
+            }
+
             $params = [
                 'kit_name' => $name,
                 'description' => raidlands_kits_clean_multiline($kit['Description'] ?? ''),
@@ -1258,6 +1299,8 @@ function raidlands_kits_import_snapshot(array $payload): array
                     copy_paste_file = VALUES(copy_paste_file),
                     image_path = VALUES(image_path),
                     is_active = 1,
+                    deleted_at = NULL,
+                    deleted_revision = 0,
                     draft_revision = VALUES(draft_revision),
                     updated_at = NOW()"
             );
