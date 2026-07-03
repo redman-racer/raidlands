@@ -12,7 +12,7 @@ using Oxide.Core.Libraries.Covalence;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteVipBridge", "Raidlands", "1.4.2")]
+    [Info("WebsiteVipBridge", "Raidlands", "1.4.3")]
     [Description("Syncs website VIP entitlements and player stats between Raidlands.net and the Rust server.")]
     public class WebsiteVipBridge : CovalencePlugin
     {
@@ -94,7 +94,7 @@ namespace Oxide.Plugins
         {
             public string Logo = "/assets/media/raidlands-logo.png";
             public string NavLogo = "/assets/media/nav-logo.png";
-            public string SimpleLogo = "/assets/media/in-game/raidlands-footer-logo.png";
+            public string SimpleLogo = "/assets/media/nav-logo.png";
             public string Hero = "/assets/media/website-hero-raid-overlook-v4.webp";
             public string Header = "/assets/media/header-bg-rust-v2.png";
             public string CommandMenu = "/assets/media/in-game/raidlands-command-menu-bg.png";

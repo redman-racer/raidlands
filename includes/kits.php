@@ -283,8 +283,11 @@ function raidlands_kits_store_uploaded_image(?array $file): string
 function raidlands_kits_next_revision(PDO $pdo): int
 {
     $revision = (int) $pdo->query('SELECT COALESCE(MAX(GREATEST(draft_revision, published_revision)), 0) + 1 FROM game_kits')->fetchColumn();
+    $log_revision = (int) $pdo->query(
+        "SELECT COALESCE(MAX(revision), 0) + 1 FROM game_kit_sync_log WHERE status <> 'snapshot'"
+    )->fetchColumn();
 
-    return max(1, $revision);
+    return max(1, $revision, $log_revision);
 }
 
 function raidlands_kits_fetch_all(bool $active_only = false): array
@@ -786,7 +789,7 @@ function raidlands_kits_admin_save(array $post, array $files = []): array
             $changed += 1;
         }
 
-        if ($publish && $changed > 0) {
+        if ($publish) {
             $statement = $pdo->prepare('UPDATE game_kits SET published_revision = :revision, published_at = NOW(), updated_at = NOW()');
             $statement->execute(['revision' => $revision]);
         }

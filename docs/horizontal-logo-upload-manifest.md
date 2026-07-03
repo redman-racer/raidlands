@@ -14,7 +14,7 @@ Upload these files with the horizontal logo rollout:
 
 Rust server plugin handoff:
 
-- Upload `server-plugins/WebsiteVipBridge.cs` to the uMod/Oxide plugins folder if you want the plugin default `SimpleLogo` to use the footer-derived in-game PNG.
+- Upload `server-plugins/WebsiteVipBridge.cs` to the uMod/Oxide plugins folder if you want the plugin default `SimpleLogo` to use the website menu/nav logo.
 - Upload `server-plugins/WebsiteVipBridge.config.example.json` if you keep server config examples mirrored from the website repo.
 
 Existing cache note:
