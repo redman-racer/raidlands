@@ -10,7 +10,7 @@
     <h2>Connected Accounts</h2>
     <p>Steam and Discord connections may be required for rewards, profiles, statistics, events, roles, support, appeals, or store access.</p>
     <h2>Supporter Perks</h2>
-    <p>Raidlands VIP kits, monthly ranks, and one-time perks may change, rotate, or be removed if they harm server balance, server stability, or community trust.</p>
+    <p>Raidlands kit bundles, individual kits, standalone perks, and subscriptions may change, rotate, or be removed if they harm server balance, server stability, or community trust.</p>
     <h2>Facepunch Disclaimer</h2>
     <p>Raidlands is not affiliated with Facepunch Studios.</p>
   </div>

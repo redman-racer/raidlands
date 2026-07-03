@@ -985,6 +985,32 @@ function raidlands_permissions_sync_payload(?int $revision = null): array
         }
     }
 
+    foreach (['raidlands_store_product_kit_permission_grants_map', 'raidlands_store_product_permission_grants_map'] as $map_function) {
+        if (!function_exists($map_function)) {
+            continue;
+        }
+
+        foreach ((array) $map_function() as $group => $permissions) {
+            $group = raidlands_permissions_clean_group($group);
+
+            if ($group === '') {
+                continue;
+            }
+
+            if (!isset($group_permissions[$group])) {
+                $group_permissions[$group] = [];
+            }
+
+            foreach ((array) $permissions as $permission) {
+                $permission = raidlands_permissions_clean_permission($permission);
+
+                if ($permission !== '') {
+                    $group_permissions[$group][] = $permission;
+                }
+            }
+        }
+    }
+
     $group_permissions = raidlands_permissions_flatten_group_permissions($group_permissions, $parent_map);
 
     foreach ($group_permissions as $group => $permissions) {

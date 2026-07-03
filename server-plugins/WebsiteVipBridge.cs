@@ -69,6 +69,7 @@ namespace Oxide.Plugins
             public bool StatusHeartbeatEnabled = true;
             public int StatusHeartbeatIntervalSeconds = 30;
             public int StatusHeartbeatDebounceSeconds = 10;
+            public int WebRequestTimeoutMilliseconds = 20000;
             public bool StatsEnabled = true;
             public int StatsSyncIntervalSeconds = 300;
             public int StatsDebounceSeconds = 30;
@@ -407,6 +408,11 @@ namespace Oxide.Plugins
             if (config.StatusHeartbeatDebounceSeconds <= 0)
             {
                 config.StatusHeartbeatDebounceSeconds = defaults.StatusHeartbeatDebounceSeconds;
+            }
+
+            if (config.WebRequestTimeoutMilliseconds <= 0)
+            {
+                config.WebRequestTimeoutMilliseconds = defaults.WebRequestTimeoutMilliseconds;
             }
 
             if (config.KitSyncIntervalSeconds <= 0)
@@ -3975,14 +3981,19 @@ namespace Oxide.Plugins
         private void SendGet(string url, Action<int, string> callback)
         {
             var headers = BuildHeaders("GET", url, "");
-            webrequest.Enqueue(url, null, (code, response) => RunWebCallback($"GET {url}", callback, code, response), this, RequestMethod.GET, headers);
+            webrequest.Enqueue(url, null, (code, response) => RunWebCallback($"GET {url}", callback, code, response), this, RequestMethod.GET, headers, WebRequestTimeoutMilliseconds());
         }
 
         private void SendPost(string url, string body, Action<int, string> callback)
         {
             var headers = BuildHeaders("POST", url, body);
             headers["Content-Type"] = "application/json";
-            webrequest.Enqueue(url, body, (code, response) => RunWebCallback($"POST {url}", callback, code, response), this, RequestMethod.POST, headers);
+            webrequest.Enqueue(url, body, (code, response) => RunWebCallback($"POST {url}", callback, code, response), this, RequestMethod.POST, headers, WebRequestTimeoutMilliseconds());
+        }
+
+        private float WebRequestTimeoutMilliseconds()
+        {
+            return (float)Math.Max(5000, config.WebRequestTimeoutMilliseconds);
         }
 
         private void RunWebCallback(string context, Action<int, string> callback, int code, string response)

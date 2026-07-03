@@ -10,6 +10,7 @@ $profile_stats = ['current' => null, 'all_time' => null, 'wipe' => null];
 $profile_rp_balance = null;
 $profile_rp_requests = [];
 $profile_rp_subscriptions = [];
+$profile_cash_subscriptions = [];
 $profile_flash = raidlands_store_flash();
 
 if ($profile_player !== null && !empty($profile_player['id'])) {
@@ -20,6 +21,7 @@ if ($profile_player !== null && !empty($profile_player['id'])) {
     $profile_rp_balance = raidlands_store_current_rp_balance((int) $profile_player['id']);
     $profile_rp_requests = raidlands_store_rp_requests_for_player((int) $profile_player['id']);
     $profile_rp_subscriptions = raidlands_store_rp_subscriptions_for_player((int) $profile_player['id']);
+    $profile_cash_subscriptions = raidlands_store_cash_subscriptions_for_player((int) $profile_player['id']);
 }
 
 $profile_display_name = $profile_player !== null
@@ -36,7 +38,7 @@ $profile_avatar = $profile_player !== null
 $profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_profile_url'] ?? '')) : '';
 ?>
 <?= render_page_hero('profile',
-    '<a class="btn btn-primary" href="' . e(route_url('store')) . '">Shop VIP</a>'
+    '<a class="btn btn-primary" href="' . e(route_url('store')) . '">Open Store</a>'
     . '<a class="btn btn-secondary" href="' . e(route_url('clans')) . '">Manage Clan</a>'
     . '<a class="btn btn-secondary" href="' . e(raidlands_account_url()) . '">' . e(raidlands_account_label('Connect Steam', 'Account')) . '</a>'
 ) ?>
@@ -50,7 +52,7 @@ $profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_
     <?php if ($profile_player === null) : ?>
       <div class="metal-panel">
         <p class="section-kicker">Profile locked</p>
-        <h2>Connect Steam to view VIP access</h2>
+        <h2>Connect Steam to view store access</h2>
         <p class="section-lede">Your profile uses your Steam account so purchases, refunds, subscriptions, and in-game access all point at the same Rust player.</p>
         <div class="button-row">
           <a class="btn btn-primary" href="<?= e(route_url('link')) ?>">Connect Steam</a>
@@ -75,7 +77,7 @@ $profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_
           </div>
           <div class="tag-row">
             <?php if ($profile_active_groups === []) : ?>
-              <span class="tag">No active VIP access yet</span>
+              <span class="tag">No active store access yet</span>
             <?php else : ?>
               <?php foreach ($profile_active_groups as $group) : ?>
                 <span class="tag"><?= e(raidlands_public_access_label($group)) ?></span>
@@ -87,7 +89,7 @@ $profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_
         <div class="metal-panel">
           <p class="section-kicker">Game access</p>
           <h2>Active server perks</h2>
-          <p class="section-lede">These are the VIP perks Raidlands should apply when you connect. Updates may take a short moment after checkout or renewal.</p>
+          <p class="section-lede">These are the kits, bundles, and perks Raidlands should apply when you connect. Updates may take a short moment after checkout or renewal.</p>
           <div class="button-row">
             <a class="btn btn-primary" href="<?= e(route_url('store')) ?>">Add Perks</a>
             <a class="btn btn-secondary" href="<?= e(route_url('clans')) ?>">Clan Tools</a>
@@ -158,6 +160,10 @@ $profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_
           <span>Auto-Renew</span>
           <strong><?= e((string) count(array_filter($profile_rp_subscriptions, static fn (array $row): bool => in_array((string) $row['status'], ['active', 'past_due'], true) && empty($row['cancel_at_period_end'])))) ?></strong>
         </article>
+        <article class="stat-tile">
+          <span>Cash Subscriptions</span>
+          <strong><?= e((string) count(array_filter($profile_cash_subscriptions, static fn (array $row): bool => in_array((string) $row['status'], ['active', 'trialing', 'past_due'], true)))) ?></strong>
+        </article>
       </div>
 
       <?php if ($profile_rp_subscriptions !== []) : ?>
@@ -226,17 +232,65 @@ $profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_
     </div>
   </section>
 
+  <section class="section">
+    <div class="section-inner">
+      <div class="section-header">
+        <p class="section-kicker">Cash billing</p>
+        <h2>Subscriptions</h2>
+        <p class="section-lede">Recurring cash plans are managed through Stripe billing. One-time cash passes and RP purchases stay in access history below.</p>
+      </div>
+
+      <?php if ($profile_cash_subscriptions === []) : ?>
+        <div class="metal-panel">
+          <p class="section-lede">No cash subscriptions are attached to this Steam account yet.</p>
+          <a class="btn btn-primary" href="<?= e(route_url('store')) ?>">Open Store</a>
+        </div>
+      <?php else : ?>
+        <div class="button-row">
+          <form method="post" action="<?= e(route_url('profile') . 'billing-portal.php') ?>">
+            <input type="hidden" name="csrf" value="<?= e(raidlands_store_csrf_token()) ?>">
+            <button class="btn btn-primary" type="submit">Manage Billing</button>
+          </form>
+        </div>
+        <div class="store-table-wrap">
+          <table class="store-table">
+            <thead>
+              <tr>
+                <th>Product</th>
+                <th>Plan</th>
+                <th>Status</th>
+                <th>Period Ends</th>
+                <th>Billing</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($profile_cash_subscriptions as $subscription) : ?>
+                <tr>
+                  <td><?= e((string) $subscription['product_name']) ?></td>
+                  <td><?= e((string) $subscription['price_label']) ?></td>
+                  <td><span class="status-pill <?= e((string) $subscription['status']) ?>"><?= e((string) $subscription['status']) ?></span></td>
+                  <td><?= e((string) ($subscription['current_period_end'] ?: 'No scheduled expiration')) ?></td>
+                  <td><?= !empty($subscription['cancel_at_period_end']) ? 'Cancels at period end' : 'Renews in Stripe' ?></td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+      <?php endif; ?>
+    </div>
+  </section>
+
   <section class="section alt">
     <div class="section-inner">
       <div class="section-header">
         <p class="section-kicker">Access history</p>
-        <h2>VIP, perks, and changes</h2>
+        <h2>Kits, perks, and changes</h2>
         <p class="section-lede">Active items are what your account can use in game. Ended or refunded items stay visible so support can help faster.</p>
       </div>
 
       <?php if ($profile_entitlements === []) : ?>
         <div class="metal-panel">
-          <p class="section-lede">No VIP access or perks are attached to this Steam account yet.</p>
+          <p class="section-lede">No kits, bundles, or perks are attached to this Steam account yet.</p>
           <a class="btn btn-primary" href="<?= e(route_url('store')) ?>">Open Store</a>
         </div>
       <?php else : ?>

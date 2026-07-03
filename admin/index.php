@@ -39,7 +39,7 @@ $admin_sections_all = [
     'pages' => ['label' => 'Pages', 'kicker' => 'Copy', 'title' => 'Hero Copy', 'summary' => 'The title and intro text shown at the top of each page.'],
     'seo' => ['label' => 'SEO', 'kicker' => 'Search', 'title' => 'SEO Metadata', 'summary' => 'Browser titles, descriptions, and social sharing copy.'],
     'feedback' => ['label' => 'Feedback', 'kicker' => 'Inbox', 'title' => 'Player Feedback', 'summary' => 'Bug reports, suggestions, and feature requests submitted from the support page.'],
-    'store' => ['label' => 'Store', 'kicker' => 'VIP', 'title' => 'Products and Prices', 'summary' => 'VIP tiers, one-time perks, Stripe Price IDs, and managed Oxide groups.'],
+    'store' => ['label' => 'Store', 'kicker' => 'Offers', 'title' => 'Products and Prices', 'summary' => 'Kit bundles, individual kits, standalone perks, RP offers, Stripe Price IDs, and managed access groups.'],
     'kits' => ['label' => 'Kits', 'kicker' => 'Loadouts', 'title' => 'Kit Catalog', 'summary' => 'Rust kit contents, images, cooldowns, uses, RP shop rows, and group availability.'],
     'groups' => ['label' => 'Groups', 'kicker' => 'Permissions', 'title' => 'Oxide Groups', 'summary' => 'Website-owned group permissions, live snapshots, and bridge-published revisions.'],
     'grants' => ['label' => 'Grants', 'kicker' => 'Access', 'title' => 'Manual Entitlement Grant', 'summary' => 'Grant a product to a SteamID64 without going through Stripe.'],
@@ -170,6 +170,9 @@ try {
         if (raidlands_kits_is_ready()) {
             $admin_store_kit_options = raidlands_kits_admin_rows();
         }
+
+        $admin_permission_rows = raidlands_permissions_permission_rows();
+        $admin_permission_options = raidlands_permissions_permission_names();
     }
 
     if (in_array($active_section, ['grants', 'sync'], true)) {
@@ -506,15 +509,33 @@ function admin_currency_options(array $current_values = []): array
 
 function admin_price_label_options(array $current_values = []): array
 {
-    return admin_option_map(['Daily RP Pass', 'Weekly RP Pass', 'Monthly RP Pass', 'Yearly RP Pass', 'One-time RP Unlock', 'Monthly', 'One-time', 'Lifetime', 'Wipe', 'Season', 'Limited'], $current_values);
+    return admin_option_map([
+        'Lifetime RP Unlock',
+        'Daily RP Pass',
+        'Weekly RP Pass',
+        'Monthly RP Pass',
+        'Yearly RP Pass',
+        'Lifetime Cash Pass',
+        'Daily Cash Pass',
+        'Weekly Cash Pass',
+        'Monthly Cash Pass',
+        'Yearly Cash Pass',
+        'Daily Cash Subscription',
+        'Weekly Cash Subscription',
+        'Monthly Cash Subscription',
+        'Yearly Cash Subscription',
+        'Wipe',
+        'Season',
+        'Limited',
+    ], $current_values);
 }
 
 function admin_product_type_options(): array
 {
     return [
-        'vip_subscription' => 'VIP package',
-        'one_time_perk' => 'One-time perk',
-        'one_time_kit_unlock' => 'One-time kit unlock',
+        'kit_bundle' => 'Kit Bundle',
+        'kit_unlock' => 'Individual Kit',
+        'perk' => 'Standalone Perk',
     ];
 }
 
@@ -2047,13 +2068,13 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                 <?php if ($active_section === 'store') : ?>
                   <?php if (!$admin_store_ready) : ?>
                     <section class="admin-section">
-                      <div class="admin-alert warning">Store tables are not ready yet. Run <code>database/migrations/001_vip_store.sql</code>, <code>database/migrations/012_rp_shop.sql</code>, <code>database/seeds/001_store_products.sql</code>, then <code>database/migrations/013_pvp_kit_permission_cleanup.sql</code>, and confirm the database credentials in your environment config. <?= $admin_store_error !== '' ? e($admin_store_error) : '' ?></div>
+                      <div class="admin-alert warning">Store tables are not ready yet. Run <code>database/migrations/001_vip_store.sql</code>, <code>database/migrations/012_rp_shop.sql</code>, <code>database/migrations/013_pvp_kit_permission_cleanup.sql</code>, <code>database/migrations/014_kit_group_delete_tombstones.sql</code>, <code>database/migrations/018_store_bundle_offer_matrix.sql</code>, then <code>database/seeds/001_store_products.sql</code>, and confirm the database credentials in your environment config. <?= $admin_store_error !== '' ? e($admin_store_error) : '' ?></div>
                     </section>
                   <?php else : ?>
                     <section class="admin-section">
                       <div class="admin-subsection-head">
                         <h3>Store editor</h3>
-                        <p>Select one product at a time, then configure its RP offers, cash placeholder, linked kits, and managed group grant.</p>
+                        <p>Select one product at a time, then configure bundles, individual kits, perks, RP offers, cash passes, subscriptions, and the managed group grant.</p>
                       </div>
                       <?php
                         $product_rows = array_values($admin_store_rows);
@@ -2084,8 +2105,13 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                         }
 
                         foreach ($product_rows as $product_row) {
-                            $admin_store_price_labels[] = (string) ($product_row['price_label'] ?? '');
-                            $admin_store_currencies[] = (string) ($product_row['currency'] ?? '');
+                            foreach (['rp_prices', 'cash_pass_prices', 'cash_subscription_prices'] as $price_group_key) {
+                                foreach ((array) ($product_row[$price_group_key] ?? []) as $price_row) {
+                                    $admin_store_price_labels[] = (string) ($price_row['label'] ?? '');
+                                    $admin_store_currencies[] = (string) ($price_row['currency'] ?? '');
+                                }
+                            }
+
                             $admin_store_groups[] = (string) ($product_row['oxide_group'] ?? '');
                         }
 
@@ -2120,7 +2146,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 'id' => '',
                                 'slug' => '',
                                 'name' => '',
-                                'product_type' => 'one_time_perk',
+                                'product_type' => 'perk',
                                 'short_description' => '',
                                 'description' => '',
                                 'oxide_group' => '',
@@ -2129,20 +2155,23 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 'is_active' => 0,
                                 'is_featured' => 0,
                                 'sort_order' => 100,
-                                'price_id' => '',
-                                'stripe_price_id' => '',
-                                'price_label' => '',
-                                'amount_cents' => 0,
-                                'currency' => 'usd',
-                                'price_is_active' => 0,
                                 'rp_prices' => [],
+                                'cash_pass_prices' => [],
+                                'cash_subscription_prices' => [],
                                 'kit_ids' => [],
+                                'permission_grants' => [],
                             ];
-                            $product_type_value = (string) ($row['product_type'] ?? 'one_time_perk');
-                            $amount_dollars = ((int) ($row['amount_cents'] ?? 0)) / 100;
+                            $product_type_value = raidlands_store_normalize_product_type((string) ($row['product_type'] ?? 'perk'));
                             $rp_prices = (array) ($row['rp_prices'] ?? []);
                             $rp_intervals = raidlands_store_admin_price_intervals($product_type_value);
+                            $cash_pass_prices = (array) ($row['cash_pass_prices'] ?? []);
+                            $cash_subscription_prices = (array) ($row['cash_subscription_prices'] ?? []);
+                            $cash_subscription_intervals = raidlands_store_admin_subscription_intervals();
                             $selected_kit_ids = array_map('intval', (array) ($row['kit_ids'] ?? []));
+                            $selected_permissions = array_values(array_filter(array_map(
+                                static fn (array $grant): string => (string) ($grant['permission_name'] ?? ''),
+                                (array) ($row['permission_grants'] ?? [])
+                            )));
                             $store_is_existing = !empty($row['id']);
                             $store_panel_key = $store_is_existing ? 'product-' . (int) $row['id'] : 'new-' . $index;
                             $store_panel_id = 'admin-store-panel-' . (preg_replace('/[^a-zA-Z0-9_-]+/', '-', $store_panel_key) ?: (string) $index);
@@ -2161,11 +2190,17 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                     $store_rp_active_count += 1;
                                 }
                             }
+                            $store_cash_active_count = 0;
+                            foreach (array_merge($cash_pass_prices, $cash_subscription_prices) as $cash_price_summary_row) {
+                                if (!empty($cash_price_summary_row['is_active'])) {
+                                    $store_cash_active_count += 1;
+                                }
+                            }
                             $store_selector_items[] = [
                                 'id' => $store_panel_id,
                                 'index' => (string) $index,
                                 'label' => $store_label,
-                                'meta' => $store_status . ' / ' . ($store_group_display !== '' ? $store_group_display : 'No group') . ' / ' . $store_rp_active_count . ' RP offer' . ($store_rp_active_count === 1 ? '' : 's'),
+                                'meta' => $store_status . ' / ' . ($store_group_display !== '' ? $store_group_display : 'No group') . ' / ' . $store_rp_active_count . ' RP, ' . $store_cash_active_count . ' cash',
                                 'is_active' => $store_is_active_panel,
                                 'is_draft' => !$store_is_existing,
                             ];
@@ -2177,7 +2212,6 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             data-admin-store-index="<?= e((string) $index) ?>"
                             <?= $store_is_active_panel ? '' : 'hidden' ?>>
                             <input type="hidden" name="store_products[<?= e((string) $index) ?>][id]" value="<?= e((string) ($row['id'] ?? '')) ?>">
-                            <input type="hidden" name="store_products[<?= e((string) $index) ?>][price_id]" value="<?= e((string) ($row['price_id'] ?? '')) ?>">
                             <div class="admin-repeat-card-head">
                               <div>
                                 <h3 data-admin-store-card-title><?= e($store_label) ?></h3>
@@ -2196,15 +2230,15 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 <div class="admin-grid two admin-store-basic-grid">
                                   <label class="admin-field">
                                     <?= admin_field_head('Slug', 'Stable store identifier used by admin and support. Keep lowercase with hyphens.') ?>
-                                    <input type="text" name="store_products[<?= e((string) $index) ?>][slug]" maxlength="120" placeholder="vip-bronze" value="<?= e((string) ($row['slug'] ?? '')) ?>">
+                                    <input type="text" name="store_products[<?= e((string) $index) ?>][slug]" maxlength="120" placeholder="starter-bundle" value="<?= e((string) ($row['slug'] ?? '')) ?>">
                                     <?= admin_hint('Changing an existing slug can affect support lookups and saved Stripe metadata.') ?>
                                   </label>
                                   <label class="admin-field">
                                     <?= admin_field_head('Name', 'Product title shown to players.') ?>
-                                    <input type="text" name="store_products[<?= e((string) $index) ?>][name]" maxlength="160" placeholder="Bronze VIP" value="<?= e((string) ($row['name'] ?? '')) ?>" data-admin-store-name-input>
+                                    <input type="text" name="store_products[<?= e((string) $index) ?>][name]" maxlength="160" placeholder="Starter Kit Bundle" value="<?= e((string) ($row['name'] ?? '')) ?>" data-admin-store-name-input>
                                   </label>
                                   <label class="admin-field">
-                                    <?= admin_field_head('Type', 'VIP packages can expose daily, weekly, monthly, and yearly RP passes. Other product types create one-time unlocks.') ?>
+                                    <?= admin_field_head('Type', 'Bundles are the main grouped products. Individual kits and standalone perks can still expose the same payment options.') ?>
                                     <select name="store_products[<?= e((string) $index) ?>][product_type]">
                                       <?= admin_render_options(admin_product_type_options(), $product_type_value) ?>
                                     </select>
@@ -2228,7 +2262,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                     <?php endif; ?>
                                   </label>
                                   <label class="admin-field">
-                                    <?= admin_field_head('Tier priority', 'Higher VIP priority revokes lower active VIP tier entitlements for the same player.') ?>
+                                    <?= admin_field_head('Tier priority', 'Higher non-stackable bundle priority revokes lower active bundle entitlements for the same player.') ?>
                                     <input type="number" min="0" max="999" name="store_products[<?= e((string) $index) ?>][tier_priority]" value="<?= e((string) ($row['tier_priority'] ?? 0)) ?>">
                                   </label>
                                   <label class="admin-field">
@@ -2249,14 +2283,14 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                   <?php foreach ($rp_intervals as $rp_interval) : ?>
                                     <?php
                                       $rp_row = (array) ($rp_prices[$rp_interval] ?? []);
-                                      $rp_label = (string) ($rp_row['label'] ?? ($rp_interval === 'one_time' ? 'One-time RP Unlock' : raidlands_store_access_interval_label($rp_interval) . ' RP Pass'));
+                                      $rp_label = (string) ($rp_row['label'] ?? raidlands_store_admin_offer_default_label('rp', $rp_interval));
                                     ?>
                                     <article class="admin-rp-offer-card">
                                       <input type="hidden" name="store_products[<?= e((string) $index) ?>][rp_prices][<?= e($rp_interval) ?>][id]" value="<?= e((string) ($rp_row['id'] ?? '')) ?>">
                                       <input type="hidden" name="store_products[<?= e((string) $index) ?>][rp_prices][<?= e($rp_interval) ?>][label]" value="<?= e($rp_label) ?>">
                                       <div>
                                         <strong><?= e($rp_label) ?></strong>
-                                        <small><?= e($rp_interval === 'one_time' ? 'Permanent unlock' : raidlands_store_access_duration_seconds($rp_interval) . ' seconds') ?></small>
+                                        <small><?= e($rp_interval === 'one_time' ? 'Lifetime access' : raidlands_store_access_duration_seconds($rp_interval) . ' seconds') ?></small>
                                       </div>
                                       <label>
                                         <span>RP cost</span>
@@ -2266,7 +2300,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                         <input type="checkbox" name="store_products[<?= e((string) $index) ?>][rp_prices][<?= e($rp_interval) ?>][is_active]" value="1" <?= !empty($rp_row['is_active']) ? 'checked' : '' ?>>
                                         <span>Active</span>
                                       </label>
-                                      <?php if ($product_type_value === 'vip_subscription' && $rp_interval !== 'one_time') : ?>
+                                      <?php if ($rp_interval !== 'one_time') : ?>
                                         <label class="admin-check">
                                           <input type="checkbox" name="store_products[<?= e((string) $index) ?>][rp_prices][<?= e($rp_interval) ?>][allow_auto_renew]" value="1" <?= !empty($rp_row['allow_auto_renew']) ? 'checked' : '' ?>>
                                           <span>Allow auto-renew</span>
@@ -2278,29 +2312,84 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               </details>
 
                               <details class="admin-details admin-store-details">
-                                <summary>Cash checkout <small>Stripe fields kept disabled until configured</small></summary>
-                                <p class="admin-detail-note">Cash checkout stays unavailable until Stripe credentials are configured and this product uses a real Stripe Price ID.</p>
-                                <div class="admin-grid two">
-                                  <label class="admin-field">
-                                    <?= admin_field_head('Stripe Price ID', 'Use a real Stripe Price ID such as price_123 later when cash checkout is ready. Placeholder values keep cash unavailable.') ?>
-                                    <input type="text" name="store_products[<?= e((string) $index) ?>][stripe_price_id]" maxlength="160" placeholder="price_..." value="<?= e((string) ($row['stripe_price_id'] ?? '')) ?>">
-                                  </label>
-                                  <label class="admin-field">
-                                    <?= admin_field_head('Price label', 'Small label near the product price, such as Monthly or One-time.') ?>
-                                    <input type="text" list="admin-price-label-options" name="store_products[<?= e((string) $index) ?>][price_label]" maxlength="120" placeholder="Monthly" value="<?= e((string) ($row['price_label'] ?? '')) ?>">
-                                  </label>
-                                  <label class="admin-field">
-                                    <?= admin_field_head('Amount USD', 'Public display amount in dollars. Stripe still charges the configured Price ID amount.') ?>
-                                    <input type="number" min="0" step="0.01" name="store_products[<?= e((string) $index) ?>][amount_dollars]" value="<?= e(number_format($amount_dollars, 2, '.', '')) ?>">
-                                  </label>
-                                  <label class="admin-field">
-                                    <?= admin_field_head('Currency', 'Three-letter currency for display, usually usd.') ?>
-                                    <input type="text" list="admin-currency-options" name="store_products[<?= e((string) $index) ?>][currency]" maxlength="3" placeholder="usd" value="<?= e((string) ($row['currency'] ?? 'usd')) ?>">
-                                  </label>
-                                  <label class="admin-check admin-check-field admin-span-all">
-                                    <input type="checkbox" name="store_products[<?= e((string) $index) ?>][price_is_active]" value="1" <?= !empty($row['price_is_active']) ? 'checked' : '' ?>>
-                                    <?= admin_check_copy('Cash price active', 'Cash checkout remains unavailable until Stripe is configured and this price uses a real Stripe Price ID.') ?>
-                                  </label>
+                                <summary>Cash passes <small>One-time Stripe payments with optional expiration</small></summary>
+                                <p class="admin-detail-note">Cash passes charge once. Lifetime has no scheduled expiration; timed passes expire on the website after the chosen duration.</p>
+                                <div class="admin-rp-offer-grid admin-store-rp-grid">
+                                  <?php foreach ($rp_intervals as $cash_interval) : ?>
+                                    <?php
+                                      $cash_row = (array) ($cash_pass_prices[$cash_interval] ?? []);
+                                      $cash_label = (string) ($cash_row['label'] ?? raidlands_store_admin_offer_default_label('cash_pass', $cash_interval));
+                                      $cash_amount = ((int) ($cash_row['amount_cents'] ?? 0)) / 100;
+                                    ?>
+                                    <article class="admin-rp-offer-card">
+                                      <input type="hidden" name="store_products[<?= e((string) $index) ?>][cash_pass_prices][<?= e($cash_interval) ?>][id]" value="<?= e((string) ($cash_row['id'] ?? '')) ?>">
+                                      <div>
+                                        <strong><?= e($cash_label) ?></strong>
+                                        <small><?= e($cash_interval === 'one_time' ? 'Lifetime access' : raidlands_store_access_duration_seconds($cash_interval) . ' seconds') ?></small>
+                                      </div>
+                                      <label>
+                                        <span>Stripe Price ID</span>
+                                        <input type="text" name="store_products[<?= e((string) $index) ?>][cash_pass_prices][<?= e($cash_interval) ?>][stripe_price_id]" maxlength="160" placeholder="price_..." value="<?= e((string) ($cash_row['stripe_price_id'] ?? '')) ?>">
+                                      </label>
+                                      <label>
+                                        <span>Label</span>
+                                        <input type="text" list="admin-price-label-options" name="store_products[<?= e((string) $index) ?>][cash_pass_prices][<?= e($cash_interval) ?>][label]" maxlength="120" value="<?= e($cash_label) ?>">
+                                      </label>
+                                      <label>
+                                        <span>Amount</span>
+                                        <input type="number" min="0" step="0.01" name="store_products[<?= e((string) $index) ?>][cash_pass_prices][<?= e($cash_interval) ?>][amount_dollars]" value="<?= e(number_format($cash_amount, 2, '.', '')) ?>">
+                                      </label>
+                                      <label>
+                                        <span>Currency</span>
+                                        <input type="text" list="admin-currency-options" name="store_products[<?= e((string) $index) ?>][cash_pass_prices][<?= e($cash_interval) ?>][currency]" maxlength="3" value="<?= e((string) ($cash_row['currency'] ?? 'usd')) ?>">
+                                      </label>
+                                      <label class="admin-check">
+                                        <input type="checkbox" name="store_products[<?= e((string) $index) ?>][cash_pass_prices][<?= e($cash_interval) ?>][is_active]" value="1" <?= !empty($cash_row['is_active']) ? 'checked' : '' ?>>
+                                        <span>Active</span>
+                                      </label>
+                                    </article>
+                                  <?php endforeach; ?>
+                                </div>
+                              </details>
+
+                              <details class="admin-details admin-store-details">
+                                <summary>Cash subscriptions <small>Recurring Stripe prices</small></summary>
+                                <p class="admin-detail-note">Cash subscriptions renew in Stripe. Player billing changes are handled through the Stripe Billing Portal from Profile.</p>
+                                <div class="admin-rp-offer-grid admin-store-rp-grid">
+                                  <?php foreach ($cash_subscription_intervals as $cash_interval) : ?>
+                                    <?php
+                                      $cash_row = (array) ($cash_subscription_prices[$cash_interval] ?? []);
+                                      $cash_label = (string) ($cash_row['label'] ?? raidlands_store_admin_offer_default_label('cash_sub', $cash_interval));
+                                      $cash_amount = ((int) ($cash_row['amount_cents'] ?? 0)) / 100;
+                                    ?>
+                                    <article class="admin-rp-offer-card">
+                                      <input type="hidden" name="store_products[<?= e((string) $index) ?>][cash_subscription_prices][<?= e($cash_interval) ?>][id]" value="<?= e((string) ($cash_row['id'] ?? '')) ?>">
+                                      <div>
+                                        <strong><?= e($cash_label) ?></strong>
+                                        <small><?= e(raidlands_store_access_duration_seconds($cash_interval) . ' seconds per period') ?></small>
+                                      </div>
+                                      <label>
+                                        <span>Stripe Price ID</span>
+                                        <input type="text" name="store_products[<?= e((string) $index) ?>][cash_subscription_prices][<?= e($cash_interval) ?>][stripe_price_id]" maxlength="160" placeholder="price_..." value="<?= e((string) ($cash_row['stripe_price_id'] ?? '')) ?>">
+                                      </label>
+                                      <label>
+                                        <span>Label</span>
+                                        <input type="text" list="admin-price-label-options" name="store_products[<?= e((string) $index) ?>][cash_subscription_prices][<?= e($cash_interval) ?>][label]" maxlength="120" value="<?= e($cash_label) ?>">
+                                      </label>
+                                      <label>
+                                        <span>Amount</span>
+                                        <input type="number" min="0" step="0.01" name="store_products[<?= e((string) $index) ?>][cash_subscription_prices][<?= e($cash_interval) ?>][amount_dollars]" value="<?= e(number_format($cash_amount, 2, '.', '')) ?>">
+                                      </label>
+                                      <label>
+                                        <span>Currency</span>
+                                        <input type="text" list="admin-currency-options" name="store_products[<?= e((string) $index) ?>][cash_subscription_prices][<?= e($cash_interval) ?>][currency]" maxlength="3" value="<?= e((string) ($cash_row['currency'] ?? 'usd')) ?>">
+                                      </label>
+                                      <label class="admin-check">
+                                        <input type="checkbox" name="store_products[<?= e((string) $index) ?>][cash_subscription_prices][<?= e($cash_interval) ?>][is_active]" value="1" <?= !empty($cash_row['is_active']) ? 'checked' : '' ?>>
+                                        <span>Active</span>
+                                      </label>
+                                    </article>
+                                  <?php endforeach; ?>
                                 </div>
                               </details>
 
@@ -2313,14 +2402,14 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                   </label>
                                   <label class="admin-check admin-check-field">
                                     <input type="checkbox" name="store_products[<?= e((string) $index) ?>][is_stackable]" value="1" <?= !empty($row['is_stackable']) ? 'checked' : '' ?>>
-                                    <?= admin_check_copy('Stackable', 'One-time perks can stack. VIP tiers should usually be non-stackable.') ?>
+                                    <?= admin_check_copy('Stackable', 'Individual kits and perks usually stack. Main bundles should usually be non-stackable.') ?>
                                   </label>
                                 </div>
                               </details>
 
                               <details class="admin-details admin-store-details">
-                                <summary>Linked kits <small>Package contents shown on the product card</small></summary>
-                                <p class="admin-detail-note">Selected kits appear on this product card. Their group permissions still come from the Kits and Groups sections.</p>
+                                <summary>Linked kits <small>Product kit unlocks and card preview</small></summary>
+                                <p class="admin-detail-note">Selected kits appear on this product card and their claim permissions are added to this product's managed group on the next permission sync.</p>
                                 <?php if ($admin_store_kit_options === []) : ?>
                                   <div class="admin-alert warning">Kit tables are not ready or no kits are available yet.</div>
                                 <?php else : ?>
@@ -2331,6 +2420,25 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                       <label class="admin-check">
                                         <input type="checkbox" name="store_products[<?= e((string) $index) ?>][kit_ids][]" value="<?= e((string) $kit_id) ?>" <?= in_array($kit_id, $selected_kit_ids, true) ? 'checked' : '' ?>>
                                         <span><?= e((string) ($kit_option['kit_name'] ?? 'Kit')) ?></span>
+                                      </label>
+                                    <?php endforeach; ?>
+                                  </div>
+                                <?php endif; ?>
+                              </details>
+
+                              <details class="admin-details admin-store-details">
+                                <summary>Linked perks <small>Direct permissions granted by this product</small></summary>
+                                <p class="admin-detail-note">Selected permissions are added to this product's managed group on the next permission sync. Use Groups for advanced custom permission editing.</p>
+                                <?php if ($admin_permission_options === []) : ?>
+                                  <div class="admin-alert warning">No permission catalog is available yet.</div>
+                                <?php else : ?>
+                                  <div class="admin-check-grid admin-store-kit-grid">
+                                    <?php foreach ($admin_permission_options as $permission_option) : ?>
+                                      <?php $permission_option = (string) $permission_option; ?>
+                                      <?php if ($permission_option === '') { continue; } ?>
+                                      <label class="admin-check">
+                                        <input type="checkbox" name="store_products[<?= e((string) $index) ?>][permission_grants][]" value="<?= e($permission_option) ?>" <?= in_array($permission_option, $selected_permissions, true) ? 'checked' : '' ?>>
+                                        <span><?= e($permission_option) ?></span>
                                       </label>
                                     <?php endforeach; ?>
                                   </div>
@@ -3307,7 +3415,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                           <label class="admin-field">
                             <?= admin_field_head('Ends at', 'Optional MySQL datetime such as 2026-07-31 23:59:59. Leave blank for no scheduled expiration.') ?>
                             <input type="text" name="ends_at" placeholder="YYYY-MM-DD HH:MM:SS">
-                            <?= admin_hint('Monthly VIP should usually have an end date. Permanent one-time perks can stay blank.') ?>
+                            <?= admin_hint('Timed manual grants should have an end date. Lifetime grants can stay blank.') ?>
                           </label>
                         </div>
                       <?php endif; ?>

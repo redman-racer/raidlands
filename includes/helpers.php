@@ -349,6 +349,34 @@ function render_roadmap_card(array $card): string
         . '</article>';
 }
 
+function render_home_feature_card(array $card): string
+{
+    if (isset($card['title'])) {
+        $icon = (string) ($card['icon_alias'] ?? 'EVENT');
+        $title = (string) ($card['title'] ?? 'Feature');
+        $copy = (string) ($card['summary'] ?? '');
+        $status = (string) ($card['status_label'] ?? raidlands_feature_status_fallback_label((string) ($card['public_status'] ?? 'under_review')));
+        $extra = '<div class="tag-row"><span class="status-tag ' . e(status_class($status)) . '">' . e($status) . '</span></div>';
+
+        return render_card($icon, $title, $copy, $extra);
+    }
+
+    if (count($card) >= 4) {
+        return render_feature_card($card);
+    }
+
+    return render_roadmap_card($card);
+}
+
+function raidlands_feature_status_fallback_label(string $status): string
+{
+    if (function_exists('raidlands_features_status_label')) {
+        return raidlands_features_status_label($status);
+    }
+
+    return ucwords(str_replace('_', ' ', $status));
+}
+
 function render_rule_block(string $title, array $items): string
 {
     $list = '';
@@ -470,10 +498,10 @@ function render_auth_summary_card(string $provider): string
     $icon = $provider === 'steam' ? 'STM' : 'DSC';
     $copy = $linked_player !== null
         ? ($provider === 'steam'
-            ? 'Your Steam account is connected. Use your account page for profile, stats, and VIP access.'
+            ? 'Your Steam account is connected. Use your account page for profile, stats, and store access.'
             : 'Your Raidlands account is ready. Discord connection can be added later.')
         : ($provider === 'steam'
-            ? 'Connect Steam for profiles, leaderboards, rewards, and VIP ownership.'
+            ? 'Connect Steam for profiles, leaderboards, rewards, and store ownership.'
             : 'Prepare for wipe alerts, support, and community roles.');
     $button_class = $provider === 'steam' ? 'btn-steam' : 'btn-discord';
     $title = $linked_player !== null
@@ -498,7 +526,7 @@ function render_auth_card(string $provider): string
     $icon = $provider === 'steam' ? 'STM' : 'DSC';
     $button_class = $provider === 'steam' ? 'btn-steam' : 'btn-discord';
     $benefits = $provider === 'steam'
-        ? ['Keep VIP tied to you.', 'Prepare for leaderboards.', 'Keep rewards with your profile.', 'Help prevent impersonation.']
+        ? ['Keep purchases tied to you.', 'Prepare for leaderboards.', 'Keep rewards with your profile.', 'Help prevent impersonation.']
         : ['Get wipe alerts.', 'Join support faster.', 'Prepare for Discord roles.', 'Stay connected with the community.'];
     $list = '';
 

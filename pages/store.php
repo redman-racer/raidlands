@@ -6,62 +6,78 @@ require_once $site_root . '/includes/kits.php';
 $store_flash = raidlands_store_flash();
 $store_catalog = raidlands_store_catalog(true);
 $store_products = raidlands_kits_attach_to_products($store_catalog['products']);
-$vip_products = raidlands_store_products_by_type($store_products, 'vip_subscription');
-$perk_products = array_values(array_filter(
-    $store_products,
-    static fn (array $product): bool => (string) $product['product_type'] !== 'vip_subscription'
-));
+$bundle_products = raidlands_store_products_by_type($store_products, 'kit_bundle');
+$kit_products = raidlands_store_products_by_type($store_products, 'kit_unlock');
+$perk_products = raidlands_store_products_by_type($store_products, 'perk');
 $store_player = raidlands_store_current_player();
 $store_rp_balance = $store_player !== null && !empty($store_player['id'])
     ? raidlands_store_current_rp_balance((int) $store_player['id'])
     : null;
 $store_csrf = raidlands_store_csrf_token();
+$cash_checkout_ready = trim((string) ($stripe_config['secretKey'] ?? '')) !== '';
 
-function render_store_product_card(array $product, ?array $player, string $csrf): string
+function render_store_offer_row(array $offer, string $csrf, string $kind, bool $cash_ready = true): string
 {
-    $cash_price = raidlands_store_default_price($product);
-    $cash_buyable = raidlands_store_price_is_buyable($cash_price);
+    $is_rp = $kind === 'rp';
+    $buyable = $is_rp
+        ? raidlands_store_rp_offer_is_buyable($offer)
+        : ($cash_ready && raidlands_store_price_is_buyable($offer));
+    $label = raidlands_store_offer_label($offer, $is_rp ? 'RP' : 'Cash');
+    $price = $is_rp
+        ? raidlands_store_rp((int) ($offer['rp_cost'] ?? 0))
+        : raidlands_store_money((int) ($offer['amount_cents'] ?? 0), (string) ($offer['currency'] ?? 'usd'));
+    $action = $is_rp ? route_url('store') . 'rp-checkout.php' : route_url('store') . 'checkout.php';
+    $button = $is_rp ? 'Use RP' : 'Checkout';
+
+    $html = '<form class="store-rp-offer" method="post" action="' . e($action) . '">'
+        . '<input type="hidden" name="csrf" value="' . e($csrf) . '">'
+        . '<input type="hidden" name="price_id" value="' . e((string) ($offer['id'] ?? 0)) . '">'
+        . '<div><strong>' . e($label) . '</strong><span>' . e($price) . '</span></div>';
+
+    if ($is_rp && !empty($offer['allow_auto_renew']) && (string) ($offer['access_interval'] ?? 'one_time') !== 'one_time') {
+        $html .= '<label class="store-renew-toggle">'
+            . '<input type="checkbox" name="auto_renew" value="1">'
+            . '<span>Auto-renew</span>'
+            . '</label>';
+    }
+
+    $html .= '<button class="btn btn-primary" type="submit" ' . ($buyable ? '' : 'disabled') . '>'
+        . e($buyable ? $button : ($is_rp ? 'RP Not Ready' : 'Cash Not Ready'))
+        . '</button>'
+        . '</form>';
+
+    return $html;
+}
+
+function render_store_offer_group(string $title, array $offers, string $csrf, string $kind, bool $cash_ready = true): string
+{
+    $offers = array_values(array_filter($offers, static fn (array $offer): bool => !empty($offer['is_active'])));
+
+    if ($offers === []) {
+        return '';
+    }
+
+    $html = '<div class="store-offer-group"><strong>' . e($title) . '</strong><div class="store-rp-offers">';
+
+    foreach ($offers as $offer) {
+        $html .= render_store_offer_row($offer, $csrf, $kind, $cash_ready);
+    }
+
+    return $html . '</div></div>';
+}
+
+function render_store_product_card(array $product, ?array $player, string $csrf, bool $cash_ready): string
+{
     $rp_offers = raidlands_store_rp_offers($product, true);
+    $cash_passes = raidlands_store_cash_pass_offers($product, true);
+    $cash_subscriptions = raidlands_store_cash_subscription_offers($product, true);
     $has_linked_identity = $player !== null && !empty($player['steam_id64']);
     $has_checkout_player = $has_linked_identity && !empty($player['id']);
-    $cash_price_text = $cash_price === null
-        ? 'Price coming soon'
-        : raidlands_store_money((int) $cash_price['amount_cents'], (string) $cash_price['currency']);
-    $cash_interval = $cash_price !== null && (string) $cash_price['billing_interval'] === 'month' ? ' / month' : '';
-    $cash_note = $cash_buyable ? 'Configured for later (' . $cash_price_text . $cash_interval . ')' : 'Not enabled yet';
-    $actions = '';
     $linked_kits = (array) ($product['linked_kits'] ?? []);
+    $permission_grants = (array) ($product['permission_grants'] ?? []);
     $kit_html = '';
-
-    if (!$has_linked_identity) {
-        $actions = '<a class="btn btn-secondary" href="' . e(route_url('link')) . '">Connect Steam First</a>';
-    } elseif (!$has_checkout_player) {
-        $actions = '<a class="btn btn-secondary" href="' . e(route_url('profile')) . '">View Account</a>';
-    } elseif ($rp_offers === []) {
-        $actions = '<button class="btn btn-ghost" type="button" disabled>RP Price Coming Soon</button>';
-    } else {
-        $actions .= '<div class="store-rp-offers">';
-
-        foreach ($rp_offers as $offer) {
-            $label = (string) ($offer['label'] ?: raidlands_store_access_interval_label((string) ($offer['access_interval'] ?? 'one_time')));
-            $actions .= '<form class="store-rp-offer" method="post" action="' . e(route_url('store') . 'rp-checkout.php') . '">'
-                . '<input type="hidden" name="csrf" value="' . e($csrf) . '">'
-                . '<input type="hidden" name="price_id" value="' . e((string) $offer['id']) . '">'
-                . '<div><strong>' . e($label) . '</strong><span>' . e(raidlands_store_rp((int) $offer['rp_cost'])) . '</span></div>';
-
-            if (!empty($offer['allow_auto_renew'])) {
-                $actions .= '<label class="store-renew-toggle">'
-                    . '<input type="checkbox" name="auto_renew" value="1">'
-                    . '<span>Auto-renew</span>'
-                    . '</label>';
-            }
-
-            $actions .= '<button class="btn btn-primary" type="submit">Use RP</button>'
-                . '</form>';
-        }
-
-        $actions .= '</div>';
-    }
+    $perk_html = '';
+    $actions = '';
 
     if ($linked_kits !== []) {
         $kit_html .= '<div class="store-kit-details">';
@@ -71,13 +87,7 @@ function render_store_product_card(array $product, ?array $player, string $csrf)
             $uses = (int) ($kit['maximum_uses'] ?? 0);
             $cooldown = (int) ($kit['cooldown_seconds'] ?? 0);
             $items = raidlands_kits_item_summary($kit, 5);
-            $meta = [];
-
-            if ($uses > 0) {
-                $meta[] = number_format($uses) . ' uses';
-            } else {
-                $meta[] = 'Unlimited uses';
-            }
+            $meta = [$uses > 0 ? number_format($uses) . ' uses' : 'Unlimited uses'];
 
             if ($cooldown > 0) {
                 $meta[] = raidlands_store_format_seconds($cooldown) . ' cooldown';
@@ -107,22 +117,71 @@ function render_store_product_card(array $product, ?array $player, string $csrf)
         $kit_html .= '</div>';
     }
 
+    if ($permission_grants !== []) {
+        $perk_html .= '<div class="tag-row store-perk-tags">';
+
+        foreach (array_slice($permission_grants, 0, 8) as $grant) {
+            $label = trim((string) ($grant['display_label'] ?? '')) ?: (string) ($grant['permission_name'] ?? 'Perk');
+            $perk_html .= '<span class="tag">' . e($label) . '</span>';
+        }
+
+        $perk_html .= '</div>';
+    }
+
+    if (!$has_linked_identity) {
+        $actions = '<a class="btn btn-secondary" href="' . e(route_url('link')) . '">Connect Steam First</a>';
+    } elseif (!$has_checkout_player) {
+        $actions = '<a class="btn btn-secondary" href="' . e(route_url('profile')) . '">View Account</a>';
+    } else {
+        $actions .= render_store_offer_group('RP', $rp_offers, $csrf, 'rp');
+        $actions .= render_store_offer_group('Cash passes', $cash_passes, $csrf, 'cash', $cash_ready);
+        $actions .= render_store_offer_group('Cash subscriptions', $cash_subscriptions, $csrf, 'cash', $cash_ready);
+
+        if ($actions === '') {
+            $actions = '<button class="btn btn-ghost" type="button" disabled>Pricing Coming Soon</button>';
+        }
+    }
+
+    $active_offer_count = count($rp_offers) + count($cash_passes) + count($cash_subscriptions);
+    $type = raidlands_store_normalize_product_type((string) $product['product_type']);
+
     return '<article class="metal-card store-product-card">'
         . '<div class="store-card-top">'
-        . render_feature_symbol((string) ((string) $product['product_type'] === 'vip_subscription' ? 'KIT' : 'SHOP'))
-        . '<span class="status-tag ' . e((string) $product['product_type'] === 'vip_subscription' ? 'review' : 'planned') . '">' . e(raidlands_store_type_label((string) $product['product_type'])) . '</span>'
+        . render_feature_symbol($type === 'perk' ? 'SHOP' : 'KIT')
+        . '<span class="status-tag ' . e($type === 'kit_bundle' ? 'review' : 'planned') . '">' . e(raidlands_store_type_label($type)) . '</span>'
         . '</div>'
         . '<h3>' . e((string) $product['name']) . '</h3>'
         . '<p class="card-copy">' . e((string) $product['short_description']) . '</p>'
-        . '<div class="store-price"><strong>' . e($rp_offers === [] ? 'RP price coming soon' : 'RP available') . '</strong><span>' . e((string) count($rp_offers)) . ' offer' . (count($rp_offers) === 1 ? '' : 's') . '</span></div>'
+        . '<div class="store-price"><strong>' . e($active_offer_count > 0 ? 'Offers available' : 'Pricing coming soon') . '</strong><span>' . e((string) $active_offer_count) . ' option' . ($active_offer_count === 1 ? '' : 's') . '</span></div>'
         . $kit_html
+        . $perk_html
         . '<ul class="store-mini-list">'
-        . '<li>RP purchases are verified by the game server before access is added.</li>'
-        . '<li>Kit details update here as staff adjusts the live catalog.</li>'
+        . '<li>Purchases are attached to your connected Steam account.</li>'
+        . '<li>Timed access ends automatically; lifetime access has no scheduled expiration.</li>'
         . '</ul>'
         . '<div class="store-card-actions">' . $actions . '</div>'
-        . '<div class="store-cash-note"><strong>Cash checkout:</strong> ' . e($cash_note) . '</div>'
         . '</article>';
+}
+
+function render_store_section(string $kicker, string $title, string $copy, array $products, ?array $player, string $csrf, bool $cash_ready): string
+{
+    if ($products === []) {
+        return '';
+    }
+
+    $html = '<section class="section"><div class="section-inner">'
+        . '<div class="section-header">'
+        . '<p class="section-kicker">' . e($kicker) . '</p>'
+        . '<h2>' . e($title) . '</h2>'
+        . '<p class="section-lede">' . e($copy) . '</p>'
+        . '</div>'
+        . '<div class="grid three store-grid">';
+
+    foreach ($products as $product) {
+        $html .= render_store_product_card($product, $player, $csrf, $cash_ready);
+    }
+
+    return $html . '</div></div></section>';
 }
 
 function raidlands_store_format_seconds(int $seconds): string
@@ -170,53 +229,29 @@ function raidlands_store_format_seconds(int $seconds): string
         <span><?= $store_rp_balance === null || empty($store_rp_balance['last_seen_at']) ? 'Waiting for the next server sync' : 'Last synced ' . e((string) $store_rp_balance['last_seen_at']) ?></span>
       </div>
     <?php endif; ?>
-
-    <div class="section-header">
-      <p class="section-kicker">VIP kits</p>
-      <h2>RP passes for Rust</h2>
-      <p class="section-lede">Bronze, Gold, and Elite can be purchased with earned RP as daily, weekly, monthly, or yearly passes. Auto-renew is optional when an offer allows it.</p>
-    </div>
-
-    <div class="grid three store-grid">
-      <?php foreach ($vip_products as $product) : ?>
-        <?= render_store_product_card($product, $store_player, $store_csrf) ?>
-      <?php endforeach; ?>
-    </div>
   </div>
 </section>
+
+<?= render_store_section('Main bundles', 'Kit bundles', 'Grouped kits and perks are the main store packages. Choose lifetime access, a timed pass, or a recurring subscription when offers are active.', $bundle_products, $store_player, $store_csrf, $cash_checkout_ready) ?>
+<?= render_store_section('Low tier shop kits', 'Individual kits', 'Single kit unlocks are available separately for players who want one specific kit without a full bundle.', $kit_products, $store_player, $store_csrf, $cash_checkout_ready) ?>
+<?= render_store_section('Standalone perks', 'Perks by themselves', 'Pick individual gameplay perks without bundling them into a kit package.', $perk_products, $store_player, $store_csrf, $cash_checkout_ready) ?>
 
 <section class="section alt">
-  <div class="section-inner">
-    <div class="section-header">
-      <p class="section-kicker">One-time purchases</p>
-      <h2>Stackable perks and kit unlocks</h2>
-      <p class="section-lede">Individual perks can stack with VIP tiers. Cash checkout will appear later after payment processing is configured.</p>
-    </div>
-
-    <div class="grid three store-grid">
-      <?php foreach ($perk_products as $product) : ?>
-        <?= render_store_product_card($product, $store_player, $store_csrf) ?>
-      <?php endforeach; ?>
-    </div>
-  </div>
-</section>
-
-<section class="section">
   <div class="section-inner split-panel">
     <div class="metal-panel">
       <p class="section-kicker">Game access</p>
       <h2>How purchases reach the game</h2>
       <ul class="list-clean">
-        <li>Your RP request is attached to your connected Steam account.</li>
-        <li>The game server verifies your live RP and deducts it there.</li>
-        <li>Raidlands adds your VIP access only after the server confirms the RP debit.</li>
+        <li>Your request is attached to your connected Steam account.</li>
+        <li>RP purchases are confirmed by the game server before access changes.</li>
+        <li>Cash purchases update after checkout confirmation.</li>
         <li>Matching kits and perks appear in game after the next update.</li>
       </ul>
     </div>
     <div class="metal-panel">
       <p class="section-kicker">Purchase notes</p>
       <h2>Modded server perks</h2>
-      <p class="section-lede">These products affect gameplay access on Raidlands. Check the latest kit details, cooldowns, and wipe-balance notes before buying.</p>
+      <p class="section-lede">These products affect gameplay access on Raidlands. Check kit contents, cooldowns, and wipe-balance notes before buying.</p>
       <div class="button-row">
         <a class="btn btn-primary" href="<?= e(route_url('profile')) ?>">Check My Profile</a>
         <a class="btn btn-secondary" href="<?= e(route_url('terms')) ?>">Terms</a>

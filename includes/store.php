@@ -538,6 +538,36 @@ function raidlands_store_rp(int $amount): string
     return number_format(max(0, $amount)) . ' RP';
 }
 
+function raidlands_store_product_type_aliases(): array
+{
+    return [
+        'vip_subscription' => 'kit_bundle',
+        'one_time_kit_unlock' => 'kit_unlock',
+        'one_time_perk' => 'perk',
+    ];
+}
+
+function raidlands_store_product_types(): array
+{
+    return ['kit_bundle', 'kit_unlock', 'perk'];
+}
+
+function raidlands_store_normalize_product_type(string $type): string
+{
+    $type = trim($type);
+    $aliases = raidlands_store_product_type_aliases();
+    $type = $aliases[$type] ?? $type;
+
+    return in_array($type, raidlands_store_product_types(), true) ? $type : 'perk';
+}
+
+function raidlands_store_offer_intervals(bool $include_lifetime = true): array
+{
+    $intervals = ['day', 'week', 'month', 'year'];
+
+    return $include_lifetime ? array_merge(['one_time'], $intervals) : $intervals;
+}
+
 function raidlands_store_access_interval_label(string $interval): string
 {
     return match ($interval) {
@@ -545,7 +575,7 @@ function raidlands_store_access_interval_label(string $interval): string
         'week' => 'Weekly',
         'month' => 'Monthly',
         'year' => 'Yearly',
-        default => 'One-time',
+        default => 'Lifetime',
     };
 }
 
@@ -573,11 +603,36 @@ function raidlands_store_access_ends_at(int $duration_seconds, ?string $from = n
 
 function raidlands_store_type_label(string $type): string
 {
-    return match ($type) {
-        'vip_subscription' => 'VIP pass',
-        'one_time_kit_unlock' => 'One-time kit',
-        default => 'One-time perk',
+    return match (raidlands_store_normalize_product_type($type)) {
+        'kit_bundle' => 'Kit bundle',
+        'kit_unlock' => 'Individual kit',
+        default => 'Standalone perk',
     };
+}
+
+function raidlands_store_offer_sort_order(string $interval): int
+{
+    return [
+        'one_time' => 5,
+        'day' => 10,
+        'week' => 20,
+        'month' => 30,
+        'year' => 40,
+    ][$interval] ?? 99;
+}
+
+function raidlands_store_offer_label(array $price, string $fallback_prefix = ''): string
+{
+    $label = trim((string) ($price['label'] ?? ''));
+
+    if ($label !== '') {
+        return $label;
+    }
+
+    $interval = (string) ($price['access_interval'] ?? $price['billing_interval'] ?? 'one_time');
+    $base = raidlands_store_access_interval_label($interval);
+
+    return trim($base . ' ' . $fallback_prefix);
 }
 
 function raidlands_store_seed_catalog(): array
@@ -586,10 +641,10 @@ function raidlands_store_seed_catalog(): array
         [
             'id' => 0,
             'slug' => 'vip-bronze',
-            'name' => 'Bronze VIP',
-            'product_type' => 'vip_subscription',
-            'short_description' => 'Starter monthly VIP access for regular Raidlands players.',
-            'description' => 'Monthly Bronze VIP access with starter perks for regular Raidlands players.',
+            'name' => 'Bronze Kit Bundle',
+            'product_type' => 'kit_bundle',
+            'short_description' => 'Starter kit bundle access for regular Raidlands players.',
+            'description' => 'Bronze kit bundle access with starter perks for regular Raidlands players.',
             'oxide_group' => 'vip_bronze',
             'tier_priority' => 10,
             'is_stackable' => 0,
@@ -599,7 +654,7 @@ function raidlands_store_seed_catalog(): array
             'prices' => [[
                 'id' => 0,
                 'stripe_price_id' => '',
-                'label' => 'Monthly',
+            'label' => 'Monthly Cash Subscription',
                 'amount_cents' => 0,
                 'currency' => 'usd',
                 'billing_interval' => 'month',
@@ -610,10 +665,10 @@ function raidlands_store_seed_catalog(): array
         [
             'id' => 0,
             'slug' => 'vip-gold',
-            'name' => 'Gold VIP',
-            'product_type' => 'vip_subscription',
-            'short_description' => 'Upgraded monthly VIP access for frequent wipe players.',
-            'description' => 'Monthly Gold VIP access with stronger perks for frequent wipe players.',
+            'name' => 'Gold Kit Bundle',
+            'product_type' => 'kit_bundle',
+            'short_description' => 'Upgraded kit bundle access for frequent wipe players.',
+            'description' => 'Gold kit bundle access with stronger perks for frequent wipe players.',
             'oxide_group' => 'vip_gold',
             'tier_priority' => 20,
             'is_stackable' => 0,
@@ -623,7 +678,7 @@ function raidlands_store_seed_catalog(): array
             'prices' => [[
                 'id' => 0,
                 'stripe_price_id' => '',
-                'label' => 'Monthly',
+            'label' => 'Monthly Cash Subscription',
                 'amount_cents' => 0,
                 'currency' => 'usd',
                 'billing_interval' => 'month',
@@ -634,10 +689,10 @@ function raidlands_store_seed_catalog(): array
         [
             'id' => 0,
             'slug' => 'vip-elite',
-            'name' => 'Elite VIP',
-            'product_type' => 'vip_subscription',
-            'short_description' => 'Top monthly VIP tier with the full supporter package.',
-            'description' => 'Monthly Elite VIP access for players who want the full supporter package.',
+            'name' => 'Elite Kit Bundle',
+            'product_type' => 'kit_bundle',
+            'short_description' => 'Top kit bundle access with the full supporter package.',
+            'description' => 'Elite kit bundle access for players who want the full supporter package.',
             'oxide_group' => 'vip_elite',
             'tier_priority' => 30,
             'is_stackable' => 0,
@@ -647,7 +702,7 @@ function raidlands_store_seed_catalog(): array
             'prices' => [[
                 'id' => 0,
                 'stripe_price_id' => '',
-                'label' => 'Monthly',
+            'label' => 'Monthly Cash Subscription',
                 'amount_cents' => 0,
                 'currency' => 'usd',
                 'billing_interval' => 'month',
@@ -659,7 +714,7 @@ function raidlands_store_seed_catalog(): array
             'id' => 0,
             'slug' => 'personal-mini',
             'name' => 'Personal Mini Perk',
-            'product_type' => 'one_time_perk',
+            'product_type' => 'perk',
             'short_description' => 'Unlock personal minicopter access as a one-time perk.',
             'description' => 'One-time perk for faster map movement and quick returns to the fight.',
             'oxide_group' => 'perk_personal_mini',
@@ -683,7 +738,7 @@ function raidlands_store_seed_catalog(): array
             'id' => 0,
             'slug' => 'skinbox-access',
             'name' => 'Skinbox Access',
-            'product_type' => 'one_time_perk',
+            'product_type' => 'perk',
             'short_description' => 'Unlock Skinbox access as a one-time perk.',
             'description' => 'One-time perk for more control over how your gear and base look.',
             'oxide_group' => 'perk_skinbox',
@@ -707,7 +762,7 @@ function raidlands_store_seed_catalog(): array
             'id' => 0,
             'slug' => 'raid-kit-unlock',
             'name' => 'Raid Kit Unlock',
-            'product_type' => 'one_time_kit_unlock',
+            'product_type' => 'kit_unlock',
             'short_description' => 'Unlock a premium raid kit permission.',
             'description' => 'One-time kit unlock for raiders who want an extra push during wipe.',
             'oxide_group' => 'perk_raid_kit',
@@ -788,7 +843,7 @@ function raidlands_store_catalog(bool $active_only = true): array
                 'id' => $id,
                 'slug' => (string) $row['slug'],
                 'name' => (string) $row['name'],
-                'product_type' => (string) $row['product_type'],
+                'product_type' => raidlands_store_normalize_product_type((string) $row['product_type']),
                 'short_description' => (string) $row['short_description'],
                 'description' => (string) ($row['description'] ?? ''),
                 'oxide_group' => $oxide_group,
@@ -820,39 +875,238 @@ function raidlands_store_catalog(bool $active_only = true): array
         }
     }
 
+    $products = raidlands_store_attach_permission_grants(array_values($products));
+
     return [
         'source' => 'database',
         'setupRequired' => false,
         'error' => '',
-        'products' => array_values($products),
+        'products' => $products,
     ];
+}
+
+function raidlands_store_permission_grants_for_products(array $product_ids): array
+{
+    if (!raidlands_db_is_configured()) {
+        return [];
+    }
+
+    $product_ids = array_values(array_unique(array_filter(array_map('intval', $product_ids))));
+
+    if ($product_ids === []) {
+        return [];
+    }
+
+    [$placeholders, $params] = raidlands_store_sql_in_params($product_ids, 'product_id');
+
+    try {
+        $rows = raidlands_db_fetch_all(
+            'SELECT product_id, permission_name, display_label, sort_order
+             FROM store_product_permission_grants
+             WHERE product_id IN (' . implode(', ', $placeholders) . ')
+             ORDER BY product_id ASC, sort_order ASC, permission_name ASC',
+            $params
+        );
+    } catch (Throwable $error) {
+        return [];
+    }
+
+    $by_product = [];
+
+    foreach ($rows as $row) {
+        $permission = trim((string) ($row['permission_name'] ?? ''));
+
+        if ($permission === '') {
+            continue;
+        }
+
+        $by_product[(int) $row['product_id']][] = [
+            'permission_name' => $permission,
+            'display_label' => (string) ($row['display_label'] ?? ''),
+            'sort_order' => (int) ($row['sort_order'] ?? 100),
+        ];
+    }
+
+    return $by_product;
+}
+
+function raidlands_store_attach_permission_grants(array $products): array
+{
+    $product_ids = array_map(static fn (array $product): int => (int) ($product['id'] ?? 0), $products);
+    $grants_by_product = raidlands_store_permission_grants_for_products($product_ids);
+
+    foreach ($products as &$product) {
+        $product['permission_grants'] = $grants_by_product[(int) ($product['id'] ?? 0)] ?? [];
+    }
+    unset($product);
+
+    return $products;
+}
+
+function raidlands_store_product_permission_grants_map(): array
+{
+    if (!raidlands_db_is_configured()) {
+        return [];
+    }
+
+    try {
+        $rows = raidlands_db_fetch_all(
+            'SELECT p.oxide_group, spg.permission_name
+             FROM store_product_permission_grants spg
+             INNER JOIN store_products p ON p.id = spg.product_id
+             WHERE p.is_active = 1
+               AND p.oxide_group <> ""
+             ORDER BY p.oxide_group ASC, spg.sort_order ASC, spg.permission_name ASC'
+        );
+    } catch (Throwable $error) {
+        return [];
+    }
+
+    $map = [];
+
+    foreach ($rows as $row) {
+        $group = raidlands_store_clean_group($row['oxide_group'] ?? '');
+        $permission = strtolower(trim((string) ($row['permission_name'] ?? '')));
+
+        if ($group === '' || $permission === '') {
+            continue;
+        }
+
+        $map[$group][] = $permission;
+    }
+
+    foreach ($map as &$permissions) {
+        $permissions = array_values(array_unique(array_filter($permissions)));
+        sort($permissions, SORT_NATURAL | SORT_FLAG_CASE);
+    }
+    unset($permissions);
+
+    ksort($map, SORT_NATURAL | SORT_FLAG_CASE);
+
+    return $map;
+}
+
+function raidlands_store_product_kit_permission_grants_map(): array
+{
+    if (!raidlands_db_is_configured()) {
+        return [];
+    }
+
+    try {
+        $rows = raidlands_db_fetch_all(
+            'SELECT p.oxide_group, gk.required_permission
+             FROM store_product_kits spk
+             INNER JOIN store_products p ON p.id = spk.product_id
+             INNER JOIN game_kits gk ON gk.id = spk.kit_id
+             WHERE p.is_active = 1
+               AND p.oxide_group <> ""
+               AND gk.is_active = 1
+               AND gk.deleted_at IS NULL
+               AND gk.required_permission <> ""
+             ORDER BY p.oxide_group ASC, spk.sort_order ASC, gk.sort_order ASC'
+        );
+    } catch (Throwable $error) {
+        return [];
+    }
+
+    $map = [];
+
+    foreach ($rows as $row) {
+        $group = raidlands_store_clean_group($row['oxide_group'] ?? '');
+        $permission = strtolower(trim((string) ($row['required_permission'] ?? '')));
+
+        if ($group === '' || $permission === '') {
+            continue;
+        }
+
+        $map[$group][] = $permission;
+    }
+
+    foreach ($map as &$permissions) {
+        $permissions = array_values(array_unique(array_filter($permissions)));
+        sort($permissions, SORT_NATURAL | SORT_FLAG_CASE);
+    }
+    unset($permissions);
+
+    ksort($map, SORT_NATURAL | SORT_FLAG_CASE);
+
+    return $map;
 }
 
 function raidlands_store_products_by_type(array $products, string $type): array
 {
+    $type = raidlands_store_normalize_product_type($type);
+
     return array_values(array_filter(
         $products,
-        static fn (array $product): bool => (string) $product['product_type'] === $type
+        static fn (array $product): bool => raidlands_store_normalize_product_type((string) $product['product_type']) === $type
     ));
 }
 
 function raidlands_store_default_price(array $product): ?array
 {
     foreach ((array) ($product['prices'] ?? []) as $price) {
-        if (!empty($price['is_default']) && (string) ($price['payment_method'] ?? 'stripe') === 'stripe') {
+        if (
+            !empty($price['is_default'])
+            && (string) ($price['payment_method'] ?? 'stripe') === 'stripe'
+            && (string) ($price['billing_interval'] ?? 'one_time') === 'one_time'
+        ) {
             return $price;
         }
     }
 
-    return $product['prices'][0] ?? null;
+    foreach ((array) ($product['prices'] ?? []) as $price) {
+        if ((string) ($price['payment_method'] ?? 'stripe') === 'stripe') {
+            return $price;
+        }
+    }
+
+    return null;
+}
+
+function raidlands_store_sort_offers(array $offers, bool $use_billing_interval = false): array
+{
+    usort($offers, static function (array $left, array $right) use ($use_billing_interval): int {
+        $left_interval = (string) ($use_billing_interval ? ($left['billing_interval'] ?? 'one_time') : ($left['access_interval'] ?? 'one_time'));
+        $right_interval = (string) ($use_billing_interval ? ($right['billing_interval'] ?? 'one_time') : ($right['access_interval'] ?? 'one_time'));
+
+        return raidlands_store_offer_sort_order($left_interval)
+            <=> raidlands_store_offer_sort_order($right_interval);
+    });
+
+    return $offers;
+}
+
+function raidlands_store_cash_pass_offers(array $product, bool $active_only = false): array
+{
+    $offers = array_values(array_filter(
+        (array) ($product['prices'] ?? []),
+        static fn (array $price): bool => (string) ($price['payment_method'] ?? 'stripe') === 'stripe'
+            && (string) ($price['billing_interval'] ?? 'one_time') === 'one_time'
+            && (!$active_only || !empty($price['is_active']))
+    ));
+
+    return raidlands_store_sort_offers($offers);
+}
+
+function raidlands_store_cash_subscription_offers(array $product, bool $active_only = false): array
+{
+    $offers = array_values(array_filter(
+        (array) ($product['prices'] ?? []),
+        static fn (array $price): bool => (string) ($price['payment_method'] ?? 'stripe') === 'stripe'
+            && (string) ($price['billing_interval'] ?? 'one_time') !== 'one_time'
+            && (!$active_only || !empty($price['is_active']))
+    ));
+
+    return raidlands_store_sort_offers($offers, true);
 }
 
 function raidlands_store_cash_offers(array $product): array
 {
-    return array_values(array_filter(
-        (array) ($product['prices'] ?? []),
-        static fn (array $price): bool => (string) ($price['payment_method'] ?? 'stripe') === 'stripe'
-    ));
+    return array_merge(
+        raidlands_store_cash_pass_offers($product),
+        raidlands_store_cash_subscription_offers($product)
+    );
 }
 
 function raidlands_store_rp_offers(array $product, bool $active_only = false): array
@@ -863,14 +1117,7 @@ function raidlands_store_rp_offers(array $product, bool $active_only = false): a
             && (!$active_only || !empty($price['is_active']))
     ));
 
-    usort($offers, static function (array $left, array $right): int {
-        $order = ['day' => 10, 'week' => 20, 'month' => 30, 'year' => 40, 'one_time' => 50];
-
-        return ($order[(string) ($left['access_interval'] ?? 'one_time')] ?? 99)
-            <=> ($order[(string) ($right['access_interval'] ?? 'one_time')] ?? 99);
-    });
-
-    return $offers;
+    return raidlands_store_sort_offers($offers);
 }
 
 function raidlands_store_price_is_buyable(?array $price): bool
@@ -889,6 +1136,13 @@ function raidlands_store_price_is_buyable(?array $price): bool
         && (int) ($price['amount_cents'] ?? 0) > 0
         && $stripe_price_id !== ''
         && !str_starts_with($stripe_price_id, 'configure_');
+}
+
+function raidlands_store_price_checkout_mode(array $price): string
+{
+    return (string) ($price['billing_interval'] ?? 'one_time') === 'one_time'
+        ? 'payment'
+        : 'subscription';
 }
 
 function raidlands_store_rp_offer_is_buyable(?array $price): bool
@@ -1402,6 +1656,75 @@ function raidlands_store_rp_subscriptions_for_player(int $player_id): array
     }
 }
 
+function raidlands_store_cash_subscriptions_for_player(int $player_id): array
+{
+    if ($player_id <= 0 || !raidlands_db_is_configured()) {
+        return [];
+    }
+
+    try {
+        return raidlands_db_fetch_all(
+            'SELECT s.*, p.name AS product_name, p.slug AS product_slug, p.product_type, sp.label AS price_label, sp.billing_interval
+             FROM subscriptions s
+             INNER JOIN store_products p ON p.id = s.product_id
+             INNER JOIN store_prices sp ON sp.id = s.store_price_id
+             WHERE s.player_id = :player_id
+             ORDER BY FIELD(s.status, "active", "trialing", "past_due", "canceled", "unpaid", "incomplete"), s.current_period_end DESC, s.id DESC',
+            ['player_id' => $player_id]
+        );
+    } catch (Throwable $error) {
+        return [];
+    }
+}
+
+function raidlands_store_create_billing_portal_session(): string
+{
+    global $stripe_config;
+
+    $player = raidlands_store_current_player();
+
+    if ($player === null || empty($player['id'])) {
+        throw new RuntimeException('Connect your Steam account before managing billing.');
+    }
+
+    $subscription = raidlands_db_fetch_one(
+        'SELECT stripe_customer_id
+         FROM subscriptions
+         WHERE player_id = :player_id
+           AND stripe_customer_id <> ""
+         ORDER BY FIELD(status, "active", "trialing", "past_due", "incomplete", "canceled"), updated_at DESC, id DESC
+         LIMIT 1',
+        ['player_id' => (int) $player['id']]
+    );
+
+    if ($subscription === null || trim((string) ($subscription['stripe_customer_id'] ?? '')) === '') {
+        throw new RuntimeException('No cash subscription billing profile was found for this account.');
+    }
+
+    $secret_key = (string) ($stripe_config['secretKey'] ?? '');
+
+    if ($secret_key === '') {
+        throw new RuntimeException('Stripe secret key is not configured.');
+    }
+
+    raidlands_store_load_stripe();
+    \Stripe\Stripe::setApiKey($secret_key);
+
+    $params = [
+        'customer' => (string) $subscription['stripe_customer_id'],
+        'return_url' => raidlands_store_absolute_url('profile/'),
+    ];
+    $configuration_id = trim((string) ($stripe_config['billingPortalConfigurationId'] ?? ''));
+
+    if ($configuration_id !== '') {
+        $params['configuration'] = $configuration_id;
+    }
+
+    $session = \Stripe\BillingPortal\Session::create($params);
+
+    return (string) $session->url;
+}
+
 function raidlands_store_rp_price_by_id(int $price_id): ?array
 {
     if ($price_id <= 0) {
@@ -1453,7 +1776,7 @@ function raidlands_store_create_rp_purchase_request(int $price_id, bool $auto_re
         throw new RuntimeException('That RP offer still needs an access duration.');
     }
 
-    if ($auto_renew && (empty($row['allow_auto_renew']) || (string) $row['product_type'] !== 'vip_subscription')) {
+    if ($auto_renew && (empty($row['allow_auto_renew']) || $interval === 'one_time' || $duration <= 0)) {
         throw new RuntimeException('Auto-renew is not available for that RP offer.');
     }
 
@@ -1951,7 +2274,10 @@ function raidlands_store_checkout_for_price(int $price_id): string
             p.oxide_group
          FROM store_prices pr
          INNER JOIN store_products p ON p.id = pr.product_id
-         WHERE pr.id = :price_id AND pr.is_active = 1 AND p.is_active = 1",
+         WHERE pr.id = :price_id
+           AND pr.payment_method = 'stripe'
+           AND pr.is_active = 1
+           AND p.is_active = 1",
         ['price_id' => $price_id]
     );
 
@@ -1971,7 +2297,7 @@ function raidlands_store_checkout_for_price(int $price_id): string
         throw new RuntimeException('This product still needs a live Stripe Price ID.');
     }
 
-    $mode = (string) $row['billing_interval'] === 'month' ? 'subscription' : 'payment';
+    $mode = raidlands_store_price_checkout_mode($row);
     $metadata = [
         'player_id' => (string) $player['id'],
         'steam_id64' => (string) $player['steam_id64'],
@@ -1979,6 +2305,8 @@ function raidlands_store_checkout_for_price(int $price_id): string
         'store_price_id' => (string) $row['id'],
         'purchase_mode' => $mode,
         'oxide_group' => $oxide_group,
+        'access_interval' => (string) ($row['access_interval'] ?? 'one_time'),
+        'billing_interval' => (string) ($row['billing_interval'] ?? 'one_time'),
     ];
     $params = [
         'mode' => $mode,
@@ -2083,14 +2411,15 @@ function raidlands_store_grant_entitlement(
     }
 
     try {
-        if ((string) $product['product_type'] === 'vip_subscription') {
+        if (raidlands_store_normalize_product_type((string) $product['product_type']) === 'kit_bundle' && empty($product['is_stackable'])) {
             $revoke = $pdo->prepare(
                 "UPDATE entitlements e
                  INNER JOIN store_products p ON p.id = e.product_id
                  SET e.status = 'revoked', e.changed_at = NOW(), e.updated_at = NOW()
                  WHERE e.player_id = :player_id
                     AND e.status = 'active'
-                    AND p.product_type = 'vip_subscription'
+                    AND p.product_type IN ('kit_bundle', 'vip_subscription')
+                    AND p.is_stackable = 0
                     AND e.product_id <> :product_id"
             );
             $revoke->execute([
@@ -2308,11 +2637,20 @@ function raidlands_store_handle_checkout_completed(array $session): void
                 'customer_id' => $customer_id,
             ]
         );
-        raidlands_store_grant_entitlement($ids['player_id'], $ids['product_id'], 'subscription', $subscription_id);
         return;
     }
 
-    raidlands_store_grant_entitlement($ids['player_id'], $ids['product_id'], 'order', $session_id);
+    $price = raidlands_db_fetch_one(
+        'SELECT access_duration_seconds
+         FROM store_prices
+         WHERE id = :price_id',
+        ['price_id' => $ids['store_price_id']]
+    );
+    $ends_at = $price === null
+        ? null
+        : raidlands_store_access_ends_at((int) ($price['access_duration_seconds'] ?? 0));
+
+    raidlands_store_grant_entitlement($ids['player_id'], $ids['product_id'], 'order', $session_id, $ends_at);
 }
 
 function raidlands_store_handle_invoice_paid(array $invoice): void
@@ -2635,23 +2973,9 @@ function raidlands_store_admin_product_rows(): array
     }
 
     $rows = raidlands_db_fetch_all(
-        "SELECT
-            p.*,
-            pr.id AS price_id,
-            pr.payment_method,
-            pr.stripe_price_id,
-            pr.label AS price_label,
-            pr.amount_cents,
-            pr.currency,
-            pr.rp_cost,
-            pr.billing_interval,
-            pr.access_interval,
-            pr.access_duration_seconds,
-            pr.allow_auto_renew,
-            pr.is_active AS price_is_active
+        'SELECT p.*
          FROM store_products p
-         LEFT JOIN store_prices pr ON pr.product_id = p.id AND pr.is_default = 1 AND pr.payment_method = 'stripe'
-         ORDER BY p.sort_order ASC, p.id ASC"
+         ORDER BY p.sort_order ASC, p.id ASC'
     );
 
     $product_ids = array_values(array_filter(array_map(static fn (array $row): int => (int) ($row['id'] ?? 0), $rows)));
@@ -2661,14 +2985,15 @@ function raidlands_store_admin_product_rows(): array
     }
 
     [$placeholders, $params] = raidlands_store_sql_in_params($product_ids, 'product_id');
-    $rp_rows = raidlands_db_fetch_all(
+    $price_rows = raidlands_db_fetch_all(
         'SELECT *
          FROM store_prices
-         WHERE payment_method = "rp" AND product_id IN (' . implode(', ', $placeholders) . ')
-         ORDER BY product_id ASC, access_duration_seconds ASC, id ASC',
+         WHERE product_id IN (' . implode(', ', $placeholders) . ')
+         ORDER BY product_id ASC, payment_method ASC, billing_interval ASC, access_duration_seconds ASC, id ASC',
         $params
     );
     $kit_rows = [];
+    $permission_rows = [];
 
     try {
         $kit_rows = raidlands_db_fetch_all(
@@ -2682,23 +3007,59 @@ function raidlands_store_admin_product_rows(): array
         $kit_rows = [];
     }
 
-    $rp_by_product = [];
-    $kits_by_product = [];
+    try {
+        $permission_rows = raidlands_db_fetch_all(
+            'SELECT product_id, permission_name, display_label, sort_order
+             FROM store_product_permission_grants
+             WHERE product_id IN (' . implode(', ', $placeholders) . ')
+             ORDER BY product_id ASC, sort_order ASC, permission_name ASC',
+            $params
+        );
+    } catch (Throwable $error) {
+        $permission_rows = [];
+    }
 
-    foreach ($rp_rows as $rp_row) {
-        $product_id = (int) $rp_row['product_id'];
-        $interval = (string) ($rp_row['access_interval'] ?? 'one_time');
-        $rp_by_product[$product_id][$interval] = $rp_row;
+    $rp_by_product = [];
+    $cash_pass_by_product = [];
+    $cash_subscription_by_product = [];
+    $kits_by_product = [];
+    $permissions_by_product = [];
+
+    foreach ($price_rows as $price_row) {
+        $product_id = (int) $price_row['product_id'];
+        $payment_method = (string) ($price_row['payment_method'] ?? 'stripe');
+        $billing_interval = (string) ($price_row['billing_interval'] ?? 'one_time');
+        $access_interval = (string) ($price_row['access_interval'] ?? 'one_time');
+
+        if ($payment_method === 'rp') {
+            $rp_by_product[$product_id][$access_interval] = $price_row;
+        } elseif ($billing_interval === 'one_time') {
+            $cash_pass_by_product[$product_id][$access_interval] = $price_row;
+        } else {
+            $cash_subscription_by_product[$product_id][$billing_interval] = $price_row;
+        }
     }
 
     foreach ($kit_rows as $kit_row) {
         $kits_by_product[(int) $kit_row['product_id']][] = (int) $kit_row['kit_id'];
     }
 
+    foreach ($permission_rows as $permission_row) {
+        $permissions_by_product[(int) $permission_row['product_id']][] = [
+            'permission_name' => (string) ($permission_row['permission_name'] ?? ''),
+            'display_label' => (string) ($permission_row['display_label'] ?? ''),
+            'sort_order' => (int) ($permission_row['sort_order'] ?? 100),
+        ];
+    }
+
     foreach ($rows as &$row) {
         $product_id = (int) ($row['id'] ?? 0);
+        $row['product_type'] = raidlands_store_normalize_product_type((string) ($row['product_type'] ?? 'perk'));
         $row['rp_prices'] = $rp_by_product[$product_id] ?? [];
+        $row['cash_pass_prices'] = $cash_pass_by_product[$product_id] ?? [];
+        $row['cash_subscription_prices'] = $cash_subscription_by_product[$product_id] ?? [];
         $row['kit_ids'] = $kits_by_product[$product_id] ?? [];
+        $row['permission_grants'] = $permissions_by_product[$product_id] ?? [];
     }
     unset($row);
 
@@ -2707,11 +3068,12 @@ function raidlands_store_admin_product_rows(): array
 
 function raidlands_store_admin_price_intervals(string $product_type): array
 {
-    if ($product_type === 'vip_subscription') {
-        return ['day', 'week', 'month', 'year'];
-    }
+    return raidlands_store_offer_intervals(true);
+}
 
-    return ['one_time'];
+function raidlands_store_admin_subscription_intervals(): array
+{
+    return raidlands_store_offer_intervals(false);
 }
 
 function raidlands_store_admin_save_product_kit_links(PDO $pdo, int $product_id, array $kit_ids): void
@@ -2740,13 +3102,59 @@ function raidlands_store_admin_save_product_kit_links(PDO $pdo, int $product_id,
     }
 }
 
-function raidlands_store_admin_group_category(string $product_type, string $group): string
+function raidlands_store_admin_clean_permission($value): string
 {
-    if ($product_type === 'vip_subscription' || str_starts_with($group, 'vip_')) {
-        return 'vip';
+    if (function_exists('raidlands_permissions_clean_permission')) {
+        return raidlands_permissions_clean_permission($value);
     }
 
-    if (str_starts_with($group, 'perk_') || in_array($product_type, ['one_time_perk', 'one_time_kit_unlock'], true)) {
+    $permission = strtolower(trim(strip_tags((string) $value)));
+
+    return preg_match('/^[a-z0-9_.-]+$/', $permission) === 1 ? $permission : '';
+}
+
+function raidlands_store_admin_save_product_permission_grants(PDO $pdo, int $product_id, array $permissions): void
+{
+    try {
+        $pdo->prepare('DELETE FROM store_product_permission_grants WHERE product_id = :product_id')->execute(['product_id' => $product_id]);
+        $insert = $pdo->prepare(
+            'INSERT INTO store_product_permission_grants (product_id, permission_name, display_label, sort_order)
+             VALUES (:product_id, :permission_name, :display_label, :sort_order)
+             ON DUPLICATE KEY UPDATE display_label = VALUES(display_label), sort_order = VALUES(sort_order), updated_at = NOW()'
+        );
+
+        foreach (array_values(array_unique(array_map('strval', $permissions))) as $index => $permission) {
+            $permission = raidlands_store_admin_clean_permission($permission);
+
+            if ($permission === '') {
+                continue;
+            }
+
+            if (function_exists('raidlands_permissions_permission_id')) {
+                raidlands_permissions_permission_id($pdo, $permission, 'store');
+            }
+
+            $insert->execute([
+                'product_id' => $product_id,
+                'permission_name' => $permission,
+                'display_label' => ucwords(str_replace(['.', '_', '-'], ' ', $permission)),
+                'sort_order' => ($index + 1) * 10,
+            ]);
+        }
+    } catch (Throwable $error) {
+        // Older installs may not have the new store permission table yet.
+    }
+}
+
+function raidlands_store_admin_group_category(string $product_type, string $group): string
+{
+    $product_type = raidlands_store_normalize_product_type($product_type);
+
+    if ($product_type === 'kit_bundle' || str_starts_with($group, 'vip_') || str_starts_with($group, 'bundle_')) {
+        return 'store';
+    }
+
+    if (str_starts_with($group, 'perk_') || $product_type === 'perk') {
         return 'perk';
     }
 
@@ -2824,7 +3232,7 @@ function raidlands_store_admin_sync_product_group(
     raidlands_permissions_upsert_group($pdo, [
         'group_name' => $group,
         'title' => $group,
-        'rank' => $product_type === 'vip_subscription' ? $tier_priority : 0,
+        'rank' => raidlands_store_normalize_product_type($product_type) === 'kit_bundle' ? $tier_priority : 0,
         'parent_group' => '',
         'category' => $category,
         'is_managed' => 1,
@@ -2835,9 +3243,31 @@ function raidlands_store_admin_sync_product_group(
     ], false);
 }
 
-function raidlands_store_admin_save_rp_price(PDO $pdo, int $product_id, string $slug, string $product_type, string $interval, array $row): void
+function raidlands_store_admin_offer_placeholder(string $slug, string $kind, string $interval): string
 {
-    $allowed = raidlands_store_admin_price_intervals($product_type);
+    if ($kind === 'rp') {
+        return 'rp_' . $slug . '_' . $interval;
+    }
+
+    return 'configure_' . $slug . '_' . $kind . '_' . $interval;
+}
+
+function raidlands_store_admin_offer_default_label(string $kind, string $interval): string
+{
+    $interval_label = raidlands_store_access_interval_label($interval);
+
+    return match ($kind) {
+        'rp' => $interval === 'one_time' ? 'Lifetime RP Unlock' : $interval_label . ' RP Pass',
+        'cash_sub' => $interval_label . ' Cash Subscription',
+        default => $interval === 'one_time' ? 'Lifetime Cash Pass' : $interval_label . ' Cash Pass',
+    };
+}
+
+function raidlands_store_admin_save_offer_price(PDO $pdo, int $product_id, string $slug, string $kind, string $interval, array $row): void
+{
+    $allowed = $kind === 'cash_sub'
+        ? raidlands_store_admin_subscription_intervals()
+        : raidlands_store_offer_intervals(true);
 
     if (!in_array($interval, $allowed, true)) {
         return;
@@ -2848,25 +3278,33 @@ function raidlands_store_admin_save_rp_price(PDO $pdo, int $product_id, string $
     $label = trim(strip_tags((string) ($row['label'] ?? '')));
 
     if ($label === '') {
-        $label = $interval === 'one_time'
-            ? 'One-time RP Unlock'
-            : raidlands_store_access_interval_label($interval) . ' RP Pass';
+        $label = raidlands_store_admin_offer_default_label($kind, $interval);
+    }
+
+    $is_rp = $kind === 'rp';
+    $is_subscription = $kind === 'cash_sub';
+    $stripe_price_id = $is_rp
+        ? raidlands_store_admin_offer_placeholder($slug, 'rp', $interval)
+        : trim(strip_tags((string) ($row['stripe_price_id'] ?? '')));
+
+    if ($stripe_price_id === '') {
+        $stripe_price_id = raidlands_store_admin_offer_placeholder($slug, $kind, $interval);
     }
 
     $price = [
         'product_id' => $product_id,
-        'payment_method' => 'rp',
-        'stripe_price_id' => 'rp_' . $slug . '_' . $interval,
+        'payment_method' => $is_rp ? 'rp' : 'stripe',
+        'stripe_price_id' => $stripe_price_id,
         'label' => mb_substr($label, 0, 120),
-        'amount_cents' => 0,
-        'currency' => 'rp',
-        'rp_cost' => max(0, (int) ($row['rp_cost'] ?? 0)),
-        'billing_interval' => 'one_time',
+        'amount_cents' => $is_rp ? 0 : max(0, (int) round(((float) ($row['amount_dollars'] ?? 0)) * 100)),
+        'currency' => $is_rp ? 'rp' : (strtolower(mb_substr(trim((string) ($row['currency'] ?? 'usd')), 0, 3)) ?: 'usd'),
+        'rp_cost' => $is_rp ? max(0, (int) ($row['rp_cost'] ?? 0)) : 0,
+        'billing_interval' => $is_subscription ? $interval : 'one_time',
         'access_interval' => $interval,
         'access_duration_seconds' => $duration,
-        'allow_auto_renew' => !empty($row['allow_auto_renew']) && $product_type === 'vip_subscription' && $duration > 0 ? 1 : 0,
+        'allow_auto_renew' => $is_rp && $interval !== 'one_time' && $duration > 0 && !empty($row['allow_auto_renew']) ? 1 : 0,
         'is_active' => empty($row['is_active']) ? 0 : 1,
-        'is_default' => 0,
+        'is_default' => !$is_rp && !$is_subscription && $interval === 'one_time' ? 1 : 0,
     ];
 
     if ($price_id > 0) {
@@ -2916,9 +3354,15 @@ function raidlands_store_admin_save_rp_price(PDO $pdo, int $product_id, string $
     $statement->execute($price);
 }
 
+function raidlands_store_admin_save_rp_price(PDO $pdo, int $product_id, string $slug, string $product_type, string $interval, array $row): void
+{
+    raidlands_store_admin_save_offer_price($pdo, $product_id, $slug, 'rp', $interval, $row);
+}
+
 function raidlands_store_admin_save_product_rows($rows): void
 {
     $pdo = raidlands_db_required();
+    $publish_permissions = false;
     $pdo->beginTransaction();
 
     try {
@@ -2927,15 +3371,12 @@ function raidlands_store_admin_save_product_rows($rows): void
             $id = (int) ($row['id'] ?? 0);
             $slug = strtolower(trim(preg_replace('/[^a-z0-9-]+/', '-', (string) ($row['slug'] ?? '')), '-'));
             $name = trim(strip_tags((string) ($row['name'] ?? '')));
-            $type = (string) ($row['product_type'] ?? 'one_time_perk');
-
-            if (!in_array($type, ['vip_subscription', 'one_time_perk', 'one_time_kit_unlock'], true)) {
-                $type = 'one_time_perk';
-            }
+            $type = raidlands_store_normalize_product_type((string) ($row['product_type'] ?? 'perk'));
 
             if (!empty($row['delete']) && $id > 0) {
                 $statement = $pdo->prepare('UPDATE store_products SET is_active = 0, updated_at = NOW() WHERE id = :id');
                 $statement->execute(['id' => $id]);
+                $publish_permissions = true;
                 continue;
             }
 
@@ -3038,94 +3479,29 @@ function raidlands_store_admin_save_product_rows($rows): void
                 (int) $params['tier_priority'],
                 (int) $params['sort_order']
             );
+            $publish_permissions = true;
 
-            $price_id = (int) ($row['price_id'] ?? 0);
-            $price = [
-                'product_id' => $product_id,
-                'payment_method' => 'stripe',
-                'stripe_price_id' => trim(strip_tags((string) ($row['stripe_price_id'] ?? ''))),
-                'label' => mb_substr(trim(strip_tags((string) ($row['price_label'] ?? ''))), 0, 120),
-                'amount_cents' => max(0, (int) round(((float) ($row['amount_dollars'] ?? 0)) * 100)),
-                'currency' => strtolower(mb_substr(trim((string) ($row['currency'] ?? 'usd')), 0, 3)) ?: 'usd',
-                'rp_cost' => 0,
-                'billing_interval' => $type === 'vip_subscription' ? 'month' : 'one_time',
-                'access_interval' => $type === 'vip_subscription' ? 'month' : 'one_time',
-                'access_duration_seconds' => $type === 'vip_subscription' ? raidlands_store_access_duration_seconds('month') : 0,
-                'allow_auto_renew' => 0,
-                'is_active' => empty($row['price_is_active']) ? 0 : 1,
-            ];
-
-            if ($price['stripe_price_id'] === '') {
-                $price['stripe_price_id'] = 'configure_' . $slug;
-            }
-
-            if ($price['label'] === '') {
-                $price['label'] = $price['billing_interval'] === 'month' ? 'Monthly' : 'One-time';
-            }
-
-            if ($price_id > 0) {
-                $price['id'] = $price_id;
-                $statement = $pdo->prepare(
-                    "UPDATE store_prices
-                     SET payment_method = :payment_method,
-                         stripe_price_id = :stripe_price_id,
-                         label = :label,
-                         amount_cents = :amount_cents,
-                         currency = :currency,
-                         rp_cost = :rp_cost,
-                         billing_interval = :billing_interval,
-                         access_interval = :access_interval,
-                         access_duration_seconds = :access_duration_seconds,
-                         allow_auto_renew = :allow_auto_renew,
-                         is_active = :is_active,
-                         is_default = 1,
-                         updated_at = NOW()
-                     WHERE id = :id"
-                );
-                unset($price['product_id']);
-                $statement->execute($price);
-            } else {
-                $statement = $pdo->prepare(
-                    "INSERT INTO store_prices
-                        (product_id, payment_method, stripe_price_id, label, amount_cents, currency, rp_cost, billing_interval, access_interval, access_duration_seconds, allow_auto_renew, is_active, is_default)
-                     VALUES
-                        (:product_id, :payment_method, :stripe_price_id, :label, :amount_cents, :currency, :rp_cost, :billing_interval, :access_interval, :access_duration_seconds, :allow_auto_renew, :is_active, 1)
-                     ON DUPLICATE KEY UPDATE
-                        product_id = VALUES(product_id),
-                        payment_method = VALUES(payment_method),
-                        label = VALUES(label),
-                        amount_cents = VALUES(amount_cents),
-                        currency = VALUES(currency),
-                        rp_cost = VALUES(rp_cost),
-                        billing_interval = VALUES(billing_interval),
-                        access_interval = VALUES(access_interval),
-                        access_duration_seconds = VALUES(access_duration_seconds),
-                        allow_auto_renew = VALUES(allow_auto_renew),
-                        is_active = VALUES(is_active),
-                        updated_at = NOW()"
-                );
-                $statement->execute($price);
-            }
-
-            foreach (raidlands_store_admin_price_intervals($type) as $interval) {
+            foreach (raidlands_store_offer_intervals(true) as $interval) {
                 $rp_rows = (array) ($row['rp_prices'] ?? []);
-                $rp_row = (array) ($rp_rows[$interval] ?? []);
-                raidlands_store_admin_save_rp_price($pdo, $product_id, $slug, $type, $interval, $rp_row);
+                raidlands_store_admin_save_offer_price($pdo, $product_id, $slug, 'rp', $interval, (array) ($rp_rows[$interval] ?? []));
+
+                $cash_pass_rows = (array) ($row['cash_pass_prices'] ?? []);
+                raidlands_store_admin_save_offer_price($pdo, $product_id, $slug, 'cash_pass', $interval, (array) ($cash_pass_rows[$interval] ?? []));
             }
 
-            $allowed_intervals = raidlands_store_admin_price_intervals($type);
-            $interval_placeholders = implode(', ', array_fill(0, count($allowed_intervals), '?'));
-            $deactivate_params = array_merge([$product_id], $allowed_intervals);
-            $pdo->prepare(
-                "UPDATE store_prices
-                 SET is_active = 0, updated_at = NOW()
-                 WHERE product_id = ?
-                   AND payment_method = 'rp'
-                   AND access_interval NOT IN ($interval_placeholders)"
-            )->execute($deactivate_params);
+            foreach (raidlands_store_admin_subscription_intervals() as $interval) {
+                $cash_subscription_rows = (array) ($row['cash_subscription_prices'] ?? []);
+                raidlands_store_admin_save_offer_price($pdo, $product_id, $slug, 'cash_sub', $interval, (array) ($cash_subscription_rows[$interval] ?? []));
+            }
 
             if (array_key_exists('kit_ids', $row)) {
                 raidlands_store_admin_save_product_kit_links($pdo, $product_id, (array) ($row['kit_ids'] ?? []));
+                $publish_permissions = true;
+            }
+
+            if (array_key_exists('permission_grants', $row)) {
+                raidlands_store_admin_save_product_permission_grants($pdo, $product_id, (array) ($row['permission_grants'] ?? []));
+                $publish_permissions = true;
             }
         }
 
@@ -3133,6 +3509,10 @@ function raidlands_store_admin_save_product_rows($rows): void
     } catch (Throwable $error) {
         $pdo->rollBack();
         throw $error;
+    }
+
+    if ($publish_permissions && function_exists('raidlands_permissions_publish_from_related_change')) {
+        raidlands_permissions_publish_from_related_change('Published permission sync from store product unlock changes.');
     }
 }
 

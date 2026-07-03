@@ -1,3 +1,13 @@
+<?php
+$home_feature_state = is_array($home_feature_state ?? null) ? $home_feature_state : [
+    'built_cards' => array_slice((array) $feature_cards, 0, 8),
+    'system_cards' => array_slice((array) $roadmap_cards, 0, 8),
+    'has_voteable' => false,
+];
+$home_built_cards = is_array($home_feature_state['built_cards'] ?? null) ? $home_feature_state['built_cards'] : [];
+$home_system_cards = is_array($home_feature_state['system_cards'] ?? null) ? $home_feature_state['system_cards'] : [];
+$home_has_voteable_features = !empty($home_feature_state['has_voteable']);
+?>
 <section class="hero">
   <div class="hero-inner">
     <div class="hero-layout">
@@ -35,9 +45,15 @@
       <p class="section-lede">Raidlands removes the slow parts and keeps the war. Whether you play solo, with friends, or inside a full clan, every Thursday wipe is a fresh battlefield.</p>
     </div>
     <div class="grid four">
-      <?php foreach (array_slice($feature_cards, 0, 8) as $card) : ?>
-        <?= render_feature_card($card) ?>
+      <?php foreach ($home_built_cards as $card) : ?>
+        <?= render_home_feature_card($card) ?>
       <?php endforeach; ?>
+    </div>
+    <div class="button-row">
+      <a class="btn btn-secondary" href="<?= e(route_url('features')) ?>">View All Features</a>
+      <?php if ($home_has_voteable_features) : ?>
+        <a class="btn btn-primary" href="<?= e(route_url('features') . '#feature-voting') ?>">Vote on Features</a>
+      <?php endif; ?>
     </div>
   </div>
 </section>
@@ -80,7 +96,7 @@
     <div class="metal-panel">
       <p class="section-kicker">Account linking</p>
       <h2>Keep your profile across wipes</h2>
-      <p class="section-lede"><?= e(raidlands_has_linked_account() ? 'Your Steam account is connected. Use your account page to check profile status, stats, and VIP access.' : 'Connect Steam so leaderboards, rewards, roles, VIP ownership, and profile stats follow the right player.') ?></p>
+      <p class="section-lede"><?= e(raidlands_has_linked_account() ? 'Your Steam account is connected. Use your account page to check profile status, stats, and store access.' : 'Connect Steam so leaderboards, rewards, roles, store purchases, and profile stats follow the right player.') ?></p>
       <div class="grid two">
         <?= render_auth_summary_card('steam') ?>
         <?= render_auth_summary_card('discord') ?>
@@ -88,8 +104,8 @@
     </div>
     <div class="metal-panel">
       <p class="section-kicker">Account-linked perks</p>
-      <h2>VIP follows your account</h2>
-      <p class="section-lede">VIP kits, monthly ranks, and one-time perks stay tied to your Steam account, then update in game automatically.</p>
+      <h2>Store access follows your account</h2>
+      <p class="section-lede">Kit bundles, individual kits, and standalone perks stay tied to your Steam account, then update in game automatically.</p>
       <div class="button-row">
         <a class="btn btn-primary" href="<?= e(route_url('play')) ?>">Play Raidlands</a>
         <a class="btn btn-secondary" href="<?= e(route_url('store')) ?>">Open Store</a>
@@ -117,13 +133,19 @@
   <div class="section-inner">
     <div class="section-header">
       <p class="section-kicker">Live server systems</p>
-      <h2>The server stack is online</h2>
-      <p class="section-lede">Core gameplay, account linking, VIP sync, profile stats, and player rankings are live, with the website growing around the systems players already use.</p>
+      <h2>Profiles, rewards, and votes stay connected</h2>
+      <p class="section-lede">Account links, rankings, store access, clan tools, support, and feature voting stay tied to the players using them in game.</p>
     </div>
     <div class="grid four">
-      <?php foreach ($roadmap_cards as $card) : ?>
-        <?= render_roadmap_card($card) ?>
+      <?php foreach ($home_system_cards as $card) : ?>
+        <?= render_home_feature_card($card) ?>
       <?php endforeach; ?>
+    </div>
+    <div class="button-row">
+      <a class="btn btn-secondary" href="<?= e(route_url('features')) ?>">View Connected Systems</a>
+      <?php if ($home_has_voteable_features) : ?>
+        <a class="btn btn-primary" href="<?= e(route_url('features') . '#feature-voting') ?>">Vote on Features</a>
+      <?php endif; ?>
     </div>
   </div>
 </section>

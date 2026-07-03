@@ -1,8 +1,8 @@
 # Raidlands GoDaddy Deployment Guide
 
 This site is a PHP-rendered multi-page website with shared includes, static CSS/JS,
-media assets, a MySQL-backed VIP store, Stripe Checkout, and a uMod/Oxide bridge
-API for Rust VIP groups.
+media assets, a MySQL-backed store, Stripe Checkout, and a uMod/Oxide bridge
+API for Rust access groups.
 
 ## Hosting Requirement
 
@@ -84,6 +84,7 @@ the host or upload it through a private channel.
    - `RAIDLANDS_AUTH_DISCORD_URL`
    - `RAIDLANDS_DB_DSN`
    - `RAIDLANDS_STRIPE_SECRET_KEY`
+   - `RAIDLANDS_STRIPE_BILLING_PORTAL_CONFIGURATION_ID` (optional)
    - `RAIDLANDS_BRIDGE_SHARED_SECRET`
    - `RAIDLANDS_CLAN_API_RATE_LIMIT_PER_MINUTE`
    - `RAIDLANDS_SERVER_STATUS_SAMPLE_RETENTION_DAYS`
@@ -115,13 +116,15 @@ the host or upload it through a private channel.
    - `database/migrations/010_server_status_samples.sql`
    - `database/migrations/011_server_status_rollups.sql`
    - `database/migrations/012_rp_shop.sql`
-   - `database/seeds/001_store_products.sql`
    - `database/migrations/013_pvp_kit_permission_cleanup.sql`
    - `database/migrations/014_kit_group_delete_tombstones.sql`
    - `database/migrations/015_feature_planning.sql`
    - `database/migrations/016_player_stats_wipe_rp_baseline.sql`
+   - `database/migrations/017_feature_voting_status.sql`
+   - `database/migrations/018_store_bundle_offer_matrix.sql`
+   - `database/seeds/001_store_products.sql`
 
-   Then configure Stripe Price IDs in `/admin/?section=store`.
+   Then configure RP costs, cash amounts, and Stripe Price IDs in `/admin/?section=store`.
 
 5. Click through the local site.
 

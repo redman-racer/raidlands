@@ -32,7 +32,7 @@ http://127.0.0.1:4177/
 - Each route has a small `index.php` that loads bootstrap, header, content, and footer.
 - `assets/js/site.js` handles behavior only: mobile nav, copy buttons, auth placeholders, reveal effects, metrics, and wipe countdowns.
 - `includes/database.php` and `includes/store.php` provide the MySQL, Stripe, SteamID64, entitlement, and WebsiteVipBridge API layer.
-- `database/` contains the VIP store, stats, clan management/API-key, admin auth migrations, and seed data.
+- `database/` contains the store, stats, clan management/API-key, admin auth migrations, and seed data.
 - `server-plugins/WebsiteVipBridge.cs` is the uMod/Oxide bridge plugin for syncing website entitlements to Rust permission groups and player stats to leaderboards.
 - `server-plugins/WebsiteClanBridge.cs` is the uMod/Oxide bridge plugin for syncing clan snapshots and processing public clan API actions.
 
@@ -46,7 +46,7 @@ over `.env` and stay ignored by Git.
 - `RAIDLANDS_ADMIN_USERNAME`
 - `RAIDLANDS_ADMIN_PASSWORD` or `RAIDLANDS_ADMIN_PASSWORD_HASH` for the setup fallback before admin auth tables are installed
 - `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, `RAIDLANDS_DB_PASSWORD`
-- `RAIDLANDS_STRIPE_PUBLISHABLE_KEY`, `RAIDLANDS_STRIPE_SECRET_KEY`, `RAIDLANDS_STRIPE_WEBHOOK_SECRET`
+- `RAIDLANDS_STRIPE_PUBLISHABLE_KEY`, `RAIDLANDS_STRIPE_SECRET_KEY`, `RAIDLANDS_STRIPE_WEBHOOK_SECRET`, `RAIDLANDS_STRIPE_BILLING_PORTAL_CONFIGURATION_ID`
 - `RAIDLANDS_BRIDGE_SERVER_ID`, `RAIDLANDS_BRIDGE_SHARED_SECRET`
 - `RAIDLANDS_STEAM_API_KEY`
 - `RAIDLANDS_CONNECT_COMMAND`, `RAIDLANDS_STEAM_CONNECT_URL`, `RAIDLANDS_DISCORD_INVITE_URL`
@@ -63,9 +63,9 @@ Steam avatars and profile links are only fetched when `RAIDLANDS_STEAM_API_KEY` 
 
 The admin panel uses Steam sign-in once `database/migrations/007_admin_auth.sql` is installed. Add approved Steam IDs to `admin_users` and attach roles through `admin_user_roles`; the migration includes a commented owner bootstrap query.
 
-## VIP Store
+## Store
 
-The store uses MySQL as the source of truth and Stripe Checkout for payments.
+The store uses MySQL as the source of truth, Stripe Checkout for cash purchases, and Stripe Billing Portal for recurring cash subscription changes.
 
 1. Run `composer install`.
 2. Create a MySQL database.
@@ -80,23 +80,26 @@ The store uses MySQL as the source of truth and Stripe Checkout for payments.
 11. Run `database/migrations/010_server_status_samples.sql`.
 12. Run `database/migrations/011_server_status_rollups.sql`.
 13. Run `database/migrations/012_rp_shop.sql`.
-14. Run `database/seeds/001_store_products.sql`.
-15. Run `database/migrations/013_pvp_kit_permission_cleanup.sql`.
-16. Run `database/migrations/014_kit_group_delete_tombstones.sql`.
-17. Run `database/migrations/015_feature_planning.sql`.
-18. Run `database/migrations/016_player_stats_wipe_rp_baseline.sql`.
-19. Copy `.env.example` to `.env`.
-20. Fill in MySQL, Stripe, Steam API, bridge secret, and clan API limit values.
-21. Add at least one owner SteamID64 to `admin_users` and `admin_user_roles`.
-22. Configure product Stripe Price IDs in `/admin/?section=store`.
+14. Run `database/migrations/013_pvp_kit_permission_cleanup.sql`.
+15. Run `database/migrations/014_kit_group_delete_tombstones.sql`.
+16. Run `database/migrations/015_feature_planning.sql`.
+17. Run `database/migrations/016_player_stats_wipe_rp_baseline.sql`.
+18. Run `database/migrations/017_feature_voting_status.sql`.
+19. Run `database/migrations/018_store_bundle_offer_matrix.sql`.
+20. Run `database/seeds/001_store_products.sql`.
+21. Copy `.env.example` to `.env`.
+22. Fill in MySQL, Stripe, Steam API, bridge secret, and clan API limit values.
+23. Add at least one owner SteamID64 to `admin_users` and `admin_user_roles`.
+24. Configure product RP costs and Stripe Price IDs in `/admin/?section=store`.
 
 Public store flow:
 
 - `/link/` links a SteamID64 into the browser session.
-- `/store/` lists monthly VIP tiers and one-time perks.
+- `/store/` lists main kit bundles, individual shop kits, and standalone perks.
 - `/store/checkout.php` creates Stripe Checkout Sessions.
+- `/profile/billing-portal.php` opens Stripe Billing Portal for recurring cash subscriptions.
 - `/api/stripe-webhook.php` records paid orders, subscriptions, refunds, and entitlement changes.
-- Store products use their Linked group as the direct server access group for purchases and manual grants.
+- Store products use one managed group for purchases and manual grants; linked kits and perk permissions are merged into that group during published sync.
 - `/profile/` shows active groups and entitlement history for the linked SteamID64.
 - `/clans/` resolves the linked SteamID64 to synced clan data, queues allowed clan actions, and creates/revokes public clan API keys.
 - `/api-docs/` documents the public clan API for external websites and Discord bots.

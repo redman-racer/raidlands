@@ -1,4 +1,4 @@
-# Raidlands VIP Store Setup
+# Raidlands Store Setup
 
 ## Local database
 
@@ -14,13 +14,15 @@
 10. Run `database/migrations/010_server_status_samples.sql`.
 11. Run `database/migrations/011_server_status_rollups.sql`.
 12. Run `database/migrations/012_rp_shop.sql`.
-13. Run `database/seeds/001_store_products.sql`.
-14. Run `database/migrations/013_pvp_kit_permission_cleanup.sql`.
-15. Run `database/migrations/014_kit_group_delete_tombstones.sql`.
-16. Run `database/migrations/015_feature_planning.sql`.
-17. Run `database/migrations/016_player_stats_wipe_rp_baseline.sql`.
-18. Copy the root `.env.example` file to `.env`.
-19. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
+13. Run `database/migrations/013_pvp_kit_permission_cleanup.sql`.
+14. Run `database/migrations/014_kit_group_delete_tombstones.sql`.
+15. Run `database/migrations/015_feature_planning.sql`.
+16. Run `database/migrations/016_player_stats_wipe_rp_baseline.sql`.
+17. Run `database/migrations/017_feature_voting_status.sql`.
+18. Run `database/migrations/018_store_bundle_offer_matrix.sql`.
+19. Run `database/seeds/001_store_products.sql`.
+20. Copy the root `.env.example` file to `.env`.
+21. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
 
 The root `.env` file is ignored by Git and protected from direct web access by the root `.htaccess`.
 
@@ -32,17 +34,18 @@ The root `.env` file is ignored by Git and protected from direct web access by t
 
 ## Stripe
 
-Cash checkout is intentionally inactive for the RP-first launch.
+Cash checkout remains inactive until real Stripe prices are configured.
 
 - Keep Stripe prices inactive or placeholder-only until a payment processor is ready.
-- Later, create recurring or one-time Stripe Prices, paste those `price_...` IDs into Admin > Store, and enable the cash price.
+- Create one-time Stripe Prices for cash passes and recurring Stripe Prices for cash subscriptions, paste those `price_...` IDs into Admin > Store, and enable only the offers that should be purchasable.
 - Set the webhook URL to `/api/stripe-webhook.php`.
 - Configure `RAIDLANDS_STRIPE_PUBLISHABLE_KEY`, `RAIDLANDS_STRIPE_SECRET_KEY`, and `RAIDLANDS_STRIPE_WEBHOOK_SECRET` in `.env`.
+- Optionally set `RAIDLANDS_STRIPE_BILLING_PORTAL_CONFIGURATION_ID`; leave it blank to use Stripe's default Billing Portal configuration.
 
 ## RP shop
 
-- Admin > Store controls RP offers per product: RP cost, active flag, duration, and optional auto-renew for VIP packages.
-- Each store product must have a Linked group. Purchases and manual grants attach that product directly to the group, and WebsiteVipBridge syncs the resulting entitlement group to the server.
+- Admin > Store controls RP offers per product: RP cost, active flag, lifetime/timed duration, and optional auto-renew for timed offers.
+- Each store product must have a linked group. Purchases and manual grants attach that product directly to the group; linked kits and perk permissions are merged into that group during published sync.
 - The website queues RP purchases first. `WebsiteVipBridge` polls `/api/server/rp-purchases.php`, verifies and deducts live ServerRewards RP, then posts the result to `/api/server/rp-purchase-result.php`.
 - Entitlements activate only after the bridge confirms the debit.
 - Fixed purchases with insufficient RP are rejected. Auto-renew renewals with insufficient RP become past due and the current entitlement expires normally.
@@ -55,7 +58,7 @@ Cash checkout is intentionally inactive for the RP-first launch.
 3. Put `server-plugins/WebsiteVipBridge.cs` in the uMod/Oxide plugins folder.
 4. Put `server-plugins/WebsiteClanBridge.cs` in the uMod/Oxide plugins folder if website or public API clan management should be live.
 5. Set `ApiBaseUrl`, `ServerId`, and `SharedSecret` in the generated plugin configs. `ServerId` must match `RAIDLANDS_BRIDGE_SERVER_ID`, and `SharedSecret` must match `RAIDLANDS_BRIDGE_SHARED_SECRET`.
-6. Match Website product groups to Rust Kits permissions through Oxide groups:
+6. Link Store products to kits and direct permissions in Admin > Store, then publish from Admin > Kits or Admin > Groups so the product groups receive their selected unlocks. Existing starter groups include:
    - `vip_bronze`
    - `vip_gold`
    - `vip_elite`

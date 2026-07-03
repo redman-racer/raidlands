@@ -26,6 +26,7 @@
   "StatusHeartbeatEnabled": true,
   "StatusHeartbeatIntervalSeconds": 30,
   "StatusHeartbeatDebounceSeconds": 10,
+  "WebRequestTimeoutMilliseconds": 20000,
   "StatsEnabled": true,
   "StatsSyncIntervalSeconds": 300,
   "StatsDebounceSeconds": 30,

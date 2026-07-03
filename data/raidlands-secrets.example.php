@@ -14,6 +14,7 @@ $stripe_config = [
     'publishableKey' => 'pk_test_replace_me',
     'secretKey' => 'sk_test_replace_me',
     'webhookSecret' => 'whsec_replace_me',
+    'billingPortalConfigurationId' => '',
 ];
 
 $steam_api_config['apiKey'] = 'steam_web_api_key_replace_me';

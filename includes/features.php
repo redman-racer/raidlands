@@ -515,6 +515,184 @@ function raidlands_features_public_state(): array
     ];
 }
 
+function raidlands_features_home_preview_state(): array
+{
+    global $feature_cards, $roadmap_cards;
+
+    $fallback = [
+        'ready' => false,
+        'built_cards' => array_slice((array) $feature_cards, 0, 8),
+        'system_cards' => array_slice((array) $roadmap_cards, 0, 8),
+        'has_voteable' => false,
+    ];
+
+    if (!raidlands_features_is_ready()) {
+        return $fallback;
+    }
+
+    try {
+        raidlands_features_seed_defaults();
+        $items = raidlands_features_sort_public_items(
+            raidlands_features_public_items(raidlands_features_current_wipe_window()),
+            'staff'
+        );
+    } catch (Throwable $error) {
+        raidlands_features_last_error($error->getMessage());
+        return $fallback;
+    }
+
+    $built_cards = raidlands_features_home_built_cards($items, 8);
+    $system_cards = raidlands_features_home_system_cards($items, raidlands_features_home_feature_keys($built_cards), 8);
+
+    return [
+        'ready' => true,
+        'built_cards' => $built_cards,
+        'system_cards' => $system_cards,
+        'has_voteable' => raidlands_features_home_has_voteable($items),
+    ];
+}
+
+function raidlands_features_home_built_cards(array $items, int $limit): array
+{
+    $cards = [];
+    $categories = [
+        'Combat and Raiding' => true,
+        'Movement and Convenience' => true,
+        'Community and Clans' => true,
+    ];
+
+    foreach ($items as $item) {
+        if ((string) ($item['public_status'] ?? '') !== 'active') {
+            continue;
+        }
+
+        if (!isset($categories[(string) ($item['category'] ?? '')])) {
+            continue;
+        }
+
+        if (raidlands_features_home_is_clan_web_item($item)) {
+            continue;
+        }
+
+        $cards[] = $item;
+
+        if (count($cards) >= $limit) {
+            break;
+        }
+    }
+
+    return $cards;
+}
+
+function raidlands_features_home_system_cards(array $items, array $excluded_keys, int $limit): array
+{
+    $cards = [];
+    $has_clan_web_card = raidlands_features_home_has_clan_web_card($items);
+
+    foreach ($items as $item) {
+        $key = raidlands_features_home_feature_key($item);
+
+        if (isset($excluded_keys[$key]) || !raidlands_features_home_is_web_system_item($item)) {
+            continue;
+        }
+
+        if ($has_clan_web_card && raidlands_features_home_is_base_clan_item($item)) {
+            continue;
+        }
+
+        $cards[] = $item;
+
+        if (count($cards) >= $limit) {
+            break;
+        }
+    }
+
+    return $cards;
+}
+
+function raidlands_features_home_feature_keys(array $items): array
+{
+    $keys = [];
+
+    foreach ($items as $item) {
+        $keys[raidlands_features_home_feature_key($item)] = true;
+    }
+
+    return $keys;
+}
+
+function raidlands_features_home_feature_key(array $item): string
+{
+    $id = (int) ($item['id'] ?? 0);
+
+    if ($id > 0) {
+        return 'id:' . $id;
+    }
+
+    $slug = trim((string) ($item['slug'] ?? ''));
+
+    if ($slug !== '') {
+        return 'slug:' . strtolower($slug);
+    }
+
+    return 'title:' . strtolower(trim((string) ($item['title'] ?? '')));
+}
+
+function raidlands_features_home_is_web_system_item(array $item): bool
+{
+    $category = (string) ($item['category'] ?? '');
+    $title = strtolower((string) ($item['title'] ?? ''));
+
+    if ($category === 'Website Systems' || $category === 'Store and Rewards') {
+        return true;
+    }
+
+    return str_contains($title, 'clan')
+        || str_contains($title, 'support')
+        || str_contains($title, 'appeal')
+        || str_contains($title, 'vote')
+        || str_contains($title, 'reward')
+        || str_contains($title, 'wipe event');
+}
+
+function raidlands_features_home_has_clan_web_card(array $items): bool
+{
+    foreach ($items as $item) {
+        if (raidlands_features_home_is_clan_web_item($item)) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function raidlands_features_home_is_clan_web_item(array $item): bool
+{
+    $title = strtolower((string) ($item['title'] ?? ''));
+    $slug = strtolower((string) ($item['slug'] ?? ''));
+
+    return str_contains($title, 'clan website') || str_contains($title, 'clan web') || $slug === 'clan-web-pages';
+}
+
+function raidlands_features_home_is_base_clan_item(array $item): bool
+{
+    $title = strtolower(trim((string) ($item['title'] ?? '')));
+    $slug = strtolower(trim((string) ($item['slug'] ?? '')));
+
+    return $title === 'clans' || $slug === 'clans';
+}
+
+function raidlands_features_home_has_voteable(array $items): bool
+{
+    foreach ($items as $item) {
+        if ((string) ($item['public_status'] ?? '') === 'voting' && !empty($item['is_voteable'])) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
 function raidlands_features_public_status_options(): array
 {
     $options = raidlands_features_status_options();
