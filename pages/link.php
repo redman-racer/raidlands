@@ -66,26 +66,7 @@ $linked_player_profile_url = $linked_player !== null ? trim((string) ($linked_pl
           <div class="button-row">
             <a class="btn btn-steam" href="<?= e($steam_openid_url) ?>">Continue with Steam</a>
           </div>
-          <details class="store-form manual-steam-entry">
-            <summary>
-              <span class="manual-steam-title">Enter Steam ID manually</span>
-              <span class="manual-steam-note">Use this if Steam sign-in does not finish.</span>
-            </summary>
-            <p class="store-muted">Paste the 17-digit Steam ID from your Steam profile. It usually starts with 7656119.</p>
-            <form method="post" action="<?= e(route_url('link')) ?>">
-              <input type="hidden" name="csrf" value="<?= e($link_csrf) ?>">
-              <input type="hidden" name="action" value="link_steam">
-              <label class="store-field">
-                <span>17-digit Steam ID</span>
-                <input type="text" name="steam_id64" inputmode="numeric" autocomplete="off" placeholder="7656119XXXXXXXXXX" required>
-              </label>
-              <label class="store-field">
-                <span>Display name</span>
-                <input type="text" name="display_name" autocomplete="nickname" placeholder="Optional">
-              </label>
-              <button class="btn btn-primary" type="submit">Save Steam ID</button>
-            </form>
-          </details>
+          <div class="form-status warning">Steam sign-in is required so Raidlands can confirm account ownership.</div>
         <?php endif; ?>
 
         <?php if (!$database_ready) : ?>
@@ -112,10 +93,10 @@ $linked_player_profile_url = $linked_player !== null ? trim((string) ($linked_pl
     <div class="section-header">
       <p class="section-kicker">Account rules</p>
       <h2>One Steam account per profile</h2>
-      <p class="section-lede">Steam sign-in is the fastest path. Manual entry stays available if the Steam window does not finish.</p>
+      <p class="section-lede">Steam sign-in confirms ownership before Raidlands uses the account for profiles, VIP access, and admin approval checks.</p>
     </div>
     <div class="grid three">
-      <?= render_card('ID', 'Steam account', 'Purchases attach to the same Rust player account.') ?>
+      <?= render_card('ID', 'Steam account', 'Purchases attach to the Rust player account confirmed by Steam.') ?>
       <?= render_card('ROLE', 'In-game access', 'Active VIP and perks are applied to your player in game.') ?>
       <?= render_card('STAT', 'Profile ready', 'The profile page shows active VIP, perks, and expirations.') ?>
     </div>

@@ -506,7 +506,7 @@ function render_auth_card(string $provider): string
             ? 'Steam ID ' . (string) $linked_player['steam_id64'] . ' is connected on this browser.'
             : $label . ' connection is not live yet. Your account page is ready for Steam access.')
         : ($provider === 'steam'
-            ? 'Use Steam sign-in first. You can enter your Steam ID manually if the Steam window does not finish.'
+            ? 'Use Steam sign-in to confirm account ownership before linking.'
             : $label . ' connection is not live yet.');
     $link_button = $linked_player !== null
         ? '<a class="btn ' . e($button_class) . '" href="' . e(route_url('profile')) . '">View Account</a>'

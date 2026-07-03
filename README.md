@@ -56,7 +56,7 @@ over `.env` and stay ignored by Git.
 
 Live server status is served by `api/server-status.php`. It reads the public BattleMetrics server record, caches it briefly, and falls back to the config values above if BattleMetrics is unreachable.
 
-Steam account linking starts with native Steam OpenID and falls back to manual SteamID64 entry if Steam cannot return a verified response. Discord linking buttons remain ready for a future OAuth URL.
+Steam account linking uses native Steam OpenID only. Manual SteamID64 entry is intentionally disabled so users can only link accounts Steam has verified they own. Discord linking buttons remain ready for a future OAuth URL.
 
 Steam avatars and profile links are only fetched when `RAIDLANDS_STEAM_API_KEY` is set in `.env`. Without that key, account and leaderboard pages render without Steam profile metadata.
 

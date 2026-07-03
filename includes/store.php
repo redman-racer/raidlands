@@ -71,6 +71,30 @@ function raidlands_store_validate_steam_id64(string $steam_id64): bool
     return preg_match('/^7656119[0-9]{10}$/', $steam_id64) === 1;
 }
 
+function raidlands_store_verified_session_fields(string $verified_at = ''): array
+{
+    $verified_at = trim($verified_at);
+
+    return [
+        'steam_openid_verified' => true,
+        'steam_auth_provider' => 'steam_openid',
+        'steam_verified_at' => $verified_at !== '' ? $verified_at : gmdate(DATE_ATOM),
+    ];
+}
+
+function raidlands_store_session_has_verified_steam($session_player): bool
+{
+    if (!is_array($session_player)) {
+        return false;
+    }
+
+    $steam_id64 = preg_replace('/\D+/', '', (string) ($session_player['steam_id64'] ?? '')) ?? '';
+
+    return raidlands_store_validate_steam_id64($steam_id64)
+        && !empty($session_player['steam_openid_verified'])
+        && (string) ($session_player['steam_auth_provider'] ?? '') === 'steam_openid';
+}
+
 function raidlands_store_steam_api_key(): string
 {
     global $steam_api_config;
@@ -774,8 +798,15 @@ function raidlands_store_current_player(): ?array
         return null;
     }
 
+    if (!raidlands_store_session_has_verified_steam($session_player)) {
+        unset($_SESSION['raidlands_player']);
+        return null;
+    }
+
+    $verified_session_fields = raidlands_store_verified_session_fields((string) ($session_player['steam_verified_at'] ?? ''));
+
     if (!raidlands_db_is_configured()) {
-        return $session_player;
+        return array_merge($session_player, $verified_session_fields);
     }
 
     try {
@@ -786,17 +817,18 @@ function raidlands_store_current_player(): ?array
 
         if ($row !== null) {
             $row = raidlands_store_attach_steam_profiles([$row])[0] ?? $row;
+            $row = array_merge($row, $verified_session_fields);
             $_SESSION['raidlands_player'] = $row;
             return $row;
         }
     } catch (Throwable $error) {
-        return $session_player;
+        return array_merge($session_player, $verified_session_fields);
     }
 
-    return $session_player;
+    return array_merge($session_player, $verified_session_fields);
 }
 
-function raidlands_store_link_player(string $steam_id64, string $display_name = ''): array
+function raidlands_store_link_verified_player(string $steam_id64): array
 {
     raidlands_store_boot();
     $steam_id64 = preg_replace('/\D+/', '', $steam_id64) ?? '';
@@ -806,12 +838,13 @@ function raidlands_store_link_player(string $steam_id64, string $display_name = 
     }
 
     $steam_profile = raidlands_store_fetch_steam_profile($steam_id64);
-    $display_name = trim($display_name);
+    $display_name = '';
 
     if ($display_name === '' && !empty($steam_profile['display_name'])) {
         $display_name = (string) $steam_profile['display_name'];
     }
 
+    $verified_session_fields = raidlands_store_verified_session_fields();
     $player = [
         'id' => null,
         'steam_id64' => $steam_id64,
@@ -819,7 +852,7 @@ function raidlands_store_link_player(string $steam_id64, string $display_name = 
         'steam_display_name' => (string) ($steam_profile['display_name'] ?? ''),
         'steam_avatar_url' => (string) ($steam_profile['avatar_url'] ?? ''),
         'steam_profile_url' => (string) ($steam_profile['profile_url'] ?? ''),
-    ];
+    ] + $verified_session_fields;
 
     if (raidlands_db_is_configured()) {
         $pdo = raidlands_db_required();
@@ -854,15 +887,24 @@ function raidlands_store_link_player(string $steam_id64, string $display_name = 
 
             $pdo->commit();
             $player = raidlands_store_attach_steam_profiles([$row])[0] ?? $row;
+            $player = array_merge($player, $verified_session_fields);
         } catch (Throwable $error) {
             $pdo->rollBack();
             throw $error;
         }
     }
 
+    if (!headers_sent()) {
+        session_regenerate_id(true);
+    }
     $_SESSION['raidlands_player'] = $player;
 
     return $player;
+}
+
+function raidlands_store_link_player(string $steam_id64, string $display_name = ''): array
+{
+    throw new RuntimeException('Steam accounts must be linked through Steam sign-in.');
 }
 
 function raidlands_store_current_origin(): string
@@ -996,10 +1038,10 @@ function raidlands_store_steam_openid_verify(): array
     }
 
     if ($response === false || !str_contains($response, 'is_valid:true')) {
-        throw new RuntimeException('Steam did not confirm the sign-in. Enter your Steam ID manually for now.');
+        throw new RuntimeException('Steam did not confirm the sign-in. Try Steam sign-in again.');
     }
 
-    return raidlands_store_link_player((string) $matches[1]);
+    return raidlands_store_link_verified_player((string) $matches[1]);
 }
 
 function raidlands_store_unlink_player(): void

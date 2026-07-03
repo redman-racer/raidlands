@@ -12,7 +12,7 @@ using Oxide.Core.Libraries.Covalence;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteVipBridge", "Raidlands", "1.4.1")]
+    [Info("WebsiteVipBridge", "Raidlands", "1.4.2")]
     [Description("Syncs website VIP entitlements and player stats between Raidlands.net and the Rust server.")]
     public class WebsiteVipBridge : CovalencePlugin
     {
@@ -310,13 +310,13 @@ namespace Oxide.Plugins
             StartPermissionSync();
 
             var interval = Math.Max(30, config.SyncIntervalSeconds);
-            syncTimer = timer.Every(interval, SyncChanges);
+            syncTimer = timer.Every(interval, () => RunScheduled("VIP change sync timer", SyncChanges));
 
             if (config.StatsEnabled)
             {
                 var statsInterval = Math.Max(60, config.StatsSyncIntervalSeconds);
-                timer.Once(10f, SyncStatsSnapshot);
-                statsTimer = timer.Every(statsInterval, SyncStatsSnapshot);
+                timer.Once(10f, () => RunScheduled("Initial stats sync", SyncStatsSnapshot));
+                statsTimer = timer.Every(statsInterval, () => RunScheduled("Stats sync timer", SyncStatsSnapshot));
                 Puts($"WebsiteVipBridge syncing VIP every {interval} seconds and stats every {statsInterval} seconds.");
                 return;
             }
@@ -567,7 +567,7 @@ namespace Oxide.Plugins
 
                 foreach (var player in payload.players ?? new List<PlayerState>())
                 {
-                    if (string.IsNullOrWhiteSpace(player.steam_id64))
+                    if (player == null || string.IsNullOrWhiteSpace(player.steam_id64))
                     {
                         continue;
                     }
@@ -590,7 +590,7 @@ namespace Oxide.Plugins
             }
 
             pendingStatsTimer?.Destroy();
-            pendingStatsTimer = timer.Once(Math.Max(5, config.StatsDebounceSeconds), SyncStatsSnapshot);
+            pendingStatsTimer = timer.Once(Math.Max(5, config.StatsDebounceSeconds), () => RunScheduled("Queued stats sync", SyncStatsSnapshot));
         }
 
         private void SyncStatsSnapshot()
@@ -791,9 +791,9 @@ namespace Oxide.Plugins
             }
 
             var interval = Math.Max(60, config.KitSyncIntervalSeconds);
-            pendingKitSnapshotTimer = timer.Once(15f, PostKitSnapshot);
-            timer.Once(25f, SyncKits);
-            kitSyncTimer = timer.Every(interval, SyncKits);
+            pendingKitSnapshotTimer = timer.Once(15f, () => RunScheduled("Initial kit snapshot", PostKitSnapshot));
+            timer.Once(25f, () => RunScheduled("Initial kit sync", SyncKits));
+            kitSyncTimer = timer.Every(interval, () => RunScheduled("Kit sync timer", SyncKits));
             Puts($"WebsiteVipBridge syncing kits every {interval} seconds.");
         }
 
@@ -883,6 +883,7 @@ namespace Oxide.Plugins
                         kitRevision = payload.revision;
                     }
 
+                    Puts($"Kit sync has no update; website revision={payload.revision}, local revision={kitRevision}.");
                     return;
                 }
 
@@ -1076,11 +1077,11 @@ namespace Oxide.Plugins
             kitRevision = payload.revision;
             ReloadKitPlugins();
 
-            timer.Once(3f, () =>
+            timer.Once(3f, () => RunScheduled("Post-kit permission sync", () =>
             {
                 SyncPermissions();
                 PostKitSyncResult(payload.revision, true, $"Applied kit revision {payload.revision}; backups: {string.Join(", ", backups.Select(Path.GetFileName).ToArray())}");
-            });
+            }));
         }
 
         private JObject NormalizeKitForData(JObject source)
@@ -1310,9 +1311,9 @@ namespace Oxide.Plugins
             }
 
             var interval = Math.Max(60, config.PermissionSyncIntervalSeconds);
-            pendingPermissionSnapshotTimer = timer.Once(20f, PostPermissionSnapshot);
-            timer.Once(30f, SyncPermissions);
-            permissionSyncTimer = timer.Every(interval, SyncPermissions);
+            pendingPermissionSnapshotTimer = timer.Once(20f, () => RunScheduled("Initial permission snapshot", PostPermissionSnapshot));
+            timer.Once(30f, () => RunScheduled("Initial permission sync", SyncPermissions));
+            permissionSyncTimer = timer.Every(interval, () => RunScheduled("Permission sync timer", SyncPermissions));
             Puts($"WebsiteVipBridge syncing permissions every {interval} seconds.");
         }
 
@@ -1402,6 +1403,7 @@ namespace Oxide.Plugins
                         permissionRevision = payload.revision;
                     }
 
+                    Puts($"Permission sync has no update; website revision={payload.revision}, local revision={permissionRevision}.");
                     return;
                 }
 
@@ -2624,14 +2626,38 @@ namespace Oxide.Plugins
         private void SendGet(string url, Action<int, string> callback)
         {
             var headers = BuildHeaders("GET", url, "");
-            webrequest.Enqueue(url, null, (code, response) => callback(code, response), this, RequestMethod.GET, headers);
+            webrequest.Enqueue(url, null, (code, response) => RunWebCallback($"GET {url}", callback, code, response), this, RequestMethod.GET, headers);
         }
 
         private void SendPost(string url, string body, Action<int, string> callback)
         {
             var headers = BuildHeaders("POST", url, body);
             headers["Content-Type"] = "application/json";
-            webrequest.Enqueue(url, body, (code, response) => callback(code, response), this, RequestMethod.POST, headers);
+            webrequest.Enqueue(url, body, (code, response) => RunWebCallback($"POST {url}", callback, code, response), this, RequestMethod.POST, headers);
+        }
+
+        private void RunWebCallback(string context, Action<int, string> callback, int code, string response)
+        {
+            try
+            {
+                callback?.Invoke(code, response ?? "");
+            }
+            catch (Exception ex)
+            {
+                PrintWarning($"{context} callback failed: {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}");
+            }
+        }
+
+        private void RunScheduled(string context, Action action)
+        {
+            try
+            {
+                action?.Invoke();
+            }
+            catch (Exception ex)
+            {
+                PrintWarning($"{context} failed: {ex.GetType().Name}: {ex.Message}\n{ex.StackTrace}");
+            }
         }
 
         private Dictionary<string, string> BuildHeaders(string method, string url, string body)
