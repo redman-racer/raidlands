@@ -36,6 +36,17 @@
   text-transform: uppercase;
 }
 
+.admin-body .admin-kit-picker-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.admin-body .admin-kit-picker-head > div {
+  min-width: 0;
+}
+
 .admin-body .admin-kit-picker-head p {
   margin: 5px 0 0;
   color: var(--muted);

@@ -73,15 +73,20 @@ The store uses MySQL as the source of truth and Stripe Checkout for payments.
 4. Run `database/migrations/002_player_stats.sql`.
 5. Run `database/migrations/004_clan_management.sql`.
 6. Run `database/migrations/005_clan_api_keys.sql`.
-7. Run `database/migrations/007_admin_auth.sql`.
-8. Run `database/migrations/009_server_status.sql`.
-9. Run `database/migrations/010_server_status_samples.sql`.
-10. Run `database/migrations/011_server_status_rollups.sql`.
-11. Run `database/seeds/001_store_products.sql`.
-12. Copy `.env.example` to `.env`.
-13. Fill in MySQL, Stripe, Steam API, bridge secret, and clan API limit values.
-14. Add at least one owner SteamID64 to `admin_users` and `admin_user_roles`.
-15. Configure product Stripe Price IDs in `/admin/?section=store`.
+7. Run `database/migrations/006_game_kits.sql`.
+8. Run `database/migrations/007_admin_auth.sql`.
+9. Run `database/migrations/008_oxide_permissions.sql`.
+10. Run `database/migrations/009_server_status.sql`.
+11. Run `database/migrations/010_server_status_samples.sql`.
+12. Run `database/migrations/011_server_status_rollups.sql`.
+13. Run `database/migrations/012_rp_shop.sql`.
+14. Run `database/seeds/001_store_products.sql`.
+15. Run `database/migrations/013_pvp_kit_permission_cleanup.sql`.
+16. Run `database/migrations/014_kit_group_delete_tombstones.sql`.
+17. Copy `.env.example` to `.env`.
+18. Fill in MySQL, Stripe, Steam API, bridge secret, and clan API limit values.
+19. Add at least one owner SteamID64 to `admin_users` and `admin_user_roles`.
+20. Configure product Stripe Price IDs in `/admin/?section=store`.
 
 Public store flow:
 
@@ -89,6 +94,7 @@ Public store flow:
 - `/store/` lists monthly VIP tiers and one-time perks.
 - `/store/checkout.php` creates Stripe Checkout Sessions.
 - `/api/stripe-webhook.php` records paid orders, subscriptions, refunds, and entitlement changes.
+- Store products use their Linked group as the direct server access group for purchases and manual grants.
 - `/profile/` shows active groups and entitlement history for the linked SteamID64.
 - `/clans/` resolves the linked SteamID64 to synced clan data, queues allowed clan actions, and creates/revokes public clan API keys.
 - `/api-docs/` documents the public clan API for external websites and Discord bots.

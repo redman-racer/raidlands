@@ -163,6 +163,17 @@ ON DUPLICATE KEY UPDATE
   sort_order = VALUES(sort_order),
   updated_at = NOW();
 
+INSERT INTO product_fulfillment_actions
+  (product_id, action_type, oxide_group, sort_order)
+SELECT p.id, 'grant_group', p.oxide_group, 10
+FROM store_products p
+WHERE p.slug IN ('pvp-kit-light', 'pvp-kit-rifle', 'pvp-kit-roamer', 'pvp-kit-heavy', 'pvp-kit-elite', 'pvp-kit-breach')
+  AND p.oxide_group <> ''
+ON DUPLICATE KEY UPDATE
+  oxide_group = VALUES(oxide_group),
+  sort_order = VALUES(sort_order),
+  updated_at = NOW();
+
 INSERT INTO store_prices
   (product_id, payment_method, stripe_price_id, label, amount_cents, currency, rp_cost, billing_interval, access_interval, access_duration_seconds, allow_auto_renew, is_active, is_default)
 SELECT

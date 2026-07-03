@@ -16,8 +16,9 @@
 12. Run `database/migrations/012_rp_shop.sql`.
 13. Run `database/seeds/001_store_products.sql`.
 14. Run `database/migrations/013_pvp_kit_permission_cleanup.sql`.
-15. Copy the root `.env.example` file to `.env`.
-16. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
+15. Run `database/migrations/014_kit_group_delete_tombstones.sql`.
+16. Copy the root `.env.example` file to `.env`.
+17. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
 
 The root `.env` file is ignored by Git and protected from direct web access by the root `.htaccess`.
 
@@ -39,6 +40,7 @@ Cash checkout is intentionally inactive for the RP-first launch.
 ## RP shop
 
 - Admin > Store controls RP offers per product: RP cost, active flag, duration, and optional auto-renew for VIP packages.
+- Each store product must have a Linked group. Purchases and manual grants attach that product directly to the group, and WebsiteVipBridge syncs the resulting entitlement group to the server.
 - The website queues RP purchases first. `WebsiteVipBridge` polls `/api/server/rp-purchases.php`, verifies and deducts live ServerRewards RP, then posts the result to `/api/server/rp-purchase-result.php`.
 - Entitlements activate only after the bridge confirms the debit.
 - Fixed purchases with insufficient RP are rejected. Auto-renew renewals with insufficient RP become past due and the current entitlement expires normally.

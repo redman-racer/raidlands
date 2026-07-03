@@ -5434,6 +5434,27 @@ button.admin-permission-chip:focus-visible {
   text-transform: uppercase;
 }
 
+.admin-kit-picker-head,
+.admin-group-picker-head {
+  display: flex;
+  align-items: start;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.admin-kit-picker-head > div,
+.admin-group-picker-head > div {
+  min-width: 0;
+}
+
+.admin-kit-picker-head .btn,
+.admin-group-picker-head .btn {
+  min-height: 34px;
+  padding: 8px 10px;
+  flex: 0 0 auto;
+  font-size: .72rem;
+}
+
 .admin-kit-picker-head p {
   margin: 5px 0 0;
   color: var(--muted);
@@ -5685,6 +5706,44 @@ button.admin-permission-chip:focus-visible {
 .admin-store-details > .admin-rp-offer-grid,
 .admin-store-details > .admin-check-grid {
   padding: 0 16px 16px;
+}
+
+.admin-store-group-link {
+  display: grid;
+  gap: 5px;
+  margin-top: 9px;
+  padding: 10px 12px;
+  border: 1px solid rgba(126, 231, 135, .28);
+  border-radius: 6px;
+  background: rgba(26, 115, 55, .14);
+}
+
+.admin-store-group-link.is-warning {
+  border-color: rgba(255, 209, 102, .36);
+  background: rgba(255, 209, 102, .1);
+}
+
+.admin-store-group-link span {
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: .72rem;
+  font-weight: 800;
+  letter-spacing: 0;
+  text-transform: uppercase;
+}
+
+.admin-store-group-link strong {
+  color: var(--white);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  line-height: 1;
+}
+
+.admin-store-group-link p {
+  margin: 0;
+  color: var(--muted);
+  font-size: .82rem;
+  line-height: 1.35;
 }
 
 .admin-store-basic-grid .admin-check-field,

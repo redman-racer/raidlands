@@ -116,6 +116,7 @@
   function initGroupEditor(editor) {
     const panels = toArray(editor.querySelectorAll("[data-group-panel]"));
     const selectors = toArray(editor.querySelectorAll("[data-group-select]"));
+    const addButton = editor.querySelector("[data-group-add]");
     const activePanel = panels.find(panel => panel.classList.contains("is-active")) || panels[0];
     let activeIndex = activePanel ? activePanel.getAttribute("data-group-index") || "0" : "0";
 
@@ -144,6 +145,27 @@
           selector.removeAttribute("aria-current");
         }
       });
+    }
+
+    function activateDraftGroup() {
+      const draftPanel = panels.find(panel => {
+        const idInput = panel.querySelector('input[name$="[id]"]');
+
+        return idInput && !idInput.value;
+      }) || panels[panels.length - 1];
+
+      if (!draftPanel) {
+        return;
+      }
+
+      activateGroup(draftPanel.getAttribute("data-group-index") || "0");
+
+      const nameInput = draftPanel.querySelector("[data-group-name-input]");
+
+      if (nameInput) {
+        nameInput.focus();
+        nameInput.select();
+      }
     }
 
     function updateGroupTitle(input) {
@@ -189,6 +211,10 @@
         input.addEventListener("input", () => updateGroupTitle(input));
       });
     });
+
+    if (addButton) {
+      addButton.addEventListener("click", activateDraftGroup);
+    }
 
     activateGroup(activeIndex);
   }

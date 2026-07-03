@@ -1291,6 +1291,28 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                         $admin_store_price_labels = [];
                         $admin_store_currencies = [];
                         $admin_store_groups = raidlands_store_managed_groups();
+                        $admin_store_group_details = [];
+
+                        if (function_exists('raidlands_permissions_group_rows')) {
+                            try {
+                                foreach (raidlands_permissions_group_rows() as $group_row) {
+                                    $group_name = raidlands_store_clean_group($group_row['group_name'] ?? '');
+
+                                    if ($group_name === '' || !empty($group_row['is_read_only'])) {
+                                        continue;
+                                    }
+
+                                    $admin_store_group_details[$group_name] = [
+                                        'category' => (string) ($group_row['category'] ?? 'custom'),
+                                        'is_managed' => !empty($group_row['is_managed']),
+                                        'is_active' => !empty($group_row['is_active']),
+                                    ];
+                                    $admin_store_groups[] = $group_name;
+                                }
+                            } catch (Throwable $error) {
+                                $admin_store_group_details = [];
+                            }
+                        }
 
                         foreach ($product_rows as $product_row) {
                             $admin_store_price_labels[] = (string) ($product_row['price_label'] ?? '');
@@ -1298,9 +1320,24 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             $admin_store_groups[] = (string) ($product_row['oxide_group'] ?? '');
                         }
 
+                        $admin_store_group_options = [];
+
+                        foreach ($admin_store_group_details as $group_name => $group_detail) {
+                            $category = trim((string) ($group_detail['category'] ?? 'custom')) ?: 'custom';
+                            $admin_store_group_options[$group_name] = $group_name . ' (' . $category . ')';
+                        }
+
+                        foreach ($admin_store_groups as $group_name) {
+                            $group_name = raidlands_store_clean_group($group_name);
+
+                            if ($group_name !== '' && !isset($admin_store_group_options[$group_name])) {
+                                $admin_store_group_options[$group_name] = $group_name;
+                            }
+                        }
+
                         echo admin_render_datalist('admin-price-label-options', admin_price_label_options($admin_store_price_labels));
                         echo admin_render_datalist('admin-currency-options', admin_currency_options($admin_store_currencies));
-                        echo admin_render_datalist('admin-oxide-group-options', admin_option_map($admin_store_groups));
+                        echo admin_render_datalist('admin-oxide-group-options', $admin_store_group_options);
 
                         $product_total = count($product_rows) + 2;
                         $store_selector_items = [];
@@ -1344,7 +1381,10 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             $store_has_active_panel = true;
                             $store_title = trim((string) ($row['name'] ?? ''));
                             $store_label = $store_title !== '' ? $store_title : 'New Store Product';
-                            $store_group = trim((string) ($row['oxide_group'] ?? ''));
+                            $store_group_raw = trim((string) ($row['oxide_group'] ?? ''));
+                            $store_group = raidlands_store_clean_group($store_group_raw);
+                            $store_group_display = $store_group !== '' ? $store_group : $store_group_raw;
+                            $store_group_detail = $store_group !== '' ? ($admin_store_group_details[$store_group] ?? null) : null;
                             $store_status = $store_is_existing ? (!empty($row['is_active']) ? 'Active' : 'Inactive') : 'Draft slot';
                             $store_rp_active_count = 0;
                             foreach ($rp_prices as $rp_price_summary_row) {
@@ -1356,7 +1396,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 'id' => $store_panel_id,
                                 'index' => (string) $index,
                                 'label' => $store_label,
-                                'meta' => $store_status . ' / ' . ($store_group !== '' ? $store_group : 'No group') . ' / ' . $store_rp_active_count . ' RP offer' . ($store_rp_active_count === 1 ? '' : 's'),
+                                'meta' => $store_status . ' / ' . ($store_group_display !== '' ? $store_group_display : 'No group') . ' / ' . $store_rp_active_count . ' RP offer' . ($store_rp_active_count === 1 ? '' : 's'),
                                 'is_active' => $store_is_active_panel,
                                 'is_draft' => !$store_is_existing,
                             ];
@@ -1372,7 +1412,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             <div class="admin-repeat-card-head">
                               <div>
                                 <h3 data-admin-store-card-title><?= e($store_label) ?></h3>
-                                <p class="admin-feedback-subtitle"><?= e($store_status) ?> / <?= e($store_group !== '' ? $store_group : 'No group selected') ?></p>
+                                <p class="admin-feedback-subtitle"><?= e($store_status) ?> / <?= e($store_group_display !== '' ? $store_group_display : 'No group selected') ?></p>
                               </div>
                               <?php if (!empty($row['id'])) : ?>
                                 <label class="admin-check admin-delete-check">
@@ -1401,9 +1441,22 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                     </select>
                                   </label>
                                   <label class="admin-field">
-                                    <?= admin_field_head('Oxide group', 'WebsiteVipBridge adds this managed group while the entitlement is active.') ?>
-                                    <input type="text" list="admin-oxide-group-options" name="store_products[<?= e((string) $index) ?>][oxide_group]" maxlength="120" placeholder="vip_bronze" value="<?= e((string) ($row['oxide_group'] ?? '')) ?>">
-                                    <?= admin_hint('Use a group that also exists in the bridge managed group list, or add it to bridge config before relying on sync.') ?>
+                                    <?= admin_field_head('Linked group', 'Purchases and manual grants create entitlements for this exact server access group.') ?>
+                                    <input type="text" list="admin-oxide-group-options" name="store_products[<?= e((string) $index) ?>][oxide_group]" maxlength="120" pattern="[a-z0-9_-]+" placeholder="vip_bronze" value="<?= e($store_group_display) ?>">
+                                    <?= admin_hint(raidlands_store_group_rule_hint() . ' Saving a new value also adds it to the managed group catalog when the Groups tables are installed.') ?>
+                                    <?php if ($store_group_display !== '') : ?>
+                                      <div class="admin-store-group-link<?= $store_group === '' ? ' is-warning' : '' ?>">
+                                        <span>Store item grants</span>
+                                        <strong><code><?= e($store_group_display) ?></code></strong>
+                                        <?php if ($store_group === '') : ?>
+                                          <p>This value will not sync until it matches the bridge-safe group format.</p>
+                                        <?php elseif ($store_group_detail !== null) : ?>
+                                          <p><?= !empty($store_group_detail['is_managed']) ? 'Existing managed' : 'Existing' ?> <?= e((string) ($store_group_detail['category'] ?? 'custom')) ?> group. Entitlements grant this group directly while active.</p>
+                                        <?php else : ?>
+                                          <p>This group will be added as a managed store group on save.</p>
+                                        <?php endif; ?>
+                                      </div>
+                                    <?php endif; ?>
                                   </label>
                                   <label class="admin-field">
                                     <?= admin_field_head('Tier priority', 'Higher VIP priority revokes lower active VIP tier entitlements for the same player.') ?>
@@ -2458,28 +2511,37 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                     <?php elseif (empty($admin_store_catalog['products'])) : ?>
                       <div class="admin-alert warning">No products are available to grant yet. Add at least one active store product with an Oxide group before using manual grants.</div>
                     <?php else : ?>
-                      <?php $admin_grant_products = array_values($admin_store_catalog['products']); ?>
-                      <div class="admin-grid two">
-                        <label class="admin-field">
-                          <?= admin_field_head('SteamID64', 'The 17-digit Rust player ID that should receive this entitlement.') ?>
-                          <input type="text" name="steam_id64" inputmode="numeric" pattern="[0-9]{17}" maxlength="17" placeholder="7656119XXXXXXXXXX" required>
-                          <?= admin_hint('Manual grants link directly to the selected player. Double-check the ID before saving.') ?>
-                        </label>
-                        <label class="admin-field">
-                          <?= admin_field_head('Product', 'The selected product controls the Oxide group WebsiteVipBridge will sync.') ?>
-                          <select name="product_id" required>
-                            <option value="" disabled selected>Choose a product to grant</option>
-                            <?php foreach ($admin_grant_products as $product) : ?>
-                              <option value="<?= e((string) $product['id']) ?>"><?= e((string) $product['name']) ?> (<?= e((string) $product['oxide_group']) ?>)</option>
-                            <?php endforeach; ?>
-                          </select>
-                        </label>
-                        <label class="admin-field">
-                          <?= admin_field_head('Ends at', 'Optional MySQL datetime such as 2026-07-31 23:59:59. Leave blank for no scheduled expiration.') ?>
-                          <input type="text" name="ends_at" placeholder="YYYY-MM-DD HH:MM:SS">
-                          <?= admin_hint('Monthly VIP should usually have an end date. Permanent one-time perks can stay blank.') ?>
-                        </label>
-                      </div>
+                      <?php
+                        $admin_grant_products = array_values(array_filter(
+                            $admin_store_catalog['products'],
+                            static fn (array $product): bool => raidlands_store_clean_group($product['oxide_group'] ?? '') !== ''
+                        ));
+                      ?>
+                      <?php if ($admin_grant_products === []) : ?>
+                        <div class="admin-alert warning">No products with a valid linked group are available to grant yet.</div>
+                      <?php else : ?>
+                        <div class="admin-grid two">
+                          <label class="admin-field">
+                            <?= admin_field_head('SteamID64', 'The 17-digit Rust player ID that should receive this entitlement.') ?>
+                            <input type="text" name="steam_id64" inputmode="numeric" pattern="[0-9]{17}" maxlength="17" placeholder="7656119XXXXXXXXXX" required>
+                            <?= admin_hint('Manual grants link directly to the selected player. Double-check the ID before saving.') ?>
+                          </label>
+                          <label class="admin-field">
+                            <?= admin_field_head('Product', 'The selected product controls the server access group WebsiteVipBridge will sync.') ?>
+                            <select name="product_id" required>
+                              <option value="" disabled selected>Choose a product to grant</option>
+                              <?php foreach ($admin_grant_products as $product) : ?>
+                                <option value="<?= e((string) $product['id']) ?>"><?= e((string) $product['name']) ?> (<?= e((string) $product['oxide_group']) ?>)</option>
+                              <?php endforeach; ?>
+                            </select>
+                          </label>
+                          <label class="admin-field">
+                            <?= admin_field_head('Ends at', 'Optional MySQL datetime such as 2026-07-31 23:59:59. Leave blank for no scheduled expiration.') ?>
+                            <input type="text" name="ends_at" placeholder="YYYY-MM-DD HH:MM:SS">
+                            <?= admin_hint('Monthly VIP should usually have an end date. Permanent one-time perks can stay blank.') ?>
+                          </label>
+                        </div>
+                      <?php endif; ?>
                     <?php endif; ?>
                   </section>
                 <?php endif; ?>

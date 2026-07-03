@@ -8,6 +8,7 @@
   var form = editor.closest('form');
   var panels = Array.prototype.slice.call(editor.querySelectorAll('[data-kit-panel]'));
   var selectors = Array.prototype.slice.call(editor.querySelectorAll('[data-kit-select]'));
+  var addButton = editor.querySelector('[data-kit-add]');
   var expectedInput = form ? form.querySelector('input[name="kit_expected_items"]') : null;
   var saveModeInput = form ? form.querySelector('[data-kit-save-mode]') : null;
   var catalog = [];
@@ -219,6 +220,28 @@
     });
 
     updateExpectedInput();
+  }
+
+  function activateDraftKit() {
+    var draftPanel = panels.find(function (panel) {
+      var idInput = panel.querySelector('input[name$="[id]"]');
+
+      return idInput && !idInput.value;
+    }) || panels[panels.length - 1];
+
+    if (!draftPanel) {
+      return;
+    }
+
+    activateKit(draftPanel.getAttribute('data-kit-index') || '0');
+    markPanelDirty(draftPanel);
+
+    var nameInput = draftPanel.querySelector('[data-kit-name-input]');
+
+    if (nameInput) {
+      nameInput.focus();
+      nameInput.select();
+    }
   }
 
   function updateKitTitle(input) {
@@ -965,6 +988,10 @@
       activateKit(selector.getAttribute('data-kit-index'));
     });
   });
+
+  if (addButton) {
+    addButton.addEventListener('click', activateDraftKit);
+  }
 
   panels.forEach(function (panel) {
     Array.prototype.slice.call(panel.querySelectorAll('[data-kit-name-input]')).forEach(function (input) {

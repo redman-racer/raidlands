@@ -500,6 +500,9 @@ function raidlands_permissions_deleted_group_names(): array
         'SELECT group_name
          FROM oxide_groups
          WHERE deleted_at IS NOT NULL
+           AND is_read_only = 0
+           AND is_protected = 0
+           AND group_name NOT IN ("default", "discord", "admin", "authenticated")
          ORDER BY group_name ASC'
     );
     $groups = array_map(static fn (array $row): string => (string) ($row['group_name'] ?? ''), $rows);

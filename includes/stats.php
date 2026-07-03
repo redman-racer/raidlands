@@ -455,6 +455,8 @@ function raidlands_stats_player_summary(int $player_id): array
         return ['current' => null, 'all_time' => null];
     }
 
+    raidlands_store_refresh_reported_rp_balance($player_id);
+
     $wipe = raidlands_stats_active_wipe();
     $current = null;
 
