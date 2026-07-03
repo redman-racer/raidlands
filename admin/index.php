@@ -1325,70 +1325,49 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 </label>
                               <?php endif; ?>
                             </div>
-                            <div class="admin-grid three">
-                              <label class="admin-field">
-                                <?= admin_field_head('Slug', 'Stable store identifier used by admin and support. Keep lowercase with hyphens.') ?>
-                                <input type="text" name="store_products[<?= e((string) $index) ?>][slug]" maxlength="120" placeholder="vip-bronze" value="<?= e((string) ($row['slug'] ?? '')) ?>">
-                                <?= admin_hint('Changing an existing slug can affect support lookups and saved Stripe metadata.') ?>
-                              </label>
-                              <label class="admin-field">
-                                <?= admin_field_head('Name', 'Product title shown to players.') ?>
-                                <input type="text" name="store_products[<?= e((string) $index) ?>][name]" maxlength="160" placeholder="Bronze VIP" value="<?= e((string) ($row['name'] ?? '')) ?>" data-admin-store-name-input>
-                              </label>
-                              <label class="admin-field">
-                                <?= admin_field_head('Type', 'VIP packages can expose daily, weekly, monthly, and yearly RP passes. Other product types create one-time unlocks.') ?>
-                                <select name="store_products[<?= e((string) $index) ?>][product_type]">
-                                  <?= admin_render_options(admin_product_type_options(), $product_type_value) ?>
-                                </select>
-                              </label>
-                              <label class="admin-field">
-                                <?= admin_field_head('Oxide group', 'WebsiteVipBridge adds this managed group while the entitlement is active.') ?>
-                                <input type="text" list="admin-oxide-group-options" name="store_products[<?= e((string) $index) ?>][oxide_group]" maxlength="120" placeholder="vip_bronze" value="<?= e((string) ($row['oxide_group'] ?? '')) ?>">
-                                <?= admin_hint('Use a group that also exists in the bridge managed group list, or add it to bridge config before relying on sync.') ?>
-                              </label>
-                              <label class="admin-field">
-                                <?= admin_field_head('Tier priority', 'Higher VIP priority revokes lower active VIP tier entitlements for the same player.') ?>
-                                <input type="number" min="0" max="999" name="store_products[<?= e((string) $index) ?>][tier_priority]" value="<?= e((string) ($row['tier_priority'] ?? 0)) ?>">
-                              </label>
-                              <label class="admin-field">
-                                <?= admin_field_head('Sort order', 'Lower products appear first on the public store.') ?>
-                                <input type="number" min="0" max="9999" name="store_products[<?= e((string) $index) ?>][sort_order]" value="<?= e((string) ($row['sort_order'] ?? 100)) ?>">
-                              </label>
-                              <label class="admin-field">
-                                <?= admin_field_head('Stripe Price ID', 'Use a real Stripe Price ID such as price_123 later when cash checkout is ready. Placeholder values keep cash unavailable.') ?>
-                                <input type="text" name="store_products[<?= e((string) $index) ?>][stripe_price_id]" maxlength="160" placeholder="price_..." value="<?= e((string) ($row['stripe_price_id'] ?? '')) ?>">
-                              </label>
-                              <label class="admin-field">
-                                <?= admin_field_head('Price label', 'Small label near the product price, such as Monthly or One-time.') ?>
-                                <input type="text" list="admin-price-label-options" name="store_products[<?= e((string) $index) ?>][price_label]" maxlength="120" placeholder="Monthly" value="<?= e((string) ($row['price_label'] ?? '')) ?>">
-                              </label>
-                              <label class="admin-field">
-                                <?= admin_field_head('Amount USD', 'Public display amount in dollars. Stripe still charges the configured Price ID amount.') ?>
-                                <input type="number" min="0" step="0.01" name="store_products[<?= e((string) $index) ?>][amount_dollars]" value="<?= e(number_format($amount_dollars, 2, '.', '')) ?>">
-                              </label>
-                              <label class="admin-field">
-                                <?= admin_field_head('Currency', 'Three-letter currency for display, usually usd.') ?>
-                                <input type="text" list="admin-currency-options" name="store_products[<?= e((string) $index) ?>][currency]" maxlength="3" placeholder="usd" value="<?= e((string) ($row['currency'] ?? 'usd')) ?>">
-                              </label>
-                              <label class="admin-check admin-check-field">
-                                <input type="checkbox" name="store_products[<?= e((string) $index) ?>][is_active]" value="1" <?= !empty($row['is_active']) ? 'checked' : '' ?>>
-                                <?= admin_check_copy('Product active', 'Controls whether this product can appear on the public store. Checkout also requires an active price.') ?>
-                              </label>
-                              <label class="admin-check admin-check-field">
-                                <input type="checkbox" name="store_products[<?= e((string) $index) ?>][price_is_active]" value="1" <?= !empty($row['price_is_active']) ? 'checked' : '' ?>>
-                                <?= admin_check_copy('Cash price active', 'Cash checkout remains unavailable until Stripe is configured and this price uses a real Stripe Price ID.') ?>
-                              </label>
-                              <label class="admin-check admin-check-field">
-                                <input type="checkbox" name="store_products[<?= e((string) $index) ?>][is_featured]" value="1" <?= !empty($row['is_featured']) ? 'checked' : '' ?>>
-                                <?= admin_check_copy('Featured', 'Featured products can be emphasized on future storefront layouts.') ?>
-                              </label>
-                              <label class="admin-check admin-check-field">
-                                <input type="checkbox" name="store_products[<?= e((string) $index) ?>][is_stackable]" value="1" <?= !empty($row['is_stackable']) ? 'checked' : '' ?>>
-                                <?= admin_check_copy('Stackable', 'One-time perks can stack. VIP tiers should usually be non-stackable.') ?>
-                              </label>
-                              <div class="admin-field admin-span-all">
-                                <?= admin_field_head('RP offers', 'RP is the launch payment method. Enable only offers with final RP costs.') ?>
-                                <div class="admin-rp-offer-grid">
+                            <div class="admin-store-section-stack">
+                              <details class="admin-details admin-store-details" open>
+                                <summary>Product setup <small>Identity, access group, and ordering</small></summary>
+                                <div class="admin-grid two admin-store-basic-grid">
+                                  <label class="admin-field">
+                                    <?= admin_field_head('Slug', 'Stable store identifier used by admin and support. Keep lowercase with hyphens.') ?>
+                                    <input type="text" name="store_products[<?= e((string) $index) ?>][slug]" maxlength="120" placeholder="vip-bronze" value="<?= e((string) ($row['slug'] ?? '')) ?>">
+                                    <?= admin_hint('Changing an existing slug can affect support lookups and saved Stripe metadata.') ?>
+                                  </label>
+                                  <label class="admin-field">
+                                    <?= admin_field_head('Name', 'Product title shown to players.') ?>
+                                    <input type="text" name="store_products[<?= e((string) $index) ?>][name]" maxlength="160" placeholder="Bronze VIP" value="<?= e((string) ($row['name'] ?? '')) ?>" data-admin-store-name-input>
+                                  </label>
+                                  <label class="admin-field">
+                                    <?= admin_field_head('Type', 'VIP packages can expose daily, weekly, monthly, and yearly RP passes. Other product types create one-time unlocks.') ?>
+                                    <select name="store_products[<?= e((string) $index) ?>][product_type]">
+                                      <?= admin_render_options(admin_product_type_options(), $product_type_value) ?>
+                                    </select>
+                                  </label>
+                                  <label class="admin-field">
+                                    <?= admin_field_head('Oxide group', 'WebsiteVipBridge adds this managed group while the entitlement is active.') ?>
+                                    <input type="text" list="admin-oxide-group-options" name="store_products[<?= e((string) $index) ?>][oxide_group]" maxlength="120" placeholder="vip_bronze" value="<?= e((string) ($row['oxide_group'] ?? '')) ?>">
+                                    <?= admin_hint('Use a group that also exists in the bridge managed group list, or add it to bridge config before relying on sync.') ?>
+                                  </label>
+                                  <label class="admin-field">
+                                    <?= admin_field_head('Tier priority', 'Higher VIP priority revokes lower active VIP tier entitlements for the same player.') ?>
+                                    <input type="number" min="0" max="999" name="store_products[<?= e((string) $index) ?>][tier_priority]" value="<?= e((string) ($row['tier_priority'] ?? 0)) ?>">
+                                  </label>
+                                  <label class="admin-field">
+                                    <?= admin_field_head('Sort order', 'Lower products appear first on the public store.') ?>
+                                    <input type="number" min="0" max="9999" name="store_products[<?= e((string) $index) ?>][sort_order]" value="<?= e((string) ($row['sort_order'] ?? 100)) ?>">
+                                  </label>
+                                  <label class="admin-check admin-check-field admin-span-all">
+                                    <input type="checkbox" name="store_products[<?= e((string) $index) ?>][is_active]" value="1" <?= !empty($row['is_active']) ? 'checked' : '' ?>>
+                                    <?= admin_check_copy('Product active', 'Controls whether this product can appear on the public store. Checkout also requires an active price.') ?>
+                                  </label>
+                                </div>
+                              </details>
+
+                              <details class="admin-details admin-store-details" open>
+                                <summary>RP offers <small>Launch pricing and renewal options</small></summary>
+                                <p class="admin-detail-note">RP is the launch payment method. Enable only offers with final RP costs.</p>
+                                <div class="admin-rp-offer-grid admin-store-rp-grid">
                                   <?php foreach ($rp_intervals as $rp_interval) : ?>
                                     <?php
                                       $rp_row = (array) ($rp_prices[$rp_interval] ?? []);
@@ -1418,13 +1397,56 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                     </article>
                                   <?php endforeach; ?>
                                 </div>
-                              </div>
-                              <div class="admin-field admin-span-all">
-                                <?= admin_field_head('Linked kits', 'Selected kits appear on this product card. Their group permissions still come from the Kits and Groups sections.') ?>
+                              </details>
+
+                              <details class="admin-details admin-store-details">
+                                <summary>Cash checkout <small>Stripe fields kept disabled until configured</small></summary>
+                                <p class="admin-detail-note">Cash checkout stays unavailable until Stripe credentials are configured and this product uses a real Stripe Price ID.</p>
+                                <div class="admin-grid two">
+                                  <label class="admin-field">
+                                    <?= admin_field_head('Stripe Price ID', 'Use a real Stripe Price ID such as price_123 later when cash checkout is ready. Placeholder values keep cash unavailable.') ?>
+                                    <input type="text" name="store_products[<?= e((string) $index) ?>][stripe_price_id]" maxlength="160" placeholder="price_..." value="<?= e((string) ($row['stripe_price_id'] ?? '')) ?>">
+                                  </label>
+                                  <label class="admin-field">
+                                    <?= admin_field_head('Price label', 'Small label near the product price, such as Monthly or One-time.') ?>
+                                    <input type="text" list="admin-price-label-options" name="store_products[<?= e((string) $index) ?>][price_label]" maxlength="120" placeholder="Monthly" value="<?= e((string) ($row['price_label'] ?? '')) ?>">
+                                  </label>
+                                  <label class="admin-field">
+                                    <?= admin_field_head('Amount USD', 'Public display amount in dollars. Stripe still charges the configured Price ID amount.') ?>
+                                    <input type="number" min="0" step="0.01" name="store_products[<?= e((string) $index) ?>][amount_dollars]" value="<?= e(number_format($amount_dollars, 2, '.', '')) ?>">
+                                  </label>
+                                  <label class="admin-field">
+                                    <?= admin_field_head('Currency', 'Three-letter currency for display, usually usd.') ?>
+                                    <input type="text" list="admin-currency-options" name="store_products[<?= e((string) $index) ?>][currency]" maxlength="3" placeholder="usd" value="<?= e((string) ($row['currency'] ?? 'usd')) ?>">
+                                  </label>
+                                  <label class="admin-check admin-check-field admin-span-all">
+                                    <input type="checkbox" name="store_products[<?= e((string) $index) ?>][price_is_active]" value="1" <?= !empty($row['price_is_active']) ? 'checked' : '' ?>>
+                                    <?= admin_check_copy('Cash price active', 'Cash checkout remains unavailable until Stripe is configured and this price uses a real Stripe Price ID.') ?>
+                                  </label>
+                                </div>
+                              </details>
+
+                              <details class="admin-details admin-store-details">
+                                <summary>Store flags <small>Featured placement and stacking behavior</small></summary>
+                                <div class="admin-grid two admin-store-toggle-grid">
+                                  <label class="admin-check admin-check-field">
+                                    <input type="checkbox" name="store_products[<?= e((string) $index) ?>][is_featured]" value="1" <?= !empty($row['is_featured']) ? 'checked' : '' ?>>
+                                    <?= admin_check_copy('Featured', 'Featured products can be emphasized on future storefront layouts.') ?>
+                                  </label>
+                                  <label class="admin-check admin-check-field">
+                                    <input type="checkbox" name="store_products[<?= e((string) $index) ?>][is_stackable]" value="1" <?= !empty($row['is_stackable']) ? 'checked' : '' ?>>
+                                    <?= admin_check_copy('Stackable', 'One-time perks can stack. VIP tiers should usually be non-stackable.') ?>
+                                  </label>
+                                </div>
+                              </details>
+
+                              <details class="admin-details admin-store-details">
+                                <summary>Linked kits <small>Package contents shown on the product card</small></summary>
+                                <p class="admin-detail-note">Selected kits appear on this product card. Their group permissions still come from the Kits and Groups sections.</p>
                                 <?php if ($admin_store_kit_options === []) : ?>
                                   <div class="admin-alert warning">Kit tables are not ready or no kits are available yet.</div>
                                 <?php else : ?>
-                                  <div class="admin-check-grid">
+                                  <div class="admin-check-grid admin-store-kit-grid">
                                     <?php foreach ($admin_store_kit_options as $kit_option) : ?>
                                       <?php $kit_id = (int) ($kit_option['id'] ?? 0); ?>
                                       <?php if ($kit_id <= 0) { continue; } ?>
@@ -1435,15 +1457,21 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                     <?php endforeach; ?>
                                   </div>
                                 <?php endif; ?>
-                              </div>
-                              <label class="admin-field admin-span-all">
-                                <?= admin_field_head('Short description', 'Brief copy shown on store cards.') ?>
-                                <input type="text" name="store_products[<?= e((string) $index) ?>][short_description]" maxlength="255" value="<?= e((string) ($row['short_description'] ?? '')) ?>">
-                              </label>
-                              <label class="admin-field admin-span-all">
-                                <?= admin_field_head('Full description', 'Longer admin/support note for what this product should grant.') ?>
-                                <textarea name="store_products[<?= e((string) $index) ?>][description]" rows="3"><?= e((string) ($row['description'] ?? '')) ?></textarea>
-                              </label>
+                              </details>
+
+                              <details class="admin-details admin-store-details">
+                                <summary>Store copy <small>Card text and support notes</small></summary>
+                                <div class="admin-grid">
+                                  <label class="admin-field">
+                                    <?= admin_field_head('Short description', 'Brief copy shown on store cards.') ?>
+                                    <input type="text" name="store_products[<?= e((string) $index) ?>][short_description]" maxlength="255" value="<?= e((string) ($row['short_description'] ?? '')) ?>">
+                                  </label>
+                                  <label class="admin-field">
+                                    <?= admin_field_head('Full description', 'Longer admin/support note for what this product should grant.') ?>
+                                    <textarea name="store_products[<?= e((string) $index) ?>][description]" rows="3"><?= e((string) ($row['description'] ?? '')) ?></textarea>
+                                  </label>
+                                </div>
+                              </details>
                             </div>
                           </article>
                         <?php endfor; ?>
