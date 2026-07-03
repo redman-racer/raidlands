@@ -456,7 +456,7 @@ function raidlands_kits_save_items(PDO $pdo, int $kit_id, array $item_rows): voi
             $insert->execute([
                 'kit_id' => $kit_id,
                 'container_name' => $container,
-                'position' => raidlands_kits_int($row['position'] ?? $index, 0, $container === 'main' ? 23 : ($container === 'wear' ? 7 : 5)),
+                'position' => raidlands_kits_int($row['position'] ?? $row['Position'] ?? $index, 0, $container === 'main' ? 23 : ($container === 'wear' ? 7 : 5)),
                 'shortname' => $shortname,
                 'display_name' => raidlands_kits_clean_text($row['display_name'] ?? $row['DisplayName'] ?? '', 160) ?: null,
                 'skin' => max(0, (int) ($row['skin'] ?? $row['Skin'] ?? $row['SkinID'] ?? 0)),
