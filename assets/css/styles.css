@@ -4445,6 +4445,62 @@ a.leaderboard-steam:hover,
   margin: 0 16px 14px;
 }
 
+.admin-group-edit-status {
+  margin: 0 16px 16px;
+  padding: 12px 14px;
+  display: grid;
+  gap: 5px;
+  border: 1px solid rgba(181, 170, 160, .24);
+  border-radius: var(--radius);
+  background:
+    var(--console-scan) center / 220px repeat,
+    rgba(0, 0, 0, .22);
+  color: var(--muted);
+  font-family: var(--font-body);
+  line-height: 1.42;
+}
+
+.admin-group-edit-status span {
+  color: var(--orange);
+  font-size: .72rem;
+  font-weight: 900;
+  letter-spacing: .04em;
+  text-transform: uppercase;
+}
+
+.admin-group-edit-status strong {
+  color: var(--white);
+  font-size: .98rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.admin-group-edit-status p {
+  margin: 0;
+  font-size: .86rem;
+  font-weight: 750;
+}
+
+.admin-group-edit-status code {
+  color: var(--yellow);
+  font-family: Consolas, "Courier New", monospace;
+}
+
+.admin-group-edit-status.is-editable {
+  border-color: rgba(124, 255, 107, .30);
+  background: rgba(124, 255, 107, .06);
+}
+
+.admin-group-edit-status.is-protected {
+  border-color: rgba(255, 209, 102, .42);
+  background: rgba(255, 209, 102, .08);
+}
+
+.admin-group-edit-status.is-locked {
+  border-color: rgba(255, 90, 12, .48);
+  background: rgba(179, 38, 30, .14);
+}
+
 .admin-permission-workbench {
   min-width: 0;
   max-width: 100%;

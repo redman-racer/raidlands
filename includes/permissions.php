@@ -121,6 +121,11 @@ function raidlands_permissions_protected_groups(): array
     return ['default', 'discord', 'admin', 'authenticated'];
 }
 
+function raidlands_permissions_group_has_forced_protection(string $group_name): bool
+{
+    return in_array(raidlands_permissions_clean_group($group_name), raidlands_permissions_protected_groups(), true);
+}
+
 function raidlands_permissions_default_group_names(): array
 {
     return [
@@ -265,7 +270,7 @@ function raidlands_permissions_upsert_group(PDO $pdo, array $row, bool $from_sna
     }
 
     $read_only = raidlands_permissions_group_is_read_only($group_name);
-    $protected = in_array($group_name, raidlands_permissions_protected_groups(), true);
+    $protected = raidlands_permissions_group_has_forced_protection($group_name);
     $title = raidlands_permissions_clean_text($row['title'] ?? $group_name, 160);
     $category = raidlands_permissions_clean_text($row['category'] ?? ($from_snapshot ? 'snapshot' : 'custom'), 80);
     $parent = raidlands_permissions_clean_group($row['parent_group'] ?? $row['parent'] ?? '');
@@ -294,7 +299,7 @@ function raidlands_permissions_upsert_group(PDO $pdo, array $row, bool $from_sna
             parent_group = VALUES(parent_group),
             category = IF(category = "snapshot" OR VALUES(category) <> "snapshot", VALUES(category), category),
             is_managed = VALUES(is_managed),
-            is_protected = GREATEST(is_protected, VALUES(is_protected)),
+            is_protected = VALUES(is_protected),
             is_read_only = VALUES(is_read_only),
             is_active = VALUES(is_active),
             sort_order = VALUES(sort_order),
@@ -340,6 +345,7 @@ function raidlands_permissions_group_rows(): array
     foreach ($groups as &$group) {
         $group_name = (string) ($group['group_name'] ?? '');
         $group['rank'] = (int) ($group['group_rank'] ?? 0);
+        $group['is_protected'] = raidlands_permissions_group_has_forced_protection($group_name) ? 1 : (int) ($group['is_protected'] ?? 0);
         $group['is_read_only'] = raidlands_permissions_group_is_read_only($group_name) ? 1 : 0;
         $group['is_managed'] = !empty($group['is_read_only']) ? 0 : (int) ($group['is_managed'] ?? 0);
     }
@@ -503,7 +509,7 @@ function raidlands_permissions_admin_save(array $post): array
                 'parent_group' => $row['parent_group'] ?? '',
                 'category' => $row['category'] ?? 'custom',
                 'is_managed' => !empty($row['is_managed']),
-                'is_protected' => in_array($group_name, raidlands_permissions_protected_groups(), true) || !empty($row['is_protected']),
+                'is_protected' => raidlands_permissions_group_has_forced_protection($group_name) || !empty($row['is_protected']),
                 'is_read_only' => $is_read_only,
                 'is_active' => empty($row['is_active']) ? 0 : 1,
                 'sort_order' => $row['sort_order'] ?? 100,
@@ -840,7 +846,7 @@ function raidlands_permissions_import_snapshot(array $payload): array
                     'parent_group' => $group_row['parent'] ?? $group_row['parent_group'] ?? '',
                     'category' => $group_row['category'] ?? 'snapshot',
                     'is_managed' => in_array($name, raidlands_permissions_default_group_names(), true),
-                    'is_protected' => in_array($name, raidlands_permissions_protected_groups(), true),
+                    'is_protected' => raidlands_permissions_group_has_forced_protection($name),
                     'is_read_only' => raidlands_permissions_group_is_read_only($name),
                     'is_active' => 1,
                     'sort_order' => $group_row['sort_order'] ?? 100,
@@ -854,7 +860,7 @@ function raidlands_permissions_import_snapshot(array $payload): array
                     'parent_group' => '',
                     'category' => 'snapshot',
                     'is_managed' => in_array($name, raidlands_permissions_default_group_names(), true),
-                    'is_protected' => in_array($name, raidlands_permissions_protected_groups(), true),
+                    'is_protected' => raidlands_permissions_group_has_forced_protection($name),
                     'is_read_only' => raidlands_permissions_group_is_read_only($name),
                     'is_active' => 1,
                     'sort_order' => 100,
@@ -881,7 +887,7 @@ function raidlands_permissions_import_snapshot(array $payload): array
                     'title' => $group,
                     'category' => 'snapshot',
                     'is_managed' => in_array($group, raidlands_permissions_default_group_names(), true),
-                    'is_protected' => in_array($group, raidlands_permissions_protected_groups(), true),
+                    'is_protected' => raidlands_permissions_group_has_forced_protection($group),
                     'is_read_only' => raidlands_permissions_group_is_read_only($group),
                     'is_active' => 1,
                 ], true);

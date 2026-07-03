@@ -1837,6 +1837,8 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             $missing_live = array_values(array_diff($desired_permissions, $live_permissions));
                             $extra_live = array_values(array_diff($live_permissions, $desired_permissions));
                             $is_read_only = raidlands_permissions_group_is_read_only($group_name);
+                            $is_forced_protected = raidlands_permissions_group_has_forced_protection($group_name);
+                            $is_protected = $is_forced_protected || !empty($row['is_protected']);
                             $card_title = $group_name !== '' ? $group_name : 'New Group';
                             $group_is_active_panel = $index === $permission_group_active_index;
                             $active_permission_prefix = '';
@@ -1909,8 +1911,8 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 <?= admin_check_copy('Website managed', 'Managed groups are included in published permission sync. Read-only system groups are never published.') ?>
                               </label>
                               <label class="admin-check admin-check-field">
-                                <input type="checkbox" name="permission_groups[<?= e((string) $index) ?>][is_protected]" value="1" <?= !empty($row['is_protected']) ? 'checked' : '' ?>>
-                                <?= admin_check_copy('Protected', 'Marks gameplay-sensitive groups like default or discord so edits stay visible and intentional.') ?>
+                                <input type="checkbox" name="permission_groups[<?= e((string) $index) ?>][is_protected]" value="1" <?= $is_protected ? 'checked' : '' ?> <?= $is_forced_protected ? 'disabled' : '' ?>>
+                                <?= admin_check_copy('Protected', 'Protected groups are guarded for structure changes. Direct grants remain editable unless the group is read-only. Clear this and save to return a custom group to normal edit mode.') ?>
                               </label>
                               <label class="admin-field admin-span-all">
                                 <?= admin_field_head('Notes', 'Admin-only context for why this group exists or what it should unlock.') ?>
@@ -1918,10 +1920,40 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               </label>
                             </div>
 
+                            <?php if ($is_read_only) : ?>
+                              <div class="admin-group-edit-status is-locked">
+                                <span>Edit status</span>
+                                <strong>Read-only system group</strong>
+                                <p>Direct grants are locked for <code><?= e($group_name) ?></code>. Use a managed group such as a VIP, perk, or custom group when you need to add or remove permissions.</p>
+                              </div>
+                            <?php elseif ($is_protected) : ?>
+                              <div class="admin-group-edit-status is-protected">
+                                <span>Edit status</span>
+                                <strong>Protected group</strong>
+                                <?php if ($is_forced_protected) : ?>
+                                  <p><code><?= e($group_name) ?></code> is protected by its group name. Direct grants below can still be selected, but title, rank, and parent changes are guarded; use a custom managed group if you need normal structural editing.</p>
+                                <?php else : ?>
+                                  <p>Protected is on for this group. Direct grants below can still be selected; to return this group to normal edit mode, clear Protected and then Save Draft or Publish.</p>
+                                <?php endif; ?>
+                              </div>
+                            <?php else : ?>
+                              <div class="admin-group-edit-status is-editable">
+                                <span>Edit status</span>
+                                <strong>Editable managed group</strong>
+                                <p>Direct grants below can be added or removed, then saved as a draft or published to the server.</p>
+                              </div>
+                            <?php endif; ?>
+
                             <details class="admin-details" <?= $group_name !== '' && !$is_read_only ? 'open' : '' ?>>
                               <summary>Direct permissions <small><?= e((string) count($desired_permissions)) ?> desired / <?= e((string) count($live_permissions)) ?> live</small></summary>
                               <?php if ($is_read_only) : ?>
                                 <div class="admin-alert warning">This system group is snapshot-only. Direct grants are visible in live drift checks but are not editable from the website.</div>
+                              <?php elseif ($is_protected) : ?>
+                                <?php if ($is_forced_protected) : ?>
+                                  <div class="admin-alert warning">Protected is locked on for this built-in group. Direct grant rows are still editable; for full normal group editing, create or choose a custom managed group.</div>
+                                <?php else : ?>
+                                  <div class="admin-alert warning">Protected is on. If you want this group to behave like a normal editable group, clear Protected above and save. Direct grant rows remain editable here.</div>
+                                <?php endif; ?>
                               <?php endif; ?>
                               <div class="admin-permission-workbench" data-permission-workbench>
                                 <div class="admin-permission-toolbar">
@@ -2102,11 +2134,12 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 $selector_has_drift = $selector_missing_live !== [] || $selector_extra_live !== [];
                                 $selector_is_active = $selector_index === $permission_group_active_index;
                                 $selector_is_read_only = raidlands_permissions_group_is_read_only($selector_name);
+                                $selector_is_protected = raidlands_permissions_group_has_forced_protection($selector_name) || !empty($selector_row['is_protected']);
                                 $selector_state = empty($selector_row['id'])
                                     ? 'Draft'
                                     : ($selector_is_read_only
                                         ? 'Read-only'
-                                        : (empty($selector_row['is_active']) ? 'Inactive' : 'Active'));
+                                        : ($selector_is_protected ? 'Protected' : (empty($selector_row['is_active']) ? 'Inactive' : 'Active')));
                               ?>
                               <button
                                 class="admin-group-picker-button<?= $selector_is_active ? ' is-active' : '' ?><?= $selector_has_drift ? ' has-drift' : '' ?>"
