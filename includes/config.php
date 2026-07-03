@@ -41,7 +41,7 @@ $site_config = [
 
 $admin_panel = [
     'username' => raidlands_env('RAIDLANDS_ADMIN_USERNAME', 'admin'),
-    'password' => raidlands_env('RAIDLANDS_ADMIN_PASSWORD', 'nr_clan_password'),
+    'password' => raidlands_env('RAIDLANDS_ADMIN_PASSWORD', 'change-me'),
     'passwordHash' => raidlands_env('RAIDLANDS_ADMIN_PASSWORD_HASH', ''),
     'sessionKey' => raidlands_env('RAIDLANDS_ADMIN_SESSION_KEY', 'raidlands_admin_authenticated'),
 ];

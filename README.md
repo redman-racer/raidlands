@@ -32,7 +32,7 @@ http://127.0.0.1:4177/
 - Each route has a small `index.php` that loads bootstrap, header, content, and footer.
 - `assets/js/site.js` handles behavior only: mobile nav, copy buttons, auth placeholders, reveal effects, metrics, and wipe countdowns.
 - `includes/database.php` and `includes/store.php` provide the MySQL, Stripe, SteamID64, entitlement, and WebsiteVipBridge API layer.
-- `database/` contains the VIP store, stats, clan management/API-key migrations, and seed data.
+- `database/` contains the VIP store, stats, clan management/API-key, admin auth migrations, and seed data.
 - `server-plugins/WebsiteVipBridge.cs` is the uMod/Oxide bridge plugin for syncing website entitlements to Rust permission groups and player stats to leaderboards.
 - `server-plugins/WebsiteClanBridge.cs` is the uMod/Oxide bridge plugin for syncing clan snapshots and processing public clan API actions.
 
@@ -44,7 +44,7 @@ For local-only WAMP overrides, create `.env.local`; values in that file win
 over `.env` and stay ignored by Git.
 
 - `RAIDLANDS_ADMIN_USERNAME`
-- `RAIDLANDS_ADMIN_PASSWORD` or `RAIDLANDS_ADMIN_PASSWORD_HASH`
+- `RAIDLANDS_ADMIN_PASSWORD` or `RAIDLANDS_ADMIN_PASSWORD_HASH` for the setup fallback before admin auth tables are installed
 - `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, `RAIDLANDS_DB_PASSWORD`
 - `RAIDLANDS_STRIPE_PUBLISHABLE_KEY`, `RAIDLANDS_STRIPE_SECRET_KEY`, `RAIDLANDS_STRIPE_WEBHOOK_SECRET`
 - `RAIDLANDS_BRIDGE_SERVER_ID`, `RAIDLANDS_BRIDGE_SHARED_SECRET`
@@ -60,6 +60,8 @@ Steam account linking starts with native Steam OpenID and falls back to manual S
 
 Steam avatars and profile links are only fetched when `RAIDLANDS_STEAM_API_KEY` is set in `.env`. Without that key, account and leaderboard pages render without Steam profile metadata.
 
+The admin panel uses Steam sign-in once `database/migrations/007_admin_auth.sql` is installed. Add approved Steam IDs to `admin_users` and attach roles through `admin_user_roles`; the migration includes a commented owner bootstrap query.
+
 ## VIP Store
 
 The store uses MySQL as the source of truth and Stripe Checkout for payments.
@@ -70,10 +72,12 @@ The store uses MySQL as the source of truth and Stripe Checkout for payments.
 4. Run `database/migrations/002_player_stats.sql`.
 5. Run `database/migrations/004_clan_management.sql`.
 6. Run `database/migrations/005_clan_api_keys.sql`.
-7. Run `database/seeds/001_store_products.sql`.
-8. Copy `.env.example` to `.env`.
-9. Fill in MySQL, Stripe, Steam API, bridge secret, and clan API limit values.
-10. Configure product Stripe Price IDs in `/admin/?section=store`.
+7. Run `database/migrations/007_admin_auth.sql`.
+8. Run `database/seeds/001_store_products.sql`.
+9. Copy `.env.example` to `.env`.
+10. Fill in MySQL, Stripe, Steam API, bridge secret, and clan API limit values.
+11. Add at least one owner SteamID64 to `admin_users` and `admin_user_roles`.
+12. Configure product Stripe Price IDs in `/admin/?section=store`.
 
 Public store flow:
 

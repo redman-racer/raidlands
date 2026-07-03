@@ -3,9 +3,11 @@
   "Website Asset Base Url": "https://raidlands.net",
   "Assets": {
     "Logo": "/assets/media/raidlands-logo.png",
-    "NavLogo": "/assets/media/horizontal-logo-sm.webp",
+    "NavLogo": "/assets/media/nav-logo.png",
+    "SimpleLogo": "/assets/media/in-game/raidlands-simple-logo.png",
     "Hero": "/assets/media/website-hero-raid-overlook-v4.webp",
     "Header": "/assets/media/header-bg-rust-v2.png",
+    "CommandMenu": "/assets/media/in-game/raidlands-command-menu-bg.png",
     "WipePanel": "/assets/media/wipe-countdown-panel-v2.jpg",
     "BackpacksIcon": "/assets/media/feature-icons/backpacks.png",
     "KitsIcon": "/assets/media/feature-icons/kit.png",
@@ -14,7 +16,8 @@
     "SkinboxIcon": "/assets/media/feature-icons/skinbox.png",
     "FastRaidsIcon": "/assets/media/feature-icons/fast-raids.png",
     "GatherIcon": "/assets/media/feature-icons/gather.png",
-    "StatsIcon": "/assets/media/feature-icons/stats.png"
+    "StatsIcon": "/assets/media/feature-icons/stats.png",
+    "SearchIcon": "/assets/media/feature-icons/search.png"
   },
   "ServerId": "raidlands-main",
   "SharedSecret": "replace-with-the-same-value-as-RAIDLANDS_BRIDGE_SHARED_SECRET",
@@ -23,6 +26,25 @@
   "StatsEnabled": true,
   "StatsSyncIntervalSeconds": 300,
   "StatsDebounceSeconds": 30,
+  "KitSyncEnabled": true,
+  "KitSyncIntervalSeconds": 180,
+  "KitDataBackupCount": 8,
+  "KitPermissionManagedGroups": [
+    "default",
+    "discord",
+    "vip_bronze",
+    "vip_gold",
+    "vip_elite",
+    "perk_personal_mini",
+    "perk_skinbox",
+    "perk_raid_kit",
+    "perk_queue_priority",
+    "perk_supporter_badge"
+  ],
+  "KitPermissionPrefixes": [
+    "kits.",
+    "serverrewards."
+  ],
   "WipeKey": "",
   "WipeStartedAt": "",
   "ManagedGroups": [

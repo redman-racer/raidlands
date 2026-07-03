@@ -1,10 +1,11 @@
 <?php
 
 require_once $site_root . '/includes/store.php';
+require_once $site_root . '/includes/kits.php';
 
 $store_flash = raidlands_store_flash();
 $store_catalog = raidlands_store_catalog(true);
-$store_products = $store_catalog['products'];
+$store_products = raidlands_kits_attach_to_products($store_catalog['products']);
 $vip_products = raidlands_store_products_by_type($store_products, 'vip_subscription');
 $perk_products = array_values(array_filter(
     $store_products,
@@ -24,6 +25,8 @@ function render_store_product_card(array $product, ?array $player, string $csrf)
         : raidlands_store_money((int) $price['amount_cents'], (string) $price['currency']);
     $interval = $price !== null && (string) $price['billing_interval'] === 'month' ? ' / month' : '';
     $action = '';
+    $linked_kits = (array) ($product['linked_kits'] ?? []);
+    $kit_html = '';
 
     if (!$has_linked_identity) {
         $action = '<a class="btn btn-secondary" href="' . e(route_url('link')) . '">Connect Steam First</a>';
@@ -39,6 +42,50 @@ function render_store_product_card(array $product, ?array $player, string $csrf)
             . '</form>';
     }
 
+    if ($linked_kits !== []) {
+        $kit_html .= '<div class="store-kit-details">';
+
+        foreach (array_slice($linked_kits, 0, 3) as $kit) {
+            $image = raidlands_kits_public_image_url((string) ($kit['image_path'] ?? ''));
+            $uses = (int) ($kit['maximum_uses'] ?? 0);
+            $cooldown = (int) ($kit['cooldown_seconds'] ?? 0);
+            $items = raidlands_kits_item_summary($kit, 5);
+            $meta = [];
+
+            if ($uses > 0) {
+                $meta[] = number_format($uses) . ' uses';
+            } else {
+                $meta[] = 'Unlimited uses';
+            }
+
+            if ($cooldown > 0) {
+                $meta[] = raidlands_store_format_seconds($cooldown) . ' cooldown';
+            }
+
+            $kit_html .= '<div class="store-kit-detail">';
+
+            if ($image !== '') {
+                $kit_html .= '<img src="' . e($image) . '" alt="" loading="lazy" referrerpolicy="no-referrer">';
+            }
+
+            $kit_html .= '<div>'
+                . '<strong>' . e((string) ($kit['kit_name'] ?? 'Kit')) . '</strong>'
+                . '<span>' . e(implode(' · ', $meta)) . '</span>';
+
+            if ($items !== []) {
+                $kit_html .= '<small>' . e(implode(', ', $items)) . '</small>';
+            }
+
+            $kit_html .= '</div></div>';
+        }
+
+        if (count($linked_kits) > 3) {
+            $kit_html .= '<p class="store-muted">+' . e((string) (count($linked_kits) - 3)) . ' more kit options attached.</p>';
+        }
+
+        $kit_html .= '</div>';
+    }
+
     return '<article class="metal-card store-product-card">'
         . '<div class="store-card-top">'
         . render_feature_symbol((string) ((string) $product['product_type'] === 'vip_subscription' ? 'KIT' : 'SHOP'))
@@ -47,12 +94,34 @@ function render_store_product_card(array $product, ?array $player, string $csrf)
         . '<h3>' . e((string) $product['name']) . '</h3>'
         . '<p class="card-copy">' . e((string) $product['short_description']) . '</p>'
         . '<div class="store-price"><strong>' . e($price_text) . '</strong><span>' . e($interval) . '</span></div>'
+        . $kit_html
         . '<ul class="store-mini-list">'
         . '<li>Unlocks the matching in-game VIP access.</li>'
-        . '<li>Kit contents, cooldowns, and limits are shown in Discord.</li>'
+        . '<li>Kit details update here as staff adjusts the live catalog.</li>'
         . '</ul>'
         . '<div class="store-card-actions">' . $action . '</div>'
         . '</article>';
+}
+
+function raidlands_store_format_seconds(int $seconds): string
+{
+    if ($seconds <= 0) {
+        return 'No';
+    }
+
+    if ($seconds % 86400 === 0) {
+        return (string) ($seconds / 86400) . 'd';
+    }
+
+    if ($seconds % 3600 === 0) {
+        return (string) ($seconds / 3600) . 'h';
+    }
+
+    if ($seconds % 60 === 0) {
+        return (string) ($seconds / 60) . 'm';
+    }
+
+    return (string) $seconds . 's';
 }
 ?>
 <?= render_page_hero('store',

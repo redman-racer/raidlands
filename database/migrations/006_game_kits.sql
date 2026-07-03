@@ -1,0 +1,100 @@
+CREATE TABLE IF NOT EXISTS game_kits (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  kit_name VARCHAR(160) NOT NULL,
+  previous_kit_name VARCHAR(160) NOT NULL DEFAULT '',
+  description TEXT NULL,
+  required_permission VARCHAR(160) NOT NULL DEFAULT '',
+  maximum_uses INT NOT NULL DEFAULT 0,
+  required_auth TINYINT NOT NULL DEFAULT 0,
+  cooldown_seconds INT NOT NULL DEFAULT 0,
+  cost INT NOT NULL DEFAULT 0,
+  is_hidden TINYINT(1) NOT NULL DEFAULT 0,
+  copy_paste_file VARCHAR(160) NOT NULL DEFAULT '',
+  image_path VARCHAR(500) NOT NULL DEFAULT '',
+  is_active TINYINT(1) NOT NULL DEFAULT 1,
+  sort_order INT NOT NULL DEFAULT 100,
+  reward_enabled TINYINT(1) NOT NULL DEFAULT 0,
+  reward_product_id INT NOT NULL DEFAULT -1,
+  reward_display_name VARCHAR(160) NOT NULL DEFAULT '',
+  reward_description TEXT NULL,
+  reward_cost INT NOT NULL DEFAULT 0,
+  reward_cooldown INT NOT NULL DEFAULT 0,
+  reward_icon_url VARCHAR(500) NOT NULL DEFAULT '',
+  reward_permission VARCHAR(160) NOT NULL DEFAULT '',
+  draft_revision BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  published_revision BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  published_at TIMESTAMP NULL DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_game_kits_name (kit_name),
+  KEY idx_game_kits_active_sort (is_active, sort_order),
+  KEY idx_game_kits_published_revision (published_revision)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS game_kit_items (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  kit_id BIGINT UNSIGNED NOT NULL,
+  container_name ENUM('main', 'wear', 'belt') NOT NULL,
+  position INT NOT NULL DEFAULT 0,
+  shortname VARCHAR(160) NOT NULL,
+  display_name VARCHAR(160) NULL,
+  skin BIGINT UNSIGNED NOT NULL DEFAULT 0,
+  amount INT NOT NULL DEFAULT 1,
+  condition_value DECIMAL(10,2) NOT NULL DEFAULT 0,
+  max_condition DECIMAL(10,2) NOT NULL DEFAULT 0,
+  ammo INT NOT NULL DEFAULT 0,
+  ammo_type VARCHAR(160) NULL,
+  frequency INT NOT NULL DEFAULT -1,
+  blueprint_shortname VARCHAR(160) NULL,
+  text_value TEXT NULL,
+  contents_json JSON NULL,
+  container_json JSON NULL,
+  sort_order INT NOT NULL DEFAULT 100,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_game_kit_items_kit_container (kit_id, container_name, position, sort_order),
+  CONSTRAINT fk_game_kit_items_kit FOREIGN KEY (kit_id) REFERENCES game_kits (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS game_kit_group_access (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  kit_id BIGINT UNSIGNED NOT NULL,
+  oxide_group VARCHAR(160) NOT NULL,
+  is_granted TINYINT(1) NOT NULL DEFAULT 1,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_game_kit_group_access (kit_id, oxide_group),
+  CONSTRAINT fk_game_kit_group_access_kit FOREIGN KEY (kit_id) REFERENCES game_kits (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS store_product_kits (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  product_id BIGINT UNSIGNED NOT NULL,
+  kit_id BIGINT UNSIGNED NOT NULL,
+  sort_order INT NOT NULL DEFAULT 100,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_store_product_kits (product_id, kit_id),
+  KEY idx_store_product_kits_product (product_id, sort_order),
+  CONSTRAINT fk_store_product_kits_product FOREIGN KEY (product_id) REFERENCES store_products (id) ON DELETE CASCADE,
+  CONSTRAINT fk_store_product_kits_kit FOREIGN KEY (kit_id) REFERENCES game_kits (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+CREATE TABLE IF NOT EXISTS game_kit_sync_log (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  revision BIGINT UNSIGNED NOT NULL,
+  status ENUM('draft', 'pending', 'applied', 'failed', 'snapshot') NOT NULL DEFAULT 'pending',
+  payload_hash CHAR(64) NOT NULL DEFAULT '',
+  message VARCHAR(500) NOT NULL DEFAULT '',
+  error_text TEXT NULL,
+  applied_at TIMESTAMP NULL DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  KEY idx_game_kit_sync_log_revision (revision),
+  KEY idx_game_kit_sync_log_status (status, updated_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

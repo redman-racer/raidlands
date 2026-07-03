@@ -2,32 +2,63 @@
 
 require_once __DIR__ . '/store.php';
 require_once __DIR__ . '/feedback.php';
+require_once __DIR__ . '/kits.php';
 
 function raidlands_admin_boot(): void
 {
-    if (session_status() === PHP_SESSION_NONE) {
-        session_name('raidlands_admin');
-        session_start();
-    }
+    raidlands_store_boot();
 }
 
 function raidlands_admin_handle_request(): void
 {
     raidlands_admin_boot();
+    $section = raidlands_admin_clean_section($_POST['section'] ?? ($_GET['section'] ?? 'identity'));
 
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    if ($_SERVER['REQUEST_METHOD'] === 'GET') {
+        if ((string) ($_GET['action'] ?? '') === 'steam') {
+            try {
+                header('Location: ' . raidlands_store_steam_openid_url('admin'));
+                exit;
+            } catch (Throwable $error) {
+                raidlands_admin_set_flash('error', 'Steam sign-in could not start. Try again from the admin sign-in screen.');
+                raidlands_admin_redirect($section);
+            }
+        }
+
+        if (raidlands_store_steam_openid_response_present()) {
+            try {
+                $player = raidlands_store_steam_openid_verify();
+                raidlands_admin_complete_steam_login($player);
+            } catch (Throwable $error) {
+                raidlands_admin_set_flash('error', $error->getMessage());
+            }
+
+            raidlands_admin_redirect($section);
+        }
+
         return;
     }
 
     $action = (string) ($_POST['action'] ?? '');
-    $section = raidlands_admin_clean_section($_POST['section'] ?? ($_GET['section'] ?? 'identity'));
 
     if ($action === 'login') {
         raidlands_admin_handle_login();
     }
 
+    if ($action === 'logout') {
+        if (!raidlands_admin_validate_csrf((string) ($_POST['csrf'] ?? ''))) {
+            raidlands_admin_set_flash('error', 'Your session token expired. Try again.');
+            raidlands_admin_redirect($section);
+        }
+
+        raidlands_admin_audit('logout', 'admin_session', '');
+        raidlands_admin_logout();
+        raidlands_admin_set_flash('success', 'Signed out.');
+        raidlands_admin_redirect($section);
+    }
+
     if (!raidlands_admin_is_authenticated()) {
-        raidlands_admin_set_flash('error', 'Sign in before changing site settings.');
+        raidlands_admin_set_flash('error', 'Sign in with an approved Steam account before changing site settings.');
         raidlands_admin_redirect($section);
     }
 
@@ -36,17 +67,22 @@ function raidlands_admin_handle_request(): void
         raidlands_admin_redirect($section);
     }
 
-    if ($action === 'logout') {
-        raidlands_admin_logout();
-        raidlands_admin_set_flash('success', 'Signed out.');
-        raidlands_admin_redirect();
-    }
-
     if ($action === 'save') {
+        if (!raidlands_admin_can_save_section($section)) {
+            raidlands_admin_set_flash('error', 'Your admin role cannot save that section.');
+            raidlands_admin_redirect($section);
+        }
+
         try {
             if ($section === 'store') {
                 raidlands_store_admin_save_product_rows($_POST['store_products'] ?? []);
                 raidlands_admin_set_flash('success', 'Store products saved.');
+            } elseif ($section === 'kits') {
+                $result = raidlands_kits_admin_save($_POST, $_FILES ?? []);
+                $message = $result['published']
+                    ? 'Kit revision ' . $result['revision'] . ' published for server sync.'
+                    : 'Kit draft saved.';
+                raidlands_admin_set_flash('success', $message);
             } elseif ($section === 'grants') {
                 $ends_at = trim((string) ($_POST['ends_at'] ?? ''));
                 raidlands_store_admin_manual_grant(
@@ -65,6 +101,8 @@ function raidlands_admin_handle_request(): void
                 raidlands_admin_save_content(raidlands_admin_build_content_from_post($_POST, $section));
                 raidlands_admin_set_flash('success', 'Site settings saved.');
             }
+
+            raidlands_admin_audit('save_' . $section, 'admin_section', $section);
         } catch (Throwable $error) {
             raidlands_admin_set_flash('error', 'Settings could not be saved: ' . $error->getMessage());
         }
@@ -79,6 +117,11 @@ function raidlands_admin_handle_login(): void
 {
     $section = raidlands_admin_clean_section($_POST['section'] ?? 'identity');
 
+    if (raidlands_admin_auth_tables_ready()) {
+        raidlands_admin_set_flash('error', 'Use Steam sign-in for admin access. Username and password login is only available before the admin auth tables are installed.');
+        raidlands_admin_redirect($section);
+    }
+
     if (!raidlands_admin_validate_csrf((string) ($_POST['csrf'] ?? ''))) {
         raidlands_admin_set_flash('error', 'Your session token expired. Try again.');
         raidlands_admin_redirect($section);
@@ -90,7 +133,8 @@ function raidlands_admin_handle_login(): void
     if (raidlands_admin_verify_credentials($username, $password)) {
         session_regenerate_id(true);
         $_SESSION[raidlands_admin_session_key()] = true;
-        raidlands_admin_set_flash('success', 'Signed in.');
+        raidlands_admin_set_flash('success', 'Signed in with setup credentials.');
+        raidlands_admin_audit('legacy_login', 'admin_session', '');
         raidlands_admin_redirect($section);
     }
 
@@ -117,17 +161,51 @@ function raidlands_admin_verify_credentials(string $username, string $password):
     return $expected_password !== '' && hash_equals($expected_password, $password);
 }
 
+function raidlands_admin_complete_steam_login(array $player): void
+{
+    if (empty($player['steam_id64']) || !raidlands_store_validate_steam_id64((string) $player['steam_id64'])) {
+        raidlands_admin_set_flash('error', 'Steam did not return a valid account for admin access.');
+        return;
+    }
+
+    if (!raidlands_admin_auth_tables_ready()) {
+        raidlands_admin_set_flash('warning', 'Steam account connected, but admin auth tables are not installed yet. Run database/migrations/007_admin_auth.sql, then approve the SteamID64.');
+        return;
+    }
+
+    $user = raidlands_admin_current_user(true);
+
+    if ($user === null) {
+        raidlands_admin_set_flash('error', 'Steam ID ' . (string) $player['steam_id64'] . ' is not approved for admin access.');
+        return;
+    }
+
+    raidlands_db_execute(
+        'UPDATE admin_users SET last_login_at = NOW(), updated_at = NOW() WHERE id = :id',
+        ['id' => (int) $user['id']]
+    );
+    raidlands_admin_audit('steam_login', 'admin_user', (string) $user['steam_id64']);
+    raidlands_admin_set_flash('success', 'Signed in with Steam.');
+}
+
 function raidlands_admin_is_authenticated(): bool
 {
     raidlands_admin_boot();
 
-    return !empty($_SESSION[raidlands_admin_session_key()]);
+    if (raidlands_admin_current_user() !== null) {
+        return true;
+    }
+
+    return !raidlands_admin_auth_tables_ready()
+        && !empty($_SESSION[raidlands_admin_session_key()]);
 }
 
 function raidlands_admin_logout(): void
 {
     unset($_SESSION[raidlands_admin_session_key()]);
     unset($_SESSION['raidlands_admin_csrf']);
+    unset($_SESSION['raidlands_admin_flash']);
+    raidlands_store_unlink_player();
 }
 
 function raidlands_admin_session_key(): string
@@ -190,7 +268,230 @@ function raidlands_admin_redirect(?string $section = null): void
 
 function raidlands_admin_section_keys(): array
 {
-    return ['identity', 'links', 'wipe', 'features', 'pages', 'seo', 'feedback', 'store', 'grants', 'sync'];
+    return ['identity', 'links', 'wipe', 'features', 'pages', 'seo', 'feedback', 'store', 'kits', 'grants', 'sync'];
+}
+
+function raidlands_admin_allowed_section_keys(): array
+{
+    return array_values(array_filter(
+        raidlands_admin_section_keys(),
+        static fn (string $section): bool => raidlands_admin_can_view_section($section)
+    ));
+}
+
+function raidlands_admin_section_permission(string $section): string
+{
+    return match (raidlands_admin_clean_section($section)) {
+        'feedback' => 'admin.feedback.manage',
+        'store' => 'admin.store.manage',
+        'kits' => 'admin.kits.manage',
+        'grants' => 'admin.grants.manage',
+        'sync' => 'admin.sync.view',
+        default => 'admin.content.manage',
+    };
+}
+
+function raidlands_admin_can_view_section(string $section): bool
+{
+    return raidlands_admin_can(raidlands_admin_section_permission($section));
+}
+
+function raidlands_admin_can_save_section(string $section): bool
+{
+    $section = raidlands_admin_clean_section($section);
+
+    if ($section === 'sync') {
+        return false;
+    }
+
+    return raidlands_admin_can(raidlands_admin_section_permission($section));
+}
+
+function raidlands_admin_can(string $permission): bool
+{
+    if ($permission === '') {
+        return true;
+    }
+
+    $user = raidlands_admin_current_user();
+
+    if ($user !== null) {
+        return in_array($permission, (array) ($user['permissions'] ?? []), true);
+    }
+
+    return !raidlands_admin_auth_tables_ready()
+        && !empty($_SESSION[raidlands_admin_session_key()]);
+}
+
+function raidlands_admin_auth_tables_ready(bool $refresh = false): bool
+{
+    static $ready = null;
+
+    if ($refresh) {
+        $ready = null;
+    }
+
+    if ($ready !== null) {
+        return $ready;
+    }
+
+    if (!raidlands_db_is_configured()) {
+        $ready = false;
+        return false;
+    }
+
+    $pdo = raidlands_db();
+
+    if (!$pdo instanceof PDO) {
+        $ready = false;
+        return false;
+    }
+
+    try {
+        $pdo->query('SELECT 1 FROM admin_users LIMIT 1');
+        $ready = true;
+    } catch (Throwable $error) {
+        $ready = false;
+    }
+
+    return $ready;
+}
+
+function raidlands_admin_current_user(bool $refresh = false): ?array
+{
+    static $loaded = false;
+    static $user = null;
+    static $steam_id64 = '';
+
+    if ($refresh) {
+        $loaded = false;
+        $user = null;
+        $steam_id64 = '';
+        raidlands_admin_auth_tables_ready(true);
+    }
+
+    raidlands_admin_boot();
+    $player = raidlands_store_current_player();
+    $current_steam_id64 = is_array($player)
+        ? preg_replace('/\D+/', '', (string) ($player['steam_id64'] ?? ''))
+        : '';
+    $current_steam_id64 = is_string($current_steam_id64) ? $current_steam_id64 : '';
+
+    if ($loaded && $steam_id64 === $current_steam_id64) {
+        return $user;
+    }
+
+    $loaded = true;
+    $user = null;
+    $steam_id64 = $current_steam_id64;
+
+    if (!raidlands_store_validate_steam_id64($steam_id64) || !raidlands_admin_auth_tables_ready()) {
+        return null;
+    }
+
+    try {
+        $row = raidlands_db_fetch_one(
+            'SELECT id, steam_id64, display_name, notes, is_active, last_login_at, created_at, updated_at
+             FROM admin_users
+             WHERE steam_id64 = :steam_id64 AND is_active = 1
+             LIMIT 1',
+            ['steam_id64' => $steam_id64]
+        );
+
+        if ($row === null) {
+            return null;
+        }
+
+        $permissions = raidlands_db_fetch_all(
+            'SELECT DISTINCT ar.slug AS role_slug, ar.name AS role_name, ap.permission_key
+             FROM admin_user_roles aur
+             INNER JOIN admin_roles ar ON ar.id = aur.role_id
+             INNER JOIN admin_role_permissions arp ON arp.role_id = ar.id
+             INNER JOIN admin_permissions ap ON ap.id = arp.permission_id
+             WHERE aur.admin_user_id = :admin_user_id
+             ORDER BY ar.slug ASC, ap.permission_key ASC',
+            ['admin_user_id' => (int) $row['id']]
+        );
+    } catch (Throwable $error) {
+        return null;
+    }
+
+    $roles = [];
+    $role_names = [];
+    $permission_keys = [];
+
+    foreach ($permissions as $permission) {
+        $role_slug = trim((string) ($permission['role_slug'] ?? ''));
+        $role_name = trim((string) ($permission['role_name'] ?? ''));
+        $permission_key = trim((string) ($permission['permission_key'] ?? ''));
+
+        if ($role_slug !== '') {
+            $roles[$role_slug] = $role_slug;
+            $role_names[$role_slug] = $role_name !== '' ? $role_name : $role_slug;
+        }
+
+        if ($permission_key !== '') {
+            $permission_keys[$permission_key] = $permission_key;
+        }
+    }
+
+    if (!isset($permission_keys['admin.access'])) {
+        return null;
+    }
+
+    $user = array_merge($row, [
+        'roles' => array_values($roles),
+        'role_names' => array_values($role_names),
+        'permissions' => array_values($permission_keys),
+        'player' => $player,
+    ]);
+
+    return $user;
+}
+
+function raidlands_admin_auth_message(): string
+{
+    if (!raidlands_db_is_configured()) {
+        return 'Admin Steam access needs the database connection configured first.';
+    }
+
+    if (!raidlands_admin_auth_tables_ready()) {
+        return 'Run database/migrations/007_admin_auth.sql to enable Steam-approved admin access.';
+    }
+
+    return 'Use Steam sign-in with an approved SteamID64 from the admin_users table.';
+}
+
+function raidlands_admin_audit(string $action, string $subject_type = '', string $subject_id = '', array $details = []): void
+{
+    if (!raidlands_db_is_configured()) {
+        return;
+    }
+
+    $actor = 'admin';
+    $user = raidlands_admin_current_user();
+
+    if ($user !== null && !empty($user['steam_id64'])) {
+        $actor = (string) $user['steam_id64'];
+    } elseif (!empty($_SESSION[raidlands_admin_session_key()])) {
+        $actor = 'legacy-config-admin';
+    }
+
+    try {
+        raidlands_db_execute(
+            'INSERT INTO admin_audit_log (actor, action, subject_type, subject_id, details_json)
+             VALUES (:actor, :action, :subject_type, :subject_id, :details_json)',
+            [
+                'actor' => mb_substr($actor, 0, 120),
+                'action' => mb_substr($action, 0, 120),
+                'subject_type' => mb_substr($subject_type, 0, 80),
+                'subject_id' => mb_substr($subject_id, 0, 120),
+                'details_json' => $details === [] ? null : json_encode($details, JSON_UNESCAPED_SLASHES),
+            ]
+        );
+    } catch (Throwable $error) {
+        return;
+    }
 }
 
 function raidlands_admin_clean_section($section): string
@@ -325,7 +626,8 @@ function raidlands_admin_default_password_is_active(): bool
 {
     global $admin_panel;
 
-    return (string) ($admin_panel['passwordHash'] ?? '') === ''
+    return !raidlands_admin_auth_tables_ready()
+        && (string) ($admin_panel['passwordHash'] ?? '') === ''
         && (string) ($admin_panel['password'] ?? '') === 'change-me';
 }
 

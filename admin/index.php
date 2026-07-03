@@ -12,6 +12,17 @@ raidlands_admin_handle_request();
 
 $flash = raidlands_admin_take_flash();
 $authenticated = raidlands_admin_is_authenticated();
+$admin_user = raidlands_admin_current_user();
+$admin_player = raidlands_store_current_player();
+$admin_auth_tables_ready = raidlands_admin_auth_tables_ready();
+$admin_auth_message = raidlands_admin_auth_message();
+$admin_player_name = is_array($admin_player)
+    ? trim((string) ($admin_player['display_name'] ?: ($admin_player['steam_display_name'] ?? 'Raidlands Player')))
+    : '';
+$admin_player_steam_id64 = is_array($admin_player) ? (string) ($admin_player['steam_id64'] ?? '') : '';
+$admin_user_role_label = $admin_user !== null && !empty($admin_user['role_names'])
+    ? implode(', ', array_map('strval', (array) $admin_user['role_names']))
+    : 'Setup Admin';
 $csrf = raidlands_admin_csrf_token();
 $content = raidlands_admin_current_content();
 $admin_site = $content['site_config'];
@@ -19,7 +30,7 @@ $admin_page_copy = $content['page_copy'];
 $admin_seo_pages = $content['seo_pages'];
 $admin_weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'];
 $admin_wipe_days = array_map('intval', $admin_site['wipe']['days'] ?? []);
-$admin_sections = [
+$admin_sections_all = [
     'identity' => ['label' => 'Identity', 'kicker' => 'Core', 'title' => 'Server Identity', 'summary' => 'Names, fallback status, map, region, and the numbers used when live status is unavailable.'],
     'links' => ['label' => 'Links', 'kicker' => 'Launch', 'title' => 'Links and Integrations', 'summary' => 'Join buttons, Discord invites, BattleMetrics lookup, and future OAuth links.'],
     'wipe' => ['label' => 'Wipe', 'kicker' => 'Schedule', 'title' => 'Wipe Settings', 'summary' => 'The wipe days and time used by countdowns and schedule text.'],
@@ -28,11 +39,34 @@ $admin_sections = [
     'seo' => ['label' => 'SEO', 'kicker' => 'Search', 'title' => 'SEO Metadata', 'summary' => 'Browser titles, descriptions, and social sharing copy.'],
     'feedback' => ['label' => 'Feedback', 'kicker' => 'Inbox', 'title' => 'Player Feedback', 'summary' => 'Bug reports, suggestions, and feature requests submitted from the support page.'],
     'store' => ['label' => 'Store', 'kicker' => 'VIP', 'title' => 'Products and Prices', 'summary' => 'VIP tiers, one-time perks, Stripe Price IDs, and managed Oxide groups.'],
+    'kits' => ['label' => 'Kits', 'kicker' => 'Loadouts', 'title' => 'Kit Catalog', 'summary' => 'Rust kit contents, images, cooldowns, uses, RP shop rows, and group availability.'],
     'grants' => ['label' => 'Grants', 'kicker' => 'Access', 'title' => 'Manual Entitlement Grant', 'summary' => 'Grant a product to a SteamID64 without going through Stripe.'],
     'sync' => ['label' => 'Sync', 'kicker' => 'Bridge', 'title' => 'WebsiteVipBridge State', 'summary' => 'Entitlement sync, stats ingest status, and server API endpoints.'],
 ];
+$admin_sections = $admin_sections_all;
+
+if ($authenticated) {
+    $admin_sections = array_filter(
+        $admin_sections,
+        static fn (array $section, string $key): bool => raidlands_admin_can_view_section($key),
+        ARRAY_FILTER_USE_BOTH
+    );
+}
+
 $active_section = raidlands_admin_clean_section($_GET['section'] ?? 'identity');
-$active_meta = $admin_sections[$active_section];
+
+if ($authenticated && $admin_sections === []) {
+    $active_section = 'none';
+} elseif ($authenticated && !isset($admin_sections[$active_section])) {
+    $active_section = (string) array_key_first($admin_sections);
+}
+
+$admin_has_visible_sections = !$authenticated || $admin_sections !== [];
+$active_meta = $active_section === 'none'
+    ? ['label' => 'No Access', 'kicker' => 'Roles', 'title' => 'No Admin Sections Available', 'summary' => 'Your approved Steam account does not have a section permission yet.']
+    : ($admin_sections[$active_section]
+    ?? $admin_sections_all[$active_section]
+    ?? ['label' => 'No Access', 'kicker' => 'Roles', 'title' => 'No Admin Sections Available', 'summary' => 'Your approved Steam account does not have a section permission yet.']);
 $admin_store_ready = false;
 $admin_store_error = '';
 $admin_store_rows = [];
@@ -42,6 +76,13 @@ $admin_feedback_rows = [];
 $admin_feedback_counts = [];
 $admin_feedback_ready = false;
 $admin_feedback_error = '';
+$admin_kits_ready = false;
+$admin_kits_error = '';
+$admin_kit_rows = [];
+$admin_kit_groups = [];
+$admin_kit_products = [];
+$admin_kit_shortnames = [];
+$admin_kit_sync_rows = [];
 $admin_stats_summary = [
     'ready' => false,
     'active_wipe' => null,
@@ -94,9 +135,25 @@ try {
             $admin_feedback_error = raidlands_feedback_readiness_message(true);
         }
     }
+
+    if ($active_section === 'kits') {
+        $admin_kits_ready = raidlands_kits_is_ready();
+
+        if ($admin_kits_ready) {
+            $admin_kit_rows = raidlands_kits_admin_rows();
+            $admin_kit_groups = raidlands_kits_available_groups();
+            $admin_kit_products = raidlands_kits_store_product_options();
+            $admin_kit_shortnames = raidlands_kits_known_shortnames();
+            $admin_kit_sync_rows = raidlands_kits_recent_sync_rows(12);
+        } else {
+            $admin_kits_error = raidlands_kits_readiness_message(true);
+        }
+    }
 } catch (Throwable $error) {
     $admin_store_ready = false;
     $admin_store_error = $error->getMessage();
+    $admin_kits_ready = false;
+    $admin_kits_error = $error->getMessage();
 }
 
 function admin_page_label(string $key): string
@@ -109,6 +166,14 @@ function admin_section_url(string $section): string
     $section = raidlands_admin_clean_section($section);
 
     return $section === 'identity' ? './' : './?section=' . rawurlencode($section);
+}
+
+function admin_action_url(string $section, string $action): string
+{
+    $url = admin_section_url($section);
+    $separator = str_contains($url, '?') ? '&' : '?';
+
+    return $url . $separator . 'action=' . rawurlencode($action);
 }
 
 function admin_field_head(string $label, string $help): string
@@ -250,6 +315,27 @@ function admin_product_type_options(): array
         'one_time_kit_unlock' => 'One-time kit unlock',
     ];
 }
+
+function admin_kit_item_rows(array $kit, string $container): array
+{
+    $items = array_values((array) ($kit['items'][$container] ?? []));
+    $items[] = [];
+
+    if ($items === [[]]) {
+        $items[] = [];
+    }
+
+    return $items;
+}
+
+function admin_kit_container_label(string $container): string
+{
+    return match ($container) {
+        'wear' => 'Wear',
+        'belt' => 'Belt',
+        default => 'Main',
+    };
+}
 ?>
 <!doctype html>
 <html lang="en" data-page="admin" data-base="<?= e($base_path) ?>">
@@ -280,6 +366,26 @@ function admin_product_type_options(): array
   <body class="admin-body">
     <?php if (!$authenticated) : ?>
       <main class="admin-login-shell">
+        <?php if ($admin_auth_tables_ready) : ?>
+        <div class="admin-login-panel">
+          <img class="admin-login-logo" src="<?= e(asset_url('media/raidlands-logo.webp')) ?>" alt="Raidlands">
+          <h1>Raidlands Admin</h1>
+          <?php if ($flash !== null) : ?>
+            <div class="admin-alert <?= e((string) $flash['type']) ?>"><?= e((string) $flash['message']) ?></div>
+          <?php endif; ?>
+          <div class="admin-alert warning"><?= e($admin_auth_message) ?></div>
+          <?php if ($admin_player_steam_id64 !== '') : ?>
+            <div class="auth-status warning">
+              <strong>Steam linked in this browser.</strong>
+              <span>Steam ID <code><?= e($admin_player_steam_id64) ?></code><?= $admin_player_name !== '' ? ' as ' . e($admin_player_name) : '' ?> is not approved for admin access.</span>
+            </div>
+          <?php endif; ?>
+          <div class="button-row admin-login-actions">
+            <a class="btn btn-steam admin-full-button" href="<?= e(admin_action_url($active_section, 'steam')) ?>">Continue with Steam</a>
+            <a class="btn btn-secondary admin-full-button" href="<?= e(route_url('link')) ?>">Manage Linked Account</a>
+          </div>
+        </div>
+        <?php else : ?>
         <form class="admin-login-panel" method="post" action="<?= e(admin_section_url($active_section)) ?>">
           <input type="hidden" name="action" value="login">
           <input type="hidden" name="section" value="<?= e($active_section) ?>">
@@ -289,19 +395,21 @@ function admin_product_type_options(): array
           <?php if ($flash !== null) : ?>
             <div class="admin-alert <?= e((string) $flash['type']) ?>"><?= e((string) $flash['message']) ?></div>
           <?php endif; ?>
+          <div class="admin-alert warning"><?= e($admin_auth_message) ?> Config login is only a setup fallback.</div>
           <?php if (raidlands_admin_default_password_is_active()) : ?>
-            <div class="admin-alert warning">Default admin password is active. Change it in <code>includes/config.php</code>.</div>
+            <div class="admin-alert warning">Default admin password is active. Change it in <code>.env</code>.</div>
           <?php endif; ?>
           <label class="admin-field">
-            <?= admin_field_head('Username', 'The admin username configured in includes/config.php.') ?>
+            <?= admin_field_head('Username', 'Temporary setup username from .env.') ?>
             <input type="text" name="username" autocomplete="username" required autofocus>
           </label>
           <label class="admin-field">
-            <?= admin_field_head('Password', 'The admin password or password hash configured in includes/config.php.') ?>
+            <?= admin_field_head('Password', 'Temporary setup password or password hash from .env.') ?>
             <input type="password" name="password" autocomplete="current-password" required>
           </label>
           <button class="btn btn-primary admin-full-button" type="submit">Sign In</button>
         </form>
+        <?php endif; ?>
       </main>
     <?php else : ?>
       <header class="admin-topbar">
@@ -317,6 +425,14 @@ function admin_product_type_options(): array
           <span>Admin</span>
         </a>
         <div class="admin-topbar-actions">
+          <span class="admin-user-chip">
+            <strong><?= e($admin_user_role_label) ?></strong>
+            <?php if ($admin_user !== null) : ?>
+              <code><?= e((string) $admin_user['steam_id64']) ?></code>
+            <?php else : ?>
+              <code>setup fallback</code>
+            <?php endif; ?>
+          </span>
           <a class="btn btn-secondary" href="<?= e(route_url()) ?>">View Site</a>
           <form method="post" action="<?= e(admin_section_url($active_section)) ?>">
             <input type="hidden" name="action" value="logout">
@@ -359,10 +475,16 @@ function admin_product_type_options(): array
                 <p class="admin-section-summary"><?= e($active_meta['summary']) ?></p>
               </div>
 
-              <form class="admin-form" method="post" action="<?= e(admin_section_url($active_section)) ?>">
+              <form class="admin-form" method="post" action="<?= e(admin_section_url($active_section)) ?>" enctype="multipart/form-data">
                 <input type="hidden" name="action" value="save">
                 <input type="hidden" name="section" value="<?= e($active_section) ?>">
                 <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
+
+                <?php if (!$admin_has_visible_sections) : ?>
+                  <section class="admin-section">
+                    <div class="admin-alert warning">This Steam account is approved for admin entry, but it does not have any section permissions yet. Add a role permission in the admin RBAC tables.</div>
+                  </section>
+                <?php endif; ?>
 
                 <?php if ($active_section === 'identity') : ?>
                   <section class="admin-section">
@@ -932,6 +1054,344 @@ function admin_product_type_options(): array
                   <?php endif; ?>
                 <?php endif; ?>
 
+                <?php if ($active_section === 'kits') : ?>
+                  <?php if (!$admin_kits_ready) : ?>
+                    <section class="admin-section">
+                      <div class="admin-alert warning"><?= e($admin_kits_error !== '' ? $admin_kits_error : 'Kit tables are not ready yet.') ?></div>
+                    </section>
+                  <?php else : ?>
+                    <?php
+                      echo admin_render_datalist('admin-kit-shortname-options', admin_option_map($admin_kit_shortnames));
+                      echo admin_render_datalist('admin-kit-group-options', admin_option_map($admin_kit_groups));
+                      $kit_rows = array_values($admin_kit_rows);
+                      $kit_total = count($kit_rows) + 1;
+                    ?>
+                    <section class="admin-section">
+                      <div class="admin-grid three">
+                        <div class="metal-panel">
+                          <p class="section-kicker">Published revision</p>
+                          <h3><?= e((string) raidlands_kits_latest_published_revision()) ?></h3>
+                          <p class="store-muted">Rust pulls only published kit revisions.</p>
+                        </div>
+                        <div class="metal-panel">
+                          <p class="section-kicker">Editable kits</p>
+                          <h3><?= e((string) count($kit_rows)) ?></h3>
+                          <p class="store-muted">Imported and website-created kit rows.</p>
+                        </div>
+                        <div class="metal-panel">
+                          <p class="section-kicker">Server sync</p>
+                          <h3><?= e((string) ($admin_kit_sync_rows[0]['status'] ?? 'Pending')) ?></h3>
+                          <p class="store-muted"><?= e((string) ($admin_kit_sync_rows[0]['updated_at'] ?? 'No kit sync yet')) ?></p>
+                        </div>
+                      </div>
+                    </section>
+
+                    <section class="admin-section">
+                      <div class="admin-subsection-head">
+                        <h3>Kit editor</h3>
+                        <p>Save Draft keeps changes on the website. Publish sends the latest catalog to the server on its next kit sync.</p>
+                      </div>
+                      <div class="admin-repeat-list">
+                        <?php for ($index = 0; $index < $kit_total; $index += 1) : ?>
+                          <?php
+                            $row = $kit_rows[$index] ?? [
+                                'id' => '',
+                                'kit_name' => '',
+                                'previous_kit_name' => '',
+                                'description' => '',
+                                'required_permission' => '',
+                                'maximum_uses' => 0,
+                                'required_auth' => 0,
+                                'cooldown_seconds' => 0,
+                                'cost' => 0,
+                                'is_hidden' => 0,
+                                'copy_paste_file' => '',
+                                'image_path' => '',
+                                'is_active' => 1,
+                                'sort_order' => 100,
+                                'reward_enabled' => 0,
+                                'reward_product_id' => -1,
+                                'reward_display_name' => '',
+                                'reward_description' => '',
+                                'reward_cost' => 0,
+                                'reward_cooldown' => 0,
+                                'reward_icon_url' => '',
+                                'reward_permission' => '',
+                                'items' => ['main' => [], 'wear' => [], 'belt' => []],
+                                'groups' => [],
+                                'store_product_ids' => [],
+                            ];
+                            $kit_title = trim((string) ($row['kit_name'] ?? ''));
+                            $kit_groups = array_map('strval', (array) ($row['groups'] ?? []));
+                            $kit_products = array_map('intval', (array) ($row['store_product_ids'] ?? []));
+                          ?>
+                          <article class="admin-repeat-card admin-kit-card">
+                            <input type="hidden" name="kits[<?= e((string) $index) ?>][id]" value="<?= e((string) ($row['id'] ?? '')) ?>">
+                            <div class="admin-repeat-card-head">
+                              <div>
+                                <h3><?= e($kit_title !== '' ? $kit_title : 'New Kit') ?></h3>
+                                <?php if (!empty($row['published_revision'])) : ?>
+                                  <p class="admin-feedback-subtitle">Published revision <?= e((string) $row['published_revision']) ?><?= !empty($row['published_at']) ? ' at ' . e((string) $row['published_at']) : '' ?></p>
+                                <?php endif; ?>
+                              </div>
+                              <?php if (!empty($row['id'])) : ?>
+                                <label class="admin-check admin-delete-check">
+                                  <input type="checkbox" name="kits[<?= e((string) $index) ?>][delete]" value="1">
+                                  <span>Deactivate</span>
+                                </label>
+                              <?php endif; ?>
+                            </div>
+
+                            <details class="admin-details" open>
+                              <summary>Kit settings <small>Name, access, image, cooldown, uses</small></summary>
+                              <div class="admin-grid three">
+                                <label class="admin-field">
+                                  <?= admin_field_head('Kit name', 'Exact Rust kit name. Renaming updates the server on publish.') ?>
+                                  <input type="text" name="kits[<?= e((string) $index) ?>][kit_name]" maxlength="160" placeholder="Raid Kit" value="<?= e((string) ($row['kit_name'] ?? '')) ?>">
+                                </label>
+                                <label class="admin-field">
+                                  <?= admin_field_head('Previous name', 'Only needed when renaming an existing Rust kit.') ?>
+                                  <input type="text" name="kits[<?= e((string) $index) ?>][previous_kit_name]" maxlength="160" value="<?= e((string) ($row['previous_kit_name'] ?? '')) ?>">
+                                </label>
+                                <label class="admin-field">
+                                  <?= admin_field_head('Required permission', 'Permission needed to claim the kit, such as kits.raid or serverrewards.paidpvpkit.') ?>
+                                  <input type="text" name="kits[<?= e((string) $index) ?>][required_permission]" maxlength="160" placeholder="kits.raid" value="<?= e((string) ($row['required_permission'] ?? '')) ?>">
+                                </label>
+                                <label class="admin-field">
+                                  <?= admin_field_head('Max uses', 'Total claim limit tracked by the Rust Kits plugin. 0 means unlimited.') ?>
+                                  <input type="number" min="0" max="99999999" name="kits[<?= e((string) $index) ?>][maximum_uses]" value="<?= e((string) ($row['maximum_uses'] ?? 0)) ?>">
+                                </label>
+                                <label class="admin-field">
+                                  <?= admin_field_head('Cooldown seconds', 'Seconds before the same player can claim this kit again.') ?>
+                                  <input type="number" min="0" max="31536000" name="kits[<?= e((string) $index) ?>][cooldown_seconds]" value="<?= e((string) ($row['cooldown_seconds'] ?? 0)) ?>">
+                                </label>
+                                <label class="admin-field">
+                                  <?= admin_field_head('Claim cost', 'Cost charged by the Kits plugin when players claim directly from /kit.') ?>
+                                  <input type="number" min="0" max="99999999" name="kits[<?= e((string) $index) ?>][cost]" value="<?= e((string) ($row['cost'] ?? 0)) ?>">
+                                </label>
+                                <label class="admin-field">
+                                  <?= admin_field_head('Auth level', 'Rust auth level required by the kit, usually 0.') ?>
+                                  <input type="number" min="0" max="2" name="kits[<?= e((string) $index) ?>][required_auth]" value="<?= e((string) ($row['required_auth'] ?? 0)) ?>">
+                                </label>
+                                <label class="admin-field">
+                                  <?= admin_field_head('Sort order', 'Lower kits appear first in the website admin and public product details.') ?>
+                                  <input type="number" min="0" max="9999" name="kits[<?= e((string) $index) ?>][sort_order]" value="<?= e((string) ($row['sort_order'] ?? 100)) ?>">
+                                </label>
+                                <label class="admin-field">
+                                  <?= admin_field_head('CopyPaste file', 'Optional building file name used by the Rust Kits plugin.') ?>
+                                  <input type="text" name="kits[<?= e((string) $index) ?>][copy_paste_file]" maxlength="160" value="<?= e((string) ($row['copy_paste_file'] ?? '')) ?>">
+                                </label>
+                                <label class="admin-field admin-span-all">
+                                  <?= admin_field_head('Description', 'Player-facing kit description shown on the website and in the Rust UI when supported.') ?>
+                                  <textarea name="kits[<?= e((string) $index) ?>][description]" rows="3" maxlength="3000"><?= e((string) ($row['description'] ?? '')) ?></textarea>
+                                </label>
+                                <label class="admin-field">
+                                  <?= admin_field_head('Image URL/path', 'Use an HTTPS URL or an uploaded image under assets/media/kits/.') ?>
+                                  <input type="text" name="kits[<?= e((string) $index) ?>][image_path]" maxlength="500" placeholder="/assets/media/kits/raid-kit.png" value="<?= e((string) ($row['image_path'] ?? '')) ?>">
+                                </label>
+                                <label class="admin-field">
+                                  <?= admin_field_head('Upload image', 'Optional PNG, JPG, WebP, or GIF. Upload replaces the URL/path above.') ?>
+                                  <input type="file" name="kit_images[<?= e((string) $index) ?>]" accept="image/png,image/jpeg,image/webp,image/gif">
+                                </label>
+                                <?php if (!empty($row['image_path'])) : ?>
+                                  <div class="admin-kit-image-preview">
+                                    <img src="<?= e(raidlands_kits_public_image_url((string) $row['image_path'])) ?>" alt="">
+                                  </div>
+                                <?php endif; ?>
+                                <label class="admin-check admin-check-field">
+                                  <input type="checkbox" name="kits[<?= e((string) $index) ?>][is_active]" value="1" <?= !empty($row['is_active']) ? 'checked' : '' ?>>
+                                  <?= admin_check_copy('Active', 'Inactive kits stay in the website admin but are removed from the next published server payload.') ?>
+                                </label>
+                                <label class="admin-check admin-check-field">
+                                  <input type="checkbox" name="kits[<?= e((string) $index) ?>][is_hidden]" value="1" <?= !empty($row['is_hidden']) ? 'checked' : '' ?>>
+                                  <?= admin_check_copy('Hidden in /kit', 'Hidden kits can still be used by other systems such as the RP shop.') ?>
+                                </label>
+                              </div>
+                            </details>
+
+                            <details class="admin-details">
+                              <summary>Availability and store links <small>Groups and public products</small></summary>
+                              <div class="admin-grid two">
+                                <div class="admin-field">
+                                  <?= admin_field_head('Available groups', 'WebsiteVipBridge grants or revokes the kit permission for these groups during kit sync.') ?>
+                                  <div class="admin-check-grid">
+                                    <?php foreach ($admin_kit_groups as $group) : ?>
+                                      <label class="admin-check">
+                                        <input type="checkbox" name="kits[<?= e((string) $index) ?>][groups][]" value="<?= e((string) $group) ?>" <?= in_array((string) $group, $kit_groups, true) ? 'checked' : '' ?>>
+                                        <span><?= e((string) $group) ?></span>
+                                      </label>
+                                    <?php endforeach; ?>
+                                  </div>
+                                  <input type="text" list="admin-kit-group-options" name="kits[<?= e((string) $index) ?>][groups][]" maxlength="160" placeholder="custom_group">
+                                </div>
+                                <div class="admin-field">
+                                  <?= admin_field_head('Linked store products', 'Public store cards for selected products will show this kit and its contents.') ?>
+                                  <div class="admin-check-grid">
+                                    <?php foreach ($admin_kit_products as $product) : ?>
+                                      <?php $product_id = (int) $product['id']; ?>
+                                      <label class="admin-check">
+                                        <input type="checkbox" name="kits[<?= e((string) $index) ?>][store_product_ids][]" value="<?= e((string) $product_id) ?>" <?= in_array($product_id, $kit_products, true) ? 'checked' : '' ?>>
+                                        <span><?= e((string) $product['name']) ?></span>
+                                      </label>
+                                    <?php endforeach; ?>
+                                  </div>
+                                </div>
+                              </div>
+                            </details>
+
+                            <details class="admin-details">
+                              <summary>RP shop row <small>Optional /s listing</small></summary>
+                              <div class="admin-grid three">
+                                <label class="admin-check admin-check-field">
+                                  <input type="checkbox" name="kits[<?= e((string) $index) ?>][reward_enabled]" value="1" <?= !empty($row['reward_enabled']) ? 'checked' : '' ?>>
+                                  <?= admin_check_copy('Show in rewards shop', 'Adds or updates this kit in the ServerRewards kit list.') ?>
+                                </label>
+                                <label class="admin-field">
+                                  <?= admin_field_head('Rewards product ID', 'Existing ServerRewards product ID. Leave -1 for the bridge to create one.') ?>
+                                  <input type="number" min="-1" max="99999999" name="kits[<?= e((string) $index) ?>][reward_product_id]" value="<?= e((string) ($row['reward_product_id'] ?? -1)) ?>">
+                                </label>
+                                <label class="admin-field">
+                                  <?= admin_field_head('RP price', 'Reward points charged in the /s shop.') ?>
+                                  <input type="number" min="0" max="99999999" name="kits[<?= e((string) $index) ?>][reward_cost]" value="<?= e((string) ($row['reward_cost'] ?? 0)) ?>">
+                                </label>
+                                <label class="admin-field">
+                                  <?= admin_field_head('Shop display name', 'Name shown in the ServerRewards shop.') ?>
+                                  <input type="text" name="kits[<?= e((string) $index) ?>][reward_display_name]" maxlength="160" value="<?= e((string) ($row['reward_display_name'] ?? '')) ?>">
+                                </label>
+                                <label class="admin-field">
+                                  <?= admin_field_head('Shop cooldown', 'ServerRewards purchase cooldown in seconds.') ?>
+                                  <input type="number" min="0" max="31536000" name="kits[<?= e((string) $index) ?>][reward_cooldown]" value="<?= e((string) ($row['reward_cooldown'] ?? 0)) ?>">
+                                </label>
+                                <label class="admin-field">
+                                  <?= admin_field_head('Shop permission', 'Optional ServerRewards purchase permission, such as serverrewards.paidpvpkit.') ?>
+                                  <input type="text" name="kits[<?= e((string) $index) ?>][reward_permission]" maxlength="160" value="<?= e((string) ($row['reward_permission'] ?? '')) ?>">
+                                </label>
+                                <label class="admin-field">
+                                  <?= admin_field_head('Shop icon URL/path', 'Defaults to the kit image when blank.') ?>
+                                  <input type="text" name="kits[<?= e((string) $index) ?>][reward_icon_url]" maxlength="500" value="<?= e((string) ($row['reward_icon_url'] ?? '')) ?>">
+                                </label>
+                                <label class="admin-field admin-span-all">
+                                  <?= admin_field_head('Shop description', 'Optional copy for the ServerRewards shop row.') ?>
+                                  <textarea name="kits[<?= e((string) $index) ?>][reward_description]" rows="2" maxlength="3000"><?= e((string) ($row['reward_description'] ?? '')) ?></textarea>
+                                </label>
+                              </div>
+                            </details>
+
+                            <details class="admin-details">
+                              <summary>Kit contents <small>Main, wear, and belt item rows</small></summary>
+                              <?php foreach (['main', 'wear', 'belt'] as $container) : ?>
+                                <div class="admin-kit-container">
+                                  <div class="admin-subsection-head">
+                                    <h3><?= e(admin_kit_container_label($container)) ?> Items</h3>
+                                    <p>Leave a shortname blank to ignore that row. Nested contents/container fields accept guarded JSON.</p>
+                                  </div>
+                                  <div class="admin-repeat-list compact">
+                                    <?php foreach (admin_kit_item_rows($row, $container) as $item_index => $item) : ?>
+                                      <article class="admin-repeat-row admin-kit-item-row">
+                                        <div class="admin-grid three">
+                                          <label class="admin-field">
+                                            <?= admin_field_head('Shortname', 'Rust item shortname.') ?>
+                                            <input type="text" list="admin-kit-shortname-options" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][shortname]" maxlength="160" value="<?= e((string) ($item['shortname'] ?? '')) ?>">
+                                          </label>
+                                          <label class="admin-field">
+                                            <?= admin_field_head('Amount', 'Stack amount given in the kit.') ?>
+                                            <input type="number" min="1" max="1000000" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][amount]" value="<?= e((string) ($item['amount'] ?? 1)) ?>">
+                                          </label>
+                                          <label class="admin-field">
+                                            <?= admin_field_head('Slot', 'Container slot position.') ?>
+                                            <input type="number" min="0" max="<?= e($container === 'main' ? '23' : ($container === 'wear' ? '7' : '5')) ?>" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][position]" value="<?= e((string) ($item['position'] ?? $item_index)) ?>">
+                                          </label>
+                                          <label class="admin-field">
+                                            <?= admin_field_head('Skin', 'Rust workshop skin ID. Use 0 for default.') ?>
+                                            <input type="number" min="0" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][skin]" value="<?= e((string) ($item['skin'] ?? 0)) ?>">
+                                          </label>
+                                          <label class="admin-field">
+                                            <?= admin_field_head('Condition', 'Current item condition. 0 lets Rust defaults apply for many items.') ?>
+                                            <input type="number" min="0" step="0.01" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][condition]" value="<?= e((string) ($item['condition_value'] ?? 0)) ?>">
+                                          </label>
+                                          <label class="admin-field">
+                                            <?= admin_field_head('Max condition', 'Maximum item condition saved by the Kits plugin.') ?>
+                                            <input type="number" min="0" step="0.01" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][max_condition]" value="<?= e((string) ($item['max_condition'] ?? 0)) ?>">
+                                          </label>
+                                          <label class="admin-field">
+                                            <?= admin_field_head('Ammo', 'Loaded ammo count for weapons.') ?>
+                                            <input type="number" min="0" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][ammo]" value="<?= e((string) ($item['ammo'] ?? 0)) ?>">
+                                          </label>
+                                          <label class="admin-field">
+                                            <?= admin_field_head('Ammo type', 'Optional ammo shortname for loaded weapons.') ?>
+                                            <input type="text" list="admin-kit-shortname-options" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][ammo_type]" maxlength="160" value="<?= e((string) ($item['ammo_type'] ?? '')) ?>">
+                                          </label>
+                                          <label class="admin-field">
+                                            <?= admin_field_head('Frequency', 'RF frequency for pagers or similar items. -1 means none.') ?>
+                                            <input type="number" min="-1" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][frequency]" value="<?= e((string) ($item['frequency'] ?? -1)) ?>">
+                                          </label>
+                                          <label class="admin-field">
+                                            <?= admin_field_head('Display name', 'Optional custom item display name.') ?>
+                                            <input type="text" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][display_name]" maxlength="160" value="<?= e((string) ($item['display_name'] ?? '')) ?>">
+                                          </label>
+                                          <label class="admin-field">
+                                            <?= admin_field_head('Blueprint target', 'Optional blueprint target shortname.') ?>
+                                            <input type="text" list="admin-kit-shortname-options" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][blueprint_shortname]" maxlength="160" value="<?= e((string) ($item['blueprint_shortname'] ?? '')) ?>">
+                                          </label>
+                                          <label class="admin-field">
+                                            <?= admin_field_head('Text', 'Optional custom item text.') ?>
+                                            <input type="text" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][text]" maxlength="1000" value="<?= e((string) ($item['text_value'] ?? '')) ?>">
+                                          </label>
+                                          <label class="admin-field admin-span-all">
+                                            <?= admin_field_head('Contents JSON', 'Advanced: nested item contents JSON array. Leave blank unless the imported kit needs it.') ?>
+                                            <textarea name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][contents_json]" rows="2"><?= e((string) ($item['contents_json'] ?? '')) ?></textarea>
+                                          </label>
+                                          <label class="admin-field admin-span-all">
+                                            <?= admin_field_head('Container JSON', 'Advanced: serialized item container JSON. Leave blank unless the imported kit needs it.') ?>
+                                            <textarea name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][container_json]" rows="2"><?= e((string) ($item['container_json'] ?? '')) ?></textarea>
+                                          </label>
+                                        </div>
+                                      </article>
+                                    <?php endforeach; ?>
+                                  </div>
+                                </div>
+                              <?php endforeach; ?>
+                            </details>
+                          </article>
+                        <?php endfor; ?>
+                      </div>
+                    </section>
+
+                    <section class="admin-section">
+                      <div class="admin-subsection-head">
+                        <h3>Recent kit sync</h3>
+                        <p>The Rust server reports whether a published kit revision was applied or failed.</p>
+                      </div>
+                      <?php if ($admin_kit_sync_rows === []) : ?>
+                        <div class="admin-alert warning">No kit sync events have been recorded yet.</div>
+                      <?php else : ?>
+                        <div class="store-table-wrap">
+                          <table class="store-table">
+                            <thead>
+                              <tr>
+                                <th>Revision</th>
+                                <th>Status</th>
+                                <th>Message</th>
+                                <th>Updated</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <?php foreach ($admin_kit_sync_rows as $sync_row) : ?>
+                                <tr>
+                                  <td><?= e((string) $sync_row['revision']) ?></td>
+                                  <td><span class="status-pill <?= e((string) $sync_row['status']) ?>"><?= e((string) $sync_row['status']) ?></span></td>
+                                  <td><?= e((string) ($sync_row['message'] ?: $sync_row['error_text'] ?: '')) ?></td>
+                                  <td><?= e((string) $sync_row['updated_at']) ?></td>
+                                </tr>
+                              <?php endforeach; ?>
+                            </tbody>
+                          </table>
+                        </div>
+                      <?php endif; ?>
+                    </section>
+                  <?php endif; ?>
+                <?php endif; ?>
+
                 <?php if ($active_section === 'grants') : ?>
                   <section class="admin-section">
                     <?php if (!$admin_store_ready) : ?>
@@ -986,6 +1446,9 @@ function admin_product_type_options(): array
                           <li><code>/api/server/vip-player.php?steam_id64=...</code></li>
                           <li><code>/api/server/vip-changes.php?since=...</code></li>
                           <li><code>/api/server/stats-snapshot.php</code></li>
+                          <li><code>/api/server/kits-snapshot.php</code></li>
+                          <li><code>/api/server/kits-sync.php?since=...</code></li>
+                          <li><code>/api/server/kits-sync-result.php</code></li>
                           <li><code>/api/server/clan-snapshot.php</code></li>
                           <li><code>/api/server/clan-actions.php?limit=...</code></li>
                           <li><code>/api/server/clan-action-result.php</code></li>
@@ -1126,14 +1589,26 @@ function admin_product_type_options(): array
 
                 <div class="admin-savebar">
                   <?php
-                    $admin_save_hidden = $active_section === 'sync'
+                    $admin_save_allowed = raidlands_admin_can_save_section($active_section);
+                    $admin_save_hidden = !$admin_save_allowed
+                        || $active_section === 'sync'
                         || ($active_section === 'feedback' && (!$admin_feedback_ready || $admin_feedback_rows === []));
                     $admin_save_disabled = ($active_section === 'store' && !$admin_store_ready)
+                        || ($active_section === 'kits' && !$admin_kits_ready)
                         || ($active_section === 'grants' && (!$admin_store_ready || empty($admin_store_catalog['products'])));
-                    $admin_disabled_label = $active_section === 'store' ? 'Store Unavailable' : 'Grant Unavailable';
+                    $admin_disabled_label = match ($active_section) {
+                        'store' => 'Store Unavailable',
+                        'kits' => 'Kits Unavailable',
+                        default => 'Grant Unavailable',
+                    };
                   ?>
                   <?php if (!$admin_save_hidden) : ?>
-                    <button class="btn btn-primary" type="submit" <?= $admin_save_disabled ? 'disabled' : '' ?>><?= $admin_save_disabled ? e($admin_disabled_label) : 'Save ' . e($active_meta['label']) ?></button>
+                    <?php if ($active_section === 'kits') : ?>
+                      <button class="btn btn-secondary" type="submit" name="kit_save_mode" value="draft" <?= $admin_save_disabled ? 'disabled' : '' ?>><?= $admin_save_disabled ? e($admin_disabled_label) : 'Save Draft' ?></button>
+                      <button class="btn btn-primary" type="submit" name="kit_save_mode" value="publish" <?= $admin_save_disabled ? 'disabled' : '' ?>><?= $admin_save_disabled ? e($admin_disabled_label) : 'Publish to Server' ?></button>
+                    <?php else : ?>
+                      <button class="btn btn-primary" type="submit" <?= $admin_save_disabled ? 'disabled' : '' ?>><?= $admin_save_disabled ? e($admin_disabled_label) : 'Save ' . e($active_meta['label']) ?></button>
+                    <?php endif; ?>
                   <?php endif; ?>
                   <a class="btn btn-secondary" href="<?= e(route_url()) ?>">View Site</a>
                 </div>

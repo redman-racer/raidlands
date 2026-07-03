@@ -890,14 +890,17 @@ function raidlands_store_current_origin(): string
 
 function raidlands_store_absolute_route_url(string $path = ''): string
 {
-    return rtrim(raidlands_store_current_origin(), '/') . '/' . ltrim(route_url($path), './');
+    $path = trim($path, '/');
+
+    return raidlands_store_absolute_url($path === '' ? '' : $path . '/');
 }
 
-function raidlands_store_steam_openid_url(): string
+function raidlands_store_steam_openid_url(string $return_path = 'link'): string
 {
     raidlands_store_boot();
 
-    $return_to = raidlands_store_absolute_route_url('link');
+    $return_path = trim($return_path, '/');
+    $return_to = raidlands_store_absolute_route_url($return_path !== '' ? $return_path : 'link');
     $separator = str_contains($return_to, '?') ? '&' : '?';
     $return_to .= $separator . 'steam_openid=1';
 

@@ -7,11 +7,18 @@
 3. Run `database/migrations/002_player_stats.sql`.
 4. Run `database/migrations/004_clan_management.sql`.
 5. Run `database/migrations/005_clan_api_keys.sql`.
-6. Run `database/seeds/001_store_products.sql`.
-7. Copy the root `.env.example` file to `.env`.
-8. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
+6. Run `database/migrations/007_admin_auth.sql`.
+7. Run `database/seeds/001_store_products.sql`.
+8. Copy the root `.env.example` file to `.env`.
+9. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
 
 The root `.env` file is ignored by Git and protected from direct web access by the root `.htaccess`.
+
+## Admin access
+
+- After `007_admin_auth.sql` is installed, `/admin/` uses Steam sign-in instead of the setup username and password.
+- Add approved Steam IDs to `admin_users`, then attach roles through `admin_user_roles`.
+- Use the commented owner bootstrap query at the bottom of `database/migrations/007_admin_auth.sql` for the first admin account.
 
 ## Stripe
 
