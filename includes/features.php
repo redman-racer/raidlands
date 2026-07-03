@@ -680,7 +680,8 @@ function raidlands_features_admin_state(): array
 
     raidlands_features_seed_defaults();
 
-    $features = raidlands_features_admin_items();
+    $window = raidlands_features_current_wipe_window();
+    $features = raidlands_features_attach_scores(raidlands_features_admin_items(), $window);
     $pending = raidlands_db_fetch_all(
         "SELECT fs.*, sf.public_id AS feedback_public_id, sf.status AS feedback_status
          FROM feature_suggestions fs
@@ -710,7 +711,7 @@ function raidlands_features_admin_state(): array
         'pending_suggestions' => $pending,
         'grouped_suggestions' => $grouped,
         'feedback_import_count' => raidlands_features_feedback_import_count(),
-        'window' => raidlands_features_current_wipe_window(),
+        'window' => $window,
     ];
 }
 
@@ -853,12 +854,16 @@ function raidlands_features_admin_handle_feedback_action(array $post): string
             }
 
             $feature = raidlands_db_fetch_one(
-                'SELECT id, title FROM feature_items WHERE id = :id LIMIT 1',
+                "SELECT id, title
+                 FROM feature_items
+                 WHERE id = :id
+                   AND public_status <> 'archived'
+                 LIMIT 1",
                 ['id' => $feature_id]
             );
 
             if ($feature === null) {
-                throw new RuntimeException('The selected feature could not be found.');
+                throw new RuntimeException('Choose an active, voting, planned, in-development, or under-review feature before merging this feedback item.');
             }
 
             $feature_title = (string) ($feature['title'] ?? 'feature');

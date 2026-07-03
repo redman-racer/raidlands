@@ -1415,15 +1415,41 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                       <div class="admin-alert warning"><?= e($admin_feedback_error) ?></div>
                     </section>
                   <?php else : ?>
+                    <?php
+                      $feedback_total_count = count($admin_feedback_rows);
+                      $feedback_active_count = (int) ($admin_feedback_counts['open'] ?? 0)
+                          + (int) ($admin_feedback_counts['reviewing'] ?? 0)
+                          + (int) ($admin_feedback_counts['planned'] ?? 0);
+                      $feedback_closed_count = (int) ($admin_feedback_counts['resolved'] ?? 0)
+                          + (int) ($admin_feedback_counts['closed'] ?? 0);
+                      $feedback_candidate_count = count(array_filter(
+                          $admin_feedback_rows,
+                          static fn (array $row): bool => in_array((string) ($row['type'] ?? ''), raidlands_features_feedback_types(), true)
+                      ));
+                      $feedback_linked_count = count($admin_feedback_feature_links);
+                    ?>
                     <section class="admin-section">
-                      <div class="admin-grid three">
-                        <?php foreach (raidlands_feedback_status_options() as $status_key => $status_label) : ?>
-                          <div class="metal-panel admin-feedback-stat">
-                            <p class="section-kicker"><?= e($status_label) ?></p>
-                            <h3><?= e((string) ($admin_feedback_counts[$status_key] ?? 0)) ?></h3>
-                            <p class="store-muted">Feedback items</p>
-                          </div>
-                        <?php endforeach; ?>
+                      <div class="admin-grid four">
+                        <div class="metal-panel admin-feedback-stat">
+                          <p class="section-kicker">Loaded</p>
+                          <h3><?= e((string) $feedback_total_count) ?></h3>
+                          <p class="store-muted">recent inbox items</p>
+                        </div>
+                        <div class="metal-panel admin-feedback-stat">
+                          <p class="section-kicker">Needs review</p>
+                          <h3><?= e((string) $feedback_active_count) ?></h3>
+                          <p class="store-muted">open, reviewing, or planned</p>
+                        </div>
+                        <div class="metal-panel admin-feedback-stat">
+                          <p class="section-kicker">Feature signal</p>
+                          <h3><?= e((string) $feedback_candidate_count) ?></h3>
+                          <p class="store-muted"><?= e((string) $feedback_linked_count) ?> linked to features</p>
+                        </div>
+                        <div class="metal-panel admin-feedback-stat">
+                          <p class="section-kicker">Closed loop</p>
+                          <h3><?= e((string) $feedback_closed_count) ?></h3>
+                          <p class="store-muted">resolved or closed</p>
+                        </div>
                       </div>
                     </section>
                   <?php endif; ?>
@@ -1431,7 +1457,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                   <section class="admin-section">
                     <div class="admin-subsection-head">
                       <h3>Support page submissions</h3>
-                      <p>Review new reports, keep a short internal note, and move each item as staff triages it.</p>
+                      <p>Search the queue, pick one submission, update staff notes, and route feature ideas without leaving the inbox.</p>
                     </div>
                     <?php if (!$admin_feedback_ready) : ?>
                       <div class="admin-alert warning">The feedback inbox will appear here after the migration is installed.</div>
@@ -1440,6 +1466,24 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                     <?php else : ?>
                       <?php
                         $feedback_feature_option_map = [];
+                        $feedback_selector_items = [];
+                        $feedback_has_active_panel = false;
+                        $feedback_status_options = raidlands_feedback_status_options();
+                        $feedback_type_options = raidlands_feedback_type_options();
+                        $feedback_workflow_options = [
+                            'all' => 'All workflows',
+                            'candidate' => 'Feature candidates',
+                            'linked' => 'Linked to feature',
+                            'unlinked' => 'Unlinked candidates',
+                            'none' => 'No feature workflow',
+                        ];
+                        $feedback_sort_options = [
+                            'newest' => 'Newest submitted',
+                            'oldest' => 'Oldest submitted',
+                            'updated' => 'Recently updated',
+                            'status' => 'Status',
+                            'type' => 'Type',
+                        ];
 
                         foreach ($admin_feedback_feature_rows as $feature_row) {
                             if ((string) ($feature_row['public_status'] ?? '') === 'archived') {
@@ -1457,175 +1501,346 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 . raidlands_features_status_label((string) ($feature_row['public_status'] ?? 'under_review'));
                         }
                       ?>
-                      <div class="admin-repeat-list">
-                        <?php foreach ($admin_feedback_rows as $feedback_row) : ?>
-                          <?php
-                            $feedback_id = (string) ($feedback_row['id'] ?? '');
-                            $feedback_status = (string) ($feedback_row['status'] ?? 'open');
-                            $feedback_type = (string) ($feedback_row['type'] ?? 'bug');
-                            $feedback_contact = trim((string) ($feedback_row['contact_name'] ?? ''));
-                            $feedback_email = trim((string) ($feedback_row['contact_email'] ?? ''));
-                            $feedback_steam = trim((string) ($feedback_row['steam_id64'] ?? ''));
-                            $feedback_page = trim((string) ($feedback_row['page_url'] ?? ''));
-                            $feedback_browser = trim((string) ($feedback_row['browser'] ?? ''));
-                            $feedback_is_feature_candidate = in_array($feedback_type, raidlands_features_feedback_types(), true);
-                            $feedback_feature_link = $admin_feedback_feature_links[(int) $feedback_id] ?? null;
-                            $feedback_feature_link_title = trim((string) ($feedback_feature_link['feature_title'] ?? ''));
-                            $feedback_feature_default = (string) ((int) ($feedback_feature_link['feature_id'] ?? 0) > 0 ? (int) $feedback_feature_link['feature_id'] : '');
-                            $feedback_feature_matches = [];
+                      <div class="admin-feedback-workbench" data-admin-feedback-workbench>
+                        <div class="admin-feedback-editor-shell">
+                          <div class="admin-feedback-panels">
+                          <?php foreach ($admin_feedback_rows as $feedback_index => $feedback_row) : ?>
+                            <?php
+                              $feedback_id = (string) ($feedback_row['id'] ?? '');
+                              $feedback_status = (string) ($feedback_row['status'] ?? 'open');
+                              $feedback_type = (string) ($feedback_row['type'] ?? 'bug');
+                              $feedback_contact = trim((string) ($feedback_row['contact_name'] ?? ''));
+                              $feedback_email = trim((string) ($feedback_row['contact_email'] ?? ''));
+                              $feedback_steam = trim((string) ($feedback_row['steam_id64'] ?? ''));
+                              $feedback_page = trim((string) ($feedback_row['page_url'] ?? ''));
+                              $feedback_browser = trim((string) ($feedback_row['browser'] ?? ''));
+                              $feedback_player = trim((string) ($feedback_row['player_display_name'] ?? ''));
+                              $feedback_linked_name = trim((string) ($feedback_row['linked_display_name'] ?? ''));
+                              $feedback_summary = trim((string) ($feedback_row['summary'] ?? 'Untitled feedback'));
+                              $feedback_summary = $feedback_summary !== '' ? $feedback_summary : 'Untitled feedback';
+                              $feedback_type_label = raidlands_feedback_type_label($feedback_type);
+                              $feedback_status_label = raidlands_feedback_status_label($feedback_status);
+                              $feedback_submitted = (string) ($feedback_row['submitted_at'] ?? '');
+                              $feedback_updated = (string) ($feedback_row['updated_at'] ?? '');
+                              $feedback_contact_label = $feedback_contact !== ''
+                                  ? $feedback_contact
+                                  : ($feedback_linked_name !== ''
+                                      ? $feedback_linked_name
+                                      : ($feedback_player !== ''
+                                          ? $feedback_player
+                                          : ($feedback_email !== '' ? $feedback_email : ($feedback_steam !== '' ? $feedback_steam : 'Anonymous'))));
+                              $feedback_is_feature_candidate = in_array($feedback_type, raidlands_features_feedback_types(), true);
+                              $feedback_feature_link = $admin_feedback_feature_links[(int) $feedback_id] ?? null;
+                              $feedback_feature_link_title = trim((string) ($feedback_feature_link['feature_title'] ?? ''));
+                              $feedback_feature_default = (string) ((int) ($feedback_feature_link['feature_id'] ?? 0) > 0 ? (int) $feedback_feature_link['feature_id'] : '');
+                              $feedback_feature_state = !$feedback_is_feature_candidate
+                                  ? 'none'
+                                  : ($feedback_feature_link !== null ? 'linked' : 'candidate');
+                              $feedback_feature_state_label = match ($feedback_feature_state) {
+                                  'linked' => 'Linked feature',
+                                  'candidate' => 'Feature candidate',
+                                  default => 'No feature workflow',
+                              };
+                              $feedback_feature_matches = [];
 
-                            if ($feedback_is_feature_candidate && $admin_feedback_features_ready && $feedback_feature_default === '') {
-                                $feedback_feature_matches = raidlands_features_suggest_matches([
-                                    'title' => (string) ($feedback_row['summary'] ?? ''),
-                                    'details' => (string) ($feedback_row['details'] ?? ''),
-                                ], $admin_feedback_feature_rows);
+                              if ($feedback_is_feature_candidate && $admin_feedback_features_ready && $feedback_feature_default === '') {
+                                  $feedback_feature_matches = raidlands_features_suggest_matches([
+                                      'title' => (string) ($feedback_row['summary'] ?? ''),
+                                      'details' => (string) ($feedback_row['details'] ?? ''),
+                                  ], $admin_feedback_feature_rows);
+                              }
 
-                                if ($feedback_feature_matches !== []) {
-                                    $feedback_feature_default = (string) ($feedback_feature_matches[0]['feature']['id'] ?? '');
-                                }
-                            }
+                              $feedback_feature_select_options = $feedback_feature_option_map;
 
-                            if ($feedback_feature_default === '' && $feedback_feature_option_map !== []) {
-                                $feedback_feature_default = (string) array_key_first($feedback_feature_option_map);
-                            }
+                              if ($feedback_feature_default !== '' && !isset($feedback_feature_select_options[$feedback_feature_default]) && $feedback_feature_link_title !== '') {
+                                  $feedback_feature_select_options[$feedback_feature_default] = $feedback_feature_link_title . ' / linked';
+                              }
 
-                            $feedback_feature_select_options = $feedback_feature_option_map;
-
-                            if ($feedback_feature_default !== '' && !isset($feedback_feature_select_options[$feedback_feature_default]) && $feedback_feature_link_title !== '') {
-                                $feedback_feature_select_options[$feedback_feature_default] = $feedback_feature_link_title . ' / linked';
-                            }
-                          ?>
-                          <article class="admin-repeat-card admin-feedback-card">
-                            <input type="hidden" name="feedback_rows[<?= e($feedback_id) ?>][id]" value="<?= e($feedback_id) ?>">
-                            <div class="admin-repeat-card-head admin-feedback-card-head">
-                              <div>
-                                <h3><?= e((string) ($feedback_row['summary'] ?? 'Untitled feedback')) ?></h3>
-                                <p class="admin-feedback-subtitle">
-                                  <?= e(raidlands_feedback_type_label($feedback_type)) ?> submitted <?= e((string) ($feedback_row['submitted_at'] ?? '')) ?>
-                                </p>
+                              $feedback_panel_key = 'feedback-' . ($feedback_id !== '' ? $feedback_id : (string) $feedback_index);
+                              $feedback_panel_id = 'admin-feedback-panel-' . (preg_replace('/[^a-zA-Z0-9_-]+/', '-', $feedback_panel_key) ?: (string) $feedback_index);
+                              $feedback_is_active_panel = !$feedback_has_active_panel;
+                              $feedback_has_active_panel = true;
+                              $feedback_search_text = implode(' ', [
+                                  $feedback_id,
+                                  (string) ($feedback_row['public_id'] ?? ''),
+                                  $feedback_summary,
+                                  (string) ($feedback_row['details'] ?? ''),
+                                  $feedback_type_label,
+                                  $feedback_status_label,
+                                  $feedback_contact,
+                                  $feedback_email,
+                                  $feedback_steam,
+                                  $feedback_player,
+                                  $feedback_linked_name,
+                                  $feedback_page,
+                                  $feedback_browser,
+                                  (string) ($feedback_row['admin_note'] ?? ''),
+                              ]);
+                              $feedback_selector_meta = $feedback_type_label . ' / ' . $feedback_submitted . ' / ' . $feedback_status_label;
+                              $feedback_selector_items[] = [
+                                  'index' => (string) $feedback_index,
+                                  'id' => $feedback_panel_id,
+                                  'label' => $feedback_summary,
+                                  'meta' => $feedback_selector_meta,
+                                  'contact' => $feedback_contact_label,
+                                  'status' => $feedback_status,
+                                  'status_label' => $feedback_status_label,
+                                  'type' => $feedback_type,
+                                  'type_label' => $feedback_type_label,
+                                  'feature' => $feedback_feature_state,
+                                  'feature_label' => $feedback_feature_state_label,
+                                  'submitted' => $feedback_submitted,
+                                  'updated' => $feedback_updated,
+                                  'search' => $feedback_search_text,
+                                  'is_active' => $feedback_is_active_panel,
+                              ];
+                            ?>
+                            <article
+                              class="admin-repeat-card admin-feedback-card admin-feedback-panel<?= $feedback_is_active_panel ? ' is-active' : '' ?>"
+                              id="<?= e($feedback_panel_id) ?>"
+                              data-feedback-panel
+                              data-feedback-index="<?= e((string) $feedback_index) ?>"
+                              data-feedback-status="<?= e($feedback_status) ?>"
+                              data-feedback-type="<?= e($feedback_type) ?>"
+                              data-feedback-feature="<?= e($feedback_feature_state) ?>"
+                              <?= $feedback_is_active_panel ? '' : 'hidden' ?>>
+                              <input type="hidden" name="feedback_rows[<?= e($feedback_id) ?>][id]" value="<?= e($feedback_id) ?>">
+                              <div class="admin-repeat-card-head admin-feedback-card-head">
+                                <div>
+                                  <h3><?= e($feedback_summary) ?></h3>
+                                  <p class="admin-feedback-subtitle">
+                                    <?= e($feedback_type_label) ?> submitted <?= e($feedback_submitted !== '' ? $feedback_submitted : 'without a timestamp') ?>
+                                  </p>
+                                </div>
+                                <span class="status-pill <?= e($feedback_status) ?>" data-feedback-status-pill><?= e($feedback_status_label) ?></span>
                               </div>
-                              <span class="status-pill <?= e($feedback_status) ?>"><?= e(raidlands_feedback_status_label($feedback_status)) ?></span>
-                            </div>
 
-                            <div class="admin-feedback-body">
-                              <div class="admin-feedback-details"><?= nl2br(e((string) ($feedback_row['details'] ?? ''))) ?></div>
-                              <dl class="admin-feedback-meta">
-                                <div>
-                                  <dt>Contact</dt>
-                                  <dd><?= e($feedback_contact !== '' ? $feedback_contact : 'Not provided') ?></dd>
-                                </div>
-                                <div>
-                                  <dt>Email</dt>
-                                  <dd>
-                                    <?php if ($feedback_email !== '') : ?>
-                                      <a href="mailto:<?= e($feedback_email) ?>"><?= e($feedback_email) ?></a>
-                                    <?php else : ?>
-                                      Not provided
-                                    <?php endif; ?>
-                                  </dd>
-                                </div>
-                                <div>
-                                  <dt>SteamID64</dt>
-                                  <dd><?= $feedback_steam !== '' ? '<code>' . e($feedback_steam) . '</code>' : 'Not provided' ?></dd>
-                                </div>
-                                <div>
-                                  <dt>Page</dt>
-                                  <dd>
-                                    <?php if ($feedback_page !== '') : ?>
-                                      <a href="<?= e($feedback_page) ?>" target="_blank" rel="noopener noreferrer"><?= e($feedback_page) ?></a>
-                                    <?php else : ?>
-                                      Not provided
-                                    <?php endif; ?>
-                                  </dd>
-                                </div>
-                                <div>
-                                  <dt>Browser</dt>
-                                  <dd><?= e($feedback_browser !== '' ? $feedback_browser : 'Not provided') ?></dd>
-                                </div>
-                                <div>
-                                  <dt>Updated</dt>
-                                  <dd><?= e((string) ($feedback_row['updated_at'] ?? '')) ?></dd>
-                                </div>
-                              </dl>
-                            </div>
+                              <div class="admin-feedback-overview" aria-label="Feedback summary">
+                                <span>
+                                  <small>Contact</small>
+                                  <strong><?= e($feedback_contact_label) ?></strong>
+                                </span>
+                                <span>
+                                  <small>SteamID64</small>
+                                  <strong><?= e($feedback_steam !== '' ? $feedback_steam : 'Not provided') ?></strong>
+                                </span>
+                                <span>
+                                  <small>Workflow</small>
+                                  <strong><?= e($feedback_feature_state_label) ?></strong>
+                                </span>
+                                <span>
+                                  <small>Updated</small>
+                                  <strong><?= e($feedback_updated !== '' ? $feedback_updated : 'Not updated') ?></strong>
+                                </span>
+                              </div>
 
-                            <?php if ($feedback_is_feature_candidate) : ?>
-                              <div class="admin-feedback-feature-workflow">
-                                <div class="admin-feedback-feature-head">
-                                  <div>
-                                    <h4>Feature workflow</h4>
-                                    <p>Promote this feedback into a voteable feature candidate or merge it into an existing feature signal.</p>
+                              <div class="admin-feedback-section-stack">
+                                <details class="admin-details admin-feedback-details-panel" open>
+                                  <summary>Submission <small>Player message and source context</small></summary>
+                                  <div class="admin-feedback-detail-wrap">
+                                    <div class="admin-feedback-details"><?= nl2br(e((string) ($feedback_row['details'] ?? ''))) ?></div>
+                                    <dl class="admin-feedback-meta">
+                                      <div>
+                                        <dt>Contact</dt>
+                                        <dd><?= e($feedback_contact !== '' ? $feedback_contact : 'Not provided') ?></dd>
+                                      </div>
+                                      <div>
+                                        <dt>Email</dt>
+                                        <dd>
+                                          <?php if ($feedback_email !== '') : ?>
+                                            <a href="mailto:<?= e($feedback_email) ?>"><?= e($feedback_email) ?></a>
+                                          <?php else : ?>
+                                            Not provided
+                                          <?php endif; ?>
+                                        </dd>
+                                      </div>
+                                      <div>
+                                        <dt>SteamID64</dt>
+                                        <dd><?= $feedback_steam !== '' ? '<code>' . e($feedback_steam) . '</code>' : 'Not provided' ?></dd>
+                                      </div>
+                                      <div>
+                                        <dt>Page</dt>
+                                        <dd>
+                                          <?php if ($feedback_page !== '') : ?>
+                                            <a href="<?= e($feedback_page) ?>" target="_blank" rel="noopener noreferrer"><?= e($feedback_page) ?></a>
+                                          <?php else : ?>
+                                            Not provided
+                                          <?php endif; ?>
+                                        </dd>
+                                      </div>
+                                      <div>
+                                        <dt>Browser</dt>
+                                        <dd><?= e($feedback_browser !== '' ? $feedback_browser : 'Not provided') ?></dd>
+                                      </div>
+                                      <div>
+                                        <dt>Public ID</dt>
+                                        <dd><code><?= e((string) ($feedback_row['public_id'] ?? '')) ?></code></dd>
+                                      </div>
+                                    </dl>
                                   </div>
-                                  <?php if ($feedback_feature_link !== null) : ?>
-                                    <span class="status-pill <?= e((string) ($feedback_feature_link['status'] ?? 'grouped')) ?>"><?= e(ucwords(str_replace('_', ' ', (string) ($feedback_feature_link['status'] ?? 'grouped')))) ?></span>
-                                  <?php endif; ?>
-                                </div>
+                                </details>
 
-                                <?php if (!$admin_feedback_features_ready) : ?>
-                                  <div class="admin-alert warning">Feature workflow is unavailable. <?= $admin_feedback_features_error !== '' ? e($admin_feedback_features_error) : 'Run the feature planning migration first.' ?></div>
-                                <?php else : ?>
-                                  <?php if ($feedback_feature_link !== null) : ?>
-                                    <div class="admin-feedback-feature-linked">
-                                      <span class="tag">
-                                        <span class="tag-label">Linked feature</span>
-                                        <span class="tag-value"><?= e($feedback_feature_link_title !== '' ? $feedback_feature_link_title : 'None') ?></span>
-                                      </span>
-                                      <?php if (!empty($feedback_feature_link['updated_at'])) : ?>
-                                        <small>Updated <?= e((string) $feedback_feature_link['updated_at']) ?></small>
+                                <?php if ($feedback_is_feature_candidate) : ?>
+                                  <details class="admin-details admin-feedback-details-panel" open>
+                                    <summary>Feature workflow <small>Merge, link, or create public feature signal</small></summary>
+                                    <div class="admin-feedback-feature-workflow">
+                                      <div class="admin-feedback-feature-head">
+                                        <div>
+                                          <h4>Feature workflow</h4>
+                                          <p>Promote this feedback into a voteable feature candidate or merge it into an existing feature signal.</p>
+                                        </div>
+                                        <?php if ($feedback_feature_link !== null) : ?>
+                                          <span class="status-pill <?= e((string) ($feedback_feature_link['status'] ?? 'grouped')) ?>"><?= e(ucwords(str_replace('_', ' ', (string) ($feedback_feature_link['status'] ?? 'grouped')))) ?></span>
+                                        <?php endif; ?>
+                                      </div>
+
+                                      <?php if (!$admin_feedback_features_ready) : ?>
+                                        <div class="admin-alert warning">Feature workflow is unavailable. <?= $admin_feedback_features_error !== '' ? e($admin_feedback_features_error) : 'Run the feature planning migration first.' ?></div>
+                                      <?php else : ?>
+                                        <?php if ($feedback_feature_link !== null) : ?>
+                                          <div class="admin-feedback-feature-linked">
+                                            <span class="tag">
+                                              <span class="tag-label">Linked feature</span>
+                                              <span class="tag-value"><?= e($feedback_feature_link_title !== '' ? $feedback_feature_link_title : 'None') ?></span>
+                                            </span>
+                                            <?php if (!empty($feedback_feature_link['updated_at'])) : ?>
+                                              <small>Updated <?= e((string) $feedback_feature_link['updated_at']) ?></small>
+                                            <?php endif; ?>
+                                          </div>
+                                        <?php endif; ?>
+
+                                        <?php if ($feedback_feature_matches !== []) : ?>
+                                          <div class="feature-match-list">
+                                            <?php foreach ($feedback_feature_matches as $match) : ?>
+                                              <span class="tag">
+                                                <span class="tag-label">Match <?= e((string) ($match['score'] ?? 0)) ?></span>
+                                                <span class="tag-value"><?= e((string) ($match['feature']['title'] ?? 'Feature')) ?></span>
+                                              </span>
+                                            <?php endforeach; ?>
+                                          </div>
+                                        <?php endif; ?>
+
+                                        <?php if ($feedback_feature_option_map === []) : ?>
+                                          <div class="admin-alert warning">No saved features are available to merge yet. Converting to a new feature is still available.</div>
+                                        <?php endif; ?>
+
+                                        <div class="admin-grid two">
+                                          <label class="admin-field">
+                                            <?= admin_field_head('Merge into feature', 'Grouped feedback adds support signal to an existing public feature without creating another card.') ?>
+                                            <select name="feedback_feature_id[<?= e($feedback_id) ?>]" <?= $feedback_feature_option_map === [] ? 'disabled' : '' ?>>
+                                              <option value="" <?= $feedback_feature_default === '' ? 'selected' : '' ?>>Choose feature...</option>
+                                              <?= admin_render_keyed_options($feedback_feature_select_options, $feedback_feature_default) ?>
+                                            </select>
+                                            <?= admin_hint('Choose the destination intentionally. Similar matches above are hints, not an automatic selection.') ?>
+                                          </label>
+                                          <label class="admin-field">
+                                            <?= admin_field_head('Workflow note', 'Optional internal note saved on the feature suggestion and feedback item.') ?>
+                                            <textarea name="feedback_feature_note[<?= e($feedback_id) ?>]" rows="3" maxlength="1200"><?= e((string) ($feedback_feature_link['admin_note'] ?? '')) ?></textarea>
+                                          </label>
+                                        </div>
+
+                                        <div class="button-row admin-feedback-feature-actions">
+                                          <button class="btn btn-primary" type="submit" name="feature_feedback_action" value="merge:<?= e($feedback_id) ?>" <?= $feedback_feature_option_map === [] ? 'disabled' : '' ?>>Merge into Feature</button>
+                                          <button class="btn btn-secondary" type="submit" name="feature_feedback_action" value="new:<?= e($feedback_id) ?>">Convert to New Feature</button>
+                                        </div>
                                       <?php endif; ?>
                                     </div>
-                                  <?php endif; ?>
+                                  </details>
+                                <?php endif; ?>
 
-                                  <?php if ($feedback_feature_matches !== []) : ?>
-                                    <div class="feature-match-list">
-                                      <?php foreach ($feedback_feature_matches as $match) : ?>
-                                        <span class="tag">
-                                          <span class="tag-label">Match <?= e((string) ($match['score'] ?? 0)) ?></span>
-                                          <span class="tag-value"><?= e((string) ($match['feature']['title'] ?? 'Feature')) ?></span>
-                                        </span>
-                                      <?php endforeach; ?>
-                                    </div>
-                                  <?php endif; ?>
-
-                                  <?php if ($feedback_feature_option_map === []) : ?>
-                                    <div class="admin-alert warning">No saved features are available to merge yet. Converting to a new feature is still available.</div>
-                                  <?php endif; ?>
-
-                                  <div class="admin-grid two">
+                                <details class="admin-details admin-feedback-details-panel" open>
+                                  <summary>Staff triage <small>Status and internal note</small></summary>
+                                  <div class="admin-grid two admin-feedback-triage-grid">
                                     <label class="admin-field">
-                                      <?= admin_field_head('Merge into feature', 'Grouped feedback adds support signal to an existing public feature without creating another card.') ?>
-                                      <select name="feedback_feature_id[<?= e($feedback_id) ?>]" <?= $feedback_feature_option_map === [] ? 'disabled' : '' ?>>
-                                        <?= admin_render_options($feedback_feature_select_options, $feedback_feature_default) ?>
+                                      <?= admin_field_head('Status', 'Moves the item through staff review. This status is internal to the admin inbox.') ?>
+                                      <select name="feedback_rows[<?= e($feedback_id) ?>][status]" data-feedback-status-select>
+                                        <?= admin_render_options($feedback_status_options, $feedback_status) ?>
                                       </select>
                                     </label>
                                     <label class="admin-field">
-                                      <?= admin_field_head('Workflow note', 'Optional internal note saved on the feature suggestion and feedback item.') ?>
-                                      <textarea name="feedback_feature_note[<?= e($feedback_id) ?>]" rows="3" maxlength="1200"><?= e((string) ($feedback_feature_link['admin_note'] ?? '')) ?></textarea>
+                                      <?= admin_field_head('Staff note', 'Internal triage note. Keep player-facing replies in Discord or email for now.') ?>
+                                      <textarea name="feedback_rows[<?= e($feedback_id) ?>][admin_note]" rows="3" maxlength="1600"><?= e((string) ($feedback_row['admin_note'] ?? '')) ?></textarea>
                                     </label>
                                   </div>
-
-                                  <div class="button-row admin-feedback-feature-actions">
-                                    <button class="btn btn-primary" type="submit" name="feature_feedback_action" value="merge:<?= e($feedback_id) ?>" <?= $feedback_feature_option_map === [] ? 'disabled' : '' ?>>Merge into Feature</button>
-                                    <button class="btn btn-secondary" type="submit" name="feature_feedback_action" value="new:<?= e($feedback_id) ?>">Convert to New Feature</button>
-                                  </div>
-                                <?php endif; ?>
+                                </details>
                               </div>
-                            <?php endif; ?>
+                            </article>
+                          <?php endforeach; ?>
+                          </div>
 
-                            <div class="admin-grid two">
-                              <label class="admin-field">
-                                <?= admin_field_head('Status', 'Moves the item through staff review. This status is internal to the admin inbox.') ?>
-                                <select name="feedback_rows[<?= e($feedback_id) ?>][status]">
-                                  <?= admin_render_options(raidlands_feedback_status_options(), $feedback_status) ?>
-                                </select>
-                              </label>
-                              <label class="admin-field">
-                                <?= admin_field_head('Staff note', 'Internal triage note. Keep player-facing replies in Discord or email for now.') ?>
-                                <textarea name="feedback_rows[<?= e($feedback_id) ?>][admin_note]" rows="3" maxlength="1600"><?= e((string) ($feedback_row['admin_note'] ?? '')) ?></textarea>
-                              </label>
+                          <aside class="admin-feedback-picker" aria-label="Feedback queue">
+                            <div class="admin-feedback-picker-head">
+                              <div>
+                                <h3>Inbox queue</h3>
+                                <p data-feedback-result-count><?= e((string) count($admin_feedback_rows)) ?> item<?= count($admin_feedback_rows) === 1 ? '' : 's' ?> shown</p>
+                              </div>
+                              <button class="btn btn-secondary" type="button" data-feedback-reset>Reset</button>
                             </div>
-                          </article>
-                        <?php endforeach; ?>
+
+                            <div class="admin-feedback-picker-controls">
+                              <label class="admin-field">
+                                <?= admin_field_head('Search', 'Search summary, details, contact info, SteamID64, page URL, browser, and staff notes.') ?>
+                                <input type="search" placeholder="steam id, bug, /store, email" autocomplete="off" data-feedback-search>
+                              </label>
+                              <div class="admin-feedback-filter-grid">
+                                <label class="admin-field">
+                                  <?= admin_field_head('Status', 'Show only one triage status.') ?>
+                                  <select data-feedback-status-filter>
+                                    <option value="" selected>All statuses</option>
+                                    <?= admin_render_options($feedback_status_options) ?>
+                                  </select>
+                                </label>
+                                <label class="admin-field">
+                                  <?= admin_field_head('Type', 'Show bugs, suggestions, or feature requests.') ?>
+                                  <select data-feedback-type-filter>
+                                    <option value="" selected>All types</option>
+                                    <?= admin_render_options($feedback_type_options) ?>
+                                  </select>
+                                </label>
+                                <label class="admin-field">
+                                  <?= admin_field_head('Workflow', 'Filter feature candidates, linked items, or feedback without feature routing.') ?>
+                                  <select data-feedback-workflow-filter>
+                                    <?= admin_render_keyed_options($feedback_workflow_options, 'all') ?>
+                                  </select>
+                                </label>
+                                <label class="admin-field">
+                                  <?= admin_field_head('Sort', 'Reorder the inbox queue without changing saved feedback.') ?>
+                                  <select data-feedback-sort>
+                                    <?= admin_render_keyed_options($feedback_sort_options, 'newest') ?>
+                                  </select>
+                                </label>
+                              </div>
+                            </div>
+
+                            <div class="admin-alert warning admin-feedback-queue-empty" data-feedback-empty hidden>No feedback matches the current filters.</div>
+
+                            <div class="admin-feedback-picker-list" data-feedback-list>
+                              <?php foreach ($feedback_selector_items as $selector_item) : ?>
+                                <button
+                                  class="admin-feedback-picker-button<?= !empty($selector_item['is_active']) ? ' is-active' : '' ?> is-<?= e((string) $selector_item['status']) ?><?= (string) $selector_item['feature'] === 'linked' ? ' is-feature-linked' : '' ?><?= (string) $selector_item['feature'] === 'candidate' ? ' is-feature-candidate' : '' ?>"
+                                  type="button"
+                                  data-feedback-select
+                                  data-feedback-index="<?= e((string) $selector_item['index']) ?>"
+                                  data-feedback-target="<?= e((string) $selector_item['id']) ?>"
+                                  data-feedback-status="<?= e((string) $selector_item['status']) ?>"
+                                  data-feedback-status-label="<?= e((string) $selector_item['status_label']) ?>"
+                                  data-feedback-type="<?= e((string) $selector_item['type']) ?>"
+                                  data-feedback-type-label="<?= e((string) $selector_item['type_label']) ?>"
+                                  data-feedback-feature="<?= e((string) $selector_item['feature']) ?>"
+                                  data-feedback-feature-label="<?= e((string) $selector_item['feature_label']) ?>"
+                                  data-feedback-submitted="<?= e((string) $selector_item['submitted']) ?>"
+                                  data-feedback-updated="<?= e((string) $selector_item['updated']) ?>"
+                                  data-feedback-search="<?= e((string) $selector_item['search']) ?>"
+                                  aria-controls="<?= e((string) $selector_item['id']) ?>"
+                                  <?= !empty($selector_item['is_active']) ? 'aria-current="true"' : '' ?>>
+                                  <span data-feedback-select-label><?= e((string) $selector_item['label']) ?></span>
+                                  <small data-feedback-select-meta><?= e((string) $selector_item['meta']) ?></small>
+                                  <em><?= e((string) $selector_item['contact']) ?> / <?= e((string) $selector_item['feature_label']) ?></em>
+                                </button>
+                              <?php endforeach; ?>
+                            </div>
+                          </aside>
+                        </div>
                       </div>
                     <?php endif; ?>
                   </section>
@@ -3156,6 +3371,9 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
       <?php endif; ?>
       <?php if ($active_section === 'features') : ?>
         <script src="<?= e(asset_url('js/admin-features.js')) ?>" defer></script>
+      <?php endif; ?>
+      <?php if ($active_section === 'feedback') : ?>
+        <script src="<?= e(asset_url('js/admin-feedback.js')) ?>" defer></script>
       <?php endif; ?>
     <?php endif; ?>
   </body>
