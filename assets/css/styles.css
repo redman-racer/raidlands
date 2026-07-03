@@ -4156,12 +4156,16 @@ a.leaderboard-steam:hover,
 }
 
 .admin-permission-workbench {
+  min-width: 0;
+  max-width: 100%;
   padding: 0 16px 16px;
   display: grid;
   gap: 14px;
+  overflow: hidden;
 }
 
 .admin-permission-toolbar {
+  min-width: 0;
   padding: 12px;
   display: grid;
   grid-template-columns: minmax(260px, 1fr) auto auto;
@@ -4221,6 +4225,7 @@ a.leaderboard-steam:hover,
 }
 
 .admin-permission-selected {
+  min-width: 0;
   padding: 12px;
   display: grid;
   gap: 10px;
@@ -4281,10 +4286,14 @@ button.admin-permission-chip:focus-visible {
 }
 
 .admin-permission-tabs {
+  min-width: 0;
+  max-width: 100%;
   display: flex;
   gap: 8px;
   overflow-x: auto;
-  padding: 2px 0 4px;
+  overflow-y: hidden;
+  padding: 2px 0 10px;
+  overscroll-behavior-x: contain;
   scrollbar-gutter: stable;
 }
 
@@ -4361,11 +4370,15 @@ button.admin-permission-chip:focus-visible {
 }
 
 .admin-permission-prefix-list {
+  min-width: 0;
+  max-width: 100%;
   display: grid;
   gap: 14px;
 }
 
 .admin-permission-prefix {
+  min-width: 0;
+  max-width: 100%;
   padding-top: 14px;
   display: grid;
   gap: 10px;
@@ -4392,12 +4405,15 @@ button.admin-permission-chip:focus-visible {
 }
 
 .admin-permission-grid {
+  min-width: 0;
+  max-width: 100%;
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(min(100%, 240px), 1fr));
   gap: 8px;
 }
 
 .admin-permission-option {
+  min-width: 0;
   min-height: 52px;
   align-items: flex-start;
   border-color: rgba(181, 170, 160, .18);
@@ -4449,9 +4465,11 @@ button.admin-permission-chip:focus-visible {
 }
 
 .admin-permission-custom textarea {
+  max-width: 100%;
   min-height: 86px;
   font-family: Consolas, "Courier New", monospace;
   font-size: .86rem;
+  resize: vertical;
 }
 
 .admin-alert {

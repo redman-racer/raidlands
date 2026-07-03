@@ -112,6 +112,19 @@
     return prefix;
   }
 
+  function resetPermissionFilters(workbench) {
+    const search = workbench.querySelector("[data-permission-search]");
+    const selectedOnly = workbench.querySelector("[data-permission-selected-only]");
+
+    if (search) {
+      search.value = "";
+    }
+
+    if (selectedOnly) {
+      selectedOnly.checked = false;
+    }
+  }
+
   function updateStateLabel(item, input) {
     const state = item.querySelector("[data-permission-state]");
     const isLive = item.getAttribute("data-permission-live") === "1";
@@ -277,11 +290,13 @@
     const search = workbench.querySelector("[data-permission-search]");
     const selectedOnly = workbench.querySelector("[data-permission-selected-only]");
 
+    resetPermissionFilters(workbench);
     activateTab(workbench, activeTabPrefix(workbench));
 
     toArray(workbench.querySelectorAll("[data-permission-tab]")).forEach(tab => {
       tab.addEventListener("click", () => {
         activateTab(workbench, tab.getAttribute("data-tab-prefix") || "");
+        resetPermissionFilters(workbench);
         updateWorkbench(workbench);
       });
     });

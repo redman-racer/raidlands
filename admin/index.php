@@ -1915,10 +1915,10 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 <div class="admin-permission-toolbar">
                                   <label class="admin-field admin-permission-search">
                                     <?= admin_field_head('Find permissions', 'Filter the active permission tab by plugin prefix, plugin name, or exact permission.') ?>
-                                    <input type="search" data-permission-search placeholder="backpacks, teleport, kits.raid">
+                                    <input type="search" data-permission-search placeholder="backpacks, teleport, kits.raid" autocomplete="off">
                                   </label>
                                   <label class="admin-check admin-permission-filter">
-                                    <input type="checkbox" data-permission-selected-only>
+                                    <input type="checkbox" data-permission-selected-only autocomplete="off">
                                     <span class="admin-permission-filter-copy">Selected only</span>
                                   </label>
                                   <div class="admin-permission-totals" aria-live="polite">
