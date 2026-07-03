@@ -4355,7 +4355,8 @@ button.admin-permission-chip:focus-visible {
 
 .admin-permission-empty[hidden],
 .admin-permission-prefix[hidden],
-.admin-permission-option[hidden] {
+.admin-permission-option[hidden],
+.admin-group-panel[hidden] {
   display: none !important;
 }
 
@@ -4812,6 +4813,111 @@ button.admin-permission-chip:focus-visible {
   font-family: var(--font-body);
   font-size: .75rem;
   font-weight: 700;
+}
+
+.admin-group-editor-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  gap: 16px;
+  align-items: start;
+}
+
+.admin-group-panels,
+.admin-group-panel {
+  min-width: 0;
+}
+
+.admin-group-picker {
+  position: sticky;
+  top: 98px;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(181, 170, 160, .22);
+  border-radius: var(--radius);
+  background:
+    var(--console-scan) center / 220px repeat,
+    rgba(0, 0, 0, .34);
+}
+
+.admin-group-picker-head h3 {
+  margin: 0;
+  color: var(--white);
+  font-size: 1.1rem;
+  text-transform: uppercase;
+}
+
+.admin-group-picker-head p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: .78rem;
+  font-weight: 700;
+}
+
+.admin-group-picker-list {
+  max-height: min(62vh, 620px);
+  display: grid;
+  gap: 8px;
+  overflow: auto;
+  padding-right: 3px;
+}
+
+.admin-group-picker-button {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  min-height: 58px;
+  padding: 10px 12px;
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(181, 170, 160, .2);
+  border-radius: var(--radius);
+  background:
+    var(--metal-texture) center / 240px repeat,
+    rgba(0, 0, 0, .28);
+  color: var(--white);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-group-picker-button:hover,
+.admin-group-picker-button:focus-visible,
+.admin-group-picker-button.is-active {
+  border-color: rgba(255, 138, 40, .62);
+  outline: none;
+  background:
+    linear-gradient(90deg, rgba(255, 138, 40, .18), rgba(0, 0, 0, .22)),
+    var(--metal-texture) center / 240px repeat,
+    rgba(0, 0, 0, .34);
+}
+
+.admin-group-picker-button.has-drift {
+  border-color: rgba(255, 209, 102, .38);
+}
+
+.admin-group-picker-button span,
+.admin-group-picker-button small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-group-picker-button span {
+  color: var(--white);
+  font-weight: 900;
+  line-height: 1.1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.admin-group-picker-button small {
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: .75rem;
+  font-weight: 700;
+  line-height: 1.25;
 }
 
 .admin-kit-loadout-details .rust-kit-loadout {
@@ -5496,6 +5602,7 @@ button.admin-permission-chip:focus-visible {
   }
 
   .admin-kit-editor-shell,
+  .admin-group-editor-shell,
   .admin-kit-modal-top {
     grid-template-columns: 1fr;
   }
@@ -5508,11 +5615,13 @@ button.admin-permission-chip:focus-visible {
     position: static;
   }
 
-  .admin-kit-picker {
+  .admin-kit-picker,
+  .admin-group-picker {
     position: static;
   }
 
-  .admin-kit-picker-list {
+  .admin-kit-picker-list,
+  .admin-group-picker-list {
     max-height: none;
   }
 
@@ -5887,22 +5996,26 @@ button.admin-permission-chip:focus-visible {
 }
 
 @media (max-width: 1100px) {
-  .admin-body .admin-kit-editor-shell {
+  .admin-body .admin-kit-editor-shell,
+  .admin-body .admin-group-editor-shell {
     grid-template-columns: 1fr;
   }
 
-  .admin-body .admin-kit-picker {
+  .admin-body .admin-kit-picker,
+  .admin-body .admin-group-picker {
     position: static;
     order: -1;
   }
 
-  .admin-body .admin-kit-picker-list {
+  .admin-body .admin-kit-picker-list,
+  .admin-body .admin-group-picker-list {
     max-height: 260px;
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   }
 }
 
 @media (max-width: 640px) {
+  .admin-body .admin-group-picker-list,
   .admin-body .admin-kit-picker-list {
     grid-template-columns: 1fr;
   }

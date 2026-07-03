@@ -1,33 +1,115 @@
 (() => {
+  const groupEditors = document.querySelectorAll("[data-admin-group-editor]");
   const workbenches = document.querySelectorAll("[data-permission-workbench]");
 
-  if (!workbenches.length) {
+  if (!groupEditors.length && !workbenches.length) {
     return;
   }
 
   const toArray = nodes => Array.prototype.slice.call(nodes || []);
   const itemInput = item => item.querySelector('input[type="checkbox"]');
 
+  function initGroupEditor(editor) {
+    const panels = toArray(editor.querySelectorAll("[data-group-panel]"));
+    const selectors = toArray(editor.querySelectorAll("[data-group-select]"));
+    const activePanel = panels.find(panel => panel.classList.contains("is-active")) || panels[0];
+    let activeIndex = activePanel ? activePanel.getAttribute("data-group-index") || "0" : "0";
+
+    function selectorByIndex(index) {
+      return selectors.find(selector => selector.getAttribute("data-group-index") === String(index));
+    }
+
+    function activateGroup(index) {
+      activeIndex = String(index);
+
+      panels.forEach(panel => {
+        const isActive = panel.getAttribute("data-group-index") === activeIndex;
+
+        panel.hidden = !isActive;
+        panel.classList.toggle("is-active", isActive);
+      });
+
+      selectors.forEach(selector => {
+        const isActive = selector.getAttribute("data-group-index") === activeIndex;
+
+        selector.classList.toggle("is-active", isActive);
+
+        if (isActive) {
+          selector.setAttribute("aria-current", "true");
+        } else {
+          selector.removeAttribute("aria-current");
+        }
+      });
+    }
+
+    function updateGroupTitle(input) {
+      const panel = input.closest("[data-group-panel]");
+
+      if (!panel) {
+        return;
+      }
+
+      const title = input.value.trim() || "New Group";
+      const heading = panel.querySelector("[data-group-card-title]");
+      const selector = selectorByIndex(panel.getAttribute("data-group-index"));
+
+      if (heading) {
+        heading.textContent = title;
+      }
+
+      if (selector) {
+        const label = selector.querySelector("[data-group-select-label]");
+
+        if (label) {
+          label.textContent = title;
+        }
+      }
+    }
+
+    selectors.forEach(selector => {
+      selector.addEventListener("click", () => {
+        activateGroup(selector.getAttribute("data-group-index") || "0");
+      });
+    });
+
+    panels.forEach(panel => {
+      toArray(panel.querySelectorAll("[data-group-name-input]")).forEach(input => {
+        input.addEventListener("input", () => updateGroupTitle(input));
+      });
+    });
+
+    activateGroup(activeIndex);
+  }
+
   function activeTabPrefix(workbench) {
     const active = workbench.querySelector("[data-permission-tab].is-active");
     const first = workbench.querySelector("[data-permission-tab]");
+    const tab = active || first;
 
-    return (active || first || {}).dataset ? (active || first).dataset.tabPrefix || "" : "";
+    return tab ? tab.getAttribute("data-tab-prefix") || "" : "";
   }
 
   function activateTab(workbench, prefix) {
     const tabs = toArray(workbench.querySelectorAll("[data-permission-tab]"));
+    const prefixes = toArray(workbench.querySelectorAll("[data-permission-prefix]"));
+    const hasRequestedTab = tabs.some(tab => (tab.getAttribute("data-tab-prefix") || "") === prefix);
 
-    if (!prefix && tabs.length) {
-      prefix = tabs[0].dataset.tabPrefix || "";
+    if ((!prefix || !hasRequestedTab) && tabs.length) {
+      prefix = tabs[0].getAttribute("data-tab-prefix") || "";
     }
 
     tabs.forEach(tab => {
-      const isActive = (tab.dataset.tabPrefix || "") === prefix;
+      const isActive = (tab.getAttribute("data-tab-prefix") || "") === prefix;
 
       tab.classList.toggle("is-active", isActive);
       tab.setAttribute("aria-selected", isActive ? "true" : "false");
     });
+
+    prefixes.forEach(section => {
+      section.hidden = (section.getAttribute("data-prefix") || "") !== prefix;
+    });
+
+    return prefix;
   }
 
   function updateStateLabel(item, input) {
@@ -110,7 +192,7 @@
     const empty = workbench.querySelector("[data-permission-empty]");
     const items = toArray(workbench.querySelectorAll("[data-permission-item]"));
     const prefixes = toArray(workbench.querySelectorAll("[data-permission-prefix]"));
-    const activePrefix = activeTabPrefix(workbench);
+    const activePrefix = activateTab(workbench, activeTabPrefix(workbench));
     const query = ((search && search.value) || "").trim().toLowerCase();
     const onlySelected = Boolean(selectedOnly && selectedOnly.checked);
     let visibleTotal = 0;
@@ -149,10 +231,9 @@
       const count = prefix.querySelector("[data-prefix-count]");
       const prefixName = prefix.getAttribute("data-prefix") || "";
       const tab = toArray(workbench.querySelectorAll("[data-permission-tab]")).find(candidate => {
-        return (candidate.dataset.tabPrefix || "") === prefixName;
+        return (candidate.getAttribute("data-tab-prefix") || "") === prefixName;
       });
       let selected = 0;
-      let visible = 0;
 
       prefixItems.forEach(item => {
         const input = itemInput(item);
@@ -160,13 +241,9 @@
         if (input && input.checked) {
           selected += 1;
         }
-
-        if (!item.hidden) {
-          visible += 1;
-        }
       });
 
-      prefix.hidden = prefixName !== activePrefix || visible === 0;
+      prefix.hidden = prefixName !== activePrefix;
 
       if (count) {
         count.textContent = `${selected} / ${prefixItems.length} selected`;
@@ -196,7 +273,7 @@
     renderSelectedList(workbench, items);
   }
 
-  toArray(workbenches).forEach(workbench => {
+  function initWorkbench(workbench) {
     const search = workbench.querySelector("[data-permission-search]");
     const selectedOnly = workbench.querySelector("[data-permission-selected-only]");
 
@@ -204,7 +281,7 @@
 
     toArray(workbench.querySelectorAll("[data-permission-tab]")).forEach(tab => {
       tab.addEventListener("click", () => {
-        activateTab(workbench, tab.dataset.tabPrefix || "");
+        activateTab(workbench, tab.getAttribute("data-tab-prefix") || "");
         updateWorkbench(workbench);
       });
     });
@@ -222,5 +299,8 @@
     });
 
     updateWorkbench(workbench);
-  });
+  }
+
+  toArray(groupEditors).forEach(initGroupEditor);
+  toArray(workbenches).forEach(initWorkbench);
 })();

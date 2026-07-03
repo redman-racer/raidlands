@@ -1796,7 +1796,8 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                         <h3>Group editor</h3>
                         <p>Save Draft keeps desired permissions on the website. Publish sends the composed group and kit permissions to Rust on the next bridge sync.</p>
                       </div>
-                      <div class="admin-repeat-list">
+                      <div class="admin-group-editor-shell" data-admin-group-editor>
+                        <div class="admin-group-panels">
                         <?php for ($index = 0; $index < $permission_group_total; $index += 1) : ?>
                           <?php
                             $row = $permission_group_rows[$index] ?? [
@@ -1825,6 +1826,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             $extra_live = array_values(array_diff($live_permissions, $desired_permissions));
                             $is_read_only = !empty($row['is_read_only']);
                             $card_title = $group_name !== '' ? $group_name : 'New Group';
+                            $group_is_active_panel = $index === 0;
                             $active_permission_prefix = '';
 
                             foreach ($permission_catalog_groups as $prefix_group) {
@@ -1840,11 +1842,15 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 $active_permission_prefix = (string) array_key_first($permission_catalog_groups);
                             }
                           ?>
-                          <article class="admin-repeat-card">
+                          <article
+                            class="admin-repeat-card admin-group-card admin-group-panel<?= $group_is_active_panel ? ' is-active' : '' ?>"
+                            data-group-panel
+                            data-group-index="<?= e((string) $index) ?>"
+                            <?= $group_is_active_panel ? '' : 'hidden' ?>>
                             <input type="hidden" name="permission_groups[<?= e((string) $index) ?>][id]" value="<?= e((string) ($row['id'] ?? '')) ?>">
                             <div class="admin-repeat-card-head">
                               <div>
-                                <h3><?= e($card_title) ?></h3>
+                                <h3 data-group-card-title><?= e($card_title) ?></h3>
                                 <?php if ($is_read_only) : ?>
                                   <p class="admin-feedback-subtitle">Read-only system group. The website will snapshot this group but will not publish changes for it.</p>
                                 <?php elseif ($missing_live !== [] || $extra_live !== []) : ?>
@@ -1858,7 +1864,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             <div class="admin-grid three">
                               <label class="admin-field">
                                 <?= admin_field_head('Group name', 'Stable Oxide group name. Use lowercase letters, numbers, dots, dashes, or underscores.') ?>
-                                <input type="text" list="admin-group-name-options" name="permission_groups[<?= e((string) $index) ?>][group_name]" maxlength="160" placeholder="vip_bronze" value="<?= e($group_name) ?>">
+                                <input type="text" list="admin-group-name-options" name="permission_groups[<?= e((string) $index) ?>][group_name]" maxlength="160" placeholder="vip_bronze" value="<?= e($group_name) ?>" data-group-name-input>
                               </label>
                               <label class="admin-field">
                                 <?= admin_field_head('Title', 'Optional Oxide group title. Usually matches the group name.') ?>
@@ -2055,6 +2061,48 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             </details>
                           </article>
                         <?php endfor; ?>
+                        </div>
+                        <aside class="admin-group-picker" aria-label="Group selector">
+                          <div class="admin-group-picker-head">
+                            <h3>Groups</h3>
+                            <p><?= e((string) count($permission_group_rows)) ?> saved<?= $permission_group_rows === [] ? '' : ' plus new draft slot' ?></p>
+                          </div>
+                          <div class="admin-group-picker-list">
+                            <?php for ($selector_index = 0; $selector_index < $permission_group_total; $selector_index += 1) : ?>
+                              <?php
+                                $selector_row = $permission_group_rows[$selector_index] ?? [
+                                    'id' => '',
+                                    'group_name' => '',
+                                    'desired_permissions' => [],
+                                    'live_permissions' => [],
+                                    'is_read_only' => 0,
+                                    'is_active' => 1,
+                                ];
+                                $selector_name = trim((string) ($selector_row['group_name'] ?? ''));
+                                $selector_desired_permissions = array_values(array_unique(array_map('strval', (array) ($selector_row['desired_permissions'] ?? []))));
+                                $selector_live_permissions = array_values(array_unique(array_map('strval', (array) ($selector_row['live_permissions'] ?? []))));
+                                $selector_missing_live = array_values(array_diff($selector_desired_permissions, $selector_live_permissions));
+                                $selector_extra_live = array_values(array_diff($selector_live_permissions, $selector_desired_permissions));
+                                $selector_has_drift = $selector_missing_live !== [] || $selector_extra_live !== [];
+                                $selector_is_active = $selector_index === 0;
+                                $selector_state = empty($selector_row['id'])
+                                    ? 'Draft'
+                                    : (!empty($selector_row['is_read_only'])
+                                        ? 'Read-only'
+                                        : (empty($selector_row['is_active']) ? 'Inactive' : 'Active'));
+                              ?>
+                              <button
+                                class="admin-group-picker-button<?= $selector_is_active ? ' is-active' : '' ?><?= $selector_has_drift ? ' has-drift' : '' ?>"
+                                type="button"
+                                data-group-select
+                                data-group-index="<?= e((string) $selector_index) ?>"
+                                <?= $selector_is_active ? 'aria-current="true"' : '' ?>>
+                                <span data-group-select-label><?= e($selector_name !== '' ? $selector_name : 'New Group') ?></span>
+                                <small><?= e((string) count($selector_desired_permissions)) ?> desired / <?= e((string) count($selector_live_permissions)) ?> live / <?= e($selector_has_drift ? 'Drift' : $selector_state) ?></small>
+                              </button>
+                            <?php endfor; ?>
+                          </div>
+                        </aside>
                       </div>
                     </section>
 
