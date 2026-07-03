@@ -15,6 +15,7 @@
   var assetsBase = editor.getAttribute('data-assets-base') || '../assets/';
   var activeIndex = panels.length ? panels[0].getAttribute('data-kit-index') : '0';
   var activeSlot = null;
+  var dirtyPanelIndexes = new Set();
 
   function normalizeShortname(value) {
     return String(value || '').trim().toLowerCase();
@@ -52,23 +53,54 @@
     });
   }
 
+  function expectedForPanel(panel) {
+    try {
+      return JSON.parse(panel.getAttribute('data-kit-expected') || '{}');
+    } catch (error) {
+      return { main: 24, wear: 8, belt: 6 };
+    }
+  }
+
+  function panelIndex(panel) {
+    return panel ? panel.getAttribute('data-kit-index') : null;
+  }
+
+  function shouldSubmitPanel(panel) {
+    var index = panelIndex(panel);
+
+    return index !== null && index !== '' && (index === activeIndex || dirtyPanelIndexes.has(index));
+  }
+
+  function markPanelDirty(panel) {
+    var index = panelIndex(panel);
+
+    if (index !== null && index !== '') {
+      dirtyPanelIndexes.add(index);
+    }
+  }
+
   function updateExpectedInput() {
     if (!expectedInput) {
       return;
     }
 
-    var panel = panelByIndex(activeIndex);
     var expected = {};
 
-    if (panel) {
-      try {
-        expected[activeIndex] = JSON.parse(panel.getAttribute('data-kit-expected') || '{}');
-      } catch (error) {
-        expected[activeIndex] = { main: 24, wear: 8, belt: 6 };
+    panels.forEach(function (panel) {
+      var index = panelIndex(panel);
+
+      if (shouldSubmitPanel(panel)) {
+        expected[index] = expectedForPanel(panel);
       }
-    }
+    });
 
     expectedInput.value = JSON.stringify(expected);
+  }
+
+  function setSubmitPanelsEnabled() {
+    panels.forEach(function (panel) {
+      setPanelEnabled(panel, shouldSubmitPanel(panel));
+    });
   }
 
   function activateKit(index) {
@@ -401,6 +433,7 @@
     });
 
     updateSlotVisual(activeSlot);
+    markPanelDirty(activeSlot.closest('[data-kit-panel]'));
     closeModal();
   }
 
@@ -433,9 +466,17 @@
   });
 
   if (form) {
+    form.addEventListener('input', function (event) {
+      markPanelDirty(event.target.closest('[data-kit-panel]'));
+    }, true);
+
+    form.addEventListener('change', function (event) {
+      markPanelDirty(event.target.closest('[data-kit-panel]'));
+    }, true);
+
     form.addEventListener('submit', function () {
-      activateKit(activeIndex);
       updateExpectedInput();
+      setSubmitPanelsEnabled();
     });
   }
 

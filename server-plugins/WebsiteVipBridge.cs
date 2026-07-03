@@ -12,7 +12,7 @@ using Oxide.Core.Libraries.Covalence;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteVipBridge", "Raidlands", "1.4.5")]
+    [Info("WebsiteVipBridge", "Raidlands", "1.4.6")]
     [Description("Syncs website VIP entitlements and player stats between Raidlands.net and the Rust server.")]
     public class WebsiteVipBridge : CovalencePlugin
     {
@@ -1214,9 +1214,11 @@ namespace Oxide.Plugins
 
                 foreach (var permissionName in entry.Value ?? new List<string>())
                 {
-                    if (IsSafeKitPermission(permissionName))
+                    var normalized = NormalizePermissionName(permissionName);
+
+                    if (IsSafeKitPermission(normalized))
                     {
-                        desiredByGroup[entry.Key].Add(permissionName);
+                        desiredByGroup[entry.Key].Add(normalized);
                     }
                 }
             }
@@ -1225,14 +1227,14 @@ namespace Oxide.Plugins
             {
                 var desired = desiredByGroup[group];
                 var current = new HashSet<string>((permission.GetGroupPermissions(group, false) ?? new string[0])
+                    .Select(NormalizePermissionName)
                     .Where(IsSafeKitPermission), StringComparer.OrdinalIgnoreCase);
 
                 foreach (var permissionName in desired)
                 {
                     if (!current.Contains(permissionName))
                     {
-                        permission.GrantGroupPermission(group, permissionName, this);
-                        Puts($"Granted {permissionName} to group {group}.");
+                        GrantGroupPermissionVerified(group, permissionName);
                     }
                 }
 
@@ -1240,8 +1242,7 @@ namespace Oxide.Plugins
                 {
                     if (!desired.Contains(permissionName))
                     {
-                        permission.RevokeGroupPermission(group, permissionName);
-                        Puts($"Revoked {permissionName} from group {group}.");
+                        RevokeGroupPermissionVerified(group, permissionName);
                     }
                 }
             }
@@ -1569,9 +1570,10 @@ namespace Oxide.Plugins
                 {
                     if (!current.Contains(permissionName))
                     {
-                        permission.GrantGroupPermission(group, permissionName, this);
-                        Puts($"Granted {permissionName} to group {group}.");
-                        changes++;
+                        if (GrantGroupPermissionVerified(group, permissionName))
+                        {
+                            changes++;
+                        }
                     }
                 }
 
@@ -1579,9 +1581,10 @@ namespace Oxide.Plugins
                 {
                     if (!desired.Contains(permissionName))
                     {
-                        permission.RevokeGroupPermission(group, permissionName);
-                        Puts($"Revoked {permissionName} from group {group}.");
-                        changes++;
+                        if (RevokeGroupPermissionVerified(group, permissionName))
+                        {
+                            changes++;
+                        }
                     }
                 }
             }
@@ -2090,6 +2093,59 @@ namespace Oxide.Plugins
         private static string NormalizePermissionName(string permissionName)
         {
             return (permissionName ?? "").Trim().ToLowerInvariant();
+        }
+
+        private bool GroupHasPermission(string group, string permissionName)
+        {
+            var normalized = NormalizePermissionName(permissionName);
+
+            return (permission.GetGroupPermissions(group, false) ?? new string[0])
+                .Select(NormalizePermissionName)
+                .Contains(normalized, StringComparer.OrdinalIgnoreCase);
+        }
+
+        private void EnsureBridgeManagedKitPermissionRegistered(string permissionName)
+        {
+            var normalized = NormalizePermissionName(permissionName);
+
+            if (!IsSafeKitPermission(normalized) || permission.PermissionExists(normalized))
+            {
+                return;
+            }
+
+            permission.RegisterPermission(normalized, this);
+            Puts($"Registered synced kit permission {normalized}.");
+        }
+
+        private bool GrantGroupPermissionVerified(string group, string permissionName)
+        {
+            var normalized = NormalizePermissionName(permissionName);
+            EnsureBridgeManagedKitPermissionRegistered(normalized);
+            permission.GrantGroupPermission(group, normalized, this);
+
+            if (GroupHasPermission(group, normalized))
+            {
+                Puts($"Granted {normalized} to group {group}.");
+                return true;
+            }
+
+            PrintWarning($"Grant for {normalized} to group {group} did not persist. Make sure the owning plugin is loaded or the permission prefix is listed in KitPermissionPrefixes.");
+            return false;
+        }
+
+        private bool RevokeGroupPermissionVerified(string group, string permissionName)
+        {
+            var normalized = NormalizePermissionName(permissionName);
+            permission.RevokeGroupPermission(group, normalized);
+
+            if (!GroupHasPermission(group, normalized))
+            {
+                Puts($"Revoked {normalized} from group {group}.");
+                return true;
+            }
+
+            PrintWarning($"Revoke for {normalized} from group {group} did not persist.");
+            return false;
         }
 
         private static string PermissionString(JObject obj, string key, string fallback = "")
