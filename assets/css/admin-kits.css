@@ -285,6 +285,85 @@
   background: linear-gradient(180deg, transparent, rgba(0, 0, 0, .74));
 }
 
+.admin-body .admin-kit-modal-panel {
+  width: min(1040px, 100%);
+  max-height: min(92vh, 920px);
+}
+
+.admin-body .admin-kit-modal-body {
+  min-height: 0;
+  display: flex !important;
+  flex-direction: column;
+  gap: 16px;
+  overflow: auto;
+  scrollbar-gutter: stable;
+}
+
+.admin-body .admin-kit-modal-top {
+  min-width: 0;
+  display: grid !important;
+  grid-template-columns: minmax(150px, 190px) minmax(0, 1fr);
+  gap: 16px;
+  align-items: start;
+}
+
+.admin-body .admin-kit-modal-preview {
+  min-height: 166px;
+}
+
+.admin-body .admin-kit-catalog-panel,
+.admin-body .admin-kit-modal-fieldset {
+  min-width: 0;
+  width: 100%;
+}
+
+.admin-body .admin-kit-catalog-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.admin-body .admin-kit-item-results {
+  height: clamp(190px, 30vh, 300px);
+  min-height: 0;
+  align-content: start;
+  overflow-x: hidden;
+  overflow-y: auto;
+}
+
+.admin-body .admin-kit-modal-fieldset {
+  display: grid;
+  gap: 12px;
+}
+
+.admin-body .admin-kit-modal-subhead {
+  margin-bottom: 0;
+}
+
+.admin-body .admin-kit-modal-core-fields {
+  align-items: end;
+}
+
+.admin-body .admin-kit-modal-advanced summary {
+  padding: 12px 14px;
+}
+
+.admin-body .admin-kit-item-modal .admin-field {
+  gap: 6px;
+}
+
+.admin-body .admin-kit-item-modal .admin-help-text {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
+}
+
 @media (max-width: 1100px) {
   .admin-body .admin-kit-editor-shell {
     grid-template-columns: 1fr;
@@ -303,6 +382,19 @@
 
 @media (max-width: 640px) {
   .admin-body .admin-kit-picker-list {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-body .admin-kit-modal-top {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-body .admin-kit-modal-preview {
+    min-height: 140px;
+  }
+
+  .admin-body .admin-kit-item-results {
+    height: 180px;
     grid-template-columns: 1fr;
   }
 

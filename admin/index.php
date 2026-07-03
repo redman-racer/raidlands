@@ -92,6 +92,7 @@ $admin_kit_sync_rows = [];
 $admin_permissions_ready = false;
 $admin_permissions_error = '';
 $admin_permission_groups = [];
+$admin_permission_rows = [];
 $admin_permission_options = [];
 $admin_permission_sync_rows = [];
 $admin_stats_summary = [
@@ -168,6 +169,7 @@ try {
 
         if ($admin_permissions_ready) {
             $admin_permission_groups = raidlands_permissions_admin_rows();
+            $admin_permission_rows = raidlands_permissions_permission_rows();
             $admin_permission_options = raidlands_permissions_permission_names();
             $admin_permission_sync_rows = raidlands_permissions_recent_sync_rows(12);
         } else {
@@ -271,6 +273,83 @@ function admin_render_datalist(string $id, array $options, array $current_values
     }
 
     return $html . '</datalist>';
+}
+
+function admin_permission_prefix_from_name(string $permission): string
+{
+    $parts = explode('.', $permission, 2);
+
+    return strtolower(trim($parts[0] ?? 'other')) ?: 'other';
+}
+
+function admin_permission_prefix_label(string $prefix, string $plugin_name = ''): string
+{
+    $plugin_name = trim($plugin_name);
+
+    if ($plugin_name !== '') {
+        return $plugin_name;
+    }
+
+    return ucwords(str_replace(['-', '_'], ' ', $prefix));
+}
+
+function admin_permission_catalog_groups(array $permission_names, array $permission_rows): array
+{
+    $metadata = [];
+
+    foreach ($permission_rows as $row) {
+        $name = trim((string) ($row['permission_name'] ?? ''));
+
+        if ($name === '') {
+            continue;
+        }
+
+        $metadata[$name] = [
+            'plugin_name' => trim((string) ($row['plugin_name'] ?? '')),
+            'source' => trim((string) ($row['source'] ?? '')),
+        ];
+    }
+
+    $groups = [];
+
+    foreach ($permission_names as $permission_name) {
+        $permission_name = trim((string) $permission_name);
+
+        if ($permission_name === '') {
+            continue;
+        }
+
+        $prefix = admin_permission_prefix_from_name($permission_name);
+        $plugin_name = $metadata[$permission_name]['plugin_name'] ?? '';
+
+        if (!isset($groups[$prefix])) {
+            $groups[$prefix] = [
+                'prefix' => $prefix,
+                'plugin_name' => $plugin_name,
+                'permissions' => [],
+            ];
+        } elseif ($groups[$prefix]['plugin_name'] === '' && $plugin_name !== '') {
+            $groups[$prefix]['plugin_name'] = $plugin_name;
+        }
+
+        $groups[$prefix]['permissions'][] = [
+            'name' => $permission_name,
+            'plugin_name' => $plugin_name,
+            'source' => $metadata[$permission_name]['source'] ?? '',
+        ];
+    }
+
+    ksort($groups, SORT_NATURAL | SORT_FLAG_CASE);
+
+    foreach ($groups as &$group) {
+        usort(
+            $group['permissions'],
+            static fn (array $a, array $b): int => strnatcasecmp((string) $a['name'], (string) $b['name'])
+        );
+    }
+    unset($group);
+
+    return $groups;
 }
 
 function admin_status_options(): array
@@ -1690,6 +1769,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                       $permission_group_rows = array_values($admin_permission_groups);
                       $permission_group_total = count($permission_group_rows) + 1;
                       $permission_option_set = array_fill_keys(array_map('strval', $admin_permission_options), true);
+                      $permission_catalog_groups = admin_permission_catalog_groups($admin_permission_options, $admin_permission_rows);
                     ?>
                     <section class="admin-section">
                       <div class="admin-grid three">
@@ -1739,6 +1819,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             $desired_permissions = array_values(array_unique(array_map('strval', (array) ($row['desired_permissions'] ?? []))));
                             $live_permissions = array_values(array_unique(array_map('strval', (array) ($row['live_permissions'] ?? []))));
                             $desired_set = array_fill_keys($desired_permissions, true);
+                            $live_set = array_fill_keys($live_permissions, true);
                             $custom_permissions = array_values(array_filter($desired_permissions, static fn (string $permission): bool => !isset($permission_option_set[$permission])));
                             $missing_live = array_values(array_diff($desired_permissions, $live_permissions));
                             $extra_live = array_values(array_diff($live_permissions, $desired_permissions));
@@ -1810,14 +1891,122 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               <?php if ($is_read_only) : ?>
                                 <div class="admin-alert warning">This system group is snapshot-only. Direct grants are visible in live drift checks but are not editable from the website.</div>
                               <?php endif; ?>
-                              <div class="admin-grid three">
-                                <?php foreach ($admin_permission_options as $permission_name) : ?>
-                                  <label class="admin-check admin-check-field">
-                                    <input type="checkbox" name="permission_groups[<?= e((string) $index) ?>][permissions][]" value="<?= e((string) $permission_name) ?>" <?= isset($desired_set[(string) $permission_name]) ? 'checked' : '' ?> <?= $is_read_only ? 'disabled' : '' ?>>
-                                    <?= admin_check_copy((string) $permission_name, isset($desired_set[(string) $permission_name]) && !in_array((string) $permission_name, $live_permissions, true) ? 'Desired but missing from latest live snapshot.' : 'Toggle this direct Oxide group permission.') ?>
+                              <div class="admin-permission-workbench" data-permission-workbench>
+                                <div class="admin-permission-toolbar">
+                                  <label class="admin-field admin-permission-search">
+                                    <?= admin_field_head('Find permissions', 'Filter by plugin prefix, plugin name, or exact permission.') ?>
+                                    <input type="search" data-permission-search placeholder="backpacks, teleport, kits.raid">
                                   </label>
-                                <?php endforeach; ?>
-                                <label class="admin-field admin-span-all">
+                                  <label class="admin-check admin-permission-filter">
+                                    <input type="checkbox" data-permission-selected-only>
+                                    <span class="admin-permission-filter-copy">Selected only</span>
+                                  </label>
+                                  <div class="admin-permission-totals" aria-live="polite">
+                                    <span data-permission-match-count><?= e((string) count($admin_permission_options)) ?> visible</span>
+                                    <span data-permission-selected-count><?= e((string) count($desired_permissions)) ?> selected</span>
+                                  </div>
+                                </div>
+
+                                <div class="admin-permission-selected" data-permission-selected-wrap>
+                                  <div class="admin-permission-selected-head">
+                                    <span>Selected direct grants</span>
+                                    <small data-permission-selected-summary><?= e((string) count($desired_permissions)) ?> selected</small>
+                                  </div>
+                                  <div class="admin-permission-chip-list" data-permission-selected-list></div>
+                                </div>
+
+                                <div class="admin-permission-empty" data-permission-empty hidden>No matching permissions in this catalog.</div>
+
+                                <div class="admin-permission-prefix-list">
+                                  <?php foreach ($permission_catalog_groups as $prefix_group) : ?>
+                                    <?php
+                                      $prefix = (string) $prefix_group['prefix'];
+                                      $prefix_permissions = (array) $prefix_group['permissions'];
+                                      usort(
+                                          $prefix_permissions,
+                                          static function (array $a, array $b) use ($desired_set): int {
+                                              $a_selected = isset($desired_set[(string) $a['name']]);
+                                              $b_selected = isset($desired_set[(string) $b['name']]);
+
+                                              if ($a_selected !== $b_selected) {
+                                                  return $a_selected ? -1 : 1;
+                                              }
+
+                                              return strnatcasecmp((string) $a['name'], (string) $b['name']);
+                                          }
+                                      );
+                                      $prefix_selected = count(array_filter(
+                                          $prefix_permissions,
+                                          static fn (array $permission): bool => isset($desired_set[(string) $permission['name']])
+                                      ));
+                                      $prefix_label = admin_permission_prefix_label($prefix, (string) ($prefix_group['plugin_name'] ?? ''));
+                                    ?>
+                                    <section
+                                      class="admin-permission-prefix"
+                                      data-permission-prefix
+                                      data-prefix="<?= e($prefix) ?>"
+                                      data-prefix-label="<?= e($prefix_label) ?>">
+                                      <div class="admin-permission-prefix-head">
+                                        <div>
+                                          <h4><?= e($prefix_label) ?></h4>
+                                          <code><?= e($prefix) ?></code>
+                                        </div>
+                                        <span data-prefix-count><?= e((string) $prefix_selected) ?> / <?= e((string) count($prefix_permissions)) ?> selected</span>
+                                      </div>
+                                      <div class="admin-permission-grid">
+                                        <?php foreach ($prefix_permissions as $permission_meta) : ?>
+                                          <?php
+                                            $permission_name = (string) $permission_meta['name'];
+                                            $permission_selected = isset($desired_set[$permission_name]);
+                                            $permission_live = isset($live_set[$permission_name]);
+                                            $permission_plugin = (string) ($permission_meta['plugin_name'] ?? '');
+                                            $permission_classes = 'admin-check admin-permission-option';
+
+                                            if ($permission_selected) {
+                                                $permission_classes .= ' is-selected';
+                                            }
+
+                                            if ($permission_live) {
+                                                $permission_classes .= ' is-live';
+                                            }
+
+                                            if ($permission_selected && !$permission_live) {
+                                                $permission_state = 'Missing live';
+                                                $permission_classes .= ' is-missing-live';
+                                            } elseif (!$permission_selected && $permission_live) {
+                                                $permission_state = 'Live extra';
+                                                $permission_classes .= ' is-extra-live';
+                                            } elseif ($permission_selected) {
+                                                $permission_state = 'Synced';
+                                            } else {
+                                                $permission_state = '';
+                                            }
+                                          ?>
+                                          <label
+                                            class="<?= e($permission_classes) ?>"
+                                            data-permission-item
+                                            data-permission-name="<?= e($permission_name) ?>"
+                                            data-permission-prefix="<?= e($prefix) ?>"
+                                            data-permission-plugin="<?= e($permission_plugin) ?>"
+                                            data-permission-live="<?= $permission_live ? '1' : '0' ?>">
+                                            <input
+                                              type="checkbox"
+                                              name="permission_groups[<?= e((string) $index) ?>][permissions][]"
+                                              value="<?= e($permission_name) ?>"
+                                              <?= $permission_selected ? 'checked' : '' ?>
+                                              <?= $is_read_only ? 'disabled' : '' ?>>
+                                            <span class="admin-permission-option-copy">
+                                              <span class="admin-permission-name"><?= e($permission_name) ?></span>
+                                              <small data-permission-state <?= $permission_state === '' ? 'hidden' : '' ?>><?= e($permission_state) ?></small>
+                                            </span>
+                                          </label>
+                                        <?php endforeach; ?>
+                                      </div>
+                                    </section>
+                                  <?php endforeach; ?>
+                                </div>
+
+                                <label class="admin-field admin-permission-custom">
                                   <?= admin_field_head('Custom permissions', 'One permission per line for live permissions not listed above yet.') ?>
                                   <textarea name="permission_groups[<?= e((string) $index) ?>][custom_permissions]" rows="3" placeholder="plugin.permission" <?= $is_read_only ? 'disabled' : '' ?>><?= e(implode("\n", $custom_permissions)) ?></textarea>
                                 </label>
@@ -2109,6 +2298,9 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
             });
           });
         </script>
+      <?php endif; ?>
+      <?php if ($active_section === 'groups') : ?>
+        <script src="<?= e(asset_url('js/admin-groups.js')) ?>" defer></script>
       <?php endif; ?>
     <?php endif; ?>
   </body>

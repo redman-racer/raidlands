@@ -372,10 +372,12 @@
   }
 
   function createModal() {
-    var modalFieldSpecs = [
+    var modalCoreFieldSpecs = [
       { label: 'Shortname', help: 'Rust item shortname saved to the kit slot. Pick from the catalog when possible.', type: 'text', field: 'shortname', list: 'admin-kit-shortname-options', maxlength: '160' },
       { label: 'Amount', help: 'Stack amount granted for this item. Most equipment stays at 1.', type: 'number', field: 'amount', min: '1', max: '1000000' },
-      { label: 'Skin', help: 'Optional Rust workshop skin ID. Use 0 for the default item skin.', type: 'number', field: 'skin', min: '0' },
+      { label: 'Skin', help: 'Optional Rust workshop skin ID. Use 0 for the default item skin.', type: 'number', field: 'skin', min: '0' }
+    ];
+    var modalAdvancedFieldSpecs = [
       { label: 'Condition', help: 'Current condition value imported from Rust. Leave 0 to let Rust defaults apply.', type: 'number', field: 'condition', min: '0', step: '0.01' },
       { label: 'Max condition', help: 'Maximum saved condition for the item. Usually 0 unless imported kit data needs it.', type: 'number', field: 'max_condition', min: '0', step: '0.01' },
       { label: 'Ammo', help: 'Loaded ammo count for weapons. Leave 0 for items that do not carry ammo.', type: 'number', field: 'ammo', min: '0' },
@@ -416,10 +418,16 @@
       '</div>',
       '</div>',
       '<div class="admin-kit-modal-fieldset">',
-      '<div class="admin-subsection-head admin-kit-modal-subhead"><h3>Item values</h3><p>Only shortname and amount are usually needed. Advanced fields preserve imported Rust kit data when present.</p></div>',
-      '<div class="admin-grid three admin-kit-modal-fields">',
-      modalFieldSpecs.map(modalInput).join(''),
+      '<div class="admin-subsection-head admin-kit-modal-subhead"><h3>Item values</h3></div>',
+      '<div class="admin-grid three admin-kit-modal-fields admin-kit-modal-core-fields">',
+      modalCoreFieldSpecs.map(modalInput).join(''),
       '</div>',
+      '<details class="admin-details admin-kit-modal-advanced" data-modal-advanced>',
+      '<summary>Advanced item data <small>Condition, ammo, blueprint, custom text, JSON</small></summary>',
+      '<div class="admin-grid three admin-kit-modal-fields">',
+      modalAdvancedFieldSpecs.map(modalInput).join(''),
+      '</div>',
+      '</details>',
       '</div>',
       '</div>',
       '<footer class="admin-kit-modal-actions">',
@@ -446,6 +454,7 @@
   var modalEmpty = modal.querySelector('[data-modal-empty]');
   var modalTitle = modal.querySelector('[data-modal-title]');
   var modalSubtitle = modal.querySelector('[data-modal-subtitle]');
+  var modalAdvanced = modal.querySelector('[data-modal-advanced]');
 
   hydrateFieldTooltips(editor);
   hydrateFieldTooltips(modal);
@@ -479,6 +488,48 @@
     if (modalEmpty) {
       modalEmpty.hidden = !!icon;
     }
+  }
+
+  function modalFieldValue(name) {
+    if (!modalFields[name]) {
+      return '';
+    }
+
+    return String(modalFields[name].value || '').trim();
+  }
+
+  function textFieldHasValue(name) {
+    return modalFieldValue(name) !== '';
+  }
+
+  function numberFieldDiffers(name, emptyValue) {
+    var value = Number(modalFieldValue(name));
+    var empty = Number(emptyValue);
+
+    if (!Number.isFinite(value)) {
+      return false;
+    }
+
+    return value !== empty;
+  }
+
+  function syncAdvancedOpenState() {
+    if (!modalAdvanced) {
+      return;
+    }
+
+    modalAdvanced.open = [
+      numberFieldDiffers('condition', 0),
+      numberFieldDiffers('max_condition', 0),
+      numberFieldDiffers('ammo', 0),
+      textFieldHasValue('ammo_type'),
+      numberFieldDiffers('frequency', -1),
+      textFieldHasValue('display_name'),
+      textFieldHasValue('blueprint_shortname'),
+      textFieldHasValue('text'),
+      textFieldHasValue('contents_json'),
+      textFieldHasValue('container_json')
+    ].some(Boolean);
   }
 
   function itemMatchesTerm(item, term) {
@@ -616,6 +667,7 @@
       modalSearch.value = '';
     }
     updateModalPreview();
+    syncAdvancedOpenState();
     renderResults('');
 
     window.setTimeout(function () {
@@ -643,6 +695,7 @@
     });
 
     updateModalPreview();
+    syncAdvancedOpenState();
     if (modalSearch) {
       modalSearch.value = '';
     }

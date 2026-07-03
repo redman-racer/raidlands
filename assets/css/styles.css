@@ -4106,6 +4106,239 @@ a.leaderboard-steam:hover,
   padding: 0 16px 16px;
 }
 
+.admin-details > .admin-alert {
+  margin: 0 16px 14px;
+}
+
+.admin-permission-workbench {
+  padding: 0 16px 16px;
+  display: grid;
+  gap: 14px;
+}
+
+.admin-permission-toolbar {
+  padding: 12px;
+  display: grid;
+  grid-template-columns: minmax(260px, 1fr) auto auto;
+  gap: 12px;
+  align-items: end;
+  border: 1px solid rgba(181, 170, 160, .18);
+  border-radius: var(--radius);
+  background:
+    var(--console-scan) center / 220px repeat,
+    rgba(0, 0, 0, .24);
+}
+
+.admin-permission-search {
+  gap: 6px;
+}
+
+.admin-permission-filter {
+  min-height: 46px;
+  align-self: end;
+  white-space: nowrap;
+}
+
+.admin-permission-filter-copy {
+  color: var(--white);
+  font-family: var(--font-body);
+  font-size: .86rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.admin-permission-totals {
+  min-height: 46px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.admin-permission-totals span,
+.admin-permission-prefix-head > span,
+.admin-permission-chip {
+  border: 1px solid rgba(181, 170, 160, .2);
+  border-radius: var(--radius);
+  background: rgba(0, 0, 0, .30);
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: .78rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.admin-permission-totals span,
+.admin-permission-prefix-head > span {
+  padding: 9px 10px;
+}
+
+.admin-permission-selected {
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(255, 138, 40, .20);
+  border-radius: var(--radius);
+  background: rgba(255, 138, 40, .06);
+}
+
+.admin-permission-selected-head,
+.admin-permission-prefix-head {
+  display: flex;
+  align-items: flex-end;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-permission-selected-head span,
+.admin-permission-prefix-head h4 {
+  color: var(--white);
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.admin-permission-selected-head small {
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: .78rem;
+  font-weight: 800;
+}
+
+.admin-permission-chip-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-permission-chip {
+  min-height: 32px;
+  padding: 8px 10px 7px;
+  color: var(--white);
+  font-family: Consolas, "Courier New", monospace;
+  text-transform: none;
+  overflow-wrap: anywhere;
+  cursor: pointer;
+}
+
+button.admin-permission-chip:hover,
+button.admin-permission-chip:focus-visible {
+  border-color: rgba(255, 138, 40, .62);
+  color: var(--orange);
+  outline: none;
+}
+
+.admin-permission-chip.is-empty,
+.admin-permission-chip[aria-disabled="true"] {
+  color: var(--muted);
+  cursor: default;
+}
+
+.admin-permission-empty {
+  padding: 12px;
+  border: 1px solid rgba(255, 209, 102, .36);
+  border-radius: var(--radius);
+  background: rgba(255, 209, 102, .08);
+  color: var(--white);
+  font-family: var(--font-body);
+  font-weight: 800;
+}
+
+.admin-permission-prefix-list {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-permission-prefix {
+  padding-top: 14px;
+  display: grid;
+  gap: 10px;
+  border-top: 1px solid rgba(181, 170, 160, .18);
+}
+
+.admin-permission-prefix:first-child {
+  padding-top: 0;
+  border-top: 0;
+}
+
+.admin-permission-prefix-head h4 {
+  margin: 0;
+  font-size: 1.05rem;
+  line-height: 1;
+}
+
+.admin-permission-prefix-head code {
+  display: inline-block;
+  margin-top: 4px;
+  color: var(--orange);
+  font-family: Consolas, "Courier New", monospace;
+  font-size: .78rem;
+}
+
+.admin-permission-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+  gap: 8px;
+}
+
+.admin-permission-option {
+  min-height: 52px;
+  align-items: flex-start;
+  border-color: rgba(181, 170, 160, .18);
+  background: rgba(0, 0, 0, .18);
+}
+
+.admin-permission-option input {
+  flex: 0 0 auto;
+  margin-top: 2px;
+}
+
+.admin-permission-option.is-selected {
+  border-color: rgba(255, 138, 40, .46);
+  background: rgba(255, 138, 40, .10);
+}
+
+.admin-permission-option.is-missing-live {
+  border-color: rgba(255, 209, 102, .44);
+}
+
+.admin-permission-option.is-extra-live {
+  border-color: rgba(124, 255, 107, .36);
+  background: rgba(124, 255, 107, .06);
+}
+
+.admin-permission-option-copy {
+  min-width: 0;
+  display: grid;
+  gap: 4px;
+}
+
+.admin-permission-name {
+  color: var(--white);
+  font-family: Consolas, "Courier New", monospace;
+  font-size: .8rem;
+  font-weight: 800;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+  text-transform: none;
+}
+
+.admin-permission-option-copy small {
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: .74rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.admin-permission-custom textarea {
+  min-height: 86px;
+  font-family: Consolas, "Courier New", monospace;
+  font-size: .86rem;
+}
+
 .admin-alert {
   padding: 12px 14px;
   border: 1px solid rgba(181, 170, 160, .32);
@@ -4781,8 +5014,8 @@ a.leaderboard-steam:hover,
 .admin-kit-modal-panel {
   position: relative;
   z-index: 1;
-  width: min(980px, 100%);
-  max-height: min(88vh, 900px);
+  width: min(1040px, 100%);
+  max-height: min(92vh, 920px);
   display: grid;
   grid-template-rows: auto minmax(0, 1fr) auto;
   border: 1px solid rgba(255, 138, 40, .38);
@@ -4820,23 +5053,23 @@ a.leaderboard-steam:hover,
 .admin-kit-modal-body {
   min-height: 0;
   padding: 16px;
-  display: grid;
-  gap: 18px;
-  align-content: start;
+  display: flex !important;
+  flex-direction: column;
+  gap: 16px;
   overflow: auto;
+  scrollbar-gutter: stable;
 }
 
 .admin-kit-modal-top {
   min-width: 0;
-  min-height: 0;
-  display: grid;
-  grid-template-columns: minmax(150px, 180px) minmax(0, 1fr);
+  display: grid !important;
+  grid-template-columns: minmax(150px, 190px) minmax(0, 1fr);
   gap: 16px;
-  align-items: stretch;
+  align-items: start;
 }
 
 .admin-kit-modal-preview {
-  min-height: 180px;
+  min-height: 166px;
   padding: 14px;
   display: grid;
   align-content: center;
@@ -4881,7 +5114,7 @@ a.leaderboard-steam:hover,
 
 .admin-kit-catalog-panel {
   min-width: 0;
-  min-height: 0;
+  width: 100%;
   display: flex;
   flex-direction: column;
   gap: 10px;
@@ -4914,8 +5147,8 @@ a.leaderboard-steam:hover,
 }
 
 .admin-kit-item-results {
-  min-height: 220px;
-  max-height: min(36vh, 360px);
+  height: clamp(190px, 30vh, 300px);
+  min-height: 0;
   display: grid;
   grid-template-columns: repeat(auto-fill, minmax(min(100%, 190px), 1fr));
   gap: 8px;
@@ -5000,6 +5233,7 @@ a.leaderboard-steam:hover,
 }
 
 .admin-kit-modal-fieldset {
+  min-width: 0;
   display: grid;
   gap: 12px;
 }
@@ -5011,6 +5245,30 @@ a.leaderboard-steam:hover,
 .admin-kit-modal-subhead h3 {
   font-size: .96rem;
   line-height: 1;
+}
+
+.admin-kit-modal-core-fields {
+  align-items: end;
+}
+
+.admin-kit-modal-advanced summary {
+  padding: 12px 14px;
+}
+
+.admin-kit-item-modal .admin-field {
+  gap: 6px;
+}
+
+.admin-kit-item-modal .admin-help-text {
+  position: absolute !important;
+  width: 1px !important;
+  height: 1px !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  white-space: nowrap !important;
+  border: 0 !important;
 }
 
 .has-admin-kit-modal {
@@ -5035,6 +5293,18 @@ a.leaderboard-steam:hover,
     grid-template-columns: 1fr;
   }
 
+  .admin-permission-toolbar {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-permission-filter {
+    width: 100%;
+  }
+
+  .admin-permission-totals {
+    justify-content: flex-start;
+  }
+
   .feedback-grid,
   .admin-feedback-meta {
     grid-template-columns: 1fr;
@@ -5050,7 +5320,7 @@ a.leaderboard-steam:hover,
   }
 
   .admin-kit-modal-preview {
-    min-height: 150px;
+    min-height: 140px;
   }
 
   .admin-sidebar {
@@ -5076,7 +5346,7 @@ a.leaderboard-steam:hover,
   }
 
   .admin-kit-item-results {
-    min-height: 200px;
+    height: 220px;
   }
 
   .admin-side-nav {
@@ -5142,6 +5412,16 @@ a.leaderboard-steam:hover,
     flex-direction: column;
   }
 
+  .admin-permission-selected-head,
+  .admin-permission-prefix-head {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-permission-grid {
+    grid-template-columns: 1fr;
+  }
+
   .rust-slot-grid-main,
   .rust-slot-grid-belt {
     grid-template-columns: repeat(3, minmax(0, 1fr));
@@ -5163,8 +5443,7 @@ a.leaderboard-steam:hover,
   }
 
   .admin-kit-item-results {
-    min-height: 180px;
-    max-height: 260px;
+    height: 180px;
     grid-template-columns: 1fr;
   }
 
