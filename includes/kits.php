@@ -512,6 +512,43 @@ function raidlands_kits_decode_optional_json($value, string $label): ?string
     return $json;
 }
 
+function raidlands_kits_decode_admin_items_json($value): ?array
+{
+    $json = trim((string) $value);
+
+    if ($json === '') {
+        return null;
+    }
+
+    $decoded = json_decode($json, true);
+
+    if (!is_array($decoded)) {
+        throw new InvalidArgumentException('Kit item payload must be valid JSON.');
+    }
+
+    $items = [
+        'main' => [],
+        'wear' => [],
+        'belt' => [],
+    ];
+
+    foreach (['main', 'wear', 'belt'] as $container) {
+        $rows = $decoded[$container] ?? [];
+
+        if (!is_array($rows)) {
+            throw new InvalidArgumentException('Kit item payload has invalid ' . $container . ' rows.');
+        }
+
+        foreach ($rows as $row) {
+            if (is_array($row)) {
+                $items[$container][] = $row;
+            }
+        }
+    }
+
+    return $items;
+}
+
 function raidlands_kits_assert_complete_admin_post(array $post): void
 {
     $expected_json = (string) ($post['kit_expected_items'] ?? '');
@@ -534,6 +571,16 @@ function raidlands_kits_assert_complete_admin_post(array $post): void
         }
 
         $kit_row = (array) ($submitted_kits[$kit_index] ?? []);
+
+        if (!empty($containers['compact'])) {
+            if (trim((string) ($kit_row['items_json'] ?? '')) === '') {
+                throw new RuntimeException('The compact kit item payload did not reach PHP. Reload the kit editor and try again.');
+            }
+
+            raidlands_kits_decode_admin_items_json($kit_row['items_json']);
+            continue;
+        }
+
         $submitted_items = (array) ($kit_row['items'] ?? []);
 
         foreach (['main', 'wear', 'belt'] as $container) {
@@ -828,7 +875,10 @@ function raidlands_kits_admin_save(array $post, array $files = []): array
                 continue;
             }
 
-            raidlands_kits_save_items($pdo, $kit_id, (array) ($row['items'] ?? []));
+            $item_rows = raidlands_kits_decode_admin_items_json($row['items_json'] ?? '')
+                ?? (array) ($row['items'] ?? []);
+
+            raidlands_kits_save_items($pdo, $kit_id, $item_rows);
             raidlands_kits_save_groups($pdo, $kit_id, (array) ($row['groups'] ?? []));
             raidlands_kits_save_product_links($pdo, $kit_id, (array) ($row['store_product_ids'] ?? []));
 

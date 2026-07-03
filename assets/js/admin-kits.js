@@ -54,11 +54,7 @@
   }
 
   function expectedForPanel(panel) {
-    try {
-      return JSON.parse(panel.getAttribute('data-kit-expected') || '{}');
-    } catch (error) {
-      return { main: 24, wear: 8, belt: 6 };
-    }
+    return { compact: true };
   }
 
   function panelIndex(panel) {
@@ -170,6 +166,72 @@
     if (fields[name]) {
       fields[name].value = value == null ? '' : String(value);
     }
+  }
+
+  function compactItemsInput(panel) {
+    var input = panel.querySelector('[data-kit-items-json]');
+    var index = panelIndex(panel);
+
+    if (!input && index !== null && index !== '') {
+      input = document.createElement('input');
+      input.type = 'hidden';
+      input.name = 'kits[' + index + '][items_json]';
+      input.setAttribute('data-kit-items-json', '');
+      panel.appendChild(input);
+    }
+
+    return input;
+  }
+
+  function collectPanelItems(panel) {
+    var items = {
+      main: [],
+      wear: [],
+      belt: []
+    };
+
+    Array.prototype.slice.call(panel.querySelectorAll('[data-kit-slot-wrap]')).forEach(function (slotWrap) {
+      var fields = getSlotFields(slotWrap);
+      var shortname = normalizeShortname(fieldValue(fields, 'shortname', ''));
+      var button = slotWrap.querySelector('[data-kit-slot]');
+      var container = button ? button.getAttribute('data-container') : '';
+      var row = {};
+
+      if (!shortname || !items[container]) {
+        return;
+      }
+
+      Object.keys(fields).forEach(function (name) {
+        row[name] = name === 'shortname' ? shortname : fields[name].value;
+      });
+
+      if (!row.position && button) {
+        row.position = button.getAttribute('data-position') || String(items[container].length);
+      }
+
+      items[container].push(row);
+    });
+
+    return items;
+  }
+
+  function prepareCompactItemsForSubmit() {
+    panels.forEach(function (panel) {
+      if (!shouldSubmitPanel(panel)) {
+        return;
+      }
+
+      var input = compactItemsInput(panel);
+
+      if (input) {
+        input.value = JSON.stringify(collectPanelItems(panel));
+        input.disabled = false;
+      }
+
+      Array.prototype.slice.call(panel.querySelectorAll('[data-kit-item-field]')).forEach(function (field) {
+        field.disabled = true;
+      });
+    });
   }
 
   function itemMeta(shortname) {
@@ -477,6 +539,7 @@
     form.addEventListener('submit', function () {
       updateExpectedInput();
       setSubmitPanelsEnabled();
+      prepareCompactItemsForSubmit();
     });
   }
 

@@ -2,6 +2,7 @@ using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using Newtonsoft.Json;
@@ -12,7 +13,7 @@ using Oxide.Core.Libraries.Covalence;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteVipBridge", "Raidlands", "1.4.6")]
+    [Info("WebsiteVipBridge", "Raidlands", "1.4.7")]
     [Description("Syncs website VIP entitlements and player stats between Raidlands.net and the Rust server.")]
     public class WebsiteVipBridge : CovalencePlugin
     {
@@ -2121,7 +2122,15 @@ namespace Oxide.Plugins
         {
             var normalized = NormalizePermissionName(permissionName);
             EnsureBridgeManagedKitPermissionRegistered(normalized);
-            permission.GrantGroupPermission(group, normalized, this);
+
+            try
+            {
+                permission.GrantGroupPermission(group, normalized, null);
+            }
+            catch (Exception ex)
+            {
+                PrintWarning($"Oxide grant call for {normalized} to group {group} failed before fallback repair: {ex.Message}");
+            }
 
             if (GroupHasPermission(group, normalized))
             {
@@ -2129,7 +2138,13 @@ namespace Oxide.Plugins
                 return true;
             }
 
-            PrintWarning($"Grant for {normalized} to group {group} did not persist. Make sure the owning plugin is loaded or the permission prefix is listed in KitPermissionPrefixes.");
+            if (ForceAddGroupPermission(group, normalized))
+            {
+                Puts($"Force-added {normalized} to group {group} after Oxide grant did not persist.");
+                return true;
+            }
+
+            PrintWarning($"Grant for {normalized} to group {group} did not persist and fallback group-data repair failed.");
             return false;
         }
 
@@ -2144,8 +2159,94 @@ namespace Oxide.Plugins
                 return true;
             }
 
-            PrintWarning($"Revoke for {normalized} from group {group} did not persist.");
+            if (ForceRemoveGroupPermission(group, normalized))
+            {
+                Puts($"Force-removed {normalized} from group {group} after Oxide revoke did not persist.");
+                return true;
+            }
+
+            PrintWarning($"Revoke for {normalized} from group {group} did not persist and fallback group-data repair failed.");
             return false;
+        }
+
+        private bool ForceAddGroupPermission(string group, string permissionName)
+        {
+            var permissions = GetMutableGroupPermissions(group);
+
+            if (permissions == null)
+            {
+                return false;
+            }
+
+            if (permissions.Any(item => string.Equals(item, permissionName, StringComparison.OrdinalIgnoreCase)))
+            {
+                return true;
+            }
+
+            permissions.Add(permissionName);
+            return GroupHasPermission(group, permissionName);
+        }
+
+        private bool ForceRemoveGroupPermission(string group, string permissionName)
+        {
+            var permissions = GetMutableGroupPermissions(group);
+
+            if (permissions == null)
+            {
+                return false;
+            }
+
+            var existing = permissions.FirstOrDefault(item => string.Equals(item, permissionName, StringComparison.OrdinalIgnoreCase));
+
+            if (existing == null)
+            {
+                return true;
+            }
+
+            return permissions.Remove(existing) && !GroupHasPermission(group, permissionName);
+        }
+
+        private ICollection<string> GetMutableGroupPermissions(string group)
+        {
+            var getGroupData = permission.GetType().GetMethod(
+                "GetGroupData",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic,
+                null,
+                new[] { typeof(string) },
+                null);
+
+            if (getGroupData == null)
+            {
+                getGroupData = permission.GetType()
+                    .GetMethods(BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic)
+                    .FirstOrDefault(method =>
+                        method.Name == "GetGroupData"
+                        && method.GetParameters().Length == 1);
+            }
+
+            var groupData = getGroupData?.Invoke(permission, new object[] { group });
+
+            if (groupData == null)
+            {
+                return null;
+            }
+
+            var permissionsField = groupData.GetType().GetField(
+                "Perms",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
+            if (permissionsField != null)
+            {
+                return permissionsField.GetValue(groupData) as ICollection<string>;
+            }
+
+            var permissionsProperty = groupData.GetType().GetProperty(
+                "Perms",
+                BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic);
+
+            return permissionsProperty != null
+                ? permissionsProperty.GetValue(groupData, null) as ICollection<string>
+                : null;
         }
 
         private static string PermissionString(JObject obj, string key, string fallback = "")
