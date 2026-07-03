@@ -265,6 +265,16 @@ $feature_groups = [
         'items' => ['Clans', 'Team play', 'Discord account', 'Events', 'Staff support', 'Wipe alerts'],
     ],
     [
+        'title' => 'Website Systems',
+        'copy' => 'The website layer keeps Steam linking, profiles, stats, and live server visibility tied to the right player.',
+        'items' => ['Steam account linking', 'Player profiles', 'Leaderboards', 'Wipe stats', 'Server status', 'Store access'],
+    ],
+    [
+        'title' => 'Store and Rewards',
+        'copy' => 'Store and reward systems connect VIP access, perks, kits, and earned rewards to the same Steam identity.',
+        'items' => ['VIP tiers', 'VIP kits', 'One-time perks', 'RP rewards', 'Vote rewards', 'In-game delivery'],
+    ],
+    [
         'title' => 'Trust and Performance',
         'copy' => 'A battlefield server still needs clear enforcement, quick fixes, and a stable base for busy wipe nights.',
         'items' => ['Active admins', 'Anti-cheat stance', 'Bug patches', 'Server performance', 'Clear rules', 'Appeal path'],

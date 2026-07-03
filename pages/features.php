@@ -24,6 +24,33 @@
   $feature_query = raidlands_features_public_filter_query($feature_filters);
   $feature_post_action = route_url('features') . ($feature_query !== '' ? '?' . $feature_query : '');
   $feature_show_metrics = in_array((string) ($feature_filters['sort'] ?? 'staff'), ['support', 'votes'], true);
+  $feature_group_cards = is_array($feature_groups ?? null) ? array_values($feature_groups) : [];
+  $feature_group_titles = [];
+
+  foreach ($feature_group_cards as $group) {
+      $title = trim((string) ($group['title'] ?? ''));
+
+      if ($title !== '') {
+          $feature_group_titles[strtolower($title)] = true;
+      }
+  }
+
+  foreach ($feature_category_options as $category) {
+      $title = trim((string) $category);
+      $key = strtolower($title);
+
+      if ($title === '' || isset($feature_group_titles[$key])) {
+          continue;
+      }
+
+      $feature_group_cards[] = [
+          'title' => $title,
+          'copy' => 'This category groups related Raidlands features so players can quickly see what belongs to that part of the server.',
+          'items' => ['Browse active features', 'Track planned upgrades', 'Vote or suggest related ideas'],
+      ];
+      $feature_group_titles[$key] = true;
+  }
+
   $feature_filter_hidden_inputs = static function (array $filters): string {
       $html = '';
 
@@ -287,7 +314,7 @@
       <h2>What each system is for</h2>
     </div>
     <div class="grid two">
-      <?php foreach ($feature_groups as $group) : ?>
+      <?php foreach ($feature_group_cards as $group) : ?>
         <article class="metal-card">
           <h3><?= e($group['title']) ?></h3>
           <p class="card-copy"><?= e($group['copy']) ?></p>
