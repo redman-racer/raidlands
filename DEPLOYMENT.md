@@ -293,6 +293,7 @@ Check these URLs on the live domain:
 
 - `/`
 - `/play/`
+- `/server/`
 - `/discord/`
 - `/vote/`
 - `/rules/`
@@ -301,6 +302,7 @@ Check these URLs on the live domain:
 - `/profile/`
 - `/link/`
 - `/api/server-status.php`
+- `/api/server/status-heartbeat.php` rejects unsigned requests
 - `/support/`
 - `/privacy/`
 - `/terms/`

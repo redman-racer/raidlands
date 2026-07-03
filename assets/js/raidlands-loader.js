@@ -421,7 +421,7 @@
   function statusLineFromResult(result) {
     const fallback = data.fallbackStatus || {};
     const status = result && result.status ? result.status : fallback;
-    const source = status.source === "battlemetrics" ? "BattleMetrics" : status.source === "fallback" ? "site fallback" : "PHP config";
+    const source = statusSourceLabel(status);
     const players = statValue(status.players, fallback.players, "0");
     const maxPlayers = statValue(status.maxPlayers, fallback.maxPlayers, "0");
     const queue = statValue(status.queue, fallback.queue, "0");
@@ -431,6 +431,13 @@
       return {
         level: "warn",
         text: `[WARN] Live status delayed; ${source} says ${status.statusLabel || "Unknown"} ${players}/${maxPlayers}, queue ${queue}`
+      };
+    }
+
+    if (status.stale) {
+      return {
+        level: "warn",
+        text: `[WARN] Live status delayed; ${source} last saw ${players}/${maxPlayers}, queue ${queue}${duration}`
       };
     }
 
@@ -452,6 +459,22 @@
       level: "warn",
       text: `[WARN] Server status unknown; ${source}${duration}`
     };
+  }
+
+  function statusSourceLabel(status) {
+    if (status && status.sourceLabel) {
+      return String(status.sourceLabel);
+    }
+
+    if (status && status.source === "raidlands") {
+      return status.stale ? "Raidlands delayed" : "Raidlands live";
+    }
+
+    if (status && status.source === "fallback") {
+      return "site fallback";
+    }
+
+    return "site fallback";
   }
 
   function statValue(value, fallback, emptyFallback) {

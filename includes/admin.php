@@ -554,9 +554,9 @@ function raidlands_admin_build_content_from_post(array $post, string $section = 
         $content['site_config']['steamConnectUrl'] = raidlands_admin_clean_text($site_input['steamConnectUrl'] ?? '', 240);
         $content['site_config']['discordInviteUrl'] = raidlands_admin_clean_text($site_input['discordInviteUrl'] ?? '', 240);
         $content['site_config']['serverStats'] = [
-            'provider' => raidlands_admin_clean_text($stats_input['provider'] ?? 'battlemetrics', 40),
-            'battleMetricsServerId' => preg_replace('/\D+/', '', (string) ($stats_input['battleMetricsServerId'] ?? '')),
+            'provider' => raidlands_admin_clean_text($stats_input['provider'] ?? 'raidlands', 40),
             'cacheSeconds' => raidlands_admin_int($stats_input['cacheSeconds'] ?? 60, 30, 3600),
+            'staleSeconds' => raidlands_admin_int($stats_input['staleSeconds'] ?? 90, 30, 3600),
         ];
         $content['site_config']['auth'] = [
             'steamUrl' => raidlands_admin_clean_text($auth_input['steamUrl'] ?? '', 240),

@@ -16,9 +16,9 @@
       discordInviteUrl: "https://discord.gg/raidlands",
       serverStatusUrl: `${basePath}api/server-status.php`,
       serverStats: {
-        provider: "battlemetrics",
-        battleMetricsServerId: "",
-        cacheSeconds: 60
+        provider: "raidlands",
+        cacheSeconds: 60,
+        staleSeconds: 90
       },
       wipe: {
         days: [4],
@@ -997,21 +997,35 @@
 
   function formatServerUpdated(status) {
     const timestamp = status.updatedAt || status.fetchedAt;
+    const source = serverStatusSourceLabel(status);
 
     if (!timestamp) {
-      return status.source === "battlemetrics" ? "BattleMetrics live" : "Fallback values";
+      return source;
     }
 
     const date = new Date(timestamp);
 
     if (Number.isNaN(date.getTime())) {
-      return status.source === "battlemetrics" ? "BattleMetrics live" : "Fallback values";
+      return source;
     }
 
-    const source = status.source === "battlemetrics" ? "BattleMetrics" : "Fallback";
-    const stale = status.stale ? "stale " : "";
+    return `${source} ${formatDateTime(date)}`;
+  }
 
-    return `${source} ${stale}${formatDateTime(date)}`;
+  function serverStatusSourceLabel(status) {
+    if (status && status.sourceLabel) {
+      return String(status.sourceLabel);
+    }
+
+    if (status && status.source === "raidlands") {
+      return status.stale ? "Raidlands delayed" : "Raidlands live";
+    }
+
+    if (status && status.source === "fallback") {
+      return "site fallback";
+    }
+
+    return "site fallback";
   }
 
   function updateCountdowns() {

@@ -50,11 +50,11 @@ over `.env` and stay ignored by Git.
 - `RAIDLANDS_BRIDGE_SERVER_ID`, `RAIDLANDS_BRIDGE_SHARED_SECRET`
 - `RAIDLANDS_STEAM_API_KEY`
 - `RAIDLANDS_CONNECT_COMMAND`, `RAIDLANDS_STEAM_CONNECT_URL`, `RAIDLANDS_DISCORD_INVITE_URL`
-- `RAIDLANDS_BATTLEMETRICS_SERVER_ID`, `RAIDLANDS_SERVER_STATUS_CACHE_SECONDS`
+- `RAIDLANDS_SERVER_STATS_PROVIDER`, `RAIDLANDS_SERVER_STATUS_CACHE_SECONDS`, `RAIDLANDS_SERVER_STATUS_STALE_SECONDS`
 - `RAIDLANDS_WIPE_TIME`, `RAIDLANDS_WIPE_TIMEZONE`
 - `RAIDLANDS_AUTH_STEAM_URL`, `RAIDLANDS_AUTH_DISCORD_URL`
 
-Live server status is served by `api/server-status.php`. It reads the public BattleMetrics server record, caches it briefly, and falls back to the config values above if BattleMetrics is unreachable.
+Live server status is served by `api/server-status.php`. WebsiteVipBridge posts signed heartbeats to `/api/server/status-heartbeat.php`; the public endpoint uses the latest heartbeat, marks delayed data stale, and falls back to config values before the first heartbeat arrives.
 
 Steam account linking uses native Steam OpenID only. Manual SteamID64 entry is intentionally disabled so users can only link accounts Steam has verified they own. Discord linking buttons remain ready for a future OAuth URL.
 
@@ -73,11 +73,12 @@ The store uses MySQL as the source of truth and Stripe Checkout for payments.
 5. Run `database/migrations/004_clan_management.sql`.
 6. Run `database/migrations/005_clan_api_keys.sql`.
 7. Run `database/migrations/007_admin_auth.sql`.
-8. Run `database/seeds/001_store_products.sql`.
-9. Copy `.env.example` to `.env`.
-10. Fill in MySQL, Stripe, Steam API, bridge secret, and clan API limit values.
-11. Add at least one owner SteamID64 to `admin_users` and `admin_user_roles`.
-12. Configure product Stripe Price IDs in `/admin/?section=store`.
+8. Run `database/migrations/009_server_status.sql`.
+9. Run `database/seeds/001_store_products.sql`.
+10. Copy `.env.example` to `.env`.
+11. Fill in MySQL, Stripe, Steam API, bridge secret, and clan API limit values.
+12. Add at least one owner SteamID64 to `admin_users` and `admin_user_roles`.
+13. Configure product Stripe Price IDs in `/admin/?section=store`.
 
 Public store flow:
 
@@ -97,6 +98,7 @@ Game-server flow:
 - Configure the plugin with the same `ApiBaseUrl`, `ServerId`, and `SharedSecret` as the website. Use `server-plugins/WebsiteVipBridge.config.example.json` as the shape of the generated plugin config.
 - Configure `WipeKey` after each wipe if you want a clean current-wipe leaderboard boundary; leave it blank only if one continuous current season is acceptable.
 - The plugin calls `/api/server/vip-player.php` and `/api/server/vip-changes.php`, then adds/removes managed Oxide groups.
+- The plugin posts `/api/server/status-heartbeat.php` for the public status panel and `/server/` page.
 - The plugin posts `/api/server/stats-snapshot.php` with KDRScoreboard kills/deaths, PlaytimeTracker playtime, and ServerRewards RP for `/leaderboard/` and `/profile/`.
 - WebsiteClanBridge posts `/api/server/clan-snapshot.php`, polls `/api/server/clan-actions.php`, and reports `/api/server/clan-action-result.php`.
 

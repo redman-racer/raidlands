@@ -5,6 +5,7 @@ $base_path = '../';
 
 require dirname(__DIR__) . '/includes/bootstrap.php';
 require $site_root . '/includes/admin.php';
+require_once $site_root . '/includes/server-status.php';
 require_once $site_root . '/includes/stats.php';
 require_once $site_root . '/includes/clans.php';
 
@@ -32,7 +33,7 @@ $admin_weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 $admin_wipe_days = array_map('intval', $admin_site['wipe']['days'] ?? []);
 $admin_sections_all = [
     'identity' => ['label' => 'Identity', 'kicker' => 'Core', 'title' => 'Server Identity', 'summary' => 'Names, fallback status, map, region, and the numbers used when live status is unavailable.'],
-    'links' => ['label' => 'Links', 'kicker' => 'Launch', 'title' => 'Links and Integrations', 'summary' => 'Join buttons, Discord invites, BattleMetrics lookup, and future OAuth links.'],
+    'links' => ['label' => 'Links', 'kicker' => 'Launch', 'title' => 'Links and Integrations', 'summary' => 'Join buttons, Discord invites, live status settings, and future OAuth links.'],
     'wipe' => ['label' => 'Wipe', 'kicker' => 'Schedule', 'title' => 'Wipe Settings', 'summary' => 'The wipe days and time used by countdowns and schedule text.'],
     'features' => ['label' => 'Features', 'kicker' => 'Content', 'title' => 'Feature Lists', 'summary' => 'Homepage feature chips, feature cards, and roadmap cards.'],
     'pages' => ['label' => 'Pages', 'kicker' => 'Copy', 'title' => 'Hero Copy', 'summary' => 'The title and intro text shown at the top of each page.'],
@@ -101,6 +102,7 @@ $admin_stats_summary = [
     'latest_ingest' => null,
     'current_players' => 0,
 ];
+$admin_server_status = null;
 $admin_clan_summary = [
     'ready' => false,
     'message' => '',
@@ -130,6 +132,7 @@ try {
 
     if ($active_section === 'sync') {
         $admin_clan_summary = raidlands_clans_admin_summary();
+        $admin_server_status = raidlands_server_status_public();
 
         if ($admin_store_ready) {
             $admin_sync_rows = raidlands_store_recent_sync_rows(30);
@@ -381,7 +384,8 @@ function admin_feature_icon_options(array $current_values = []): array
 function admin_status_provider_options(string $current = ''): array
 {
     return admin_option_map([
-        'battlemetrics' => 'BattleMetrics',
+        'raidlands' => 'Raidlands bridge',
+        'fallback' => 'Site fallback',
     ], [$current]);
 }
 
@@ -791,7 +795,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                       <label class="admin-field">
                         <?= admin_field_head('Server name', 'Public server name used in page headers, browser metadata, and status fallbacks.') ?>
                         <input type="text" name="site_config[serverName]" maxlength="120" placeholder="Raidlands 1000x" value="<?= e((string) ($admin_site['serverName'] ?? '')) ?>">
-                        <?= admin_hint('Changes public brand text. It does not rename the Rust server inside BattleMetrics.') ?>
+                        <?= admin_hint('Changes public brand text. It does not rename the Rust server itself.') ?>
                       </label>
                       <label class="admin-field">
                         <?= admin_field_head('Tagline', 'Short brand line shown in page heroes and reusable headers.') ?>
@@ -802,9 +806,9 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                         <input type="text" name="site_config[region]" maxlength="80" placeholder="US Central" value="<?= e((string) ($admin_site['region'] ?? '')) ?>">
                       </label>
                       <label class="admin-field">
-                        <?= admin_field_head('Fallback map name', 'Map label shown before live BattleMetrics data loads or when it is unavailable.') ?>
+                        <?= admin_field_head('Fallback map name', 'Map label shown before live server data loads or when it is unavailable.') ?>
                         <input type="text" name="site_config[mapName]" maxlength="120" placeholder="Procedural Battlefield" value="<?= e((string) ($admin_site['mapName'] ?? '')) ?>">
-                        <?= admin_hint('Live status can override this when BattleMetrics responds.') ?>
+                        <?= admin_hint('Live status can override this when the server bridge responds.') ?>
                       </label>
                       <label class="admin-field">
                         <?= admin_field_head('Fallback players', 'Player count used only when the live server lookup cannot answer.') ?>
@@ -847,17 +851,17 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                         <input type="url" name="site_config[discordInviteUrl]" maxlength="240" placeholder="https://discord.gg/..." value="<?= e((string) ($admin_site['discordInviteUrl'] ?? '')) ?>">
                       </label>
                       <label class="admin-field">
-                        <?= admin_field_head('BattleMetrics server ID', 'Numeric BattleMetrics ID used by api/server-status.php for live players, queue, map, and FPS.') ?>
-                        <input type="text" inputmode="numeric" pattern="[0-9]*" name="site_config[serverStats][battleMetricsServerId]" placeholder="39516376" value="<?= e((string) ($admin_site['serverStats']['battleMetricsServerId'] ?? '')) ?>">
+                        <?= admin_field_head('Status provider', 'Live status is posted by WebsiteVipBridge. Custom values are preserved for future integrations.') ?>
+                        <?= admin_render_datalist('admin-status-provider-options', admin_status_provider_options((string) ($admin_site['serverStats']['provider'] ?? 'raidlands'))) ?>
+                        <input type="text" list="admin-status-provider-options" name="site_config[serverStats][provider]" maxlength="40" value="<?= e((string) ($admin_site['serverStats']['provider'] ?? 'raidlands')) ?>">
                       </label>
                       <label class="admin-field">
-                        <?= admin_field_head('Status provider', 'Live status currently expects BattleMetrics. Custom values are preserved for future integrations.') ?>
-                        <?= admin_render_datalist('admin-status-provider-options', admin_status_provider_options((string) ($admin_site['serverStats']['provider'] ?? 'battlemetrics'))) ?>
-                        <input type="text" list="admin-status-provider-options" name="site_config[serverStats][provider]" maxlength="40" value="<?= e((string) ($admin_site['serverStats']['provider'] ?? 'battlemetrics')) ?>">
-                      </label>
-                      <label class="admin-field">
-                        <?= admin_field_head('Status cache seconds', 'How long the status API can reuse a BattleMetrics response before checking again.') ?>
+                        <?= admin_field_head('Status refresh seconds', 'How often browsers refresh the public status endpoint.') ?>
                         <input type="number" min="30" max="3600" name="site_config[serverStats][cacheSeconds]" value="<?= e((string) ($admin_site['serverStats']['cacheSeconds'] ?? 60)) ?>">
+                      </label>
+                      <label class="admin-field">
+                        <?= admin_field_head('Heartbeat stale seconds', 'How long the website waits before marking the latest server heartbeat delayed.') ?>
+                        <input type="number" min="30" max="3600" name="site_config[serverStats][staleSeconds]" value="<?= e((string) ($admin_site['serverStats']['staleSeconds'] ?? 90)) ?>">
                       </label>
                       <label class="admin-field">
                         <?= admin_field_head('Steam OAuth URL', 'Legacy placeholder only. Native Steam sign-in now starts from /link/?action=steam.') ?>
@@ -2194,6 +2198,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                         <ul class="list-clean">
                           <li><code>/api/server/vip-player.php?steam_id64=...</code></li>
                           <li><code>/api/server/vip-changes.php?since=...</code></li>
+                          <li><code>/api/server/status-heartbeat.php</code></li>
                           <li><code>/api/server/stats-snapshot.php</code></li>
                           <li><code>/api/server/kits-snapshot.php</code></li>
                           <li><code>/api/server/kits-sync.php?since=...</code></li>
@@ -2208,6 +2213,34 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                         </ul>
                       </div>
                     </div>
+                  </section>
+
+                  <section class="admin-section">
+                    <div class="admin-subsection-head">
+                      <h3>Server heartbeat</h3>
+                      <p>Website status panels use signed heartbeats from WebsiteVipBridge. Public pages show player-safe status only.</p>
+                    </div>
+                    <?php if ($admin_server_status === null) : ?>
+                      <div class="admin-alert warning">Server status has not been checked yet.</div>
+                    <?php else : ?>
+                      <div class="admin-grid three">
+                        <div class="metal-panel">
+                          <p class="section-kicker">Public status</p>
+                          <h3><?= e((string) ($admin_server_status['statusLabel'] ?? 'Pending')) ?></h3>
+                          <p class="store-muted"><?= e((string) ($admin_server_status['sourceLabel'] ?? 'site fallback')) ?></p>
+                        </div>
+                        <div class="metal-panel">
+                          <p class="section-kicker">Population</p>
+                          <h3><?= e((string) ($admin_server_status['players'] ?? 0)) ?> / <?= e((string) ($admin_server_status['maxPlayers'] ?? 0)) ?></h3>
+                          <p class="store-muted">Queue <?= e((string) ($admin_server_status['queue'] ?? 0)) ?> / joining <?= e((string) ($admin_server_status['joining'] ?? 0)) ?></p>
+                        </div>
+                        <div class="metal-panel">
+                          <p class="section-kicker">Last heartbeat</p>
+                          <h3><?= e((string) ($admin_server_status['receivedAt'] ?: 'Pending')) ?></h3>
+                          <p class="store-muted"><?= !empty($admin_server_status['stale']) ? 'Delayed' : 'Fresh' ?></p>
+                        </div>
+                      </div>
+                    <?php endif; ?>
                   </section>
 
                   <section class="admin-section">

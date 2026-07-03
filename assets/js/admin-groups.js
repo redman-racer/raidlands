@@ -235,7 +235,11 @@
         visibleTotal += 1;
       }
 
-      item.hidden = !visible;
+      if (visible) {
+        item.removeAttribute("hidden");
+      } else {
+        item.setAttribute("hidden", "");
+      }
       updateStateLabel(item, input);
     });
 
@@ -256,7 +260,11 @@
         }
       });
 
-      prefix.hidden = prefixName !== activePrefix;
+      if (prefixName === activePrefix) {
+        prefix.removeAttribute("hidden");
+      } else {
+        prefix.setAttribute("hidden", "");
+      }
 
       if (count) {
         count.textContent = `${selected} / ${prefixItems.length} selected`;

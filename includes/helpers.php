@@ -165,7 +165,8 @@ function raidlands_loader_payload(): array
             'maxPlayers' => (int) ($site_config['maxPlayers'] ?? 0),
             'queue' => (int) ($site_config['queue'] ?? 0),
             'mapName' => (string) ($site_config['mapName'] ?? 'Unknown'),
-            'source' => 'php-config',
+            'source' => 'fallback',
+            'sourceLabel' => 'site fallback',
         ],
         'tips' => [
             'High-rate wipes reward fast rebuilds as much as first-strike raids.',

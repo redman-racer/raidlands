@@ -10,10 +10,11 @@ using Newtonsoft.Json.Linq;
 using Oxide.Core;
 using Oxide.Core.Libraries;
 using Oxide.Core.Libraries.Covalence;
+using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteVipBridge", "Raidlands", "1.4.7")]
+    [Info("WebsiteVipBridge", "Raidlands", "1.4.8")]
     [Description("Syncs website VIP entitlements and player stats between Raidlands.net and the Rust server.")]
     public class WebsiteVipBridge : CovalencePlugin
     {
@@ -21,6 +22,8 @@ namespace Oxide.Plugins
         private Timer syncTimer;
         private Timer statsTimer;
         private Timer pendingStatsTimer;
+        private Timer statusHeartbeatTimer;
+        private Timer pendingStatusHeartbeatTimer;
         private Timer kitSyncTimer;
         private Timer pendingKitSnapshotTimer;
         private Timer permissionSyncTimer;
@@ -28,6 +31,7 @@ namespace Oxide.Plugins
         private long cursor;
         private long kitRevision;
         private long permissionRevision;
+        private DateTime lastStatusHeartbeatAt = DateTime.MinValue;
         private Dictionary<string, string> secrets;
         private const string SecretsConfigName = "Secrets.local";
         private string secretsConfigSource;
@@ -50,6 +54,9 @@ namespace Oxide.Plugins
             public string SharedSecret = "";
             public int SyncIntervalSeconds = 120;
             public string FailMode = "log_only";
+            public bool StatusHeartbeatEnabled = true;
+            public int StatusHeartbeatIntervalSeconds = 30;
+            public int StatusHeartbeatDebounceSeconds = 10;
             public bool StatsEnabled = true;
             public int StatsSyncIntervalSeconds = 300;
             public int StatsDebounceSeconds = 30;
@@ -142,6 +149,12 @@ namespace Oxide.Plugins
             public string error;
         }
 
+        private class StatusHeartbeatResponse
+        {
+            public bool ok;
+            public string error;
+        }
+
         private class KitSyncResponse
         {
             public bool ok;
@@ -185,6 +198,36 @@ namespace Oxide.Plugins
             public string wipe_started_at;
             public string generated_at;
             public List<StatsPlayer> players = new List<StatsPlayer>();
+        }
+
+        private class StatusHeartbeat
+        {
+            public string server_id;
+            public string generated_at;
+            public bool online;
+            public string status;
+            public string status_label;
+            public string name;
+            public int players;
+            public int max_players;
+            public int queue;
+            public int joining;
+            public int sleepers;
+            public string server_fps;
+            public string server_fps_average;
+            public int entity_count;
+            public string map_name;
+            public int world_size;
+            public int seed;
+            public string wipe_key;
+            public string wipe_started_at;
+            public JObject details;
+        }
+
+        private class QueueCounts
+        {
+            public int queued;
+            public int joining;
         }
 
         private class StatsPlayer
@@ -268,6 +311,16 @@ namespace Oxide.Plugins
                 config.StatsDebounceSeconds = defaults.StatsDebounceSeconds;
             }
 
+            if (config.StatusHeartbeatIntervalSeconds <= 0)
+            {
+                config.StatusHeartbeatIntervalSeconds = defaults.StatusHeartbeatIntervalSeconds;
+            }
+
+            if (config.StatusHeartbeatDebounceSeconds <= 0)
+            {
+                config.StatusHeartbeatDebounceSeconds = defaults.StatusHeartbeatDebounceSeconds;
+            }
+
             if (config.KitSyncIntervalSeconds <= 0)
             {
                 config.KitSyncIntervalSeconds = defaults.KitSyncIntervalSeconds;
@@ -309,6 +362,7 @@ namespace Oxide.Plugins
             SyncChanges();
             StartKitSync();
             StartPermissionSync();
+            StartStatusHeartbeat();
 
             var interval = Math.Max(30, config.SyncIntervalSeconds);
             syncTimer = timer.Every(interval, () => RunScheduled("VIP change sync timer", SyncChanges));
@@ -330,6 +384,8 @@ namespace Oxide.Plugins
             syncTimer?.Destroy();
             statsTimer?.Destroy();
             pendingStatsTimer?.Destroy();
+            statusHeartbeatTimer?.Destroy();
+            pendingStatusHeartbeatTimer?.Destroy();
             kitSyncTimer?.Destroy();
             pendingKitSnapshotTimer?.Destroy();
             permissionSyncTimer?.Destroy();
@@ -345,11 +401,13 @@ namespace Oxide.Plugins
 
             SyncPlayer(player.Id);
             QueueStatsSync();
+            QueueStatusHeartbeat();
         }
 
         private void OnUserDisconnected(IPlayer player)
         {
             QueueStatsSync();
+            QueueStatusHeartbeat();
         }
 
         private void OnPointsUpdated(ulong userId, int balance)
@@ -473,6 +531,23 @@ namespace Oxide.Plugins
             ReplyBridge(player, message);
         }
 
+        [Command("websitevip.status")]
+        private void StatusHeartbeatCommand(IPlayer player, string command, string[] args)
+        {
+            if (!CanRunBridgeCommand(player))
+            {
+                return;
+            }
+
+            SyncStatusHeartbeat();
+            var interval = Math.Max(15, config.StatusHeartbeatIntervalSeconds);
+            var last = lastStatusHeartbeatAt == DateTime.MinValue
+                ? "never"
+                : lastStatusHeartbeatAt.ToString("yyyy-MM-dd HH:mm:ss 'UTC'");
+
+            ReplyBridge(player, $"Status heartbeat enabled={config.StatusHeartbeatEnabled}, interval={interval}s, last success={last}. Current heartbeat requested.");
+        }
+
         [Command("websitevip.kits.rollback")]
         private void KitRollbackCommand(IPlayer player, string command, string[] args)
         {
@@ -527,9 +602,9 @@ namespace Oxide.Plugins
 
                 if (payload == null || !payload.ok)
                 {
-                    PrintWarning($"VIP player sync failed for {steamId}: {payload?.error ?? "invalid response"}");
-                    return;
-                }
+                PrintWarning($"VIP player sync failed for {steamId}: {payload?.error ?? "invalid response"}");
+                return;
+            }
 
                 ApplyDesiredGroups(steamId, payload.groups, payload.managed_groups);
 
@@ -581,6 +656,176 @@ namespace Oxide.Plugins
                     cursor = payload.cursor;
                 }
             });
+        }
+
+        private void StartStatusHeartbeat()
+        {
+            if (!config.StatusHeartbeatEnabled)
+            {
+                Puts("WebsiteVipBridge status heartbeat is disabled.");
+                return;
+            }
+
+            var interval = Math.Max(15, config.StatusHeartbeatIntervalSeconds);
+            timer.Once(5f, () => RunScheduled("Initial status heartbeat", SyncStatusHeartbeat));
+            statusHeartbeatTimer = timer.Every(interval, () => RunScheduled("Status heartbeat timer", SyncStatusHeartbeat));
+            Puts($"WebsiteVipBridge posting server status heartbeat every {interval} seconds.");
+        }
+
+        private void QueueStatusHeartbeat()
+        {
+            if (!config.StatusHeartbeatEnabled || !CanRequest())
+            {
+                return;
+            }
+
+            pendingStatusHeartbeatTimer?.Destroy();
+            pendingStatusHeartbeatTimer = timer.Once(Math.Max(3, config.StatusHeartbeatDebounceSeconds), () => RunScheduled("Queued status heartbeat", SyncStatusHeartbeat));
+        }
+
+        private void SyncStatusHeartbeat()
+        {
+            pendingStatusHeartbeatTimer?.Destroy();
+            pendingStatusHeartbeatTimer = null;
+
+            if (!config.StatusHeartbeatEnabled || !CanRequest())
+            {
+                return;
+            }
+
+            var heartbeat = BuildStatusHeartbeat();
+            var body = JsonConvert.SerializeObject(heartbeat);
+            var url = $"{TrimSlash(config.ApiBaseUrl)}/api/server/status-heartbeat.php";
+
+            SendPost(url, body, (code, response) =>
+            {
+                if (!IsSuccess(code, response, out var error))
+                {
+                    PrintWarning($"Status heartbeat failed: {error}");
+                    return;
+                }
+
+                var payload = JsonConvert.DeserializeObject<StatusHeartbeatResponse>(response);
+
+                if (payload == null || !payload.ok)
+                {
+                    PrintWarning($"Status heartbeat failed: {payload?.error ?? "invalid response"}");
+                    return;
+                }
+
+                lastStatusHeartbeatAt = DateTime.UtcNow;
+            });
+        }
+
+        private StatusHeartbeat BuildStatusHeartbeat()
+        {
+            var queueCounts = GetQueueCounts();
+            var wipeStartedAt = GetWipeStartedAt();
+
+            return new StatusHeartbeat
+            {
+                server_id = config.ServerId,
+                generated_at = DateTime.UtcNow.ToString("o"),
+                online = true,
+                status = "online",
+                status_label = "Online",
+                name = FirstNonEmpty(server.Name, ConVar.Server.hostname),
+                players = SafeCountActivePlayers(),
+                max_players = Math.Max(0, ConVar.Server.maxplayers),
+                queue = queueCounts.queued,
+                joining = queueCounts.joining,
+                sleepers = SafeCountSleepers(),
+                server_fps = ToInt(Performance.current.frameRate).ToString(),
+                server_fps_average = ToInt(Performance.current.frameRateAverage).ToString(),
+                entity_count = SafeCountEntities(),
+                map_name = GetMapDisplayName(),
+                world_size = Math.Max(0, ConVar.Server.worldsize),
+                seed = Math.Max(0, ConVar.Server.seed),
+                wipe_key = ResolveWipeKey(),
+                wipe_started_at = wipeStartedAt == DateTime.MinValue ? null : wipeStartedAt.ToString("o"),
+                details = new JObject
+                {
+                    ["server_port"] = ConVar.Server.port,
+                    ["save_file"] = World.SaveFileName ?? "",
+                    ["protocol"] = Protocol.network,
+                    ["status_heartbeat_interval_seconds"] = Math.Max(15, config.StatusHeartbeatIntervalSeconds)
+                }
+            };
+        }
+
+        private QueueCounts GetQueueCounts()
+        {
+            try
+            {
+                var info = ConVar.Admin.ServerInfo();
+                return new QueueCounts
+                {
+                    queued = Math.Max(0, info.Queued),
+                    joining = Math.Max(0, info.Joining)
+                };
+            }
+            catch
+            {
+                var queue = ServerMgr.Instance?.connectionQueue;
+                return new QueueCounts
+                {
+                    queued = Math.Max(0, queue?.Queued ?? 0),
+                    joining = Math.Max(0, queue?.Joining ?? 0)
+                };
+            }
+        }
+
+        private int SafeCountActivePlayers()
+        {
+            return Math.Max(0, BasePlayer.activePlayerList?.Count ?? players.Connected.Count());
+        }
+
+        private int SafeCountSleepers()
+        {
+            return Math.Max(0, BasePlayer.sleepingPlayerList?.Count ?? 0);
+        }
+
+        private int SafeCountEntities()
+        {
+            return Math.Max(0, BaseNetworkable.serverEntities?.Count ?? 0);
+        }
+
+        private string GetMapDisplayName()
+        {
+            var saveFile = World.SaveFileName ?? "";
+
+            if (saveFile.StartsWith("proceduralmap", StringComparison.OrdinalIgnoreCase))
+            {
+                return "Procedural Map";
+            }
+
+            if (!string.IsNullOrWhiteSpace(saveFile))
+            {
+                var name = Path.GetFileNameWithoutExtension(saveFile).Replace('_', ' ').Replace('-', ' ').Trim();
+                return string.IsNullOrWhiteSpace(name) ? "Procedural Map" : name;
+            }
+
+            return "Procedural Map";
+        }
+
+        private DateTime GetWipeStartedAt()
+        {
+            try
+            {
+                return SaveRestore.SaveCreatedTime.ToUniversalTime();
+            }
+            catch
+            {
+                var configured = ResolveSecretValue(config.WipeStartedAt);
+
+                if (string.IsNullOrWhiteSpace(configured))
+                {
+                    return DateTime.MinValue;
+                }
+
+                DateTime parsed;
+                return DateTime.TryParse(configured, out parsed) ? parsed.ToUniversalTime() : DateTime.MinValue;
+            }
         }
 
         private void QueueStatsSync()

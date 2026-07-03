@@ -9,6 +9,12 @@ $raidlands_has_env_local_file = is_file($raidlands_env_local_file);
 raidlands_load_env($raidlands_env_file);
 raidlands_load_env($raidlands_env_local_file, true);
 
+$raidlands_status_provider = raidlands_env('RAIDLANDS_SERVER_STATS_PROVIDER', 'raidlands');
+
+if (strcasecmp($raidlands_status_provider, 'battlemetrics') === 0) {
+    $raidlands_status_provider = 'raidlands';
+}
+
 $site_config = [
     'serverName' => raidlands_env('RAIDLANDS_SERVER_NAME', 'Raidlands 1000x'),
     'tagline' => raidlands_env('RAIDLANDS_TAGLINE', 'Raid. Respawn. Rebuild. Repeat.'),
@@ -20,9 +26,9 @@ $site_config = [
     'maxPlayers' => raidlands_env_int('RAIDLANDS_MAX_PLAYERS', 250),
     'serverOnline' => raidlands_env_bool('RAIDLANDS_SERVER_ONLINE', true),
     'serverStats' => [
-        'provider' => raidlands_env('RAIDLANDS_SERVER_STATS_PROVIDER', 'battlemetrics'),
-        'battleMetricsServerId' => raidlands_env('RAIDLANDS_BATTLEMETRICS_SERVER_ID', '39516376'),
+        'provider' => $raidlands_status_provider,
         'cacheSeconds' => raidlands_env_int('RAIDLANDS_SERVER_STATUS_CACHE_SECONDS', 60),
+        'staleSeconds' => raidlands_env_int('RAIDLANDS_SERVER_STATUS_STALE_SECONDS', 90),
     ],
     'connectCommand' => raidlands_env('RAIDLANDS_CONNECT_COMMAND', 'connect raidlands.net:25607'),
     'steamConnectUrl' => raidlands_env('RAIDLANDS_STEAM_CONNECT_URL', 'steam://connect/raidlands.net:25607'),
@@ -89,6 +95,7 @@ $clan_api_config = [
 $primary_nav = [
     ['home', '', 'Home'],
     ['play', 'play', 'Play'],
+    ['server', 'server', 'Server'],
     ['features', 'features', 'Features'],
     ['rules', 'rules', 'Rules'],
     ['discord', 'discord', 'Discord'],
@@ -279,6 +286,10 @@ $page_copy = [
         'title' => 'Server Features',
         'lede' => 'Fast progression, constant raiding, predictable wipes, account-linked perks, and synced stats are live parts of the Raidlands stack.',
     ],
+    'server' => [
+        'title' => 'Server Status',
+        'lede' => 'Live Raidlands population, queue, map, wipe, and performance details from the game server.',
+    ],
     'rules' => [
         'title' => 'Rules',
         'lede' => 'Raidlands is a PvP battlefield. Raiding, counters, roofcamping, and revenge raids are part of the game. Cheating, exploits, and real-world threats are not.',
@@ -355,6 +366,12 @@ $seo_pages = [
         'description' => 'See the Raidlands 1000x Rust feature set: kits, teleporting, homes, clans, skinbox, backpacks, fast raids, events, and active staff.',
         'ogTitle' => 'Raidlands Features',
         'ogDescription' => 'High-speed Rust warfare with the slow parts removed.',
+    ],
+    'server' => [
+        'title' => 'Raidlands Server Status | Live Population and Map',
+        'description' => 'Check Raidlands server status, population, queue, map, wipe timing, and performance details from the live game server.',
+        'ogTitle' => 'Raidlands Server Status',
+        'ogDescription' => 'Live Raidlands status, queue, map, and performance details.',
     ],
     'rules' => [
         'title' => 'Raidlands Rules | Rust Server and Discord Rules',
