@@ -130,6 +130,19 @@ function raidlands_kits_clean_permission($value): string
     return 'kits.' . $permission;
 }
 
+function raidlands_kits_permission_from_name(string $name): string
+{
+    $slug = strtolower(raidlands_kits_clean_text($name, 120));
+    $slug = preg_replace('/[^a-z0-9]+/', '-', $slug) ?? '';
+    $slug = trim($slug, '-');
+
+    if ($slug === '') {
+        return '';
+    }
+
+    return 'kits.' . $slug;
+}
+
 function raidlands_kits_clean_group($value): string
 {
     $group = strtolower(raidlands_kits_clean_text($value, 160));
@@ -139,6 +152,41 @@ function raidlands_kits_clean_group($value): string
     }
 
     return $group;
+}
+
+function raidlands_kits_clean_groups(array $groups): array
+{
+    $clean = [];
+
+    foreach ($groups as $group) {
+        $group = raidlands_kits_clean_group($group);
+
+        if ($group !== '') {
+            $clean[] = $group;
+        }
+    }
+
+    $clean = array_values(array_unique($clean));
+    sort($clean, SORT_NATURAL | SORT_FLAG_CASE);
+
+    return $clean;
+}
+
+function raidlands_kits_guided_claim_permission(string $kit_name, $permission, array $groups): string
+{
+    $claim_permission = raidlands_kits_clean_permission($permission);
+
+    if ($claim_permission !== '' || raidlands_kits_clean_groups($groups) === []) {
+        return $claim_permission;
+    }
+
+    $claim_permission = raidlands_kits_permission_from_name($kit_name);
+
+    if ($claim_permission === '') {
+        throw new InvalidArgumentException('Kit "' . $kit_name . '" has group grants selected, but no claim permission. Enter a claim permission such as kits.raid before saving.');
+    }
+
+    return $claim_permission;
 }
 
 function raidlands_kits_clean_image_path($value): string
@@ -655,13 +703,7 @@ function raidlands_kits_save_groups(PDO $pdo, int $kit_id, array $groups): void
          ON DUPLICATE KEY UPDATE is_granted = 1, updated_at = NOW()'
     );
 
-    foreach ($groups as $group) {
-        $group = raidlands_kits_clean_group($group);
-
-        if ($group === '') {
-            continue;
-        }
-
+    foreach (raidlands_kits_clean_groups($groups) as $group) {
         $insert->execute([
             'kit_id' => $kit_id,
             'oxide_group' => $group,
@@ -768,6 +810,9 @@ function raidlands_kits_admin_save(array $post, array $files = []): array
                 continue;
             }
 
+            $groups = raidlands_kits_clean_groups((array) ($row['groups'] ?? []));
+            $claim_permission = raidlands_kits_guided_claim_permission($name, $row['required_permission'] ?? '', $groups);
+
             $image_path = raidlands_kits_clean_image_path($row['image_path'] ?? '');
             $uploaded = raidlands_kits_store_uploaded_image(raidlands_kits_file_at_index($files, 'kit_images', (int) $index));
 
@@ -779,7 +824,7 @@ function raidlands_kits_admin_save(array $post, array $files = []): array
                 'kit_name' => $name,
                 'previous_kit_name' => raidlands_kits_clean_text($row['previous_kit_name'] ?? '', 160),
                 'description' => raidlands_kits_clean_multiline($row['description'] ?? ''),
-                'required_permission' => raidlands_kits_clean_permission($row['required_permission'] ?? ''),
+                'required_permission' => $claim_permission,
                 'maximum_uses' => raidlands_kits_int($row['maximum_uses'] ?? 0, 0, 99999999),
                 'required_auth' => raidlands_kits_int($row['required_auth'] ?? 0, 0, 2),
                 'cooldown_seconds' => raidlands_kits_int($row['cooldown_seconds'] ?? 0, 0, 31536000),
@@ -879,7 +924,7 @@ function raidlands_kits_admin_save(array $post, array $files = []): array
                 ?? (array) ($row['items'] ?? []);
 
             raidlands_kits_save_items($pdo, $kit_id, $item_rows);
-            raidlands_kits_save_groups($pdo, $kit_id, (array) ($row['groups'] ?? []));
+            raidlands_kits_save_groups($pdo, $kit_id, $groups);
             raidlands_kits_save_product_links($pdo, $kit_id, (array) ($row['store_product_ids'] ?? []));
 
             $changed += 1;

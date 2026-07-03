@@ -1386,7 +1386,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                   <input type="text" name="kits[<?= e((string) $index) ?>][previous_kit_name]" maxlength="160" value="<?= e((string) ($row['previous_kit_name'] ?? '')) ?>">
                                 </label>
                                 <label class="admin-field">
-                                  <?= admin_field_head('Required permission', 'Permission needed to claim the kit, such as kits.raid or kits.paidpvpkit.') ?>
+                                  <?= admin_field_head('Claim permission', 'The Rust Kits gate. Blank means public. If groups are selected and this is blank, the website saves a generated kits.<kit-name> permission.') ?>
                                   <input type="text" name="kits[<?= e((string) $index) ?>][required_permission]" maxlength="160" placeholder="kits.raid" value="<?= e((string) ($row['required_permission'] ?? '')) ?>">
                                 </label>
                                 <label class="admin-field">
@@ -1441,10 +1441,10 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               </div>
                             </details>
                             <details class="admin-details">
-                              <summary>Availability and store links <small>Groups and public products</small></summary>
+                              <summary>Permission grants and store links <small>Groups and public products</small></summary>
                               <div class="admin-grid two">
                                 <div class="admin-field">
-                                  <?= admin_field_head('Available groups', 'WebsiteVipBridge grants or revokes the kit permission for these groups during kit sync.') ?>
+                                  <?= admin_field_head('Grant claim permission to groups', 'Selected groups receive this kit claim permission during publish/sync. Groups do not unlock a kit unless the kit has a claim permission.') ?>
                                   <div class="admin-check-grid">
                                     <?php foreach ($admin_kit_groups as $group) : ?>
                                       <label class="admin-check">
