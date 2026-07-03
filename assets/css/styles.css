@@ -4456,7 +4456,6 @@ button.admin-permission-chip:focus-visible {
 
 .admin-permission-empty[hidden],
 .admin-permission-prefix[hidden],
-.admin-permission-option[hidden],
 .admin-group-panel[hidden] {
   display: none !important;
 }
@@ -4522,6 +4521,10 @@ button.admin-permission-chip:focus-visible {
 }
 
 .admin-permission-option:not([hidden]) {
+  display: flex !important;
+}
+
+.admin-permission-prefix:not([hidden]) .admin-permission-option[hidden]:not(.is-filtered-out) {
   display: flex !important;
 }
 

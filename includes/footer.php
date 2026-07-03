@@ -16,7 +16,11 @@
             </div>
             <nav class="footer-nav" aria-label="Footer navigation">
               <?php $footer_linked_player = raidlands_linked_player(); ?>
-              <?php foreach (array_merge($primary_nav, [['api-docs', 'api-docs', 'API Docs'], ['support', 'support', 'Support'], ['feedback', 'support', 'Feedback'], ['privacy', 'privacy', 'Privacy'], ['terms', 'terms', 'Terms']]) as [$id, $path, $label]) : ?>
+              <?php
+                $footer_nav = array_values($primary_nav);
+                array_splice($footer_nav, 2, 0, [['server', 'server', 'Server Status']]);
+              ?>
+              <?php foreach (array_merge($footer_nav, [['api-docs', 'api-docs', 'API Docs'], ['support', 'support', 'Support'], ['feedback', 'support', 'Feedback'], ['privacy', 'privacy', 'Privacy'], ['terms', 'terms', 'Terms']]) as [$id, $path, $label]) : ?>
                 <?php
                   if ($id === 'profile') {
                       continue;

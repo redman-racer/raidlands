@@ -95,7 +95,6 @@ $clan_api_config = [
 $primary_nav = [
     ['home', '', 'Home'],
     ['play', 'play', 'Play'],
-    ['server', 'server', 'Server'],
     ['features', 'features', 'Features'],
     ['rules', 'rules', 'Rules'],
     ['discord', 'discord', 'Discord'],

@@ -235,8 +235,9 @@
         visibleTotal += 1;
       }
 
-      item.dataset.permissionVisible = visible ? "1" : "0";
+      item.hidden = false;
       item.removeAttribute("hidden");
+      item.toggleAttribute("hidden", false);
       item.classList.toggle("is-filtered-out", (query !== "" || onlySelected) && !visible);
       updateStateLabel(item, input);
     });
