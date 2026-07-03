@@ -18,6 +18,21 @@
   var dirtyPanelIndexes = new Set();
   var helpId = 0;
   var lastMatches = [];
+  var activeCatalogCategory = 'weapons';
+  var catalogCategoryDefs = [
+    { id: 'weapons', label: 'Weapons' },
+    { id: 'ammo', label: 'Ammo' },
+    { id: 'armor', label: 'Armor' },
+    { id: 'medical', label: 'Medical' },
+    { id: 'resources', label: 'Resources' },
+    { id: 'building', label: 'Building' },
+    { id: 'tools', label: 'Tools' },
+    { id: 'electrical', label: 'Electrical' },
+    { id: 'food', label: 'Food' },
+    { id: 'vehicles', label: 'Vehicles' },
+    { id: 'deployables', label: 'Deployables' },
+    { id: 'misc', label: 'Misc' }
+  ];
 
   function normalizeShortname(value) {
     return String(value || '').trim().toLowerCase();
@@ -328,6 +343,117 @@
     return display && display.charAt(0) !== '#' ? display : shortname;
   }
 
+  function itemSearchText(item) {
+    return [
+      item.shortname || '',
+      itemDisplayName(item),
+      item.description || '',
+      item.item_id || ''
+    ].join(' ').toLowerCase();
+  }
+
+  function textMatchesAny(text, patterns) {
+    return patterns.some(function (pattern) {
+      return pattern.test(text);
+    });
+  }
+
+  function categoryForItem(item) {
+    var shortname = normalizeShortname(item.shortname);
+    var text = itemSearchText(item);
+
+    if (/^ammo\.|^arrow\.|^dart\.|^catapult\.ammo|^submarine\.torpedo/.test(shortname)
+      || textMatchesAny(text, [/ ammunition\b/, /\bammo\b/, /\bshell\b/, /\bslug\b/, /\bcartridge\b/, /\bround\b/, /\bgrenade launcher\b/])) {
+      return 'ammo';
+    }
+
+    if (textMatchesAny(text, [
+      /^rifle\./, /^pistol\./, /^shotgun\./, /^smg\./, /^lmg\./, /^bow\./, /^crossbow\b/,
+      /^weapon\./, /^rocket\.launcher/, /\bweapon\b/, /\brifle\b/, /\bpistol\b/, /\bshotgun\b/,
+      /\bsmg\b/, /\bbow\b/, /\bcrossbow\b/, /\blauncher\b/, /\bgrenade\b/, /\bexplosive\b/,
+      /\bsatchel\b/, /\bflamethrower\b/, /\bminigun\b/, /\bnailgun\b/, /\bsword\b/, /\bspear\b/,
+      /\bknife\b/, /\bcleaver\b/, /\bmachete\b/, /\bmace\b/
+    ])) {
+      return 'weapons';
+    }
+
+    if (textMatchesAny(text, [
+      /^attire\./, /^burlap\./, /^hide\./, /^roadsign\./, /^metal\.facemask/, /^metal\.plate/,
+      /\barmor\b/, /\barmour\b/, /\bhelmet\b/, /\bfacemask\b/, /\bhoodie\b/, /\bpants\b/,
+      /\bjacket\b/, /\bgloves\b/, /\bboots\b/, /\bshirt\b/, /\bhazmat\b/, /\bkilt\b/,
+      /\bclothing\b/, /\bmask\b/, /\bsuit\b/
+    ])) {
+      return 'armor';
+    }
+
+    if (textMatchesAny(text, [
+      /\bsyringe\b/, /\bmedkit\b/, /\bbandage\b/, /\bmedical\b/, /\bhealth\b/,
+      /\bantirad\b/, /\bradiation\b/, /\bhealing\b/
+    ])) {
+      return 'medical';
+    }
+
+    if (textMatchesAny(text, [
+      /^vehicle\./, /^car\./, /\bvehicle\b/, /\bcar\b/, /\bboat\b/, /\bhorse\b/,
+      /\bsubmarine\b/, /\bminicopter\b/, /\bscraptransport\b/, /\bsnowmobile\b/,
+      /\bskidoo\b/, /\bworkcart\b/, /\btrain\b/, /\bmodule\b/, /\bengine\b/, /\btire\b/
+    ])) {
+      return 'vehicles';
+    }
+
+    if (textMatchesAny(text, [
+      /^electric\./, /^wiretool\b/, /\belectric\b/, /\bpower\b/, /\bbattery\b/,
+      /\bgenerator\b/, /\bswitch\b/, /\bsensor\b/, /\bsplitter\b/, /\bsolar\b/,
+      /\bceiling light\b/, /\bcctv\b/, /\bcomputer station\b/, /\bturret\b/, /\bsam site\b/
+    ])) {
+      return 'electrical';
+    }
+
+    if (textMatchesAny(text, [
+      /\bbuilding\b/, /\bplanner\b/, /\bdoor\b/, /\bwall\b/, /\bfloor\b/, /\bwindow\b/,
+      /\bbarricade\b/, /\bladder\b/, /\block\b/, /\bcupboard\b/, /\bgate\b/, /\bshutter\b/,
+      /\bworkbench\b/, /\brepair bench\b/, /\bfurnace\b/, /\bbox\b/, /\bstorage\b/
+    ])) {
+      return 'building';
+    }
+
+    if (textMatchesAny(text, [
+      /\btool\b/, /\bhammer\b/, /\bhatchet\b/, /\bpickaxe\b/, /\bjackhammer\b/,
+      /\bchainsaw\b/, /\bsurvey charge\b/, /\bspraycan\b/, /\bcamera\b/, /\bbinoculars\b/,
+      /\btorch\b/, /\bflashlight\b/, /\bmining\b/
+    ])) {
+      return 'tools';
+    }
+
+    if (textMatchesAny(text, [
+      /^wood$|^stones$|^metal\./, /\bwood\b/, /\bstone\b/, /\bmetal\b/, /\bsulfur\b/,
+      /\bore\b/, /\bscrap\b/, /\bcloth\b/, /\bleather\b/, /\bbone\b/, /\bcharcoal\b/,
+      /\blow grade\b/, /\bcrude\b/, /\bfuel\b/, /\bfat\b/, /\brope\b/, /\btarp\b/,
+      /\bgears\b/, /\bspring\b/, /\bbody\b/, /\btech trash\b/, /\bsheet metal\b/,
+      /\bsewing kit\b/, /\bfragment\b/, /\bcomponent\b/
+    ])) {
+      return 'resources';
+    }
+
+    if (textMatchesAny(text, [
+      /\bapple\b/, /\bberry\b/, /\bmeat\b/, /\bfish\b/, /\bcorn\b/, /\bpumpkin\b/,
+      /\bmushroom\b/, /\bwater\b/, /\btea\b/, /\bseed\b/, /\bclone\b/, /\bpotato\b/,
+      /\bhemp\b/, /\bfood\b/, /\bcan of\b/, /\bchocolate\b/, /\bgranola\b/
+    ])) {
+      return 'food';
+    }
+
+    if (textMatchesAny(text, [
+      /\bchair\b/, /\btable\b/, /\brug\b/, /\bsofa\b/, /\bsign\b/, /\bplanter\b/,
+      /\bbarrel\b/, /\bvending\b/, /\bbbq\b/, /\bcampfire\b/, /\blantern\b/, /\blight\b/,
+      /\bshelf\b/, /\bbanner\b/, /\bposter\b/, /\bframe\b/, /\bfurniture\b/
+    ])) {
+      return 'deployables';
+    }
+
+    return 'misc';
+  }
+
   function updateSlotVisual(slotWrap) {
     var fields = getSlotFields(slotWrap);
     var shortname = normalizeShortname(fieldValue(fields, 'shortname', ''));
@@ -410,6 +536,7 @@
       '</div>',
       '<div class="admin-kit-catalog-panel">',
       modalInput({ label: 'Search catalog', help: 'Filter the local safe Rust item catalog by display name or shortname, then click an item to use it.', type: 'search', search: true, placeholder: 'rifle.ak, wood, syringe', span: true }),
+      '<div class="admin-kit-category-tabs" data-modal-categories role="tablist" aria-label="Item categories"></div>',
       '<div class="admin-kit-results-head">',
       '<span data-modal-count>Loading item catalog...</span>',
       '<small>Click an item to fill the slot shortname.</small>',
@@ -448,6 +575,7 @@
   });
 
   var modalSearch = modal.querySelector('[data-modal-search]');
+  var modalCategories = modal.querySelector('[data-modal-categories]');
   var modalResults = modal.querySelector('[data-modal-results]');
   var modalResultCount = modal.querySelector('[data-modal-count]');
   var modalIcon = modal.querySelector('[data-modal-icon]');
@@ -534,16 +662,112 @@
 
   function itemMatchesTerm(item, term) {
     var words = String(term || '').split(/\s+/).filter(Boolean);
-    var haystack = [
-      item.shortname || '',
-      itemDisplayName(item),
-      item.description || '',
-      item.item_id || ''
-    ].join(' ').toLowerCase();
+    var haystack = itemSearchText(item);
 
     return words.every(function (word) {
       return haystack.indexOf(word) !== -1;
     });
+  }
+
+  function categoryLabel(categoryId) {
+    var category = catalogCategoryDefs.find(function (entry) {
+      return entry.id === categoryId;
+    });
+
+    return category ? category.label : 'Items';
+  }
+
+  function filteredCatalogItems(query) {
+    query = normalizeShortname(query);
+    var terms = String(query || '').split(',').map(function (term) {
+      return normalizeShortname(term);
+    }).filter(Boolean);
+
+    return catalog.filter(function (item) {
+      if (!terms.length) {
+        return true;
+      }
+
+      return terms.some(function (term) {
+        return itemMatchesTerm(item, term);
+      });
+    }).sort(function (a, b) {
+      return scoreItem(a, query) - scoreItem(b, query)
+        || categoryLabel(a.category_id).localeCompare(categoryLabel(b.category_id))
+        || itemDisplayName(a).localeCompare(itemDisplayName(b))
+        || String(a.shortname || '').localeCompare(String(b.shortname || ''));
+    });
+  }
+
+  function categoryCounts(items) {
+    var counts = { total: items.length };
+
+    catalogCategoryDefs.forEach(function (category) {
+      counts[category.id] = 0;
+    });
+
+    items.forEach(function (item) {
+      var categoryId = item.category_id || 'misc';
+
+      if (counts[categoryId] == null) {
+        counts[categoryId] = 0;
+      }
+
+      counts[categoryId] += 1;
+    });
+
+    return counts;
+  }
+
+  function visibleCategories(counts) {
+    var categories = [];
+
+    catalogCategoryDefs.forEach(function (category) {
+      var count = counts[category.id] || 0;
+
+      if (count > 0) {
+        categories.push({
+          id: category.id,
+          label: category.label,
+          count: count
+        });
+      }
+    });
+
+    return categories;
+  }
+
+  function ensureActiveCategory(counts) {
+    if ((counts[activeCatalogCategory] || 0) > 0) {
+      return;
+    }
+
+    var categories = visibleCategories(counts);
+    activeCatalogCategory = categories.length ? categories[0].id : 'weapons';
+  }
+
+  function renderCategoryTabs(counts) {
+    if (!modalCategories) {
+      return;
+    }
+
+    var categories = visibleCategories(counts);
+
+    if (!categories.length) {
+      modalCategories.innerHTML = '';
+      return;
+    }
+
+    modalCategories.innerHTML = categories.map(function (category) {
+      var isSelected = category.id === activeCatalogCategory;
+
+      return [
+        '<button class="admin-kit-category-tab' + (isSelected ? ' is-active' : '') + '" type="button" role="tab" aria-selected="' + (isSelected ? 'true' : 'false') + '" data-category-id="' + escapeHtml(category.id) + '">',
+        '<span>' + escapeHtml(category.label) + '</span>',
+        '<small>' + escapeHtml(category.count) + '</small>',
+        '</button>'
+      ].join('');
+    }).join('');
   }
 
   function scoreItem(item, query) {
@@ -598,24 +822,15 @@
     }
 
     query = normalizeShortname(query);
-    var terms = String(query || '').split(',').map(function (term) {
-      return normalizeShortname(term);
-    }).filter(Boolean);
-    var matches = catalog.filter(function (item) {
-      if (!terms.length) {
-        return true;
-      }
+    var matches = filteredCatalogItems(query);
+    var counts = categoryCounts(matches);
 
-      return terms.some(function (term) {
-        return itemMatchesTerm(item, term);
-      });
-    }).sort(function (a, b) {
-      return scoreItem(a, query) - scoreItem(b, query)
-        || itemDisplayName(a).localeCompare(itemDisplayName(b))
-        || String(a.shortname || '').localeCompare(String(b.shortname || ''));
+    ensureActiveCategory(counts);
+    renderCategoryTabs(counts);
+
+    lastMatches = matches.filter(function (item) {
+      return (item.category_id || 'misc') === activeCatalogCategory;
     });
-
-    lastMatches = matches.slice(0, 96);
 
     if (modalResultCount) {
       if (!catalog.length) {
@@ -623,9 +838,9 @@
       } else if (!matches.length) {
         modalResultCount.textContent = 'No matching safe Rust items.';
       } else if (query) {
-        modalResultCount.textContent = 'Showing ' + lastMatches.length + ' of ' + matches.length + ' matching item' + (matches.length === 1 ? '' : 's') + '.';
+        modalResultCount.textContent = categoryLabel(activeCatalogCategory) + ': ' + lastMatches.length + ' item' + (lastMatches.length === 1 ? '' : 's') + ' shown from ' + matches.length + ' search match' + (matches.length === 1 ? '' : 'es') + '.';
       } else {
-        modalResultCount.textContent = 'Showing first ' + lastMatches.length + ' of ' + catalog.length + ' safe Rust items.';
+        modalResultCount.textContent = categoryLabel(activeCatalogCategory) + ': showing ' + lastMatches.length + ' item' + (lastMatches.length === 1 ? '' : 's') + '. ' + catalog.length + ' safe Rust items available across categories.';
       }
     }
 
@@ -663,6 +878,7 @@
 
     modal.hidden = false;
     document.body.classList.add('has-admin-kit-modal');
+    activeCatalogCategory = 'weapons';
     if (modalSearch) {
       modalSearch.value = '';
     }
@@ -790,10 +1006,17 @@
 
   modal.addEventListener('click', function (event) {
     var close = event.target.closest('[data-modal-close]');
+    var category = event.target.closest('[data-category-id]');
     var result = event.target.closest('[data-result-shortname]');
 
     if (close) {
       closeModal();
+      return;
+    }
+
+    if (category) {
+      activeCatalogCategory = category.getAttribute('data-category-id') || 'weapons';
+      renderResults(modalSearch ? modalSearch.value : '');
       return;
     }
 
@@ -844,6 +1067,9 @@
       catalog = Array.isArray(data.items)
         ? data.items.filter(function (item) {
             return item && item.shortname && item.safe_shortname;
+          }).map(function (item) {
+            item.category_id = categoryForItem(item);
+            return item;
           })
         : [];
       catalog.forEach(function (item) {
