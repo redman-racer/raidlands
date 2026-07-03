@@ -928,7 +928,7 @@ function raidlands_kits_sync_payload(?int $revision = null): array
         'generated_at' => gmdate('c'),
         'kits' => $payload_kits,
         'server_rewards_kits' => $reward_kits,
-        'group_access' => $group_access,
+        'group_access' => (object) $group_access,
     ];
 }
 
@@ -988,7 +988,7 @@ function raidlands_kits_pending_sync(int $since): array
             'has_update' => false,
             'kits' => [],
             'server_rewards_kits' => [],
-            'group_access' => [],
+            'group_access' => (object) [],
         ];
     }
 
@@ -1000,12 +1000,13 @@ function raidlands_kits_pending_sync(int $since): array
             'has_update' => false,
             'kits' => [],
             'server_rewards_kits' => [],
-            'group_access' => [],
+            'group_access' => (object) [],
         ];
     }
 
     $payload['revision'] = $revision;
     $payload['has_update'] = true;
+    $payload['group_access'] = (object) ($payload['group_access'] ?? []);
 
     return $payload;
 }

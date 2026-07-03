@@ -12,7 +12,7 @@ using Oxide.Core.Libraries.Covalence;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteVipBridge", "Raidlands", "1.4.0")]
+    [Info("WebsiteVipBridge", "Raidlands", "1.4.1")]
     [Description("Syncs website VIP entitlements and player stats between Raidlands.net and the Rust server.")]
     public class WebsiteVipBridge : CovalencePlugin
     {
@@ -149,7 +149,7 @@ namespace Oxide.Plugins
             public long revision;
             public List<JObject> kits;
             public List<JObject> server_rewards_kits;
-            public Dictionary<string, List<string>> group_access;
+            public JToken group_access;
         }
 
         private class KitResultResponse
@@ -165,7 +165,7 @@ namespace Oxide.Plugins
             public bool has_update;
             public long revision;
             public List<JObject> groups;
-            public Dictionary<string, List<string>> group_permissions;
+            public JToken group_permissions;
             public List<string> managed_groups;
             public List<string> read_only_groups;
         }
@@ -858,7 +858,17 @@ namespace Oxide.Plugins
                     return;
                 }
 
-                var payload = JsonConvert.DeserializeObject<KitSyncResponse>(response);
+                KitSyncResponse payload;
+
+                try
+                {
+                    payload = JsonConvert.DeserializeObject<KitSyncResponse>(response);
+                }
+                catch (Exception ex)
+                {
+                    PrintWarning($"Kit sync check failed: invalid response ({ex.Message})");
+                    return;
+                }
 
                 if (payload == null || !payload.ok)
                 {
@@ -1367,7 +1377,17 @@ namespace Oxide.Plugins
                     return;
                 }
 
-                var payload = JsonConvert.DeserializeObject<PermissionSyncResponse>(response);
+                PermissionSyncResponse payload;
+
+                try
+                {
+                    payload = JsonConvert.DeserializeObject<PermissionSyncResponse>(response);
+                }
+                catch (Exception ex)
+                {
+                    PrintWarning($"Permission sync check failed: invalid response ({ex.Message})");
+                    return;
+                }
 
                 if (payload == null || !payload.ok)
                 {
@@ -1418,7 +1438,9 @@ namespace Oxide.Plugins
                 errors.Add("Published payload did not include a valid revision.");
             }
 
-            if (payload.group_permissions == null)
+            var groupPermissions = JsonStringListMap(payload.group_permissions);
+
+            if (groupPermissions == null)
             {
                 errors.Add("Published payload did not include group permissions.");
                 return errors;
@@ -1456,7 +1478,7 @@ namespace Oxide.Plugins
                 }
             }
 
-            foreach (var entry in payload.group_permissions)
+            foreach (var entry in groupPermissions)
             {
                 if (!managedGroups.Contains(entry.Key))
                 {
@@ -1510,7 +1532,9 @@ namespace Oxide.Plugins
                 desiredByGroup[group] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
             }
 
-            foreach (var entry in payload.group_permissions ?? new Dictionary<string, List<string>>())
+            var groupPermissions = JsonStringListMap(payload.group_permissions) ?? new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var entry in groupPermissions)
             {
                 HashSet<string> desired;
 
@@ -1838,13 +1862,70 @@ namespace Oxide.Plugins
 
             if (result.Count == 0)
             {
-                foreach (var group in (payload?.group_permissions ?? new Dictionary<string, List<string>>()).Keys)
+                foreach (var group in (JsonStringListMap(payload?.group_permissions) ?? new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase)).Keys)
                 {
                     if (IsGroupName(group))
                     {
                         result.Add(group.Trim());
                     }
                 }
+            }
+
+            return result;
+        }
+
+        private static Dictionary<string, List<string>> JsonStringListMap(JToken token)
+        {
+            if (token == null || token.Type == JTokenType.Null || token.Type == JTokenType.Undefined)
+            {
+                return null;
+            }
+
+            var result = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+            var obj = token as JObject;
+
+            if (obj == null)
+            {
+                var array = token as JArray;
+                return array != null && array.Count == 0 ? result : null;
+            }
+
+            foreach (var property in obj.Properties())
+            {
+                if (string.IsNullOrWhiteSpace(property.Name))
+                {
+                    continue;
+                }
+
+                var values = new List<string>();
+                var valueArray = property.Value as JArray;
+
+                if (valueArray != null)
+                {
+                    foreach (var value in valueArray)
+                    {
+                        var text = value == null ? "" : value.ToString().Trim();
+
+                        if (!string.IsNullOrWhiteSpace(text))
+                        {
+                            values.Add(text);
+                        }
+                    }
+                }
+                else if (property.Value != null && property.Value.Type != JTokenType.Null && property.Value.Type != JTokenType.Undefined)
+                {
+                    var text = property.Value.ToString().Trim();
+
+                    if (!string.IsNullOrWhiteSpace(text))
+                    {
+                        values.Add(text);
+                    }
+                }
+
+                result[property.Name.Trim()] = values
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(value => value)
+                    .ToList();
             }
 
             return result;

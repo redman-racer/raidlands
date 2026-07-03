@@ -706,7 +706,7 @@ function raidlands_permissions_sync_payload(?int $revision = null): array
         'managed_groups' => array_values(array_keys($group_permissions)),
         'read_only_groups' => raidlands_permissions_read_only_groups(),
         'groups' => $groups,
-        'group_permissions' => $group_permissions,
+        'group_permissions' => (object) $group_permissions,
     ];
 }
 
@@ -766,7 +766,7 @@ function raidlands_permissions_pending_sync(int $since): array
             'has_update' => false,
             'managed_groups' => [],
             'groups' => [],
-            'group_permissions' => [],
+            'group_permissions' => (object) [],
         ];
     }
 
@@ -778,12 +778,13 @@ function raidlands_permissions_pending_sync(int $since): array
             'has_update' => false,
             'managed_groups' => [],
             'groups' => [],
-            'group_permissions' => [],
+            'group_permissions' => (object) [],
         ];
     }
 
     $payload['revision'] = $revision;
     $payload['has_update'] = true;
+    $payload['group_permissions'] = (object) ($payload['group_permissions'] ?? []);
 
     return $payload;
 }
