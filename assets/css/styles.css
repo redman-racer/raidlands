@@ -4525,6 +4525,10 @@ button.admin-permission-chip:focus-visible {
   display: flex !important;
 }
 
+.admin-permission-option.is-filtered-out {
+  display: none !important;
+}
+
 .admin-permission-option input {
   flex: 0 0 auto;
   margin-top: 2px;

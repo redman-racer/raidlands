@@ -747,7 +747,7 @@ namespace Oxide.Plugins
                 {
                     ["server_port"] = ConVar.Server.port,
                     ["save_file"] = World.SaveFileName ?? "",
-                    ["protocol"] = Protocol.network,
+                    ["protocol"] = Rust.Protocol.network,
                     ["status_heartbeat_interval_seconds"] = Math.Max(15, config.StatusHeartbeatIntervalSeconds)
                 }
             };

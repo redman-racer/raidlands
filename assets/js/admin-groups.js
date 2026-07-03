@@ -235,11 +235,9 @@
         visibleTotal += 1;
       }
 
-      if (visible) {
-        item.removeAttribute("hidden");
-      } else {
-        item.setAttribute("hidden", "");
-      }
+      item.dataset.permissionVisible = visible ? "1" : "0";
+      item.removeAttribute("hidden");
+      item.classList.toggle("is-filtered-out", (query !== "" || onlySelected) && !visible);
       updateStateLabel(item, input);
     });
 
@@ -322,6 +320,8 @@
     });
 
     updateWorkbench(workbench);
+    window.requestAnimationFrame(() => updateWorkbench(workbench));
+    window.setTimeout(() => updateWorkbench(workbench), 150);
   }
 
   toArray(groupEditors).forEach(initGroupEditor);
