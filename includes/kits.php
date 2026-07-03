@@ -400,6 +400,53 @@ function raidlands_kits_available_groups(): array
     return $groups;
 }
 
+function raidlands_kits_item_catalog(bool $safe_only = true): array
+{
+    static $catalog = null;
+
+    if ($catalog === null) {
+        $catalog = [];
+        $path = dirname(__DIR__) . '/assets/data/rust-items.json';
+
+        if (is_file($path)) {
+            $json = json_decode((string) file_get_contents($path), true);
+            $items = is_array($json) ? (array) ($json['items'] ?? []) : [];
+
+            foreach ($items as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+
+                $shortname = strtolower(raidlands_kits_clean_text($item['shortname'] ?? '', 160));
+
+                if ($shortname === '') {
+                    continue;
+                }
+
+                $item['shortname'] = $shortname;
+                $catalog[] = $item;
+            }
+        }
+    }
+
+    if (!$safe_only) {
+        return $catalog;
+    }
+
+    return array_values(array_filter($catalog, static fn (array $item): bool => !empty($item['safe_shortname'])));
+}
+
+function raidlands_kits_item_catalog_map(bool $safe_only = true): array
+{
+    $map = [];
+
+    foreach (raidlands_kits_item_catalog($safe_only) as $item) {
+        $map[(string) $item['shortname']] = $item;
+    }
+
+    return $map;
+}
+
 function raidlands_kits_known_shortnames(): array
 {
     $shortnames = [
@@ -417,6 +464,10 @@ function raidlands_kits_known_shortnames(): array
         'tarp', 'techparts', 'torch', 'weapon.mod.8x.scope', 'weapon.mod.extendedmags',
         'weapon.mod.holosight', 'weapon.mod.lasersight', 'wood',
     ];
+
+    foreach (raidlands_kits_item_catalog(true) as $item) {
+        $shortnames[] = (string) $item['shortname'];
+    }
 
     if (raidlands_kits_is_ready()) {
         try {

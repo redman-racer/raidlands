@@ -83,6 +83,8 @@ $admin_kit_rows = [];
 $admin_kit_groups = [];
 $admin_kit_products = [];
 $admin_kit_shortnames = [];
+$admin_kit_item_catalog = [];
+$admin_kit_item_map = [];
 $admin_kit_sync_rows = [];
 $admin_permissions_ready = false;
 $admin_permissions_error = '';
@@ -150,6 +152,8 @@ try {
             $admin_kit_groups = raidlands_kits_available_groups();
             $admin_kit_products = raidlands_kits_store_product_options();
             $admin_kit_shortnames = raidlands_kits_known_shortnames();
+            $admin_kit_item_catalog = raidlands_kits_item_catalog(true);
+            $admin_kit_item_map = raidlands_kits_item_catalog_map(true);
             $admin_kit_sync_rows = raidlands_kits_recent_sync_rows(12);
         } else {
             $admin_kits_error = raidlands_kits_readiness_message(true);
@@ -338,23 +342,192 @@ function admin_product_type_options(): array
 
 function admin_kit_item_rows(array $kit, string $container): array
 {
-    $items = array_values((array) ($kit['items'][$container] ?? []));
-    $items[] = [];
+    $capacity = admin_kit_slot_capacity($container);
+    $slots = array_fill(0, $capacity, []);
+    $overflow = [];
 
-    if ($items === [[]]) {
-        $items[] = [];
+    foreach (array_values((array) ($kit['items'][$container] ?? [])) as $fallback_position => $item) {
+        $item = is_array($item) ? $item : [];
+        $position = (int) ($item['position'] ?? $fallback_position);
+
+        if ($position >= 0 && $position < $capacity && $slots[$position] === []) {
+            $slots[$position] = $item;
+        } else {
+            $overflow[] = $item;
+        }
     }
 
-    return $items;
+    foreach ($overflow as $item) {
+        foreach ($slots as $position => $slot) {
+            if ($slot === []) {
+                $slots[$position] = $item;
+                break;
+            }
+        }
+    }
+
+    foreach ($slots as $position => $slot) {
+        $slot = is_array($slot) ? $slot : [];
+        $slot['position'] = $position;
+        $slot['sort_order'] = $slot['sort_order'] ?? ($position * 10);
+        $slots[$position] = $slot;
+    }
+
+    return $slots;
+}
+
+function admin_kit_slot_capacity(string $container): int
+{
+    return match ($container) {
+        'wear' => 8,
+        'belt' => 6,
+        default => 24,
+    };
 }
 
 function admin_kit_container_label(string $container): string
 {
     return match ($container) {
         'wear' => 'Wear',
-        'belt' => 'Belt',
-        default => 'Main',
+        'belt' => 'Hotbar',
+        default => 'Inventory',
     };
+}
+
+function admin_kit_item_count(array $kit): int
+{
+    $count = 0;
+
+    foreach (['main', 'wear', 'belt'] as $container) {
+        foreach ((array) ($kit['items'][$container] ?? []) as $item) {
+            if (trim((string) ($item['shortname'] ?? '')) !== '') {
+                $count += 1;
+            }
+        }
+    }
+
+    return $count;
+}
+
+function admin_kit_item_meta(array $catalog, string $shortname): array
+{
+    $shortname = strtolower(trim($shortname));
+
+    return $shortname !== '' && isset($catalog[$shortname]) && is_array($catalog[$shortname])
+        ? $catalog[$shortname]
+        : [];
+}
+
+function admin_kit_item_display_name(array $item, array $catalog): string
+{
+    $shortname = trim((string) ($item['shortname'] ?? ''));
+    $meta = admin_kit_item_meta($catalog, $shortname);
+    $display = trim((string) ($item['display_name'] ?? ''));
+
+    if ($display !== '') {
+        return $display;
+    }
+
+    if (!empty($meta['display_name'])) {
+        return (string) $meta['display_name'];
+    }
+
+    return $shortname;
+}
+
+function admin_kit_item_icon_url(array $item, array $catalog): string
+{
+    $shortname = trim((string) ($item['shortname'] ?? ''));
+    $meta = admin_kit_item_meta($catalog, $shortname);
+    $icon = trim((string) ($meta['icon'] ?? ''));
+
+    return $icon !== '' ? asset_url($icon) : '';
+}
+
+function admin_kit_slot_expected_json(): string
+{
+    return json_encode([
+        'main' => admin_kit_slot_capacity('main'),
+        'wear' => admin_kit_slot_capacity('wear'),
+        'belt' => admin_kit_slot_capacity('belt'),
+    ], JSON_UNESCAPED_SLASHES) ?: '{}';
+}
+
+function admin_render_kit_slot_fields(int $kit_index, string $container, int $slot_index, array $item): string
+{
+    $fields = [
+        'shortname' => trim((string) ($item['shortname'] ?? '')),
+        'amount' => (string) max(1, (int) ($item['amount'] ?? 1)),
+        'position' => (string) $slot_index,
+        'skin' => (string) max(0, (int) ($item['skin'] ?? 0)),
+        'condition' => (string) ($item['condition_value'] ?? $item['condition'] ?? 0),
+        'max_condition' => (string) ($item['max_condition'] ?? 0),
+        'ammo' => (string) max(0, (int) ($item['ammo'] ?? 0)),
+        'ammo_type' => trim((string) ($item['ammo_type'] ?? '')),
+        'frequency' => (string) (int) ($item['frequency'] ?? -1),
+        'display_name' => trim((string) ($item['display_name'] ?? '')),
+        'blueprint_shortname' => trim((string) ($item['blueprint_shortname'] ?? '')),
+        'text' => trim((string) ($item['text_value'] ?? $item['text'] ?? '')),
+        'contents_json' => trim((string) ($item['contents_json'] ?? '')),
+        'container_json' => trim((string) ($item['container_json'] ?? '')),
+        'sort_order' => (string) (int) ($item['sort_order'] ?? ($slot_index * 10)),
+    ];
+    $html = '<div class="admin-kit-slot-fields" data-kit-slot-fields hidden>';
+
+    foreach ($fields as $field => $value) {
+        $name = 'kits[' . $kit_index . '][items][' . $container . '][' . $slot_index . '][' . $field . ']';
+        $html .= '<input type="hidden" data-kit-item-field="' . e($field) . '" name="' . e($name) . '" value="' . e($value) . '">';
+    }
+
+    return $html . '</div>';
+}
+
+function admin_render_kit_slot(int $kit_index, string $container, int $slot_index, array $item, array $catalog): string
+{
+    $shortname = trim((string) ($item['shortname'] ?? ''));
+    $is_filled = $shortname !== '';
+    $display = $is_filled ? admin_kit_item_display_name($item, $catalog) : '';
+    $icon_url = $is_filled ? admin_kit_item_icon_url($item, $catalog) : '';
+    $amount = max(1, (int) ($item['amount'] ?? 1));
+    $slot_label = admin_kit_container_label($container) . ' slot ' . (string) ($slot_index + 1);
+    $aria = $is_filled ? 'Edit ' . $display . ' in ' . $slot_label : 'Set item for ' . $slot_label;
+    $classes = 'rust-kit-slot' . ($is_filled ? ' is-filled' : '');
+    $html = '<div class="rust-kit-slot-wrap" data-kit-slot-wrap>';
+
+    $html .= '<button class="' . e($classes) . '" type="button" data-kit-slot data-kit-index="' . e((string) $kit_index) . '" data-container="' . e($container) . '" data-position="' . e((string) $slot_index) . '" aria-label="' . e($aria) . '">';
+    $html .= '<span class="rust-kit-slot-index">' . e((string) ($slot_index + 1)) . '</span>';
+    $html .= '<img data-slot-icon alt="" loading="lazy" decoding="async"' . ($icon_url === '' ? ' hidden' : ' src="' . e($icon_url) . '"') . '>';
+    $html .= '<span class="rust-kit-slot-empty" data-slot-empty' . ($is_filled ? ' hidden' : '') . '>+</span>';
+    $html .= '<span class="rust-kit-slot-title" data-slot-title>' . e($display) . '</span>';
+    $html .= '<span class="rust-kit-slot-amount" data-slot-amount' . (!$is_filled || $amount <= 1 ? ' hidden' : '') . '>x' . e((string) $amount) . '</span>';
+    $html .= '</button>';
+    $html .= admin_render_kit_slot_fields($kit_index, $container, $slot_index, $item);
+
+    return $html . '</div>';
+}
+
+function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog): string
+{
+    $html = '<div class="rust-kit-loadout">';
+
+    foreach (['wear', 'main', 'belt'] as $container) {
+        $slots = admin_kit_item_rows($kit, $container);
+        $html .= '<section class="rust-kit-container rust-kit-container-' . e($container) . '">';
+        $html .= '<div class="rust-kit-container-head">';
+        $html .= '<h3>' . e(admin_kit_container_label($container)) . '</h3>';
+        $html .= '<span>' . e((string) count($slots)) . ' slots</span>';
+        $html .= '</div>';
+        $html .= '<div class="rust-slot-grid rust-slot-grid-' . e($container) . '">';
+
+        foreach ($slots as $slot_index => $item) {
+            $html .= admin_render_kit_slot($kit_index, $container, (int) $slot_index, is_array($item) ? $item : [], $catalog);
+        }
+
+        $html .= '</div>';
+        $html .= '</section>';
+    }
+
+    return $html . '</div>';
 }
 ?>
 <!doctype html>
@@ -504,15 +677,8 @@ function admin_kit_container_label(string $container): string
                     $admin_kit_expected_items = [];
 
                     if ($admin_kits_ready) {
-                        $admin_kit_expected_rows = array_values($admin_kit_rows);
-                        $admin_kit_expected_total = count($admin_kit_expected_rows) + 1;
-
-                        for ($expected_index = 0; $expected_index < $admin_kit_expected_total; $expected_index += 1) {
-                            $expected_row = $admin_kit_expected_rows[$expected_index] ?? ['items' => ['main' => [], 'wear' => [], 'belt' => []]];
-
-                            foreach (['main', 'wear', 'belt'] as $expected_container) {
-                                $admin_kit_expected_items[$expected_index][$expected_container] = count(admin_kit_item_rows($expected_row, $expected_container));
-                            }
+                        foreach (['main', 'wear', 'belt'] as $expected_container) {
+                            $admin_kit_expected_items[0][$expected_container] = admin_kit_slot_capacity($expected_container);
                         }
                     }
                   ?>
@@ -1089,7 +1255,7 @@ function admin_kit_container_label(string $container): string
                             </div>
                           </article>
                         <?php endfor; ?>
-                      </div>
+                        </div>
                     </section>
                   <?php endif; ?>
                 <?php endif; ?>
@@ -1131,7 +1297,12 @@ function admin_kit_container_label(string $container): string
                         <h3>Kit editor</h3>
                         <p>Save Draft keeps changes on the website. Publish sends the latest catalog to the server on its next kit sync.</p>
                       </div>
-                      <div class="admin-repeat-list">
+                      <div
+                        class="admin-kit-editor-shell"
+                        data-admin-kit-editor
+                        data-rust-items-url="<?= e(asset_url('data/rust-items.json')) ?>"
+                        data-assets-base="<?= e(asset_url('')) ?>">
+                        <div class="admin-kit-panels">
                         <?php for ($index = 0; $index < $kit_total; $index += 1) : ?>
                           <?php
                             $row = $kit_rows[$index] ?? [
@@ -1164,12 +1335,19 @@ function admin_kit_container_label(string $container): string
                             $kit_title = trim((string) ($row['kit_name'] ?? ''));
                             $kit_groups = array_map('strval', (array) ($row['groups'] ?? []));
                             $kit_products = array_map('intval', (array) ($row['store_product_ids'] ?? []));
+                            $kit_item_count = admin_kit_item_count($row);
+                            $kit_is_active_panel = $index === 0;
                           ?>
-                          <article class="admin-repeat-card admin-kit-card">
+                          <article
+                            class="admin-repeat-card admin-kit-card admin-kit-panel<?= $kit_is_active_panel ? ' is-active' : '' ?>"
+                            data-kit-panel
+                            data-kit-index="<?= e((string) $index) ?>"
+                            data-kit-expected="<?= e(admin_kit_slot_expected_json()) ?>"
+                            <?= $kit_is_active_panel ? '' : 'hidden' ?>>
                             <input type="hidden" name="kits[<?= e((string) $index) ?>][id]" value="<?= e((string) ($row['id'] ?? '')) ?>">
                             <div class="admin-repeat-card-head">
                               <div>
-                                <h3><?= e($kit_title !== '' ? $kit_title : 'New Kit') ?></h3>
+                                <h3 data-kit-card-title><?= e($kit_title !== '' ? $kit_title : 'New Kit') ?></h3>
                                 <?php if (!empty($row['published_revision'])) : ?>
                                   <p class="admin-feedback-subtitle">Published revision <?= e((string) $row['published_revision']) ?><?= !empty($row['published_at']) ? ' at ' . e((string) $row['published_at']) : '' ?></p>
                                 <?php endif; ?>
@@ -1187,7 +1365,7 @@ function admin_kit_container_label(string $container): string
                               <div class="admin-grid three">
                                 <label class="admin-field">
                                   <?= admin_field_head('Kit name', 'Exact Rust kit name. Renaming updates the server on publish.') ?>
-                                  <input type="text" name="kits[<?= e((string) $index) ?>][kit_name]" maxlength="160" placeholder="Raid Kit" value="<?= e((string) ($row['kit_name'] ?? '')) ?>">
+                                  <input type="text" name="kits[<?= e((string) $index) ?>][kit_name]" maxlength="160" placeholder="Raid Kit" value="<?= e((string) ($row['kit_name'] ?? '')) ?>" data-kit-name-input>
                                 </label>
                                 <label class="admin-field">
                                   <?= admin_field_head('Previous name', 'Only needed when renaming an existing Rust kit.') ?>
@@ -1248,7 +1426,6 @@ function admin_kit_container_label(string $container): string
                                 </label>
                               </div>
                             </details>
-
                             <details class="admin-details">
                               <summary>Availability and store links <small>Groups and public products</small></summary>
                               <div class="admin-grid two">
@@ -1317,6 +1494,12 @@ function admin_kit_container_label(string $container): string
                               </div>
                             </details>
 
+                            <details class="admin-details admin-kit-loadout-details" open>
+                              <summary>Kit contents <small>Inventory, wear, and hotbar slots</small></summary>
+                              <?= admin_render_kit_slot_editor($row, $index, $admin_kit_item_map) ?>
+                            </details>
+
+                            <?php if (false) : ?>
                             <details class="admin-details">
                               <summary>Kit contents <small>Main, wear, and belt item rows</small></summary>
                               <?php foreach (['main', 'wear', 'belt'] as $container) : ?>
@@ -1414,8 +1597,35 @@ function admin_kit_container_label(string $container): string
                                 </div>
                               <?php endforeach; ?>
                             </details>
+                            <?php endif; ?>
                           </article>
                         <?php endfor; ?>
+                        </div>
+                        <aside class="admin-kit-picker" aria-label="Kit selector">
+                          <div class="admin-kit-picker-head">
+                            <h3>Kits</h3>
+                            <p><?= e((string) count($kit_rows)) ?> saved<?= $kit_rows === [] ? '' : ' plus new draft slot' ?></p>
+                          </div>
+                          <div class="admin-kit-picker-list">
+                            <?php for ($selector_index = 0; $selector_index < $kit_total; $selector_index += 1) : ?>
+                              <?php
+                                $selector_row = $kit_rows[$selector_index] ?? ['id' => '', 'kit_name' => '', 'is_active' => 1, 'items' => ['main' => [], 'wear' => [], 'belt' => []]];
+                                $selector_title = trim((string) ($selector_row['kit_name'] ?? ''));
+                                $selector_is_active = $selector_index === 0;
+                                $selector_item_count = admin_kit_item_count($selector_row);
+                              ?>
+                              <button
+                                class="admin-kit-picker-button<?= $selector_is_active ? ' is-active' : '' ?>"
+                                type="button"
+                                data-kit-select
+                                data-kit-index="<?= e((string) $selector_index) ?>"
+                                <?= $selector_is_active ? 'aria-current="true"' : '' ?>>
+                                <span data-kit-select-label><?= e($selector_title !== '' ? $selector_title : 'New Kit') ?></span>
+                                <small><?= e($selector_item_count . ' item' . ($selector_item_count === 1 ? '' : 's')) ?> / <?= empty($selector_row['id']) ? 'Draft' : (empty($selector_row['is_active']) ? 'Inactive' : 'Active') ?></small>
+                              </button>
+                            <?php endfor; ?>
+                          </div>
+                        </aside>
                       </div>
                     </section>
 
@@ -1873,6 +2083,7 @@ function admin_kit_container_label(string $container): string
         </div>
       </main>
       <?php if ($active_section === 'kits') : ?>
+        <script src="<?= e(asset_url('js/admin-kits.js')) ?>" defer></script>
         <script>
           document.querySelectorAll('[data-kit-save-submit]').forEach(function (button) {
             button.addEventListener('click', function () {
