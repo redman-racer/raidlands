@@ -1,3 +1,8 @@
+-- Prerequisites:
+-- 1. Run database/migrations/012_rp_shop.sql first.
+-- 2. Run database/seeds/001_store_products.sql before this migration if you want VIP package kit links created.
+-- If this import fails with "Unknown column 'payment_method'", apply 012_rp_shop.sql, then rerun this file.
+
 INSERT INTO oxide_groups
   (group_name, title, group_rank, parent_group, category, is_managed, is_protected, is_read_only, is_active, sort_order, notes)
 VALUES

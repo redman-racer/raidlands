@@ -1227,28 +1227,31 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                   <?php else : ?>
                     <section class="admin-section">
                       <div class="admin-subsection-head">
-                        <h3>Store product rows</h3>
-                        <p>These rows control what appears in the public store and which Oxide group WebsiteVipBridge grants after checkout or manual grant.</p>
+                        <h3>Store editor</h3>
+                        <p>Select one product at a time, then configure its RP offers, cash placeholder, linked kits, and managed group grant.</p>
                       </div>
-                      <div class="admin-repeat-list">
-                        <?php
-                          $product_rows = array_values($admin_store_rows);
-                          $admin_store_price_labels = [];
-                          $admin_store_currencies = [];
-                          $admin_store_groups = raidlands_store_managed_groups();
+                      <?php
+                        $product_rows = array_values($admin_store_rows);
+                        $admin_store_price_labels = [];
+                        $admin_store_currencies = [];
+                        $admin_store_groups = raidlands_store_managed_groups();
 
-                          foreach ($product_rows as $product_row) {
-                              $admin_store_price_labels[] = (string) ($product_row['price_label'] ?? '');
-                              $admin_store_currencies[] = (string) ($product_row['currency'] ?? '');
-                              $admin_store_groups[] = (string) ($product_row['oxide_group'] ?? '');
-                          }
+                        foreach ($product_rows as $product_row) {
+                            $admin_store_price_labels[] = (string) ($product_row['price_label'] ?? '');
+                            $admin_store_currencies[] = (string) ($product_row['currency'] ?? '');
+                            $admin_store_groups[] = (string) ($product_row['oxide_group'] ?? '');
+                        }
 
-                          echo admin_render_datalist('admin-price-label-options', admin_price_label_options($admin_store_price_labels));
-                          echo admin_render_datalist('admin-currency-options', admin_currency_options($admin_store_currencies));
-                          echo admin_render_datalist('admin-oxide-group-options', admin_option_map($admin_store_groups));
+                        echo admin_render_datalist('admin-price-label-options', admin_price_label_options($admin_store_price_labels));
+                        echo admin_render_datalist('admin-currency-options', admin_currency_options($admin_store_currencies));
+                        echo admin_render_datalist('admin-oxide-group-options', admin_option_map($admin_store_groups));
 
-                          $product_total = count($product_rows) + 2;
-                        ?>
+                        $product_total = count($product_rows) + 2;
+                        $store_selector_items = [];
+                        $store_has_active_panel = false;
+                      ?>
+                      <div class="admin-store-editor-shell" data-admin-store-editor>
+                        <div class="admin-store-panels">
                         <?php for ($index = 0; $index < $product_total; $index += 1) : ?>
                           <?php
                             $row = $product_rows[$index] ?? [
@@ -1278,12 +1281,43 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             $rp_prices = (array) ($row['rp_prices'] ?? []);
                             $rp_intervals = raidlands_store_admin_price_intervals($product_type_value);
                             $selected_kit_ids = array_map('intval', (array) ($row['kit_ids'] ?? []));
+                            $store_is_existing = !empty($row['id']);
+                            $store_panel_key = $store_is_existing ? 'product-' . (int) $row['id'] : 'new-' . $index;
+                            $store_panel_id = 'admin-store-panel-' . (preg_replace('/[^a-zA-Z0-9_-]+/', '-', $store_panel_key) ?: (string) $index);
+                            $store_is_active_panel = !$store_has_active_panel;
+                            $store_has_active_panel = true;
+                            $store_title = trim((string) ($row['name'] ?? ''));
+                            $store_label = $store_title !== '' ? $store_title : 'New Store Product';
+                            $store_group = trim((string) ($row['oxide_group'] ?? ''));
+                            $store_status = $store_is_existing ? (!empty($row['is_active']) ? 'Active' : 'Inactive') : 'Draft slot';
+                            $store_rp_active_count = 0;
+                            foreach ($rp_prices as $rp_price_summary_row) {
+                                if (!empty($rp_price_summary_row['is_active'])) {
+                                    $store_rp_active_count += 1;
+                                }
+                            }
+                            $store_selector_items[] = [
+                                'id' => $store_panel_id,
+                                'index' => (string) $index,
+                                'label' => $store_label,
+                                'meta' => $store_status . ' / ' . ($store_group !== '' ? $store_group : 'No group') . ' / ' . $store_rp_active_count . ' RP offer' . ($store_rp_active_count === 1 ? '' : 's'),
+                                'is_active' => $store_is_active_panel,
+                                'is_draft' => !$store_is_existing,
+                            ];
                           ?>
-                          <article class="admin-repeat-card">
+                          <article
+                            class="admin-repeat-card admin-store-card admin-store-panel<?= $store_is_active_panel ? ' is-active' : '' ?>"
+                            id="<?= e($store_panel_id) ?>"
+                            data-admin-store-panel
+                            data-admin-store-index="<?= e((string) $index) ?>"
+                            <?= $store_is_active_panel ? '' : 'hidden' ?>>
                             <input type="hidden" name="store_products[<?= e((string) $index) ?>][id]" value="<?= e((string) ($row['id'] ?? '')) ?>">
                             <input type="hidden" name="store_products[<?= e((string) $index) ?>][price_id]" value="<?= e((string) ($row['price_id'] ?? '')) ?>">
                             <div class="admin-repeat-card-head">
-                              <h3><?= !empty($row['id']) ? e((string) $row['name']) : 'New Store Product' ?></h3>
+                              <div>
+                                <h3 data-admin-store-card-title><?= e($store_label) ?></h3>
+                                <p class="admin-feedback-subtitle"><?= e($store_status) ?> / <?= e($store_group !== '' ? $store_group : 'No group selected') ?></p>
+                              </div>
                               <?php if (!empty($row['id'])) : ?>
                                 <label class="admin-check admin-delete-check">
                                   <input type="checkbox" name="store_products[<?= e((string) $index) ?>][delete]" value="1">
@@ -1299,7 +1333,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               </label>
                               <label class="admin-field">
                                 <?= admin_field_head('Name', 'Product title shown to players.') ?>
-                                <input type="text" name="store_products[<?= e((string) $index) ?>][name]" maxlength="160" placeholder="Bronze VIP" value="<?= e((string) ($row['name'] ?? '')) ?>">
+                                <input type="text" name="store_products[<?= e((string) $index) ?>][name]" maxlength="160" placeholder="Bronze VIP" value="<?= e((string) ($row['name'] ?? '')) ?>" data-admin-store-name-input>
                               </label>
                               <label class="admin-field">
                                 <?= admin_field_head('Type', 'VIP packages can expose daily, weekly, monthly, and yearly RP passes. Other product types create one-time unlocks.') ?>
@@ -1414,6 +1448,27 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                           </article>
                         <?php endfor; ?>
                         </div>
+                        <aside class="admin-store-picker" aria-label="Store product selector">
+                          <div class="admin-store-picker-head">
+                            <h3>Products</h3>
+                            <p><?= e((string) count($product_rows)) ?> saved plus draft slots</p>
+                          </div>
+                          <div class="admin-store-picker-list">
+                            <?php foreach ($store_selector_items as $selector_item) : ?>
+                              <button
+                                class="admin-store-picker-button<?= !empty($selector_item['is_active']) ? ' is-active' : '' ?><?= !empty($selector_item['is_draft']) ? ' is-draft' : '' ?>"
+                                type="button"
+                                data-admin-store-select
+                                data-admin-store-target="<?= e((string) $selector_item['id']) ?>"
+                                aria-controls="<?= e((string) $selector_item['id']) ?>"
+                                <?= !empty($selector_item['is_active']) ? 'aria-current="true"' : '' ?>>
+                                <span data-admin-store-select-label><?= e((string) $selector_item['label']) ?></span>
+                                <small><?= e((string) $selector_item['meta']) ?></small>
+                              </button>
+                            <?php endforeach; ?>
+                          </div>
+                        </aside>
+                      </div>
                     </section>
                   <?php endif; ?>
                 <?php endif; ?>
@@ -2578,6 +2633,9 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
       <?php endif; ?>
       <?php if ($active_section === 'groups') : ?>
         <script src="<?= e(asset_url('js/admin-groups.js')) ?>" defer></script>
+      <?php endif; ?>
+      <?php if ($active_section === 'store') : ?>
+        <script src="<?= e(asset_url('js/admin-store.js')) ?>" defer></script>
       <?php endif; ?>
     <?php endif; ?>
   </body>

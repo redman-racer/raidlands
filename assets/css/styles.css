@@ -4834,7 +4834,8 @@ button.admin-permission-chip:focus-visible {
 
 .admin-permission-empty[hidden],
 .admin-permission-prefix[hidden],
-.admin-group-panel[hidden] {
+.admin-group-panel[hidden],
+.admin-store-panel[hidden] {
   display: none !important;
 }
 
@@ -5554,6 +5555,111 @@ button.admin-permission-chip:focus-visible {
   line-height: 1.25;
 }
 
+.admin-store-editor-shell {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
+  gap: 16px;
+  align-items: start;
+}
+
+.admin-store-panels,
+.admin-store-panel {
+  min-width: 0;
+}
+
+.admin-store-picker {
+  position: sticky;
+  top: 98px;
+  display: grid;
+  gap: 12px;
+  padding: 14px;
+  border: 1px solid rgba(181, 170, 160, .22);
+  border-radius: var(--radius);
+  background:
+    var(--console-scan) center / 220px repeat,
+    rgba(0, 0, 0, .34);
+}
+
+.admin-store-picker-head h3 {
+  margin: 0;
+  color: var(--white);
+  font-size: 1.1rem;
+  text-transform: uppercase;
+}
+
+.admin-store-picker-head p {
+  margin: 5px 0 0;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: .78rem;
+  font-weight: 700;
+}
+
+.admin-store-picker-list {
+  max-height: min(62vh, 620px);
+  display: grid;
+  gap: 8px;
+  overflow: auto;
+  padding-right: 3px;
+}
+
+.admin-store-picker-button {
+  appearance: none;
+  -webkit-appearance: none;
+  width: 100%;
+  min-height: 58px;
+  padding: 10px 12px;
+  display: grid;
+  gap: 4px;
+  border: 1px solid rgba(181, 170, 160, .2);
+  border-radius: var(--radius);
+  background:
+    var(--metal-texture) center / 240px repeat,
+    rgba(0, 0, 0, .28);
+  color: var(--white);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-store-picker-button:hover,
+.admin-store-picker-button:focus-visible,
+.admin-store-picker-button.is-active {
+  border-color: rgba(255, 138, 40, .62);
+  outline: none;
+  background:
+    linear-gradient(90deg, rgba(255, 138, 40, .18), rgba(0, 0, 0, .22)),
+    var(--metal-texture) center / 240px repeat,
+    rgba(0, 0, 0, .34);
+}
+
+.admin-store-picker-button.is-draft {
+  border-style: dashed;
+}
+
+.admin-store-picker-button span,
+.admin-store-picker-button small {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.admin-store-picker-button span {
+  color: var(--white);
+  font-weight: 900;
+  line-height: 1.1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.admin-store-picker-button small {
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: .75rem;
+  font-weight: 700;
+  line-height: 1.25;
+}
+
 .admin-kit-loadout-details .rust-kit-loadout {
   padding: 0 16px 16px;
 }
@@ -6246,6 +6352,7 @@ button.admin-permission-chip:focus-visible {
 
   .admin-kit-editor-shell,
   .admin-group-editor-shell,
+  .admin-store-editor-shell,
   .admin-kit-modal-top {
     grid-template-columns: 1fr;
   }
@@ -6259,12 +6366,14 @@ button.admin-permission-chip:focus-visible {
   }
 
   .admin-kit-picker,
-  .admin-group-picker {
+  .admin-group-picker,
+  .admin-store-picker {
     position: static;
   }
 
   .admin-kit-picker-list,
-  .admin-group-picker-list {
+  .admin-group-picker-list,
+  .admin-store-picker-list {
     max-height: none;
   }
 
@@ -6640,18 +6749,21 @@ button.admin-permission-chip:focus-visible {
 
 @media (max-width: 1100px) {
   .admin-body .admin-kit-editor-shell,
-  .admin-body .admin-group-editor-shell {
+  .admin-body .admin-group-editor-shell,
+  .admin-body .admin-store-editor-shell {
     grid-template-columns: 1fr;
   }
 
   .admin-body .admin-kit-picker,
-  .admin-body .admin-group-picker {
+  .admin-body .admin-group-picker,
+  .admin-body .admin-store-picker {
     position: static;
     order: -1;
   }
 
   .admin-body .admin-kit-picker-list,
-  .admin-body .admin-group-picker-list {
+  .admin-body .admin-group-picker-list,
+  .admin-body .admin-store-picker-list {
     max-height: 260px;
     grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
   }
@@ -6659,7 +6771,8 @@ button.admin-permission-chip:focus-visible {
 
 @media (max-width: 640px) {
   .admin-body .admin-group-picker-list,
-  .admin-body .admin-kit-picker-list {
+  .admin-body .admin-kit-picker-list,
+  .admin-body .admin-store-picker-list {
     grid-template-columns: 1fr;
   }
 
