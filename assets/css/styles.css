@@ -4722,6 +4722,7 @@ button.admin-permission-chip:focus-visible {
   align-items: flex-start;
   border-color: rgba(181, 170, 160, .18);
   background: rgba(0, 0, 0, .18);
+  cursor: pointer;
 }
 
 .admin-permission-option:not([hidden]) {
@@ -4739,6 +4740,7 @@ button.admin-permission-chip:focus-visible {
 .admin-permission-option input {
   flex: 0 0 auto;
   margin-top: 2px;
+  cursor: pointer;
 }
 
 .admin-permission-option.is-selected {

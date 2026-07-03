@@ -111,6 +111,11 @@ function raidlands_permissions_read_only_groups(): array
     return ['admin', 'authenticated'];
 }
 
+function raidlands_permissions_group_is_read_only(string $group_name): bool
+{
+    return in_array(raidlands_permissions_clean_group($group_name), raidlands_permissions_read_only_groups(), true);
+}
+
 function raidlands_permissions_protected_groups(): array
 {
     return ['default', 'discord', 'admin', 'authenticated'];
@@ -259,7 +264,7 @@ function raidlands_permissions_upsert_group(PDO $pdo, array $row, bool $from_sna
         return 0;
     }
 
-    $read_only = in_array($group_name, raidlands_permissions_read_only_groups(), true);
+    $read_only = raidlands_permissions_group_is_read_only($group_name);
     $protected = in_array($group_name, raidlands_permissions_protected_groups(), true);
     $title = raidlands_permissions_clean_text($row['title'] ?? $group_name, 160);
     $category = raidlands_permissions_clean_text($row['category'] ?? ($from_snapshot ? 'snapshot' : 'custom'), 80);
@@ -272,7 +277,7 @@ function raidlands_permissions_upsert_group(PDO $pdo, array $row, bool $from_sna
         'category' => $category !== '' ? $category : 'custom',
         'is_managed' => $read_only ? 0 : (empty($row['is_managed']) ? 0 : 1),
         'is_protected' => $protected || !empty($row['is_protected']) ? 1 : 0,
-        'is_read_only' => $read_only || !empty($row['is_read_only']) ? 1 : 0,
+        'is_read_only' => $read_only ? 1 : 0,
         'is_active' => empty($row['is_active']) ? 0 : 1,
         'sort_order' => max(0, min(9999, (int) ($row['sort_order'] ?? 100))),
         'notes' => raidlands_permissions_clean_multiline($row['notes'] ?? '', 3000) ?: null,
@@ -290,7 +295,7 @@ function raidlands_permissions_upsert_group(PDO $pdo, array $row, bool $from_sna
             category = IF(category = "snapshot" OR VALUES(category) <> "snapshot", VALUES(category), category),
             is_managed = VALUES(is_managed),
             is_protected = GREATEST(is_protected, VALUES(is_protected)),
-            is_read_only = GREATEST(is_read_only, VALUES(is_read_only)),
+            is_read_only = VALUES(is_read_only),
             is_active = VALUES(is_active),
             sort_order = VALUES(sort_order),
             notes = VALUES(notes),
@@ -333,7 +338,10 @@ function raidlands_permissions_group_rows(): array
     );
 
     foreach ($groups as &$group) {
+        $group_name = (string) ($group['group_name'] ?? '');
         $group['rank'] = (int) ($group['group_rank'] ?? 0);
+        $group['is_read_only'] = raidlands_permissions_group_is_read_only($group_name) ? 1 : 0;
+        $group['is_managed'] = !empty($group['is_read_only']) ? 0 : (int) ($group['is_managed'] ?? 0);
     }
     unset($group);
 
@@ -403,22 +411,20 @@ function raidlands_permissions_group_names(bool $include_read_only = false): arr
 
 function raidlands_permissions_store_group_names(): array
 {
-    if (!raidlands_permissions_is_ready()) {
-        return array_values(array_filter(
-            raidlands_permissions_default_group_names(),
-            static fn (string $group): bool => str_starts_with($group, 'vip_') || str_starts_with($group, 'perk_')
-        ));
-    }
+    $groups = [];
 
-    $rows = raidlands_db_fetch_all(
-        "SELECT group_name
-         FROM oxide_groups
-         WHERE is_active = 1
-           AND is_read_only = 0
-           AND category IN ('vip', 'perk', 'store')
-         ORDER BY sort_order ASC, group_name ASC"
-    );
-    $groups = array_map(static fn (array $row): string => (string) $row['group_name'], $rows);
+    foreach (raidlands_permissions_group_rows() as $row) {
+        $group_name = (string) ($row['group_name'] ?? '');
+        $category = (string) ($row['category'] ?? '');
+
+        if (empty($row['is_active']) || !empty($row['is_read_only'])) {
+            continue;
+        }
+
+        if (in_array($category, ['vip', 'perk', 'store'], true)) {
+            $groups[] = $group_name;
+        }
+    }
 
     return array_values(array_unique(array_filter($groups)));
 }
@@ -489,7 +495,7 @@ function raidlands_permissions_admin_save(array $post): array
                 continue;
             }
 
-            $is_read_only = in_array($group_name, raidlands_permissions_read_only_groups(), true);
+            $is_read_only = raidlands_permissions_group_is_read_only($group_name);
             $params = [
                 'group_name' => $group_name,
                 'title' => $row['title'] ?? $group_name,
@@ -572,7 +578,7 @@ function raidlands_permissions_admin_save(array $post): array
             raidlands_db_execute(
                 'UPDATE oxide_groups
                  SET published_revision = :revision, published_at = NOW(), updated_at = NOW()
-                 WHERE is_managed = 1 AND is_active = 1 AND is_read_only = 0',
+                 WHERE is_managed = 1 AND is_active = 1 AND group_name NOT IN ("admin", "authenticated")',
                 ['revision' => $revision]
             );
         }
@@ -624,7 +630,7 @@ function raidlands_permissions_desired_map(): array
          LEFT JOIN oxide_permissions op ON op.id = ogpg.permission_id
          WHERE og.is_managed = 1
            AND og.is_active = 1
-           AND og.is_read_only = 0
+           AND og.group_name NOT IN ("admin", "authenticated")
          ORDER BY og.group_name ASC, op.permission_name ASC'
     );
     $map = [];
@@ -835,7 +841,7 @@ function raidlands_permissions_import_snapshot(array $payload): array
                     'category' => $group_row['category'] ?? 'snapshot',
                     'is_managed' => in_array($name, raidlands_permissions_default_group_names(), true),
                     'is_protected' => in_array($name, raidlands_permissions_protected_groups(), true),
-                    'is_read_only' => in_array($name, raidlands_permissions_read_only_groups(), true),
+                    'is_read_only' => raidlands_permissions_group_is_read_only($name),
                     'is_active' => 1,
                     'sort_order' => $group_row['sort_order'] ?? 100,
                 ];
@@ -849,7 +855,7 @@ function raidlands_permissions_import_snapshot(array $payload): array
                     'category' => 'snapshot',
                     'is_managed' => in_array($name, raidlands_permissions_default_group_names(), true),
                     'is_protected' => in_array($name, raidlands_permissions_protected_groups(), true),
-                    'is_read_only' => in_array($name, raidlands_permissions_read_only_groups(), true),
+                    'is_read_only' => raidlands_permissions_group_is_read_only($name),
                     'is_active' => 1,
                     'sort_order' => 100,
                 ];
@@ -876,7 +882,7 @@ function raidlands_permissions_import_snapshot(array $payload): array
                     'category' => 'snapshot',
                     'is_managed' => in_array($group, raidlands_permissions_default_group_names(), true),
                     'is_protected' => in_array($group, raidlands_permissions_protected_groups(), true),
-                    'is_read_only' => in_array($group, raidlands_permissions_read_only_groups(), true),
+                    'is_read_only' => raidlands_permissions_group_is_read_only($group),
                     'is_active' => 1,
                 ], true);
             }
@@ -895,12 +901,13 @@ function raidlands_permissions_import_snapshot(array $payload): array
                 ['group_id' => $group_id]
             )['total'];
             $group_meta = raidlands_db_fetch_one(
-                'SELECT is_managed, is_read_only FROM oxide_groups WHERE id = :id',
+                'SELECT group_name, is_managed FROM oxide_groups WHERE id = :id',
                 ['id' => $group_id]
             );
+            $group_is_read_only = raidlands_permissions_group_is_read_only((string) ($group_meta['group_name'] ?? ''));
             $seed_desired = $desired_count === 0
                 && !empty($group_meta['is_managed'])
-                && empty($group_meta['is_read_only']);
+                && !$group_is_read_only;
 
             foreach ((array) $permission_list as $permission) {
                 $permission = raidlands_permissions_clean_permission($permission);

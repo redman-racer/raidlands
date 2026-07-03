@@ -1836,7 +1836,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             $custom_permissions = array_values(array_filter($desired_permissions, static fn (string $permission): bool => !isset($permission_option_set[$permission])));
                             $missing_live = array_values(array_diff($desired_permissions, $live_permissions));
                             $extra_live = array_values(array_diff($live_permissions, $desired_permissions));
-                            $is_read_only = !empty($row['is_read_only']);
+                            $is_read_only = raidlands_permissions_group_is_read_only($group_name);
                             $card_title = $group_name !== '' ? $group_name : 'New Group';
                             $group_is_active_panel = $index === $permission_group_active_index;
                             $active_permission_prefix = '';
@@ -2101,9 +2101,10 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 $selector_extra_live = array_values(array_diff($selector_live_permissions, $selector_desired_permissions));
                                 $selector_has_drift = $selector_missing_live !== [] || $selector_extra_live !== [];
                                 $selector_is_active = $selector_index === $permission_group_active_index;
+                                $selector_is_read_only = raidlands_permissions_group_is_read_only($selector_name);
                                 $selector_state = empty($selector_row['id'])
                                     ? 'Draft'
-                                    : (!empty($selector_row['is_read_only'])
+                                    : ($selector_is_read_only
                                         ? 'Read-only'
                                         : (empty($selector_row['is_active']) ? 'Inactive' : 'Active'));
                               ?>
