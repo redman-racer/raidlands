@@ -975,7 +975,7 @@ function raidlands_permissions_record_sync_result(array $payload): void
     $updated = raidlands_db_execute(
         "UPDATE oxide_permission_sync_log
          SET status = :status,
-             payload_hash = IF(:payload_hash <> '', :payload_hash, payload_hash),
+             payload_hash = COALESCE(NULLIF(:payload_hash, ''), payload_hash),
              message = :message,
              error_text = :error_text,
              applied_at = CASE WHEN :applied = 1 THEN NOW() ELSE applied_at END,
@@ -994,10 +994,11 @@ function raidlands_permissions_record_sync_result(array $payload): void
     if ($updated === 0) {
         raidlands_db_execute(
             "INSERT INTO oxide_permission_sync_log (revision, status, payload_hash, message, error_text, applied_at)
-             VALUES (:revision, :status, :payload_hash, :message, :error_text, CASE WHEN :status = 'applied' THEN NOW() ELSE NULL END)",
+             VALUES (:revision, :status, :payload_hash, :message, :error_text, CASE WHEN :applied = 1 THEN NOW() ELSE NULL END)",
             [
                 'revision' => $revision,
                 'status' => $status,
+                'applied' => $status === 'applied' ? 1 : 0,
                 'payload_hash' => $hash,
                 'message' => $message,
                 'error_text' => $error,

@@ -54,11 +54,14 @@ if ($authenticated) {
     );
 }
 
-$active_section = raidlands_admin_clean_section($_GET['section'] ?? 'identity');
+$requested_section = raidlands_admin_clean_section($_GET['section'] ?? 'identity');
+$active_section = $requested_section;
+$denied_section = '';
 
 if ($authenticated && $admin_sections === []) {
     $active_section = 'none';
 } elseif ($authenticated && !isset($admin_sections[$active_section])) {
+    $denied_section = isset($admin_sections_all[$requested_section]) ? $requested_section : '';
     $active_section = (string) array_key_first($admin_sections);
 }
 
@@ -648,6 +651,14 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
 
           <?php if ($flash !== null) : ?>
             <div class="admin-alert <?= e((string) $flash['type']) ?>"><?= e((string) $flash['message']) ?></div>
+          <?php endif; ?>
+
+          <?php if ($denied_section !== '') : ?>
+            <?php $denied_meta = $admin_sections_all[$denied_section] ?? ['label' => admin_page_label($denied_section)]; ?>
+            <div class="admin-alert warning">
+              <?= e((string) $denied_meta['label']) ?> exists, but your current admin role cannot view it.
+              Required permission: <code><?= e(raidlands_admin_section_permission($denied_section)) ?></code>.
+            </div>
           <?php endif; ?>
 
           <div class="admin-layout">

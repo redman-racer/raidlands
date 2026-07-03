@@ -1234,16 +1234,17 @@ function raidlands_kits_record_sync_result(array $payload): void
     $statement = $pdo->prepare(
         "UPDATE game_kit_sync_log
          SET status = :status,
-             payload_hash = IF(:payload_hash <> '', :payload_hash, payload_hash),
+             payload_hash = COALESCE(NULLIF(:payload_hash, ''), payload_hash),
              message = :message,
              error_text = :error_text,
-             applied_at = CASE WHEN :status = 'applied' THEN NOW() ELSE applied_at END,
+             applied_at = CASE WHEN :applied = 1 THEN NOW() ELSE applied_at END,
              updated_at = NOW()
          WHERE revision = :revision AND status = 'pending'"
     );
     $statement->execute([
         'revision' => $revision,
         'status' => $status,
+        'applied' => $status === 'applied' ? 1 : 0,
         'payload_hash' => $hash,
         'message' => $message,
         'error_text' => $error,
@@ -1252,11 +1253,12 @@ function raidlands_kits_record_sync_result(array $payload): void
     if ($statement->rowCount() === 0) {
         $insert = $pdo->prepare(
             "INSERT INTO game_kit_sync_log (revision, status, payload_hash, message, error_text, applied_at)
-             VALUES (:revision, :status, :payload_hash, :message, :error_text, CASE WHEN :status = 'applied' THEN NOW() ELSE NULL END)"
+             VALUES (:revision, :status, :payload_hash, :message, :error_text, CASE WHEN :applied = 1 THEN NOW() ELSE NULL END)"
         );
         $insert->execute([
             'revision' => $revision,
             'status' => $status,
+            'applied' => $status === 'applied' ? 1 : 0,
             'payload_hash' => $hash,
             'message' => $message,
             'error_text' => $error,
