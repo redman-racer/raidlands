@@ -12,7 +12,7 @@ using Oxide.Core.Libraries.Covalence;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteVipBridge", "Raidlands", "1.3.2")]
+    [Info("WebsiteVipBridge", "Raidlands", "1.3.3")]
     [Description("Syncs website VIP entitlements and player stats between Raidlands.net and the Rust server.")]
     public class WebsiteVipBridge : CovalencePlugin
     {
@@ -22,8 +22,11 @@ namespace Oxide.Plugins
         private Timer pendingStatsTimer;
         private Timer kitSyncTimer;
         private Timer pendingKitSnapshotTimer;
+        private Timer permissionSyncTimer;
+        private Timer pendingPermissionSnapshotTimer;
         private long cursor;
         private long kitRevision;
+        private long permissionRevision;
         private Dictionary<string, string> secrets;
         private const string SecretsConfigName = "Secrets.local";
         private string secretsConfigSource;
@@ -51,6 +54,8 @@ namespace Oxide.Plugins
             public int StatsDebounceSeconds = 30;
             public bool KitSyncEnabled = true;
             public int KitSyncIntervalSeconds = 180;
+            public bool PermissionSyncEnabled = true;
+            public int PermissionSyncIntervalSeconds = 180;
             public int KitDataBackupCount = 8;
             public List<string> KitPermissionManagedGroups = new List<string>
             {
@@ -89,7 +94,7 @@ namespace Oxide.Plugins
         {
             public string Logo = "/assets/media/raidlands-logo.png";
             public string NavLogo = "/assets/media/nav-logo.png";
-            public string SimpleLogo = "/assets/media/in-game/raidlands-simple-logo.png";
+            public string SimpleLogo = "/assets/media/in-game/raidlands-footer-logo.png";
             public string Hero = "/assets/media/website-hero-raid-overlook-v4.webp";
             public string Header = "/assets/media/header-bg-rust-v2.png";
             public string CommandMenu = "/assets/media/in-game/raidlands-command-menu-bg.png";
@@ -151,6 +156,26 @@ namespace Oxide.Plugins
         {
             public bool ok;
             public string error;
+        }
+
+        private class PermissionSyncResponse
+        {
+            public bool ok;
+            public string error;
+            public bool has_update;
+            public long revision;
+            public List<JObject> groups;
+            public Dictionary<string, List<string>> group_permissions;
+            public List<string> managed_groups;
+            public List<string> read_only_groups;
+        }
+
+        private class PermissionSnapshotGroup
+        {
+            public string name;
+            public string title;
+            public int rank;
+            public string parent;
         }
 
         private class StatsSnapshot
@@ -247,6 +272,11 @@ namespace Oxide.Plugins
                 config.KitSyncIntervalSeconds = defaults.KitSyncIntervalSeconds;
             }
 
+            if (config.PermissionSyncIntervalSeconds <= 0)
+            {
+                config.PermissionSyncIntervalSeconds = defaults.PermissionSyncIntervalSeconds;
+            }
+
             if (config.KitDataBackupCount <= 0)
             {
                 config.KitDataBackupCount = defaults.KitDataBackupCount;
@@ -277,6 +307,7 @@ namespace Oxide.Plugins
             LogBridgeSecretDiagnostics();
             SyncChanges();
             StartKitSync();
+            StartPermissionSync();
 
             var interval = Math.Max(30, config.SyncIntervalSeconds);
             syncTimer = timer.Every(interval, SyncChanges);
@@ -300,6 +331,8 @@ namespace Oxide.Plugins
             pendingStatsTimer?.Destroy();
             kitSyncTimer?.Destroy();
             pendingKitSnapshotTimer?.Destroy();
+            permissionSyncTimer?.Destroy();
+            pendingPermissionSnapshotTimer?.Destroy();
         }
 
         private void OnUserConnected(IPlayer player)
@@ -400,6 +433,42 @@ namespace Oxide.Plugins
             }
 
             var message = $"Kit sync enabled={config.KitSyncEnabled}, interval={Math.Max(60, config.KitSyncIntervalSeconds)}s, last revision={kitRevision}, backups={KitBackupDirectory()}";
+            ReplyBridge(player, message);
+        }
+
+        [Command("websitevip.permissions.snapshot")]
+        private void PermissionSnapshotCommand(IPlayer player, string command, string[] args)
+        {
+            if (!CanRunBridgeCommand(player))
+            {
+                return;
+            }
+
+            PostPermissionSnapshot();
+            ReplyBridge(player, "Posted current permission snapshot to the website.");
+        }
+
+        [Command("websitevip.permissions.sync")]
+        private void PermissionSyncCommand(IPlayer player, string command, string[] args)
+        {
+            if (!CanRunBridgeCommand(player))
+            {
+                return;
+            }
+
+            SyncPermissions();
+            ReplyBridge(player, "Requested permission sync from the website.");
+        }
+
+        [Command("websitevip.permissions.status")]
+        private void PermissionStatusCommand(IPlayer player, string command, string[] args)
+        {
+            if (!CanRunBridgeCommand(player))
+            {
+                return;
+            }
+
+            var message = $"Permission sync enabled={config.PermissionSyncEnabled}, interval={Math.Max(60, config.PermissionSyncIntervalSeconds)}s, last revision={permissionRevision}";
             ReplyBridge(player, message);
         }
 
@@ -999,16 +1068,8 @@ namespace Oxide.Plugins
 
             timer.Once(3f, () =>
             {
-                try
-                {
-                    ApplyKitGroupAccess(payload.group_access);
-                    PostKitSyncResult(payload.revision, true, $"Applied kit revision {payload.revision}; backups: {string.Join(", ", backups.Select(Path.GetFileName).ToArray())}");
-                }
-                catch (Exception ex)
-                {
-                    PrintWarning($"Kit permission application failed after revision {payload.revision}: {ex.Message}");
-                    PostKitSyncResult(payload.revision, false, ex.Message);
-                }
+                SyncPermissions();
+                PostKitSyncResult(payload.revision, true, $"Applied kit revision {payload.revision}; backups: {string.Join(", ", backups.Select(Path.GetFileName).ToArray())}");
             });
         }
 

@@ -73,6 +73,7 @@ INSERT INTO admin_permissions (permission_key, label, description) VALUES
   ('admin.feedback.manage', 'Manage feedback', 'Allows reviewing and updating support feedback.'),
   ('admin.store.manage', 'Manage store', 'Allows editing store products and prices.'),
   ('admin.kits.manage', 'Manage kits', 'Allows editing and publishing game kit catalog changes.'),
+  ('admin.permissions.manage', 'Manage groups', 'Allows editing and publishing Oxide group permission changes.'),
   ('admin.grants.manage', 'Manage manual grants', 'Allows granting store entitlements manually by SteamID64.'),
   ('admin.sync.view', 'View bridge sync', 'Allows viewing bridge state, stats ingest, clan bridge, and entitlement sync status.')
 ON DUPLICATE KEY UPDATE
@@ -95,6 +96,7 @@ INNER JOIN admin_permissions p ON p.permission_key IN (
   'admin.feedback.manage',
   'admin.store.manage',
   'admin.kits.manage',
+  'admin.permissions.manage',
   'admin.grants.manage',
   'admin.sync.view'
 )

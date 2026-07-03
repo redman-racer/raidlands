@@ -1062,6 +1062,22 @@ function raidlands_store_managed_groups(): array
         } catch (Throwable $error) {
             // Keep config groups if the database is not migrated yet.
         }
+
+        try {
+            $rows = raidlands_db_fetch_all(
+                "SELECT group_name
+                 FROM oxide_groups
+                 WHERE is_active = 1
+                   AND is_read_only = 0
+                   AND category IN ('vip', 'perk', 'store')"
+            );
+
+            foreach ($rows as $row) {
+                $groups[] = (string) $row['group_name'];
+            }
+        } catch (Throwable $error) {
+            // Permission catalog is optional for older installs.
+        }
     }
 
     $groups = array_values(array_unique($groups));

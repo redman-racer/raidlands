@@ -3,6 +3,7 @@
 require_once __DIR__ . '/store.php';
 require_once __DIR__ . '/feedback.php';
 require_once __DIR__ . '/kits.php';
+require_once __DIR__ . '/permissions.php';
 
 function raidlands_admin_boot(): void
 {
@@ -79,9 +80,18 @@ function raidlands_admin_handle_request(): void
                 raidlands_admin_set_flash('success', 'Store products saved.');
             } elseif ($section === 'kits') {
                 $result = raidlands_kits_admin_save($_POST, $_FILES ?? []);
+                if (!empty($result['published'])) {
+                    raidlands_permissions_publish_from_related_change('Published permission sync for kit revision ' . $result['revision'] . '.');
+                }
                 $message = $result['published']
                     ? 'Kit revision ' . $result['revision'] . ' published for server sync.'
                     : 'Kit draft saved.';
+                raidlands_admin_set_flash('success', $message);
+            } elseif ($section === 'groups') {
+                $result = raidlands_permissions_admin_save($_POST);
+                $message = $result['published']
+                    ? 'Group permission revision ' . $result['revision'] . ' published for server sync.'
+                    : 'Group permission draft saved.';
                 raidlands_admin_set_flash('success', $message);
             } elseif ($section === 'grants') {
                 $ends_at = trim((string) ($_POST['ends_at'] ?? ''));
@@ -268,7 +278,7 @@ function raidlands_admin_redirect(?string $section = null): void
 
 function raidlands_admin_section_keys(): array
 {
-    return ['identity', 'links', 'wipe', 'features', 'pages', 'seo', 'feedback', 'store', 'kits', 'grants', 'sync'];
+    return ['identity', 'links', 'wipe', 'features', 'pages', 'seo', 'feedback', 'store', 'kits', 'groups', 'grants', 'sync'];
 }
 
 function raidlands_admin_allowed_section_keys(): array
@@ -285,6 +295,7 @@ function raidlands_admin_section_permission(string $section): string
         'feedback' => 'admin.feedback.manage',
         'store' => 'admin.store.manage',
         'kits' => 'admin.kits.manage',
+        'groups' => 'admin.permissions.manage',
         'grants' => 'admin.grants.manage',
         'sync' => 'admin.sync.view',
         default => 'admin.content.manage',

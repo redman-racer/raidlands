@@ -378,6 +378,10 @@ function raidlands_kits_available_groups(): array
 {
     $groups = array_merge(['default', 'discord'], raidlands_store_managed_groups());
 
+    if (function_exists('raidlands_permissions_group_names')) {
+        $groups = array_merge($groups, raidlands_permissions_group_names(false));
+    }
+
     if (raidlands_kits_is_ready()) {
         try {
             $rows = raidlands_db_fetch_all('SELECT DISTINCT oxide_group FROM game_kit_group_access WHERE oxide_group <> ""');
@@ -452,6 +456,46 @@ function raidlands_kits_decode_optional_json($value, string $label): ?string
     }
 
     return $json;
+}
+
+function raidlands_kits_assert_complete_admin_post(array $post): void
+{
+    $expected_json = (string) ($post['kit_expected_items'] ?? '');
+
+    if ($expected_json === '') {
+        return;
+    }
+
+    $expected = json_decode($expected_json, true);
+
+    if (!is_array($expected)) {
+        throw new RuntimeException('The kit editor submitted an invalid form completeness marker. Reload the page and try again.');
+    }
+
+    $submitted_kits = (array) ($post['kits'] ?? []);
+
+    foreach ($expected as $kit_index => $containers) {
+        if (!is_array($containers)) {
+            continue;
+        }
+
+        $kit_row = (array) ($submitted_kits[$kit_index] ?? []);
+        $submitted_items = (array) ($kit_row['items'] ?? []);
+
+        foreach (['main', 'wear', 'belt'] as $container) {
+            $expected_count = (int) ($containers[$container] ?? 0);
+
+            if ($expected_count <= 0) {
+                continue;
+            }
+
+            $actual_count = count((array) ($submitted_items[$container] ?? []));
+
+            if ($actual_count < $expected_count) {
+                throw new RuntimeException('The kit editor form was cut off before all item rows reached PHP. Increase PHP max_input_vars or save fewer kit rows at once, then try again.');
+            }
+        }
+    }
 }
 
 function raidlands_kits_save_items(PDO $pdo, int $kit_id, array $item_rows): void
@@ -550,6 +594,8 @@ function raidlands_kits_admin_save(array $post, array $files = []): array
     if (!raidlands_kits_is_ready()) {
         throw new RuntimeException(raidlands_kits_readiness_message(true));
     }
+
+    raidlands_kits_assert_complete_admin_post($post);
 
     $pdo = raidlands_db_required();
     $publish = (string) ($post['kit_save_mode'] ?? 'draft') === 'publish';

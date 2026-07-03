@@ -40,6 +40,7 @@ $admin_sections_all = [
     'feedback' => ['label' => 'Feedback', 'kicker' => 'Inbox', 'title' => 'Player Feedback', 'summary' => 'Bug reports, suggestions, and feature requests submitted from the support page.'],
     'store' => ['label' => 'Store', 'kicker' => 'VIP', 'title' => 'Products and Prices', 'summary' => 'VIP tiers, one-time perks, Stripe Price IDs, and managed Oxide groups.'],
     'kits' => ['label' => 'Kits', 'kicker' => 'Loadouts', 'title' => 'Kit Catalog', 'summary' => 'Rust kit contents, images, cooldowns, uses, RP shop rows, and group availability.'],
+    'groups' => ['label' => 'Groups', 'kicker' => 'Permissions', 'title' => 'Oxide Groups', 'summary' => 'Website-owned group permissions, live snapshots, and bridge-published revisions.'],
     'grants' => ['label' => 'Grants', 'kicker' => 'Access', 'title' => 'Manual Entitlement Grant', 'summary' => 'Grant a product to a SteamID64 without going through Stripe.'],
     'sync' => ['label' => 'Sync', 'kicker' => 'Bridge', 'title' => 'WebsiteVipBridge State', 'summary' => 'Entitlement sync, stats ingest status, and server API endpoints.'],
 ];
@@ -83,6 +84,11 @@ $admin_kit_groups = [];
 $admin_kit_products = [];
 $admin_kit_shortnames = [];
 $admin_kit_sync_rows = [];
+$admin_permissions_ready = false;
+$admin_permissions_error = '';
+$admin_permission_groups = [];
+$admin_permission_options = [];
+$admin_permission_sync_rows = [];
 $admin_stats_summary = [
     'ready' => false,
     'active_wipe' => null,
@@ -149,11 +155,25 @@ try {
             $admin_kits_error = raidlands_kits_readiness_message(true);
         }
     }
+
+    if ($active_section === 'groups') {
+        $admin_permissions_ready = raidlands_permissions_is_ready();
+
+        if ($admin_permissions_ready) {
+            $admin_permission_groups = raidlands_permissions_admin_rows();
+            $admin_permission_options = raidlands_permissions_permission_names();
+            $admin_permission_sync_rows = raidlands_permissions_recent_sync_rows(12);
+        } else {
+            $admin_permissions_error = raidlands_permissions_readiness_message(true);
+        }
+    }
 } catch (Throwable $error) {
     $admin_store_ready = false;
     $admin_store_error = $error->getMessage();
     $admin_kits_ready = false;
     $admin_kits_error = $error->getMessage();
+    $admin_permissions_ready = false;
+    $admin_permissions_error = $error->getMessage();
 }
 
 function admin_page_label(string $key): string
@@ -479,6 +499,26 @@ function admin_kit_container_label(string $container): string
                 <input type="hidden" name="action" value="save">
                 <input type="hidden" name="section" value="<?= e($active_section) ?>">
                 <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
+                <?php if ($active_section === 'kits') : ?>
+                  <?php
+                    $admin_kit_expected_items = [];
+
+                    if ($admin_kits_ready) {
+                        $admin_kit_expected_rows = array_values($admin_kit_rows);
+                        $admin_kit_expected_total = count($admin_kit_expected_rows) + 1;
+
+                        for ($expected_index = 0; $expected_index < $admin_kit_expected_total; $expected_index += 1) {
+                            $expected_row = $admin_kit_expected_rows[$expected_index] ?? ['items' => ['main' => [], 'wear' => [], 'belt' => []]];
+
+                            foreach (['main', 'wear', 'belt'] as $expected_container) {
+                                $admin_kit_expected_items[$expected_index][$expected_container] = count(admin_kit_item_rows($expected_row, $expected_container));
+                            }
+                        }
+                    }
+                  ?>
+                  <input type="hidden" name="kit_save_mode" value="draft" data-kit-save-mode>
+                  <input type="hidden" name="kit_expected_items" value="<?= e(json_encode($admin_kit_expected_items, JSON_UNESCAPED_SLASHES)) ?>">
+                <?php endif; ?>
 
                 <?php if (!$admin_has_visible_sections) : ?>
                   <section class="admin-section">
@@ -1301,50 +1341,72 @@ function admin_kit_container_label(string $container): string
                                             <?= admin_field_head('Slot', 'Container slot position.') ?>
                                             <input type="number" min="0" max="<?= e($container === 'main' ? '23' : ($container === 'wear' ? '7' : '5')) ?>" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][position]" value="<?= e((string) ($item['position'] ?? $item_index)) ?>">
                                           </label>
-                                          <label class="admin-field">
-                                            <?= admin_field_head('Skin', 'Rust workshop skin ID. Use 0 for default.') ?>
-                                            <input type="number" min="0" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][skin]" value="<?= e((string) ($item['skin'] ?? 0)) ?>">
-                                          </label>
-                                          <label class="admin-field">
-                                            <?= admin_field_head('Condition', 'Current item condition. 0 lets Rust defaults apply for many items.') ?>
-                                            <input type="number" min="0" step="0.01" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][condition]" value="<?= e((string) ($item['condition_value'] ?? 0)) ?>">
-                                          </label>
-                                          <label class="admin-field">
-                                            <?= admin_field_head('Max condition', 'Maximum item condition saved by the Kits plugin.') ?>
-                                            <input type="number" min="0" step="0.01" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][max_condition]" value="<?= e((string) ($item['max_condition'] ?? 0)) ?>">
-                                          </label>
-                                          <label class="admin-field">
-                                            <?= admin_field_head('Ammo', 'Loaded ammo count for weapons.') ?>
-                                            <input type="number" min="0" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][ammo]" value="<?= e((string) ($item['ammo'] ?? 0)) ?>">
-                                          </label>
-                                          <label class="admin-field">
-                                            <?= admin_field_head('Ammo type', 'Optional ammo shortname for loaded weapons.') ?>
-                                            <input type="text" list="admin-kit-shortname-options" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][ammo_type]" maxlength="160" value="<?= e((string) ($item['ammo_type'] ?? '')) ?>">
-                                          </label>
-                                          <label class="admin-field">
-                                            <?= admin_field_head('Frequency', 'RF frequency for pagers or similar items. -1 means none.') ?>
-                                            <input type="number" min="-1" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][frequency]" value="<?= e((string) ($item['frequency'] ?? -1)) ?>">
-                                          </label>
-                                          <label class="admin-field">
-                                            <?= admin_field_head('Display name', 'Optional custom item display name.') ?>
-                                            <input type="text" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][display_name]" maxlength="160" value="<?= e((string) ($item['display_name'] ?? '')) ?>">
-                                          </label>
-                                          <label class="admin-field">
-                                            <?= admin_field_head('Blueprint target', 'Optional blueprint target shortname.') ?>
-                                            <input type="text" list="admin-kit-shortname-options" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][blueprint_shortname]" maxlength="160" value="<?= e((string) ($item['blueprint_shortname'] ?? '')) ?>">
-                                          </label>
-                                          <label class="admin-field">
-                                            <?= admin_field_head('Text', 'Optional custom item text.') ?>
-                                            <input type="text" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][text]" maxlength="1000" value="<?= e((string) ($item['text_value'] ?? '')) ?>">
-                                          </label>
-                                          <label class="admin-field admin-span-all">
-                                            <?= admin_field_head('Contents JSON', 'Advanced: nested item contents JSON array. Leave blank unless the imported kit needs it.') ?>
-                                            <textarea name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][contents_json]" rows="2"><?= e((string) ($item['contents_json'] ?? '')) ?></textarea>
-                                          </label>
-                                          <label class="admin-field admin-span-all">
-                                            <?= admin_field_head('Container JSON', 'Advanced: serialized item container JSON. Leave blank unless the imported kit needs it.') ?>
-                                            <textarea name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][container_json]" rows="2"><?= e((string) ($item['container_json'] ?? '')) ?></textarea>
-                                          </label>
+                                          <?php if ((int) ($item['skin'] ?? 0) !== 0) : ?>
+                                            <label class="admin-field">
+                                              <?= admin_field_head('Skin', 'Rust workshop skin ID. Use 0 for default.') ?>
+                                              <input type="number" min="0" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][skin]" value="<?= e((string) ($item['skin'] ?? 0)) ?>">
+                                            </label>
+                                          <?php endif; ?>
+                                          <?php if ((float) ($item['condition_value'] ?? 0) !== 0.0) : ?>
+                                            <label class="admin-field">
+                                              <?= admin_field_head('Condition', 'Current item condition. 0 lets Rust defaults apply for many items.') ?>
+                                              <input type="number" min="0" step="0.01" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][condition]" value="<?= e((string) ($item['condition_value'] ?? 0)) ?>">
+                                            </label>
+                                          <?php endif; ?>
+                                          <?php if ((float) ($item['max_condition'] ?? 0) !== 0.0) : ?>
+                                            <label class="admin-field">
+                                              <?= admin_field_head('Max condition', 'Maximum item condition saved by the Kits plugin.') ?>
+                                              <input type="number" min="0" step="0.01" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][max_condition]" value="<?= e((string) ($item['max_condition'] ?? 0)) ?>">
+                                            </label>
+                                          <?php endif; ?>
+                                          <?php if ((int) ($item['ammo'] ?? 0) !== 0) : ?>
+                                            <label class="admin-field">
+                                              <?= admin_field_head('Ammo', 'Loaded ammo count for weapons.') ?>
+                                              <input type="number" min="0" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][ammo]" value="<?= e((string) ($item['ammo'] ?? 0)) ?>">
+                                            </label>
+                                          <?php endif; ?>
+                                          <?php if (trim((string) ($item['ammo_type'] ?? '')) !== '') : ?>
+                                            <label class="admin-field">
+                                              <?= admin_field_head('Ammo type', 'Optional ammo shortname for loaded weapons.') ?>
+                                              <input type="text" list="admin-kit-shortname-options" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][ammo_type]" maxlength="160" value="<?= e((string) ($item['ammo_type'] ?? '')) ?>">
+                                            </label>
+                                          <?php endif; ?>
+                                          <?php if ((int) ($item['frequency'] ?? -1) !== -1) : ?>
+                                            <label class="admin-field">
+                                              <?= admin_field_head('Frequency', 'RF frequency for pagers or similar items. -1 means none.') ?>
+                                              <input type="number" min="-1" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][frequency]" value="<?= e((string) ($item['frequency'] ?? -1)) ?>">
+                                            </label>
+                                          <?php endif; ?>
+                                          <?php if (trim((string) ($item['display_name'] ?? '')) !== '') : ?>
+                                            <label class="admin-field">
+                                              <?= admin_field_head('Display name', 'Optional custom item display name.') ?>
+                                              <input type="text" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][display_name]" maxlength="160" value="<?= e((string) ($item['display_name'] ?? '')) ?>">
+                                            </label>
+                                          <?php endif; ?>
+                                          <?php if (trim((string) ($item['blueprint_shortname'] ?? '')) !== '') : ?>
+                                            <label class="admin-field">
+                                              <?= admin_field_head('Blueprint target', 'Optional blueprint target shortname.') ?>
+                                              <input type="text" list="admin-kit-shortname-options" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][blueprint_shortname]" maxlength="160" value="<?= e((string) ($item['blueprint_shortname'] ?? '')) ?>">
+                                            </label>
+                                          <?php endif; ?>
+                                          <?php if (trim((string) ($item['text_value'] ?? '')) !== '') : ?>
+                                            <label class="admin-field">
+                                              <?= admin_field_head('Text', 'Optional custom item text.') ?>
+                                              <input type="text" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][text]" maxlength="1000" value="<?= e((string) ($item['text_value'] ?? '')) ?>">
+                                            </label>
+                                          <?php endif; ?>
+                                          <?php if (trim((string) ($item['contents_json'] ?? '')) !== '') : ?>
+                                            <label class="admin-field admin-span-all">
+                                              <?= admin_field_head('Contents JSON', 'Advanced: nested item contents JSON array. Leave blank unless the imported kit needs it.') ?>
+                                              <textarea name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][contents_json]" rows="2"><?= e((string) ($item['contents_json'] ?? '')) ?></textarea>
+                                            </label>
+                                          <?php endif; ?>
+                                          <?php if (trim((string) ($item['container_json'] ?? '')) !== '') : ?>
+                                            <label class="admin-field admin-span-all">
+                                              <?= admin_field_head('Container JSON', 'Advanced: serialized item container JSON. Leave blank unless the imported kit needs it.') ?>
+                                              <textarea name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][container_json]" rows="2"><?= e((string) ($item['container_json'] ?? '')) ?></textarea>
+                                            </label>
+                                          <?php endif; ?>
                                         </div>
                                       </article>
                                     <?php endforeach; ?>
@@ -1377,6 +1439,191 @@ function admin_kit_container_label(string $container): string
                             </thead>
                             <tbody>
                               <?php foreach ($admin_kit_sync_rows as $sync_row) : ?>
+                                <tr>
+                                  <td><?= e((string) $sync_row['revision']) ?></td>
+                                  <td><span class="status-pill <?= e((string) $sync_row['status']) ?>"><?= e((string) $sync_row['status']) ?></span></td>
+                                  <td><?= e((string) ($sync_row['message'] ?: $sync_row['error_text'] ?: '')) ?></td>
+                                  <td><?= e((string) $sync_row['updated_at']) ?></td>
+                                </tr>
+                              <?php endforeach; ?>
+                            </tbody>
+                          </table>
+                        </div>
+                      <?php endif; ?>
+                    </section>
+                  <?php endif; ?>
+                <?php endif; ?>
+
+                <?php if ($active_section === 'groups') : ?>
+                  <?php if (!$admin_permissions_ready) : ?>
+                    <section class="admin-section">
+                      <div class="admin-alert warning"><?= e($admin_permissions_error !== '' ? $admin_permissions_error : 'Permission tables are not ready yet.') ?></div>
+                    </section>
+                  <?php else : ?>
+                    <?php
+                      echo admin_render_datalist('admin-permission-options', admin_option_map($admin_permission_options));
+                      echo admin_render_datalist('admin-group-name-options', admin_option_map(raidlands_permissions_group_names(true)));
+                      $permission_group_rows = array_values($admin_permission_groups);
+                      $permission_group_total = count($permission_group_rows) + 1;
+                      $permission_option_set = array_fill_keys(array_map('strval', $admin_permission_options), true);
+                    ?>
+                    <section class="admin-section">
+                      <div class="admin-grid three">
+                        <div class="metal-panel">
+                          <p class="section-kicker">Published revision</p>
+                          <h3><?= e((string) raidlands_permissions_latest_published_revision()) ?></h3>
+                          <p class="store-muted">Rust applies only published group revisions.</p>
+                        </div>
+                        <div class="metal-panel">
+                          <p class="section-kicker">Managed groups</p>
+                          <h3><?= e((string) count(array_filter($permission_group_rows, static fn (array $row): bool => !empty($row['is_managed']) && empty($row['is_read_only'])))) ?></h3>
+                          <p class="store-muted">Editable groups in the website catalog.</p>
+                        </div>
+                        <div class="metal-panel">
+                          <p class="section-kicker">Permission catalog</p>
+                          <h3><?= e((string) count($admin_permission_options)) ?></h3>
+                          <p class="store-muted">Live snapshot and seeded permission options.</p>
+                        </div>
+                      </div>
+                    </section>
+
+                    <section class="admin-section">
+                      <div class="admin-subsection-head">
+                        <h3>Group editor</h3>
+                        <p>Save Draft keeps desired permissions on the website. Publish sends the composed group and kit permissions to Rust on the next bridge sync.</p>
+                      </div>
+                      <div class="admin-repeat-list">
+                        <?php for ($index = 0; $index < $permission_group_total; $index += 1) : ?>
+                          <?php
+                            $row = $permission_group_rows[$index] ?? [
+                                'id' => '',
+                                'group_name' => '',
+                                'title' => '',
+                                'rank' => 0,
+                                'parent_group' => '',
+                                'category' => 'custom',
+                                'is_managed' => 1,
+                                'is_protected' => 0,
+                                'is_read_only' => 0,
+                                'is_active' => 1,
+                                'sort_order' => 100,
+                                'notes' => '',
+                                'desired_permissions' => [],
+                                'live_permissions' => [],
+                            ];
+                            $group_name = (string) ($row['group_name'] ?? '');
+                            $desired_permissions = array_values(array_unique(array_map('strval', (array) ($row['desired_permissions'] ?? []))));
+                            $live_permissions = array_values(array_unique(array_map('strval', (array) ($row['live_permissions'] ?? []))));
+                            $desired_set = array_fill_keys($desired_permissions, true);
+                            $custom_permissions = array_values(array_filter($desired_permissions, static fn (string $permission): bool => !isset($permission_option_set[$permission])));
+                            $missing_live = array_values(array_diff($desired_permissions, $live_permissions));
+                            $extra_live = array_values(array_diff($live_permissions, $desired_permissions));
+                            $is_read_only = !empty($row['is_read_only']);
+                            $card_title = $group_name !== '' ? $group_name : 'New Group';
+                          ?>
+                          <article class="admin-repeat-card">
+                            <input type="hidden" name="permission_groups[<?= e((string) $index) ?>][id]" value="<?= e((string) ($row['id'] ?? '')) ?>">
+                            <div class="admin-repeat-card-head">
+                              <div>
+                                <h3><?= e($card_title) ?></h3>
+                                <?php if ($is_read_only) : ?>
+                                  <p class="admin-feedback-subtitle">Read-only system group. The website will snapshot this group but will not publish changes for it.</p>
+                                <?php elseif ($missing_live !== [] || $extra_live !== []) : ?>
+                                  <p class="admin-feedback-subtitle">Live drift: <?= e((string) count($missing_live)) ?> missing / <?= e((string) count($extra_live)) ?> extra direct grants.</p>
+                                <?php else : ?>
+                                  <p class="admin-feedback-subtitle">Desired permissions match the latest live snapshot.</p>
+                                <?php endif; ?>
+                              </div>
+                            </div>
+
+                            <div class="admin-grid three">
+                              <label class="admin-field">
+                                <?= admin_field_head('Group name', 'Stable Oxide group name. Use lowercase letters, numbers, dots, dashes, or underscores.') ?>
+                                <input type="text" list="admin-group-name-options" name="permission_groups[<?= e((string) $index) ?>][group_name]" maxlength="160" placeholder="vip_bronze" value="<?= e($group_name) ?>">
+                              </label>
+                              <label class="admin-field">
+                                <?= admin_field_head('Title', 'Optional Oxide group title. Usually matches the group name.') ?>
+                                <input type="text" name="permission_groups[<?= e((string) $index) ?>][title]" maxlength="160" value="<?= e((string) ($row['title'] ?? '')) ?>">
+                              </label>
+                              <label class="admin-field">
+                                <?= admin_field_head('Parent', 'Optional inherited Oxide parent group. Leave blank for no parent.') ?>
+                                <input type="text" list="admin-group-name-options" name="permission_groups[<?= e((string) $index) ?>][parent_group]" maxlength="160" value="<?= e((string) ($row['parent_group'] ?? '')) ?>">
+                              </label>
+                              <label class="admin-field">
+                                <?= admin_field_head('Rank', 'Oxide group rank. Higher ranks are useful for VIP tier order.') ?>
+                                <input type="number" min="0" max="9999" name="permission_groups[<?= e((string) $index) ?>][rank]" value="<?= e((string) ($row['rank'] ?? 0)) ?>">
+                              </label>
+                              <label class="admin-field">
+                                <?= admin_field_head('Category', 'Admin grouping only: public, vip, perk, store, system, snapshot, or custom.') ?>
+                                <select name="permission_groups[<?= e((string) $index) ?>][category]">
+                                  <?= admin_render_options(['public', 'vip', 'perk', 'store', 'system', 'snapshot', 'custom'], (string) ($row['category'] ?? 'custom')) ?>
+                                </select>
+                              </label>
+                              <label class="admin-field">
+                                <?= admin_field_head('Sort order', 'Lower groups appear first in this editor and picker lists.') ?>
+                                <input type="number" min="0" max="9999" name="permission_groups[<?= e((string) $index) ?>][sort_order]" value="<?= e((string) ($row['sort_order'] ?? 100)) ?>">
+                              </label>
+                              <label class="admin-check admin-check-field">
+                                <input type="checkbox" name="permission_groups[<?= e((string) $index) ?>][is_active]" value="1" <?= !empty($row['is_active']) ? 'checked' : '' ?>>
+                                <?= admin_check_copy('Active', 'Inactive groups stay in the catalog but are ignored by published sync.') ?>
+                              </label>
+                              <label class="admin-check admin-check-field">
+                                <input type="checkbox" name="permission_groups[<?= e((string) $index) ?>][is_managed]" value="1" <?= !empty($row['is_managed']) && !$is_read_only ? 'checked' : '' ?> <?= $is_read_only ? 'disabled' : '' ?>>
+                                <?= admin_check_copy('Website managed', 'Managed groups are included in published permission sync. Read-only system groups are never published.') ?>
+                              </label>
+                              <label class="admin-check admin-check-field">
+                                <input type="checkbox" name="permission_groups[<?= e((string) $index) ?>][is_protected]" value="1" <?= !empty($row['is_protected']) ? 'checked' : '' ?>>
+                                <?= admin_check_copy('Protected', 'Marks gameplay-sensitive groups like default or discord so edits stay visible and intentional.') ?>
+                              </label>
+                              <label class="admin-field admin-span-all">
+                                <?= admin_field_head('Notes', 'Admin-only context for why this group exists or what it should unlock.') ?>
+                                <textarea name="permission_groups[<?= e((string) $index) ?>][notes]" rows="2" maxlength="3000"><?= e((string) ($row['notes'] ?? '')) ?></textarea>
+                              </label>
+                            </div>
+
+                            <details class="admin-details" <?= $group_name !== '' && !$is_read_only ? 'open' : '' ?>>
+                              <summary>Direct permissions <small><?= e((string) count($desired_permissions)) ?> desired / <?= e((string) count($live_permissions)) ?> live</small></summary>
+                              <?php if ($is_read_only) : ?>
+                                <div class="admin-alert warning">This system group is snapshot-only. Direct grants are visible in live drift checks but are not editable from the website.</div>
+                              <?php endif; ?>
+                              <div class="admin-grid three">
+                                <?php foreach ($admin_permission_options as $permission_name) : ?>
+                                  <label class="admin-check admin-check-field">
+                                    <input type="checkbox" name="permission_groups[<?= e((string) $index) ?>][permissions][]" value="<?= e((string) $permission_name) ?>" <?= isset($desired_set[(string) $permission_name]) ? 'checked' : '' ?> <?= $is_read_only ? 'disabled' : '' ?>>
+                                    <?= admin_check_copy((string) $permission_name, isset($desired_set[(string) $permission_name]) && !in_array((string) $permission_name, $live_permissions, true) ? 'Desired but missing from latest live snapshot.' : 'Toggle this direct Oxide group permission.') ?>
+                                  </label>
+                                <?php endforeach; ?>
+                                <label class="admin-field admin-span-all">
+                                  <?= admin_field_head('Custom permissions', 'One permission per line for live permissions not listed above yet.') ?>
+                                  <textarea name="permission_groups[<?= e((string) $index) ?>][custom_permissions]" rows="3" placeholder="plugin.permission" <?= $is_read_only ? 'disabled' : '' ?>><?= e(implode("\n", $custom_permissions)) ?></textarea>
+                                </label>
+                              </div>
+                            </details>
+                          </article>
+                        <?php endfor; ?>
+                      </div>
+                    </section>
+
+                    <section class="admin-section">
+                      <div class="admin-subsection-head">
+                        <h3>Recent group sync</h3>
+                        <p>The Rust server reports whether a published group permission revision was applied or failed.</p>
+                      </div>
+                      <?php if ($admin_permission_sync_rows === []) : ?>
+                        <div class="admin-alert warning">No group permission sync events have been recorded yet.</div>
+                      <?php else : ?>
+                        <div class="store-table-wrap">
+                          <table class="store-table">
+                            <thead>
+                              <tr>
+                                <th>Revision</th>
+                                <th>Status</th>
+                                <th>Message</th>
+                                <th>Updated</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <?php foreach ($admin_permission_sync_rows as $sync_row) : ?>
                                 <tr>
                                   <td><?= e((string) $sync_row['revision']) ?></td>
                                   <td><span class="status-pill <?= e((string) $sync_row['status']) ?>"><?= e((string) $sync_row['status']) ?></span></td>
@@ -1449,6 +1696,9 @@ function admin_kit_container_label(string $container): string
                           <li><code>/api/server/kits-snapshot.php</code></li>
                           <li><code>/api/server/kits-sync.php?since=...</code></li>
                           <li><code>/api/server/kits-sync-result.php</code></li>
+                          <li><code>/api/server/permissions-snapshot.php</code></li>
+                          <li><code>/api/server/permissions-sync.php?since=...</code></li>
+                          <li><code>/api/server/permissions-sync-result.php</code></li>
                           <li><code>/api/server/clan-snapshot.php</code></li>
                           <li><code>/api/server/clan-actions.php?limit=...</code></li>
                           <li><code>/api/server/clan-action-result.php</code></li>
@@ -1595,17 +1845,22 @@ function admin_kit_container_label(string $container): string
                         || ($active_section === 'feedback' && (!$admin_feedback_ready || $admin_feedback_rows === []));
                     $admin_save_disabled = ($active_section === 'store' && !$admin_store_ready)
                         || ($active_section === 'kits' && !$admin_kits_ready)
+                        || ($active_section === 'groups' && !$admin_permissions_ready)
                         || ($active_section === 'grants' && (!$admin_store_ready || empty($admin_store_catalog['products'])));
                     $admin_disabled_label = match ($active_section) {
                         'store' => 'Store Unavailable',
                         'kits' => 'Kits Unavailable',
+                        'groups' => 'Groups Unavailable',
                         default => 'Grant Unavailable',
                     };
                   ?>
                   <?php if (!$admin_save_hidden) : ?>
                     <?php if ($active_section === 'kits') : ?>
-                      <button class="btn btn-secondary" type="submit" name="kit_save_mode" value="draft" <?= $admin_save_disabled ? 'disabled' : '' ?>><?= $admin_save_disabled ? e($admin_disabled_label) : 'Save Draft' ?></button>
-                      <button class="btn btn-primary" type="submit" name="kit_save_mode" value="publish" <?= $admin_save_disabled ? 'disabled' : '' ?>><?= $admin_save_disabled ? e($admin_disabled_label) : 'Publish to Server' ?></button>
+                      <button class="btn btn-secondary" type="submit" name="kit_save_mode" value="draft" data-kit-save-submit="draft" <?= $admin_save_disabled ? 'disabled' : '' ?>><?= $admin_save_disabled ? e($admin_disabled_label) : 'Save Draft' ?></button>
+                      <button class="btn btn-primary" type="submit" name="kit_save_mode" value="publish" data-kit-save-submit="publish" <?= $admin_save_disabled ? 'disabled' : '' ?>><?= $admin_save_disabled ? e($admin_disabled_label) : 'Publish to Server' ?></button>
+                    <?php elseif ($active_section === 'groups') : ?>
+                      <button class="btn btn-secondary" type="submit" name="permission_save_mode" value="draft" <?= $admin_save_disabled ? 'disabled' : '' ?>><?= $admin_save_disabled ? e($admin_disabled_label) : 'Save Draft' ?></button>
+                      <button class="btn btn-primary" type="submit" name="permission_save_mode" value="publish" <?= $admin_save_disabled ? 'disabled' : '' ?>><?= $admin_save_disabled ? e($admin_disabled_label) : 'Publish to Server' ?></button>
                     <?php else : ?>
                       <button class="btn btn-primary" type="submit" <?= $admin_save_disabled ? 'disabled' : '' ?>><?= $admin_save_disabled ? e($admin_disabled_label) : 'Save ' . e($active_meta['label']) ?></button>
                     <?php endif; ?>
@@ -1617,6 +1872,19 @@ function admin_kit_container_label(string $container): string
           </div>
         </div>
       </main>
+      <?php if ($active_section === 'kits') : ?>
+        <script>
+          document.querySelectorAll('[data-kit-save-submit]').forEach(function (button) {
+            button.addEventListener('click', function () {
+              var mode = document.querySelector('[data-kit-save-mode]');
+
+              if (mode) {
+                mode.value = button.getAttribute('data-kit-save-submit') || 'draft';
+              }
+            });
+          });
+        </script>
+      <?php endif; ?>
     <?php endif; ?>
   </body>
 </html>
