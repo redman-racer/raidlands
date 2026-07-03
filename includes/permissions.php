@@ -279,12 +279,12 @@ function raidlands_permissions_upsert_group(PDO $pdo, array $row, bool $from_sna
 
     $statement = $pdo->prepare(
         'INSERT INTO oxide_groups
-            (group_name, title, rank, parent_group, category, is_managed, is_protected, is_read_only, is_active, sort_order, notes, last_seen_at)
+            (group_name, title, group_rank, parent_group, category, is_managed, is_protected, is_read_only, is_active, sort_order, notes, last_seen_at)
          VALUES
             (:group_name, :title, :rank, :parent_group, :category, :is_managed, :is_protected, :is_read_only, :is_active, :sort_order, :notes, NOW())
          ON DUPLICATE KEY UPDATE
             title = VALUES(title),
-            rank = VALUES(rank),
+            group_rank = VALUES(group_rank),
             parent_group = VALUES(parent_group),
             category = IF(category = "snapshot" OR VALUES(category) <> "snapshot", VALUES(category), category),
             is_managed = VALUES(is_managed),
@@ -330,6 +330,12 @@ function raidlands_permissions_group_rows(): array
     $groups = raidlands_db_fetch_all(
         'SELECT * FROM oxide_groups ORDER BY sort_order ASC, group_name ASC'
     );
+
+    foreach ($groups as &$group) {
+        $group['rank'] = (int) ($group['group_rank'] ?? 0);
+    }
+    unset($group);
+
     $ids = array_values(array_filter(array_map(static fn (array $group): int => (int) $group['id'], $groups)));
     $desired = [];
     $live = [];

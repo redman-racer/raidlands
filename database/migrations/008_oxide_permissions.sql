@@ -2,7 +2,7 @@ CREATE TABLE IF NOT EXISTS oxide_groups (
   id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
   group_name VARCHAR(160) NOT NULL,
   title VARCHAR(160) NOT NULL DEFAULT '',
-  rank INT NOT NULL DEFAULT 0,
+  group_rank INT NOT NULL DEFAULT 0,
   parent_group VARCHAR(160) NOT NULL DEFAULT '',
   category VARCHAR(80) NOT NULL DEFAULT 'custom',
   is_managed TINYINT(1) NOT NULL DEFAULT 0,
@@ -88,7 +88,7 @@ CREATE TABLE IF NOT EXISTS oxide_permission_sync_log (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
 
 INSERT INTO oxide_groups
-  (group_name, title, rank, parent_group, category, is_managed, is_protected, is_read_only, is_active, sort_order)
+  (group_name, title, group_rank, parent_group, category, is_managed, is_protected, is_read_only, is_active, sort_order)
 VALUES
   ('default', 'default', 0, '', 'public', 1, 1, 0, 1, 10),
   ('discord', 'discord', 0, '', 'public', 1, 1, 0, 1, 20),
@@ -104,7 +104,7 @@ VALUES
   ('authenticated', 'authenticated', 0, '', 'system', 0, 1, 1, 1, 910)
 ON DUPLICATE KEY UPDATE
   title = VALUES(title),
-  rank = VALUES(rank),
+  group_rank = VALUES(group_rank),
   parent_group = VALUES(parent_group),
   category = VALUES(category),
   is_managed = VALUES(is_managed),

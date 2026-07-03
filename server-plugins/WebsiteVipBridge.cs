@@ -12,7 +12,7 @@ using Oxide.Core.Libraries.Covalence;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteVipBridge", "Raidlands", "1.3.3")]
+    [Info("WebsiteVipBridge", "Raidlands", "1.4.0")]
     [Description("Syncs website VIP entitlements and player stats between Raidlands.net and the Rust server.")]
     public class WebsiteVipBridge : CovalencePlugin
     {
@@ -1291,6 +1291,565 @@ namespace Oxide.Plugins
             });
         }
 
+        private void StartPermissionSync()
+        {
+            if (!config.PermissionSyncEnabled)
+            {
+                Puts("WebsiteVipBridge permission sync is disabled.");
+                return;
+            }
+
+            var interval = Math.Max(60, config.PermissionSyncIntervalSeconds);
+            pendingPermissionSnapshotTimer = timer.Once(20f, PostPermissionSnapshot);
+            timer.Once(30f, SyncPermissions);
+            permissionSyncTimer = timer.Every(interval, SyncPermissions);
+            Puts($"WebsiteVipBridge syncing permissions every {interval} seconds.");
+        }
+
+        private void PostPermissionSnapshot()
+        {
+            if (!config.PermissionSyncEnabled || !CanRequest())
+            {
+                return;
+            }
+
+            try
+            {
+                var body = new JObject
+                {
+                    ["server_id"] = config.ServerId,
+                    ["generated_at"] = DateTime.UtcNow.ToString("o"),
+                    ["groups"] = JArray.FromObject(CurrentPermissionGroups()),
+                    ["permissions"] = JArray.FromObject(CurrentRegisteredPermissions()),
+                    ["group_permissions"] = JObject.FromObject(CurrentPermissionGroupMap())
+                }.ToString(Formatting.None);
+                var url = $"{TrimSlash(config.ApiBaseUrl)}/api/server/permissions-snapshot.php";
+
+                SendPost(url, body, (code, response) =>
+                {
+                    if (!IsSuccess(code, response, out var error))
+                    {
+                        PrintWarning($"Permission snapshot post failed: {error}");
+                        return;
+                    }
+
+                    var payload = JsonConvert.DeserializeObject<KitResultResponse>(response);
+
+                    if (payload == null || !payload.ok)
+                    {
+                        PrintWarning($"Permission snapshot post failed: {payload?.error ?? "invalid response"}");
+                        return;
+                    }
+
+                    Puts("Posted permission snapshot to website.");
+                });
+            }
+            catch (Exception ex)
+            {
+                PrintWarning($"Could not build permission snapshot: {ex.Message}");
+            }
+        }
+
+        private void SyncPermissions()
+        {
+            if (!config.PermissionSyncEnabled || !CanRequest())
+            {
+                return;
+            }
+
+            var url = $"{TrimSlash(config.ApiBaseUrl)}/api/server/permissions-sync.php?since={permissionRevision}";
+
+            SendGet(url, (code, response) =>
+            {
+                if (!IsSuccess(code, response, out var error))
+                {
+                    PrintWarning($"Permission sync check failed: {error}");
+                    return;
+                }
+
+                var payload = JsonConvert.DeserializeObject<PermissionSyncResponse>(response);
+
+                if (payload == null || !payload.ok)
+                {
+                    PrintWarning($"Permission sync check failed: {payload?.error ?? "invalid response"}");
+                    return;
+                }
+
+                if (!payload.has_update)
+                {
+                    if (payload.revision > permissionRevision)
+                    {
+                        permissionRevision = payload.revision;
+                    }
+
+                    return;
+                }
+
+                var validation = ValidatePermissionSyncPayload(payload);
+
+                if (validation.Count > 0)
+                {
+                    var message = string.Join("; ", validation.Take(8).ToArray());
+                    PrintWarning($"Permission sync revision {payload.revision} rejected: {message}");
+                    PostPermissionSyncResult(payload.revision, false, message);
+                    return;
+                }
+
+                try
+                {
+                    var changeCount = ApplyPermissionSyncPayload(payload);
+                    permissionRevision = payload.revision;
+                    PostPermissionSyncResult(payload.revision, true, $"Applied permission revision {payload.revision}; changed {changeCount} grant(s).");
+                }
+                catch (Exception ex)
+                {
+                    PrintWarning($"Permission sync revision {payload.revision} failed: {ex.Message}");
+                    PostPermissionSyncResult(payload.revision, false, ex.Message);
+                }
+            });
+        }
+
+        private List<string> ValidatePermissionSyncPayload(PermissionSyncResponse payload)
+        {
+            var errors = new List<string>();
+
+            if (payload.revision <= 0)
+            {
+                errors.Add("Published payload did not include a valid revision.");
+            }
+
+            if (payload.group_permissions == null)
+            {
+                errors.Add("Published payload did not include group permissions.");
+                return errors;
+            }
+
+            var readOnly = PermissionReadOnlyGroups(payload);
+            var managedGroups = PermissionPayloadManagedGroups(payload);
+
+            if (managedGroups.Count == 0)
+            {
+                errors.Add("Published payload did not include managed groups.");
+            }
+
+            foreach (var group in managedGroups)
+            {
+                if (!IsPermissionManageableGroupName(group) || readOnly.Contains(group))
+                {
+                    errors.Add($"Group {group} is not editable by the website.");
+                }
+            }
+
+            foreach (var group in payload.groups ?? new List<JObject>())
+            {
+                var groupName = PermissionString(group, "name");
+
+                if (string.IsNullOrWhiteSpace(groupName))
+                {
+                    errors.Add("Published payload included a group without a name.");
+                    continue;
+                }
+
+                if (!IsPermissionManageableGroupName(groupName) || readOnly.Contains(groupName))
+                {
+                    errors.Add($"Group {groupName} is not editable by the website.");
+                }
+            }
+
+            foreach (var entry in payload.group_permissions)
+            {
+                if (!managedGroups.Contains(entry.Key))
+                {
+                    errors.Add($"Group {entry.Key} has permissions but is not marked managed.");
+                    continue;
+                }
+
+                if (readOnly.Contains(entry.Key) || !IsPermissionManageableGroupName(entry.Key))
+                {
+                    errors.Add($"Group {entry.Key} is not editable by the website.");
+                    continue;
+                }
+
+                foreach (var permissionName in entry.Value ?? new List<string>())
+                {
+                    if (!IsSafePermissionName(permissionName))
+                    {
+                        errors.Add($"Group {entry.Key} includes unsafe permission {permissionName}.");
+                    }
+                }
+            }
+
+            return errors;
+        }
+
+        private int ApplyPermissionSyncPayload(PermissionSyncResponse payload)
+        {
+            var readOnly = PermissionReadOnlyGroups(payload);
+            var managedGroups = PermissionPayloadManagedGroups(payload)
+                .Where(group => IsPermissionManageableGroupName(group) && !readOnly.Contains(group))
+                .ToList();
+            var groupDetails = new Dictionary<string, JObject>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var group in payload.groups ?? new List<JObject>())
+            {
+                var groupName = PermissionString(group, "name");
+
+                if (managedGroups.Contains(groupName, StringComparer.OrdinalIgnoreCase))
+                {
+                    groupDetails[groupName] = group;
+                }
+            }
+
+            var desiredByGroup = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var group in managedGroups)
+            {
+                JObject details;
+                groupDetails.TryGetValue(group, out details);
+                EnsurePermissionGroup(group, details);
+                desiredByGroup[group] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            }
+
+            foreach (var entry in payload.group_permissions ?? new Dictionary<string, List<string>>())
+            {
+                HashSet<string> desired;
+
+                if (!desiredByGroup.TryGetValue(entry.Key, out desired))
+                {
+                    continue;
+                }
+
+                foreach (var permissionName in entry.Value ?? new List<string>())
+                {
+                    var normalized = NormalizePermissionName(permissionName);
+
+                    if (IsSafePermissionName(normalized))
+                    {
+                        desired.Add(normalized);
+                    }
+                }
+            }
+
+            var changes = 0;
+
+            foreach (var group in managedGroups)
+            {
+                var desired = desiredByGroup[group];
+                var current = new HashSet<string>((permission.GetGroupPermissions(group, false) ?? new string[0])
+                    .Select(NormalizePermissionName)
+                    .Where(IsSafePermissionName), StringComparer.OrdinalIgnoreCase);
+
+                foreach (var permissionName in desired)
+                {
+                    if (!current.Contains(permissionName))
+                    {
+                        permission.GrantGroupPermission(group, permissionName, this);
+                        Puts($"Granted {permissionName} to group {group}.");
+                        changes++;
+                    }
+                }
+
+                foreach (var permissionName in current)
+                {
+                    if (!desired.Contains(permissionName))
+                    {
+                        permission.RevokeGroupPermission(group, permissionName);
+                        Puts($"Revoked {permissionName} from group {group}.");
+                        changes++;
+                    }
+                }
+            }
+
+            return changes;
+        }
+
+        private void EnsurePermissionGroup(string group, JObject details)
+        {
+            var title = PermissionString(details, "title", group);
+            var rank = PermissionInt(details, "rank", 0);
+            var parent = PermissionString(details, "parent");
+
+            if (!permission.GroupExists(group))
+            {
+                permission.CreateGroup(group, title, rank);
+                Puts($"Created Oxide group {group}.");
+            }
+
+            if (IsProtectedPermissionGroupName(group))
+            {
+                return;
+            }
+
+            if (!string.IsNullOrWhiteSpace(title))
+            {
+                InvokePermissionMethod("SetGroupTitle", group, title);
+            }
+
+            InvokePermissionMethod("SetGroupRank", group, rank);
+
+            if (string.IsNullOrWhiteSpace(parent) || IsGroupName(parent))
+            {
+                InvokePermissionMethod("SetGroupParent", group, parent ?? "");
+            }
+        }
+
+        private void PostPermissionSyncResult(long revision, bool success, string message)
+        {
+            if (!CanRequest())
+            {
+                return;
+            }
+
+            var body = new JObject
+            {
+                ["revision"] = revision,
+                ["status"] = success ? "applied" : "failed",
+                ["ok"] = success,
+                ["message"] = message ?? "",
+                ["payload_hash"] = ""
+            }.ToString(Formatting.None);
+            var url = $"{TrimSlash(config.ApiBaseUrl)}/api/server/permissions-sync-result.php";
+
+            SendPost(url, body, (code, response) =>
+            {
+                if (!IsSuccess(code, response, out var error))
+                {
+                    PrintWarning($"Permission sync result post failed: {error}");
+                    return;
+                }
+
+                var payload = JsonConvert.DeserializeObject<KitResultResponse>(response);
+
+                if (payload == null || !payload.ok)
+                {
+                    PrintWarning($"Permission sync result post failed: {payload?.error ?? "invalid response"}");
+                }
+            });
+        }
+
+        private List<PermissionSnapshotGroup> CurrentPermissionGroups()
+        {
+            var result = new List<PermissionSnapshotGroup>();
+
+            foreach (var group in CurrentPermissionGroupNames().OrderBy(value => value))
+            {
+                if (!permission.GroupExists(group))
+                {
+                    continue;
+                }
+
+                result.Add(new PermissionSnapshotGroup
+                {
+                    name = group,
+                    title = PermissionGroupTitle(group),
+                    rank = PermissionGroupRank(group),
+                    parent = PermissionGroupParent(group)
+                });
+            }
+
+            return result;
+        }
+
+        private List<string> CurrentRegisteredPermissions()
+        {
+            var result = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var permissionName in PermissionStringEnumerable("GetPermissions"))
+            {
+                var normalized = NormalizePermissionName(permissionName);
+
+                if (IsSafePermissionName(normalized))
+                {
+                    result.Add(normalized);
+                }
+            }
+
+            foreach (var permissions in CurrentPermissionGroupMap().Values)
+            {
+                foreach (var permissionName in permissions)
+                {
+                    result.Add(permissionName);
+                }
+            }
+
+            return result.OrderBy(value => value).ToList();
+        }
+
+        private Dictionary<string, List<string>> CurrentPermissionGroupMap()
+        {
+            var result = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var group in CurrentPermissionGroupNames())
+            {
+                if (!permission.GroupExists(group))
+                {
+                    continue;
+                }
+
+                result[group] = (permission.GetGroupPermissions(group, false) ?? new string[0])
+                    .Select(NormalizePermissionName)
+                    .Where(IsSafePermissionName)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .OrderBy(value => value)
+                    .ToList();
+            }
+
+            return result;
+        }
+
+        private HashSet<string> CurrentPermissionGroupNames()
+        {
+            var result = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var group in ProtectedGroups)
+            {
+                result.Add(group);
+            }
+
+            foreach (var group in config.ManagedGroups ?? new List<string>())
+            {
+                if (IsGroupName(group))
+                {
+                    result.Add(group.Trim());
+                }
+            }
+
+            foreach (var group in config.KitPermissionManagedGroups ?? new List<string>())
+            {
+                if (IsGroupName(group))
+                {
+                    result.Add(group.Trim());
+                }
+            }
+
+            foreach (var group in PermissionStringEnumerable("GetGroups"))
+            {
+                if (IsGroupName(group))
+                {
+                    result.Add(group.Trim());
+                }
+            }
+
+            return result;
+        }
+
+        private IEnumerable<string> PermissionStringEnumerable(string methodName)
+        {
+            var value = InvokePermissionMethod(methodName);
+
+            if (value == null)
+            {
+                return new List<string>();
+            }
+
+            var strings = value as IEnumerable<string>;
+
+            if (strings != null)
+            {
+                return strings.Where(item => !string.IsNullOrWhiteSpace(item));
+            }
+
+            var enumerable = value as System.Collections.IEnumerable;
+
+            if (enumerable == null)
+            {
+                return new List<string>();
+            }
+
+            return enumerable.Cast<object>()
+                .Where(item => item != null)
+                .Select(item => item.ToString())
+                .Where(item => !string.IsNullOrWhiteSpace(item))
+                .ToList();
+        }
+
+        private object InvokePermissionMethod(string methodName, params object[] args)
+        {
+            Exception lastError = null;
+
+            foreach (var method in permission.GetType().GetMethods().Where(item => item.Name == methodName && item.GetParameters().Length == args.Length))
+            {
+                try
+                {
+                    return method.Invoke(permission, args);
+                }
+                catch (Exception ex)
+                {
+                    lastError = ex;
+                }
+            }
+
+            if (lastError != null)
+            {
+                PrintWarning($"Permission method {methodName} failed: {lastError.Message}");
+            }
+
+            return null;
+        }
+
+        private string PermissionGroupTitle(string group)
+        {
+            return Convert.ToString(InvokePermissionMethod("GetGroupTitle", group)) ?? group;
+        }
+
+        private int PermissionGroupRank(string group)
+        {
+            var value = InvokePermissionMethod("GetGroupRank", group);
+            int rank;
+
+            return value != null && int.TryParse(value.ToString(), out rank) ? rank : 0;
+        }
+
+        private string PermissionGroupParent(string group)
+        {
+            return Convert.ToString(InvokePermissionMethod("GetGroupParent", group)) ?? "";
+        }
+
+        private HashSet<string> PermissionReadOnlyGroups(PermissionSyncResponse payload)
+        {
+            var result = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
+            {
+                "admin",
+                "authenticated"
+            };
+
+            foreach (var group in payload?.read_only_groups ?? new List<string>())
+            {
+                if (IsGroupName(group))
+                {
+                    result.Add(group.Trim());
+                }
+            }
+
+            return result;
+        }
+
+        private HashSet<string> PermissionPayloadManagedGroups(PermissionSyncResponse payload)
+        {
+            var result = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var group in payload?.managed_groups ?? new List<string>())
+            {
+                if (IsGroupName(group))
+                {
+                    result.Add(group.Trim());
+                }
+            }
+
+            if (result.Count == 0)
+            {
+                foreach (var group in (payload?.group_permissions ?? new Dictionary<string, List<string>>()).Keys)
+                {
+                    if (IsGroupName(group))
+                    {
+                        result.Add(group.Trim());
+                    }
+                }
+            }
+
+            return result;
+        }
+
         private List<string> BackupKitData(long revision)
         {
             var backups = new List<string>();
@@ -1421,6 +1980,47 @@ namespace Oxide.Plugins
         {
             server.Command("oxide.reload Kits");
             server.Command("oxide.reload ServerRewards");
+        }
+
+        private bool IsPermissionManageableGroupName(string group)
+        {
+            return IsGroupName(group) && !string.Equals(group, "admin", StringComparison.OrdinalIgnoreCase)
+                && !string.Equals(group, "authenticated", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool IsProtectedPermissionGroupName(string group)
+        {
+            return string.Equals(group, "default", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(group, "discord", StringComparison.OrdinalIgnoreCase);
+        }
+
+        private bool IsSafePermissionName(string permissionName)
+        {
+            var value = NormalizePermissionName(permissionName);
+
+            return value.Length > 0
+                && value.Length <= 190
+                && value.IndexOf('.') >= 0
+                && value.All(character => char.IsLetterOrDigit(character) || character == '_' || character == '-' || character == '.');
+        }
+
+        private static string NormalizePermissionName(string permissionName)
+        {
+            return (permissionName ?? "").Trim().ToLowerInvariant();
+        }
+
+        private static string PermissionString(JObject obj, string key, string fallback = "")
+        {
+            var value = (string)(obj?[key] ?? "") ?? "";
+            return string.IsNullOrWhiteSpace(value) ? fallback : value.Trim();
+        }
+
+        private static int PermissionInt(JObject obj, string key, int fallback)
+        {
+            var token = obj?[key];
+            int value;
+
+            return token != null && int.TryParse(token.ToString(), out value) ? value : fallback;
         }
 
         private bool IsKitManageableGroupName(string group)
