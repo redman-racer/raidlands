@@ -1772,8 +1772,16 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                       echo admin_render_datalist('admin-group-name-options', admin_option_map(raidlands_permissions_group_names(true)));
                       $permission_group_rows = array_values($admin_permission_groups);
                       $permission_group_total = count($permission_group_rows) + 1;
+                      $permission_group_active_index = $permission_group_total - 1;
                       $permission_option_set = array_fill_keys(array_map('strval', $admin_permission_options), true);
                       $permission_catalog_groups = admin_permission_catalog_groups($admin_permission_options, $admin_permission_rows);
+
+                      foreach ($permission_group_rows as $candidate_index => $candidate_row) {
+                          if (empty($candidate_row['is_read_only'])) {
+                              $permission_group_active_index = (int) $candidate_index;
+                              break;
+                          }
+                      }
                     ?>
                     <section class="admin-section">
                       <div class="admin-grid three">
@@ -1830,7 +1838,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             $extra_live = array_values(array_diff($live_permissions, $desired_permissions));
                             $is_read_only = !empty($row['is_read_only']);
                             $card_title = $group_name !== '' ? $group_name : 'New Group';
-                            $group_is_active_panel = $index === 0;
+                            $group_is_active_panel = $index === $permission_group_active_index;
                             $active_permission_prefix = '';
 
                             foreach ($permission_catalog_groups as $prefix_group) {
@@ -2021,6 +2029,10 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                                 $permission_classes .= ' is-live';
                                             }
 
+                                            if ($is_read_only) {
+                                                $permission_classes .= ' is-disabled';
+                                            }
+
                                             if ($permission_selected && !$permission_live) {
                                                 $permission_state = 'Missing live';
                                                 $permission_classes .= ' is-missing-live';
@@ -2088,7 +2100,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 $selector_missing_live = array_values(array_diff($selector_desired_permissions, $selector_live_permissions));
                                 $selector_extra_live = array_values(array_diff($selector_live_permissions, $selector_desired_permissions));
                                 $selector_has_drift = $selector_missing_live !== [] || $selector_extra_live !== [];
-                                $selector_is_active = $selector_index === 0;
+                                $selector_is_active = $selector_index === $permission_group_active_index;
                                 $selector_state = empty($selector_row['id'])
                                     ? 'Draft'
                                     : (!empty($selector_row['is_read_only'])

@@ -86,6 +86,8 @@ the host or upload it through a private channel.
    - `RAIDLANDS_STRIPE_SECRET_KEY`
    - `RAIDLANDS_BRIDGE_SHARED_SECRET`
    - `RAIDLANDS_CLAN_API_RATE_LIMIT_PER_MINUTE`
+   - `RAIDLANDS_SERVER_STATUS_SAMPLE_RETENTION_DAYS`
+   - `RAIDLANDS_SERVER_STATUS_HOURLY_RETENTION_MONTHS`
 
 3. Install PHP dependencies.
 
@@ -106,6 +108,10 @@ the host or upload it through a private channel.
    - `database/migrations/002_player_stats.sql`
    - `database/migrations/004_clan_management.sql`
    - `database/migrations/005_clan_api_keys.sql`
+   - `database/migrations/007_admin_auth.sql`
+   - `database/migrations/009_server_status.sql`
+   - `database/migrations/010_server_status_samples.sql`
+   - `database/migrations/011_server_status_rollups.sql`
    - `database/seeds/001_store_products.sql`
 
    Then configure Stripe Price IDs in `/admin/?section=store`.

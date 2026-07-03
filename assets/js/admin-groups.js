@@ -112,6 +112,56 @@
     return prefix;
   }
 
+  function itemMatchesFilter(item, query, onlySelected) {
+    const input = itemInput(item);
+
+    if (!input) {
+      return false;
+    }
+
+    const haystack = [
+      item.getAttribute("data-permission-name") || "",
+      item.getAttribute("data-permission-prefix") || "",
+      item.getAttribute("data-permission-plugin") || ""
+    ].join(" ").toLowerCase();
+
+    return (!query || haystack.includes(query)) && (!onlySelected || input.checked);
+  }
+
+  function permissionStats(items, query, onlySelected) {
+    const stats = new Map();
+    let selectedTotal = 0;
+    let matchingTotal = 0;
+
+    items.forEach(item => {
+      const input = itemInput(item);
+
+      if (!input) {
+        return;
+      }
+
+      const prefix = item.getAttribute("data-permission-prefix") || "";
+      const current = stats.get(prefix) || { matches: 0, selected: 0, total: 0 };
+      const matches = itemMatchesFilter(item, query, onlySelected);
+
+      current.total += 1;
+
+      if (input.checked) {
+        current.selected += 1;
+        selectedTotal += 1;
+      }
+
+      if (matches) {
+        current.matches += 1;
+        matchingTotal += 1;
+      }
+
+      stats.set(prefix, current);
+    });
+
+    return { matchingTotal, selectedTotal, stats };
+  }
+
   function resetPermissionFilters(workbench) {
     const search = workbench.querySelector("[data-permission-search]");
     const selectedOnly = workbench.querySelector("[data-permission-selected-only]");
@@ -205,11 +255,33 @@
     const empty = workbench.querySelector("[data-permission-empty]");
     const items = toArray(workbench.querySelectorAll("[data-permission-item]"));
     const prefixes = toArray(workbench.querySelectorAll("[data-permission-prefix]"));
-    const activePrefix = activateTab(workbench, activeTabPrefix(workbench));
+    const tabs = toArray(workbench.querySelectorAll("[data-permission-tab]"));
     const query = ((search && search.value) || "").trim().toLowerCase();
     const onlySelected = Boolean(selectedOnly && selectedOnly.checked);
+    const filterActive = query !== "" || onlySelected;
+    const { matchingTotal, selectedTotal, stats } = permissionStats(items, query, onlySelected);
+    let requestedPrefix = activeTabPrefix(workbench);
+    let firstMatchingPrefix = "";
     let visibleTotal = 0;
-    let selectedTotal = 0;
+
+    prefixes.forEach(prefix => {
+      const prefixName = prefix.getAttribute("data-prefix") || "";
+      const prefixStats = stats.get(prefixName) || { matches: 0, selected: 0, total: 0 };
+
+      if ((!filterActive || prefixStats.matches > 0) && firstMatchingPrefix === "") {
+        firstMatchingPrefix = prefixName;
+      }
+    });
+
+    if (filterActive) {
+      const requestedStats = stats.get(requestedPrefix) || { matches: 0, selected: 0, total: 0 };
+
+      if (requestedStats.matches === 0) {
+        requestedPrefix = firstMatchingPrefix || requestedPrefix;
+      }
+    }
+
+    const activePrefix = activateTab(workbench, requestedPrefix);
 
     items.forEach(item => {
       const input = itemInput(item);
@@ -218,18 +290,8 @@
         return;
       }
 
-      const haystack = [
-        item.getAttribute("data-permission-name") || "",
-        item.getAttribute("data-permission-prefix") || "",
-        item.getAttribute("data-permission-plugin") || ""
-      ].join(" ").toLowerCase();
-      const selected = input.checked;
       const prefix = item.getAttribute("data-permission-prefix") || "";
-      const visible = prefix === activePrefix && (!query || haystack.includes(query)) && (!onlySelected || selected);
-
-      if (selected) {
-        selectedTotal += 1;
-      }
+      const visible = prefix === activePrefix && itemMatchesFilter(item, query, onlySelected);
 
       if (visible) {
         visibleTotal += 1;
@@ -246,17 +308,9 @@
       const prefixItems = toArray(prefix.querySelectorAll("[data-permission-item]"));
       const count = prefix.querySelector("[data-prefix-count]");
       const prefixName = prefix.getAttribute("data-prefix") || "";
-      const tab = toArray(workbench.querySelectorAll("[data-permission-tab]")).find(candidate => {
+      const prefixStats = stats.get(prefixName) || { matches: 0, selected: 0, total: prefixItems.length };
+      const tab = tabs.find(candidate => {
         return (candidate.getAttribute("data-tab-prefix") || "") === prefixName;
-      });
-      let selected = 0;
-
-      prefixItems.forEach(item => {
-        const input = itemInput(item);
-
-        if (input && input.checked) {
-          selected += 1;
-        }
       });
 
       if (prefixName === activePrefix) {
@@ -266,20 +320,26 @@
       }
 
       if (count) {
-        count.textContent = `${selected} / ${prefixItems.length} selected`;
+        count.textContent = `${prefixStats.selected} / ${prefixItems.length} selected`;
       }
 
       if (tab) {
         const tabCount = tab.querySelector("[data-tab-count]");
+        const tabFilteredOut = filterActive && prefixStats.matches === 0;
+
+        tab.hidden = tabFilteredOut;
+        tab.classList.toggle("is-filtered-out", tabFilteredOut);
 
         if (tabCount) {
-          tabCount.textContent = `${selected} / ${prefixItems.length}`;
+          tabCount.textContent = filterActive
+            ? `${prefixStats.matches} match${prefixStats.matches === 1 ? "" : "es"}`
+            : `${prefixStats.selected} / ${prefixItems.length}`;
         }
       }
     });
 
     if (matchCount) {
-      matchCount.textContent = `${visibleTotal} visible`;
+      matchCount.textContent = filterActive ? `${matchingTotal} match${matchingTotal === 1 ? "" : "es"}` : `${visibleTotal} visible`;
     }
 
     if (selectedCount) {
@@ -287,7 +347,7 @@
     }
 
     if (empty) {
-      empty.hidden = visibleTotal !== 0;
+      empty.hidden = filterActive ? matchingTotal !== 0 : visibleTotal !== 0;
     }
 
     renderSelectedList(workbench, items);
@@ -303,7 +363,6 @@
     toArray(workbench.querySelectorAll("[data-permission-tab]")).forEach(tab => {
       tab.addEventListener("click", () => {
         activateTab(workbench, tab.getAttribute("data-tab-prefix") || "");
-        resetPermissionFilters(workbench);
         updateWorkbench(workbench);
       });
     });
@@ -315,6 +374,20 @@
     if (selectedOnly) {
       selectedOnly.addEventListener("change", () => updateWorkbench(workbench));
     }
+
+    toArray(workbench.querySelectorAll("[data-permission-item]")).forEach(item => {
+      item.addEventListener("click", event => {
+        const input = itemInput(item);
+
+        if (!input || input.disabled || event.target === input) {
+          return;
+        }
+
+        event.preventDefault();
+        input.checked = !input.checked;
+        input.dispatchEvent(new Event("change", { bubbles: true }));
+      });
+    });
 
     toArray(workbench.querySelectorAll('[data-permission-item] input[type="checkbox"]')).forEach(input => {
       input.addEventListener("change", () => updateWorkbench(workbench));

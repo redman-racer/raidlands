@@ -8,6 +8,7 @@
   const CONFIG = getSiteConfig();
   const MOBILE_PERFORMANCE_QUERY = "(max-width: 700px), (pointer: coarse)";
   let serverHistoryPayload = null;
+  let serverHistoryRange = "6h";
   let serverHistoryResizeTimer = null;
 
   function getSiteConfig() {
@@ -70,6 +71,7 @@
     bindActions();
     initClanManagement();
     initEffectsWhenLoaderReveals();
+    bindServerHistoryControls();
     hydrateDates();
     hydrateServerStatus();
     hydrateServerHistory();
@@ -1065,13 +1067,46 @@
     return status.statusLabel || "Pending";
   }
 
+  function bindServerHistoryControls() {
+    const panel = app.querySelector("[data-server-history]");
+
+    if (!panel) return;
+
+    const buttons = Array.from(panel.querySelectorAll("[data-server-history-range]"));
+    const active = buttons.find(button => button.getAttribute("aria-pressed") === "true") || buttons[0];
+
+    if (active) {
+      serverHistoryRange = active.getAttribute("data-server-history-range") || serverHistoryRange;
+    }
+
+    panel.dataset.historyRange = serverHistoryRange;
+
+    buttons.forEach(button => {
+      button.addEventListener("click", () => {
+        const nextRange = button.getAttribute("data-server-history-range") || "6h";
+
+        if (nextRange === serverHistoryRange) return;
+
+        serverHistoryRange = nextRange;
+        panel.dataset.historyRange = nextRange;
+        buttons.forEach(candidate => {
+          candidate.setAttribute("aria-pressed", candidate === button ? "true" : "false");
+        });
+        hydrateServerHistory();
+      });
+    });
+  }
+
   async function hydrateServerHistory() {
     const panel = app.querySelector("[data-server-history]");
 
     if (!panel || !window.fetch || !CONFIG.serverStatusHistoryUrl) return;
 
     try {
-      const response = await fetch(CONFIG.serverStatusHistoryUrl, {
+      const url = new URL(CONFIG.serverStatusHistoryUrl, window.location.href);
+      url.searchParams.set("range", serverHistoryRange || "6h");
+
+      const response = await fetch(url.toString(), {
         cache: "no-store",
         headers: {
           Accept: "application/json"
@@ -1088,6 +1123,8 @@
       applyServerHistory({
         ok: false,
         samples: [],
+        range: serverHistoryRange,
+        rangeLabel: historyFallbackRangeLabel(serverHistoryRange),
         windowMinutes: 360,
         error: "Server history is waiting for live heartbeat samples."
       });
@@ -1102,7 +1139,7 @@
     const samples = Array.isArray(payload && payload.samples) ? payload.samples : [];
     const empty = panel.querySelector("[data-server-history-empty]");
     serverHistoryPayload = {
-      ...payload,
+      ...(payload || {}),
       samples
     };
 
@@ -1113,12 +1150,22 @@
       empty.textContent = payload && payload.error ? payload.error : "Waiting for live heartbeat samples.";
     }
 
-    setPanelText("[data-history-window]", formatHistoryWindow(payload && payload.windowMinutes));
+    setPanelText("[data-history-window]", historyWindowLabel(payload));
     setPanelText("[data-history-uptime]", payload && payload.uptimePercent !== null && payload.uptimePercent !== undefined ? `${payload.uptimePercent}%` : "Waiting");
     setPanelText("[data-history-peak]", statValue(payload && payload.peakPlayers, "0"));
     setPanelText("[data-history-average]", payload && payload.averagePlayers !== null && payload.averagePlayers !== undefined ? String(payload.averagePlayers) : "0");
-    setPanelText("[data-history-samples]", String(samples.length));
+    setPanelText("[data-history-downtime]", statValue(payload && payload.downtimeCount, "0"));
+    setPanelText("[data-history-samples]", String(payload && payload.pointCount !== undefined ? payload.pointCount : samples.length));
+    setPanelText("[data-history-sample-label]", historyPointLabel(payload));
     drawServerHistoryChart(serverHistoryPayload);
+  }
+
+  function historyWindowLabel(payload) {
+    if (payload && payload.rangeLabel) {
+      return String(payload.rangeLabel);
+    }
+
+    return formatHistoryWindow(payload && payload.windowMinutes);
   }
 
   function formatHistoryWindow(minutes) {
@@ -1134,6 +1181,27 @@
     }
 
     return `${value} minutes`;
+  }
+
+  function historyPointLabel(payload) {
+    const granularity = payload && payload.granularity;
+
+    if (granularity === "hour") {
+      return "hourly points";
+    }
+
+    if (granularity === "day") {
+      return "daily points";
+    }
+
+    return "samples";
+  }
+
+  function historyFallbackRangeLabel(range) {
+    if (range === "24h") return "24 hours";
+    if (range === "30d") return "30 days";
+    if (range === "12mo") return "12 months";
+    return "6 hours";
   }
 
   function drawServerHistoryChart(payload) {
@@ -1176,6 +1244,7 @@
       1,
       ...samples.map(sample => Math.max(
         Number(sample.maxPlayers) || 0,
+        Number(sample.peakPlayers) || 0,
         Number(sample.players) || 0,
         Number(sample.queue) || 0
       ))
@@ -1198,8 +1267,8 @@
     drawHistoryArea(ctx, samples, xFor, yFor, plotBottom, "players", "rgba(255, 138, 40, .18)", "rgba(255, 138, 40, .95)");
     drawHistoryLine(ctx, samples, xFor, yFor, "queue", "rgba(255, 209, 102, .92)", 2);
 
-    const firstTime = sampleDate(samples[0]);
-    const lastTime = sampleDate(samples[samples.length - 1]);
+    const firstTime = sampleDate(samples[0], payload.granularity);
+    const lastTime = sampleDate(samples[samples.length - 1], payload.granularity);
     ctx.fillStyle = "rgba(243, 238, 227, .62)";
     ctx.font = "700 11px Inter, Arial, sans-serif";
     ctx.fillText(firstTime, pad.left, height - 10);
@@ -1268,12 +1337,27 @@
     ctx.stroke();
   }
 
-  function sampleDate(sample) {
+  function sampleDate(sample, granularity) {
     const value = sample && (sample.time || sample.generatedAt);
     const date = value ? new Date(value) : null;
 
     if (!date || Number.isNaN(date.getTime())) {
       return "";
+    }
+
+    if (granularity === "day") {
+      return date.toLocaleDateString([], {
+        month: "short",
+        day: "numeric"
+      });
+    }
+
+    if (granularity === "hour") {
+      return date.toLocaleDateString([], {
+        month: "short",
+        day: "numeric",
+        hour: "numeric"
+      });
     }
 
     return date.toLocaleTimeString([], {

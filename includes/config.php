@@ -29,6 +29,8 @@ $site_config = [
         'provider' => $raidlands_status_provider,
         'cacheSeconds' => raidlands_env_int('RAIDLANDS_SERVER_STATUS_CACHE_SECONDS', 60),
         'staleSeconds' => raidlands_env_int('RAIDLANDS_SERVER_STATUS_STALE_SECONDS', 90),
+        'sampleRetentionDays' => raidlands_env_int('RAIDLANDS_SERVER_STATUS_SAMPLE_RETENTION_DAYS', 30),
+        'hourlyRetentionMonths' => raidlands_env_int('RAIDLANDS_SERVER_STATUS_HOURLY_RETENTION_MONTHS', 24),
     ],
     'connectCommand' => raidlands_env('RAIDLANDS_CONNECT_COMMAND', 'connect raidlands.net:25607'),
     'steamConnectUrl' => raidlands_env('RAIDLANDS_STEAM_CONNECT_URL', 'steam://connect/raidlands.net:25607'),

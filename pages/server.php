@@ -127,11 +127,18 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
           <h2>Recent server activity</h2>
           <p class="section-lede">Population, queue, and availability from Raidlands heartbeats.</p>
         </div>
+        <div class="server-history-controls" role="group" aria-label="Server history range">
+          <button type="button" data-server-history-range="6h" aria-pressed="true">6H</button>
+          <button type="button" data-server-history-range="24h" aria-pressed="false">24H</button>
+          <button type="button" data-server-history-range="30d" aria-pressed="false">30D</button>
+          <button type="button" data-server-history-range="12mo" aria-pressed="false">12M</button>
+        </div>
         <div class="server-history-metrics" aria-label="Recent server history summary">
           <span><small>Window</small><strong data-history-window>6 hours</strong></span>
           <span><small>Availability</small><strong data-history-uptime>Waiting</strong></span>
           <span><small>Peak players</small><strong data-history-peak>0</strong></span>
           <span><small>Avg players</small><strong data-history-average>0</strong></span>
+          <span><small>Downtime</small><strong data-history-downtime>0</strong></span>
         </div>
       </div>
       <div class="server-history-chart-wrap">
@@ -143,7 +150,7 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
         <span><i class="legend-queue" aria-hidden="true"></i> Queue</span>
         <span><i class="legend-online" aria-hidden="true"></i> Online</span>
         <span><i class="legend-offline" aria-hidden="true"></i> Offline</span>
-        <span><small><span data-history-samples>0</span> samples</small></span>
+        <span><small><span data-history-samples>0</span> <span data-history-sample-label>samples</span></small></span>
       </div>
     </div>
   </div>

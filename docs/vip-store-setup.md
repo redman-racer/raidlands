@@ -8,9 +8,12 @@
 4. Run `database/migrations/004_clan_management.sql`.
 5. Run `database/migrations/005_clan_api_keys.sql`.
 6. Run `database/migrations/007_admin_auth.sql`.
-7. Run `database/seeds/001_store_products.sql`.
-8. Copy the root `.env.example` file to `.env`.
-9. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
+7. Run `database/migrations/009_server_status.sql`.
+8. Run `database/migrations/010_server_status_samples.sql`.
+9. Run `database/migrations/011_server_status_rollups.sql`.
+10. Run `database/seeds/001_store_products.sql`.
+11. Copy the root `.env.example` file to `.env`.
+12. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
 
 The root `.env` file is ignored by Git and protected from direct web access by the root `.htaccess`.
 

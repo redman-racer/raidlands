@@ -51,10 +51,11 @@ over `.env` and stay ignored by Git.
 - `RAIDLANDS_STEAM_API_KEY`
 - `RAIDLANDS_CONNECT_COMMAND`, `RAIDLANDS_STEAM_CONNECT_URL`, `RAIDLANDS_DISCORD_INVITE_URL`
 - `RAIDLANDS_SERVER_STATS_PROVIDER`, `RAIDLANDS_SERVER_STATUS_CACHE_SECONDS`, `RAIDLANDS_SERVER_STATUS_STALE_SECONDS`
+- `RAIDLANDS_SERVER_STATUS_SAMPLE_RETENTION_DAYS`, `RAIDLANDS_SERVER_STATUS_HOURLY_RETENTION_MONTHS`
 - `RAIDLANDS_WIPE_TIME`, `RAIDLANDS_WIPE_TIMEZONE`
 - `RAIDLANDS_AUTH_STEAM_URL`, `RAIDLANDS_AUTH_DISCORD_URL`
 
-Live server status is served by `api/server-status.php`. WebsiteVipBridge posts signed heartbeats to `/api/server/status-heartbeat.php`; the public endpoint uses the latest heartbeat, marks delayed data stale, and falls back to config values before the first heartbeat arrives. Recent player-safe samples are exposed through `/api/server-status-history.php` for the `/server/` activity graph.
+Live server status is served by `api/server-status.php`. WebsiteVipBridge posts signed heartbeats to `/api/server/status-heartbeat.php`; the public endpoint uses the latest heartbeat, marks delayed data stale, and falls back to config values before the first heartbeat arrives. Recent player-safe samples and long-term hourly/daily rollups are exposed through `/api/server-status-history.php` for the `/server/` activity graph.
 
 Steam account linking uses native Steam OpenID only. Manual SteamID64 entry is intentionally disabled so users can only link accounts Steam has verified they own. Discord linking buttons remain ready for a future OAuth URL.
 
@@ -75,11 +76,12 @@ The store uses MySQL as the source of truth and Stripe Checkout for payments.
 7. Run `database/migrations/007_admin_auth.sql`.
 8. Run `database/migrations/009_server_status.sql`.
 9. Run `database/migrations/010_server_status_samples.sql`.
-10. Run `database/seeds/001_store_products.sql`.
-11. Copy `.env.example` to `.env`.
-12. Fill in MySQL, Stripe, Steam API, bridge secret, and clan API limit values.
-13. Add at least one owner SteamID64 to `admin_users` and `admin_user_roles`.
-14. Configure product Stripe Price IDs in `/admin/?section=store`.
+10. Run `database/migrations/011_server_status_rollups.sql`.
+11. Run `database/seeds/001_store_products.sql`.
+12. Copy `.env.example` to `.env`.
+13. Fill in MySQL, Stripe, Steam API, bridge secret, and clan API limit values.
+14. Add at least one owner SteamID64 to `admin_users` and `admin_user_roles`.
+15. Configure product Stripe Price IDs in `/admin/?section=store`.
 
 Public store flow:
 

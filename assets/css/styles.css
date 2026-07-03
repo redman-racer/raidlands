@@ -1334,17 +1334,52 @@ h3,
   align-items: flex-start;
   justify-content: space-between;
   gap: 24px;
+  flex-wrap: wrap;
 }
 
 .server-history-head h2 {
   margin-top: 0;
 }
 
+.server-history-controls {
+  display: inline-flex;
+  overflow: hidden;
+  border: 1px solid rgba(243, 238, 227, .14);
+  background: rgba(0, 0, 0, .28);
+}
+
+.server-history-controls button {
+  min-width: 58px;
+  min-height: 38px;
+  padding: 0 12px;
+  border: 0;
+  border-right: 1px solid rgba(243, 238, 227, .12);
+  color: var(--muted);
+  background: transparent;
+  font: 900 .78rem var(--font-body);
+  letter-spacing: 0;
+  cursor: pointer;
+}
+
+.server-history-controls button:last-child {
+  border-right: 0;
+}
+
+.server-history-controls button[aria-pressed="true"] {
+  color: var(--black);
+  background: var(--orange);
+}
+
+.server-history-controls button:focus-visible {
+  outline: 2px solid var(--yellow);
+  outline-offset: -2px;
+}
+
 .server-history-metrics {
   display: grid;
-  grid-template-columns: repeat(4, minmax(92px, 1fr));
+  grid-template-columns: repeat(5, minmax(92px, 1fr));
   gap: 10px;
-  min-width: min(520px, 100%);
+  min-width: min(650px, 100%);
 }
 
 .server-history-metrics span,
@@ -3865,6 +3900,15 @@ a.leaderboard-steam:hover,
     min-width: 0;
   }
 
+  .server-history-controls {
+    width: 100%;
+  }
+
+  .server-history-controls button {
+    flex: 1 1 0;
+    min-width: 0;
+  }
+
   .server-history-chart-wrap {
     min-height: 240px;
   }
@@ -4575,6 +4619,11 @@ button.admin-permission-chip:focus-visible {
     rgba(0, 0, 0, .28);
 }
 
+.admin-permission-tab[hidden],
+.admin-permission-tab.is-filtered-out {
+  display: none !important;
+}
+
 .admin-permission-tab span,
 .admin-permission-tab small {
   min-width: 0;
@@ -4704,6 +4753,15 @@ button.admin-permission-chip:focus-visible {
 .admin-permission-option.is-extra-live {
   border-color: rgba(124, 255, 107, .36);
   background: rgba(124, 255, 107, .06);
+}
+
+.admin-permission-option.is-disabled {
+  cursor: not-allowed;
+  opacity: .68;
+}
+
+.admin-permission-option.is-disabled input {
+  cursor: not-allowed;
 }
 
 .admin-permission-option-copy {
