@@ -497,6 +497,11 @@
       panels.forEach(function (panel) {
         Array.prototype.slice.call(panel.querySelectorAll('[data-kit-slot-wrap]')).forEach(updateSlotVisual);
       });
+
+      if (!modal.hidden) {
+        renderResults(modalSearch ? modalSearch.value : '');
+        updateModalPreview();
+      }
     })
     .catch(function () {
       catalog = [];
