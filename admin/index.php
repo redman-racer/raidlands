@@ -555,6 +555,9 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
     <link rel="apple-touch-icon" href="<?= e(asset_url('icons/apple-touch-icon.png')) ?>" sizes="180x180">
     <link rel="manifest" href="<?= e($base_path . 'site.webmanifest') ?>">
     <link rel="stylesheet" href="<?= e(asset_url('css/styles.css')) ?>">
+    <?php if ($active_section === 'kits') : ?>
+      <link rel="stylesheet" href="<?= e(asset_url('css/admin-kits.css')) ?>">
+    <?php endif; ?>
   </head>
   <body class="admin-body">
     <?php if (!$authenticated) : ?>
