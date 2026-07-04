@@ -22,9 +22,10 @@
 18. Run `database/migrations/018_store_bundle_offer_matrix.sql`.
 19. Run `database/migrations/019_raidlands_vip_kits_permissions_seed.sql`.
 20. Run `database/migrations/020_store_product_fulfillment_groups.sql`.
-21. Run `database/seeds/001_store_products.sql`.
-22. Copy the root `.env.example` file to `.env`.
-23. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
+21. Run `database/migrations/021_group_owned_kit_permissions.sql`.
+22. Run `database/seeds/001_store_products.sql`.
+23. Copy the root `.env.example` file to `.env`.
+24. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
 
 The root `.env` file is ignored by Git and protected from direct web access by the root `.htaccess`.
 

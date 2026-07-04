@@ -67,7 +67,7 @@ function raidlands_kits_readiness_message(bool $admin = false): string
 
     if (!raidlands_kits_is_ready()) {
         return $admin
-            ? 'Kit tables are not installed yet. Run database/migrations/006_game_kits.sql, then database/migrations/014_kit_group_delete_tombstones.sql.'
+            ? 'Kit tables are not installed yet. Run database/migrations/006_game_kits.sql, database/migrations/014_kit_group_delete_tombstones.sql, then database/migrations/021_group_owned_kit_permissions.sql.'
             : 'Kit details are being prepared.';
     }
 
@@ -130,6 +130,51 @@ function raidlands_kits_clean_permission($value): string
     }
 
     return 'kits.' . $permission;
+}
+
+function raidlands_kits_clean_claim_permission($value): string
+{
+    $permission = raidlands_kits_clean_permission($value);
+
+    if ($permission === '') {
+        return '';
+    }
+
+    if (!str_starts_with($permission, 'kits.')) {
+        throw new InvalidArgumentException('Kit claim permissions must use the Kits plugin prefix, for example kits.raid.');
+    }
+
+    return $permission;
+}
+
+function raidlands_kits_clean_group_permission($value): string
+{
+    if (function_exists('raidlands_permissions_clean_permission')) {
+        return raidlands_permissions_clean_permission($value);
+    }
+
+    $permission = strtolower(raidlands_kits_clean_text($value, 190));
+
+    if ($permission === '') {
+        return '';
+    }
+
+    if (!preg_match('/^[a-z0-9_.-]+$/', $permission) || !str_contains($permission, '.')) {
+        throw new InvalidArgumentException('Permissions must use lowercase plugin.permission format.');
+    }
+
+    return $permission;
+}
+
+function raidlands_kits_permission_suffix(string $permission): string
+{
+    $permission = raidlands_kits_clean_claim_permission($permission);
+
+    if ($permission === '') {
+        return '';
+    }
+
+    return str_starts_with($permission, 'kits.') ? substr($permission, 5) : $permission;
 }
 
 function raidlands_kits_permission_from_name(string $name): string
@@ -285,21 +330,15 @@ function raidlands_kits_previous_names_for_save(string $new_name, array $submitt
     return $clean;
 }
 
-function raidlands_kits_guided_claim_permission(string $kit_name, $permission, array $groups): string
+function raidlands_kits_required_claim_permission(string $kit_name, $permission, bool $active): string
 {
-    $claim_permission = raidlands_kits_clean_permission($permission);
+    $claim_permission = raidlands_kits_clean_claim_permission($permission);
 
-    if ($claim_permission !== '' || raidlands_kits_clean_groups($groups) === []) {
+    if ($claim_permission !== '' || !$active) {
         return $claim_permission;
     }
 
-    $claim_permission = raidlands_kits_permission_from_name($kit_name);
-
-    if ($claim_permission === '') {
-        throw new InvalidArgumentException('Kit "' . $kit_name . '" has group grants selected, but no claim permission. Enter a claim permission such as kits.raid before saving.');
-    }
-
-    return $claim_permission;
+    throw new InvalidArgumentException('Active kit "' . $kit_name . '" needs a Kits plugin permission. Enter the suffix after kits. before saving.');
 }
 
 function raidlands_kits_clean_image_path($value): string
@@ -482,15 +521,6 @@ function raidlands_kits_fetch_all(bool $active_only = false, bool $include_delet
         "SELECT * FROM game_kit_items WHERE kit_id IN ($placeholders) ORDER BY kit_id ASC, container_name ASC, position ASC, sort_order ASC, id ASC",
         $ids
     );
-    $groups = raidlands_db_fetch_all(
-        "SELECT * FROM game_kit_group_access WHERE kit_id IN ($placeholders) ORDER BY oxide_group ASC",
-        $ids
-    );
-    $links = raidlands_db_fetch_all(
-        "SELECT * FROM store_product_kits WHERE kit_id IN ($placeholders) ORDER BY sort_order ASC, id ASC",
-        $ids
-    );
-
     $by_id = [];
 
     foreach ($kits as $index => $kit) {
@@ -499,8 +529,8 @@ function raidlands_kits_fetch_all(bool $active_only = false, bool $include_delet
             'wear' => [],
             'belt' => [],
         ];
-        $kit['groups'] = [];
-        $kit['store_product_ids'] = [];
+        $kit['permission_groups'] = [];
+        $kit['derived_store_products'] = [];
         $kits[$index] = $kit;
         $by_id[(int) $kit['id']] = $index;
     }
@@ -514,70 +544,81 @@ function raidlands_kits_fetch_all(bool $active_only = false, bool $include_delet
         }
     }
 
-    foreach ($groups as $group) {
-        $kit_id = (int) $group['kit_id'];
-
-        if (isset($by_id[$kit_id]) && !empty($group['is_granted'])) {
-            $kits[$by_id[$kit_id]]['groups'][] = (string) $group['oxide_group'];
-        }
-    }
-
-    foreach ($links as $link) {
-        $kit_id = (int) $link['kit_id'];
-
-        if (isset($by_id[$kit_id])) {
-            $kits[$by_id[$kit_id]]['store_product_ids'][] = (int) $link['product_id'];
-        }
-    }
-
     return $kits;
 }
 
-function raidlands_kits_store_product_options(): array
+function raidlands_kits_effective_group_permission_map(): array
 {
-    if (!raidlands_db_is_configured() || !raidlands_kits_table_exists('store_products')) {
+    if (!function_exists('raidlands_permissions_effective_desired_map')) {
         return [];
     }
 
     try {
-        return raidlands_db_fetch_all(
-            'SELECT id, name, slug, oxide_group, is_active FROM store_products ORDER BY sort_order ASC, id ASC'
-        );
+        return raidlands_permissions_effective_desired_map();
     } catch (Throwable $error) {
         return [];
     }
 }
 
-function raidlands_kits_available_groups(): array
+function raidlands_kits_permission_metadata_map(): array
 {
-    $groups = array_merge(['default', 'discord'], raidlands_store_managed_groups());
-
-    if (function_exists('raidlands_permissions_group_names')) {
-        $groups = array_merge($groups, raidlands_permissions_group_names(false));
+    if (!function_exists('raidlands_permissions_permission_metadata_map')) {
+        return [];
     }
 
-    if (raidlands_kits_is_ready()) {
-        try {
-            $rows = raidlands_db_fetch_all(
-                'SELECT DISTINCT gga.oxide_group
-                 FROM game_kit_group_access gga
-                 INNER JOIN game_kits gk ON gk.id = gga.kit_id
-                 WHERE gga.oxide_group <> ""
-                   AND gk.deleted_at IS NULL'
-            );
+    try {
+        return raidlands_permissions_permission_metadata_map();
+    } catch (Throwable $error) {
+        return [];
+    }
+}
 
-            foreach ($rows as $row) {
-                $groups[] = (string) $row['oxide_group'];
+function raidlands_kits_permissions_for_product(array $product, array $group_permissions): array
+{
+    $permissions = [];
+
+    foreach (raidlands_store_clean_groups((array) ($product['fulfillment_groups'] ?? [$product['oxide_group'] ?? ''])) as $group) {
+        foreach ((array) ($group_permissions[$group] ?? []) as $permission) {
+            $permission = raidlands_kits_clean_group_permission($permission);
+
+            if ($permission !== '') {
+                $permissions[$permission] = $permission;
             }
-        } catch (Throwable $error) {
-            // Keep config/store groups if kit tables are not ready.
         }
     }
 
-    $groups = array_values(array_filter(array_unique(array_map('raidlands_kits_clean_group', $groups))));
-    sort($groups, SORT_NATURAL | SORT_FLAG_CASE);
+    $permissions = array_values($permissions);
+    sort($permissions, SORT_NATURAL | SORT_FLAG_CASE);
 
-    return $groups;
+    return $permissions;
+}
+
+function raidlands_kits_permission_report(array $permissions, array $metadata, int $limit = 8): array
+{
+    $reports = [];
+
+    foreach ($permissions as $permission) {
+        $permission = raidlands_kits_clean_group_permission($permission);
+
+        if ($permission === '' || str_starts_with($permission, 'kits.')) {
+            continue;
+        }
+
+        $meta = (array) ($metadata[$permission] ?? []);
+        $plugin = trim((string) ($meta['plugin_name'] ?? ''));
+        $label = $plugin !== '' ? $plugin . ': ' . $permission : $permission;
+        $reports[$permission] = [
+            'permission' => $permission,
+            'label' => $label,
+            'plugin_name' => $plugin,
+        ];
+    }
+
+    uasort($reports, static function (array $left, array $right): int {
+        return strnatcasecmp((string) $left['label'], (string) $right['label']);
+    });
+
+    return array_slice(array_values($reports), 0, $limit);
 }
 
 function raidlands_kits_item_catalog(bool $safe_only = true): array
@@ -667,9 +708,73 @@ function raidlands_kits_known_shortnames(): array
     return $shortnames;
 }
 
+function raidlands_kits_attach_admin_usage(array $kits): array
+{
+    if ($kits === []) {
+        return [];
+    }
+
+    $group_permissions = raidlands_kits_effective_group_permission_map();
+    $groups_by_permission = [];
+
+    foreach ($group_permissions as $group => $permissions) {
+        $group = raidlands_kits_clean_group($group);
+
+        if ($group === '') {
+            continue;
+        }
+
+        foreach ((array) $permissions as $permission) {
+            $permission = raidlands_kits_clean_group_permission($permission);
+
+            if ($permission !== '' && str_starts_with($permission, 'kits.')) {
+                $groups_by_permission[$permission][] = $group;
+            }
+        }
+    }
+
+    $products_by_permission = [];
+
+    if (function_exists('raidlands_store_admin_product_rows')) {
+        try {
+            foreach (raidlands_store_admin_product_rows() as $product) {
+                $product_permissions = raidlands_kits_permissions_for_product($product, $group_permissions);
+                $product_groups = raidlands_store_clean_groups((array) ($product['fulfillment_groups'] ?? [$product['oxide_group'] ?? '']));
+
+                foreach ($product_permissions as $permission) {
+                    if (!str_starts_with($permission, 'kits.')) {
+                        continue;
+                    }
+
+                    $products_by_permission[$permission][] = [
+                        'id' => (int) ($product['id'] ?? 0),
+                        'name' => (string) ($product['name'] ?? 'Store product'),
+                        'slug' => (string) ($product['slug'] ?? ''),
+                        'is_active' => !empty($product['is_active']),
+                        'groups' => $product_groups,
+                    ];
+                }
+            }
+        } catch (Throwable $error) {
+            $products_by_permission = [];
+        }
+    }
+
+    foreach ($kits as &$kit) {
+        $permission = raidlands_kits_clean_claim_permission($kit['required_permission'] ?? '');
+        $groups = array_values(array_unique(array_map('strval', $groups_by_permission[$permission] ?? [])));
+        sort($groups, SORT_NATURAL | SORT_FLAG_CASE);
+        $kit['permission_groups'] = $groups;
+        $kit['derived_store_products'] = $products_by_permission[$permission] ?? [];
+    }
+    unset($kit);
+
+    return $kits;
+}
+
 function raidlands_kits_admin_rows(): array
 {
-    return raidlands_kits_fetch_all(false);
+    return raidlands_kits_attach_admin_usage(raidlands_kits_fetch_all(false));
 }
 
 function raidlands_kits_decode_optional_json($value, string $label): ?string
@@ -824,41 +929,30 @@ function raidlands_kits_save_items(PDO $pdo, int $kit_id, array $item_rows): voi
     }
 }
 
-function raidlands_kits_save_groups(PDO $pdo, int $kit_id, array $groups): void
+function raidlands_kits_register_claim_permission(PDO $pdo, string $permission): void
 {
-    $pdo->prepare('DELETE FROM game_kit_group_access WHERE kit_id = :kit_id')->execute(['kit_id' => $kit_id]);
-    $insert = $pdo->prepare(
-        'INSERT INTO game_kit_group_access (kit_id, oxide_group, is_granted) VALUES (:kit_id, :oxide_group, 1)
-         ON DUPLICATE KEY UPDATE is_granted = 1, updated_at = NOW()'
-    );
+    $permission = raidlands_kits_clean_claim_permission($permission);
 
-    foreach (raidlands_kits_clean_groups($groups) as $group) {
-        $insert->execute([
-            'kit_id' => $kit_id,
-            'oxide_group' => $group,
-        ]);
+    if ($permission === '' || !raidlands_kits_table_exists('oxide_permissions')) {
+        return;
     }
-}
 
-function raidlands_kits_save_product_links(PDO $pdo, int $kit_id, array $product_ids): void
-{
-    $pdo->prepare('DELETE FROM store_product_kits WHERE kit_id = :kit_id')->execute(['kit_id' => $kit_id]);
-    $insert = $pdo->prepare(
-        'INSERT INTO store_product_kits (product_id, kit_id, sort_order) VALUES (:product_id, :kit_id, :sort_order)
-         ON DUPLICATE KEY UPDATE sort_order = VALUES(sort_order), updated_at = NOW()'
+    $prefix = explode('.', $permission, 2)[0] ?? 'kits';
+    $statement = $pdo->prepare(
+        'INSERT INTO oxide_permissions
+            (permission_name, plugin_name, permission_prefix, source, is_active, last_seen_at)
+         VALUES
+            (:permission_name, "Kits", :permission_prefix, "kit", 1, NOW())
+         ON DUPLICATE KEY UPDATE
+            plugin_name = IF(plugin_name = "" OR plugin_name = "fallback", VALUES(plugin_name), plugin_name),
+            permission_prefix = IF(permission_prefix = "", VALUES(permission_prefix), permission_prefix),
+            is_active = 1,
+            updated_at = NOW()'
     );
-
-    foreach (array_values(array_unique(array_map('intval', $product_ids))) as $index => $product_id) {
-        if ($product_id <= 0) {
-            continue;
-        }
-
-        $insert->execute([
-            'product_id' => $product_id,
-            'kit_id' => $kit_id,
-            'sort_order' => ($index + 1) * 10,
-        ]);
-    }
+    $statement->execute([
+        'permission_name' => $permission,
+        'permission_prefix' => $prefix,
+    ]);
 }
 
 function raidlands_kits_queue_permission_publish(PDO $pdo, int $kit_revision): int
@@ -946,8 +1040,16 @@ function raidlands_kits_admin_save(array $post, array $files = []): array
                     'draft_revision' => $revision,
                     'id' => $id,
                 ]);
-                $pdo->prepare('DELETE FROM game_kit_group_access WHERE kit_id = :id')->execute(['id' => $id]);
-                $pdo->prepare('DELETE FROM store_product_kits WHERE kit_id = :id')->execute(['id' => $id]);
+
+                foreach (['game_kit_group_access', 'store_product_kits'] as $legacy_table) {
+                    if (raidlands_kits_table_exists($legacy_table)) {
+                        raidlands_db_execute(
+                            'DELETE FROM ' . $legacy_table . ' WHERE kit_id = :id',
+                            ['id' => $id]
+                        );
+                    }
+                }
+
                 $changed += 1;
                 continue;
             }
@@ -970,8 +1072,8 @@ function raidlands_kits_admin_save(array $post, array $files = []): array
 
             $previous_names = raidlands_kits_previous_names_for_save($name, $submitted_previous_names, $existing_row);
 
-            $groups = raidlands_kits_clean_groups((array) ($row['groups'] ?? []));
-            $claim_permission = raidlands_kits_guided_claim_permission($name, $row['required_permission'] ?? '', $groups);
+            $is_active = empty($row['is_active']) ? 0 : 1;
+            $claim_permission = raidlands_kits_required_claim_permission($name, $row['required_permission'] ?? '', $is_active === 1);
 
             $image_path = raidlands_kits_clean_image_path($row['image_path'] ?? '');
             $uploaded = raidlands_kits_store_uploaded_image(raidlands_kits_file_at_index($files, 'kit_images', (int) $index));
@@ -992,7 +1094,7 @@ function raidlands_kits_admin_save(array $post, array $files = []): array
                 'is_hidden' => empty($row['is_hidden']) ? 0 : 1,
                 'copy_paste_file' => raidlands_kits_clean_text($row['copy_paste_file'] ?? '', 160),
                 'image_path' => $image_path,
-                'is_active' => empty($row['is_active']) ? 0 : 1,
+                'is_active' => $is_active,
                 'sort_order' => raidlands_kits_int($row['sort_order'] ?? 100, 0, 9999),
                 'reward_enabled' => empty($row['reward_enabled']) ? 0 : 1,
                 'reward_product_id' => raidlands_kits_int($row['reward_product_id'] ?? -1, -1, 99999999),
@@ -1088,8 +1190,7 @@ function raidlands_kits_admin_save(array $post, array $files = []): array
                 ?? (array) ($row['items'] ?? []);
 
             raidlands_kits_save_items($pdo, $kit_id, $item_rows);
-            raidlands_kits_save_groups($pdo, $kit_id, $groups);
-            raidlands_kits_save_product_links($pdo, $kit_id, (array) ($row['store_product_ids'] ?? []));
+            raidlands_kits_register_claim_permission($pdo, $claim_permission);
 
             $changed += 1;
         }
@@ -1169,7 +1270,6 @@ function raidlands_kits_sync_payload(?int $revision = null): array
     $revision = $revision ?? raidlands_kits_latest_published_revision();
     $payload_kits = [];
     $reward_kits = [];
-    $group_access = [];
 
     foreach ($kits as $kit) {
         $previous_names = raidlands_kits_name_list($kit['previous_kit_name'] ?? '');
@@ -1214,34 +1314,13 @@ function raidlands_kits_sync_payload(?int $revision = null): array
             ];
         }
 
-        $permission = (string) $kit['required_permission'];
-
-        if ($permission !== '' && !empty($kit['is_active']) && empty($kit['deleted_at'])) {
-            foreach ((array) ($kit['groups'] ?? []) as $group) {
-                $group = raidlands_kits_clean_group($group);
-
-                if ($group === '') {
-                    continue;
-                }
-
-                $group_access[$group][] = $permission;
-            }
-        }
     }
-
-    foreach ($group_access as $group => $permissions) {
-        $group_access[$group] = array_values(array_unique($permissions));
-        sort($group_access[$group], SORT_NATURAL | SORT_FLAG_CASE);
-    }
-
-    ksort($group_access, SORT_NATURAL | SORT_FLAG_CASE);
 
     return [
         'revision' => $revision,
         'generated_at' => gmdate('c'),
         'kits' => $payload_kits,
         'server_rewards_kits' => $reward_kits,
-        'group_access' => (object) $group_access,
     ];
 }
 
@@ -1305,7 +1384,6 @@ function raidlands_kits_pending_sync(int $since): array
             'has_update' => false,
             'kits' => [],
             'server_rewards_kits' => [],
-            'group_access' => (object) [],
         ];
     }
 
@@ -1317,13 +1395,11 @@ function raidlands_kits_pending_sync(int $since): array
             'has_update' => false,
             'kits' => [],
             'server_rewards_kits' => [],
-            'group_access' => (object) [],
         ];
     }
 
     $payload['revision'] = $revision;
     $payload['has_update'] = true;
-    $payload['group_access'] = (object) ($payload['group_access'] ?? []);
 
     return $payload;
 }
@@ -1381,7 +1457,6 @@ function raidlands_kits_import_snapshot(array $payload): array
     $reward_kits = $payload['server_rewards']['Kits']
         ?? $payload['server_rewards_kits']
         ?? [];
-    $group_access = $payload['groups'] ?? $payload['group_access'] ?? [];
 
     $pdo = raidlands_db_required();
     $revision = raidlands_kits_next_revision($pdo);
@@ -1399,7 +1474,7 @@ function raidlands_kits_import_snapshot(array $payload): array
             }
 
             $existing = raidlands_db_fetch_one(
-                'SELECT id, deleted_at FROM game_kits WHERE kit_name = :kit_name',
+                'SELECT id, required_permission, deleted_at FROM game_kits WHERE kit_name = :kit_name',
                 ['kit_name' => $name]
             );
 
@@ -1407,10 +1482,20 @@ function raidlands_kits_import_snapshot(array $payload): array
                 continue;
             }
 
+            $incoming_permission = raidlands_kits_clean_claim_permission($kit['RequiredPermission'] ?? '');
+
+            if ($incoming_permission === '' && $existing !== null) {
+                $incoming_permission = raidlands_kits_clean_claim_permission($existing['required_permission'] ?? '');
+            }
+
+            if ($incoming_permission === '') {
+                $incoming_permission = raidlands_kits_permission_from_name($name);
+            }
+
             $params = [
                 'kit_name' => $name,
                 'description' => raidlands_kits_clean_multiline($kit['Description'] ?? ''),
-                'required_permission' => raidlands_kits_clean_permission($kit['RequiredPermission'] ?? ''),
+                'required_permission' => $incoming_permission,
                 'maximum_uses' => raidlands_kits_int($kit['MaximumUses'] ?? 0, 0, 99999999),
                 'required_auth' => raidlands_kits_int($kit['RequiredAuth'] ?? 0, 0, 2),
                 'cooldown_seconds' => raidlands_kits_int($kit['Cooldown'] ?? 0, 0, 31536000),
@@ -1457,6 +1542,7 @@ function raidlands_kits_import_snapshot(array $payload): array
                 'wear' => array_map(static fn ($item) => is_array($item) ? $item : (array) $item, (array) ($kit['WearItems'] ?? [])),
                 'belt' => array_map(static fn ($item) => is_array($item) ? $item : (array) $item, (array) ($kit['BeltItems'] ?? [])),
             ]);
+            raidlands_kits_register_claim_permission($pdo, $incoming_permission);
 
             $imported += 1;
         }
@@ -1492,33 +1578,6 @@ function raidlands_kits_import_snapshot(array $payload): array
                 'reward_icon_url' => raidlands_kits_clean_image_path($reward['IconURL'] ?? ''),
                 'reward_permission' => raidlands_kits_clean_permission($reward['Permission'] ?? ''),
             ]);
-        }
-
-        if (is_array($group_access)) {
-            $groups_by_kit = [];
-
-            foreach ($group_access as $group => $permissions) {
-                $group = raidlands_kits_clean_group($group);
-
-                if ($group === '') {
-                    continue;
-                }
-
-                foreach ((array) $permissions as $permission) {
-                    $permission = raidlands_kits_clean_permission($permission);
-                    $lookup = $pdo->prepare('SELECT id FROM game_kits WHERE required_permission = :permission LIMIT 1');
-                    $lookup->execute(['permission' => $permission]);
-                    $kit_id = (int) ($lookup->fetchColumn() ?: 0);
-
-                    if ($kit_id > 0) {
-                        $groups_by_kit[$kit_id][] = $group;
-                    }
-                }
-            }
-
-            foreach ($groups_by_kit as $kit_id => $groups) {
-                raidlands_kits_save_groups($pdo, (int) $kit_id, $groups);
-            }
         }
 
         $pdo->prepare(
@@ -1605,62 +1664,59 @@ function raidlands_kits_recent_sync_rows(int $limit = 20): array
     );
 }
 
-function raidlands_kits_for_products(array $product_ids): array
+function raidlands_kits_active_by_permission(): array
 {
     if (!raidlands_kits_is_ready()) {
         return [];
     }
 
-    $product_ids = array_values(array_unique(array_filter(array_map('intval', $product_ids))));
+    $by_permission = [];
 
-    if ($product_ids === []) {
-        return [];
-    }
+    foreach (raidlands_kits_fetch_all(true) as $kit) {
+        $permission = raidlands_kits_clean_claim_permission($kit['required_permission'] ?? '');
 
-    $placeholders = implode(',', array_fill(0, count($product_ids), '?'));
-    $rows = raidlands_db_fetch_all(
-        "SELECT spk.product_id, gk.*
-         FROM store_product_kits spk
-         INNER JOIN game_kits gk ON gk.id = spk.kit_id
-         WHERE spk.product_id IN ($placeholders) AND gk.is_active = 1
-         ORDER BY spk.product_id ASC, spk.sort_order ASC, gk.sort_order ASC, gk.id ASC",
-        $product_ids
-    );
-
-    $kit_ids = array_values(array_unique(array_map(static fn (array $row): int => (int) $row['id'], $rows)));
-    $items_by_kit = [];
-
-    if ($kit_ids !== []) {
-        $kit_placeholders = implode(',', array_fill(0, count($kit_ids), '?'));
-        $items = raidlands_db_fetch_all(
-            "SELECT * FROM game_kit_items WHERE kit_id IN ($kit_placeholders) ORDER BY kit_id ASC, container_name ASC, position ASC, sort_order ASC",
-            $kit_ids
-        );
-
-        foreach ($items as $item) {
-            $items_by_kit[(int) $item['kit_id']][] = $item;
+        if ($permission === '') {
+            continue;
         }
+
+        $items = [];
+        foreach (['main', 'wear', 'belt'] as $container) {
+            foreach ((array) ($kit['items'][$container] ?? []) as $item) {
+                $items[] = $item;
+            }
+        }
+        $kit['items_flat'] = $items;
+        $by_permission[$permission] = $kit;
     }
 
-    $by_product = [];
-
-    foreach ($rows as $row) {
-        $product_id = (int) $row['product_id'];
-        $kit_id = (int) $row['id'];
-        $row['items_flat'] = $items_by_kit[$kit_id] ?? [];
-        $by_product[$product_id][] = $row;
-    }
-
-    return $by_product;
+    return $by_permission;
 }
 
 function raidlands_kits_attach_to_products(array $products): array
 {
-    $product_ids = array_map(static fn (array $product): int => (int) ($product['id'] ?? 0), $products);
-    $kits_by_product = raidlands_kits_for_products($product_ids);
+    $group_permissions = raidlands_kits_effective_group_permission_map();
+    $kits_by_permission = raidlands_kits_active_by_permission();
+    $permission_metadata = raidlands_kits_permission_metadata_map();
 
     foreach ($products as &$product) {
-        $product['linked_kits'] = $kits_by_product[(int) ($product['id'] ?? 0)] ?? [];
+        $permissions = raidlands_kits_permissions_for_product($product, $group_permissions);
+        $linked_kits = [];
+
+        foreach ($permissions as $permission) {
+            if (isset($kits_by_permission[$permission])) {
+                $linked_kits[] = $kits_by_permission[$permission];
+            }
+        }
+
+        usort($linked_kits, static function (array $left, array $right): int {
+            $sort = ((int) ($left['sort_order'] ?? 100)) <=> ((int) ($right['sort_order'] ?? 100));
+
+            return $sort !== 0 ? $sort : strnatcasecmp((string) ($left['kit_name'] ?? ''), (string) ($right['kit_name'] ?? ''));
+        });
+
+        $product['linked_kits'] = $linked_kits;
+        $product['linked_perks'] = raidlands_kits_permission_report($permissions, $permission_metadata, 8);
+        $product['derived_permissions'] = $permissions;
     }
     unset($product);
 

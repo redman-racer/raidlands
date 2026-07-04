@@ -2905,20 +2905,7 @@ function raidlands_store_admin_product_rows(): array
          ORDER BY product_id ASC, payment_method ASC, billing_interval ASC, access_duration_seconds ASC, id ASC',
         $params
     );
-    $kit_rows = [];
     $fulfillment_rows = [];
-
-    try {
-        $kit_rows = raidlands_db_fetch_all(
-            'SELECT product_id, kit_id
-             FROM store_product_kits
-             WHERE product_id IN (' . implode(', ', $placeholders) . ')
-             ORDER BY product_id ASC, sort_order ASC, kit_id ASC',
-            $params
-        );
-    } catch (Throwable $error) {
-        $kit_rows = [];
-    }
 
     try {
         $fulfillment_rows = raidlands_db_fetch_all(
@@ -2937,7 +2924,6 @@ function raidlands_store_admin_product_rows(): array
     $rp_by_product = [];
     $cash_pass_by_product = [];
     $cash_subscription_by_product = [];
-    $kits_by_product = [];
     $fulfillment_groups_by_product = [];
 
     foreach ($price_rows as $price_row) {
@@ -2953,10 +2939,6 @@ function raidlands_store_admin_product_rows(): array
         } else {
             $cash_subscription_by_product[$product_id][$billing_interval] = $price_row;
         }
-    }
-
-    foreach ($kit_rows as $kit_row) {
-        $kits_by_product[(int) $kit_row['product_id']][] = (int) $kit_row['kit_id'];
     }
 
     foreach ($fulfillment_rows as $fulfillment_row) {
@@ -2981,7 +2963,6 @@ function raidlands_store_admin_product_rows(): array
         $row['rp_prices'] = $rp_by_product[$product_id] ?? [];
         $row['cash_pass_prices'] = $cash_pass_by_product[$product_id] ?? [];
         $row['cash_subscription_prices'] = $cash_subscription_by_product[$product_id] ?? [];
-        $row['kit_ids'] = $kits_by_product[$product_id] ?? [];
     }
     unset($row);
 
@@ -2996,32 +2977,6 @@ function raidlands_store_admin_price_intervals(string $product_type): array
 function raidlands_store_admin_subscription_intervals(): array
 {
     return raidlands_store_offer_intervals(false);
-}
-
-function raidlands_store_admin_save_product_kit_links(PDO $pdo, int $product_id, array $kit_ids): void
-{
-    try {
-        $pdo->prepare('DELETE FROM store_product_kits WHERE product_id = :product_id')->execute(['product_id' => $product_id]);
-        $insert = $pdo->prepare(
-            'INSERT INTO store_product_kits (product_id, kit_id, sort_order)
-             VALUES (:product_id, :kit_id, :sort_order)
-             ON DUPLICATE KEY UPDATE sort_order = VALUES(sort_order), updated_at = NOW()'
-        );
-
-        foreach (array_values(array_unique(array_map('intval', $kit_ids))) as $index => $kit_id) {
-            if ($kit_id <= 0) {
-                continue;
-            }
-
-            $insert->execute([
-                'product_id' => $product_id,
-                'kit_id' => $kit_id,
-                'sort_order' => ($index + 1) * 10,
-            ]);
-        }
-    } catch (Throwable $error) {
-        // Older installs may not have kit tables yet. Store rows should still save.
-    }
 }
 
 function raidlands_store_admin_clean_fulfillment_groups($values, string $product_name): array
@@ -3500,9 +3455,6 @@ function raidlands_store_admin_save_product_rows($rows): void
                 raidlands_store_admin_save_offer_price($pdo, $product_id, $slug, 'cash_sub', $interval, (array) ($cash_subscription_rows[$interval] ?? []));
             }
 
-            if (array_key_exists('kit_ids', $row)) {
-                raidlands_store_admin_save_product_kit_links($pdo, $product_id, (array) ($row['kit_ids'] ?? []));
-            }
         }
 
         $pdo->commit();

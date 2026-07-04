@@ -2,6 +2,7 @@
 
 require_once $site_root . '/includes/store.php';
 require_once $site_root . '/includes/kits.php';
+require_once $site_root . '/includes/permissions.php';
 
 $store_flash = raidlands_store_flash();
 $store_catalog = raidlands_store_catalog(true);
@@ -74,7 +75,9 @@ function render_store_product_card(array $product, ?array $player, string $csrf,
     $has_linked_identity = $player !== null && !empty($player['steam_id64']);
     $has_checkout_player = $has_linked_identity && !empty($player['id']);
     $linked_kits = (array) ($product['linked_kits'] ?? []);
+    $linked_perks = (array) ($product['linked_perks'] ?? []);
     $kit_html = '';
+    $perk_html = '';
     $actions = '';
 
     if ($linked_kits !== []) {
@@ -115,6 +118,20 @@ function render_store_product_card(array $product, ?array $player, string $csrf,
         $kit_html .= '</div>';
     }
 
+    if ($linked_perks !== []) {
+        $perk_html .= '<div class="store-perk-details"><strong>Group perks</strong><div>';
+
+        foreach (array_slice($linked_perks, 0, 6) as $perk) {
+            $perk_html .= '<span>' . e((string) ($perk['label'] ?? $perk['permission'] ?? 'Permission')) . '</span>';
+        }
+
+        if (count($linked_perks) > 6) {
+            $perk_html .= '<span>+' . e((string) (count($linked_perks) - 6)) . ' more</span>';
+        }
+
+        $perk_html .= '</div></div>';
+    }
+
     if (!$has_linked_identity) {
         $actions = '<a class="btn btn-secondary" href="' . e(route_url('link')) . '">Connect Steam First</a>';
     } elseif (!$has_checkout_player) {
@@ -141,6 +158,7 @@ function render_store_product_card(array $product, ?array $player, string $csrf,
         . '<p class="card-copy">' . e((string) $product['short_description']) . '</p>'
         . '<div class="store-price"><strong>' . e($active_offer_count > 0 ? 'Offers available' : 'Pricing coming soon') . '</strong><span>' . e((string) $active_offer_count) . ' option' . ($active_offer_count === 1 ? '' : 's') . '</span></div>'
         . $kit_html
+        . $perk_html
         . '<ul class="store-mini-list">'
         . '<li>Purchases are attached to your connected Steam account.</li>'
         . '<li>Timed access ends automatically; lifetime access has no scheduled expiration.</li>'

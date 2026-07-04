@@ -82,25 +82,6 @@ namespace Oxide.Plugins
             public bool PermissionSyncEnabled = true;
             public int PermissionSyncIntervalSeconds = 180;
             public int KitDataBackupCount = 8;
-            public List<string> KitPermissionManagedGroups = new List<string>
-            {
-                "default",
-                "discord",
-                "rank_vip",
-                "rank_vip_plus",
-                "rank_mvp",
-                "rank_golden_vip",
-                "rank_diamond_vip",
-                "rank_ultimate_vip",
-                "rank_titan_vip",
-                "vip_bronze",
-                "vip_gold",
-                "vip_elite",
-                "claim_steam_name",
-                "claim_steam_group",
-                "claim_discord_member",
-                "claim_discord_booster"
-            };
             public List<string> KitPermissionPrefixes = new List<string>
             {
                 "kits.",
@@ -210,7 +191,6 @@ namespace Oxide.Plugins
             public long revision;
             public List<JObject> kits;
             public List<JObject> server_rewards_kits;
-            public JToken group_access;
         }
 
         private class KitResultResponse
@@ -446,11 +426,6 @@ namespace Oxide.Plugins
             if (config.KitDataBackupCount <= 0)
             {
                 config.KitDataBackupCount = defaults.KitDataBackupCount;
-            }
-
-            if (config.KitPermissionManagedGroups == null || config.KitPermissionManagedGroups.Count == 0)
-            {
-                config.KitPermissionManagedGroups = defaults.KitPermissionManagedGroups;
             }
 
             if (config.KitPermissionPrefixes == null || config.KitPermissionPrefixes.Count == 0)
@@ -1824,8 +1799,7 @@ namespace Oxide.Plugins
                     ["server_id"] = config.ServerId,
                     ["generated_at"] = DateTime.UtcNow.ToString("o"),
                     ["kits_data"] = ReadJsonFile(KitDataPath("Kits", "kits_data.json")),
-                    ["server_rewards"] = ReadJsonFile(KitDataPath("ServerRewards", "products.json")),
-                    ["groups"] = JObject.FromObject(CurrentKitGroupPermissions())
+                    ["server_rewards"] = ReadJsonFile(KitDataPath("ServerRewards", "products.json"))
                 }.ToString(Formatting.None);
                 var url = $"{TrimSlash(config.ApiBaseUrl)}/api/server/kits-snapshot.php";
 
@@ -2210,86 +2184,6 @@ namespace Oxide.Plugins
             products["ProductIndex"] = productIndex;
             products["Kits"] = merged;
             WriteJsonAtomic(path, products);
-        }
-
-        private void ApplyKitGroupAccess(Dictionary<string, List<string>> groupAccess)
-        {
-            var managedGroups = new HashSet<string>((config.KitPermissionManagedGroups ?? new List<string>())
-                .Where(group => IsKitManageableGroupName(group) && !IsDeletedManagedGroup(group)), StringComparer.OrdinalIgnoreCase);
-            var desiredByGroup = new Dictionary<string, HashSet<string>>(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var group in managedGroups)
-            {
-                if (!permission.GroupExists(group))
-                {
-                    permission.CreateGroup(group, group, 0);
-                }
-
-                desiredByGroup[group] = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
-            }
-
-            foreach (var entry in groupAccess ?? new Dictionary<string, List<string>>())
-            {
-                if (!managedGroups.Contains(entry.Key))
-                {
-                    continue;
-                }
-
-                foreach (var permissionName in entry.Value ?? new List<string>())
-                {
-                    var normalized = NormalizePermissionName(permissionName);
-
-                    if (IsSafeKitPermission(normalized))
-                    {
-                        desiredByGroup[entry.Key].Add(normalized);
-                    }
-                }
-            }
-
-            foreach (var group in managedGroups)
-            {
-                var desired = desiredByGroup[group];
-                var current = new HashSet<string>((permission.GetGroupPermissions(group, false) ?? new string[0])
-                    .Select(NormalizePermissionName)
-                    .Where(IsSafeKitPermission), StringComparer.OrdinalIgnoreCase);
-
-                foreach (var permissionName in desired)
-                {
-                    if (!current.Contains(permissionName))
-                    {
-                        GrantGroupPermissionVerified(group, permissionName);
-                    }
-                }
-
-                foreach (var permissionName in current)
-                {
-                    if (!desired.Contains(permissionName))
-                    {
-                        RevokeGroupPermissionVerified(group, permissionName);
-                    }
-                }
-            }
-        }
-
-        private Dictionary<string, List<string>> CurrentKitGroupPermissions()
-        {
-            var result = new Dictionary<string, List<string>>(StringComparer.OrdinalIgnoreCase);
-
-            foreach (var group in config.KitPermissionManagedGroups ?? new List<string>())
-            {
-                if (!IsKitManageableGroupName(group) || IsDeletedManagedGroup(group) || !permission.GroupExists(group))
-                {
-                    continue;
-                }
-
-                result[group] = (permission.GetGroupPermissions(group, false) ?? new string[0])
-                    .Where(IsSafeKitPermission)
-                    .Distinct(StringComparer.OrdinalIgnoreCase)
-                    .OrderBy(value => value)
-                    .ToList();
-            }
-
-            return result;
         }
 
         private void PostKitSyncResult(long revision, bool success, string message)
@@ -2863,14 +2757,6 @@ namespace Oxide.Plugins
                 }
             }
 
-            foreach (var group in config.KitPermissionManagedGroups ?? new List<string>())
-            {
-                if (IsGroupName(group) && !IsDeletedManagedGroup(group))
-                {
-                    result.Add(group.Trim());
-                }
-            }
-
             foreach (var group in PermissionStringEnumerable("GetGroups"))
             {
                 if (IsGroupName(group) && !IsDeletedManagedGroup(group))
@@ -3395,12 +3281,6 @@ namespace Oxide.Plugins
             int value;
 
             return token != null && int.TryParse(token.ToString(), out value) ? value : fallback;
-        }
-
-        private bool IsKitManageableGroupName(string group)
-        {
-            return IsGroupName(group) && !string.Equals(group, "admin", StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(group, "authenticated", StringComparison.OrdinalIgnoreCase);
         }
 
         private bool IsSafeKitPermission(string permissionName)

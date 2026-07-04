@@ -68,7 +68,7 @@ function raidlands_permissions_readiness_message(bool $admin = false): string
 
     if (!raidlands_permissions_is_ready()) {
         return $admin
-            ? 'Permission tables are not installed yet. Run database/migrations/008_oxide_permissions.sql, then database/migrations/014_kit_group_delete_tombstones.sql.'
+            ? 'Permission tables are not installed yet. Run database/migrations/008_oxide_permissions.sql, database/migrations/014_kit_group_delete_tombstones.sql, then database/migrations/021_group_owned_kit_permissions.sql.'
             : 'Group details are being prepared.';
     }
 
@@ -597,30 +597,6 @@ function raidlands_permissions_delete_blockers(PDO $pdo, string $group_name): ar
         }
     }
 
-    if (
-        raidlands_permissions_table_exists('game_kit_group_access')
-        && raidlands_permissions_table_exists('game_kits')
-        && raidlands_permissions_column_exists('game_kits', 'deleted_at')
-    ) {
-        $row = raidlands_db_fetch_one(
-            'SELECT COUNT(*) AS total
-             FROM game_kit_group_access gga
-             INNER JOIN game_kits gk ON gk.id = gga.kit_id
-             WHERE gga.oxide_group = :group_name
-               AND gga.is_granted = 1
-               AND gk.is_active = 1
-               AND gk.deleted_at IS NULL',
-            ['group_name' => $group_name]
-        );
-        $total = (int) ($row['total'] ?? 0);
-
-        if ($total > 0) {
-            $blockers[] = $total === 1
-                ? '1 active kit still grants access through this group.'
-                : $total . ' active kits still grant access through this group.';
-        }
-    }
-
     return $blockers;
 }
 
@@ -935,6 +911,57 @@ function raidlands_permissions_desired_map(): array
     return $map;
 }
 
+function raidlands_permissions_effective_desired_map(): array
+{
+    if (!raidlands_permissions_is_ready()) {
+        return [];
+    }
+
+    $group_permissions = raidlands_permissions_desired_map();
+    $parent_map = [];
+
+    foreach (raidlands_permissions_group_rows() as $group) {
+        if (empty($group['is_managed']) || empty($group['is_active']) || !empty($group['is_read_only'])) {
+            continue;
+        }
+
+        $group_name = raidlands_permissions_clean_group($group['group_name'] ?? '');
+
+        if ($group_name === '') {
+            continue;
+        }
+
+        $parent_map[$group_name] = raidlands_permissions_clean_group($group['parent_group'] ?? '');
+
+        if (!isset($group_permissions[$group_name])) {
+            $group_permissions[$group_name] = [];
+        }
+    }
+
+    return raidlands_permissions_flatten_group_permissions($group_permissions, $parent_map);
+}
+
+function raidlands_permissions_permission_metadata_map(): array
+{
+    $map = [];
+
+    foreach (raidlands_permissions_permission_rows() as $row) {
+        $permission = raidlands_permissions_clean_permission($row['permission_name'] ?? '');
+
+        if ($permission === '') {
+            continue;
+        }
+
+        $map[$permission] = [
+            'plugin_name' => raidlands_permissions_clean_text($row['plugin_name'] ?? '', 120),
+            'permission_prefix' => raidlands_permissions_permission_prefix($permission),
+            'source' => raidlands_permissions_clean_text($row['source'] ?? '', 40),
+        ];
+    }
+
+    return $map;
+}
+
 function raidlands_permissions_flatten_group_permissions(array $group_permissions, array $parent_map): array
 {
     $resolved = [];
@@ -1007,23 +1034,6 @@ function raidlands_permissions_sync_payload(?int $revision = null): array
 
         if (!isset($group_permissions[$group_name])) {
             $group_permissions[$group_name] = [];
-        }
-    }
-
-    if (function_exists('raidlands_kits_is_ready') && raidlands_kits_is_ready()) {
-        $kit_payload = raidlands_kits_sync_payload();
-
-        foreach ((array) ($kit_payload['group_access'] ?? []) as $group => $permissions) {
-            $group = raidlands_permissions_clean_group($group);
-
-            if ($group === '' || !isset($group_permissions[$group])) {
-                continue;
-            }
-
-            foreach ((array) $permissions as $permission) {
-                $permission = raidlands_permissions_clean_permission($permission);
-                $group_permissions[$group][] = $permission;
-            }
         }
     }
 

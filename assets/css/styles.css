@@ -2936,6 +2936,35 @@ h3,
   line-height: 1.4;
 }
 
+.store-perk-details {
+  display: grid;
+  gap: 10px;
+  margin: 14px 0 0;
+  padding: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(0, 0, 0, 0.16);
+}
+
+.store-perk-details > strong {
+  color: var(--white);
+  font-size: 0.82rem;
+  text-transform: uppercase;
+}
+
+.store-perk-details > div {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.store-perk-details span {
+  padding: 7px 9px;
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  color: var(--muted);
+  font-size: 0.76rem;
+  line-height: 1.1;
+}
+
 .store-card-actions {
   display: grid;
   gap: 10px;
@@ -4970,6 +4999,64 @@ button.admin-permission-chip:focus-visible {
 .admin-permission-chip[aria-disabled="true"] {
   color: var(--muted);
   cursor: default;
+}
+
+.admin-prefixed-input {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  align-items: center;
+  border: 1px solid rgba(181, 170, 160, .25);
+  background: rgba(0, 0, 0, .22);
+}
+
+.admin-prefixed-input span {
+  align-self: stretch;
+  display: inline-flex;
+  align-items: center;
+  padding: 0 12px;
+  border-right: 1px solid rgba(181, 170, 160, .2);
+  color: var(--orange);
+  font-family: Consolas, "Courier New", monospace;
+  font-size: .88rem;
+  font-weight: 900;
+}
+
+.admin-prefixed-input input {
+  border: 0;
+  background: transparent;
+}
+
+.admin-prefixed-input:focus-within {
+  border-color: rgba(255, 138, 40, .65);
+  box-shadow: 0 0 0 3px rgba(255, 138, 40, .10);
+}
+
+.admin-kit-permission-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 10px;
+}
+
+.admin-derived-product-list {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-derived-product {
+  display: grid;
+  gap: 4px;
+  padding: 10px 12px;
+  border: 1px solid rgba(181, 170, 160, .18);
+  background: rgba(0, 0, 0, .22);
+}
+
+.admin-derived-product strong {
+  color: var(--white);
+}
+
+.admin-derived-product small {
+  color: var(--muted);
+  overflow-wrap: anywhere;
 }
 
 .admin-permission-tabs {

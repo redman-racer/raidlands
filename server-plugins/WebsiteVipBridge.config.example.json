@@ -39,24 +39,6 @@
     "PermissionSyncEnabled":  true,
     "PermissionSyncIntervalSeconds":  180,
     "KitDataBackupCount":  8,
-    "KitPermissionManagedGroups":  [
-                                       "default",
-                                       "discord",
-                                       "rank_vip",
-                                       "rank_vip_plus",
-                                       "rank_mvp",
-                                       "rank_golden_vip",
-                                       "rank_diamond_vip",
-                                       "rank_ultimate_vip",
-                                       "rank_titan_vip",
-                                       "vip_bronze",
-                                       "vip_gold",
-                                       "vip_elite",
-                                       "claim_steam_name",
-                                       "claim_steam_group",
-                                       "claim_discord_member",
-                                       "claim_discord_booster"
-                                   ],
     "KitPermissionPrefixes":  [
                                   "kits.",
                                   "serverrewards."

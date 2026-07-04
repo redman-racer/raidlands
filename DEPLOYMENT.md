@@ -124,6 +124,7 @@ the host or upload it through a private channel.
    - `database/migrations/018_store_bundle_offer_matrix.sql`
    - `database/migrations/019_raidlands_vip_kits_permissions_seed.sql`
    - `database/migrations/020_store_product_fulfillment_groups.sql`
+   - `database/migrations/021_group_owned_kit_permissions.sql`
    - `database/seeds/001_store_products.sql`
 
    Then configure RP costs, cash amounts, and Stripe Price IDs in `/admin/?section=store`.

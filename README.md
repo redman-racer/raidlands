@@ -88,11 +88,12 @@ The store uses MySQL as the source of truth, Stripe Checkout for cash purchases,
 19. Run `database/migrations/018_store_bundle_offer_matrix.sql`.
 20. Run `database/migrations/019_raidlands_vip_kits_permissions_seed.sql`.
 21. Run `database/migrations/020_store_product_fulfillment_groups.sql`.
-22. Run `database/seeds/001_store_products.sql`.
-23. Copy `.env.example` to `.env`.
-24. Fill in MySQL, Stripe, Steam API, bridge secret, and clan API limit values.
-25. Add at least one owner SteamID64 to `admin_users` and `admin_user_roles`.
-26. Configure product RP costs and Stripe Price IDs in `/admin/?section=store`.
+22. Run `database/migrations/021_group_owned_kit_permissions.sql`.
+23. Run `database/seeds/001_store_products.sql`.
+24. Copy `.env.example` to `.env`.
+25. Fill in MySQL, Stripe, Steam API, bridge secret, and clan API limit values.
+26. Add at least one owner SteamID64 to `admin_users` and `admin_user_roles`.
+27. Configure product RP costs and Stripe Price IDs in `/admin/?section=store`.
 
 Public store flow:
 
