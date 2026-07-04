@@ -3035,7 +3035,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                     <section class="admin-section">
                       <div class="admin-subsection-head">
                         <h3>Group editor</h3>
-                        <p>Save Draft keeps desired permissions on the website. Publish sends the composed group and kit permissions to Rust on the next bridge sync.</p>
+                          <p>Save Draft keeps desired permissions on the website. Publish sends kit access plus every selected non-kit plugin permission to Rust on the next bridge sync.</p>
                       </div>
                       <div class="admin-group-editor-shell" data-admin-group-editor>
                         <div class="admin-group-panels">
@@ -3100,7 +3100,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
 
                             $active_permission_group = $permission_catalog_groups[$active_permission_prefix] ?? null;
                             $active_permission_label = 'Permission category';
-                            $active_permission_meta = count($admin_direct_permission_options) . ' direct permissions available';
+                            $active_permission_meta = count($admin_direct_permission_options) . ' non-kit permissions available';
 
                             if (is_array($active_permission_group)) {
                                 $active_permission_rows = (array) ($active_permission_group['permissions'] ?? []);
@@ -3119,6 +3119,10 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             class="admin-repeat-card admin-group-card admin-group-panel<?= $group_is_active_panel ? ' is-active' : '' ?>"
                             data-group-panel
                             data-group-index="<?= e((string) $index) ?>"
+                            data-group-read-only="<?= $is_read_only ? '1' : '0' ?>"
+                            data-group-forced-protected="<?= $is_forced_protected ? '1' : '0' ?>"
+                            data-group-initial-drift="<?= ($missing_live !== [] || $extra_live !== []) ? '1' : '0' ?>"
+                            data-group-live-count="<?= e((string) count($live_permissions)) ?>"
                             <?= $group_is_active_panel ? '' : 'hidden' ?>>
                             <input type="hidden" name="permission_groups[<?= e((string) $index) ?>][id]" value="<?= e((string) ($row['id'] ?? '')) ?>">
                             <div class="admin-repeat-card-head">
@@ -3127,7 +3131,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 <?php if ($is_read_only) : ?>
                                   <p class="admin-feedback-subtitle">Read-only system group. The website will snapshot this group but will not publish changes for it.</p>
                                 <?php elseif ($missing_live !== [] || $extra_live !== []) : ?>
-                                  <p class="admin-feedback-subtitle">Live drift: <?= e((string) count($missing_live)) ?> missing / <?= e((string) count($extra_live)) ?> extra direct grants.</p>
+                                  <p class="admin-feedback-subtitle">Live drift: <?= e((string) count($missing_live)) ?> missing / <?= e((string) count($extra_live)) ?> extra permission grants.</p>
                                 <?php else : ?>
                                   <p class="admin-feedback-subtitle">Desired permissions match the latest live snapshot.</p>
                                 <?php endif; ?>
@@ -3177,7 +3181,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               </label>
                               <label class="admin-check admin-check-field">
                                 <input type="checkbox" name="permission_groups[<?= e((string) $index) ?>][is_protected]" value="1" <?= $is_protected ? 'checked' : '' ?> <?= $is_forced_protected ? 'disabled' : '' ?>>
-                                <?= admin_check_copy('Protected', 'Protected groups are guarded for structure changes. Direct grants remain editable unless the group is read-only. Clear this and save to return a custom group to normal edit mode.') ?>
+                                <?= admin_check_copy('Protected', 'Protected groups are guarded for structure changes. Non-kit grants remain editable unless the group is read-only. Clear this and save to return a custom group to normal edit mode.') ?>
                               </label>
                               <label class="admin-field admin-span-all">
                                 <?= admin_field_head('Notes', 'Admin-only context for why this group exists or what it should unlock.') ?>
@@ -3189,23 +3193,23 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               <div class="admin-group-edit-status is-locked">
                                 <span>Edit status</span>
                                 <strong>Read-only system group</strong>
-                                <p>Direct grants are locked for <code><?= e($group_name) ?></code>. Use a managed group such as a VIP, perk, or custom group when you need to add or remove permissions.</p>
+                                <p>Permission grants are locked for <code><?= e($group_name) ?></code>. Use a managed group such as a VIP, perk, or custom group when you need to add or remove permissions.</p>
                               </div>
                             <?php elseif ($is_protected) : ?>
                               <div class="admin-group-edit-status is-protected">
                                 <span>Edit status</span>
                                 <strong>Protected group</strong>
                                 <?php if ($is_forced_protected) : ?>
-                                  <p><code><?= e($group_name) ?></code> is protected by its group name. Direct grants below can still be selected, but title, rank, and parent changes are guarded; use a custom managed group if you need normal structural editing.</p>
+                                  <p><code><?= e($group_name) ?></code> is protected by its group name. Non-kit grants below can still be selected, but title, rank, and parent changes are guarded; use a custom managed group if you need normal structural editing.</p>
                                 <?php else : ?>
-                                  <p>Protected is on for this group. Direct grants below can still be selected; to return this group to normal edit mode, clear Protected and then Save Draft or Publish.</p>
+                                  <p>Protected is on for this group. Non-kit grants below can still be selected; to return this group to normal edit mode, clear Protected and then Save Draft or Publish.</p>
                                 <?php endif; ?>
                               </div>
                             <?php else : ?>
                               <div class="admin-group-edit-status is-editable">
                                 <span>Edit status</span>
                                 <strong>Editable managed group</strong>
-                                <p>Direct grants below can be added or removed, then saved as a draft or published to the server.</p>
+                                <p>Non-kit grants below can be added or removed, then saved as a draft or published to the server.</p>
                               </div>
                             <?php endif; ?>
 
@@ -3232,7 +3236,10 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                       $permission_classes .= !$permission_selected && $permission_live ? ' is-extra-live' : '';
                                       $permission_classes .= $is_read_only ? ' is-disabled' : '';
                                     ?>
-                                    <label class="<?= e($permission_classes) ?>">
+                                    <label
+                                      class="<?= e($permission_classes) ?>"
+                                      data-permission-name="<?= e($permission_name) ?>"
+                                      data-permission-live="<?= $permission_live ? '1' : '0' ?>">
                                       <input
                                         type="checkbox"
                                         name="permission_groups[<?= e((string) $index) ?>][permissions][]"
@@ -3250,21 +3257,21 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             </details>
 
                             <details class="admin-details" <?= $group_name !== '' && !$is_read_only ? 'open' : '' ?>>
-                              <summary>Direct permissions <small><?= e((string) count($direct_desired_permissions)) ?> desired / <?= e((string) count($direct_live_permissions)) ?> live</small></summary>
+                              <summary>Other permissions and perks <small><?= e((string) count($direct_desired_permissions)) ?> desired / <?= e((string) count($direct_live_permissions)) ?> live</small></summary>
                               <?php if ($is_read_only) : ?>
-                                <div class="admin-alert warning">This system group is snapshot-only. Direct grants are visible in live drift checks but are not editable from the website.</div>
+                                <div class="admin-alert warning">This system group is snapshot-only. Non-kit grants are visible in live drift checks but are not editable from the website.</div>
                               <?php elseif ($is_protected) : ?>
                                 <?php if ($is_forced_protected) : ?>
-                                  <div class="admin-alert warning">Protected is locked on for this built-in group. Direct grant rows are still editable; for full normal group editing, create or choose a custom managed group.</div>
+                                  <div class="admin-alert warning">Protected is locked on for this built-in group. Non-kit grant rows are still editable; for full normal group editing, create or choose a custom managed group.</div>
                                 <?php else : ?>
-                                  <div class="admin-alert warning">Protected is on. If you want this group to behave like a normal editable group, clear Protected above and save. Direct grant rows remain editable here.</div>
+                                  <div class="admin-alert warning">Protected is on. If you want this group to behave like a normal editable group, clear Protected above and save. Non-kit grant rows remain editable here.</div>
                                 <?php endif; ?>
                               <?php endif; ?>
                               <div class="admin-permission-workbench" data-permission-workbench>
                                 <div class="admin-permission-toolbar">
                                   <label class="admin-field admin-permission-search">
-                                    <?= admin_field_head('Find permissions', 'Filter the active permission tab by plugin prefix, plugin name, or exact permission.') ?>
-                                    <input type="search" data-permission-search placeholder="backpacks, teleport, kits.raid" autocomplete="off">
+                                    <?= admin_field_head('Find non-kit permissions', 'Filter the active permission category by plugin prefix, plugin name, or exact permission. Kit permissions are managed in Kit access above.') ?>
+                                    <input type="search" data-permission-search placeholder="backpacks, teleport, queue" autocomplete="off">
                                   </label>
                                   <label class="admin-check admin-permission-filter">
                                     <input type="checkbox" data-permission-selected-only autocomplete="off">
@@ -3278,7 +3285,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
 
                                 <div class="admin-permission-selected" data-permission-selected-wrap>
                                   <div class="admin-permission-selected-head">
-                                    <span>Selected direct grants</span>
+                                    <span>Selected non-kit grants</span>
                                     <small data-permission-selected-summary><?= e((string) count($direct_desired_permissions)) ?> selected</small>
                                   </div>
                                   <div class="admin-permission-chip-list" data-permission-selected-list></div>
@@ -3286,7 +3293,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
 
                                 <div class="admin-permission-section-picker">
                                   <label class="admin-field admin-permission-prefix-select">
-                                    <?= admin_field_head('Grant category', 'Choose the plugin or permission prefix to browse.') ?>
+                                    <?= admin_field_head('Permission category', 'Choose the non-kit plugin or permission prefix to browse.') ?>
                                     <select data-permission-prefix-select autocomplete="off" aria-label="Permission grant category">
                                       <?php foreach ($permission_catalog_groups as $prefix_group) : ?>
                                         <?php
@@ -3421,8 +3428,8 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                             data-permission-plugin="<?= e($permission_plugin) ?>"
                                             data-permission-live="<?= $permission_live ? '1' : '0' ?>"
                                             <?php if ($is_read_only) : ?>
-                                              data-guard-title="Direct grant locked"
-                                              data-guard-message="<?= e('This permission belongs to ' . $group_name . ', which is a read-only system group. Use a managed VIP, perk, or custom group when you need to add or remove direct grants.') ?>"
+                                              data-guard-title="Permission grant locked"
+                                              data-guard-message="<?= e('This permission belongs to ' . $group_name . ', which is a read-only system group. Use a managed VIP, perk, or custom group when you need to add or remove non-kit grants.') ?>"
                                               title="<?= e('Read-only system group. Click for why this grant cannot be changed.') ?>"
                                             <?php endif; ?>>
                                             <input
@@ -3443,7 +3450,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 </div>
 
                                 <label class="admin-field admin-permission-custom">
-                                  <?= admin_field_head('Custom permissions', 'One permission per line for live permissions not listed above yet.') ?>
+                                  <?= admin_field_head('Custom non-kit permissions', 'One plugin.permission per line for permissions not listed above yet. Kit permissions should be added from Kit access.') ?>
                                   <textarea name="permission_groups[<?= e((string) $index) ?>][custom_permissions]" rows="3" placeholder="plugin.permission" <?= $is_read_only ? 'disabled' : '' ?>><?= e(implode("\n", $custom_permissions)) ?></textarea>
                                 </label>
                               </div>
@@ -3459,18 +3466,72 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             </div>
                             <button class="btn btn-secondary" type="button" data-group-add>Add Group</button>
                           </div>
+                          <div class="admin-group-picker-controls">
+                            <label class="admin-field">
+                              <span>Search</span>
+                              <input type="search" maxlength="140" placeholder="Name, category, permission, or notes" data-group-search>
+                            </label>
+                            <div class="admin-group-filter-grid">
+                              <label class="admin-field">
+                                <span>Category</span>
+                                <select data-group-category-filter>
+                                  <option value="">All categories</option>
+                                  <?= admin_render_options(['public', 'vip', 'perk', 'store', 'system', 'snapshot', 'custom'], '') ?>
+                                </select>
+                              </label>
+                              <label class="admin-field">
+                                <span>State</span>
+                                <select data-group-status-filter>
+                                  <option value="">Any state</option>
+                                  <option value="active">Active</option>
+                                  <option value="inactive">Inactive</option>
+                                  <option value="protected">Protected</option>
+                                  <option value="read-only">Read-only</option>
+                                  <option value="draft">Draft slot</option>
+                                  <option value="drift">Drift only</option>
+                                  <option value="synced">No drift</option>
+                                </select>
+                              </label>
+                              <label class="admin-field">
+                                <span>Sort</span>
+                                <select data-group-sort>
+                                  <option value="order">Admin order</option>
+                                  <option value="name">Name A-Z</option>
+                                  <option value="category">Category</option>
+                                  <option value="status">State</option>
+                                  <option value="grants">Most grants</option>
+                                  <option value="drift">Drift first</option>
+                                </select>
+                              </label>
+                              <button class="btn btn-secondary admin-group-filter-reset" type="button" data-group-reset>Clear</button>
+                            </div>
+                            <p class="admin-group-filter-count" data-group-result-count><?= e((string) $permission_group_total) ?> groups shown</p>
+                            <div class="admin-alert warning admin-group-empty" data-group-empty hidden>No groups match these controls.</div>
+                          </div>
                           <div class="admin-group-picker-list">
                             <?php for ($selector_index = 0; $selector_index < $permission_group_total; $selector_index += 1) : ?>
                               <?php
                                 $selector_row = $permission_group_rows[$selector_index] ?? [
                                     'id' => '',
                                     'group_name' => '',
+                                    'title' => '',
+                                    'parent_group' => '',
+                                    'category' => 'custom',
+                                    'sort_order' => 100,
+                                    'notes' => '',
                                     'desired_permissions' => [],
                                     'live_permissions' => [],
                                     'is_read_only' => 0,
                                     'is_active' => 1,
                                 ];
                                 $selector_name = trim((string) ($selector_row['group_name'] ?? ''));
+                                $selector_category = strtolower(trim((string) ($selector_row['category'] ?? 'custom'))) ?: 'custom';
+                                $selector_category_options = ['public', 'vip', 'perk', 'store', 'system', 'snapshot', 'custom'];
+
+                                if (!in_array($selector_category, $selector_category_options, true)) {
+                                    $selector_category = 'custom';
+                                }
+
                                 $selector_desired_permissions = array_values(array_unique(array_map('strval', (array) ($selector_row['desired_permissions'] ?? []))));
                                 $selector_live_permissions = array_values(array_unique(array_map('strval', (array) ($selector_row['live_permissions'] ?? []))));
                                 $selector_missing_live = array_values(array_diff($selector_desired_permissions, $selector_live_permissions));
@@ -3485,6 +3546,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                     : ($selector_is_read_only
                                         ? 'Read-only'
                                         : ($selector_is_protected ? 'Protected' : (empty($selector_row['is_active']) ? 'Inactive' : 'Active')));
+                                $selector_status_value = strtolower(str_replace(' ', '-', $selector_state));
                                 $selector_classes = 'admin-group-picker-button';
                                 $selector_classes .= $selector_is_active ? ' is-active' : '';
                                 $selector_classes .= $selector_has_drift ? ' has-drift' : '';
@@ -3500,10 +3562,18 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 } elseif ($selector_is_protected) {
                                     $selector_title = $selector_is_forced_protected ? 'Protected built-in group' : 'Protected group';
                                     $selector_message = $selector_is_forced_protected
-                                        ? 'The ' . ($selector_name !== '' ? $selector_name : 'selected') . ' group is protected by its group name. Direct grants can be reviewed, but normal structural editing is guarded; use a custom managed group for fully editable behavior.'
+                                        ? 'The ' . ($selector_name !== '' ? $selector_name : 'selected') . ' group is protected by its group name. Non-kit grants can be reviewed, but normal structural editing is guarded; use a custom managed group for fully editable behavior.'
                                         : 'Protected is turned on for ' . ($selector_name !== '' ? $selector_name : 'this group') . '. Clear the Protected checkbox and save if you want it to behave like a normal editable group.';
                                     $selector_tooltip = 'Protected group. Click for what is guarded and how to change it.';
                                 }
+                                $selector_search = trim(implode(' ', array_filter(array_merge([
+                                    $selector_name,
+                                    (string) ($selector_row['title'] ?? ''),
+                                    (string) ($selector_row['parent_group'] ?? ''),
+                                    $selector_category,
+                                    $selector_state,
+                                    (string) ($selector_row['notes'] ?? ''),
+                                ], $selector_desired_permissions, $selector_live_permissions))));
                                 $selector_meta = e((string) count($selector_desired_permissions)) . ' desired / ' . e((string) count($selector_live_permissions)) . ' live / ' . e($selector_state . ($selector_has_drift ? ' / Drift' : ''));
                               ?>
                               <button
@@ -3511,6 +3581,13 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 type="button"
                                 data-group-select
                                 data-group-index="<?= e((string) $selector_index) ?>"
+                                data-group-category="<?= e($selector_category) ?>"
+                                data-group-status="<?= e($selector_status_value) ?>"
+                                data-group-drift="<?= $selector_has_drift ? '1' : '0' ?>"
+                                data-group-sort-order="<?= e((string) ($selector_row['sort_order'] ?? 100)) ?>"
+                                data-group-desired-count="<?= e((string) count($selector_desired_permissions)) ?>"
+                                data-group-live-count="<?= e((string) count($selector_live_permissions)) ?>"
+                                data-group-search="<?= e($selector_search) ?>"
                                 <?php if ($selector_title !== '') : ?>
                                   data-guard-title="<?= e($selector_title) ?>"
                                   data-guard-message="<?= e($selector_message) ?>"
@@ -3520,7 +3597,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 <?php endif; ?>
                                 <?= $selector_is_active ? 'aria-current="true"' : '' ?>>
                                 <span data-group-select-label><?= e($selector_name !== '' ? $selector_name : 'New Group') ?></span>
-                                <small><?= $selector_meta ?></small>
+                                <small data-group-select-meta><?= $selector_meta ?></small>
                               </button>
                             <?php endfor; ?>
                           </div>

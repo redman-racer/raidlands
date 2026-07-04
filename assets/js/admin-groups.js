@@ -113,15 +113,210 @@
     guardModalReturnFocus = null;
   }
 
+  function normalize(value) {
+    return String(value || "").trim().toLowerCase();
+  }
+
+  function plainText(value) {
+    return String(value || "").replace(/\s+/g, " ").trim();
+  }
+
+  function numberValue(element, attribute, fallback) {
+    const value = Number(element.getAttribute(attribute) || fallback || 0);
+
+    return Number.isFinite(value) ? value : 0;
+  }
+
+  function selectedOptionText(select) {
+    const option = select && select.options ? select.options[select.selectedIndex] : null;
+
+    return option ? option.text.trim() : "";
+  }
+
   function initGroupEditor(editor) {
     const panels = toArray(editor.querySelectorAll("[data-group-panel]"));
     const selectors = toArray(editor.querySelectorAll("[data-group-select]"));
     const addButton = editor.querySelector("[data-group-add]");
+    const list = editor.querySelector(".admin-group-picker-list");
+    const search = editor.querySelector("[data-group-search]");
+    const categoryFilter = editor.querySelector("[data-group-category-filter]");
+    const statusFilter = editor.querySelector("[data-group-status-filter]");
+    const sortSelect = editor.querySelector("[data-group-sort]");
+    const resetButton = editor.querySelector("[data-group-reset]");
+    const resultCount = editor.querySelector("[data-group-result-count]");
+    const empty = editor.querySelector("[data-group-empty]");
     const activePanel = panels.find(panel => panel.classList.contains("is-active")) || panels[0];
     let activeIndex = activePanel ? activePanel.getAttribute("data-group-index") || "0" : "0";
 
     function selectorByIndex(index) {
       return selectors.find(selector => selector.getAttribute("data-group-index") === String(index));
+    }
+
+    function groupInput(panel, suffix) {
+      return panel.querySelector(`input[name$="[${suffix}]"], select[name$="[${suffix}]"], textarea[name$="[${suffix}]"]`);
+    }
+
+    function statusLabel(status) {
+      if (status === "read-only") {
+        return "Read-only";
+      }
+
+      if (status === "draft") {
+        return "Draft";
+      }
+
+      return status ? status.charAt(0).toUpperCase() + status.slice(1) : "Active";
+    }
+
+    function groupStatus(panel) {
+      const idInput = groupInput(panel, "id");
+
+      if (!idInput || !plainText(idInput.value)) {
+        return "draft";
+      }
+
+      if (panel.getAttribute("data-group-read-only") === "1") {
+        return "read-only";
+      }
+
+      const protectedInput = groupInput(panel, "is_protected");
+
+      if (protectedInput && protectedInput.checked) {
+        return "protected";
+      }
+
+      const activeInput = groupInput(panel, "is_active");
+
+      return activeInput && activeInput.checked ? "active" : "inactive";
+    }
+
+    function customPermissionLines(panel) {
+      const custom = panel.querySelector(".admin-permission-custom textarea");
+
+      return plainText(custom ? custom.value : "")
+        .split(/\s+/)
+        .map(plainText)
+        .filter(Boolean);
+    }
+
+    function permissionSummary(panel) {
+      const options = toArray(panel.querySelectorAll(".admin-permission-option"));
+      const custom = customPermissionLines(panel);
+      const liveFallback = Number(panel.getAttribute("data-group-live-count") || 0);
+      let desired = custom.length;
+      let live = Number.isFinite(liveFallback) ? liveFallback : 0;
+      let optionLiveCount = 0;
+      let drift = panel.getAttribute("data-group-initial-drift") === "1" || custom.length > 0;
+
+      options.forEach(option => {
+        const input = option.querySelector('input[type="checkbox"]');
+        const isLive = option.getAttribute("data-permission-live") === "1";
+
+        if (!input) {
+          return;
+        }
+
+        if (isLive) {
+          optionLiveCount += 1;
+        }
+
+        if (input.checked) {
+          desired += 1;
+        }
+
+        if ((input.checked && !isLive) || (!input.checked && isLive)) {
+          drift = true;
+        }
+      });
+
+      if (live === 0 && optionLiveCount > 0) {
+        live = optionLiveCount;
+      }
+
+      return { desired, live, drift };
+    }
+
+    function permissionSearchParts(panel) {
+      const parts = [];
+
+      toArray(panel.querySelectorAll(".admin-permission-option")).forEach(option => {
+        const input = option.querySelector('input[type="checkbox"]');
+        const isLive = option.getAttribute("data-permission-live") === "1";
+
+        if (input && (input.checked || isLive)) {
+          parts.push(input.value);
+        }
+      });
+
+      customPermissionLines(panel).forEach(permission => parts.push(permission));
+
+      return parts;
+    }
+
+    function selectorSearchText(panel, categoryLabel, status) {
+      const parts = [categoryLabel, statusLabel(status)];
+
+      ["group_name", "title", "parent_group", "category", "notes"].forEach(suffix => {
+        const control = groupInput(panel, suffix);
+
+        if (control) {
+          parts.push(control.value);
+        }
+      });
+
+      permissionSearchParts(panel).forEach(permission => parts.push(permission));
+
+      return parts.map(plainText).filter(Boolean).join(" ");
+    }
+
+    function updateSelectorFromPanel(panel) {
+      const index = panel.getAttribute("data-group-index") || "0";
+      const selector = selectorByIndex(index);
+
+      if (!selector) {
+        return;
+      }
+
+      const nameInput = groupInput(panel, "group_name");
+      const categorySelect = groupInput(panel, "category");
+      const sortInput = groupInput(panel, "sort_order");
+      const title = plainText(nameInput ? nameInput.value : "") || "New Group";
+      const category = plainText(categorySelect ? categorySelect.value : "") || "custom";
+      const categoryLabel = selectedOptionText(categorySelect) || category;
+      const status = groupStatus(panel);
+      const summary = permissionSummary(panel);
+      const metaText = `${summary.desired} desired / ${summary.live} live / ${statusLabel(status)}${summary.drift ? " / Drift" : ""}`;
+      const heading = panel.querySelector("[data-group-card-title]");
+      const label = selector.querySelector("[data-group-select-label]");
+      const meta = selector.querySelector("[data-group-select-meta]");
+      const subtitle = panel.querySelector(".admin-feedback-subtitle");
+
+      if (heading) {
+        heading.textContent = title;
+      }
+
+      if (label) {
+        label.textContent = title;
+      }
+
+      if (meta) {
+        meta.textContent = metaText;
+      }
+
+      if (subtitle && status !== "read-only") {
+        subtitle.textContent = summary.drift
+          ? "Live drift: desired permissions differ from the latest snapshot."
+          : "Desired permissions match the latest live snapshot.";
+      }
+
+      selector.classList.toggle("has-drift", summary.drift);
+      selector.setAttribute("data-group-category", category);
+      selector.setAttribute("data-group-status", status);
+      selector.setAttribute("data-group-drift", summary.drift ? "1" : "0");
+      selector.setAttribute("data-group-sort-order", sortInput ? String(sortInput.value || "100") : "100");
+      selector.setAttribute("data-group-desired-count", String(summary.desired));
+      selector.setAttribute("data-group-live-count", String(summary.live));
+      selector.setAttribute("data-group-search", selectorSearchText(panel, categoryLabel, status));
     }
 
     function activateGroup(index) {
@@ -147,6 +342,158 @@
       });
     }
 
+    function groupFilters() {
+      return {
+        query: normalize(search ? search.value : ""),
+        category: categoryFilter ? String(categoryFilter.value || "") : "",
+        status: statusFilter ? String(statusFilter.value || "") : "",
+        sort: sortSelect ? String(sortSelect.value || "order") : "order"
+      };
+    }
+
+    function selectorLabel(selector) {
+      const label = selector.querySelector("[data-group-select-label]");
+
+      return label ? plainText(label.textContent) : "";
+    }
+
+    function sortSelectors(sortMode) {
+      const statusRank = {
+        active: 10,
+        protected: 20,
+        inactive: 30,
+        "read-only": 40,
+        draft: 50
+      };
+
+      function draftRank(selector) {
+        return selector.getAttribute("data-group-status") === "draft" ? 1 : 0;
+      }
+
+      function byTitle(a, b) {
+        return selectorLabel(a).localeCompare(selectorLabel(b));
+      }
+
+      function byAdminOrder(a, b) {
+        return draftRank(a) - draftRank(b)
+          || numberValue(a, "data-group-sort-order", 100) - numberValue(b, "data-group-sort-order", 100)
+          || byTitle(a, b);
+      }
+
+      return selectors.slice().sort((a, b) => {
+        if (sortMode === "name") {
+          return byTitle(a, b) || byAdminOrder(a, b);
+        }
+
+        if (sortMode === "category") {
+          return String(a.getAttribute("data-group-category") || "").localeCompare(String(b.getAttribute("data-group-category") || ""))
+            || byAdminOrder(a, b);
+        }
+
+        if (sortMode === "status") {
+          return (statusRank[a.getAttribute("data-group-status") || "draft"] || 99) - (statusRank[b.getAttribute("data-group-status") || "draft"] || 99)
+            || byAdminOrder(a, b);
+        }
+
+        if (sortMode === "grants") {
+          return numberValue(b, "data-group-desired-count", 0) - numberValue(a, "data-group-desired-count", 0)
+            || byAdminOrder(a, b);
+        }
+
+        if (sortMode === "drift") {
+          return numberValue(b, "data-group-drift", 0) - numberValue(a, "data-group-drift", 0)
+            || byAdminOrder(a, b);
+        }
+
+        return byAdminOrder(a, b);
+      });
+    }
+
+    function selectorMatches(selector, filters) {
+      if (filters.category && selector.getAttribute("data-group-category") !== filters.category) {
+        return false;
+      }
+
+      if (filters.status === "drift" && selector.getAttribute("data-group-drift") !== "1") {
+        return false;
+      }
+
+      if (filters.status === "synced" && selector.getAttribute("data-group-drift") === "1") {
+        return false;
+      }
+
+      if (filters.status && !["drift", "synced"].includes(filters.status) && selector.getAttribute("data-group-status") !== filters.status) {
+        return false;
+      }
+
+      if (!filters.query) {
+        return true;
+      }
+
+      const searchText = normalize(selector.getAttribute("data-group-search"));
+      const terms = filters.query.split(/\s+/).filter(Boolean);
+
+      return terms.every(term => searchText.includes(term));
+    }
+
+    function applyGroupFilters() {
+      const filters = groupFilters();
+      const visible = [];
+
+      sortSelectors(filters.sort).forEach(selector => {
+        if (list) {
+          list.appendChild(selector);
+        }
+
+        const isVisible = selectorMatches(selector, filters);
+
+        selector.hidden = !isVisible;
+
+        if (isVisible) {
+          visible.push(selector);
+        }
+      });
+
+      if (resultCount) {
+        resultCount.textContent = `${visible.length} group${visible.length === 1 ? "" : "s"} shown`;
+      }
+
+      if (empty) {
+        empty.hidden = visible.length !== 0;
+      }
+
+      if (!visible.length) {
+        activateGroup("");
+        return;
+      }
+
+      const activeSelector = selectorByIndex(activeIndex);
+
+      if (!activeSelector || activeSelector.hidden) {
+        activateGroup(visible[0].getAttribute("data-group-index") || "0");
+      } else {
+        activateGroup(activeIndex);
+      }
+    }
+
+    function resetGroupFilters() {
+      if (search) {
+        search.value = "";
+      }
+
+      [categoryFilter, statusFilter].forEach(control => {
+        if (control) {
+          control.value = "";
+        }
+      });
+
+      if (sortSelect) {
+        sortSelect.value = "order";
+      }
+
+      applyGroupFilters();
+    }
+
     function activateDraftGroup() {
       const draftPanel = panels.find(panel => {
         const idInput = panel.querySelector('input[name$="[id]"]');
@@ -158,6 +505,7 @@
         return;
       }
 
+      resetGroupFilters();
       activateGroup(draftPanel.getAttribute("data-group-index") || "0");
 
       const nameInput = draftPanel.querySelector("[data-group-name-input]");
@@ -165,30 +513,6 @@
       if (nameInput) {
         nameInput.focus();
         nameInput.select();
-      }
-    }
-
-    function updateGroupTitle(input) {
-      const panel = input.closest("[data-group-panel]");
-
-      if (!panel) {
-        return;
-      }
-
-      const title = input.value.trim() || "New Group";
-      const heading = panel.querySelector("[data-group-card-title]");
-      const selector = selectorByIndex(panel.getAttribute("data-group-index"));
-
-      if (heading) {
-        heading.textContent = title;
-      }
-
-      if (selector) {
-        const label = selector.querySelector("[data-group-select-label]");
-
-        if (label) {
-          label.textContent = title;
-        }
       }
     }
 
@@ -207,16 +531,36 @@
     });
 
     panels.forEach(panel => {
-      toArray(panel.querySelectorAll("[data-group-name-input]")).forEach(input => {
-        input.addEventListener("input", () => updateGroupTitle(input));
+      const refreshPanel = () => {
+        updateSelectorFromPanel(panel);
+        applyGroupFilters();
+      };
+
+      toArray(panel.querySelectorAll("input, select, textarea")).forEach(control => {
+        control.addEventListener("input", refreshPanel);
+        control.addEventListener("change", refreshPanel);
       });
+
+      updateSelectorFromPanel(panel);
+    });
+
+    [search, categoryFilter, statusFilter, sortSelect].forEach(control => {
+      if (!control) {
+        return;
+      }
+
+      control.addEventListener(control.tagName === "INPUT" ? "input" : "change", applyGroupFilters);
     });
 
     if (addButton) {
       addButton.addEventListener("click", activateDraftGroup);
     }
 
-    activateGroup(activeIndex);
+    if (resetButton) {
+      resetButton.addEventListener("click", resetGroupFilters);
+    }
+
+    applyGroupFilters();
   }
 
   function activeTabPrefix(workbench) {
@@ -411,7 +755,7 @@
     if (!selected.length) {
       const empty = document.createElement("span");
       empty.className = "admin-permission-chip is-empty";
-      empty.textContent = "No direct grants selected";
+      empty.textContent = "No non-kit grants selected";
       list.appendChild(empty);
       return;
     }
