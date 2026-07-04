@@ -2134,6 +2134,16 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                         echo admin_render_datalist('admin-currency-options', admin_currency_options($admin_store_currencies));
                         echo admin_render_datalist('admin-oxide-group-options', $admin_store_group_options);
 
+                        $admin_store_type_options = admin_product_type_options();
+                        $admin_store_kit_name_map = [];
+                        foreach ($admin_store_kit_options as $kit_option) {
+                            $kit_id = (int) ($kit_option['id'] ?? 0);
+
+                            if ($kit_id > 0) {
+                                $admin_store_kit_name_map[$kit_id] = (string) ($kit_option['kit_name'] ?? 'Kit');
+                            }
+                        }
+
                         $product_total = count($product_rows) + 2;
                         $store_selector_items = [];
                         $store_has_active_panel = false;
@@ -2172,6 +2182,13 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 static fn (array $grant): string => (string) ($grant['permission_name'] ?? ''),
                                 (array) ($row['permission_grants'] ?? [])
                             )));
+                            $selected_kit_names = [];
+                            foreach ($selected_kit_ids as $selected_kit_id) {
+                                if (isset($admin_store_kit_name_map[$selected_kit_id])) {
+                                    $selected_kit_names[] = $admin_store_kit_name_map[$selected_kit_id];
+                                }
+                            }
+
                             $store_is_existing = !empty($row['id']);
                             $store_panel_key = $store_is_existing ? 'product-' . (int) $row['id'] : 'new-' . $index;
                             $store_panel_id = 'admin-store-panel-' . (preg_replace('/[^a-zA-Z0-9_-]+/', '-', $store_panel_key) ?: (string) $index);
@@ -2184,6 +2201,8 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             $store_group_display = $store_group !== '' ? $store_group : $store_group_raw;
                             $store_group_detail = $store_group !== '' ? ($admin_store_group_details[$store_group] ?? null) : null;
                             $store_status = $store_is_existing ? (!empty($row['is_active']) ? 'Active' : 'Inactive') : 'Draft slot';
+                            $store_status_value = $store_is_existing ? (!empty($row['is_active']) ? 'active' : 'inactive') : 'draft';
+                            $store_type_label = $admin_store_type_options[$product_type_value] ?? $product_type_value;
                             $store_rp_active_count = 0;
                             foreach ($rp_prices as $rp_price_summary_row) {
                                 if (!empty($rp_price_summary_row['is_active'])) {
@@ -2196,6 +2215,51 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                     $store_cash_active_count += 1;
                                 }
                             }
+                            $store_search_parts = [
+                                $store_label,
+                                (string) ($row['slug'] ?? ''),
+                                $store_type_label,
+                                $product_type_value,
+                                $store_status,
+                                $store_group_display,
+                                (string) ($row['short_description'] ?? ''),
+                                (string) ($row['description'] ?? ''),
+                                !empty($row['is_featured']) ? 'featured' : '',
+                                !empty($row['is_stackable']) ? 'stackable' : 'non-stackable',
+                            ];
+                            $store_search_parts = array_merge($store_search_parts, $selected_kit_names, $selected_permissions);
+
+                            foreach ($rp_prices as $rp_interval => $rp_price_search_row) {
+                                $rp_price_search_row = (array) $rp_price_search_row;
+                                $rp_cost = (int) ($rp_price_search_row['rp_cost'] ?? 0);
+
+                                if (!empty($rp_price_search_row['is_active']) || $rp_cost > 0) {
+                                    $store_search_parts[] = (string) ($rp_price_search_row['label'] ?? raidlands_store_admin_offer_default_label('rp', (string) $rp_interval));
+                                    $store_search_parts[] = (string) $rp_cost;
+                                    $store_search_parts[] = (string) $rp_interval;
+                                }
+                            }
+
+                            foreach (['cash_pass_prices', 'cash_subscription_prices'] as $cash_search_group) {
+                                foreach ((array) ($row[$cash_search_group] ?? []) as $cash_interval => $cash_price_search_row) {
+                                    $cash_price_search_row = (array) $cash_price_search_row;
+                                    $stripe_price_id = trim((string) ($cash_price_search_row['stripe_price_id'] ?? ''));
+                                    $amount_cents = (int) ($cash_price_search_row['amount_cents'] ?? 0);
+
+                                    if (!empty($cash_price_search_row['is_active']) || $stripe_price_id !== '' || $amount_cents > 0) {
+                                        $store_search_parts[] = (string) ($cash_price_search_row['label'] ?? '');
+                                        $store_search_parts[] = $stripe_price_id;
+                                        $store_search_parts[] = (string) ($cash_price_search_row['currency'] ?? '');
+                                        $store_search_parts[] = $amount_cents > 0 ? number_format($amount_cents / 100, 2, '.', '') : '';
+                                        $store_search_parts[] = (string) $cash_interval;
+                                    }
+                                }
+                            }
+
+                            $store_search_text = trim(implode(' ', array_filter(array_map(
+                                static fn ($value): string => trim((string) $value),
+                                $store_search_parts
+                            ))));
                             $store_selector_items[] = [
                                 'id' => $store_panel_id,
                                 'index' => (string) $index,
@@ -2203,6 +2267,11 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 'meta' => $store_status . ' / ' . ($store_group_display !== '' ? $store_group_display : 'No group') . ' / ' . $store_rp_active_count . ' RP, ' . $store_cash_active_count . ' cash',
                                 'is_active' => $store_is_active_panel,
                                 'is_draft' => !$store_is_existing,
+                                'category' => $product_type_value,
+                                'category_label' => $store_type_label,
+                                'status' => $store_status_value,
+                                'sort_order' => (string) ((int) ($row['sort_order'] ?? 100)),
+                                'search' => $store_search_text,
                             ];
                           ?>
                           <article
@@ -2230,7 +2299,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 <div class="admin-grid two admin-store-basic-grid">
                                   <label class="admin-field">
                                     <?= admin_field_head('Slug', 'Stable store identifier used by admin and support. Keep lowercase with hyphens.') ?>
-                                    <input type="text" name="store_products[<?= e((string) $index) ?>][slug]" maxlength="120" placeholder="starter-bundle" value="<?= e((string) ($row['slug'] ?? '')) ?>">
+                                    <input type="text" name="store_products[<?= e((string) $index) ?>][slug]" maxlength="120" placeholder="starter-bundle" value="<?= e((string) ($row['slug'] ?? '')) ?>" data-admin-store-slug-input>
                                     <?= admin_hint('Changing an existing slug can affect support lookups and saved Stripe metadata.') ?>
                                   </label>
                                   <label class="admin-field">
@@ -2239,13 +2308,13 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                   </label>
                                   <label class="admin-field">
                                     <?= admin_field_head('Type', 'Bundles are the main grouped products. Individual kits and standalone perks can still expose the same payment options.') ?>
-                                    <select name="store_products[<?= e((string) $index) ?>][product_type]">
-                                      <?= admin_render_options(admin_product_type_options(), $product_type_value) ?>
+                                    <select name="store_products[<?= e((string) $index) ?>][product_type]" data-admin-store-type-select>
+                                      <?= admin_render_options($admin_store_type_options, $product_type_value) ?>
                                     </select>
                                   </label>
                                   <label class="admin-field">
                                     <?= admin_field_head('Linked group', 'Purchases and manual grants create entitlements for this exact server access group.') ?>
-                                    <input type="text" list="admin-oxide-group-options" name="store_products[<?= e((string) $index) ?>][oxide_group]" maxlength="120" pattern="[a-z0-9_-]+" placeholder="vip_bronze" value="<?= e($store_group_display) ?>">
+                                    <input type="text" list="admin-oxide-group-options" name="store_products[<?= e((string) $index) ?>][oxide_group]" maxlength="120" pattern="[a-z0-9_-]+" placeholder="vip_bronze" value="<?= e($store_group_display) ?>" data-admin-store-group-input>
                                     <?= admin_hint(raidlands_store_group_rule_hint() . ' Saving a new value also adds it to the managed group catalog when the Groups tables are installed.') ?>
                                     <?php if ($store_group_display !== '') : ?>
                                       <div class="admin-store-group-link<?= $store_group === '' ? ' is-warning' : '' ?>">
@@ -2267,10 +2336,10 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                   </label>
                                   <label class="admin-field">
                                     <?= admin_field_head('Sort order', 'Lower products appear first on the public store.') ?>
-                                    <input type="number" min="0" max="9999" name="store_products[<?= e((string) $index) ?>][sort_order]" value="<?= e((string) ($row['sort_order'] ?? 100)) ?>">
+                                    <input type="number" min="0" max="9999" name="store_products[<?= e((string) $index) ?>][sort_order]" value="<?= e((string) ($row['sort_order'] ?? 100)) ?>" data-admin-store-sort-input>
                                   </label>
                                   <label class="admin-check admin-check-field admin-span-all">
-                                    <input type="checkbox" name="store_products[<?= e((string) $index) ?>][is_active]" value="1" <?= !empty($row['is_active']) ? 'checked' : '' ?>>
+                                    <input type="checkbox" name="store_products[<?= e((string) $index) ?>][is_active]" value="1" <?= !empty($row['is_active']) ? 'checked' : '' ?> data-admin-store-active-input>
                                     <?= admin_check_copy('Product active', 'Controls whether this product can appear on the public store. Checkout also requires an active price.') ?>
                                   </label>
                                 </div>
@@ -2397,11 +2466,11 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 <summary>Store flags <small>Featured placement and stacking behavior</small></summary>
                                 <div class="admin-grid two admin-store-toggle-grid">
                                   <label class="admin-check admin-check-field">
-                                    <input type="checkbox" name="store_products[<?= e((string) $index) ?>][is_featured]" value="1" <?= !empty($row['is_featured']) ? 'checked' : '' ?>>
+                                    <input type="checkbox" name="store_products[<?= e((string) $index) ?>][is_featured]" value="1" <?= !empty($row['is_featured']) ? 'checked' : '' ?> data-admin-store-featured-input>
                                     <?= admin_check_copy('Featured', 'Featured products can be emphasized on future storefront layouts.') ?>
                                   </label>
                                   <label class="admin-check admin-check-field">
-                                    <input type="checkbox" name="store_products[<?= e((string) $index) ?>][is_stackable]" value="1" <?= !empty($row['is_stackable']) ? 'checked' : '' ?>>
+                                    <input type="checkbox" name="store_products[<?= e((string) $index) ?>][is_stackable]" value="1" <?= !empty($row['is_stackable']) ? 'checked' : '' ?> data-admin-store-stackable-input>
                                     <?= admin_check_copy('Stackable', 'Individual kits and perks usually stack. Main bundles should usually be non-stackable.') ?>
                                   </label>
                                 </div>
@@ -2450,11 +2519,11 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 <div class="admin-grid">
                                   <label class="admin-field">
                                     <?= admin_field_head('Short description', 'Brief copy shown on store cards.') ?>
-                                    <input type="text" name="store_products[<?= e((string) $index) ?>][short_description]" maxlength="255" value="<?= e((string) ($row['short_description'] ?? '')) ?>">
+                                    <input type="text" name="store_products[<?= e((string) $index) ?>][short_description]" maxlength="255" value="<?= e((string) ($row['short_description'] ?? '')) ?>" data-admin-store-copy-input>
                                   </label>
                                   <label class="admin-field">
                                     <?= admin_field_head('Full description', 'Longer admin/support note for what this product should grant.') ?>
-                                    <textarea name="store_products[<?= e((string) $index) ?>][description]" rows="3"><?= e((string) ($row['description'] ?? '')) ?></textarea>
+                                    <textarea name="store_products[<?= e((string) $index) ?>][description]" rows="3" data-admin-store-copy-input><?= e((string) ($row['description'] ?? '')) ?></textarea>
                                   </label>
                                 </div>
                               </details>
@@ -2467,17 +2536,59 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             <h3>Products</h3>
                             <p><?= e((string) count($product_rows)) ?> saved plus draft slots</p>
                           </div>
+                          <div class="admin-store-picker-controls">
+                            <label class="admin-field">
+                              <span>Search</span>
+                              <input type="search" maxlength="140" placeholder="Name, slug, group, kit, perk, or price" data-admin-store-search>
+                            </label>
+                            <div class="admin-store-filter-grid">
+                              <label class="admin-field">
+                                <span>Category</span>
+                                <select data-admin-store-category-filter>
+                                  <option value="">All categories</option>
+                                  <?= admin_render_keyed_options($admin_store_type_options) ?>
+                                </select>
+                              </label>
+                              <label class="admin-field">
+                                <span>Status</span>
+                                <select data-admin-store-status-filter>
+                                  <option value="">Any status</option>
+                                  <option value="active">Active</option>
+                                  <option value="inactive">Inactive</option>
+                                  <option value="draft">Draft slots</option>
+                                </select>
+                              </label>
+                              <label class="admin-field">
+                                <span>Sort</span>
+                                <select data-admin-store-sort>
+                                  <option value="order">Public order</option>
+                                  <option value="name">Name A-Z</option>
+                                  <option value="category">Category</option>
+                                  <option value="status">Active first</option>
+                                </select>
+                              </label>
+                              <button class="btn btn-secondary admin-store-filter-reset" type="button" data-admin-store-reset>Clear</button>
+                            </div>
+                            <p class="admin-store-filter-count" data-admin-store-result-count><?= e((string) count($store_selector_items)) ?> products shown</p>
+                            <div class="admin-alert warning admin-store-empty" data-admin-store-empty hidden>No store products match these controls.</div>
+                          </div>
                           <div class="admin-store-picker-list">
                             <?php foreach ($store_selector_items as $selector_item) : ?>
                               <button
                                 class="admin-store-picker-button<?= !empty($selector_item['is_active']) ? ' is-active' : '' ?><?= !empty($selector_item['is_draft']) ? ' is-draft' : '' ?>"
                                 type="button"
                                 data-admin-store-select
+                                data-admin-store-index="<?= e((string) $selector_item['index']) ?>"
                                 data-admin-store-target="<?= e((string) $selector_item['id']) ?>"
+                                data-admin-store-category="<?= e((string) $selector_item['category']) ?>"
+                                data-admin-store-category-label="<?= e((string) $selector_item['category_label']) ?>"
+                                data-admin-store-status="<?= e((string) $selector_item['status']) ?>"
+                                data-admin-store-sort-order="<?= e((string) $selector_item['sort_order']) ?>"
+                                data-admin-store-search="<?= e((string) $selector_item['search']) ?>"
                                 aria-controls="<?= e((string) $selector_item['id']) ?>"
                                 <?= !empty($selector_item['is_active']) ? 'aria-current="true"' : '' ?>>
                                 <span data-admin-store-select-label><?= e((string) $selector_item['label']) ?></span>
-                                <small><?= e((string) $selector_item['meta']) ?></small>
+                                <small data-admin-store-select-meta><?= e((string) $selector_item['meta']) ?></small>
                               </button>
                             <?php endforeach; ?>
                           </div>

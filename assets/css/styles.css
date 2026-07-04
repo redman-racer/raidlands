@@ -5980,6 +5980,51 @@ button.admin-permission-chip:focus-visible {
   font-weight: 700;
 }
 
+.admin-store-picker-controls {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-store-filter-grid {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  align-items: end;
+}
+
+.admin-store-picker-controls .admin-field {
+  gap: 6px;
+  font-size: .8rem;
+}
+
+.admin-store-picker-controls .admin-field input,
+.admin-store-picker-controls .admin-field select {
+  min-height: 40px;
+  padding: 8px 10px;
+  font-size: .88rem;
+}
+
+.admin-store-filter-reset {
+  width: 100%;
+  min-height: 40px;
+  align-self: end;
+  padding: 8px 10px;
+  font-size: .72rem;
+}
+
+.admin-store-filter-count {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: .76rem;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.admin-store-empty {
+  margin: 0;
+}
+
 .admin-store-picker-list {
   max-height: min(62vh, 620px);
   display: grid;
