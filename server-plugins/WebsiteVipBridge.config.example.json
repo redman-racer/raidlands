@@ -38,6 +38,8 @@
     "KitSyncIntervalSeconds":  180,
     "PermissionSyncEnabled":  true,
     "PermissionSyncIntervalSeconds":  180,
+    "PermissionSnapshotDebounceSeconds":  10,
+    "PermissionSnapshotSettledDelaySeconds":  120,
     "KitDataBackupCount":  8,
     "KitPermissionPrefixes":  [
                                   "kits.",

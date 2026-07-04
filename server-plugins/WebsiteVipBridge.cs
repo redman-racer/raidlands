@@ -15,7 +15,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteVipBridge", "Raidlands", "1.5.2")]
+    [Info("WebsiteVipBridge", "Raidlands", "1.5.3")]
     [Description("Syncs website VIP entitlements and player stats between Raidlands.net and the Rust server.")]
     public class WebsiteVipBridge : CovalencePlugin
     {
@@ -81,6 +81,8 @@ namespace Oxide.Plugins
             public int KitSyncIntervalSeconds = 180;
             public bool PermissionSyncEnabled = true;
             public int PermissionSyncIntervalSeconds = 180;
+            public int PermissionSnapshotDebounceSeconds = 10;
+            public int PermissionSnapshotSettledDelaySeconds = 120;
             public int KitDataBackupCount = 8;
             public List<string> KitPermissionPrefixes = new List<string>
             {
@@ -423,6 +425,16 @@ namespace Oxide.Plugins
                 config.PermissionSyncIntervalSeconds = defaults.PermissionSyncIntervalSeconds;
             }
 
+            if (config.PermissionSnapshotDebounceSeconds <= 0)
+            {
+                config.PermissionSnapshotDebounceSeconds = defaults.PermissionSnapshotDebounceSeconds;
+            }
+
+            if (config.PermissionSnapshotSettledDelaySeconds <= 0)
+            {
+                config.PermissionSnapshotSettledDelaySeconds = defaults.PermissionSnapshotSettledDelaySeconds;
+            }
+
             if (config.KitDataBackupCount <= 0)
             {
                 config.KitDataBackupCount = defaults.KitDataBackupCount;
@@ -505,6 +517,16 @@ namespace Oxide.Plugins
         private void OnPointsUpdated(ulong userId, int balance)
         {
             QueueStatsSync();
+        }
+
+        private void OnPluginLoaded(Plugin plugin)
+        {
+            QueuePermissionSnapshotForPluginChange("Plugin loaded", plugin);
+        }
+
+        private void OnPluginUnloaded(Plugin plugin)
+        {
+            QueuePermissionSnapshotForPluginChange("Plugin unloaded", plugin);
         }
 
         private bool CanRunBridgeCommand(IPlayer player)
@@ -2229,10 +2251,38 @@ namespace Oxide.Plugins
             }
 
             var interval = Math.Max(60, config.PermissionSyncIntervalSeconds);
-            pendingPermissionSnapshotTimer = timer.Once(20f, () => RunScheduled("Initial permission snapshot", PostPermissionSnapshot));
+            QueuePermissionSnapshot("Initial permission registry snapshot", 20f);
+            timer.Once(Math.Max(45, config.PermissionSnapshotSettledDelaySeconds), () => QueuePermissionSnapshot("Settled permission registry snapshot", 1f));
             timer.Once(30f, () => RunScheduled("Initial permission sync", SyncPermissions));
             permissionSyncTimer = timer.Every(interval, () => RunScheduled("Permission sync timer", SyncPermissions));
             Puts($"WebsiteVipBridge syncing permissions every {interval} seconds.");
+        }
+
+        private void QueuePermissionSnapshotForPluginChange(string context, Plugin plugin)
+        {
+            if (plugin == null || string.Equals(plugin.Name, Name, StringComparison.OrdinalIgnoreCase))
+            {
+                return;
+            }
+
+            QueuePermissionSnapshot($"{context} permission registry snapshot ({plugin.Name})");
+        }
+
+        private void QueuePermissionSnapshot(string context, float delaySeconds = -1f)
+        {
+            if (config == null || !config.PermissionSyncEnabled)
+            {
+                return;
+            }
+
+            pendingPermissionSnapshotTimer?.Destroy();
+            var delay = delaySeconds > 0 ? delaySeconds : Math.Max(5, config.PermissionSnapshotDebounceSeconds);
+
+            pendingPermissionSnapshotTimer = timer.Once(delay, () =>
+            {
+                pendingPermissionSnapshotTimer = null;
+                RunScheduled(context, PostPermissionSnapshot);
+            });
         }
 
         private void PostPermissionSnapshot()
@@ -2244,13 +2294,16 @@ namespace Oxide.Plugins
 
             try
             {
+                var groups = CurrentPermissionGroups();
+                var permissions = CurrentRegisteredPermissions();
+                var groupPermissions = CurrentPermissionGroupMap();
                 var body = new JObject
                 {
                     ["server_id"] = config.ServerId,
                     ["generated_at"] = DateTime.UtcNow.ToString("o"),
-                    ["groups"] = JArray.FromObject(CurrentPermissionGroups()),
-                    ["permissions"] = JArray.FromObject(CurrentRegisteredPermissions()),
-                    ["group_permissions"] = JObject.FromObject(CurrentPermissionGroupMap())
+                    ["groups"] = JArray.FromObject(groups),
+                    ["permissions"] = JArray.FromObject(permissions),
+                    ["group_permissions"] = JObject.FromObject(groupPermissions)
                 }.ToString(Formatting.None);
                 var url = $"{TrimSlash(config.ApiBaseUrl)}/api/server/permissions-snapshot.php";
 
@@ -2270,7 +2323,7 @@ namespace Oxide.Plugins
                         return;
                     }
 
-                    Puts("Posted permission snapshot to website.");
+                    Puts($"Posted permission snapshot to website ({permissions.Count} permissions, {groups.Count} groups).");
                 });
             }
             catch (Exception ex)
