@@ -649,12 +649,13 @@ function raidlands_permissions_delete_group(PDO $pdo, string $group_name, int $r
          SET is_active = 0,
              is_managed = 0,
              deleted_at = NOW(),
-             deleted_revision = :revision,
-             draft_revision = :revision,
+             deleted_revision = :deleted_revision,
+             draft_revision = :draft_revision,
              updated_at = NOW()
          WHERE group_name = :group_name',
         [
-            'revision' => $revision,
+            'deleted_revision' => $revision,
+            'draft_revision' => $revision,
             'group_name' => $group_name,
         ]
     );

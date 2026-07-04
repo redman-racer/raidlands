@@ -822,12 +822,16 @@ function raidlands_kits_admin_save(array $post, array $files = []): array
                     'UPDATE game_kits
                      SET is_active = 0,
                          deleted_at = NOW(),
-                         deleted_revision = :revision,
-                         draft_revision = :revision,
+                         deleted_revision = :deleted_revision,
+                         draft_revision = :draft_revision,
                          updated_at = NOW()
                      WHERE id = :id'
                 );
-                $statement->execute(['revision' => $revision, 'id' => $id]);
+                $statement->execute([
+                    'deleted_revision' => $revision,
+                    'draft_revision' => $revision,
+                    'id' => $id,
+                ]);
                 $pdo->prepare('DELETE FROM game_kit_group_access WHERE kit_id = :id')->execute(['id' => $id]);
                 $pdo->prepare('DELETE FROM store_product_kits WHERE kit_id = :id')->execute(['id' => $id]);
                 $changed += 1;
