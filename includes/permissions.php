@@ -155,23 +155,17 @@ function raidlands_permissions_group_has_forced_protection(string $group_name): 
 
 function raidlands_permissions_default_group_names(): array
 {
-    return [
+    $rollout = raidlands_permissions_vip_rollout_defaults();
+
+    return $rollout['groups'] ?? [
         'default',
         'discord',
-        'vip_bronze',
-        'vip_gold',
-        'vip_elite',
-        'perk_personal_mini',
-        'perk_skinbox',
-        'perk_raid_kit',
-        'perk_queue_priority',
-        'perk_supporter_badge',
     ];
 }
 
 function raidlands_permissions_fallback_permissions(): array
 {
-    return [
+    $permissions = [
         'autodoors.use',
         'automaticauthorization.use',
         'backpacks.use',
@@ -232,6 +226,28 @@ function raidlands_permissions_fallback_permissions(): array
         'kits.paidpvpkit',
         'serverrewards.paidpvpkit',
     ];
+    $rollout = raidlands_permissions_vip_rollout_defaults();
+
+    return array_values(array_unique(array_merge($permissions, $rollout['permissions'] ?? [])));
+}
+
+function raidlands_permissions_vip_rollout_defaults(): array
+{
+    static $defaults = null;
+
+    if ($defaults !== null) {
+        return $defaults;
+    }
+
+    $path = __DIR__ . '/permissions-vip-rollout.php';
+
+    if (!is_file($path)) {
+        return $defaults = [];
+    }
+
+    $loaded = require $path;
+
+    return $defaults = is_array($loaded) ? $loaded : [];
 }
 
 function raidlands_permissions_next_revision(PDO $pdo): int
@@ -1041,8 +1057,7 @@ function raidlands_permissions_latest_published_revision(): int
     $row = raidlands_db_fetch_one(
         "SELECT COALESCE(MAX(revision), 0) AS revision
          FROM oxide_permission_sync_log
-         WHERE payload_json IS NOT NULL
-           AND status IN ('pending', 'applied', 'failed')"
+         WHERE status IN ('pending', 'applied', 'failed')"
     );
 
     return (int) ($row['revision'] ?? 0);
@@ -1058,18 +1073,23 @@ function raidlands_permissions_published_payload(int $revision): ?array
         "SELECT payload_json
          FROM oxide_permission_sync_log
          WHERE revision = :revision
-           AND payload_json IS NOT NULL
            AND status IN ('pending', 'applied', 'failed')
          ORDER BY id DESC
          LIMIT 1",
         ['revision' => $revision]
     );
 
-    if ($row === null || trim((string) ($row['payload_json'] ?? '')) === '') {
+    if ($row === null) {
         return null;
     }
 
-    $payload = json_decode((string) $row['payload_json'], true);
+    $payload_json = trim((string) ($row['payload_json'] ?? ''));
+
+    if ($payload_json === '') {
+        return raidlands_permissions_sync_payload($revision);
+    }
+
+    $payload = json_decode($payload_json, true);
 
     return is_array($payload) ? $payload : null;
 }

@@ -15,7 +15,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteVipBridge", "Raidlands", "1.5.0")]
+    [Info("WebsiteVipBridge", "Raidlands", "1.5.1")]
     [Description("Syncs website VIP entitlements and player stats between Raidlands.net and the Rust server.")]
     public class WebsiteVipBridge : CovalencePlugin
     {
@@ -86,20 +86,20 @@ namespace Oxide.Plugins
             {
                 "default",
                 "discord",
+                "rank_vip",
+                "rank_vip_plus",
+                "rank_mvp",
+                "rank_golden_vip",
+                "rank_diamond_vip",
+                "rank_ultimate_vip",
+                "rank_titan_vip",
                 "vip_bronze",
                 "vip_gold",
                 "vip_elite",
-                "perk_personal_mini",
-                "perk_skinbox",
-                "perk_raid_kit",
-                "perk_queue_priority",
-                "perk_supporter_badge",
-                "perk_pvp_light",
-                "perk_pvp_rifle",
-                "perk_pvp_roamer",
-                "perk_pvp_heavy",
-                "perk_pvp_elite",
-                "perk_pvp_breach"
+                "claim_steam_name",
+                "claim_steam_group",
+                "claim_discord_member",
+                "claim_discord_booster"
             };
             public List<string> KitPermissionPrefixes = new List<string>
             {
@@ -110,20 +110,38 @@ namespace Oxide.Plugins
             public string WipeStartedAt = "";
             public List<string> ManagedGroups = new List<string>
             {
+                "rank_vip",
+                "rank_vip_plus",
+                "rank_mvp",
+                "rank_golden_vip",
+                "rank_diamond_vip",
+                "rank_ultimate_vip",
+                "rank_titan_vip",
+                "perk_queue_priority",
+                "perk_teleport_instant",
+                "perk_home_5s",
+                "perk_sign_art",
+                "perk_chat_title",
+                "perk_backpack_36",
+                "perk_backpack_42",
+                "perk_backpack_48",
+                "perk_backpack_keep_death",
+                "perk_backpack_keep_wipe",
+                "perk_spawn_full",
+                "perk_vehicle_hp_125",
+                "perk_vehicle_hp_150",
+                "perk_tc_12",
+                "perk_minicopter_instant_takeoff",
+                "perk_shop_sale_25",
+                "perk_shop_sale_50",
+                "perk_shop_sale_75",
                 "vip_bronze",
                 "vip_gold",
                 "vip_elite",
-                "perk_personal_mini",
-                "perk_skinbox",
-                "perk_raid_kit",
-                "perk_queue_priority",
-                "perk_supporter_badge",
-                "perk_pvp_light",
-                "perk_pvp_rifle",
-                "perk_pvp_roamer",
-                "perk_pvp_heavy",
-                "perk_pvp_elite",
-                "perk_pvp_breach"
+                "claim_steam_name",
+                "claim_steam_group",
+                "claim_discord_member",
+                "claim_discord_booster"
             };
         }
 

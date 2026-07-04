@@ -1120,8 +1120,7 @@ function raidlands_kits_latest_published_revision(): int
     $row = raidlands_db_fetch_one(
         "SELECT COALESCE(MAX(revision), 0) AS revision
          FROM game_kit_sync_log
-         WHERE payload_json IS NOT NULL
-           AND status IN ('pending', 'applied', 'failed')"
+         WHERE status IN ('pending', 'applied', 'failed')"
     );
 
     return (int) ($row['revision'] ?? 0);
@@ -1137,18 +1136,23 @@ function raidlands_kits_published_payload(int $revision): ?array
         "SELECT payload_json
          FROM game_kit_sync_log
          WHERE revision = :revision
-           AND payload_json IS NOT NULL
            AND status IN ('pending', 'applied', 'failed')
          ORDER BY id DESC
          LIMIT 1",
         ['revision' => $revision]
     );
 
-    if ($row === null || trim((string) ($row['payload_json'] ?? '')) === '') {
+    if ($row === null) {
         return null;
     }
 
-    $payload = json_decode((string) $row['payload_json'], true);
+    $payload_json = trim((string) ($row['payload_json'] ?? ''));
+
+    if ($payload_json === '') {
+        return raidlands_kits_sync_payload($revision);
+    }
+
+    $payload = json_decode($payload_json, true);
 
     return is_array($payload) ? $payload : null;
 }

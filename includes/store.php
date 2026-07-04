@@ -637,152 +637,17 @@ function raidlands_store_offer_label(array $price, string $fallback_prefix = '')
 
 function raidlands_store_seed_catalog(): array
 {
-    return [
-        [
-            'id' => 0,
-            'slug' => 'vip-bronze',
-            'name' => 'Bronze Kit Bundle',
-            'product_type' => 'kit_bundle',
-            'short_description' => 'Starter kit bundle access for regular Raidlands players.',
-            'description' => 'Bronze kit bundle access with starter perks for regular Raidlands players.',
-            'oxide_group' => 'vip_bronze',
-            'tier_priority' => 10,
-            'is_stackable' => 0,
-            'is_active' => 1,
-            'is_featured' => 1,
-            'sort_order' => 10,
-            'prices' => [[
-                'id' => 0,
-                'stripe_price_id' => '',
-            'label' => 'Monthly Cash Subscription',
-                'amount_cents' => 0,
-                'currency' => 'usd',
-                'billing_interval' => 'month',
-                'is_active' => 0,
-                'is_default' => 1,
-            ]],
-        ],
-        [
-            'id' => 0,
-            'slug' => 'vip-gold',
-            'name' => 'Gold Kit Bundle',
-            'product_type' => 'kit_bundle',
-            'short_description' => 'Upgraded kit bundle access for frequent wipe players.',
-            'description' => 'Gold kit bundle access with stronger perks for frequent wipe players.',
-            'oxide_group' => 'vip_gold',
-            'tier_priority' => 20,
-            'is_stackable' => 0,
-            'is_active' => 1,
-            'is_featured' => 1,
-            'sort_order' => 20,
-            'prices' => [[
-                'id' => 0,
-                'stripe_price_id' => '',
-            'label' => 'Monthly Cash Subscription',
-                'amount_cents' => 0,
-                'currency' => 'usd',
-                'billing_interval' => 'month',
-                'is_active' => 0,
-                'is_default' => 1,
-            ]],
-        ],
-        [
-            'id' => 0,
-            'slug' => 'vip-elite',
-            'name' => 'Elite Kit Bundle',
-            'product_type' => 'kit_bundle',
-            'short_description' => 'Top kit bundle access with the full supporter package.',
-            'description' => 'Elite kit bundle access for players who want the full supporter package.',
-            'oxide_group' => 'vip_elite',
-            'tier_priority' => 30,
-            'is_stackable' => 0,
-            'is_active' => 1,
-            'is_featured' => 1,
-            'sort_order' => 30,
-            'prices' => [[
-                'id' => 0,
-                'stripe_price_id' => '',
-            'label' => 'Monthly Cash Subscription',
-                'amount_cents' => 0,
-                'currency' => 'usd',
-                'billing_interval' => 'month',
-                'is_active' => 0,
-                'is_default' => 1,
-            ]],
-        ],
-        [
-            'id' => 0,
-            'slug' => 'personal-mini',
-            'name' => 'Personal Mini Perk',
-            'product_type' => 'perk',
-            'short_description' => 'Unlock personal minicopter access as a one-time perk.',
-            'description' => 'One-time perk for faster map movement and quick returns to the fight.',
-            'oxide_group' => 'perk_personal_mini',
-            'tier_priority' => 0,
-            'is_stackable' => 1,
-            'is_active' => 1,
-            'is_featured' => 1,
-            'sort_order' => 110,
-            'prices' => [[
-                'id' => 0,
-                'stripe_price_id' => '',
-                'label' => 'One-time',
-                'amount_cents' => 0,
-                'currency' => 'usd',
-                'billing_interval' => 'one_time',
-                'is_active' => 0,
-                'is_default' => 1,
-            ]],
-        ],
-        [
-            'id' => 0,
-            'slug' => 'skinbox-access',
-            'name' => 'Skinbox Access',
-            'product_type' => 'perk',
-            'short_description' => 'Unlock Skinbox access as a one-time perk.',
-            'description' => 'One-time perk for more control over how your gear and base look.',
-            'oxide_group' => 'perk_skinbox',
-            'tier_priority' => 0,
-            'is_stackable' => 1,
-            'is_active' => 1,
-            'is_featured' => 1,
-            'sort_order' => 120,
-            'prices' => [[
-                'id' => 0,
-                'stripe_price_id' => '',
-                'label' => 'One-time',
-                'amount_cents' => 0,
-                'currency' => 'usd',
-                'billing_interval' => 'one_time',
-                'is_active' => 0,
-                'is_default' => 1,
-            ]],
-        ],
-        [
-            'id' => 0,
-            'slug' => 'raid-kit-unlock',
-            'name' => 'Raid Kit Unlock',
-            'product_type' => 'kit_unlock',
-            'short_description' => 'Unlock a premium raid kit permission.',
-            'description' => 'One-time kit unlock for raiders who want an extra push during wipe.',
-            'oxide_group' => 'perk_raid_kit',
-            'tier_priority' => 0,
-            'is_stackable' => 1,
-            'is_active' => 1,
-            'is_featured' => 1,
-            'sort_order' => 130,
-            'prices' => [[
-                'id' => 0,
-                'stripe_price_id' => '',
-                'label' => 'One-time',
-                'amount_cents' => 0,
-                'currency' => 'usd',
-                'billing_interval' => 'one_time',
-                'is_active' => 0,
-                'is_default' => 1,
-            ]],
-        ],
-    ];
+    $rollout_catalog = __DIR__ . '/store-vip-rollout-catalog.php';
+
+    if (is_file($rollout_catalog)) {
+        $catalog = require $rollout_catalog;
+
+        if (is_array($catalog)) {
+            return $catalog;
+        }
+    }
+
+    return [];
 }
 
 function raidlands_store_catalog(bool $active_only = true): array
