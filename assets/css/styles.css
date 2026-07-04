@@ -6025,6 +6025,11 @@ button.admin-permission-chip:focus-visible {
   margin: 0;
 }
 
+.admin-store-picker-button[hidden],
+.admin-store-empty[hidden] {
+  display: none;
+}
+
 .admin-store-picker-list {
   max-height: min(62vh, 620px);
   display: grid;
