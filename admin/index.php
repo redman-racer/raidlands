@@ -1984,7 +1984,6 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 <h3>Inbox queue</h3>
                                 <p data-feedback-result-count><?= e((string) count($admin_feedback_rows)) ?> item<?= count($admin_feedback_rows) === 1 ? '' : 's' ?> shown</p>
                               </div>
-                              <button class="btn btn-secondary" type="button" data-feedback-reset>Reset</button>
                             </div>
 
                             <div class="admin-feedback-picker-controls">
@@ -2019,6 +2018,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                     <?= admin_render_keyed_options($feedback_sort_options, 'newest') ?>
                                   </select>
                                 </label>
+                                <button class="btn btn-secondary admin-feedback-filter-reset" type="button" data-feedback-reset>Clear</button>
                               </div>
                             </div>
 
@@ -2557,6 +2557,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                       echo admin_render_datalist('admin-kit-shortname-options', admin_option_map($admin_kit_shortnames));
                       $kit_rows = array_values($admin_kit_rows);
                       $kit_total = count($kit_rows) + 1;
+                      $kit_selector_items = [];
                     ?>
                     <section class="admin-section">
                       <div class="admin-grid three">
@@ -2625,11 +2626,104 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             $kit_products = array_values((array) ($row['derived_store_products'] ?? []));
                             $kit_item_count = admin_kit_item_count($row);
                             $kit_is_active_panel = $index === 0;
+                            $kit_is_existing = !empty($row['id']);
+                            $kit_panel_key = $kit_is_existing ? 'kit-' . (int) $row['id'] : 'new-' . $index;
+                            $kit_panel_id = 'admin-kit-panel-' . (preg_replace('/[^a-zA-Z0-9_-]+/', '-', $kit_panel_key) ?: (string) $index);
+                            $kit_status_value = $kit_is_existing ? (!empty($row['is_active']) ? 'active' : 'inactive') : 'draft';
+                            $kit_status_label = match ($kit_status_value) {
+                                'active' => 'Active',
+                                'inactive' => 'Inactive',
+                                default => 'Draft slot',
+                            };
+                            $kit_access_value = $kit_permission === ''
+                                ? 'no-permission'
+                                : ($kit_groups === [] ? 'needs-group' : 'granted');
+                            $kit_access_label = match ($kit_access_value) {
+                                'granted' => (string) count($kit_groups) . ' group' . (count($kit_groups) === 1 ? '' : 's'),
+                                'needs-group' => 'Needs group grant',
+                                default => 'No permission',
+                            };
+                            $kit_shop_tokens = [];
+
+                            if (!empty($row['reward_enabled'])) {
+                                $kit_shop_tokens[] = 'rewards';
+                            }
+
+                            if ($kit_products !== []) {
+                                $kit_shop_tokens[] = 'store';
+                            }
+
+                            if ($kit_shop_tokens === []) {
+                                $kit_shop_tokens[] = 'none';
+                            }
+
+                            $kit_shop_label = match (implode(' ', $kit_shop_tokens)) {
+                                'rewards store' => 'Rewards + Store',
+                                'rewards' => 'Rewards shop',
+                                'store' => 'Store derived',
+                                default => 'No shop display',
+                            };
+                            $kit_meta = $kit_status_label
+                                . ' / '
+                                . $kit_item_count
+                                . ' item'
+                                . ($kit_item_count === 1 ? '' : 's')
+                                . ' / '
+                                . $kit_access_label
+                                . ' / '
+                                . $kit_shop_label;
+                            $kit_published_label = !empty($row['published_revision'])
+                                ? ' / published rev ' . (string) $row['published_revision']
+                                : '';
+                            $kit_search_parts = [
+                                $kit_title,
+                                $kit_permission,
+                                $kit_permission_suffix,
+                                (string) ($row['description'] ?? ''),
+                                (string) ($row['reward_display_name'] ?? ''),
+                                (string) ($row['reward_description'] ?? ''),
+                                $kit_status_label,
+                                $kit_access_label,
+                                $kit_shop_label,
+                            ];
+                            $kit_search_parts = array_merge($kit_search_parts, $kit_groups);
+
+                            foreach ($kit_products as $product) {
+                                $kit_search_parts[] = (string) ($product['name'] ?? '');
+                                foreach (raidlands_store_clean_groups((array) ($product['groups'] ?? [])) as $product_group) {
+                                    $kit_search_parts[] = $product_group;
+                                }
+                            }
+
+                            $kit_selector_items[] = [
+                                'id' => $kit_panel_id,
+                                'index' => (string) $index,
+                                'label' => $kit_title !== '' ? $kit_title : 'New Kit',
+                                'meta' => $kit_meta,
+                                'is_active' => $kit_is_active_panel,
+                                'is_draft' => !$kit_is_existing,
+                                'status' => $kit_status_value,
+                                'access' => $kit_access_value,
+                                'shop' => implode(' ', $kit_shop_tokens),
+                                'sort_order' => (string) ((int) ($row['sort_order'] ?? 100)),
+                                'items' => (string) $kit_item_count,
+                                'groups' => (string) count($kit_groups),
+                                'products' => (string) count($kit_products),
+                                'search' => trim(implode(' ', array_filter(array_map(
+                                    static fn ($value): string => trim((string) $value),
+                                    $kit_search_parts
+                                )))),
+                            ];
                           ?>
                           <article
                             class="admin-repeat-card admin-kit-card admin-kit-panel<?= $kit_is_active_panel ? ' is-active' : '' ?>"
+                            id="<?= e($kit_panel_id) ?>"
                             data-kit-panel
                             data-kit-index="<?= e((string) $index) ?>"
+                            data-kit-group-count="<?= e((string) count($kit_groups)) ?>"
+                            data-kit-product-count="<?= e((string) count($kit_products)) ?>"
+                            data-kit-original-permission="<?= e($kit_permission_suffix) ?>"
+                            data-kit-published-label="<?= e($kit_published_label) ?>"
                             data-kit-expected="<?= e(admin_kit_slot_expected_json()) ?>"
                             <?= $kit_is_active_panel ? '' : 'hidden' ?>>
                             <input type="hidden" name="kits[<?= e((string) $index) ?>][id]" value="<?= e((string) ($row['id'] ?? '')) ?>">
@@ -2637,9 +2731,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             <div class="admin-repeat-card-head">
                               <div>
                                 <h3 data-kit-card-title><?= e($kit_title !== '' ? $kit_title : 'New Kit') ?></h3>
-                                <?php if (!empty($row['published_revision'])) : ?>
-                                  <p class="admin-feedback-subtitle">Published revision <?= e((string) $row['published_revision']) ?><?= !empty($row['published_at']) ? ' at ' . e((string) $row['published_at']) : '' ?></p>
-                                <?php endif; ?>
+                                <p class="admin-feedback-subtitle" data-kit-card-subtitle><?= e($kit_meta . $kit_published_label) ?></p>
                               </div>
                               <?php if (!empty($row['id'])) : ?>
                                 <label class="admin-check admin-delete-check">
@@ -2664,7 +2756,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                   <?= admin_field_head('Kit permission', 'The Rust Kits plugin gate. Active kits must have a Kits permission; public kits are granted through the default group in Groups.') ?>
                                   <div class="admin-prefixed-input">
                                     <span>kits.</span>
-                                    <input type="text" name="kits[<?= e((string) $index) ?>][required_permission]" maxlength="155" placeholder="claim.raid" value="<?= e($kit_permission_suffix) ?>">
+                                    <input type="text" name="kits[<?= e((string) $index) ?>][required_permission]" maxlength="155" placeholder="claim.raid" value="<?= e($kit_permission_suffix) ?>" data-kit-permission-input>
                                   </div>
                                   <?= admin_hint('Enter only the part after kits. The database still stores the full permission, such as kits.claim.raid.') ?>
                                 </label>
@@ -2686,7 +2778,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 </label>
                                 <label class="admin-field">
                                   <?= admin_field_head('Sort order', 'Lower kits appear first in the website admin and public product details.') ?>
-                                  <input type="number" min="0" max="9999" name="kits[<?= e((string) $index) ?>][sort_order]" value="<?= e((string) ($row['sort_order'] ?? 100)) ?>">
+                                  <input type="number" min="0" max="9999" name="kits[<?= e((string) $index) ?>][sort_order]" value="<?= e((string) ($row['sort_order'] ?? 100)) ?>" data-kit-sort-input>
                                 </label>
                                 <label class="admin-field">
                                   <?= admin_field_head('CopyPaste file', 'Optional building file name used by the Rust Kits plugin.') ?>
@@ -2694,7 +2786,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 </label>
                                 <label class="admin-field admin-span-all">
                                   <?= admin_field_head('Description', 'Player-facing kit description shown on the website and in the Rust UI when supported.') ?>
-                                  <textarea name="kits[<?= e((string) $index) ?>][description]" rows="3" maxlength="3000"><?= e((string) ($row['description'] ?? '')) ?></textarea>
+                                  <textarea name="kits[<?= e((string) $index) ?>][description]" rows="3" maxlength="3000" data-kit-description-input><?= e((string) ($row['description'] ?? '')) ?></textarea>
                                 </label>
                                 <label class="admin-field">
                                   <?= admin_field_head('Image URL/path', 'Use an HTTPS URL or an uploaded image under assets/media/kits/.') ?>
@@ -2710,7 +2802,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                   </div>
                                 <?php endif; ?>
                                 <label class="admin-check admin-check-field">
-                                  <input type="checkbox" name="kits[<?= e((string) $index) ?>][is_active]" value="1" <?= !empty($row['is_active']) ? 'checked' : '' ?>>
+                                  <input type="checkbox" name="kits[<?= e((string) $index) ?>][is_active]" value="1" <?= !empty($row['is_active']) ? 'checked' : '' ?> data-kit-active-input>
                                   <?= admin_check_copy('Active', 'Inactive kits stay in the website admin but are removed from the next published server payload.') ?>
                                 </label>
                                 <label class="admin-check admin-check-field">
@@ -2759,7 +2851,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               <summary>RP shop row <small>Optional /s listing</small></summary>
                               <div class="admin-grid three">
                                 <label class="admin-check admin-check-field">
-                                  <input type="checkbox" name="kits[<?= e((string) $index) ?>][reward_enabled]" value="1" <?= !empty($row['reward_enabled']) ? 'checked' : '' ?>>
+                                  <input type="checkbox" name="kits[<?= e((string) $index) ?>][reward_enabled]" value="1" <?= !empty($row['reward_enabled']) ? 'checked' : '' ?> data-kit-reward-enabled-input>
                                   <?= admin_check_copy('Show in rewards shop', 'Adds or updates this kit in the ServerRewards kit list.') ?>
                                 </label>
                                 <label class="admin-field">
@@ -2908,24 +3000,76 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             </div>
                             <button class="btn btn-secondary" type="button" data-kit-add>Add Kit</button>
                           </div>
+                          <div class="admin-kit-picker-controls">
+                            <label class="admin-field">
+                              <span>Search</span>
+                              <input type="search" maxlength="140" placeholder="Name, permission, group, item, or shop" data-kit-search>
+                            </label>
+                            <div class="admin-kit-filter-grid">
+                              <label class="admin-field">
+                                <span>Status</span>
+                                <select data-kit-status-filter>
+                                  <option value="">Any status</option>
+                                  <option value="active">Active</option>
+                                  <option value="inactive">Inactive</option>
+                                  <option value="draft">Draft slot</option>
+                                </select>
+                              </label>
+                              <label class="admin-field">
+                                <span>Access</span>
+                                <select data-kit-access-filter>
+                                  <option value="">Any access</option>
+                                  <option value="granted">Granted by group</option>
+                                  <option value="needs-group">Needs group grant</option>
+                                  <option value="no-permission">No permission</option>
+                                </select>
+                              </label>
+                              <label class="admin-field">
+                                <span>Shop</span>
+                                <select data-kit-shop-filter>
+                                  <option value="">Any shop state</option>
+                                  <option value="rewards">Rewards shop</option>
+                                  <option value="store">Derived store display</option>
+                                  <option value="none">No shop display</option>
+                                </select>
+                              </label>
+                              <label class="admin-field">
+                                <span>Sort</span>
+                                <select data-kit-sort>
+                                  <option value="order">Admin order</option>
+                                  <option value="name">Name A-Z</option>
+                                  <option value="items">Most items</option>
+                                  <option value="access">Access state</option>
+                                  <option value="shop">Shop exposure</option>
+                                </select>
+                              </label>
+                              <button class="btn btn-secondary admin-kit-filter-reset" type="button" data-kit-reset>Clear</button>
+                            </div>
+                            <p class="admin-kit-filter-count" data-kit-result-count><?= e((string) $kit_total) ?> kits shown</p>
+                            <div class="admin-alert warning admin-kit-empty" data-kit-empty hidden>No kits match these controls.</div>
+                          </div>
                           <div class="admin-kit-picker-list">
-                            <?php for ($selector_index = 0; $selector_index < $kit_total; $selector_index += 1) : ?>
-                              <?php
-                                $selector_row = $kit_rows[$selector_index] ?? ['id' => '', 'kit_name' => '', 'is_active' => 1, 'items' => ['main' => [], 'wear' => [], 'belt' => []]];
-                                $selector_title = trim((string) ($selector_row['kit_name'] ?? ''));
-                                $selector_is_active = $selector_index === 0;
-                                $selector_item_count = admin_kit_item_count($selector_row);
-                              ?>
+                            <?php foreach ($kit_selector_items as $selector_item) : ?>
                               <button
-                                class="admin-kit-picker-button<?= $selector_is_active ? ' is-active' : '' ?>"
+                                class="admin-kit-picker-button<?= !empty($selector_item['is_active']) ? ' is-active' : '' ?><?= !empty($selector_item['is_draft']) ? ' is-draft' : '' ?><?= (string) $selector_item['status'] === 'inactive' ? ' is-inactive' : '' ?><?= (string) $selector_item['access'] === 'needs-group' ? ' needs-access' : '' ?>"
                                 type="button"
                                 data-kit-select
-                                data-kit-index="<?= e((string) $selector_index) ?>"
-                                <?= $selector_is_active ? 'aria-current="true"' : '' ?>>
-                                <span data-kit-select-label><?= e($selector_title !== '' ? $selector_title : 'New Kit') ?></span>
-                                <small><?= e($selector_item_count . ' item' . ($selector_item_count === 1 ? '' : 's')) ?> / <?= empty($selector_row['id']) ? 'Draft' : (empty($selector_row['is_active']) ? 'Inactive' : 'Active') ?></small>
+                                data-kit-index="<?= e((string) $selector_item['index']) ?>"
+                                data-kit-target="<?= e((string) $selector_item['id']) ?>"
+                                data-kit-status="<?= e((string) $selector_item['status']) ?>"
+                                data-kit-access="<?= e((string) $selector_item['access']) ?>"
+                                data-kit-shop="<?= e((string) $selector_item['shop']) ?>"
+                                data-kit-sort-order="<?= e((string) $selector_item['sort_order']) ?>"
+                                data-kit-items="<?= e((string) $selector_item['items']) ?>"
+                                data-kit-groups="<?= e((string) $selector_item['groups']) ?>"
+                                data-kit-products="<?= e((string) $selector_item['products']) ?>"
+                                data-kit-search="<?= e((string) $selector_item['search']) ?>"
+                                aria-controls="<?= e((string) $selector_item['id']) ?>"
+                                <?= !empty($selector_item['is_active']) ? 'aria-current="true"' : '' ?>>
+                                <span data-kit-select-label><?= e((string) $selector_item['label']) ?></span>
+                                <small data-kit-select-meta><?= e((string) $selector_item['meta']) ?></small>
                               </button>
-                            <?php endfor; ?>
+                            <?php endforeach; ?>
                           </div>
                         </aside>
                       </div>

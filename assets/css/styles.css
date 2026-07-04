@@ -5883,8 +5883,8 @@ button.admin-permission-chip:focus-visible {
 
 .admin-kit-editor-shell {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
   align-items: start;
 }
 
@@ -5892,13 +5892,20 @@ button.admin-permission-chip:focus-visible {
   min-width: 0;
 }
 
+.admin-kit-panels {
+  width: min(100%, 1080px);
+  justify-self: center;
+}
+
 .admin-kit-panel[hidden] {
   display: none;
 }
 
 .admin-kit-picker {
-  position: sticky;
-  top: 98px;
+  order: -1;
+  position: static;
+  width: min(100%, 1080px);
+  justify-self: center;
   display: grid;
   gap: 12px;
   padding: 14px;
@@ -5919,7 +5926,7 @@ button.admin-permission-chip:focus-visible {
 .admin-kit-picker-head,
 .admin-group-picker-head {
   display: flex;
-  align-items: start;
+  align-items: end;
   justify-content: space-between;
   gap: 10px;
 }
@@ -5945,15 +5952,67 @@ button.admin-permission-chip:focus-visible {
   font-weight: 700;
 }
 
-.admin-kit-picker-list {
-  max-height: min(62vh, 620px);
+.admin-kit-picker-controls {
   display: grid;
+  grid-template-columns: minmax(220px, .9fr) minmax(0, 2fr);
+  gap: 10px;
+  align-items: end;
+}
+
+.admin-kit-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+
+.admin-kit-picker-controls .admin-field {
+  gap: 6px;
+  font-size: .8rem;
+}
+
+.admin-kit-picker-controls .admin-field input,
+.admin-kit-picker-controls .admin-field select {
+  min-height: 40px;
+  padding: 8px 10px;
+  font-size: .88rem;
+}
+
+.admin-kit-filter-reset {
+  width: 100%;
+  min-height: 40px;
+  align-self: end;
+  padding: 8px 10px;
+  font-size: .72rem;
+}
+
+.admin-kit-filter-count {
+  margin: 0;
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: .76rem;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.admin-kit-empty {
+  margin: 0;
+  grid-column: 1 / -1;
+}
+
+.admin-kit-picker-list {
+  max-height: 240px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
   gap: 8px;
   overflow: auto;
   padding-right: 3px;
 }
 
 .admin-kit-picker-button {
+  appearance: none;
+  -webkit-appearance: none;
   width: 100%;
   min-height: 58px;
   padding: 10px 12px;
@@ -5970,6 +6029,11 @@ button.admin-permission-chip:focus-visible {
   cursor: pointer;
 }
 
+.admin-kit-picker-button[hidden],
+.admin-kit-empty[hidden] {
+  display: none;
+}
+
 .admin-kit-picker-button:hover,
 .admin-kit-picker-button:focus-visible,
 .admin-kit-picker-button.is-active {
@@ -5979,6 +6043,18 @@ button.admin-permission-chip:focus-visible {
     linear-gradient(90deg, rgba(255, 138, 40, .18), rgba(0, 0, 0, .22)),
     var(--metal-texture) center / 240px repeat,
     rgba(0, 0, 0, .34);
+}
+
+.admin-kit-picker-button.is-draft {
+  border-style: dashed;
+}
+
+.admin-kit-picker-button.is-inactive {
+  opacity: .74;
+}
+
+.admin-kit-picker-button.needs-access {
+  border-color: rgba(255, 209, 102, .38);
 }
 
 .admin-kit-picker-button span,
@@ -6744,14 +6820,19 @@ button.admin-permission-chip:focus-visible {
 
 .admin-feature-editor-shell {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
   align-items: start;
 }
 
 .admin-feature-panels,
 .admin-feature-panel {
   min-width: 0;
+}
+
+.admin-feature-panels {
+  width: min(100%, 1080px);
+  justify-self: center;
 }
 
 .admin-feature-panel[hidden] {
@@ -6782,8 +6863,10 @@ button.admin-permission-chip:focus-visible {
 }
 
 .admin-feature-picker {
-  position: sticky;
-  top: 98px;
+  order: -1;
+  position: static;
+  width: min(100%, 1080px);
+  justify-self: center;
   display: grid;
   gap: 12px;
   padding: 14px;
@@ -6796,7 +6879,7 @@ button.admin-permission-chip:focus-visible {
 
 .admin-feature-picker-head {
   display: flex;
-  align-items: start;
+  align-items: end;
   justify-content: space-between;
   gap: 10px;
 }
@@ -6829,12 +6912,14 @@ button.admin-permission-chip:focus-visible {
 
 .admin-feature-picker-controls {
   display: grid;
+  grid-template-columns: minmax(220px, .9fr) minmax(0, 2fr);
   gap: 10px;
+  align-items: end;
 }
 
 .admin-feature-filter-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(6, minmax(0, 1fr));
   gap: 10px;
   align-items: end;
 }
@@ -6861,6 +6946,7 @@ button.admin-permission-chip:focus-visible {
 
 .admin-feature-filter-count {
   margin: 0;
+  grid-column: 1 / -1;
   color: var(--muted);
   font-family: var(--font-body);
   font-size: .76rem;
@@ -6870,11 +6956,13 @@ button.admin-permission-chip:focus-visible {
 
 .admin-feature-empty {
   margin: 0;
+  grid-column: 1 / -1;
 }
 
 .admin-feature-picker-list {
-  max-height: min(62vh, 620px);
+  max-height: 240px;
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
   gap: 8px;
   overflow: auto;
   padding-right: 3px;
@@ -7070,14 +7158,19 @@ button.admin-permission-chip:focus-visible {
 
 .admin-feedback-editor-shell {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(270px, 330px);
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
   align-items: start;
 }
 
 .admin-feedback-panels,
 .admin-feedback-panel {
   min-width: 0;
+}
+
+.admin-feedback-panels {
+  width: min(100%, 1080px);
+  justify-self: center;
 }
 
 .admin-feedback-card {
@@ -7263,8 +7356,10 @@ button.admin-permission-chip:focus-visible {
 }
 
 .admin-feedback-picker {
-  position: sticky;
-  top: 98px;
+  order: -1;
+  position: static;
+  width: min(100%, 1080px);
+  justify-self: center;
   display: grid;
   gap: 12px;
   padding: 14px;
@@ -7277,7 +7372,7 @@ button.admin-permission-chip:focus-visible {
 
 .admin-feedback-picker-head {
   display: flex;
-  align-items: flex-start;
+  align-items: end;
   justify-content: space-between;
   gap: 10px;
 }
@@ -7306,13 +7401,16 @@ button.admin-permission-chip:focus-visible {
 
 .admin-feedback-picker-controls {
   display: grid;
+  grid-template-columns: minmax(220px, .9fr) minmax(0, 2fr);
   gap: 10px;
+  align-items: end;
 }
 
 .admin-feedback-filter-grid {
   display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(5, minmax(0, 1fr));
   gap: 10px;
+  align-items: end;
 }
 
 .admin-feedback-picker-controls .admin-field {
@@ -7327,13 +7425,22 @@ button.admin-permission-chip:focus-visible {
   font-size: .88rem;
 }
 
+.admin-feedback-filter-reset {
+  width: 100%;
+  min-height: 40px;
+  align-self: end;
+  padding: 8px 10px;
+  font-size: .72rem;
+}
+
 .admin-feedback-queue-empty[hidden] {
   display: none;
 }
 
 .admin-feedback-picker-list {
-  max-height: min(56vh, 620px);
+  max-height: 260px;
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
   gap: 8px;
   overflow: auto;
   padding-right: 3px;
@@ -7818,7 +7925,8 @@ button.admin-permission-chip:focus-visible {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
-  .admin-feedback-filter-grid {
+  .admin-feedback-filter-grid,
+  .admin-kit-filter-grid {
     grid-template-columns: 1fr;
   }
 
@@ -7901,6 +8009,9 @@ button.admin-permission-chip:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .admin-feature-picker-controls,
+  .admin-feedback-picker-controls,
+  .admin-kit-picker-controls,
   .admin-store-picker-controls,
   .admin-store-filter-grid,
   .admin-group-picker-controls,
@@ -8079,8 +8190,8 @@ button.admin-permission-chip:focus-visible {
    section-specific stylesheet is missed or cached during deploy. */
 .admin-body .admin-kit-editor-shell {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
   align-items: start;
 }
 
@@ -8089,13 +8200,20 @@ button.admin-permission-chip:focus-visible {
   min-width: 0;
 }
 
+.admin-body .admin-kit-panels {
+  width: min(100%, 1080px);
+  justify-self: center;
+}
+
 .admin-body .admin-kit-panel[hidden] {
   display: none !important;
 }
 
 .admin-body .admin-kit-picker {
-  position: sticky;
-  top: 98px;
+  order: -1;
+  position: static;
+  width: min(100%, 1080px);
+  justify-self: center;
   min-width: 0;
   padding: 14px;
   display: grid;
@@ -8107,9 +8225,59 @@ button.admin-permission-chip:focus-visible {
     rgba(0, 0, 0, .44);
 }
 
-.admin-body .admin-kit-picker-list {
-  max-height: min(62vh, 620px);
+.admin-body .admin-kit-picker-controls {
   display: grid;
+  grid-template-columns: minmax(220px, .9fr) minmax(0, 2fr);
+  gap: 10px;
+  align-items: end;
+}
+
+.admin-body .admin-kit-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+
+.admin-body .admin-kit-picker-controls .admin-field {
+  gap: 6px;
+  font-size: .8rem;
+}
+
+.admin-body .admin-kit-picker-controls .admin-field input,
+.admin-body .admin-kit-picker-controls .admin-field select {
+  min-height: 40px;
+  padding: 8px 10px;
+  font-size: .88rem;
+}
+
+.admin-body .admin-kit-filter-reset {
+  width: 100%;
+  min-height: 40px;
+  align-self: end;
+  padding: 8px 10px;
+  font-size: .72rem;
+}
+
+.admin-body .admin-kit-filter-count {
+  margin: 0;
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: .76rem;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.admin-body .admin-kit-empty {
+  margin: 0;
+  grid-column: 1 / -1;
+}
+
+.admin-body .admin-kit-picker-list {
+  max-height: 240px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
   gap: 8px;
   overflow: auto;
   padding-right: 3px;
@@ -8146,6 +8314,23 @@ button.admin-permission-chip:focus-visible {
     linear-gradient(90deg, rgba(255, 138, 40, .20), rgba(0, 0, 0, .22)),
     var(--metal-texture) center / 240px repeat,
     linear-gradient(180deg, rgba(36, 38, 38, .98), rgba(8, 9, 9, .96));
+}
+
+.admin-body .admin-kit-picker-button[hidden],
+.admin-body .admin-kit-empty[hidden] {
+  display: none;
+}
+
+.admin-body .admin-kit-picker-button.is-draft {
+  border-style: dashed;
+}
+
+.admin-body .admin-kit-picker-button.is-inactive {
+  opacity: .74;
+}
+
+.admin-body .admin-kit-picker-button.needs-access {
+  border-color: rgba(255, 209, 102, .38);
 }
 
 .admin-body .admin-kit-picker-button span,
@@ -8354,6 +8539,11 @@ button.admin-permission-chip:focus-visible {
 }
 
 @media (max-width: 640px) {
+  .admin-body .admin-kit-picker-controls,
+  .admin-body .admin-kit-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
   .admin-body .admin-feature-picker-list,
   .admin-body .admin-group-picker-list,
   .admin-body .admin-kit-picker-list,

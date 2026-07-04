@@ -1,7 +1,7 @@
 .admin-body .admin-kit-editor-shell {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(220px, 280px);
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
   align-items: start;
 }
 
@@ -10,13 +10,20 @@
   min-width: 0;
 }
 
+.admin-body .admin-kit-panels {
+  width: min(100%, 1080px);
+  justify-self: center;
+}
+
 .admin-body .admin-kit-panel[hidden] {
   display: none !important;
 }
 
 .admin-body .admin-kit-picker {
-  position: sticky;
-  top: 98px;
+  order: -1;
+  position: static;
+  width: min(100%, 1080px);
+  justify-self: center;
   min-width: 0;
   padding: 14px;
   display: grid;
@@ -38,7 +45,7 @@
 
 .admin-body .admin-kit-picker-head {
   display: flex;
-  align-items: start;
+  align-items: end;
   justify-content: space-between;
   gap: 10px;
 }
@@ -55,9 +62,59 @@
   font-weight: 800;
 }
 
-.admin-body .admin-kit-picker-list {
-  max-height: min(62vh, 620px);
+.admin-body .admin-kit-picker-controls {
   display: grid;
+  grid-template-columns: minmax(220px, .9fr) minmax(0, 2fr);
+  gap: 10px;
+  align-items: end;
+}
+
+.admin-body .admin-kit-filter-grid {
+  display: grid;
+  grid-template-columns: repeat(5, minmax(0, 1fr));
+  gap: 10px;
+  align-items: end;
+}
+
+.admin-body .admin-kit-picker-controls .admin-field {
+  gap: 6px;
+  font-size: .8rem;
+}
+
+.admin-body .admin-kit-picker-controls .admin-field input,
+.admin-body .admin-kit-picker-controls .admin-field select {
+  min-height: 40px;
+  padding: 8px 10px;
+  font-size: .88rem;
+}
+
+.admin-body .admin-kit-filter-reset {
+  width: 100%;
+  min-height: 40px;
+  align-self: end;
+  padding: 8px 10px;
+  font-size: .72rem;
+}
+
+.admin-body .admin-kit-filter-count {
+  margin: 0;
+  grid-column: 1 / -1;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: .76rem;
+  font-weight: 850;
+  line-height: 1.25;
+}
+
+.admin-body .admin-kit-empty {
+  margin: 0;
+  grid-column: 1 / -1;
+}
+
+.admin-body .admin-kit-picker-list {
+  max-height: 240px;
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
   gap: 8px;
   overflow: auto;
   padding-right: 3px;
@@ -94,6 +151,23 @@
     linear-gradient(90deg, rgba(255, 138, 40, .20), rgba(0, 0, 0, .22)),
     var(--metal-texture) center / 240px repeat,
     linear-gradient(180deg, rgba(36, 38, 38, .98), rgba(8, 9, 9, .96));
+}
+
+.admin-body .admin-kit-picker-button[hidden],
+.admin-body .admin-kit-empty[hidden] {
+  display: none;
+}
+
+.admin-body .admin-kit-picker-button.is-draft {
+  border-style: dashed;
+}
+
+.admin-body .admin-kit-picker-button.is-inactive {
+  opacity: .74;
+}
+
+.admin-body .admin-kit-picker-button.needs-access {
+  border-color: rgba(255, 209, 102, .38);
 }
 
 .admin-body .admin-kit-picker-button span,
@@ -459,6 +533,11 @@
 }
 
 @media (max-width: 640px) {
+  .admin-body .admin-kit-picker-controls,
+  .admin-body .admin-kit-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
   .admin-body .admin-kit-picker-list {
     grid-template-columns: 1fr;
   }

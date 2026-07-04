@@ -9,6 +9,15 @@
   var panels = Array.prototype.slice.call(editor.querySelectorAll('[data-kit-panel]'));
   var selectors = Array.prototype.slice.call(editor.querySelectorAll('[data-kit-select]'));
   var addButton = editor.querySelector('[data-kit-add]');
+  var pickerList = editor.querySelector('.admin-kit-picker-list');
+  var searchInput = editor.querySelector('[data-kit-search]');
+  var statusFilter = editor.querySelector('[data-kit-status-filter]');
+  var accessFilter = editor.querySelector('[data-kit-access-filter]');
+  var shopFilter = editor.querySelector('[data-kit-shop-filter]');
+  var sortSelect = editor.querySelector('[data-kit-sort]');
+  var resetButton = editor.querySelector('[data-kit-reset]');
+  var resultCount = editor.querySelector('[data-kit-result-count]');
+  var emptyState = editor.querySelector('[data-kit-empty]');
   var expectedInput = form ? form.querySelector('input[name="kit_expected_items"]') : null;
   var saveModeInput = form ? form.querySelector('[data-kit-save-mode]') : null;
   var catalog = [];
@@ -37,6 +46,20 @@
 
   function normalizeShortname(value) {
     return String(value || '').trim().toLowerCase();
+  }
+
+  function normalizeText(value) {
+    return String(value || '').trim().toLowerCase();
+  }
+
+  function plainText(value) {
+    return String(value || '').replace(/\s+/g, ' ').trim();
+  }
+
+  function numberValue(element, attribute, fallback) {
+    var value = Number(element.getAttribute(attribute) || fallback || 0);
+
+    return Number.isFinite(value) ? value : 0;
   }
 
   function assetPath(path) {
@@ -134,16 +157,20 @@
     });
   }
 
-  function panelByIndex(index) {
-    return panels.find(function (panel) {
-      return panel.getAttribute('data-kit-index') === String(index);
-    });
-  }
-
   function selectorByIndex(index) {
     return selectors.find(function (selector) {
       return selector.getAttribute('data-kit-index') === String(index);
     });
+  }
+
+  function kitInput(panel, suffix) {
+    return panel.querySelector('input[name$="[' + suffix + ']"], select[name$="[' + suffix + ']"], textarea[name$="[' + suffix + ']"]');
+  }
+
+  function selectorLabel(selector) {
+    var label = selector.querySelector('[data-kit-select-label]');
+
+    return label ? plainText(label.textContent) : '';
   }
 
   function setPanelEnabled(panel, enabled) {
@@ -199,17 +226,17 @@
   }
 
   function activateKit(index) {
-    activeIndex = String(index);
+    activeIndex = String(index || '');
 
     panels.forEach(function (panel) {
-      var isActive = panel.getAttribute('data-kit-index') === activeIndex;
+      var isActive = activeIndex !== '' && panel.getAttribute('data-kit-index') === activeIndex;
       panel.hidden = !isActive;
       panel.classList.toggle('is-active', isActive);
       setPanelEnabled(panel, isActive);
     });
 
     selectors.forEach(function (selector) {
-      var isActive = selector.getAttribute('data-kit-index') === activeIndex;
+      var isActive = activeIndex !== '' && selector.getAttribute('data-kit-index') === activeIndex;
       selector.classList.toggle('is-active', isActive);
 
       if (isActive) {
@@ -223,6 +250,8 @@
   }
 
   function activateDraftKit() {
+    resetKitFilters();
+
     var draftPanel = panels.find(function (panel) {
       var idInput = panel.querySelector('input[name$="[id]"]');
 
@@ -244,29 +273,357 @@
     }
   }
 
-  function updateKitTitle(input) {
-    var panel = input.closest('[data-kit-panel]');
+  function countPanelItems(panel) {
+    var count = 0;
 
-    if (!panel) {
+    Array.prototype.slice.call(panel.querySelectorAll('[data-kit-slot-wrap]')).forEach(function (slotWrap) {
+      var field = slotWrap.querySelector('[data-kit-item-field="shortname"]');
+
+      if (field && normalizeShortname(field.value)) {
+        count += 1;
+      }
+    });
+
+    return count;
+  }
+
+  function kitStatus(panel) {
+    var idInput = kitInput(panel, 'id');
+
+    if (!idInput || !plainText(idInput.value)) {
+      return 'draft';
+    }
+
+    var activeInput = kitInput(panel, 'is_active');
+
+    return activeInput && activeInput.checked ? 'active' : 'inactive';
+  }
+
+  function statusLabel(status) {
+    if (status === 'active') {
+      return 'Active';
+    }
+
+    if (status === 'inactive') {
+      return 'Inactive';
+    }
+
+    return 'Draft slot';
+  }
+
+  function kitPermissionSuffix(panel) {
+    var permissionInput = kitInput(panel, 'required_permission');
+    var value = permissionInput ? plainText(permissionInput.value) : '';
+
+    return value.replace(/^kits\./i, '');
+  }
+
+  function kitAccess(panel, permissionSuffix) {
+    if (!permissionSuffix) {
+      return 'no-permission';
+    }
+
+    if (
+      panel.getAttribute('data-kit-original-permission')
+      && permissionSuffix !== panel.getAttribute('data-kit-original-permission')
+    ) {
+      return 'needs-group';
+    }
+
+    return numberValue(panel, 'data-kit-group-count', 0) > 0 ? 'granted' : 'needs-group';
+  }
+
+  function accessLabel(access, groupCount) {
+    if (access === 'granted') {
+      return groupCount + ' group' + (groupCount === 1 ? '' : 's');
+    }
+
+    if (access === 'needs-group') {
+      return 'Needs group grant';
+    }
+
+    return 'No permission';
+  }
+
+  function kitShopTokens(panel) {
+    var tokens = [];
+    var rewardInput = kitInput(panel, 'reward_enabled');
+
+    if (rewardInput && rewardInput.checked) {
+      tokens.push('rewards');
+    }
+
+    if (numberValue(panel, 'data-kit-product-count', 0) > 0) {
+      tokens.push('store');
+    }
+
+    if (!tokens.length) {
+      tokens.push('none');
+    }
+
+    return tokens;
+  }
+
+  function shopLabel(tokens) {
+    var value = tokens.join(' ');
+
+    if (value === 'rewards store') {
+      return 'Rewards + Store';
+    }
+
+    if (value === 'rewards') {
+      return 'Rewards shop';
+    }
+
+    if (value === 'store') {
+      return 'Store derived';
+    }
+
+    return 'No shop display';
+  }
+
+  function kitSearchText(panel, title, permissionSuffix, status, access, shop) {
+    var parts = [
+      title,
+      permissionSuffix ? 'kits.' + permissionSuffix : '',
+      statusLabel(status),
+      accessLabel(access, numberValue(panel, 'data-kit-group-count', 0)),
+      shopLabel(shop)
+    ];
+
+    ['description', 'reward_display_name', 'reward_description', 'reward_permission'].forEach(function (suffix) {
+      var control = kitInput(panel, suffix);
+
+      if (control) {
+        parts.push(control.value);
+      }
+    });
+
+    Array.prototype.slice.call(panel.querySelectorAll('.admin-permission-chip, .admin-derived-product strong, .admin-derived-product small')).forEach(function (element) {
+      parts.push(element.textContent);
+    });
+
+    Array.prototype.slice.call(panel.querySelectorAll('[data-kit-item-field="shortname"], [data-kit-item-field="display_name"]')).forEach(function (field) {
+      parts.push(field.value);
+    });
+
+    return parts.map(plainText).filter(Boolean).join(' ');
+  }
+
+  function updateSelectorFromPanel(panel) {
+    var index = panel.getAttribute('data-kit-index') || '0';
+    var selector = selectorByIndex(index);
+
+    if (!selector) {
       return;
     }
 
-    var index = panel.getAttribute('data-kit-index');
-    var title = input.value.trim() || 'New Kit';
+    var titleInput = kitInput(panel, 'kit_name');
+    var sortInput = kitInput(panel, 'sort_order');
+    var title = plainText(titleInput ? titleInput.value : '') || 'New Kit';
+    var status = kitStatus(panel);
+    var permissionSuffix = kitPermissionSuffix(panel);
+    var access = kitAccess(panel, permissionSuffix);
+    var shop = kitShopTokens(panel);
+    var itemCount = countPanelItems(panel);
+    var groupCount = numberValue(panel, 'data-kit-group-count', 0);
+    var metaText = statusLabel(status)
+      + ' / '
+      + itemCount
+      + ' item'
+      + (itemCount === 1 ? '' : 's')
+      + ' / '
+      + accessLabel(access, groupCount)
+      + ' / '
+      + shopLabel(shop);
+    var publishedLabel = panel.getAttribute('data-kit-published-label') || '';
     var heading = panel.querySelector('[data-kit-card-title]');
-    var selector = selectorByIndex(index);
+    var subtitle = panel.querySelector('[data-kit-card-subtitle]');
+    var label = selector.querySelector('[data-kit-select-label]');
+    var meta = selector.querySelector('[data-kit-select-meta]');
 
     if (heading) {
       heading.textContent = title;
     }
 
-    if (selector) {
-      var label = selector.querySelector('[data-kit-select-label]');
-
-      if (label) {
-        label.textContent = title;
-      }
+    if (subtitle) {
+      subtitle.textContent = metaText + publishedLabel;
     }
+
+    if (label) {
+      label.textContent = title;
+    }
+
+    if (meta) {
+      meta.textContent = metaText;
+    }
+
+    selector.classList.toggle('is-draft', status === 'draft');
+    selector.classList.toggle('is-inactive', status === 'inactive');
+    selector.classList.toggle('needs-access', access === 'needs-group');
+    selector.setAttribute('data-kit-status', status);
+    selector.setAttribute('data-kit-access', access);
+    selector.setAttribute('data-kit-shop', shop.join(' '));
+    selector.setAttribute('data-kit-sort-order', sortInput ? String(sortInput.value || '100') : '100');
+    selector.setAttribute('data-kit-items', String(itemCount));
+    selector.setAttribute('data-kit-search', kitSearchText(panel, title, permissionSuffix, status, access, shop));
+  }
+
+  function kitFilters() {
+    return {
+      query: normalizeText(searchInput ? searchInput.value : ''),
+      status: statusFilter ? String(statusFilter.value || '') : '',
+      access: accessFilter ? String(accessFilter.value || '') : '',
+      shop: shopFilter ? String(shopFilter.value || '') : '',
+      sort: sortSelect ? String(sortSelect.value || 'order') : 'order'
+    };
+  }
+
+  function sortKitSelectors(sortMode) {
+    var statusRank = {
+      active: 10,
+      inactive: 20,
+      draft: 30
+    };
+    var accessRank = {
+      granted: 10,
+      needsGroup: 20,
+      noPermission: 30
+    };
+
+    function draftRank(selector) {
+      return selector.getAttribute('data-kit-status') === 'draft' ? 1 : 0;
+    }
+
+    function byTitle(a, b) {
+      return selectorLabel(a).localeCompare(selectorLabel(b));
+    }
+
+    function byAdminOrder(a, b) {
+      return draftRank(a) - draftRank(b)
+        || numberValue(a, 'data-kit-sort-order', 100) - numberValue(b, 'data-kit-sort-order', 100)
+        || byTitle(a, b);
+    }
+
+    function accessSortValue(selector) {
+      var access = selector.getAttribute('data-kit-access') || 'needs-group';
+
+      if (access === 'needs-group') {
+        return accessRank.needsGroup;
+      }
+
+      if (access === 'no-permission') {
+        return accessRank.noPermission;
+      }
+
+      return accessRank.granted;
+    }
+
+    return selectors.slice().sort(function (a, b) {
+      if (sortMode === 'name') {
+        return byTitle(a, b) || byAdminOrder(a, b);
+      }
+
+      if (sortMode === 'items') {
+        return numberValue(b, 'data-kit-items', 0) - numberValue(a, 'data-kit-items', 0)
+          || byAdminOrder(a, b);
+      }
+
+      if (sortMode === 'access') {
+        return accessSortValue(a) - accessSortValue(b)
+          || byAdminOrder(a, b);
+      }
+
+      if (sortMode === 'shop') {
+        return String(a.getAttribute('data-kit-shop') || '').localeCompare(String(b.getAttribute('data-kit-shop') || ''))
+          || byAdminOrder(a, b);
+      }
+
+      return (statusRank[a.getAttribute('data-kit-status') || 'draft'] || 99) - (statusRank[b.getAttribute('data-kit-status') || 'draft'] || 99)
+        || byAdminOrder(a, b);
+    });
+  }
+
+  function selectorMatches(selector, filters) {
+    if (filters.status && selector.getAttribute('data-kit-status') !== filters.status) {
+      return false;
+    }
+
+    if (filters.access && selector.getAttribute('data-kit-access') !== filters.access) {
+      return false;
+    }
+
+    if (filters.shop && String(selector.getAttribute('data-kit-shop') || '').split(/\s+/).indexOf(filters.shop) === -1) {
+      return false;
+    }
+
+    if (!filters.query) {
+      return true;
+    }
+
+    var searchText = normalizeText(selector.getAttribute('data-kit-search'));
+    var terms = filters.query.split(/\s+/).filter(Boolean);
+
+    return terms.every(function (term) {
+      return searchText.indexOf(term) !== -1;
+    });
+  }
+
+  function applyKitFilters() {
+    var filters = kitFilters();
+    var visible = [];
+
+    sortKitSelectors(filters.sort).forEach(function (selector) {
+      if (pickerList) {
+        pickerList.appendChild(selector);
+      }
+
+      var isVisible = selectorMatches(selector, filters);
+      selector.hidden = !isVisible;
+
+      if (isVisible) {
+        visible.push(selector);
+      }
+    });
+
+    if (resultCount) {
+      resultCount.textContent = visible.length + ' kit' + (visible.length === 1 ? '' : 's') + ' shown';
+    }
+
+    if (emptyState) {
+      emptyState.hidden = visible.length !== 0;
+    }
+
+    if (!visible.length) {
+      activateKit('');
+      return;
+    }
+
+    var activeSelector = selectorByIndex(activeIndex);
+
+    if (!activeSelector || activeSelector.hidden) {
+      activateKit(visible[0].getAttribute('data-kit-index') || '0');
+    } else {
+      activateKit(activeIndex);
+    }
+  }
+
+  function resetKitFilters() {
+    if (searchInput) {
+      searchInput.value = '';
+    }
+
+    [statusFilter, accessFilter, shopFilter].forEach(function (control) {
+      if (control) {
+        control.value = '';
+      }
+    });
+
+    if (sortSelect) {
+      sortSelect.value = 'order';
+    }
+
+    applyKitFilters();
   }
 
   function getSlotFields(slotWrap) {
@@ -978,8 +1335,16 @@
       setFieldValue(fields, name, value);
     });
 
+    var panel = activeSlot.closest('[data-kit-panel]');
+
     updateSlotVisual(activeSlot);
-    markPanelDirty(activeSlot.closest('[data-kit-panel]'));
+    markPanelDirty(panel);
+
+    if (panel) {
+      updateSelectorFromPanel(panel);
+      applyKitFilters();
+    }
+
     closeModal();
   }
 
@@ -994,10 +1359,18 @@
   }
 
   panels.forEach(function (panel) {
-    Array.prototype.slice.call(panel.querySelectorAll('[data-kit-name-input]')).forEach(function (input) {
-      input.addEventListener('input', function () {
-        updateKitTitle(input);
-      });
+    var refreshPanel = function () {
+      updateSelectorFromPanel(panel);
+      applyKitFilters();
+    };
+
+    Array.prototype.slice.call(panel.querySelectorAll('input, select, textarea')).forEach(function (control) {
+      if (control.hasAttribute('data-kit-item-field')) {
+        return;
+      }
+
+      control.addEventListener('input', refreshPanel);
+      control.addEventListener('change', refreshPanel);
     });
 
     Array.prototype.slice.call(panel.querySelectorAll('[data-kit-slot]')).forEach(function (slotButton) {
@@ -1005,7 +1378,23 @@
         openModal(slotButton.closest('[data-kit-slot-wrap]'));
       });
     });
+
+    updateSelectorFromPanel(panel);
   });
+
+  [searchInput, statusFilter, accessFilter, shopFilter, sortSelect].forEach(function (control) {
+    if (!control) {
+      return;
+    }
+
+    control.addEventListener(control.tagName === 'INPUT' ? 'input' : 'change', applyKitFilters);
+  });
+
+  if (resetButton) {
+    resetButton.addEventListener('click', resetKitFilters);
+  }
+
+  applyKitFilters();
 
   Array.prototype.slice.call(document.querySelectorAll('[data-kit-save-submit]')).forEach(function (button) {
     button.addEventListener('click', function () {
