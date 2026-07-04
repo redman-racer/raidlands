@@ -292,6 +292,27 @@ function admin_hint(string $text): string
     return '<small class="admin-inline-hint">' . e($text) . '</small>';
 }
 
+function admin_permission_status_guide(): string
+{
+    $items = [
+        ['Synced', 'Checked here and present in the latest live Rust snapshot.', 'synced'],
+        ['Missing live', 'Checked here but not reported live yet; publish should add it.', 'missing-live'],
+        ['Live extra', 'Reported live by Rust but unchecked here; publish should remove it.', 'extra-live'],
+    ];
+    $html = '<div class="admin-permission-status-guide" role="note" aria-label="Permission status legend">';
+    $html .= '<p>Status compares this website draft with the latest live Rust snapshot. Publishing applies the checked state to Rust, then the badge updates after the bridge reports back.</p>';
+    $html .= '<div class="admin-permission-status-list">';
+
+    foreach ($items as [$label, $description, $state]) {
+        $html .= '<span class="admin-permission-status-item">'
+            . '<strong class="admin-permission-status-badge is-' . e($state) . '">' . e($label) . '</strong>'
+            . '<span>' . e($description) . '</span>'
+            . '</span>';
+    }
+
+    return $html . '</div></div>';
+}
+
 function admin_option_map(array $options, array $current_values = []): array
 {
     $result = [];
@@ -3363,6 +3384,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 <div class="admin-alert warning">No Kits plugin permissions are registered yet. Save active kits with a kit permission to populate this panel.</div>
                               <?php else : ?>
                                 <p class="admin-detail-note">Grant in-game kit access by selecting the Kits plugin permissions this group should hold. Public/free kits belong on the protected <code>default</code> group.</p>
+                                <?= admin_permission_status_guide() ?>
                                 <div class="admin-kit-permission-grid">
                                   <?php foreach ($kit_permission_names as $permission_name) : ?>
                                     <?php
@@ -3411,6 +3433,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                   <div class="admin-alert warning">Protected is on. If you want this group to behave like a normal editable group, clear Protected above and save. Non-kit grant rows remain editable here.</div>
                                 <?php endif; ?>
                               <?php endif; ?>
+                              <?= admin_permission_status_guide() ?>
                               <div class="admin-permission-workbench" data-permission-workbench>
                                 <div class="admin-permission-toolbar">
                                   <label class="admin-field admin-permission-search">

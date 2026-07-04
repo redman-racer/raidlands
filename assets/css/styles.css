@@ -4740,6 +4740,72 @@ a.leaderboard-steam:hover,
   line-height: 1.45;
 }
 
+.admin-permission-status-guide {
+  margin: 0 16px 14px;
+  padding: 12px;
+  display: grid;
+  gap: 10px;
+  border: 1px solid rgba(181, 170, 160, .22);
+  border-radius: var(--radius);
+  background:
+    var(--console-scan) center / 220px repeat,
+    rgba(0, 0, 0, .22);
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: .82rem;
+  font-weight: 780;
+  line-height: 1.42;
+}
+
+.admin-permission-status-guide p {
+  margin: 0;
+}
+
+.admin-permission-status-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 12px;
+}
+
+.admin-permission-status-item {
+  min-width: min(100%, 210px);
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 8px;
+  align-items: center;
+}
+
+.admin-permission-status-badge {
+  min-height: 24px;
+  padding: 6px 8px 5px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border: 1px solid rgba(181, 170, 160, .26);
+  border-radius: var(--radius);
+  color: var(--white);
+  font-size: .68rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.admin-permission-status-badge.is-synced {
+  border-color: rgba(255, 138, 40, .46);
+  background: rgba(255, 138, 40, .12);
+}
+
+.admin-permission-status-badge.is-missing-live {
+  border-color: rgba(255, 209, 102, .44);
+  background: rgba(255, 209, 102, .10);
+}
+
+.admin-permission-status-badge.is-extra-live {
+  border-color: rgba(124, 255, 107, .36);
+  background: rgba(124, 255, 107, .08);
+}
+
 .admin-details .admin-grid {
   padding: 0 16px 16px;
 }
