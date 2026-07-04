@@ -2572,6 +2572,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             data-kit-expected="<?= e(admin_kit_slot_expected_json()) ?>"
                             <?= $kit_is_active_panel ? '' : 'hidden' ?>>
                             <input type="hidden" name="kits[<?= e((string) $index) ?>][id]" value="<?= e((string) ($row['id'] ?? '')) ?>">
+                            <input type="hidden" name="kits[<?= e((string) $index) ?>][original_kit_name]" value="<?= e((string) ($row['kit_name'] ?? '')) ?>">
                             <div class="admin-repeat-card-head">
                               <div>
                                 <h3 data-kit-card-title><?= e($kit_title !== '' ? $kit_title : 'New Kit') ?></h3>
@@ -2595,8 +2596,8 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                   <input type="text" name="kits[<?= e((string) $index) ?>][kit_name]" maxlength="160" placeholder="Raid Kit" value="<?= e((string) ($row['kit_name'] ?? '')) ?>" data-kit-name-input>
                                 </label>
                                 <label class="admin-field">
-                                  <?= admin_field_head('Previous name', 'Only needed when renaming an existing Rust kit.') ?>
-                                  <input type="text" name="kits[<?= e((string) $index) ?>][previous_kit_name]" maxlength="160" value="<?= e((string) ($row['previous_kit_name'] ?? '')) ?>">
+                                  <?= admin_field_head('Previous aliases', 'Filled automatically when renaming. Add an older duplicate name here if the Rust server still has one to remove.') ?>
+                                  <input type="text" name="kits[<?= e((string) $index) ?>][previous_kit_name]" maxlength="160" placeholder="Old Kit Name" value="<?= e((string) ($row['previous_kit_name'] ?? '')) ?>">
                                 </label>
                                 <label class="admin-field">
                                   <?= admin_field_head('Claim permission', 'The Rust Kits gate. Blank means public. If groups are selected and this is blank, the website saves a generated kits.<kit-name> permission.') ?>

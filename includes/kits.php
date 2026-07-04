@@ -174,6 +174,117 @@ function raidlands_kits_clean_groups(array $groups): array
     return $clean;
 }
 
+function raidlands_kits_name_list($value): array
+{
+    $chunks = preg_split('/[,;\r\n]+/', (string) $value) ?: [];
+    $names = [];
+    $seen = [];
+
+    foreach ($chunks as $chunk) {
+        $name = raidlands_kits_clean_text($chunk, 160);
+
+        if ($name === '') {
+            continue;
+        }
+
+        $key = strtolower($name);
+
+        if (isset($seen[$key])) {
+            continue;
+        }
+
+        $seen[$key] = true;
+        $names[] = $name;
+    }
+
+    return $names;
+}
+
+function raidlands_kits_same_name(string $left, string $right): bool
+{
+    return strcasecmp(trim($left), trim($right)) === 0;
+}
+
+function raidlands_kits_lookup_admin_row(PDO $pdo, int $id): ?array
+{
+    if ($id <= 0) {
+        return null;
+    }
+
+    $statement = $pdo->prepare('SELECT id, kit_name, previous_kit_name FROM game_kits WHERE id = :id LIMIT 1');
+    $statement->execute(['id' => $id]);
+    $row = $statement->fetch(PDO::FETCH_ASSOC);
+
+    return is_array($row) ? $row : null;
+}
+
+function raidlands_kits_lookup_rename_row(PDO $pdo, array $candidate_names, string $new_name): ?array
+{
+    $statement = $pdo->prepare(
+        'SELECT id, kit_name, previous_kit_name
+         FROM game_kits
+         WHERE kit_name = :kit_name
+           AND deleted_at IS NULL
+         LIMIT 1'
+    );
+
+    foreach ($candidate_names as $candidate) {
+        $candidate = raidlands_kits_clean_text($candidate, 160);
+
+        if ($candidate === '' || raidlands_kits_same_name($candidate, $new_name)) {
+            continue;
+        }
+
+        $statement->execute(['kit_name' => $candidate]);
+        $row = $statement->fetch(PDO::FETCH_ASSOC);
+
+        if (is_array($row)) {
+            return $row;
+        }
+    }
+
+    return null;
+}
+
+function raidlands_kits_previous_names_for_save(string $new_name, array $submitted_previous_names, ?array $existing_row): array
+{
+    $names = [];
+
+    if ($existing_row !== null) {
+        $existing_name = raidlands_kits_clean_text($existing_row['kit_name'] ?? '', 160);
+
+        if ($existing_name !== '' && !raidlands_kits_same_name($existing_name, $new_name)) {
+            $names[] = $existing_name;
+        }
+    }
+
+    foreach ($submitted_previous_names as $name) {
+        $names[] = $name;
+    }
+
+    $clean = [];
+    $seen = [];
+
+    foreach ($names as $name) {
+        $name = raidlands_kits_clean_text($name, 160);
+
+        if ($name === '' || raidlands_kits_same_name($name, $new_name)) {
+            continue;
+        }
+
+        $key = strtolower($name);
+
+        if (isset($seen[$key])) {
+            continue;
+        }
+
+        $seen[$key] = true;
+        $clean[] = $name;
+    }
+
+    return $clean;
+}
+
 function raidlands_kits_guided_claim_permission(string $kit_name, $permission, array $groups): string
 {
     $claim_permission = raidlands_kits_clean_permission($permission);
@@ -816,6 +927,9 @@ function raidlands_kits_admin_save(array $post, array $files = []): array
             $row = is_array($row) ? $row : [];
             $id = (int) ($row['id'] ?? 0);
             $name = raidlands_kits_clean_text($row['kit_name'] ?? '', 160);
+            $submitted_previous_names = raidlands_kits_name_list($row['previous_kit_name'] ?? '');
+            $original_name = raidlands_kits_clean_text($row['original_kit_name'] ?? '', 160);
+            $existing_row = raidlands_kits_lookup_admin_row($pdo, $id);
 
             if (!empty($row['delete']) && $id > 0) {
                 $statement = $pdo->prepare(
@@ -842,6 +956,20 @@ function raidlands_kits_admin_save(array $post, array $files = []): array
                 continue;
             }
 
+            if ($existing_row === null) {
+                $existing_row = raidlands_kits_lookup_rename_row(
+                    $pdo,
+                    array_merge([$original_name], $submitted_previous_names),
+                    $name
+                );
+
+                if ($existing_row !== null) {
+                    $id = (int) ($existing_row['id'] ?? 0);
+                }
+            }
+
+            $previous_names = raidlands_kits_previous_names_for_save($name, $submitted_previous_names, $existing_row);
+
             $groups = raidlands_kits_clean_groups((array) ($row['groups'] ?? []));
             $claim_permission = raidlands_kits_guided_claim_permission($name, $row['required_permission'] ?? '', $groups);
 
@@ -854,7 +982,7 @@ function raidlands_kits_admin_save(array $post, array $files = []): array
 
             $params = [
                 'kit_name' => $name,
-                'previous_kit_name' => raidlands_kits_clean_text($row['previous_kit_name'] ?? '', 160),
+                'previous_kit_name' => raidlands_kits_clean_text(implode(', ', $previous_names), 160),
                 'description' => raidlands_kits_clean_multiline($row['description'] ?? ''),
                 'required_permission' => $claim_permission,
                 'maximum_uses' => raidlands_kits_int($row['maximum_uses'] ?? 0, 0, 99999999),
@@ -1044,6 +1172,7 @@ function raidlands_kits_sync_payload(?int $revision = null): array
     $group_access = [];
 
     foreach ($kits as $kit) {
+        $previous_names = raidlands_kits_name_list($kit['previous_kit_name'] ?? '');
         $items = [
             'MainItems' => [],
             'WearItems' => [],
@@ -1058,7 +1187,8 @@ function raidlands_kits_sync_payload(?int $revision = null): array
 
         $payload_kits[] = array_merge([
             'Name' => (string) $kit['kit_name'],
-            'PreviousName' => (string) ($kit['previous_kit_name'] ?? ''),
+            'PreviousName' => (string) ($previous_names[0] ?? ''),
+            'PreviousNames' => $previous_names,
             'Description' => (string) ($kit['description'] ?? ''),
             'RequiredPermission' => (string) $kit['required_permission'],
             'MaximumUses' => (int) $kit['maximum_uses'],
