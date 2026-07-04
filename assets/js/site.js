@@ -1204,6 +1204,37 @@
     return "6 hours";
   }
 
+  function historyChartMetricValue(value) {
+    const number = Number(value);
+
+    return Number.isFinite(number) && number > 0 ? number : 0;
+  }
+
+  function historyChartAxisMax(samples) {
+    const maxValue = samples.reduce((max, sample) => Math.max(
+      max,
+      historyChartMetricValue(sample.players),
+      historyChartMetricValue(sample.peakPlayers),
+      historyChartMetricValue(sample.queue)
+    ), 0);
+
+    if (maxValue <= 0) {
+      return 1;
+    }
+
+    if (maxValue < 8) {
+      return Math.ceil(maxValue) + 1;
+    }
+
+    const roughTick = (maxValue * 1.15) / 4;
+    const magnitude = Math.pow(10, Math.floor(Math.log10(roughTick)));
+    const normalized = roughTick / magnitude;
+    const tickSteps = [1, 1.25, 1.5, 2, 2.5, 3, 4, 5, 7.5, 10];
+    const niceTick = tickSteps.find(step => normalized <= step) || 10;
+
+    return Math.max(1, Math.ceil(niceTick * magnitude * 4));
+  }
+
   function drawServerHistoryChart(payload) {
     const panel = app.querySelector("[data-server-history]");
     const canvas = panel ? panel.querySelector("[data-server-history-chart]") : null;
@@ -1242,15 +1273,7 @@
       return;
     }
 
-    const maxPopulation = Math.max(
-      1,
-      ...samples.map(sample => Math.max(
-        Number(sample.maxPlayers) || 0,
-        Number(sample.peakPlayers) || 0,
-        Number(sample.players) || 0,
-        Number(sample.queue) || 0
-      ))
-    );
+    const maxPopulation = historyChartAxisMax(samples);
     const xFor = sample => {
       const span = Math.max(1, bounds.end - bounds.start);
       const offset = Math.max(0, Math.min(span, (Number(sample.__chartTime) || bounds.start) - bounds.start));

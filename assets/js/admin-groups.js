@@ -220,6 +220,12 @@
   }
 
   function activeTabPrefix(workbench) {
+    const prefixSelect = workbench.querySelector("[data-permission-prefix-select]");
+
+    if (prefixSelect && prefixSelect.value) {
+      return prefixSelect.value;
+    }
+
     const active = workbench.querySelector("[data-permission-tab].is-active");
     const first = workbench.querySelector("[data-permission-tab]");
     const tab = active || first;
@@ -227,13 +233,58 @@
     return tab ? tab.getAttribute("data-tab-prefix") || "" : "";
   }
 
+  function selectOptionByPrefix(select, prefix) {
+    if (!select) {
+      return null;
+    }
+
+    return toArray(select.options).find(option => option.value === prefix) || null;
+  }
+
+  function choiceLabel(choice, prefix) {
+    if (!choice) {
+      return prefix || "Permission category";
+    }
+
+    return choice.getAttribute("data-choice-label") || choice.textContent.replace(/\s+-\s+.*$/, "").trim() || prefix;
+  }
+
+  function updatePrefixSummary(workbench, prefix) {
+    const label = workbench.querySelector("[data-permission-active-label]");
+    const meta = workbench.querySelector("[data-permission-active-meta]");
+    const select = workbench.querySelector("[data-permission-prefix-select]");
+    const option = selectOptionByPrefix(select, prefix);
+    const prefixPanel = toArray(workbench.querySelectorAll("[data-permission-prefix]")).find(panel => {
+      return (panel.getAttribute("data-prefix") || "") === prefix;
+    });
+    const prefixLabel = prefixPanel ? prefixPanel.getAttribute("data-prefix-label") || "" : choiceLabel(option, prefix);
+    const count = prefixPanel ? prefixPanel.querySelector("[data-prefix-count]") : null;
+
+    if (label) {
+      label.textContent = prefixLabel || prefix || "Permission category";
+    }
+
+    if (meta) {
+      meta.textContent = [prefix, count ? count.textContent : ""].filter(Boolean).join(" / ");
+    }
+  }
+
   function activateTab(workbench, prefix) {
     const tabs = toArray(workbench.querySelectorAll("[data-permission-tab]"));
+    const prefixSelect = workbench.querySelector("[data-permission-prefix-select]");
+    const selectOptions = prefixSelect ? toArray(prefixSelect.options) : [];
     const prefixes = toArray(workbench.querySelectorAll("[data-permission-prefix]"));
-    const hasRequestedTab = tabs.some(tab => (tab.getAttribute("data-tab-prefix") || "") === prefix);
+    const hasRequestedTab = tabs.some(tab => (tab.getAttribute("data-tab-prefix") || "") === prefix)
+      || selectOptions.some(option => option.value === prefix);
 
     if ((!prefix || !hasRequestedTab) && tabs.length) {
       prefix = tabs[0].getAttribute("data-tab-prefix") || "";
+    } else if ((!prefix || !hasRequestedTab) && selectOptions.length) {
+      prefix = selectOptions[0].value || "";
+    }
+
+    if (prefixSelect && prefixSelect.value !== prefix && selectOptionByPrefix(prefixSelect, prefix)) {
+      prefixSelect.value = prefix;
     }
 
     tabs.forEach(tab => {
@@ -246,6 +297,8 @@
     prefixes.forEach(section => {
       section.hidden = (section.getAttribute("data-prefix") || "") !== prefix;
     });
+
+    updatePrefixSummary(workbench, prefix);
 
     return prefix;
   }
@@ -394,6 +447,7 @@
     const items = toArray(workbench.querySelectorAll("[data-permission-item]"));
     const prefixes = toArray(workbench.querySelectorAll("[data-permission-prefix]"));
     const tabs = toArray(workbench.querySelectorAll("[data-permission-tab]"));
+    const prefixSelect = workbench.querySelector("[data-permission-prefix-select]");
     const query = ((search && search.value) || "").trim().toLowerCase();
     const onlySelected = Boolean(selectedOnly && selectedOnly.checked);
     const filterActive = query !== "" || onlySelected;
@@ -474,6 +528,16 @@
             : `${prefixStats.selected} / ${prefixItems.length}`;
         }
       }
+
+      const option = selectOptionByPrefix(prefixSelect, prefixName);
+
+      if (option) {
+        const label = choiceLabel(option, prefixName);
+
+        option.textContent = filterActive
+          ? `${label} - ${prefixStats.matches} match${prefixStats.matches === 1 ? "" : "es"}`
+          : `${label} - ${prefixStats.selected} / ${prefixItems.length}`;
+      }
     });
 
     if (matchCount) {
@@ -489,11 +553,13 @@
     }
 
     renderSelectedList(workbench, items);
+    updatePrefixSummary(workbench, activePrefix);
   }
 
   function initWorkbench(workbench) {
     const search = workbench.querySelector("[data-permission-search]");
     const selectedOnly = workbench.querySelector("[data-permission-selected-only]");
+    const prefixSelect = workbench.querySelector("[data-permission-prefix-select]");
 
     resetPermissionFilters(workbench);
     activateTab(workbench, activeTabPrefix(workbench));
@@ -504,6 +570,13 @@
         updateWorkbench(workbench);
       });
     });
+
+    if (prefixSelect) {
+      prefixSelect.addEventListener("change", () => {
+        activateTab(workbench, prefixSelect.value || "");
+        updateWorkbench(workbench);
+      });
+    }
 
     if (search) {
       search.addEventListener("input", () => updateWorkbench(workbench));

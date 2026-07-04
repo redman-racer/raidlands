@@ -3097,6 +3097,23 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             if ($active_permission_prefix === '' && $permission_catalog_groups !== []) {
                                 $active_permission_prefix = (string) array_key_first($permission_catalog_groups);
                             }
+
+                            $active_permission_group = $permission_catalog_groups[$active_permission_prefix] ?? null;
+                            $active_permission_label = 'Permission category';
+                            $active_permission_meta = count($admin_direct_permission_options) . ' direct permissions available';
+
+                            if (is_array($active_permission_group)) {
+                                $active_permission_rows = (array) ($active_permission_group['permissions'] ?? []);
+                                $active_permission_selected = count(array_filter(
+                                    $active_permission_rows,
+                                    static fn (array $permission): bool => isset($desired_set[(string) $permission['name']])
+                                ));
+                                $active_permission_label = admin_permission_prefix_label(
+                                    (string) ($active_permission_group['prefix'] ?? $active_permission_prefix),
+                                    (string) ($active_permission_group['plugin_name'] ?? '')
+                                );
+                                $active_permission_meta = $active_permission_prefix . ' / ' . $active_permission_selected . ' of ' . count($active_permission_rows) . ' selected';
+                            }
                           ?>
                           <article
                             class="admin-repeat-card admin-group-card admin-group-panel<?= $group_is_active_panel ? ' is-active' : '' ?>"
@@ -3267,7 +3284,38 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                   <div class="admin-permission-chip-list" data-permission-selected-list></div>
                                 </div>
 
-                                <div class="admin-permission-tabs" role="tablist" aria-label="Permission sections">
+                                <div class="admin-permission-section-picker">
+                                  <label class="admin-field admin-permission-prefix-select">
+                                    <?= admin_field_head('Grant category', 'Choose the plugin or permission prefix to browse.') ?>
+                                    <select data-permission-prefix-select autocomplete="off" aria-label="Permission grant category">
+                                      <?php foreach ($permission_catalog_groups as $prefix_group) : ?>
+                                        <?php
+                                          $prefix = (string) $prefix_group['prefix'];
+                                          $prefix_permissions = (array) $prefix_group['permissions'];
+                                          $prefix_selected = count(array_filter(
+                                              $prefix_permissions,
+                                              static fn (array $permission): bool => isset($desired_set[(string) $permission['name']])
+                                          ));
+                                          $prefix_label = admin_permission_prefix_label($prefix, (string) ($prefix_group['plugin_name'] ?? ''));
+                                        ?>
+                                        <option
+                                          value="<?= e($prefix) ?>"
+                                          data-permission-choice
+                                          data-choice-label="<?= e($prefix_label) ?>"
+                                          data-choice-prefix="<?= e($prefix) ?>"
+                                          <?= $prefix === $active_permission_prefix ? 'selected' : '' ?>>
+                                          <?= e($prefix_label . ' - ' . $prefix_selected . ' / ' . count($prefix_permissions)) ?>
+                                        </option>
+                                      <?php endforeach; ?>
+                                    </select>
+                                  </label>
+                                  <div class="admin-permission-prefix-summary" data-permission-prefix-summary aria-live="polite">
+                                    <span data-permission-active-label><?= e($active_permission_label) ?></span>
+                                    <small data-permission-active-meta><?= e($active_permission_meta) ?></small>
+                                  </div>
+                                </div>
+
+                                <div class="admin-permission-tabs" role="tablist" aria-label="Permission sections" aria-hidden="true">
                                   <?php foreach ($permission_catalog_groups as $prefix_group) : ?>
                                     <?php
                                       $prefix = (string) $prefix_group['prefix'];
