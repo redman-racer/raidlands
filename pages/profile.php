@@ -122,9 +122,12 @@ $profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_
             $stat_cards = [
                 ['Wipe RP', $profile_stats['current']['reward_points'] ?? 0],
                 ['Wipe Kills', $profile_stats['current']['kills'] ?? 0],
+                ['Wipe NPC Kills', $profile_stats['current']['npc_kills'] ?? 0],
+                ['Killed by NPCs', $profile_stats['current']['deaths_by_npc'] ?? 0],
                 ['Wipe K/D', isset($profile_stats['current']) ? raidlands_stats_format_kdr($profile_stats['current']['kdr'] ?? 0) : '0.00'],
                 ['Wipe Playtime', isset($profile_stats['current']) ? raidlands_stats_format_duration($profile_stats['current']['playtime_seconds'] ?? 0) : '0m'],
                 ['All-Time Kills', $profile_stats['all_time']['kills'] ?? 0],
+                ['All-Time NPC Kills', $profile_stats['all_time']['npc_kills'] ?? 0],
                 ['All-Time Playtime', isset($profile_stats['all_time']) ? raidlands_stats_format_duration($profile_stats['all_time']['playtime_seconds'] ?? 0) : '0m'],
             ];
           ?>

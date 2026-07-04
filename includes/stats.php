@@ -20,6 +20,8 @@ function raidlands_stats_is_ready(): bool
     try {
         raidlands_db_fetch_one('SELECT id FROM wipe_seasons LIMIT 1');
         raidlands_db_fetch_one('SELECT baseline_reward_points FROM player_wipe_stats LIMIT 1');
+        raidlands_db_fetch_one('SELECT baseline_npc_kills FROM player_wipe_stats LIMIT 1');
+        raidlands_db_fetch_one('SELECT id FROM bot_wipe_stats LIMIT 1');
         return true;
     } catch (Throwable $error) {
         return false;
@@ -76,10 +78,19 @@ function raidlands_stats_wipe_key(string $wipe_key): string
     return substr($wipe_key, 0, 160);
 }
 
+function raidlands_stats_bot_key($value): string
+{
+    $bot_key = trim((string) $value);
+    $bot_key = preg_replace('/[^a-zA-Z0-9_.:-]+/', '-', $bot_key) ?? '';
+    $bot_key = trim($bot_key, '-_.:');
+
+    return substr($bot_key, 0, 120);
+}
+
 function raidlands_stats_ingest_snapshot(array $payload, string $server_id, string $body): array
 {
     if (!raidlands_stats_is_ready()) {
-        throw new RuntimeException('Player stats tables are not installed. Run database/migrations/002_player_stats.sql, then database/migrations/016_player_stats_wipe_rp_baseline.sql.');
+        throw new RuntimeException('Player stats tables are not installed. Run database/migrations/002_player_stats.sql, database/migrations/016_player_stats_wipe_rp_baseline.sql, then database/migrations/022_bot_stats.sql.');
     }
 
     $server_id = raidlands_stats_clean_text($server_id !== '' ? $server_id : raidlands_stats_server_id(), 120);
@@ -87,19 +98,29 @@ function raidlands_stats_ingest_snapshot(array $payload, string $server_id, stri
     $wipe_started_at = raidlands_stats_timestamp($payload['wipe_started_at'] ?? null);
     $generated_at = raidlands_stats_timestamp($payload['generated_at'] ?? null) ?? gmdate('Y-m-d H:i:s');
     $players = $payload['players'] ?? [];
+    $bots = $payload['bots'] ?? [];
 
     if (!is_array($players)) {
         throw new InvalidArgumentException('Stats snapshot players must be an array.');
+    }
+
+    if (!is_array($bots)) {
+        throw new InvalidArgumentException('Stats snapshot bots must be an array.');
     }
 
     if (count($players) > 5000) {
         throw new InvalidArgumentException('Stats snapshot has too many players.');
     }
 
+    if (count($bots) > 1000) {
+        throw new InvalidArgumentException('Stats snapshot has too many bots.');
+    }
+
     $pdo = raidlands_db_required();
     $pdo->beginTransaction();
 
     $accepted = 0;
+    $bots_accepted = 0;
     $errors = 0;
 
     try {
@@ -128,10 +149,29 @@ function raidlands_stats_ingest_snapshot(array $payload, string $server_id, stri
                 'playtime_seconds' => raidlands_stats_int($player['playtime_seconds'] ?? 0),
                 'afk_seconds' => raidlands_stats_int($player['afk_seconds'] ?? 0),
                 'reward_points' => raidlands_stats_int($player['reward_points'] ?? 0),
+                'npc_kills' => raidlands_stats_int($player['npc_kills'] ?? 0),
+                'deaths_by_npc' => raidlands_stats_int($player['deaths_by_npc'] ?? 0),
             ];
 
             raidlands_stats_upsert_player_wipe($pdo, $wipe_id, $player_id, $display_name, $raw, $is_first_season);
             $accepted++;
+        }
+
+        foreach ($bots as $bot) {
+            if (!is_array($bot)) {
+                $errors++;
+                continue;
+            }
+
+            $bot_key = raidlands_stats_bot_key($bot['bot_key'] ?? '');
+
+            if ($bot_key === '') {
+                $errors++;
+                continue;
+            }
+
+            raidlands_stats_upsert_bot_wipe($pdo, $wipe_id, $bot_key, $bot, $is_first_season);
+            $bots_accepted++;
         }
 
         $update = $pdo->prepare(
@@ -170,6 +210,8 @@ function raidlands_stats_ingest_snapshot(array $payload, string $server_id, stri
             'wipe_key' => $wipe_key,
             'players_received' => count($players),
             'players_accepted' => $accepted,
+            'bots_received' => count($bots),
+            'bots_accepted' => $bots_accepted,
             'error_count' => $errors,
         ];
     } catch (Throwable $error) {
@@ -262,6 +304,8 @@ function raidlands_stats_upsert_player_wipe(PDO $pdo, int $wipe_id, int $player_
         'playtime_seconds' => 0,
         'afk_seconds' => 0,
         'reward_points' => 0,
+        'npc_kills' => 0,
+        'deaths_by_npc' => 0,
     ];
 
     if ($existing !== null) {
@@ -271,6 +315,8 @@ function raidlands_stats_upsert_player_wipe(PDO $pdo, int $wipe_id, int $player_
             'playtime_seconds' => (int) $existing['baseline_playtime_seconds'],
             'afk_seconds' => (int) $existing['baseline_afk_seconds'],
             'reward_points' => (int) $existing['baseline_reward_points'],
+            'npc_kills' => (int) $existing['baseline_npc_kills'],
+            'deaths_by_npc' => (int) $existing['baseline_deaths_by_npc'],
         ];
     } elseif (!$is_first_season) {
         $baseline = [
@@ -279,6 +325,8 @@ function raidlands_stats_upsert_player_wipe(PDO $pdo, int $wipe_id, int $player_
             'playtime_seconds' => $raw['playtime_seconds'],
             'afk_seconds' => $raw['afk_seconds'],
             'reward_points' => $raw['reward_points'],
+            'npc_kills' => $raw['npc_kills'],
+            'deaths_by_npc' => $raw['deaths_by_npc'],
         ];
     }
 
@@ -287,17 +335,23 @@ function raidlands_stats_upsert_player_wipe(PDO $pdo, int $wipe_id, int $player_
     $playtime = max(0, $raw['playtime_seconds'] - $baseline['playtime_seconds']);
     $afk = max(0, $raw['afk_seconds'] - $baseline['afk_seconds']);
     $reward_points = max(0, $raw['reward_points'] - $baseline['reward_points']);
+    $npc_kills = max(0, $raw['npc_kills'] - $baseline['npc_kills']);
+    $deaths_by_npc = max(0, $raw['deaths_by_npc'] - $baseline['deaths_by_npc']);
     $kdr = $deaths === 0 ? (float) $kills : round($kills / $deaths, 3);
 
     $statement = $pdo->prepare(
         'INSERT INTO player_wipe_stats
             (wipe_id, player_id, display_name, raw_kills, raw_deaths, raw_playtime_seconds, raw_afk_seconds, raw_reward_points,
+             raw_npc_kills, raw_deaths_by_npc,
              baseline_kills, baseline_deaths, baseline_playtime_seconds, baseline_afk_seconds, baseline_reward_points,
-             kills, deaths, playtime_seconds, afk_seconds, reward_points, kdr, last_seen_at)
+             baseline_npc_kills, baseline_deaths_by_npc,
+             kills, deaths, npc_kills, deaths_by_npc, playtime_seconds, afk_seconds, reward_points, kdr, last_seen_at)
          VALUES
             (:wipe_id, :player_id, :display_name, :raw_kills, :raw_deaths, :raw_playtime_seconds, :raw_afk_seconds, :raw_reward_points,
+             :raw_npc_kills, :raw_deaths_by_npc,
              :baseline_kills, :baseline_deaths, :baseline_playtime_seconds, :baseline_afk_seconds, :baseline_reward_points,
-             :kills, :deaths, :playtime_seconds, :afk_seconds, :reward_points, :kdr, NOW())
+             :baseline_npc_kills, :baseline_deaths_by_npc,
+             :kills, :deaths, :npc_kills, :deaths_by_npc, :playtime_seconds, :afk_seconds, :reward_points, :kdr, NOW())
          ON DUPLICATE KEY UPDATE
             display_name = IF(VALUES(display_name) <> "", VALUES(display_name), display_name),
             raw_kills = VALUES(raw_kills),
@@ -305,8 +359,12 @@ function raidlands_stats_upsert_player_wipe(PDO $pdo, int $wipe_id, int $player_
             raw_playtime_seconds = VALUES(raw_playtime_seconds),
             raw_afk_seconds = VALUES(raw_afk_seconds),
             raw_reward_points = VALUES(raw_reward_points),
+            raw_npc_kills = VALUES(raw_npc_kills),
+            raw_deaths_by_npc = VALUES(raw_deaths_by_npc),
             kills = VALUES(kills),
             deaths = VALUES(deaths),
+            npc_kills = VALUES(npc_kills),
+            deaths_by_npc = VALUES(deaths_by_npc),
             playtime_seconds = VALUES(playtime_seconds),
             afk_seconds = VALUES(afk_seconds),
             reward_points = VALUES(reward_points),
@@ -323,16 +381,91 @@ function raidlands_stats_upsert_player_wipe(PDO $pdo, int $wipe_id, int $player_
         'raw_playtime_seconds' => $raw['playtime_seconds'],
         'raw_afk_seconds' => $raw['afk_seconds'],
         'raw_reward_points' => $raw['reward_points'],
+        'raw_npc_kills' => $raw['npc_kills'],
+        'raw_deaths_by_npc' => $raw['deaths_by_npc'],
         'baseline_kills' => $baseline['kills'],
         'baseline_deaths' => $baseline['deaths'],
         'baseline_playtime_seconds' => $baseline['playtime_seconds'],
         'baseline_afk_seconds' => $baseline['afk_seconds'],
         'baseline_reward_points' => $baseline['reward_points'],
+        'baseline_npc_kills' => $baseline['npc_kills'],
+        'baseline_deaths_by_npc' => $baseline['deaths_by_npc'],
         'kills' => $kills,
         'deaths' => $deaths,
+        'npc_kills' => $npc_kills,
+        'deaths_by_npc' => $deaths_by_npc,
         'playtime_seconds' => $playtime,
         'afk_seconds' => $afk,
         'reward_points' => $reward_points,
+        'kdr' => $kdr,
+    ]);
+}
+
+function raidlands_stats_upsert_bot_wipe(PDO $pdo, int $wipe_id, string $bot_key, array $bot, bool $is_first_season): void
+{
+    $existing = raidlands_db_fetch_one(
+        'SELECT * FROM bot_wipe_stats WHERE wipe_id = :wipe_id AND bot_key = :bot_key',
+        ['wipe_id' => $wipe_id, 'bot_key' => $bot_key]
+    );
+    $raw = [
+        'kills' => raidlands_stats_int($bot['kills'] ?? 0),
+        'deaths' => raidlands_stats_int($bot['deaths'] ?? 0),
+    ];
+    $baseline = [
+        'kills' => 0,
+        'deaths' => 0,
+    ];
+
+    if ($existing !== null) {
+        $baseline = [
+            'kills' => (int) $existing['baseline_kills'],
+            'deaths' => (int) $existing['baseline_deaths'],
+        ];
+    } elseif (!$is_first_season) {
+        $baseline = [
+            'kills' => $raw['kills'],
+            'deaths' => $raw['deaths'],
+        ];
+    }
+
+    $kills = max(0, $raw['kills'] - $baseline['kills']);
+    $deaths = max(0, $raw['deaths'] - $baseline['deaths']);
+    $kdr = $deaths === 0 ? (float) $kills : round($kills / $deaths, 3);
+    $display_name = raidlands_stats_clean_text($bot['display_name'] ?? $bot_key, 120);
+    $kit_name = raidlands_stats_clean_text($bot['kit_name'] ?? '', 80);
+    $skill_tier = raidlands_stats_clean_text($bot['skill_tier'] ?? '', 40);
+
+    $statement = $pdo->prepare(
+        'INSERT INTO bot_wipe_stats
+            (wipe_id, bot_key, display_name, kit_name, skill_tier, raw_kills, raw_deaths,
+             baseline_kills, baseline_deaths, kills, deaths, kdr, last_seen_at)
+         VALUES
+            (:wipe_id, :bot_key, :display_name, :kit_name, :skill_tier, :raw_kills, :raw_deaths,
+             :baseline_kills, :baseline_deaths, :kills, :deaths, :kdr, NOW())
+         ON DUPLICATE KEY UPDATE
+            display_name = IF(VALUES(display_name) <> "", VALUES(display_name), display_name),
+            kit_name = IF(VALUES(kit_name) <> "", VALUES(kit_name), kit_name),
+            skill_tier = IF(VALUES(skill_tier) <> "", VALUES(skill_tier), skill_tier),
+            raw_kills = VALUES(raw_kills),
+            raw_deaths = VALUES(raw_deaths),
+            kills = VALUES(kills),
+            deaths = VALUES(deaths),
+            kdr = VALUES(kdr),
+            last_seen_at = NOW(),
+            updated_at = NOW()'
+    );
+    $statement->execute([
+        'wipe_id' => $wipe_id,
+        'bot_key' => $bot_key,
+        'display_name' => $display_name,
+        'kit_name' => $kit_name,
+        'skill_tier' => $skill_tier,
+        'raw_kills' => $raw['kills'],
+        'raw_deaths' => $raw['deaths'],
+        'baseline_kills' => $baseline['kills'],
+        'baseline_deaths' => $baseline['deaths'],
+        'kills' => $kills,
+        'deaths' => $deaths,
         'kdr' => $kdr,
     ]);
 }
@@ -368,7 +501,7 @@ function raidlands_stats_latest_ingest(): ?array
 
 function raidlands_stats_metric(string $metric): string
 {
-    return in_array($metric, ['kills', 'kdr', 'playtime', 'rp'], true) ? $metric : 'kills';
+    return in_array($metric, ['kills', 'kdr', 'playtime', 'rp', 'npc_kills', 'deaths_by_npc'], true) ? $metric : 'kills';
 }
 
 function raidlands_stats_scope(string $scope): string
@@ -390,6 +523,8 @@ function raidlands_stats_leaderboard(string $metric = 'kills', string $scope = '
         'kdr' => 'kdr DESC, kills DESC, deaths ASC',
         'playtime' => 'playtime_seconds DESC, kills DESC',
         'rp' => 'reward_points DESC, kills DESC',
+        'npc_kills' => 'npc_kills DESC, deaths_by_npc ASC, kills DESC',
+        'deaths_by_npc' => 'deaths_by_npc DESC, npc_kills DESC, kills DESC',
         default => 'kills DESC, deaths ASC, kdr DESC',
     };
 
@@ -407,6 +542,8 @@ function raidlands_stats_leaderboard(string $metric = 'kills', string $scope = '
                 COALESCE(NULLIF(s.display_name, ''), NULLIF(p.display_name, ''), 'Raidlands Player') AS display_name,
                 s.kills,
                 s.deaths,
+                s.npc_kills,
+                s.deaths_by_npc,
                 s.kdr,
                 s.playtime_seconds,
                 s.reward_points,
@@ -427,6 +564,8 @@ function raidlands_stats_leaderboard(string $metric = 'kills', string $scope = '
                 COALESCE(NULLIF(MAX(NULLIF(s.display_name, '')), ''), NULLIF(p.display_name, ''), 'Raidlands Player') AS display_name,
                 SUM(s.kills) AS kills,
                 SUM(s.deaths) AS deaths,
+                SUM(s.npc_kills) AS npc_kills,
+                SUM(s.deaths_by_npc) AS deaths_by_npc,
                 CASE WHEN SUM(s.deaths) = 0 THEN SUM(s.kills) ELSE ROUND(SUM(s.kills) / SUM(s.deaths), 3) END AS kdr,
                 SUM(s.playtime_seconds) AS playtime_seconds,
                 SUM(s.reward_points) AS reward_points,
@@ -445,6 +584,8 @@ function raidlands_stats_leaderboard(string $metric = 'kills', string $scope = '
         $row['rank'] = $rank++;
         $row['kills'] = (int) $row['kills'];
         $row['deaths'] = (int) $row['deaths'];
+        $row['npc_kills'] = (int) $row['npc_kills'];
+        $row['deaths_by_npc'] = (int) $row['deaths_by_npc'];
         $row['kdr'] = (float) $row['kdr'];
         $row['playtime_seconds'] = (int) $row['playtime_seconds'];
         $row['reward_points'] = (int) $row['reward_points'];
@@ -452,6 +593,72 @@ function raidlands_stats_leaderboard(string $metric = 'kills', string $scope = '
     unset($row);
 
     $rows = raidlands_store_attach_steam_profiles($rows);
+
+    return $rows;
+}
+
+function raidlands_stats_bot_leaderboard(string $scope = 'current', int $limit = 25): array
+{
+    if (!raidlands_stats_is_ready()) {
+        return [];
+    }
+
+    $scope = raidlands_stats_scope($scope);
+    $limit = max(1, min(100, $limit));
+    $order = 'kdr DESC, kills DESC, deaths ASC, display_name ASC';
+
+    if ($scope === 'current') {
+        $wipe = raidlands_stats_active_wipe();
+
+        if ($wipe === null) {
+            return [];
+        }
+
+        $rows = raidlands_db_fetch_all(
+            "SELECT
+                bot_key,
+                display_name,
+                kit_name,
+                skill_tier,
+                kills,
+                deaths,
+                kdr,
+                last_seen_at
+             FROM bot_wipe_stats
+             WHERE wipe_id = :wipe_id
+               AND (kills > 0 OR deaths > 0)
+             ORDER BY $order
+             LIMIT $limit",
+            ['wipe_id' => (int) $wipe['id']]
+        );
+    } else {
+        $rows = raidlands_db_fetch_all(
+            "SELECT
+                bot_key,
+                COALESCE(NULLIF(MAX(NULLIF(display_name, '')), ''), bot_key) AS display_name,
+                COALESCE(NULLIF(MAX(NULLIF(kit_name, '')), ''), '') AS kit_name,
+                COALESCE(NULLIF(MAX(NULLIF(skill_tier, '')), ''), '') AS skill_tier,
+                SUM(kills) AS kills,
+                SUM(deaths) AS deaths,
+                CASE WHEN SUM(deaths) = 0 THEN SUM(kills) ELSE ROUND(SUM(kills) / SUM(deaths), 3) END AS kdr,
+                MAX(last_seen_at) AS last_seen_at
+             FROM bot_wipe_stats
+             GROUP BY bot_key
+             HAVING SUM(kills) > 0 OR SUM(deaths) > 0
+             ORDER BY $order
+             LIMIT $limit"
+        );
+    }
+
+    $rank = 1;
+
+    foreach ($rows as &$row) {
+        $row['rank'] = $rank++;
+        $row['kills'] = (int) $row['kills'];
+        $row['deaths'] = (int) $row['deaths'];
+        $row['kdr'] = (float) $row['kdr'];
+    }
+    unset($row);
 
     return $rows;
 }
@@ -478,6 +685,8 @@ function raidlands_stats_player_summary(int $player_id): array
         'SELECT
             SUM(kills) AS kills,
             SUM(deaths) AS deaths,
+            SUM(npc_kills) AS npc_kills,
+            SUM(deaths_by_npc) AS deaths_by_npc,
             CASE WHEN SUM(deaths) = 0 THEN SUM(kills) ELSE ROUND(SUM(kills) / SUM(deaths), 3) END AS kdr,
             SUM(playtime_seconds) AS playtime_seconds,
             SUM(reward_points) AS reward_points,
@@ -503,6 +712,8 @@ function raidlands_stats_normalize_summary(?array $row): ?array
     return [
         'kills' => (int) $row['kills'],
         'deaths' => (int) $row['deaths'],
+        'npc_kills' => (int) ($row['npc_kills'] ?? 0),
+        'deaths_by_npc' => (int) ($row['deaths_by_npc'] ?? 0),
         'kdr' => (float) $row['kdr'],
         'playtime_seconds' => (int) $row['playtime_seconds'],
         'reward_points' => (int) $row['reward_points'],

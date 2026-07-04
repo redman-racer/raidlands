@@ -8,6 +8,9 @@ $leaderboard_metric = raidlands_stats_metric((string) ($_GET['metric'] ?? 'kills
 $leaderboard_rows = $leaderboard_ready
     ? raidlands_stats_leaderboard($leaderboard_metric, $leaderboard_scope, 25)
     : [];
+$leaderboard_bot_rows = $leaderboard_ready
+    ? raidlands_stats_bot_leaderboard($leaderboard_scope, 25)
+    : [];
 $leaderboard_wipe = $leaderboard_ready ? raidlands_stats_active_wipe() : null;
 $leaderboard_ingest = $leaderboard_ready ? raidlands_stats_latest_ingest() : null;
 $leaderboard_metrics = [
@@ -15,6 +18,8 @@ $leaderboard_metrics = [
     'kdr' => 'K/D',
     'playtime' => 'Playtime',
     'rp' => 'RP',
+    'npc_kills' => 'NPC Kills',
+    'deaths_by_npc' => 'Killed by NPCs',
 ];
 
 function leaderboard_url(string $scope, string $metric): string
@@ -28,6 +33,8 @@ function leaderboard_metric_value(array $row, string $metric): string
         'kdr' => raidlands_stats_format_kdr($row['kdr'] ?? 0),
         'playtime' => raidlands_stats_format_duration($row['playtime_seconds'] ?? 0),
         'rp' => raidlands_stats_format_number($row['reward_points'] ?? 0),
+        'npc_kills' => raidlands_stats_format_number($row['npc_kills'] ?? 0),
+        'deaths_by_npc' => raidlands_stats_format_number($row['deaths_by_npc'] ?? 0),
         default => raidlands_stats_format_number($row['kills'] ?? 0),
     };
 }
@@ -88,6 +95,8 @@ function leaderboard_metric_value(array $row, string $metric): string
               <th><?= e($leaderboard_metrics[$leaderboard_metric]) ?></th>
               <th>Kills</th>
               <th>Deaths</th>
+              <th>NPC Kills</th>
+              <th>Killed by NPCs</th>
               <th>K/D</th>
               <th>Playtime</th>
               <th>RP</th>
@@ -123,6 +132,8 @@ function leaderboard_metric_value(array $row, string $metric): string
                 <td><strong><?= e(leaderboard_metric_value($row, $leaderboard_metric)) ?></strong></td>
                 <td><?= e(raidlands_stats_format_number($row['kills'])) ?></td>
                 <td><?= e(raidlands_stats_format_number($row['deaths'])) ?></td>
+                <td><?= e(raidlands_stats_format_number($row['npc_kills'])) ?></td>
+                <td><?= e(raidlands_stats_format_number($row['deaths_by_npc'])) ?></td>
                 <td><?= e(raidlands_stats_format_kdr($row['kdr'])) ?></td>
                 <td><?= e(raidlands_stats_format_duration($row['playtime_seconds'])) ?></td>
                 <td><?= e(raidlands_stats_format_number($row['reward_points'])) ?></td>
@@ -131,6 +142,49 @@ function leaderboard_metric_value(array $row, string $metric): string
           </tbody>
         </table>
       </div>
+    <?php endif; ?>
+
+    <?php if ($leaderboard_ready) : ?>
+      <div class="section-header leaderboard-bot-header">
+        <p class="section-kicker">Roaming bots</p>
+        <h2>Bot K/D standings</h2>
+        <p class="section-lede">Bot combat is tracked separately so normal PvP K/D stays clean while the roaming NPCs still have visible standings.</p>
+      </div>
+
+      <?php if ($leaderboard_bot_rows === []) : ?>
+        <div class="metal-panel">
+          <p class="section-lede">No bot combat has been reported for this scope yet.</p>
+        </div>
+      <?php else : ?>
+        <div class="store-table-wrap leaderboard-table-wrap">
+          <table class="store-table leaderboard-table">
+            <thead>
+              <tr>
+                <th>Rank</th>
+                <th>Bot</th>
+                <th>Kit</th>
+                <th>Skill</th>
+                <th>Kills</th>
+                <th>Deaths</th>
+                <th>K/D</th>
+              </tr>
+            </thead>
+            <tbody>
+              <?php foreach ($leaderboard_bot_rows as $row) : ?>
+                <tr>
+                  <td><span class="leaderboard-rank">#<?= e((string) $row['rank']) ?></span></td>
+                  <td><strong><?= e((string) ($row['display_name'] ?: $row['bot_key'])) ?></strong></td>
+                  <td><?= e((string) ($row['kit_name'] ?: 'Unknown')) ?></td>
+                  <td><?= e((string) ($row['skill_tier'] ?: 'Unknown')) ?></td>
+                  <td><?= e(raidlands_stats_format_number($row['kills'])) ?></td>
+                  <td><?= e(raidlands_stats_format_number($row['deaths'])) ?></td>
+                  <td><?= e(raidlands_stats_format_kdr($row['kdr'])) ?></td>
+                </tr>
+              <?php endforeach; ?>
+            </tbody>
+          </table>
+        </div>
+      <?php endif; ?>
     <?php endif; ?>
   </div>
 </section>
