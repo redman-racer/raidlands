@@ -875,7 +875,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
       </header>
 
       <main class="admin-shell">
-        <div class="admin-container">
+        <div class="admin-container" data-admin-section="<?= e($active_section) ?>">
           <div class="admin-heading">
             <p class="section-kicker">Website Control</p>
             <h1>Raidlands Admin Panel</h1>
@@ -2071,7 +2071,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                       <div class="admin-alert warning">Store tables are not ready yet. Run <code>database/migrations/001_vip_store.sql</code>, <code>database/migrations/012_rp_shop.sql</code>, <code>database/migrations/013_pvp_kit_permission_cleanup.sql</code>, <code>database/migrations/014_kit_group_delete_tombstones.sql</code>, <code>database/migrations/018_store_bundle_offer_matrix.sql</code>, then <code>database/seeds/001_store_products.sql</code>, and confirm the database credentials in your environment config. <?= $admin_store_error !== '' ? e($admin_store_error) : '' ?></div>
                     </section>
                   <?php else : ?>
-                    <section class="admin-section">
+                    <section class="admin-section admin-store-editor-section">
                       <div class="admin-subsection-head">
                         <h3>Store editor</h3>
                         <p>Select one product at a time, then configure bundles, individual kits, perks, RP offers, cash passes, subscriptions, and the managed group grant.</p>
@@ -2136,6 +2136,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
 
                         $admin_store_type_options = admin_product_type_options();
                         $admin_store_kit_name_map = [];
+                        $admin_store_permission_catalog_groups = admin_permission_catalog_groups($admin_permission_options, $admin_permission_rows);
                         foreach ($admin_store_kit_options as $kit_option) {
                             $kit_id = (int) ($kit_option['id'] ?? 0);
 
@@ -2498,18 +2499,148 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               <details class="admin-details admin-store-details">
                                 <summary>Linked perks <small>Direct permissions granted by this product</small></summary>
                                 <p class="admin-detail-note">Selected permissions are added to this product's managed group on the next permission sync. Use Groups for advanced custom permission editing.</p>
-                                <?php if ($admin_permission_options === []) : ?>
+                                <?php if ($admin_permission_options === [] || $admin_store_permission_catalog_groups === []) : ?>
                                   <div class="admin-alert warning">No permission catalog is available yet.</div>
                                 <?php else : ?>
-                                  <div class="admin-check-grid admin-store-kit-grid">
-                                    <?php foreach ($admin_permission_options as $permission_option) : ?>
-                                      <?php $permission_option = (string) $permission_option; ?>
-                                      <?php if ($permission_option === '') { continue; } ?>
-                                      <label class="admin-check">
-                                        <input type="checkbox" name="store_products[<?= e((string) $index) ?>][permission_grants][]" value="<?= e($permission_option) ?>" <?= in_array($permission_option, $selected_permissions, true) ? 'checked' : '' ?>>
-                                        <span><?= e($permission_option) ?></span>
+                                  <?php
+                                    $store_selected_permission_set = array_fill_keys($selected_permissions, true);
+                                    $store_active_permission_prefix = '';
+
+                                    foreach ($admin_store_permission_catalog_groups as $prefix_group) {
+                                        foreach ((array) $prefix_group['permissions'] as $permission_meta) {
+                                            if (isset($store_selected_permission_set[(string) $permission_meta['name']])) {
+                                                $store_active_permission_prefix = (string) $prefix_group['prefix'];
+                                                break 2;
+                                            }
+                                        }
+                                    }
+
+                                    if ($store_active_permission_prefix === '' && $admin_store_permission_catalog_groups !== []) {
+                                        $store_active_permission_prefix = (string) array_key_first($admin_store_permission_catalog_groups);
+                                    }
+                                  ?>
+                                  <div class="admin-permission-workbench admin-store-permission-workbench" data-store-permission-workbench>
+                                    <div class="admin-permission-toolbar">
+                                      <label class="admin-field admin-permission-search">
+                                        <?= admin_field_head('Find perks', 'Filter the active perk tab by plugin prefix, plugin name, or exact permission.') ?>
+                                        <input type="search" data-store-permission-search placeholder="backpacks, teleport, kits.raid" autocomplete="off">
                                       </label>
-                                    <?php endforeach; ?>
+                                      <label class="admin-check admin-permission-filter">
+                                        <input type="checkbox" data-store-permission-selected-only autocomplete="off">
+                                        <span class="admin-permission-filter-copy">Selected only</span>
+                                      </label>
+                                      <div class="admin-permission-totals" aria-live="polite">
+                                        <span data-store-permission-match-count><?= e((string) count($admin_permission_options)) ?> visible</span>
+                                        <span data-store-permission-selected-count><?= e((string) count($selected_permissions)) ?> selected</span>
+                                      </div>
+                                    </div>
+
+                                    <div class="admin-permission-selected" data-store-permission-selected-wrap>
+                                      <div class="admin-permission-selected-head">
+                                        <span>Selected product perks</span>
+                                        <small data-store-permission-selected-summary><?= e((string) count($selected_permissions)) ?> selected</small>
+                                      </div>
+                                      <div class="admin-permission-chip-list" data-store-permission-selected-list></div>
+                                    </div>
+
+                                    <div class="admin-permission-tabs" role="tablist" aria-label="Product perk sections">
+                                      <?php foreach ($admin_store_permission_catalog_groups as $prefix_group) : ?>
+                                        <?php
+                                          $prefix = (string) $prefix_group['prefix'];
+                                          $prefix_permissions = (array) $prefix_group['permissions'];
+                                          $prefix_selected = count(array_filter(
+                                              $prefix_permissions,
+                                              static fn (array $permission): bool => isset($store_selected_permission_set[(string) $permission['name']])
+                                          ));
+                                          $prefix_label = admin_permission_prefix_label($prefix, (string) ($prefix_group['plugin_name'] ?? ''));
+                                          $prefix_is_active = $prefix === $store_active_permission_prefix;
+                                        ?>
+                                        <button
+                                          class="admin-permission-tab<?= $prefix_is_active ? ' is-active' : '' ?>"
+                                          type="button"
+                                          role="tab"
+                                          aria-selected="<?= $prefix_is_active ? 'true' : 'false' ?>"
+                                          data-store-permission-tab
+                                          data-store-tab-prefix="<?= e($prefix) ?>">
+                                          <span><?= e($prefix_label) ?></span>
+                                          <small data-store-tab-count><?= e((string) $prefix_selected) ?> / <?= e((string) count($prefix_permissions)) ?></small>
+                                        </button>
+                                      <?php endforeach; ?>
+                                    </div>
+
+                                    <div class="admin-permission-empty" data-store-permission-empty hidden>No matching perks in this tab.</div>
+
+                                    <div class="admin-permission-prefix-list">
+                                      <?php foreach ($admin_store_permission_catalog_groups as $prefix_group) : ?>
+                                        <?php
+                                          $prefix = (string) $prefix_group['prefix'];
+                                          $prefix_permissions = (array) $prefix_group['permissions'];
+                                          usort(
+                                              $prefix_permissions,
+                                              static function (array $a, array $b) use ($store_selected_permission_set): int {
+                                                  $a_selected = isset($store_selected_permission_set[(string) $a['name']]);
+                                                  $b_selected = isset($store_selected_permission_set[(string) $b['name']]);
+
+                                                  if ($a_selected !== $b_selected) {
+                                                      return $a_selected ? -1 : 1;
+                                                  }
+
+                                                  return strnatcasecmp((string) $a['name'], (string) $b['name']);
+                                              }
+                                          );
+                                          $prefix_selected = count(array_filter(
+                                              $prefix_permissions,
+                                              static fn (array $permission): bool => isset($store_selected_permission_set[(string) $permission['name']])
+                                          ));
+                                          $prefix_label = admin_permission_prefix_label($prefix, (string) ($prefix_group['plugin_name'] ?? ''));
+                                          $prefix_is_active = $prefix === $store_active_permission_prefix;
+                                        ?>
+                                        <section
+                                          class="admin-permission-prefix"
+                                          data-store-permission-prefix
+                                          data-store-prefix="<?= e($prefix) ?>"
+                                          data-store-prefix-label="<?= e($prefix_label) ?>"
+                                          <?= $prefix_is_active ? '' : 'hidden' ?>>
+                                          <div class="admin-permission-prefix-head">
+                                            <div>
+                                              <h4><?= e($prefix_label) ?></h4>
+                                              <code><?= e($prefix) ?></code>
+                                            </div>
+                                            <span data-store-prefix-count><?= e((string) $prefix_selected) ?> / <?= e((string) count($prefix_permissions)) ?> selected</span>
+                                          </div>
+                                          <div class="admin-permission-grid">
+                                            <?php foreach ($prefix_permissions as $permission_meta) : ?>
+                                              <?php
+                                                $permission_name = (string) $permission_meta['name'];
+                                                $permission_selected = isset($store_selected_permission_set[$permission_name]);
+                                                $permission_plugin = (string) ($permission_meta['plugin_name'] ?? '');
+                                                $permission_classes = 'admin-check admin-permission-option';
+
+                                                if ($permission_selected) {
+                                                    $permission_classes .= ' is-selected';
+                                                }
+                                              ?>
+                                              <label
+                                                class="<?= e($permission_classes) ?>"
+                                                data-store-permission-item
+                                                data-store-permission-name="<?= e($permission_name) ?>"
+                                                data-store-permission-prefix="<?= e($prefix) ?>"
+                                                data-store-permission-plugin="<?= e($permission_plugin) ?>">
+                                                <input
+                                                  type="checkbox"
+                                                  name="store_products[<?= e((string) $index) ?>][permission_grants][]"
+                                                  value="<?= e($permission_name) ?>"
+                                                  <?= $permission_selected ? 'checked' : '' ?>>
+                                                <span class="admin-permission-option-copy">
+                                                  <span class="admin-permission-name"><?= e($permission_name) ?></span>
+                                                  <small data-store-permission-state <?= $permission_selected ? '' : 'hidden' ?>>Selected</small>
+                                                </span>
+                                              </label>
+                                            <?php endforeach; ?>
+                                          </div>
+                                        </section>
+                                      <?php endforeach; ?>
+                                    </div>
                                   </div>
                                 <?php endif; ?>
                               </details>

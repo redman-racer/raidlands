@@ -4512,6 +4512,10 @@ a.leaderboard-steam:hover,
   margin: 0 auto;
 }
 
+.admin-container[data-admin-section="store"] {
+  width: min(1420px, calc(100% - 32px));
+}
+
 .admin-heading {
   margin: 0 0 22px;
 }
@@ -5846,7 +5850,7 @@ button.admin-permission-chip:focus-visible {
 
 .admin-store-editor-shell {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(200px, 250px);
+  grid-template-columns: minmax(0, 1fr) minmax(240px, 300px);
   gap: 16px;
   align-items: start;
 }
@@ -5930,8 +5934,13 @@ button.admin-permission-chip:focus-visible {
   align-self: stretch;
 }
 
+.admin-store-basic-grid,
+.admin-store-toggle-grid {
+  grid-template-columns: repeat(auto-fit, minmax(230px, 1fr));
+}
+
 .admin-store-rp-grid {
-  grid-template-columns: repeat(2, minmax(0, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(260px, 1fr));
 }
 
 .admin-store-rp-grid .admin-rp-offer-card {
@@ -5950,6 +5959,22 @@ button.admin-permission-chip:focus-visible {
 
 .admin-store-kit-grid {
   grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+}
+
+.admin-store-permission-workbench {
+  padding-top: 0;
+}
+
+.admin-store-permission-workbench .admin-permission-toolbar {
+  grid-template-columns: minmax(0, 1fr) minmax(138px, auto);
+}
+
+.admin-store-permission-workbench .admin-permission-tabs {
+  padding-bottom: 8px;
+}
+
+.admin-store-permission-workbench .admin-permission-grid {
+  max-height: min(40vh, 430px);
 }
 
 .admin-store-picker {
