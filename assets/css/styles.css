@@ -4513,7 +4513,7 @@ a.leaderboard-steam:hover,
 }
 
 .admin-container[data-admin-section="store"] {
-  width: min(1420px, calc(100% - 32px));
+  width: min(1260px, calc(100% - 32px));
 }
 
 .admin-heading {
@@ -4643,6 +4643,7 @@ a.leaderboard-steam:hover,
 }
 
 .admin-check {
+  min-width: 0;
   min-height: 42px;
   padding: 10px 12px;
   display: inline-flex;
@@ -4653,6 +4654,12 @@ a.leaderboard-steam:hover,
   background: rgba(0, 0, 0, .24);
   font-family: var(--font-body);
   font-weight: 800;
+}
+
+.admin-check > span {
+  min-width: 0;
+  overflow-wrap: anywhere;
+  line-height: 1.18;
 }
 
 .admin-check-field {
@@ -4803,8 +4810,35 @@ a.leaderboard-steam:hover,
   font-weight: 800;
 }
 
-.admin-rp-offer-card input[type="number"] {
+.admin-rp-offer-card label:not(.admin-check) {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+}
+
+.admin-rp-offer-card input[type="number"],
+.admin-rp-offer-card input[type="text"] {
   width: 100%;
+  min-width: 0;
+  min-height: 38px;
+  padding: 8px 10px;
+  border: 1px solid rgba(181, 170, 160, .28);
+  border-radius: var(--radius);
+  background:
+    var(--console-scan) center / 220px repeat,
+    rgba(0, 0, 0, .42);
+  color: var(--white);
+  font-family: var(--font-body);
+  font-size: .9rem;
+  line-height: 1.35;
+  box-shadow: inset 0 0 16px rgba(0, 0, 0, .42);
+}
+
+.admin-rp-offer-card input[type="number"]:focus,
+.admin-rp-offer-card input[type="text"]:focus {
+  border-color: rgba(255, 138, 40, .7);
+  outline: none;
+  box-shadow: 0 0 0 3px rgba(255, 138, 40, .16), inset 0 0 16px rgba(0, 0, 0, .42);
 }
 
 .admin-permission-workbench {
@@ -5850,14 +5884,19 @@ button.admin-permission-chip:focus-visible {
 
 .admin-store-editor-shell {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) minmax(240px, 300px);
-  gap: 16px;
+  grid-template-columns: minmax(0, 1fr);
+  gap: 14px;
   align-items: start;
 }
 
 .admin-store-panels,
 .admin-store-panel {
   min-width: 0;
+}
+
+.admin-store-panels {
+  width: min(100%, 1080px);
+  justify-self: center;
 }
 
 .admin-store-card {
@@ -5919,17 +5958,97 @@ button.admin-permission-chip:focus-visible {
   min-height: 38px;
 }
 
+.admin-store-price-grid {
+  grid-template-columns: repeat(auto-fit, minmax(340px, 1fr));
+}
+
+.admin-store-price-grid .admin-store-price-card {
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px 12px;
+  align-items: end;
+}
+
+.admin-store-price-card > div,
+.admin-store-price-field-wide {
+  grid-column: 1 / -1;
+}
+
 .admin-store-kit-grid {
   grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+  max-height: 230px;
+  overflow: auto;
+  padding-right: 4px;
 }
 
 .admin-store-group-grid {
-  grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(205px, 1fr));
+  max-height: 340px;
+  overflow: auto;
+  padding-right: 4px;
+}
+
+.admin-store-meaning {
+  min-width: 0;
+  padding: 10px 12px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border: 1px solid rgba(181, 170, 160, .22);
+  border-radius: var(--radius);
+  background:
+    var(--console-scan) center / 220px repeat,
+    rgba(0, 0, 0, .24);
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: .82rem;
+  font-weight: 800;
+  line-height: 1.35;
+}
+
+.admin-store-meaning strong {
+  flex: 0 0 auto;
+  color: var(--white);
+  font-family: var(--font-display);
+  font-size: 1rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.admin-store-meaning span {
+  min-width: 0;
+  text-align: right;
+}
+
+.admin-store-meaning-grants {
+  border-color: rgba(124, 255, 107, .30);
+  background:
+    var(--console-scan) center / 220px repeat,
+    rgba(24, 83, 43, .16);
+}
+
+.admin-store-meaning-grants strong {
+  color: #9bff82;
+}
+
+.admin-store-meaning-preview {
+  margin: 0 16px 12px;
+  border-color: rgba(255, 209, 102, .34);
+  background:
+    var(--console-scan) center / 220px repeat,
+    rgba(255, 209, 102, .08);
+}
+
+.admin-store-meaning-preview strong {
+  color: var(--yellow);
 }
 
 .admin-store-picker {
-  position: sticky;
-  top: 98px;
+  order: -1;
+  position: static;
+  width: min(100%, 1080px);
+  justify-self: center;
   display: grid;
   gap: 12px;
   padding: 14px;
@@ -5938,6 +6057,13 @@ button.admin-permission-chip:focus-visible {
   background:
     var(--console-scan) center / 220px repeat,
     rgba(0, 0, 0, .34);
+}
+
+.admin-store-picker-head {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 14px;
 }
 
 .admin-store-picker-head h3 {
@@ -5957,12 +6083,14 @@ button.admin-permission-chip:focus-visible {
 
 .admin-store-picker-controls {
   display: grid;
+  grid-template-columns: minmax(220px, .9fr) minmax(0, 2fr);
   gap: 10px;
+  align-items: end;
 }
 
 .admin-store-filter-grid {
   display: grid;
-  grid-template-columns: 1fr;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
   gap: 10px;
   align-items: end;
 }
@@ -5989,6 +6117,7 @@ button.admin-permission-chip:focus-visible {
 
 .admin-store-filter-count {
   margin: 0;
+  grid-column: 1 / -1;
   color: var(--muted);
   font-family: var(--font-body);
   font-size: .76rem;
@@ -5998,6 +6127,7 @@ button.admin-permission-chip:focus-visible {
 
 .admin-store-empty {
   margin: 0;
+  grid-column: 1 / -1;
 }
 
 .admin-store-picker-button[hidden],
@@ -6006,8 +6136,9 @@ button.admin-permission-chip:focus-visible {
 }
 
 .admin-store-picker-list {
-  max-height: min(62vh, 620px);
+  max-height: 240px;
   display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
   gap: 8px;
   overflow: auto;
   padding-right: 3px;
@@ -7428,8 +7559,24 @@ button.admin-permission-chip:focus-visible {
   }
 
   .admin-store-rp-grid,
-  .admin-store-rp-grid .admin-rp-offer-card {
+  .admin-store-rp-grid .admin-rp-offer-card,
+  .admin-store-price-grid,
+  .admin-store-price-grid .admin-store-price-card {
     grid-template-columns: 1fr;
+  }
+
+  .admin-store-picker-controls,
+  .admin-store-filter-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-store-meaning {
+    align-items: flex-start;
+    flex-direction: column;
+  }
+
+  .admin-store-meaning span {
+    text-align: left;
   }
 
   .admin-feature-details summary,

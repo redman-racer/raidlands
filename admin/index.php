@@ -2320,6 +2320,10 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                   </label>
                                   <div class="admin-field admin-span-all">
                                     <?= admin_field_head('Applied groups', 'Purchases and manual grants apply every selected server group. Edit permissions for those groups in Groups.') ?>
+                                    <div class="admin-store-meaning admin-store-meaning-grants">
+                                      <strong>Access grant</strong>
+                                      <span>Every selected group is applied when this product is purchased or manually granted.</span>
+                                    </div>
                                     <?php if ($admin_store_group_options === []) : ?>
                                       <div class="admin-alert warning">No editable server groups are available yet. Add or sync groups before activating this product.</div>
                                     <?php else : ?>
@@ -2393,32 +2397,32 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               <details class="admin-details admin-store-details">
                                 <summary>Cash passes <small>One-time Stripe payments with optional expiration</small></summary>
                                 <p class="admin-detail-note">Cash passes charge once. Lifetime has no scheduled expiration; timed passes expire on the website after the chosen duration.</p>
-                                <div class="admin-rp-offer-grid admin-store-rp-grid">
+                                <div class="admin-rp-offer-grid admin-store-price-grid">
                                   <?php foreach ($rp_intervals as $cash_interval) : ?>
                                     <?php
                                       $cash_row = (array) ($cash_pass_prices[$cash_interval] ?? []);
                                       $cash_label = (string) ($cash_row['label'] ?? raidlands_store_admin_offer_default_label('cash_pass', $cash_interval));
                                       $cash_amount = ((int) ($cash_row['amount_cents'] ?? 0)) / 100;
                                     ?>
-                                    <article class="admin-rp-offer-card">
+                                    <article class="admin-rp-offer-card admin-store-price-card">
                                       <input type="hidden" name="store_products[<?= e((string) $index) ?>][cash_pass_prices][<?= e($cash_interval) ?>][id]" value="<?= e((string) ($cash_row['id'] ?? '')) ?>">
                                       <div>
                                         <strong><?= e($cash_label) ?></strong>
                                         <small><?= e($cash_interval === 'one_time' ? 'Lifetime access' : raidlands_store_access_duration_seconds($cash_interval) . ' seconds') ?></small>
                                       </div>
-                                      <label>
+                                      <label class="admin-store-price-field admin-store-price-field-wide">
                                         <span>Stripe Price ID</span>
                                         <input type="text" name="store_products[<?= e((string) $index) ?>][cash_pass_prices][<?= e($cash_interval) ?>][stripe_price_id]" maxlength="160" placeholder="price_..." value="<?= e((string) ($cash_row['stripe_price_id'] ?? '')) ?>">
                                       </label>
-                                      <label>
+                                      <label class="admin-store-price-field admin-store-price-field-wide">
                                         <span>Label</span>
                                         <input type="text" list="admin-price-label-options" name="store_products[<?= e((string) $index) ?>][cash_pass_prices][<?= e($cash_interval) ?>][label]" maxlength="120" value="<?= e($cash_label) ?>">
                                       </label>
-                                      <label>
+                                      <label class="admin-store-price-field">
                                         <span>Amount</span>
                                         <input type="number" min="0" step="0.01" name="store_products[<?= e((string) $index) ?>][cash_pass_prices][<?= e($cash_interval) ?>][amount_dollars]" value="<?= e(number_format($cash_amount, 2, '.', '')) ?>">
                                       </label>
-                                      <label>
+                                      <label class="admin-store-price-field">
                                         <span>Currency</span>
                                         <input type="text" list="admin-currency-options" name="store_products[<?= e((string) $index) ?>][cash_pass_prices][<?= e($cash_interval) ?>][currency]" maxlength="3" value="<?= e((string) ($cash_row['currency'] ?? 'usd')) ?>">
                                       </label>
@@ -2434,32 +2438,32 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               <details class="admin-details admin-store-details">
                                 <summary>Cash subscriptions <small>Recurring Stripe prices</small></summary>
                                 <p class="admin-detail-note">Cash subscriptions renew in Stripe. Player billing changes are handled through the Stripe Billing Portal from Profile.</p>
-                                <div class="admin-rp-offer-grid admin-store-rp-grid">
+                                <div class="admin-rp-offer-grid admin-store-price-grid">
                                   <?php foreach ($cash_subscription_intervals as $cash_interval) : ?>
                                     <?php
                                       $cash_row = (array) ($cash_subscription_prices[$cash_interval] ?? []);
                                       $cash_label = (string) ($cash_row['label'] ?? raidlands_store_admin_offer_default_label('cash_sub', $cash_interval));
                                       $cash_amount = ((int) ($cash_row['amount_cents'] ?? 0)) / 100;
                                     ?>
-                                    <article class="admin-rp-offer-card">
+                                    <article class="admin-rp-offer-card admin-store-price-card">
                                       <input type="hidden" name="store_products[<?= e((string) $index) ?>][cash_subscription_prices][<?= e($cash_interval) ?>][id]" value="<?= e((string) ($cash_row['id'] ?? '')) ?>">
                                       <div>
                                         <strong><?= e($cash_label) ?></strong>
                                         <small><?= e(raidlands_store_access_duration_seconds($cash_interval) . ' seconds per period') ?></small>
                                       </div>
-                                      <label>
+                                      <label class="admin-store-price-field admin-store-price-field-wide">
                                         <span>Stripe Price ID</span>
                                         <input type="text" name="store_products[<?= e((string) $index) ?>][cash_subscription_prices][<?= e($cash_interval) ?>][stripe_price_id]" maxlength="160" placeholder="price_..." value="<?= e((string) ($cash_row['stripe_price_id'] ?? '')) ?>">
                                       </label>
-                                      <label>
+                                      <label class="admin-store-price-field admin-store-price-field-wide">
                                         <span>Label</span>
                                         <input type="text" list="admin-price-label-options" name="store_products[<?= e((string) $index) ?>][cash_subscription_prices][<?= e($cash_interval) ?>][label]" maxlength="120" value="<?= e($cash_label) ?>">
                                       </label>
-                                      <label>
+                                      <label class="admin-store-price-field">
                                         <span>Amount</span>
                                         <input type="number" min="0" step="0.01" name="store_products[<?= e((string) $index) ?>][cash_subscription_prices][<?= e($cash_interval) ?>][amount_dollars]" value="<?= e(number_format($cash_amount, 2, '.', '')) ?>">
                                       </label>
-                                      <label>
+                                      <label class="admin-store-price-field">
                                         <span>Currency</span>
                                         <input type="text" list="admin-currency-options" name="store_products[<?= e((string) $index) ?>][cash_subscription_prices][<?= e($cash_interval) ?>][currency]" maxlength="3" value="<?= e((string) ($cash_row['currency'] ?? 'usd')) ?>">
                                       </label>
@@ -2487,8 +2491,12 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               </details>
 
                               <details class="admin-details admin-store-details">
-                                <summary>Linked kits <small>Product card preview</small></summary>
+                                <summary>UI-only kit preview <small>Does not grant access</small></summary>
                                 <p class="admin-detail-note">Selected kits appear on this product card. Kit claim permissions are controlled by the Kits and Groups sections.</p>
+                                <div class="admin-store-meaning admin-store-meaning-preview">
+                                  <strong>Display only</strong>
+                                  <span>Changing these checkboxes only changes the product card preview.</span>
+                                </div>
                                 <?php if ($admin_store_kit_options === []) : ?>
                                   <div class="admin-alert warning">Kit tables are not ready or no kits are available yet.</div>
                                 <?php else : ?>
