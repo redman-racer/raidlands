@@ -5891,44 +5891,6 @@ button.admin-permission-chip:focus-visible {
   padding: 0 16px 16px;
 }
 
-.admin-store-group-link {
-  display: grid;
-  gap: 5px;
-  margin-top: 9px;
-  padding: 10px 12px;
-  border: 1px solid rgba(126, 231, 135, .28);
-  border-radius: 6px;
-  background: rgba(26, 115, 55, .14);
-}
-
-.admin-store-group-link.is-warning {
-  border-color: rgba(255, 209, 102, .36);
-  background: rgba(255, 209, 102, .1);
-}
-
-.admin-store-group-link span {
-  color: var(--muted);
-  font-family: var(--font-body);
-  font-size: .72rem;
-  font-weight: 800;
-  letter-spacing: 0;
-  text-transform: uppercase;
-}
-
-.admin-store-group-link strong {
-  color: var(--white);
-  font-family: var(--font-display);
-  font-size: 1rem;
-  line-height: 1;
-}
-
-.admin-store-group-link p {
-  margin: 0;
-  color: var(--muted);
-  font-size: .82rem;
-  line-height: 1.35;
-}
-
 .admin-store-basic-grid .admin-check-field,
 .admin-store-toggle-grid .admin-check-field {
   align-self: stretch;
@@ -5961,20 +5923,8 @@ button.admin-permission-chip:focus-visible {
   grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
 }
 
-.admin-store-permission-workbench {
-  padding-top: 0;
-}
-
-.admin-store-permission-workbench .admin-permission-toolbar {
-  grid-template-columns: minmax(0, 1fr) minmax(138px, auto);
-}
-
-.admin-store-permission-workbench .admin-permission-tabs {
-  padding-bottom: 8px;
-}
-
-.admin-store-permission-workbench .admin-permission-grid {
-  max-height: min(40vh, 430px);
+.admin-store-group-grid {
+  grid-template-columns: repeat(auto-fit, minmax(185px, 1fr));
 }
 
 .admin-store-picker {

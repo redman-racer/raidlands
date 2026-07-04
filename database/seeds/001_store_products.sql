@@ -5,13 +5,13 @@
 INSERT INTO store_products
   (slug, name, product_type, short_description, description, oxide_group, tier_priority, is_stackable, is_active, is_featured, sort_order)
 VALUES
-  ('vip-bronze', 'Bronze Kit Bundle', 'kit_bundle', 'Starter bundle for players who want the core shop kit set.', 'Main kit bundle mapped to vip_bronze. Link the included kits and perk permissions in Admin > Store.', 'vip_bronze', 10, 0, 1, 1, 10),
-  ('vip-gold', 'Gold Kit Bundle', 'kit_bundle', 'Upgraded bundle with stronger kit access and optional perks.', 'Main kit bundle mapped to vip_gold. Link the included kits and perk permissions in Admin > Store.', 'vip_gold', 20, 0, 1, 1, 20),
-  ('vip-elite', 'Elite Kit Bundle', 'kit_bundle', 'Top bundle for players who want the widest kit and perk access.', 'Main kit bundle mapped to vip_elite. Link the included kits and perk permissions in Admin > Store.', 'vip_elite', 30, 0, 1, 1, 30),
-  ('personal-mini', 'Personal Mini Perk', 'perk', 'Unlock personal minicopter access as a standalone perk.', 'Standalone perk mapped to perk_personal_mini. Link direct permission grants in Admin > Store.', 'perk_personal_mini', 0, 1, 1, 1, 110),
-  ('skinbox-access', 'Skinbox Access', 'perk', 'Unlock Skinbox access as a standalone perk.', 'Standalone perk mapped to perk_skinbox. Link direct permission grants in Admin > Store.', 'perk_skinbox', 0, 1, 1, 1, 120),
+  ('vip-bronze', 'Bronze Kit Bundle', 'kit_bundle', 'Starter bundle for players who want the core shop kit set.', 'Main kit bundle applies vip_bronze. Manage kit access and perks from Admin > Kits and Admin > Groups.', 'vip_bronze', 10, 0, 1, 1, 10),
+  ('vip-gold', 'Gold Kit Bundle', 'kit_bundle', 'Upgraded bundle with stronger kit access and optional perks.', 'Main kit bundle applies vip_gold. Manage kit access and perks from Admin > Kits and Admin > Groups.', 'vip_gold', 20, 0, 1, 1, 20),
+  ('vip-elite', 'Elite Kit Bundle', 'kit_bundle', 'Top bundle for players who want the widest kit and perk access.', 'Main kit bundle applies vip_elite. Manage kit access and perks from Admin > Kits and Admin > Groups.', 'vip_elite', 30, 0, 1, 1, 30),
+  ('personal-mini', 'Personal Mini Perk', 'perk', 'Unlock personal minicopter access as a standalone perk.', 'Standalone perk applies perk_personal_mini. Manage permissions from Admin > Groups.', 'perk_personal_mini', 0, 1, 1, 1, 110),
+  ('skinbox-access', 'Skinbox Access', 'perk', 'Unlock Skinbox access as a standalone perk.', 'Standalone perk applies perk_skinbox. Manage permissions from Admin > Groups.', 'perk_skinbox', 0, 1, 1, 1, 120),
   ('raid-kit-unlock', 'Raid Kit Unlock', 'kit_unlock', 'Unlock one premium raid kit without a full bundle.', 'Individual kit product mapped to perk_raid_kit. Link the kit in Admin > Store.', 'perk_raid_kit', 0, 1, 1, 1, 130),
-  ('queue-priority', 'Queue Priority', 'perk', 'Add queue priority where your server stack supports it.', 'Standalone perk mapped to perk_queue_priority. Link direct permission grants in Admin > Store.', 'perk_queue_priority', 0, 1, 1, 0, 140),
+  ('queue-priority', 'Queue Priority', 'perk', 'Add queue priority where your server stack supports it.', 'Standalone perk applies perk_queue_priority. Manage permissions from Admin > Groups.', 'perk_queue_priority', 0, 1, 1, 0, 140),
   ('supporter-badge', 'Supporter Badge', 'perk', 'Profile and Discord-style supporter badge group.', 'Standalone identity perk mapped to perk_supporter_badge.', 'perk_supporter_badge', 0, 1, 1, 0, 150)
 ON DUPLICATE KEY UPDATE
   name = VALUES(name),

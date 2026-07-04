@@ -20,9 +20,11 @@
 16. Run `database/migrations/016_player_stats_wipe_rp_baseline.sql`.
 17. Run `database/migrations/017_feature_voting_status.sql`.
 18. Run `database/migrations/018_store_bundle_offer_matrix.sql`.
-19. Run `database/seeds/001_store_products.sql`.
-20. Copy the root `.env.example` file to `.env`.
-21. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
+19. Run `database/migrations/019_raidlands_vip_kits_permissions_seed.sql`.
+20. Run `database/migrations/020_store_product_fulfillment_groups.sql`.
+21. Run `database/seeds/001_store_products.sql`.
+22. Copy the root `.env.example` file to `.env`.
+23. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
 
 The root `.env` file is ignored by Git and protected from direct web access by the root `.htaccess`.
 
@@ -45,7 +47,7 @@ Cash checkout remains inactive until real Stripe prices are configured.
 ## RP shop
 
 - Admin > Store controls RP offers per product: RP cost, active flag, lifetime/timed duration, and optional auto-renew for timed offers.
-- Each store product must have a linked group. Purchases and manual grants attach that product directly to the group; linked kits and perk permissions are merged into that group during published sync.
+- Each active store product must have at least one applied group. Purchases and manual grants apply those groups; Kits and Groups control the permissions those groups receive.
 - The website queues RP purchases first. `WebsiteVipBridge` polls `/api/server/rp-purchases.php`, verifies and deducts live ServerRewards RP, then posts the result to `/api/server/rp-purchase-result.php`.
 - Entitlements activate only after the bridge confirms the debit.
 - Fixed purchases with insufficient RP are rejected. Auto-renew renewals with insufficient RP become past due and the current entitlement expires normally.
@@ -58,7 +60,7 @@ Cash checkout remains inactive until real Stripe prices are configured.
 3. Put `server-plugins/WebsiteVipBridge.cs` in the uMod/Oxide plugins folder.
 4. Put `server-plugins/WebsiteClanBridge.cs` in the uMod/Oxide plugins folder if website or public API clan management should be live.
 5. Set `ApiBaseUrl`, `ServerId`, and `SharedSecret` in the generated plugin configs. `ServerId` must match `RAIDLANDS_BRIDGE_SERVER_ID`, and `SharedSecret` must match `RAIDLANDS_BRIDGE_SHARED_SECRET`.
-6. Link Store products to kits and direct permissions in Admin > Store, then publish from Admin > Kits or Admin > Groups so the product groups receive their selected unlocks. Existing starter groups include:
+6. Select the groups each Store product applies in Admin > Store, link kits there only for product-card previews, then manage kit access and perk permissions from Admin > Kits and Admin > Groups. Existing starter groups include:
    - `vip_bronze`
    - `vip_gold`
    - `vip_elite`

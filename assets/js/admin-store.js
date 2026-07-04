@@ -114,9 +114,9 @@
   function checkedLabelParts(panel) {
     var parts = [];
 
-    toArray(panel.querySelectorAll('.admin-store-kit-grid .admin-check input:checked, [data-store-permission-item] input[type="checkbox"]:checked')).forEach(function (input) {
+    toArray(panel.querySelectorAll('.admin-store-kit-grid .admin-check input:checked, .admin-store-group-grid .admin-check input:checked')).forEach(function (input) {
       var row = input.closest('.admin-check');
-      var label = row ? (row.querySelector('.admin-permission-name') || row.querySelector('span')) : null;
+      var label = row ? row.querySelector('span') : null;
 
       pushPart(parts, label ? label.textContent : input.value);
     });
@@ -165,10 +165,20 @@
     };
   }
 
-  function productGroup(panel) {
-    var input = panel.querySelector('[data-admin-store-group-input]');
+  function productGroups(panel) {
+    return toArray(panel.querySelectorAll('.admin-store-group-grid .admin-check input:checked')).map(function (input) {
+      return plainText(input.value);
+    }).filter(Boolean);
+  }
 
-    return plainText(input ? input.value : '');
+  function productGroupSummary(panel) {
+    var groups = productGroups(panel);
+
+    if (!groups.length) {
+      return 'No groups';
+    }
+
+    return groups.slice(0, 3).join(', ') + (groups.length > 3 ? ' +' + (groups.length - 3) : '');
   }
 
   function countActiveOffers(panel, sectionName) {
@@ -187,7 +197,9 @@
     pushPart(parts, category.label);
     pushPart(parts, category.value);
     pushPart(parts, statusLabel(productStatus(panel)));
-    pushPart(parts, productGroup(panel));
+    productGroups(panel).forEach(function (group) {
+      pushPart(parts, group);
+    });
 
     toArray(panel.querySelectorAll('[data-admin-store-copy-input]')).forEach(function (input) {
       pushPart(parts, input.value);
@@ -222,7 +234,7 @@
     var title = productTitle(panel);
     var category = productCategory(panel);
     var status = productStatus(panel);
-    var group = productGroup(panel);
+    var group = productGroupSummary(panel);
     var rpCount = countActiveOffers(panel, 'rp_prices');
     var cashCount = countActiveOffers(panel, 'cash_pass_prices') + countActiveOffers(panel, 'cash_subscription_prices');
     var sortInput = panel.querySelector('[data-admin-store-sort-input]');
@@ -230,7 +242,7 @@
     var meta = selector.querySelector('[data-admin-store-select-meta]');
     var heading = panel.querySelector('[data-admin-store-card-title]');
     var subtitle = panel.querySelector('.admin-feedback-subtitle');
-    var metaText = statusLabel(status) + ' / ' + (group || 'No group') + ' / ' + rpCount + ' RP, ' + cashCount + ' cash';
+    var metaText = statusLabel(status) + ' / ' + group + ' / ' + rpCount + ' RP, ' + cashCount + ' cash';
 
     if (label) {
       label.textContent = title;
@@ -245,7 +257,7 @@
     }
 
     if (subtitle) {
-      subtitle.textContent = statusLabel(status) + ' / ' + (group || 'No group selected');
+      subtitle.textContent = statusLabel(status) + ' / ' + group;
     }
 
     selector.classList.toggle('is-draft', status === 'draft');
@@ -337,300 +349,6 @@
     return terms.every(function (term) {
       return searchText.indexOf(term) !== -1;
     });
-  }
-
-  function storePermissionInput(item) {
-    return item ? item.querySelector('input[type="checkbox"]') : null;
-  }
-
-  function activeStorePermissionPrefix(workbench) {
-    var active = workbench.querySelector('[data-store-permission-tab].is-active');
-    var first = workbench.querySelector('[data-store-permission-tab]');
-    var tab = active || first;
-
-    return tab ? tab.getAttribute('data-store-tab-prefix') || '' : '';
-  }
-
-  function activateStorePermissionTab(workbench, prefix) {
-    var tabs = toArray(workbench.querySelectorAll('[data-store-permission-tab]'));
-    var sections = toArray(workbench.querySelectorAll('[data-store-permission-prefix]'));
-    var hasRequestedTab = tabs.some(function (tab) {
-      return (tab.getAttribute('data-store-tab-prefix') || '') === prefix;
-    });
-
-    if ((!prefix || !hasRequestedTab) && tabs.length) {
-      prefix = tabs[0].getAttribute('data-store-tab-prefix') || '';
-    }
-
-    tabs.forEach(function (tab) {
-      var isActive = (tab.getAttribute('data-store-tab-prefix') || '') === prefix;
-
-      tab.classList.toggle('is-active', isActive);
-      tab.setAttribute('aria-selected', isActive ? 'true' : 'false');
-    });
-
-    sections.forEach(function (section) {
-      section.hidden = (section.getAttribute('data-store-prefix') || '') !== prefix;
-    });
-
-    return prefix;
-  }
-
-  function storePermissionItemMatches(item, query, onlySelected) {
-    var input = storePermissionInput(item);
-
-    if (!input) {
-      return false;
-    }
-
-    var haystack = [
-      item.getAttribute('data-store-permission-name') || '',
-      item.getAttribute('data-store-permission-prefix') || '',
-      item.getAttribute('data-store-permission-plugin') || ''
-    ].join(' ').toLowerCase();
-
-    return (!query || haystack.indexOf(query) !== -1) && (!onlySelected || input.checked);
-  }
-
-  function storePermissionStats(items, query, onlySelected) {
-    var stats = {};
-    var selectedTotal = 0;
-    var matchingTotal = 0;
-
-    items.forEach(function (item) {
-      var input = storePermissionInput(item);
-
-      if (!input) {
-        return;
-      }
-
-      var prefix = item.getAttribute('data-store-permission-prefix') || '';
-      var current = stats[prefix] || { matches: 0, selected: 0, total: 0 };
-      var matches = storePermissionItemMatches(item, query, onlySelected);
-
-      current.total += 1;
-
-      if (input.checked) {
-        current.selected += 1;
-        selectedTotal += 1;
-      }
-
-      if (matches) {
-        current.matches += 1;
-        matchingTotal += 1;
-      }
-
-      stats[prefix] = current;
-    });
-
-    return {
-      matchingTotal: matchingTotal,
-      selectedTotal: selectedTotal,
-      stats: stats
-    };
-  }
-
-  function updateStorePermissionState(item, input) {
-    var state = item.querySelector('[data-store-permission-state]');
-
-    item.classList.toggle('is-selected', input.checked);
-
-    if (state) {
-      state.textContent = input.checked ? 'Selected' : '';
-      state.hidden = !input.checked;
-    }
-  }
-
-  function renderStorePermissionSelectedList(workbench, items) {
-    var list = workbench.querySelector('[data-store-permission-selected-list]');
-    var summary = workbench.querySelector('[data-store-permission-selected-summary]');
-    var selected = items.filter(function (item) {
-      var input = storePermissionInput(item);
-
-      return input && input.checked;
-    });
-
-    if (summary) {
-      summary.textContent = selected.length + ' selected';
-    }
-
-    if (!list) {
-      return;
-    }
-
-    list.textContent = '';
-
-    if (!selected.length) {
-      var empty = document.createElement('span');
-      empty.className = 'admin-permission-chip is-empty';
-      empty.textContent = 'No direct perks selected';
-      list.appendChild(empty);
-      return;
-    }
-
-    selected.forEach(function (item) {
-      var input = storePermissionInput(item);
-      var chip = document.createElement('button');
-
-      chip.className = 'admin-permission-chip';
-      chip.type = 'button';
-      chip.textContent = input.value;
-      chip.setAttribute('aria-label', 'Remove ' + input.value);
-      chip.addEventListener('click', function () {
-        input.checked = false;
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-      });
-      list.appendChild(chip);
-    });
-  }
-
-  function updateStorePermissionWorkbench(workbench) {
-    var search = workbench.querySelector('[data-store-permission-search]');
-    var selectedOnly = workbench.querySelector('[data-store-permission-selected-only]');
-    var matchCount = workbench.querySelector('[data-store-permission-match-count]');
-    var selectedCount = workbench.querySelector('[data-store-permission-selected-count]');
-    var empty = workbench.querySelector('[data-store-permission-empty]');
-    var items = toArray(workbench.querySelectorAll('[data-store-permission-item]'));
-    var sections = toArray(workbench.querySelectorAll('[data-store-permission-prefix]'));
-    var tabs = toArray(workbench.querySelectorAll('[data-store-permission-tab]'));
-    var query = normalize(search ? search.value : '');
-    var onlySelected = !!(selectedOnly && selectedOnly.checked);
-    var filterActive = query !== '' || onlySelected;
-    var statResult = storePermissionStats(items, query, onlySelected);
-    var requestedPrefix = activeStorePermissionPrefix(workbench);
-    var firstMatchingPrefix = '';
-    var visibleTotal = 0;
-
-    sections.forEach(function (section) {
-      var prefixName = section.getAttribute('data-store-prefix') || '';
-      var prefixStats = statResult.stats[prefixName] || { matches: 0, selected: 0, total: 0 };
-
-      if ((!filterActive || prefixStats.matches > 0) && firstMatchingPrefix === '') {
-        firstMatchingPrefix = prefixName;
-      }
-    });
-
-    if (filterActive) {
-      var requestedStats = statResult.stats[requestedPrefix] || { matches: 0, selected: 0, total: 0 };
-
-      if (requestedStats.matches === 0) {
-        requestedPrefix = firstMatchingPrefix || requestedPrefix;
-      }
-    }
-
-    var activePrefix = activateStorePermissionTab(workbench, requestedPrefix);
-
-    items.forEach(function (item) {
-      var input = storePermissionInput(item);
-      var prefix = item.getAttribute('data-store-permission-prefix') || '';
-      var visible = prefix === activePrefix && storePermissionItemMatches(item, query, onlySelected);
-
-      if (!input) {
-        return;
-      }
-
-      if (visible) {
-        visibleTotal += 1;
-      }
-
-      item.classList.toggle('is-filtered-out', !visible);
-      updateStorePermissionState(item, input);
-    });
-
-    sections.forEach(function (section) {
-      var prefixName = section.getAttribute('data-store-prefix') || '';
-      var prefixItems = toArray(section.querySelectorAll('[data-store-permission-item]'));
-      var prefixStats = statResult.stats[prefixName] || { matches: 0, selected: 0, total: prefixItems.length };
-      var count = section.querySelector('[data-store-prefix-count]');
-      var tab = tabs.find(function (candidate) {
-        return (candidate.getAttribute('data-store-tab-prefix') || '') === prefixName;
-      });
-
-      section.hidden = prefixName !== activePrefix;
-
-      if (count) {
-        count.textContent = prefixStats.selected + ' / ' + prefixItems.length + ' selected';
-      }
-
-      if (tab) {
-        var tabCount = tab.querySelector('[data-store-tab-count]');
-        var tabFilteredOut = filterActive && prefixStats.matches === 0;
-
-        tab.hidden = tabFilteredOut;
-        tab.classList.toggle('is-filtered-out', tabFilteredOut);
-
-        if (tabCount) {
-          tabCount.textContent = filterActive
-            ? prefixStats.matches + ' match' + (prefixStats.matches === 1 ? '' : 'es')
-            : prefixStats.selected + ' / ' + prefixItems.length;
-        }
-      }
-    });
-
-    if (matchCount) {
-      matchCount.textContent = filterActive
-        ? statResult.matchingTotal + ' match' + (statResult.matchingTotal === 1 ? '' : 'es')
-        : visibleTotal + ' visible';
-    }
-
-    if (selectedCount) {
-      selectedCount.textContent = statResult.selectedTotal + ' selected';
-    }
-
-    if (empty) {
-      empty.hidden = filterActive ? statResult.matchingTotal !== 0 : visibleTotal !== 0;
-    }
-
-    renderStorePermissionSelectedList(workbench, items);
-  }
-
-  function initStorePermissionWorkbench(workbench) {
-    var search = workbench.querySelector('[data-store-permission-search]');
-    var selectedOnly = workbench.querySelector('[data-store-permission-selected-only]');
-
-    if (search) {
-      search.value = '';
-      search.addEventListener('input', function () {
-        updateStorePermissionWorkbench(workbench);
-      });
-    }
-
-    if (selectedOnly) {
-      selectedOnly.checked = false;
-      selectedOnly.addEventListener('change', function () {
-        updateStorePermissionWorkbench(workbench);
-      });
-    }
-
-    toArray(workbench.querySelectorAll('[data-store-permission-tab]')).forEach(function (tab) {
-      tab.addEventListener('click', function () {
-        activateStorePermissionTab(workbench, tab.getAttribute('data-store-tab-prefix') || '');
-        updateStorePermissionWorkbench(workbench);
-      });
-    });
-
-    toArray(workbench.querySelectorAll('[data-store-permission-item]')).forEach(function (item) {
-      item.addEventListener('click', function (event) {
-        var input = storePermissionInput(item);
-
-        if (!input || event.target === input) {
-          return;
-        }
-
-        event.preventDefault();
-        input.checked = !input.checked;
-        input.dispatchEvent(new Event('change', { bubbles: true }));
-      });
-    });
-
-    toArray(workbench.querySelectorAll('[data-store-permission-item] input[type="checkbox"]')).forEach(function (input) {
-      input.addEventListener('change', function () {
-        updateStorePermissionWorkbench(workbench);
-      });
-    });
-
-    activateStorePermissionTab(workbench, activeStorePermissionPrefix(workbench));
-    updateStorePermissionWorkbench(workbench);
   }
 
   function initStoreEditor(editor) {
@@ -753,8 +471,6 @@
     if (resetButton) {
       resetButton.addEventListener('click', resetFilters);
     }
-
-    toArray(editor.querySelectorAll('[data-store-permission-workbench]')).forEach(initStorePermissionWorkbench);
 
     applyFilters();
   }

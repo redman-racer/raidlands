@@ -122,6 +122,8 @@ the host or upload it through a private channel.
    - `database/migrations/016_player_stats_wipe_rp_baseline.sql`
    - `database/migrations/017_feature_voting_status.sql`
    - `database/migrations/018_store_bundle_offer_matrix.sql`
+   - `database/migrations/019_raidlands_vip_kits_permissions_seed.sql`
+   - `database/migrations/020_store_product_fulfillment_groups.sql`
    - `database/seeds/001_store_products.sql`
 
    Then configure RP costs, cash amounts, and Stripe Price IDs in `/admin/?section=store`.

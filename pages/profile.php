@@ -308,10 +308,21 @@ $profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_
             </thead>
             <tbody>
               <?php foreach ($profile_entitlements as $entitlement) : ?>
+                <?php
+                  $entitlement_groups = raidlands_store_clean_groups((array) ($entitlement['fulfillment_groups'] ?? []));
+
+                  if ($entitlement_groups === []) {
+                      $entitlement_groups = raidlands_store_clean_groups([(string) ($entitlement['oxide_group'] ?? '')]);
+                  }
+
+                  $access_label = $entitlement_groups === []
+                      ? 'No server group'
+                      : implode(', ', array_map(static fn (string $group): string => raidlands_public_access_label($group), $entitlement_groups));
+                ?>
                 <tr>
                   <td><?= e((string) $entitlement['name']) ?></td>
                   <td><?= e(raidlands_store_type_label((string) $entitlement['product_type'])) ?></td>
-                  <td><?= e(raidlands_public_access_label((string) $entitlement['oxide_group'])) ?></td>
+                  <td><?= e($access_label) ?></td>
                   <td><span class="status-pill <?= e((string) $entitlement['status']) ?>"><?= e((string) $entitlement['status']) ?></span></td>
                   <td><?= e((string) ($entitlement['ends_at'] ?: 'No scheduled expiration')) ?></td>
                   <td><?= e((string) $entitlement['changed_at']) ?></td>

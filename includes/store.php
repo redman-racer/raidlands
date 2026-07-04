@@ -90,6 +90,118 @@ function raidlands_store_group_rule_hint(): string
     return 'Use lowercase letters, numbers, underscores, or dashes.';
 }
 
+function raidlands_store_clean_groups($values): array
+{
+    if (!is_array($values)) {
+        $values = preg_split('/[\s,]+/', (string) $values) ?: [];
+    }
+
+    $groups = [];
+    $seen = [];
+
+    foreach ($values as $value) {
+        if (is_array($value)) {
+            foreach (raidlands_store_clean_groups($value) as $nested_group) {
+                if (!isset($seen[$nested_group])) {
+                    $seen[$nested_group] = true;
+                    $groups[] = $nested_group;
+                }
+            }
+
+            continue;
+        }
+
+        $group = raidlands_store_clean_group($value);
+
+        if ($group !== '' && !isset($seen[$group])) {
+            $seen[$group] = true;
+            $groups[] = $group;
+        }
+    }
+
+    return $groups;
+}
+
+function raidlands_store_fulfillment_groups_for_products(array $product_ids): array
+{
+    if (!raidlands_db_is_configured()) {
+        return [];
+    }
+
+    $product_ids = array_values(array_unique(array_filter(array_map('intval', $product_ids))));
+
+    if ($product_ids === []) {
+        return [];
+    }
+
+    [$placeholders, $params] = raidlands_store_sql_in_params($product_ids, 'product_id');
+
+    try {
+        $rows = raidlands_db_fetch_all(
+            'SELECT product_id, oxide_group
+             FROM product_fulfillment_actions
+             WHERE action_type = "grant_group"
+               AND oxide_group <> ""
+               AND product_id IN (' . implode(', ', $placeholders) . ')
+             ORDER BY product_id ASC, sort_order ASC, id ASC',
+            $params
+        );
+    } catch (Throwable $error) {
+        return [];
+    }
+
+    $by_product = [];
+
+    foreach ($rows as $row) {
+        $product_id = (int) ($row['product_id'] ?? 0);
+        $group = raidlands_store_clean_group($row['oxide_group'] ?? '');
+
+        if ($product_id > 0 && $group !== '') {
+            $by_product[$product_id][] = $group;
+        }
+    }
+
+    foreach ($by_product as &$groups) {
+        $groups = array_values(array_unique($groups));
+    }
+    unset($groups);
+
+    return $by_product;
+}
+
+function raidlands_store_effective_fulfillment_groups(int $product_id, $fallback_group = ''): array
+{
+    $groups_by_product = raidlands_store_fulfillment_groups_for_products([$product_id]);
+    $groups = $groups_by_product[$product_id] ?? [];
+
+    if ($groups === []) {
+        $groups = raidlands_store_clean_groups([$fallback_group]);
+    }
+
+    return $groups;
+}
+
+function raidlands_store_attach_fulfillment_groups(array $products): array
+{
+    $product_ids = array_map(static fn (array $product): int => (int) ($product['id'] ?? 0), $products);
+    $groups_by_product = raidlands_store_fulfillment_groups_for_products($product_ids);
+
+    foreach ($products as &$product) {
+        $product_id = (int) ($product['id'] ?? 0);
+        $groups = $groups_by_product[$product_id] ?? [];
+
+        if ($groups === []) {
+            $groups = raidlands_store_clean_groups([$product['oxide_group'] ?? '']);
+        }
+
+        $product['fulfillment_groups'] = $groups;
+        $product['oxide_group'] = $groups[0] ?? raidlands_store_clean_group($product['oxide_group'] ?? '');
+    }
+    unset($product);
+
+    return $products;
+}
+
 function raidlands_store_verified_session_fields(string $verified_at = ''): array
 {
     $verified_at = trim($verified_at);
@@ -699,10 +811,6 @@ function raidlands_store_catalog(bool $active_only = true): array
         $id = (int) $row['id'];
         $oxide_group = raidlands_store_clean_group($row['oxide_group'] ?? '');
 
-        if ($active_only && $oxide_group === '') {
-            continue;
-        }
-
         if (!isset($products[$id])) {
             $products[$id] = [
                 'id' => $id,
@@ -740,7 +848,14 @@ function raidlands_store_catalog(bool $active_only = true): array
         }
     }
 
-    $products = raidlands_store_attach_permission_grants(array_values($products));
+    $products = raidlands_store_attach_fulfillment_groups(array_values($products));
+
+    if ($active_only) {
+        $products = array_values(array_filter(
+            $products,
+            static fn (array $product): bool => (array) ($product['fulfillment_groups'] ?? []) !== []
+        ));
+    }
 
     return [
         'source' => 'database',
@@ -748,154 +863,6 @@ function raidlands_store_catalog(bool $active_only = true): array
         'error' => '',
         'products' => $products,
     ];
-}
-
-function raidlands_store_permission_grants_for_products(array $product_ids): array
-{
-    if (!raidlands_db_is_configured()) {
-        return [];
-    }
-
-    $product_ids = array_values(array_unique(array_filter(array_map('intval', $product_ids))));
-
-    if ($product_ids === []) {
-        return [];
-    }
-
-    [$placeholders, $params] = raidlands_store_sql_in_params($product_ids, 'product_id');
-
-    try {
-        $rows = raidlands_db_fetch_all(
-            'SELECT product_id, permission_name, display_label, sort_order
-             FROM store_product_permission_grants
-             WHERE product_id IN (' . implode(', ', $placeholders) . ')
-             ORDER BY product_id ASC, sort_order ASC, permission_name ASC',
-            $params
-        );
-    } catch (Throwable $error) {
-        return [];
-    }
-
-    $by_product = [];
-
-    foreach ($rows as $row) {
-        $permission = trim((string) ($row['permission_name'] ?? ''));
-
-        if ($permission === '') {
-            continue;
-        }
-
-        $by_product[(int) $row['product_id']][] = [
-            'permission_name' => $permission,
-            'display_label' => (string) ($row['display_label'] ?? ''),
-            'sort_order' => (int) ($row['sort_order'] ?? 100),
-        ];
-    }
-
-    return $by_product;
-}
-
-function raidlands_store_attach_permission_grants(array $products): array
-{
-    $product_ids = array_map(static fn (array $product): int => (int) ($product['id'] ?? 0), $products);
-    $grants_by_product = raidlands_store_permission_grants_for_products($product_ids);
-
-    foreach ($products as &$product) {
-        $product['permission_grants'] = $grants_by_product[(int) ($product['id'] ?? 0)] ?? [];
-    }
-    unset($product);
-
-    return $products;
-}
-
-function raidlands_store_product_permission_grants_map(): array
-{
-    if (!raidlands_db_is_configured()) {
-        return [];
-    }
-
-    try {
-        $rows = raidlands_db_fetch_all(
-            'SELECT p.oxide_group, spg.permission_name
-             FROM store_product_permission_grants spg
-             INNER JOIN store_products p ON p.id = spg.product_id
-             WHERE p.is_active = 1
-               AND p.oxide_group <> ""
-             ORDER BY p.oxide_group ASC, spg.sort_order ASC, spg.permission_name ASC'
-        );
-    } catch (Throwable $error) {
-        return [];
-    }
-
-    $map = [];
-
-    foreach ($rows as $row) {
-        $group = raidlands_store_clean_group($row['oxide_group'] ?? '');
-        $permission = strtolower(trim((string) ($row['permission_name'] ?? '')));
-
-        if ($group === '' || $permission === '') {
-            continue;
-        }
-
-        $map[$group][] = $permission;
-    }
-
-    foreach ($map as &$permissions) {
-        $permissions = array_values(array_unique(array_filter($permissions)));
-        sort($permissions, SORT_NATURAL | SORT_FLAG_CASE);
-    }
-    unset($permissions);
-
-    ksort($map, SORT_NATURAL | SORT_FLAG_CASE);
-
-    return $map;
-}
-
-function raidlands_store_product_kit_permission_grants_map(): array
-{
-    if (!raidlands_db_is_configured()) {
-        return [];
-    }
-
-    try {
-        $rows = raidlands_db_fetch_all(
-            'SELECT p.oxide_group, gk.required_permission
-             FROM store_product_kits spk
-             INNER JOIN store_products p ON p.id = spk.product_id
-             INNER JOIN game_kits gk ON gk.id = spk.kit_id
-             WHERE p.is_active = 1
-               AND p.oxide_group <> ""
-               AND gk.is_active = 1
-               AND gk.deleted_at IS NULL
-               AND gk.required_permission <> ""
-             ORDER BY p.oxide_group ASC, spk.sort_order ASC, gk.sort_order ASC'
-        );
-    } catch (Throwable $error) {
-        return [];
-    }
-
-    $map = [];
-
-    foreach ($rows as $row) {
-        $group = raidlands_store_clean_group($row['oxide_group'] ?? '');
-        $permission = strtolower(trim((string) ($row['required_permission'] ?? '')));
-
-        if ($group === '' || $permission === '') {
-            continue;
-        }
-
-        $map[$group][] = $permission;
-    }
-
-    foreach ($map as &$permissions) {
-        $permissions = array_values(array_unique(array_filter($permissions)));
-        sort($permissions, SORT_NATURAL | SORT_FLAG_CASE);
-    }
-    unset($permissions);
-
-    ksort($map, SORT_NATURAL | SORT_FLAG_CASE);
-
-    return $map;
 }
 
 function raidlands_store_products_by_type(array $products, string $type): array
@@ -1293,7 +1260,7 @@ function raidlands_store_entitlements_for_player(int $player_id): array
 
     raidlands_store_expire_stale_entitlements();
 
-    return raidlands_db_fetch_all(
+    $rows = raidlands_db_fetch_all(
         "SELECT e.*, p.name, p.slug, p.product_type, p.oxide_group AS product_oxide_group, p.tier_priority
          FROM entitlements e
          INNER JOIN store_products p ON p.id = e.product_id
@@ -1305,6 +1272,27 @@ function raidlands_store_entitlements_for_player(int $player_id): array
             e.created_at DESC",
         ['player_id' => $player_id]
     );
+
+    $groups_by_product = raidlands_store_fulfillment_groups_for_products(array_map(
+        static fn (array $row): int => (int) ($row['product_id'] ?? 0),
+        $rows
+    ));
+
+    foreach ($rows as &$row) {
+        $product_id = (int) ($row['product_id'] ?? 0);
+        $groups = $groups_by_product[$product_id] ?? [];
+        $fallback_group = raidlands_store_clean_group($row['oxide_group'] ?? $row['product_oxide_group'] ?? '');
+
+        if ($groups === [] && $fallback_group !== '') {
+            $groups = [$fallback_group];
+        }
+
+        $row['fulfillment_groups'] = $groups;
+        $row['oxide_group'] = $groups[0] ?? $fallback_group;
+    }
+    unset($row);
+
+    return $rows;
 }
 
 function raidlands_store_current_rp_balance(int $player_id): ?array
@@ -1625,8 +1613,8 @@ function raidlands_store_create_rp_purchase_request(int $price_id, bool $auto_re
         throw new RuntimeException('That RP offer is not active.');
     }
 
-    if (raidlands_store_clean_group($row['oxide_group'] ?? '') === '') {
-        throw new RuntimeException('That product does not have a server access group configured yet.');
+    if (raidlands_store_effective_fulfillment_groups((int) ($row['product_id'] ?? 0), $row['oxide_group'] ?? '') === []) {
+        throw new RuntimeException('That product does not have an applied server group configured yet.');
     }
 
     $rp_cost = (int) ($row['rp_cost'] ?? 0);
@@ -2019,7 +2007,7 @@ function raidlands_store_recent_sync_rows(int $limit = 25): array
         return [];
     }
 
-    return raidlands_db_fetch_all(
+    $rows = raidlands_db_fetch_all(
         "SELECT e.*, p.steam_id64, sp.name, sp.slug
          FROM entitlements e
          INNER JOIN players p ON p.id = e.player_id
@@ -2027,6 +2015,27 @@ function raidlands_store_recent_sync_rows(int $limit = 25): array
          ORDER BY e.changed_at DESC, e.id DESC
          LIMIT " . max(1, min(100, $limit))
     );
+
+    $groups_by_product = raidlands_store_fulfillment_groups_for_products(array_map(
+        static fn (array $row): int => (int) ($row['product_id'] ?? 0),
+        $rows
+    ));
+
+    foreach ($rows as &$row) {
+        $product_id = (int) ($row['product_id'] ?? 0);
+        $groups = $groups_by_product[$product_id] ?? [];
+        $fallback_group = raidlands_store_clean_group($row['oxide_group'] ?? '');
+
+        if ($groups === [] && $fallback_group !== '') {
+            $groups = [$fallback_group];
+        }
+
+        $row['fulfillment_groups'] = $groups;
+        $row['oxide_group'] = $groups[0] ?? $fallback_group;
+    }
+    unset($row);
+
+    return $rows;
 }
 
 function raidlands_store_managed_groups(): array
@@ -2049,6 +2058,25 @@ function raidlands_store_managed_groups(): array
             }
         } catch (Throwable $error) {
             // Keep config groups if the database is not migrated yet.
+        }
+
+        try {
+            $rows = raidlands_db_fetch_all(
+                'SELECT DISTINCT oxide_group
+                 FROM product_fulfillment_actions
+                 WHERE action_type = "grant_group"
+                   AND oxide_group <> ""'
+            );
+
+            foreach ($rows as $row) {
+                $group = raidlands_store_clean_group($row['oxide_group'] ?? '');
+
+                if ($group !== '') {
+                    $groups[] = $group;
+                }
+            }
+        } catch (Throwable $error) {
+            // Older installs can rely on the legacy product group column.
         }
 
         try {
@@ -2150,10 +2178,14 @@ function raidlands_store_checkout_for_price(int $price_id): string
         throw new RuntimeException('That store price is not active.');
     }
 
-    $oxide_group = raidlands_store_clean_group($row['oxide_group'] ?? '');
+    $fulfillment_groups = raidlands_store_effective_fulfillment_groups(
+        (int) ($row['product_id'] ?? 0),
+        $row['oxide_group'] ?? ''
+    );
+    $oxide_group = $fulfillment_groups[0] ?? '';
 
-    if ($oxide_group === '') {
-        throw new RuntimeException('That product does not have a server access group configured yet.');
+    if ($fulfillment_groups === []) {
+        throw new RuntimeException('That product does not have an applied server group configured yet.');
     }
 
     $stripe_price_id = (string) $row['stripe_price_id'];
@@ -2170,6 +2202,7 @@ function raidlands_store_checkout_for_price(int $price_id): string
         'store_price_id' => (string) $row['id'],
         'purchase_mode' => $mode,
         'oxide_group' => $oxide_group,
+        'fulfillment_groups' => implode(',', $fulfillment_groups),
         'access_interval' => (string) ($row['access_interval'] ?? 'one_time'),
         'billing_interval' => (string) ($row['billing_interval'] ?? 'one_time'),
     ];
@@ -2262,10 +2295,11 @@ function raidlands_store_grant_entitlement(
         throw new RuntimeException('Product could not be found for entitlement grant.');
     }
 
-    $oxide_group = raidlands_store_clean_group($product['oxide_group'] ?? '');
+    $fulfillment_groups = raidlands_store_effective_fulfillment_groups($product_id, $product['oxide_group'] ?? '');
+    $oxide_group = $fulfillment_groups[0] ?? '';
 
-    if ($oxide_group === '') {
-        throw new RuntimeException('Product does not have a valid server access group configured.');
+    if ($fulfillment_groups === []) {
+        throw new RuntimeException('Product does not have any applied server groups configured.');
     }
 
     $pdo = raidlands_db_required();
@@ -2762,26 +2796,41 @@ function raidlands_store_active_groups_for_steam(string $steam_id64): array
     }
 
     $rows = raidlands_db_fetch_all(
-        "SELECT e.id, e.oxide_group, e.ends_at, e.changed_at, p.slug, p.name, p.product_type
+        "SELECT e.id, e.product_id, e.oxide_group, e.ends_at, e.changed_at, p.slug, p.name, p.product_type
          FROM entitlements e
          INNER JOIN store_products p ON p.id = e.product_id
          WHERE e.player_id = :player_id
             AND e.status = 'active'
-            AND e.oxide_group <> ''
             AND (e.ends_at IS NULL OR e.ends_at > NOW())
          ORDER BY p.product_type ASC, p.tier_priority DESC, p.sort_order ASC",
         ['player_id' => (int) $player['id']]
     );
 
+    $groups_by_product = raidlands_store_fulfillment_groups_for_products(array_map(
+        static fn (array $row): int => (int) ($row['product_id'] ?? 0),
+        $rows
+    ));
     $groups = [];
 
-    foreach ($rows as $row) {
-        $group = raidlands_store_clean_group($row['oxide_group'] ?? '');
+    foreach ($rows as &$row) {
+        $product_id = (int) ($row['product_id'] ?? 0);
+        $row_groups = $groups_by_product[$product_id] ?? [];
+        $fallback_group = raidlands_store_clean_group($row['oxide_group'] ?? '');
 
-        if ($group !== '') {
-            $groups[] = $group;
+        if ($row_groups === [] && $fallback_group !== '') {
+            $row_groups = [$fallback_group];
+        }
+
+        $row['fulfillment_groups'] = $row_groups;
+        $row['oxide_group'] = $row_groups[0] ?? $fallback_group;
+
+        foreach ($row_groups as $group) {
+            if ($group !== '') {
+                $groups[] = $group;
+            }
         }
     }
+    unset($row);
 
     return [
         'player' => $player,
@@ -2800,15 +2849,14 @@ function raidlands_store_bridge_changes(int $since): array
         $players = raidlands_db_fetch_all(
             "SELECT DISTINCT p.steam_id64
              FROM players p
-             INNER JOIN entitlements e ON e.player_id = p.id
-             WHERE e.oxide_group <> ''"
+             INNER JOIN entitlements e ON e.player_id = p.id"
         );
     } else {
         $players = raidlands_db_fetch_all(
             "SELECT DISTINCT p.steam_id64
              FROM players p
              INNER JOIN entitlements e ON e.player_id = p.id
-             WHERE e.oxide_group <> '' AND UNIX_TIMESTAMP(e.changed_at) > :since",
+             WHERE UNIX_TIMESTAMP(e.changed_at) > :since",
             ['since' => $since]
         );
     }
@@ -2858,7 +2906,7 @@ function raidlands_store_admin_product_rows(): array
         $params
     );
     $kit_rows = [];
-    $permission_rows = [];
+    $fulfillment_rows = [];
 
     try {
         $kit_rows = raidlands_db_fetch_all(
@@ -2873,22 +2921,24 @@ function raidlands_store_admin_product_rows(): array
     }
 
     try {
-        $permission_rows = raidlands_db_fetch_all(
-            'SELECT product_id, permission_name, display_label, sort_order
-             FROM store_product_permission_grants
+        $fulfillment_rows = raidlands_db_fetch_all(
+            'SELECT product_id, oxide_group, sort_order
+             FROM product_fulfillment_actions
              WHERE product_id IN (' . implode(', ', $placeholders) . ')
-             ORDER BY product_id ASC, sort_order ASC, permission_name ASC',
+               AND action_type = "grant_group"
+               AND oxide_group <> ""
+             ORDER BY product_id ASC, sort_order ASC, id ASC',
             $params
         );
     } catch (Throwable $error) {
-        $permission_rows = [];
+        $fulfillment_rows = [];
     }
 
     $rp_by_product = [];
     $cash_pass_by_product = [];
     $cash_subscription_by_product = [];
     $kits_by_product = [];
-    $permissions_by_product = [];
+    $fulfillment_groups_by_product = [];
 
     foreach ($price_rows as $price_row) {
         $product_id = (int) $price_row['product_id'];
@@ -2909,22 +2959,29 @@ function raidlands_store_admin_product_rows(): array
         $kits_by_product[(int) $kit_row['product_id']][] = (int) $kit_row['kit_id'];
     }
 
-    foreach ($permission_rows as $permission_row) {
-        $permissions_by_product[(int) $permission_row['product_id']][] = [
-            'permission_name' => (string) ($permission_row['permission_name'] ?? ''),
-            'display_label' => (string) ($permission_row['display_label'] ?? ''),
-            'sort_order' => (int) ($permission_row['sort_order'] ?? 100),
-        ];
+    foreach ($fulfillment_rows as $fulfillment_row) {
+        $group = raidlands_store_clean_group($fulfillment_row['oxide_group'] ?? '');
+
+        if ($group !== '') {
+            $fulfillment_groups_by_product[(int) $fulfillment_row['product_id']][] = $group;
+        }
     }
 
     foreach ($rows as &$row) {
         $product_id = (int) ($row['id'] ?? 0);
+        $fulfillment_groups = array_values(array_unique($fulfillment_groups_by_product[$product_id] ?? []));
+
+        if ($fulfillment_groups === []) {
+            $fulfillment_groups = raidlands_store_clean_groups([$row['oxide_group'] ?? '']);
+        }
+
         $row['product_type'] = raidlands_store_normalize_product_type((string) ($row['product_type'] ?? 'perk'));
+        $row['fulfillment_groups'] = $fulfillment_groups;
+        $row['oxide_group'] = $fulfillment_groups[0] ?? raidlands_store_clean_group($row['oxide_group'] ?? '');
         $row['rp_prices'] = $rp_by_product[$product_id] ?? [];
         $row['cash_pass_prices'] = $cash_pass_by_product[$product_id] ?? [];
         $row['cash_subscription_prices'] = $cash_subscription_by_product[$product_id] ?? [];
         $row['kit_ids'] = $kits_by_product[$product_id] ?? [];
-        $row['permission_grants'] = $permissions_by_product[$product_id] ?? [];
     }
     unset($row);
 
@@ -2967,47 +3024,119 @@ function raidlands_store_admin_save_product_kit_links(PDO $pdo, int $product_id,
     }
 }
 
-function raidlands_store_admin_clean_permission($value): string
+function raidlands_store_admin_clean_fulfillment_groups($values, string $product_name): array
 {
-    if (function_exists('raidlands_permissions_clean_permission')) {
-        return raidlands_permissions_clean_permission($value);
+    if (!is_array($values)) {
+        $values = [$values];
     }
 
-    $permission = strtolower(trim(strip_tags((string) $value)));
+    $groups = [];
+    $seen = [];
 
-    return preg_match('/^[a-z0-9_.-]+$/', $permission) === 1 ? $permission : '';
+    foreach ($values as $value) {
+        if (is_array($value)) {
+            foreach (raidlands_store_admin_clean_fulfillment_groups($value, $product_name) as $nested_group) {
+                if (!isset($seen[$nested_group])) {
+                    $seen[$nested_group] = true;
+                    $groups[] = $nested_group;
+                }
+            }
+
+            continue;
+        }
+
+        $raw_group = trim((string) $value);
+
+        if ($raw_group === '') {
+            continue;
+        }
+
+        $group = raidlands_store_clean_group($raw_group);
+
+        if ($group === '') {
+            throw new InvalidArgumentException('Store product "' . $product_name . '" has an invalid applied server group. ' . raidlands_store_group_rule_hint());
+        }
+
+        if (!isset($seen[$group])) {
+            $seen[$group] = true;
+            $groups[] = $group;
+        }
+    }
+
+    return $groups;
 }
 
-function raidlands_store_admin_save_product_permission_grants(PDO $pdo, int $product_id, array $permissions): void
+function raidlands_store_admin_valid_fulfillment_group_map(): ?array
 {
+    if (!function_exists('raidlands_permissions_group_names')) {
+        return null;
+    }
+
     try {
-        $pdo->prepare('DELETE FROM store_product_permission_grants WHERE product_id = :product_id')->execute(['product_id' => $product_id]);
-        $insert = $pdo->prepare(
-            'INSERT INTO store_product_permission_grants (product_id, permission_name, display_label, sort_order)
-             VALUES (:product_id, :permission_name, :display_label, :sort_order)
-             ON DUPLICATE KEY UPDATE display_label = VALUES(display_label), sort_order = VALUES(sort_order), updated_at = NOW()'
-        );
-
-        foreach (array_values(array_unique(array_map('strval', $permissions))) as $index => $permission) {
-            $permission = raidlands_store_admin_clean_permission($permission);
-
-            if ($permission === '') {
-                continue;
-            }
-
-            if (function_exists('raidlands_permissions_permission_id')) {
-                raidlands_permissions_permission_id($pdo, $permission, 'store');
-            }
-
-            $insert->execute([
-                'product_id' => $product_id,
-                'permission_name' => $permission,
-                'display_label' => ucwords(str_replace(['.', '_', '-'], ' ', $permission)),
-                'sort_order' => ($index + 1) * 10,
-            ]);
-        }
+        $groups = raidlands_permissions_group_names(false);
     } catch (Throwable $error) {
-        // Older installs may not have the new store permission table yet.
+        return null;
+    }
+
+    $map = [];
+
+    foreach ($groups as $group) {
+        $group = raidlands_store_clean_group($group);
+
+        if ($group !== '') {
+            $map[$group] = true;
+        }
+    }
+
+    return $map;
+}
+
+function raidlands_store_admin_validate_fulfillment_groups(array $groups, string $product_name): void
+{
+    $valid_groups = raidlands_store_admin_valid_fulfillment_group_map();
+
+    if ($valid_groups === null) {
+        return;
+    }
+
+    $invalid_groups = [];
+
+    foreach ($groups as $group) {
+        if (!isset($valid_groups[$group])) {
+            $invalid_groups[] = $group;
+        }
+    }
+
+    if ($invalid_groups !== []) {
+        throw new InvalidArgumentException(
+            'Active store product "' . $product_name . '" uses unavailable applied group(s): '
+            . implode(', ', $invalid_groups)
+            . '. Create and activate those groups in Groups first.'
+        );
+    }
+}
+
+function raidlands_store_admin_touch_product_entitlements(PDO $pdo, int $product_id, string $primary_group): void
+{
+    if ($product_id <= 0) {
+        return;
+    }
+
+    try {
+        $statement = $pdo->prepare(
+            "UPDATE entitlements
+             SET oxide_group = :oxide_group,
+                 changed_at = NOW(),
+                 updated_at = NOW()
+             WHERE product_id = :product_id
+               AND status IN ('pending', 'active')"
+        );
+        $statement->execute([
+            'oxide_group' => $primary_group,
+            'product_id' => $product_id,
+        ]);
+    } catch (Throwable $error) {
+        // Older installs may not have entitlements yet.
     }
 }
 
@@ -3026,38 +3155,44 @@ function raidlands_store_admin_group_category(string $product_type, string $grou
     return 'store';
 }
 
-function raidlands_store_admin_sync_product_group(
+function raidlands_store_admin_sync_product_groups(
     PDO $pdo,
     int $product_id,
-    string $group,
+    array $groups,
     string $product_type,
     string $name,
     int $tier_priority,
     int $sort_order
 ): void {
+    $groups = raidlands_store_clean_groups($groups);
+
     try {
         $pdo->prepare(
             'DELETE FROM product_fulfillment_actions
              WHERE product_id = :product_id AND action_type = "grant_group"'
         )->execute(['product_id' => $product_id]);
 
-        if ($group !== '') {
+        if ($groups !== []) {
             $statement = $pdo->prepare(
                 'INSERT INTO product_fulfillment_actions (product_id, action_type, oxide_group, sort_order)
-                 VALUES (:product_id, "grant_group", :oxide_group, 10)
+                 VALUES (:product_id, "grant_group", :oxide_group, :sort_order)
                  ON DUPLICATE KEY UPDATE oxide_group = VALUES(oxide_group), sort_order = VALUES(sort_order), updated_at = NOW()'
             );
-            $statement->execute([
-                'product_id' => $product_id,
-                'oxide_group' => $group,
-            ]);
+
+            foreach ($groups as $index => $group) {
+                $statement->execute([
+                    'product_id' => $product_id,
+                    'oxide_group' => $group,
+                    'sort_order' => ($index + 1) * 10,
+                ]);
+            }
         }
     } catch (Throwable $error) {
         // Older installs may not have the legacy fulfillment mirror yet. The product row remains authoritative.
     }
 
     if (
-        $group === ''
+        $groups === []
         || !function_exists('raidlands_permissions_is_ready')
         || !function_exists('raidlands_permissions_upsert_group')
         || !raidlands_permissions_is_ready()
@@ -3065,47 +3200,49 @@ function raidlands_store_admin_sync_product_group(
         return;
     }
 
-    $category = raidlands_store_admin_group_category($product_type, $group);
-    $existing = raidlands_db_fetch_one(
-        'SELECT id, is_read_only
-         FROM oxide_groups
-         WHERE group_name = :group_name',
-        ['group_name' => $group]
-    );
+    foreach ($groups as $index => $group) {
+        $category = raidlands_store_admin_group_category($product_type, $group);
+        $existing = raidlands_db_fetch_one(
+            'SELECT id, is_read_only
+             FROM oxide_groups
+             WHERE group_name = :group_name',
+            ['group_name' => $group]
+        );
 
-    if ($existing !== null) {
-        if (empty($existing['is_read_only'])) {
-            raidlands_db_execute(
-                'UPDATE oxide_groups
-                 SET is_managed = 1,
-                     is_active = 1,
-                     category = CASE WHEN category IN ("", "custom", "snapshot") THEN :category ELSE category END,
-                     deleted_at = NULL,
-                     deleted_revision = 0,
-                     updated_at = NOW()
-                 WHERE id = :id',
-                [
-                    'category' => $category,
-                    'id' => (int) $existing['id'],
-                ]
-            );
+        if ($existing !== null) {
+            if (empty($existing['is_read_only'])) {
+                raidlands_db_execute(
+                    'UPDATE oxide_groups
+                     SET is_managed = 1,
+                         is_active = 1,
+                         category = CASE WHEN category IN ("", "custom", "snapshot") THEN :category ELSE category END,
+                         deleted_at = NULL,
+                         deleted_revision = 0,
+                         updated_at = NOW()
+                     WHERE id = :id',
+                    [
+                        'category' => $category,
+                        'id' => (int) $existing['id'],
+                    ]
+                );
+            }
+
+            continue;
         }
 
-        return;
+        raidlands_permissions_upsert_group($pdo, [
+            'group_name' => $group,
+            'title' => $group,
+            'rank' => raidlands_store_normalize_product_type($product_type) === 'kit_bundle' ? $tier_priority : 0,
+            'parent_group' => '',
+            'category' => $category,
+            'is_managed' => 1,
+            'is_protected' => 0,
+            'is_active' => 1,
+            'sort_order' => $sort_order + ($index * 10),
+            'notes' => trim('Store product: ' . $name),
+        ], false);
     }
-
-    raidlands_permissions_upsert_group($pdo, [
-        'group_name' => $group,
-        'title' => $group,
-        'rank' => raidlands_store_normalize_product_type($product_type) === 'kit_bundle' ? $tier_priority : 0,
-        'parent_group' => '',
-        'category' => $category,
-        'is_managed' => 1,
-        'is_protected' => 0,
-        'is_active' => 1,
-        'sort_order' => $sort_order,
-        'notes' => trim('Store product: ' . $name),
-    ], false);
 }
 
 function raidlands_store_admin_offer_placeholder(string $slug, string $kind, string $interval): string
@@ -3257,15 +3394,18 @@ function raidlands_store_admin_save_product_rows($rows): void
                 $name = ucwords(str_replace('-', ' ', $slug));
             }
 
-            $raw_oxide_group = trim((string) ($row['oxide_group'] ?? ''));
-            $oxide_group = raidlands_store_clean_group($raw_oxide_group);
+            $fulfillment_group_input = array_key_exists('fulfillment_groups', $row)
+                ? $row['fulfillment_groups']
+                : [$row['oxide_group'] ?? ''];
+            $fulfillment_groups = raidlands_store_admin_clean_fulfillment_groups($fulfillment_group_input, $name);
+            $oxide_group = $fulfillment_groups[0] ?? '';
 
-            if ($raw_oxide_group !== '' && $oxide_group === '') {
-                throw new InvalidArgumentException('Store product "' . $name . '" has an invalid server access group. ' . raidlands_store_group_rule_hint());
+            if (!empty($row['is_active']) && $fulfillment_groups === []) {
+                throw new InvalidArgumentException('Active store product "' . $name . '" needs at least one applied server group.');
             }
 
-            if (!empty($row['is_active']) && $oxide_group === '') {
-                throw new InvalidArgumentException('Active store product "' . $name . '" needs a linked server access group.');
+            if (!empty($row['is_active'])) {
+                raidlands_store_admin_validate_fulfillment_groups($fulfillment_groups, $name);
             }
 
             $params = [
@@ -3335,15 +3475,16 @@ function raidlands_store_admin_save_product_rows($rows): void
                 continue;
             }
 
-            raidlands_store_admin_sync_product_group(
+            raidlands_store_admin_sync_product_groups(
                 $pdo,
                 $product_id,
-                (string) $params['oxide_group'],
+                $fulfillment_groups,
                 $type,
                 (string) $params['name'],
                 (int) $params['tier_priority'],
                 (int) $params['sort_order']
             );
+            raidlands_store_admin_touch_product_entitlements($pdo, $product_id, (string) $params['oxide_group']);
             $publish_permissions = true;
 
             foreach (raidlands_store_offer_intervals(true) as $interval) {
@@ -3361,12 +3502,6 @@ function raidlands_store_admin_save_product_rows($rows): void
 
             if (array_key_exists('kit_ids', $row)) {
                 raidlands_store_admin_save_product_kit_links($pdo, $product_id, (array) ($row['kit_ids'] ?? []));
-                $publish_permissions = true;
-            }
-
-            if (array_key_exists('permission_grants', $row)) {
-                raidlands_store_admin_save_product_permission_grants($pdo, $product_id, (array) ($row['permission_grants'] ?? []));
-                $publish_permissions = true;
             }
         }
 
@@ -3377,7 +3512,7 @@ function raidlands_store_admin_save_product_rows($rows): void
     }
 
     if ($publish_permissions && function_exists('raidlands_permissions_publish_from_related_change')) {
-        raidlands_permissions_publish_from_related_change('Published permission sync from store product unlock changes.');
+        raidlands_permissions_publish_from_related_change('Published permission sync from store product group changes.');
     }
 }
 

@@ -86,11 +86,13 @@ The store uses MySQL as the source of truth, Stripe Checkout for cash purchases,
 17. Run `database/migrations/016_player_stats_wipe_rp_baseline.sql`.
 18. Run `database/migrations/017_feature_voting_status.sql`.
 19. Run `database/migrations/018_store_bundle_offer_matrix.sql`.
-20. Run `database/seeds/001_store_products.sql`.
-21. Copy `.env.example` to `.env`.
-22. Fill in MySQL, Stripe, Steam API, bridge secret, and clan API limit values.
-23. Add at least one owner SteamID64 to `admin_users` and `admin_user_roles`.
-24. Configure product RP costs and Stripe Price IDs in `/admin/?section=store`.
+20. Run `database/migrations/019_raidlands_vip_kits_permissions_seed.sql`.
+21. Run `database/migrations/020_store_product_fulfillment_groups.sql`.
+22. Run `database/seeds/001_store_products.sql`.
+23. Copy `.env.example` to `.env`.
+24. Fill in MySQL, Stripe, Steam API, bridge secret, and clan API limit values.
+25. Add at least one owner SteamID64 to `admin_users` and `admin_user_roles`.
+26. Configure product RP costs and Stripe Price IDs in `/admin/?section=store`.
 
 Public store flow:
 
@@ -99,7 +101,7 @@ Public store flow:
 - `/store/checkout.php` creates Stripe Checkout Sessions.
 - `/profile/billing-portal.php` opens Stripe Billing Portal for recurring cash subscriptions.
 - `/api/stripe-webhook.php` records paid orders, subscriptions, refunds, and entitlement changes.
-- Store products use one managed group for purchases and manual grants; linked kits and perk permissions are merged into that group during published sync.
+- Store products apply one or more managed groups for purchases and manual grants; Kits and Groups control the permissions those groups receive.
 - `/profile/` shows active groups and entitlement history for the linked SteamID64.
 - `/clans/` resolves the linked SteamID64 to synced clan data, queues allowed clan actions, and creates/revokes public clan API keys.
 - `/api-docs/` documents the public clan API for external websites and Discord bots.

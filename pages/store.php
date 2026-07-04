@@ -74,9 +74,7 @@ function render_store_product_card(array $product, ?array $player, string $csrf,
     $has_linked_identity = $player !== null && !empty($player['steam_id64']);
     $has_checkout_player = $has_linked_identity && !empty($player['id']);
     $linked_kits = (array) ($product['linked_kits'] ?? []);
-    $permission_grants = (array) ($product['permission_grants'] ?? []);
     $kit_html = '';
-    $perk_html = '';
     $actions = '';
 
     if ($linked_kits !== []) {
@@ -117,17 +115,6 @@ function render_store_product_card(array $product, ?array $player, string $csrf,
         $kit_html .= '</div>';
     }
 
-    if ($permission_grants !== []) {
-        $perk_html .= '<div class="tag-row store-perk-tags">';
-
-        foreach (array_slice($permission_grants, 0, 8) as $grant) {
-            $label = trim((string) ($grant['display_label'] ?? '')) ?: (string) ($grant['permission_name'] ?? 'Perk');
-            $perk_html .= '<span class="tag">' . e($label) . '</span>';
-        }
-
-        $perk_html .= '</div>';
-    }
-
     if (!$has_linked_identity) {
         $actions = '<a class="btn btn-secondary" href="' . e(route_url('link')) . '">Connect Steam First</a>';
     } elseif (!$has_checkout_player) {
@@ -154,7 +141,6 @@ function render_store_product_card(array $product, ?array $player, string $csrf,
         . '<p class="card-copy">' . e((string) $product['short_description']) . '</p>'
         . '<div class="store-price"><strong>' . e($active_offer_count > 0 ? 'Offers available' : 'Pricing coming soon') . '</strong><span>' . e((string) $active_offer_count) . ' option' . ($active_offer_count === 1 ? '' : 's') . '</span></div>'
         . $kit_html
-        . $perk_html
         . '<ul class="store-mini-list">'
         . '<li>Purchases are attached to your connected Steam account.</li>'
         . '<li>Timed access ends automatically; lifetime access has no scheduled expiration.</li>'

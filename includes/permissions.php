@@ -538,13 +538,25 @@ function raidlands_permissions_delete_blockers(PDO $pdo, string $group_name): ar
     }
 
     if (raidlands_permissions_table_exists('store_products')) {
-        $row = raidlands_db_fetch_one(
-            'SELECT COUNT(*) AS total
-             FROM store_products
-             WHERE oxide_group = :group_name
-               AND is_active = 1',
-            ['group_name' => $group_name]
-        );
+        if (raidlands_permissions_table_exists('product_fulfillment_actions')) {
+            $row = raidlands_db_fetch_one(
+                'SELECT COUNT(DISTINCT p.id) AS total
+                 FROM product_fulfillment_actions pfa
+                 INNER JOIN store_products p ON p.id = pfa.product_id
+                 WHERE pfa.action_type = "grant_group"
+                   AND pfa.oxide_group = :group_name
+                   AND p.is_active = 1',
+                ['group_name' => $group_name]
+            );
+        } else {
+            $row = raidlands_db_fetch_one(
+                'SELECT COUNT(*) AS total
+                 FROM store_products
+                 WHERE oxide_group = :group_name
+                   AND is_active = 1',
+                ['group_name' => $group_name]
+            );
+        }
         $total = (int) ($row['total'] ?? 0);
 
         if ($total > 0) {
@@ -555,14 +567,27 @@ function raidlands_permissions_delete_blockers(PDO $pdo, string $group_name): ar
     }
 
     if (raidlands_permissions_table_exists('entitlements')) {
-        $row = raidlands_db_fetch_one(
-            "SELECT COUNT(*) AS total
-             FROM entitlements
-             WHERE oxide_group = :group_name
-               AND status = 'active'
-               AND (ends_at IS NULL OR ends_at > NOW())",
-            ['group_name' => $group_name]
-        );
+        if (raidlands_permissions_table_exists('product_fulfillment_actions')) {
+            $row = raidlands_db_fetch_one(
+                "SELECT COUNT(DISTINCT e.id) AS total
+                 FROM entitlements e
+                 INNER JOIN product_fulfillment_actions pfa ON pfa.product_id = e.product_id
+                 WHERE pfa.action_type = 'grant_group'
+                   AND pfa.oxide_group = :group_name
+                   AND e.status = 'active'
+                   AND (e.ends_at IS NULL OR e.ends_at > NOW())",
+                ['group_name' => $group_name]
+            );
+        } else {
+            $row = raidlands_db_fetch_one(
+                "SELECT COUNT(*) AS total
+                 FROM entitlements
+                 WHERE oxide_group = :group_name
+                   AND status = 'active'
+                   AND (ends_at IS NULL OR ends_at > NOW())",
+                ['group_name' => $group_name]
+            );
+        }
         $total = (int) ($row['total'] ?? 0);
 
         if ($total > 0) {
@@ -998,32 +1023,6 @@ function raidlands_permissions_sync_payload(?int $revision = null): array
             foreach ((array) $permissions as $permission) {
                 $permission = raidlands_permissions_clean_permission($permission);
                 $group_permissions[$group][] = $permission;
-            }
-        }
-    }
-
-    foreach (['raidlands_store_product_kit_permission_grants_map', 'raidlands_store_product_permission_grants_map'] as $map_function) {
-        if (!function_exists($map_function)) {
-            continue;
-        }
-
-        foreach ((array) $map_function() as $group => $permissions) {
-            $group = raidlands_permissions_clean_group($group);
-
-            if ($group === '') {
-                continue;
-            }
-
-            if (!isset($group_permissions[$group])) {
-                $group_permissions[$group] = [];
-            }
-
-            foreach ((array) $permissions as $permission) {
-                $permission = raidlands_permissions_clean_permission($permission);
-
-                if ($permission !== '') {
-                    $group_permissions[$group][] = $permission;
-                }
             }
         }
     }

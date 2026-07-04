@@ -2068,19 +2068,19 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                 <?php if ($active_section === 'store') : ?>
                   <?php if (!$admin_store_ready) : ?>
                     <section class="admin-section">
-                      <div class="admin-alert warning">Store tables are not ready yet. Run <code>database/migrations/001_vip_store.sql</code>, <code>database/migrations/012_rp_shop.sql</code>, <code>database/migrations/013_pvp_kit_permission_cleanup.sql</code>, <code>database/migrations/014_kit_group_delete_tombstones.sql</code>, <code>database/migrations/018_store_bundle_offer_matrix.sql</code>, then <code>database/seeds/001_store_products.sql</code>, and confirm the database credentials in your environment config. <?= $admin_store_error !== '' ? e($admin_store_error) : '' ?></div>
+                      <div class="admin-alert warning">Store tables are not ready yet. Run <code>database/migrations/001_vip_store.sql</code>, <code>database/migrations/012_rp_shop.sql</code>, <code>database/migrations/013_pvp_kit_permission_cleanup.sql</code>, <code>database/migrations/014_kit_group_delete_tombstones.sql</code>, <code>database/migrations/018_store_bundle_offer_matrix.sql</code>, <code>database/migrations/019_raidlands_vip_kits_permissions_seed.sql</code>, <code>database/migrations/020_store_product_fulfillment_groups.sql</code>, then <code>database/seeds/001_store_products.sql</code>, and confirm the database credentials in your environment config. <?= $admin_store_error !== '' ? e($admin_store_error) : '' ?></div>
                     </section>
                   <?php else : ?>
                     <section class="admin-section admin-store-editor-section">
                       <div class="admin-subsection-head">
                         <h3>Store editor</h3>
-                        <p>Select one product at a time, then configure bundles, individual kits, perks, RP offers, cash passes, subscriptions, and the managed group grant.</p>
+                        <p>Select one product at a time, then configure bundles, individual kits, perks, RP offers, cash passes, subscriptions, and the groups applied by purchase.</p>
                       </div>
                       <?php
                         $product_rows = array_values($admin_store_rows);
                         $admin_store_price_labels = [];
                         $admin_store_currencies = [];
-                        $admin_store_groups = raidlands_store_managed_groups();
+                        $admin_store_groups = [];
                         $admin_store_group_details = [];
 
                         if (function_exists('raidlands_permissions_group_rows')) {
@@ -2088,7 +2088,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 foreach (raidlands_permissions_group_rows() as $group_row) {
                                     $group_name = raidlands_store_clean_group($group_row['group_name'] ?? '');
 
-                                    if ($group_name === '' || !empty($group_row['is_read_only'])) {
+                                    if ($group_name === '' || !empty($group_row['is_read_only']) || empty($group_row['is_active'])) {
                                         continue;
                                     }
 
@@ -2112,6 +2112,10 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 }
                             }
 
+                            foreach ((array) ($product_row['fulfillment_groups'] ?? []) as $product_group) {
+                                $admin_store_groups[] = (string) $product_group;
+                            }
+
                             $admin_store_groups[] = (string) ($product_row['oxide_group'] ?? '');
                         }
 
@@ -2132,11 +2136,9 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
 
                         echo admin_render_datalist('admin-price-label-options', admin_price_label_options($admin_store_price_labels));
                         echo admin_render_datalist('admin-currency-options', admin_currency_options($admin_store_currencies));
-                        echo admin_render_datalist('admin-oxide-group-options', $admin_store_group_options);
 
                         $admin_store_type_options = admin_product_type_options();
                         $admin_store_kit_name_map = [];
-                        $admin_store_permission_catalog_groups = admin_permission_catalog_groups($admin_permission_options, $admin_permission_rows);
                         foreach ($admin_store_kit_options as $kit_option) {
                             $kit_id = (int) ($kit_option['id'] ?? 0);
 
@@ -2170,7 +2172,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 'cash_pass_prices' => [],
                                 'cash_subscription_prices' => [],
                                 'kit_ids' => [],
-                                'permission_grants' => [],
+                                'fulfillment_groups' => [],
                             ];
                             $product_type_value = raidlands_store_normalize_product_type((string) ($row['product_type'] ?? 'perk'));
                             $rp_prices = (array) ($row['rp_prices'] ?? []);
@@ -2179,10 +2181,13 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             $cash_subscription_prices = (array) ($row['cash_subscription_prices'] ?? []);
                             $cash_subscription_intervals = raidlands_store_admin_subscription_intervals();
                             $selected_kit_ids = array_map('intval', (array) ($row['kit_ids'] ?? []));
-                            $selected_permissions = array_values(array_filter(array_map(
-                                static fn (array $grant): string => (string) ($grant['permission_name'] ?? ''),
-                                (array) ($row['permission_grants'] ?? [])
-                            )));
+                            $selected_groups = raidlands_store_clean_groups((array) ($row['fulfillment_groups'] ?? []));
+
+                            if ($selected_groups === []) {
+                                $selected_groups = raidlands_store_clean_groups([(string) ($row['oxide_group'] ?? '')]);
+                            }
+
+                            $selected_group_set = array_fill_keys($selected_groups, true);
                             $selected_kit_names = [];
                             foreach ($selected_kit_ids as $selected_kit_id) {
                                 if (isset($admin_store_kit_name_map[$selected_kit_id])) {
@@ -2197,10 +2202,10 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             $store_has_active_panel = true;
                             $store_title = trim((string) ($row['name'] ?? ''));
                             $store_label = $store_title !== '' ? $store_title : 'New Store Product';
-                            $store_group_raw = trim((string) ($row['oxide_group'] ?? ''));
-                            $store_group = raidlands_store_clean_group($store_group_raw);
-                            $store_group_display = $store_group !== '' ? $store_group : $store_group_raw;
-                            $store_group_detail = $store_group !== '' ? ($admin_store_group_details[$store_group] ?? null) : null;
+                            $store_group_display = $selected_groups !== [] ? implode(', ', $selected_groups) : '';
+                            $store_group_summary = $selected_groups !== []
+                                ? implode(', ', array_slice($selected_groups, 0, 3)) . (count($selected_groups) > 3 ? ' +' . (count($selected_groups) - 3) : '')
+                                : 'No groups';
                             $store_status = $store_is_existing ? (!empty($row['is_active']) ? 'Active' : 'Inactive') : 'Draft slot';
                             $store_status_value = $store_is_existing ? (!empty($row['is_active']) ? 'active' : 'inactive') : 'draft';
                             $store_type_label = $admin_store_type_options[$product_type_value] ?? $product_type_value;
@@ -2228,7 +2233,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 !empty($row['is_featured']) ? 'featured' : '',
                                 !empty($row['is_stackable']) ? 'stackable' : 'non-stackable',
                             ];
-                            $store_search_parts = array_merge($store_search_parts, $selected_kit_names, $selected_permissions);
+                            $store_search_parts = array_merge($store_search_parts, $selected_groups, $selected_kit_names);
 
                             foreach ($rp_prices as $rp_interval => $rp_price_search_row) {
                                 $rp_price_search_row = (array) $rp_price_search_row;
@@ -2265,7 +2270,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 'id' => $store_panel_id,
                                 'index' => (string) $index,
                                 'label' => $store_label,
-                                'meta' => $store_status . ' / ' . ($store_group_display !== '' ? $store_group_display : 'No group') . ' / ' . $store_rp_active_count . ' RP, ' . $store_cash_active_count . ' cash',
+                                'meta' => $store_status . ' / ' . $store_group_summary . ' / ' . $store_rp_active_count . ' RP, ' . $store_cash_active_count . ' cash',
                                 'is_active' => $store_is_active_panel,
                                 'is_draft' => !$store_is_existing,
                                 'category' => $product_type_value,
@@ -2285,7 +2290,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             <div class="admin-repeat-card-head">
                               <div>
                                 <h3 data-admin-store-card-title><?= e($store_label) ?></h3>
-                                <p class="admin-feedback-subtitle"><?= e($store_status) ?> / <?= e($store_group_display !== '' ? $store_group_display : 'No group selected') ?></p>
+                                <p class="admin-feedback-subtitle"><?= e($store_status) ?> / <?= e($store_group_summary) ?></p>
                               </div>
                               <?php if (!empty($row['id'])) : ?>
                                 <label class="admin-check admin-delete-check">
@@ -2296,7 +2301,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             </div>
                             <div class="admin-store-section-stack">
                               <details class="admin-details admin-store-details" open>
-                                <summary>Product setup <small>Identity, access group, and ordering</small></summary>
+                                <summary>Product setup <small>Identity, applied groups, and ordering</small></summary>
                                 <div class="admin-grid two admin-store-basic-grid">
                                   <label class="admin-field">
                                     <?= admin_field_head('Slug', 'Stable store identifier used by admin and support. Keep lowercase with hyphens.') ?>
@@ -2313,24 +2318,28 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                       <?= admin_render_options($admin_store_type_options, $product_type_value) ?>
                                     </select>
                                   </label>
-                                  <label class="admin-field">
-                                    <?= admin_field_head('Linked group', 'Purchases and manual grants create entitlements for this exact server access group.') ?>
-                                    <input type="text" list="admin-oxide-group-options" name="store_products[<?= e((string) $index) ?>][oxide_group]" maxlength="120" pattern="[a-z0-9_-]+" placeholder="vip_bronze" value="<?= e($store_group_display) ?>" data-admin-store-group-input>
-                                    <?= admin_hint(raidlands_store_group_rule_hint() . ' Saving a new value also adds it to the managed group catalog when the Groups tables are installed.') ?>
-                                    <?php if ($store_group_display !== '') : ?>
-                                      <div class="admin-store-group-link<?= $store_group === '' ? ' is-warning' : '' ?>">
-                                        <span>Store item grants</span>
-                                        <strong><code><?= e($store_group_display) ?></code></strong>
-                                        <?php if ($store_group === '') : ?>
-                                          <p>This value will not sync until it matches the bridge-safe group format.</p>
-                                        <?php elseif ($store_group_detail !== null) : ?>
-                                          <p><?= !empty($store_group_detail['is_managed']) ? 'Existing managed' : 'Existing' ?> <?= e((string) ($store_group_detail['category'] ?? 'custom')) ?> group. Entitlements grant this group directly while active.</p>
-                                        <?php else : ?>
-                                          <p>This group will be added as a managed store group on save.</p>
-                                        <?php endif; ?>
+                                  <div class="admin-field admin-span-all">
+                                    <?= admin_field_head('Applied groups', 'Purchases and manual grants apply every selected server group. Edit permissions for those groups in Groups.') ?>
+                                    <?php if ($admin_store_group_options === []) : ?>
+                                      <div class="admin-alert warning">No editable server groups are available yet. Add or sync groups before activating this product.</div>
+                                    <?php else : ?>
+                                      <div class="admin-check-grid admin-store-group-grid">
+                                        <?php foreach ($admin_store_group_options as $group_name => $group_label) : ?>
+                                          <?php $group_name = raidlands_store_clean_group($group_name); ?>
+                                          <?php if ($group_name === '') { continue; } ?>
+                                          <label class="admin-check">
+                                            <input
+                                              type="checkbox"
+                                              name="store_products[<?= e((string) $index) ?>][fulfillment_groups][]"
+                                              value="<?= e($group_name) ?>"
+                                              <?= isset($selected_group_set[$group_name]) ? 'checked' : '' ?>>
+                                            <span><?= e((string) $group_label) ?></span>
+                                          </label>
+                                        <?php endforeach; ?>
                                       </div>
                                     <?php endif; ?>
-                                  </label>
+                                    <?= admin_hint('Select at least one group before activating a product. The first selected group is also kept in the legacy group column for older records and support views.') ?>
+                                  </div>
                                   <label class="admin-field">
                                     <?= admin_field_head('Tier priority', 'Higher non-stackable bundle priority revokes lower active bundle entitlements for the same player.') ?>
                                     <input type="number" min="0" max="999" name="store_products[<?= e((string) $index) ?>][tier_priority]" value="<?= e((string) ($row['tier_priority'] ?? 0)) ?>">
@@ -2478,8 +2487,8 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               </details>
 
                               <details class="admin-details admin-store-details">
-                                <summary>Linked kits <small>Product kit unlocks and card preview</small></summary>
-                                <p class="admin-detail-note">Selected kits appear on this product card and their claim permissions are added to this product's managed group on the next permission sync.</p>
+                                <summary>Linked kits <small>Product card preview</small></summary>
+                                <p class="admin-detail-note">Selected kits appear on this product card. Kit claim permissions are controlled by the Kits and Groups sections.</p>
                                 <?php if ($admin_store_kit_options === []) : ?>
                                   <div class="admin-alert warning">Kit tables are not ready or no kits are available yet.</div>
                                 <?php else : ?>
@@ -2492,155 +2501,6 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                         <span><?= e((string) ($kit_option['kit_name'] ?? 'Kit')) ?></span>
                                       </label>
                                     <?php endforeach; ?>
-                                  </div>
-                                <?php endif; ?>
-                              </details>
-
-                              <details class="admin-details admin-store-details">
-                                <summary>Linked perks <small>Direct permissions granted by this product</small></summary>
-                                <p class="admin-detail-note">Selected permissions are added to this product's managed group on the next permission sync. Use Groups for advanced custom permission editing.</p>
-                                <?php if ($admin_permission_options === [] || $admin_store_permission_catalog_groups === []) : ?>
-                                  <div class="admin-alert warning">No permission catalog is available yet.</div>
-                                <?php else : ?>
-                                  <?php
-                                    $store_selected_permission_set = array_fill_keys($selected_permissions, true);
-                                    $store_active_permission_prefix = '';
-
-                                    foreach ($admin_store_permission_catalog_groups as $prefix_group) {
-                                        foreach ((array) $prefix_group['permissions'] as $permission_meta) {
-                                            if (isset($store_selected_permission_set[(string) $permission_meta['name']])) {
-                                                $store_active_permission_prefix = (string) $prefix_group['prefix'];
-                                                break 2;
-                                            }
-                                        }
-                                    }
-
-                                    if ($store_active_permission_prefix === '' && $admin_store_permission_catalog_groups !== []) {
-                                        $store_active_permission_prefix = (string) array_key_first($admin_store_permission_catalog_groups);
-                                    }
-                                  ?>
-                                  <div class="admin-permission-workbench admin-store-permission-workbench" data-store-permission-workbench>
-                                    <div class="admin-permission-toolbar">
-                                      <label class="admin-field admin-permission-search">
-                                        <?= admin_field_head('Find perks', 'Filter the active perk tab by plugin prefix, plugin name, or exact permission.') ?>
-                                        <input type="search" data-store-permission-search placeholder="backpacks, teleport, kits.raid" autocomplete="off">
-                                      </label>
-                                      <label class="admin-check admin-permission-filter">
-                                        <input type="checkbox" data-store-permission-selected-only autocomplete="off">
-                                        <span class="admin-permission-filter-copy">Selected only</span>
-                                      </label>
-                                      <div class="admin-permission-totals" aria-live="polite">
-                                        <span data-store-permission-match-count><?= e((string) count($admin_permission_options)) ?> visible</span>
-                                        <span data-store-permission-selected-count><?= e((string) count($selected_permissions)) ?> selected</span>
-                                      </div>
-                                    </div>
-
-                                    <div class="admin-permission-selected" data-store-permission-selected-wrap>
-                                      <div class="admin-permission-selected-head">
-                                        <span>Selected product perks</span>
-                                        <small data-store-permission-selected-summary><?= e((string) count($selected_permissions)) ?> selected</small>
-                                      </div>
-                                      <div class="admin-permission-chip-list" data-store-permission-selected-list></div>
-                                    </div>
-
-                                    <div class="admin-permission-tabs" role="tablist" aria-label="Product perk sections">
-                                      <?php foreach ($admin_store_permission_catalog_groups as $prefix_group) : ?>
-                                        <?php
-                                          $prefix = (string) $prefix_group['prefix'];
-                                          $prefix_permissions = (array) $prefix_group['permissions'];
-                                          $prefix_selected = count(array_filter(
-                                              $prefix_permissions,
-                                              static fn (array $permission): bool => isset($store_selected_permission_set[(string) $permission['name']])
-                                          ));
-                                          $prefix_label = admin_permission_prefix_label($prefix, (string) ($prefix_group['plugin_name'] ?? ''));
-                                          $prefix_is_active = $prefix === $store_active_permission_prefix;
-                                        ?>
-                                        <button
-                                          class="admin-permission-tab<?= $prefix_is_active ? ' is-active' : '' ?>"
-                                          type="button"
-                                          role="tab"
-                                          aria-selected="<?= $prefix_is_active ? 'true' : 'false' ?>"
-                                          data-store-permission-tab
-                                          data-store-tab-prefix="<?= e($prefix) ?>">
-                                          <span><?= e($prefix_label) ?></span>
-                                          <small data-store-tab-count><?= e((string) $prefix_selected) ?> / <?= e((string) count($prefix_permissions)) ?></small>
-                                        </button>
-                                      <?php endforeach; ?>
-                                    </div>
-
-                                    <div class="admin-permission-empty" data-store-permission-empty hidden>No matching perks in this tab.</div>
-
-                                    <div class="admin-permission-prefix-list">
-                                      <?php foreach ($admin_store_permission_catalog_groups as $prefix_group) : ?>
-                                        <?php
-                                          $prefix = (string) $prefix_group['prefix'];
-                                          $prefix_permissions = (array) $prefix_group['permissions'];
-                                          usort(
-                                              $prefix_permissions,
-                                              static function (array $a, array $b) use ($store_selected_permission_set): int {
-                                                  $a_selected = isset($store_selected_permission_set[(string) $a['name']]);
-                                                  $b_selected = isset($store_selected_permission_set[(string) $b['name']]);
-
-                                                  if ($a_selected !== $b_selected) {
-                                                      return $a_selected ? -1 : 1;
-                                                  }
-
-                                                  return strnatcasecmp((string) $a['name'], (string) $b['name']);
-                                              }
-                                          );
-                                          $prefix_selected = count(array_filter(
-                                              $prefix_permissions,
-                                              static fn (array $permission): bool => isset($store_selected_permission_set[(string) $permission['name']])
-                                          ));
-                                          $prefix_label = admin_permission_prefix_label($prefix, (string) ($prefix_group['plugin_name'] ?? ''));
-                                          $prefix_is_active = $prefix === $store_active_permission_prefix;
-                                        ?>
-                                        <section
-                                          class="admin-permission-prefix"
-                                          data-store-permission-prefix
-                                          data-store-prefix="<?= e($prefix) ?>"
-                                          data-store-prefix-label="<?= e($prefix_label) ?>"
-                                          <?= $prefix_is_active ? '' : 'hidden' ?>>
-                                          <div class="admin-permission-prefix-head">
-                                            <div>
-                                              <h4><?= e($prefix_label) ?></h4>
-                                              <code><?= e($prefix) ?></code>
-                                            </div>
-                                            <span data-store-prefix-count><?= e((string) $prefix_selected) ?> / <?= e((string) count($prefix_permissions)) ?> selected</span>
-                                          </div>
-                                          <div class="admin-permission-grid">
-                                            <?php foreach ($prefix_permissions as $permission_meta) : ?>
-                                              <?php
-                                                $permission_name = (string) $permission_meta['name'];
-                                                $permission_selected = isset($store_selected_permission_set[$permission_name]);
-                                                $permission_plugin = (string) ($permission_meta['plugin_name'] ?? '');
-                                                $permission_classes = 'admin-check admin-permission-option';
-
-                                                if ($permission_selected) {
-                                                    $permission_classes .= ' is-selected';
-                                                }
-                                              ?>
-                                              <label
-                                                class="<?= e($permission_classes) ?>"
-                                                data-store-permission-item
-                                                data-store-permission-name="<?= e($permission_name) ?>"
-                                                data-store-permission-prefix="<?= e($prefix) ?>"
-                                                data-store-permission-plugin="<?= e($permission_plugin) ?>">
-                                                <input
-                                                  type="checkbox"
-                                                  name="store_products[<?= e((string) $index) ?>][permission_grants][]"
-                                                  value="<?= e($permission_name) ?>"
-                                                  <?= $permission_selected ? 'checked' : '' ?>>
-                                                <span class="admin-permission-option-copy">
-                                                  <span class="admin-permission-name"><?= e($permission_name) ?></span>
-                                                  <small data-store-permission-state <?= $permission_selected ? '' : 'hidden' ?>>Selected</small>
-                                                </span>
-                                              </label>
-                                            <?php endforeach; ?>
-                                          </div>
-                                        </section>
-                                      <?php endforeach; ?>
-                                    </div>
                                   </div>
                                 <?php endif; ?>
                               </details>
@@ -2670,7 +2530,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                           <div class="admin-store-picker-controls">
                             <label class="admin-field">
                               <span>Search</span>
-                              <input type="search" maxlength="140" placeholder="Name, slug, group, kit, perk, or price" data-admin-store-search>
+                              <input type="search" maxlength="140" placeholder="Name, slug, group, kit, or price" data-admin-store-search>
                             </label>
                             <div class="admin-store-filter-grid">
                               <label class="admin-field">
@@ -3629,16 +3489,16 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                     <?php if (!$admin_store_ready) : ?>
                       <div class="admin-alert warning">MySQL must be configured before manual grants can be recorded. <?= $admin_store_error !== '' ? e($admin_store_error) : '' ?></div>
                     <?php elseif (empty($admin_store_catalog['products'])) : ?>
-                      <div class="admin-alert warning">No products are available to grant yet. Add at least one active store product with an Oxide group before using manual grants.</div>
+                      <div class="admin-alert warning">No products are available to grant yet. Add at least one active store product with an applied group before using manual grants.</div>
                     <?php else : ?>
                       <?php
                         $admin_grant_products = array_values(array_filter(
                             $admin_store_catalog['products'],
-                            static fn (array $product): bool => raidlands_store_clean_group($product['oxide_group'] ?? '') !== ''
+                            static fn (array $product): bool => raidlands_store_clean_groups((array) ($product['fulfillment_groups'] ?? [])) !== []
                         ));
                       ?>
                       <?php if ($admin_grant_products === []) : ?>
-                        <div class="admin-alert warning">No products with a valid linked group are available to grant yet.</div>
+                        <div class="admin-alert warning">No products with valid applied groups are available to grant yet.</div>
                       <?php else : ?>
                         <div class="admin-grid two">
                           <label class="admin-field">
@@ -3647,11 +3507,12 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             <?= admin_hint('Manual grants link directly to the selected player. Double-check the ID before saving.') ?>
                           </label>
                           <label class="admin-field">
-                            <?= admin_field_head('Product', 'The selected product controls the server access group WebsiteVipBridge will sync.') ?>
+                            <?= admin_field_head('Product', 'The selected product controls the server groups WebsiteVipBridge will sync.') ?>
                             <select name="product_id" required>
                               <option value="" disabled selected>Choose a product to grant</option>
                               <?php foreach ($admin_grant_products as $product) : ?>
-                                <option value="<?= e((string) $product['id']) ?>"><?= e((string) $product['name']) ?> (<?= e((string) $product['oxide_group']) ?>)</option>
+                                <?php $grant_groups = raidlands_store_clean_groups((array) ($product['fulfillment_groups'] ?? [])); ?>
+                                <option value="<?= e((string) $product['id']) ?>"><?= e((string) $product['name']) ?> (<?= e(implode(', ', $grant_groups)) ?>)</option>
                               <?php endforeach; ?>
                             </select>
                           </label>
@@ -3836,7 +3697,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             <tr>
                               <th>SteamID64</th>
                               <th>Product</th>
-                              <th>Group</th>
+                              <th>Groups</th>
                               <th>Status</th>
                               <th>Ends</th>
                               <th>Changed</th>
@@ -3847,7 +3708,8 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               <tr>
                                 <td><code><?= e((string) $row['steam_id64']) ?></code></td>
                                 <td><?= e((string) $row['name']) ?></td>
-                                <td><code><?= e((string) $row['oxide_group']) ?></code></td>
+                                <?php $sync_groups = raidlands_store_clean_groups((array) ($row['fulfillment_groups'] ?? [$row['oxide_group'] ?? ''])); ?>
+                                <td><code><?= e($sync_groups !== [] ? implode(', ', $sync_groups) : 'None') ?></code></td>
                                 <td><span class="status-pill <?= e((string) $row['status']) ?>"><?= e((string) $row['status']) ?></span></td>
                                 <td><?= e((string) ($row['ends_at'] ?: 'None')) ?></td>
                                 <td><?= e((string) $row['changed_at']) ?></td>
