@@ -11,6 +11,9 @@
   let guardModal = null;
   let guardModalAction = null;
   let guardModalReturnFocus = null;
+  let categoryModal = null;
+  let categoryModalWorkbench = null;
+  let categoryModalReturnFocus = null;
 
   function ensureGuardModal() {
     if (guardModal) {
@@ -111,6 +114,189 @@
     }
 
     guardModalReturnFocus = null;
+  }
+
+  function ensureCategoryModal() {
+    if (categoryModal) {
+      return categoryModal;
+    }
+
+    categoryModal = document.createElement("div");
+    categoryModal.className = "admin-permission-category-modal";
+    categoryModal.hidden = true;
+    categoryModal.innerHTML = [
+      '<div class="admin-permission-category-modal-backdrop" data-category-close></div>',
+      '<section class="admin-permission-category-modal-panel" role="dialog" aria-modal="true" aria-labelledby="admin-permission-category-modal-title">',
+      '<header class="admin-permission-category-modal-head">',
+      '<div><p class="section-kicker">Permission categories</p><h3 id="admin-permission-category-modal-title">Choose Category</h3></div>',
+      '<button class="btn btn-ghost" type="button" data-category-close>Close</button>',
+      '</header>',
+      '<div class="admin-permission-category-modal-body">',
+      '<div class="admin-permission-category-table-wrap">',
+      '<table class="admin-permission-category-table">',
+      '<thead><tr><th>Category</th><th>Prefix</th><th>Selected</th><th>Live</th><th>Total</th><th>Action</th></tr></thead>',
+      '<tbody data-category-rows></tbody>',
+      '</table>',
+      '</div>',
+      '</div>',
+      '</section>'
+    ].join("");
+
+    categoryModal.addEventListener("click", event => {
+      const closeTarget = event.target.closest("[data-category-close]");
+      const chooseTarget = event.target.closest("[data-category-choose]");
+
+      if (closeTarget) {
+        closeCategoryModal();
+        return;
+      }
+
+      if (chooseTarget && categoryModalWorkbench) {
+        const prefix = chooseTarget.getAttribute("data-category-prefix") || "";
+        const select = categoryModalWorkbench.querySelector("[data-permission-prefix-select]");
+
+        if (select && selectOptionByPrefix(select, prefix)) {
+          select.value = prefix;
+          activateTab(categoryModalWorkbench, prefix);
+          updateWorkbench(categoryModalWorkbench);
+        }
+
+        closeCategoryModal();
+      }
+    });
+
+    document.addEventListener("keydown", event => {
+      if (event.key === "Escape" && categoryModal && !categoryModal.hidden) {
+        closeCategoryModal();
+      }
+    });
+
+    document.body.appendChild(categoryModal);
+    return categoryModal;
+  }
+
+  function categoryPrefixPanels(workbench) {
+    return toArray(workbench.querySelectorAll("[data-permission-prefix]"));
+  }
+
+  function categoryPanelByPrefix(workbench, prefix) {
+    return categoryPrefixPanels(workbench).find(panel => {
+      return (panel.getAttribute("data-prefix") || "") === prefix;
+    }) || null;
+  }
+
+  function categoryStats(workbench, prefix) {
+    const panel = categoryPanelByPrefix(workbench, prefix);
+    const items = panel ? toArray(panel.querySelectorAll("[data-permission-item]")) : [];
+    let selected = 0;
+    let live = 0;
+
+    items.forEach(item => {
+      const input = itemInput(item);
+
+      if (input && input.checked) {
+        selected += 1;
+      }
+
+      if (item.getAttribute("data-permission-live") === "1") {
+        live += 1;
+      }
+    });
+
+    return {
+      selected,
+      live,
+      total: items.length
+    };
+  }
+
+  function appendCategoryCell(row, text) {
+    const cell = document.createElement("td");
+
+    cell.textContent = text;
+    row.appendChild(cell);
+    return cell;
+  }
+
+  function renderCategoryModalRows(workbench) {
+    const modal = ensureCategoryModal();
+    const rows = modal.querySelector("[data-category-rows]");
+    const select = workbench.querySelector("[data-permission-prefix-select]");
+    const options = select ? toArray(select.options) : [];
+    const activePrefix = activeTabPrefix(workbench);
+
+    if (!rows) {
+      return;
+    }
+
+    rows.textContent = "";
+
+    if (!options.length) {
+      const row = document.createElement("tr");
+      const cell = document.createElement("td");
+
+      cell.colSpan = 6;
+      cell.textContent = "No permission categories are available.";
+      row.appendChild(cell);
+      rows.appendChild(row);
+      return;
+    }
+
+    options.forEach(option => {
+      const prefix = option.value || "";
+      const stats = categoryStats(workbench, prefix);
+      const row = document.createElement("tr");
+      const actionCell = document.createElement("td");
+      const button = document.createElement("button");
+
+      row.className = prefix === activePrefix ? "is-active" : "";
+      appendCategoryCell(row, choiceLabel(option, prefix));
+      appendCategoryCell(row, prefix);
+      appendCategoryCell(row, String(stats.selected));
+      appendCategoryCell(row, String(stats.live));
+      appendCategoryCell(row, String(stats.total));
+
+      button.className = "btn btn-secondary admin-permission-category-choose";
+      button.type = "button";
+      button.textContent = prefix === activePrefix ? "Selected" : "Choose";
+      button.setAttribute("data-category-choose", "");
+      button.setAttribute("data-category-prefix", prefix);
+
+      actionCell.appendChild(button);
+      row.appendChild(actionCell);
+      rows.appendChild(row);
+    });
+  }
+
+  function openCategoryModal(source, workbench) {
+    const modal = ensureCategoryModal();
+    const closeButton = modal.querySelector("button[data-category-close]");
+
+    categoryModalWorkbench = workbench;
+    categoryModalReturnFocus = source;
+    renderCategoryModalRows(workbench);
+    modal.hidden = false;
+    document.body.classList.add("has-admin-category-modal");
+
+    if (closeButton) {
+      closeButton.focus();
+    }
+  }
+
+  function closeCategoryModal() {
+    if (!categoryModal) {
+      return;
+    }
+
+    categoryModal.hidden = true;
+    categoryModalWorkbench = null;
+    document.body.classList.remove("has-admin-category-modal");
+
+    if (categoryModalReturnFocus && typeof categoryModalReturnFocus.focus === "function") {
+      categoryModalReturnFocus.focus();
+    }
+
+    categoryModalReturnFocus = null;
   }
 
   function normalize(value) {
@@ -904,6 +1090,7 @@
     const search = workbench.querySelector("[data-permission-search]");
     const selectedOnly = workbench.querySelector("[data-permission-selected-only]");
     const prefixSelect = workbench.querySelector("[data-permission-prefix-select]");
+    const categoryOpen = workbench.querySelector("[data-permission-category-open]");
 
     resetPermissionFilters(workbench);
     activateTab(workbench, activeTabPrefix(workbench));
@@ -919,6 +1106,12 @@
       prefixSelect.addEventListener("change", () => {
         activateTab(workbench, prefixSelect.value || "");
         updateWorkbench(workbench);
+      });
+    }
+
+    if (categoryOpen) {
+      categoryOpen.addEventListener("click", () => {
+        openCategoryModal(categoryOpen, workbench);
       });
     }
 

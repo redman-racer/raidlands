@@ -5005,7 +5005,7 @@ button.admin-permission-chip:focus-visible {
 .admin-permission-section-picker {
   min-width: 0;
   display: grid;
-  grid-template-columns: minmax(220px, 320px) minmax(0, 1fr);
+  grid-template-columns: minmax(220px, 320px) minmax(0, 1fr) auto;
   gap: 12px;
   align-items: stretch;
 }
@@ -5057,6 +5057,14 @@ button.admin-permission-chip:focus-visible {
   font-weight: 850;
   line-height: 1.25;
   overflow-wrap: anywhere;
+}
+
+.admin-permission-category-open {
+  min-height: 44px;
+  align-self: end;
+  padding: 10px 12px;
+  font-size: .76rem;
+  white-space: nowrap;
 }
 
 .admin-prefixed-input {
@@ -5346,6 +5354,10 @@ button.admin-permission-chip:focus-visible {
   display: none !important;
 }
 
+.admin-permission-category-modal[hidden] {
+  display: none !important;
+}
+
 .admin-guard-modal {
   position: fixed;
   inset: 0;
@@ -5355,7 +5367,23 @@ button.admin-permission-chip:focus-visible {
   padding: 20px;
 }
 
+.admin-permission-category-modal {
+  position: fixed;
+  inset: 0;
+  z-index: 145;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+}
+
 .admin-guard-modal-backdrop {
+  position: absolute;
+  inset: 0;
+  background: rgba(0, 0, 0, .72);
+  backdrop-filter: blur(3px);
+}
+
+.admin-permission-category-modal-backdrop {
   position: absolute;
   inset: 0;
   background: rgba(0, 0, 0, .72);
@@ -5373,6 +5401,20 @@ button.admin-permission-chip:focus-visible {
   box-shadow: 0 24px 80px rgba(0, 0, 0, .72), inset 0 0 0 1px rgba(243, 238, 227, .05);
 }
 
+.admin-permission-category-modal-panel {
+  position: relative;
+  width: min(100%, 880px);
+  max-height: min(88vh, 760px);
+  display: grid;
+  grid-template-rows: auto minmax(0, 1fr);
+  border: 1px solid rgba(181, 170, 160, .34);
+  border-radius: var(--radius);
+  background:
+    var(--console-scan) center / 220px repeat,
+    linear-gradient(180deg, rgba(28, 30, 31, .98), rgba(8, 9, 10, .98));
+  box-shadow: 0 24px 80px rgba(0, 0, 0, .72), inset 0 0 0 1px rgba(243, 238, 227, .05);
+}
+
 .admin-guard-modal-head,
 .admin-guard-modal-actions {
   padding: 16px;
@@ -5382,11 +5424,28 @@ button.admin-permission-chip:focus-visible {
   gap: 12px;
 }
 
+.admin-permission-category-modal-head {
+  padding: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-bottom: 1px solid rgba(181, 170, 160, .18);
+}
+
 .admin-guard-modal-head {
   border-bottom: 1px solid rgba(181, 170, 160, .18);
 }
 
 .admin-guard-modal-head h3 {
+  margin: 0;
+  color: var(--white);
+  font-size: 1.28rem;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.admin-permission-category-modal-head h3 {
   margin: 0;
   color: var(--white);
   font-size: 1.28rem;
@@ -5407,12 +5466,73 @@ button.admin-permission-chip:focus-visible {
   margin: 0;
 }
 
+.admin-permission-category-modal-body {
+  min-height: 0;
+  padding: 16px;
+  overflow: auto;
+}
+
+.admin-permission-category-table-wrap {
+  min-width: 0;
+  overflow: auto;
+  border: 1px solid rgba(181, 170, 160, .18);
+  border-radius: var(--radius);
+  background: rgba(0, 0, 0, .22);
+}
+
+.admin-permission-category-table {
+  width: 100%;
+  min-width: 680px;
+  border-collapse: collapse;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: .82rem;
+}
+
+.admin-permission-category-table th,
+.admin-permission-category-table td {
+  padding: 11px 12px;
+  border-bottom: 1px solid rgba(181, 170, 160, .16);
+  text-align: left;
+  vertical-align: middle;
+}
+
+.admin-permission-category-table th {
+  color: var(--white);
+  font-size: .74rem;
+  font-weight: 900;
+  text-transform: uppercase;
+  background: rgba(255, 138, 40, .08);
+}
+
+.admin-permission-category-table td:nth-child(2) {
+  color: var(--orange);
+  font-family: Consolas, "Courier New", monospace;
+  font-weight: 900;
+}
+
+.admin-permission-category-table tr.is-active td {
+  background: rgba(255, 138, 40, .10);
+  color: var(--white);
+}
+
+.admin-permission-category-table tr:last-child td {
+  border-bottom: 0;
+}
+
+.admin-permission-category-choose {
+  min-height: 34px;
+  padding: 7px 10px;
+  font-size: .72rem;
+}
+
 .admin-guard-modal-actions {
   justify-content: flex-end;
   border-top: 1px solid rgba(181, 170, 160, .18);
 }
 
-.has-admin-guard-modal {
+.has-admin-guard-modal,
+.has-admin-category-modal {
   overflow: hidden;
 }
 
@@ -7722,6 +7842,10 @@ button.admin-permission-chip:focus-visible {
 
   .admin-permission-section-picker {
     grid-template-columns: 1fr;
+  }
+
+  .admin-permission-category-open {
+    width: 100%;
   }
 
   .admin-permission-filter {

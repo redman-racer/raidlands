@@ -3320,6 +3320,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                     <span data-permission-active-label><?= e($active_permission_label) ?></span>
                                     <small data-permission-active-meta><?= e($active_permission_meta) ?></small>
                                   </div>
+                                  <button class="btn btn-secondary admin-permission-category-open" type="button" data-permission-category-open>View Categories</button>
                                 </div>
 
                                 <div class="admin-permission-tabs" role="tablist" aria-label="Permission sections" aria-hidden="true">
