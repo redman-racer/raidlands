@@ -1487,6 +1487,63 @@ h3,
   background: #ff6b5f;
 }
 
+.server-map-panel {
+  display: grid;
+  grid-template-columns: minmax(240px, .7fr) minmax(320px, 1.3fr);
+  gap: 24px;
+  align-items: center;
+  padding: 26px;
+}
+
+.server-map-copy h2 {
+  margin-top: 0;
+}
+
+.server-map-meta {
+  display: grid;
+  gap: 10px;
+  margin: 22px 0 0;
+}
+
+.server-map-meta div {
+  display: grid;
+  grid-template-columns: 92px 1fr;
+  gap: 12px;
+  padding: 10px 0;
+  border-bottom: 1px solid rgba(243, 238, 227, .12);
+}
+
+.server-map-meta div:last-child {
+  border-bottom: 0;
+}
+
+.server-map-meta dt {
+  color: var(--muted);
+  font-weight: 800;
+}
+
+.server-map-meta dd {
+  margin: 0;
+  color: var(--white);
+  font-weight: 800;
+}
+
+.server-map-frame {
+  display: block;
+  overflow: hidden;
+  border: 1px solid rgba(255, 138, 40, .28);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .03), rgba(0, 0, 0, .28)),
+    rgba(5, 6, 7, .78);
+}
+
+.server-map-frame img {
+  display: block;
+  width: 100%;
+  aspect-ratio: 1 / 1;
+  object-fit: cover;
+}
+
 .server-detail-panel,
 .server-connect-panel {
   min-height: 100%;
@@ -4167,7 +4224,8 @@ a.leaderboard-steam:hover,
   }
 
   .server-health-band,
-  .server-history-head {
+  .server-history-head,
+  .server-map-panel {
     display: grid;
     grid-template-columns: 1fr;
   }

@@ -75,6 +75,20 @@ function raidlands_server_status_rollups_are_ready(): bool
     }
 }
 
+function raidlands_server_map_images_is_ready(): bool
+{
+    if (!raidlands_db_is_configured()) {
+        return false;
+    }
+
+    try {
+        raidlands_db_fetch_one('SELECT server_id FROM server_map_images LIMIT 1');
+        return true;
+    } catch (Throwable $error) {
+        return false;
+    }
+}
+
 function raidlands_server_status_clean_text($value, int $max_length = 120): string
 {
     $text = trim(str_replace("\0", '', (string) $value));
@@ -118,6 +132,271 @@ function raidlands_server_status_bool($value): ?bool
     }
 
     return null;
+}
+
+function raidlands_server_map_upload_root(): string
+{
+    return dirname(__DIR__) . '/assets/media/maps';
+}
+
+function raidlands_server_map_slug(string $value): string
+{
+    $slug = strtolower(trim($value));
+    $slug = preg_replace('/[^a-z0-9_.-]+/', '-', $slug) ?? '';
+    $slug = trim($slug, '.-_');
+
+    return $slug !== '' ? $slug : 'server';
+}
+
+function raidlands_server_map_relative_path(string $server_id, string $extension): string
+{
+    return 'assets/media/maps/' . raidlands_server_map_slug($server_id) . '/current.' . $extension;
+}
+
+function raidlands_server_map_public_url(string $relative_path): string
+{
+    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || (string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '') === 'https';
+    $scheme = $https ? 'https' : 'http';
+    $host = (string) ($_SERVER['HTTP_X_FORWARDED_HOST'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost');
+    $script_dir = str_replace('\\', '/', dirname((string) ($_SERVER['SCRIPT_NAME'] ?? '/')));
+
+    if ($script_dir === '.' || !str_starts_with($script_dir, '/')) {
+        $script_dir = '';
+    }
+
+    $root = preg_replace('#/(admin|api(?:/.*)?|api-docs|bans|clans|discord|events|features|leaderboard|link|play|privacy|profile|rules|server|store|support|terms|vote)$#', '', rtrim($script_dir, '/')) ?? '';
+    $root = $root === '/' ? '' : $root;
+
+    return $scheme . '://' . $host . $root . '/' . ltrim($relative_path, '/');
+}
+
+function raidlands_server_map_validate_image(string $base64): array
+{
+    $image = base64_decode($base64, true);
+
+    if ($image === false || $image === '') {
+        throw new InvalidArgumentException('Map image must be valid base64.');
+    }
+
+    $max_bytes = 20 * 1024 * 1024;
+
+    if (strlen($image) > $max_bytes) {
+        throw new InvalidArgumentException('Map image is larger than the 20MB limit.');
+    }
+
+    $info = @getimagesizefromstring($image);
+
+    if (!is_array($info)) {
+        throw new InvalidArgumentException('Map image is not a readable image.');
+    }
+
+    $mime = (string) ($info['mime'] ?? '');
+    $extension = match ($mime) {
+        'image/jpeg' => 'jpg',
+        'image/png' => 'png',
+        default => '',
+    };
+
+    if ($extension === '') {
+        throw new InvalidArgumentException('Map image must be JPG or PNG.');
+    }
+
+    return [
+        'bytes' => $image,
+        'mime' => $mime,
+        'extension' => $extension,
+        'width' => (int) ($info[0] ?? 0),
+        'height' => (int) ($info[1] ?? 0),
+        'hash' => hash('sha256', $image),
+        'size' => strlen($image),
+    ];
+}
+
+function raidlands_server_map_write_image(string $server_id, string $extension, string $image): array
+{
+    $root = raidlands_server_map_upload_root();
+    $server_dir = $root . '/' . raidlands_server_map_slug($server_id);
+
+    if (!is_dir($server_dir) && !mkdir($server_dir, 0775, true) && !is_dir($server_dir)) {
+        throw new RuntimeException('Could not create map upload directory.');
+    }
+
+    $relative_path = raidlands_server_map_relative_path($server_id, $extension);
+    $path = dirname(__DIR__) . '/' . $relative_path;
+    $temp_path = $path . '.tmp';
+
+    if (file_put_contents($temp_path, $image, LOCK_EX) === false) {
+        throw new RuntimeException('Could not write map image.');
+    }
+
+    if (!rename($temp_path, $path)) {
+        @unlink($temp_path);
+        throw new RuntimeException('Could not publish map image.');
+    }
+
+    foreach (['jpg', 'png'] as $other_extension) {
+        if ($other_extension === $extension) {
+            continue;
+        }
+
+        $old_path = dirname(__DIR__) . '/' . raidlands_server_map_relative_path($server_id, $other_extension);
+
+        if (is_file($old_path)) {
+            @unlink($old_path);
+        }
+    }
+
+    return [
+        'path' => $path,
+        'relative_path' => $relative_path,
+        'public_url' => raidlands_server_map_public_url($relative_path),
+    ];
+}
+
+function raidlands_server_map_ingest_upload(array $payload, string $header_server_id): array
+{
+    if (!raidlands_server_map_images_is_ready()) {
+        throw new RuntimeException('Server map image table is not installed. Run database/migrations/024_server_map_images.sql.');
+    }
+
+    $header_server_id = raidlands_server_status_clean_text($header_server_id !== '' ? $header_server_id : raidlands_server_status_server_id(), 120);
+    $server_id = raidlands_server_status_clean_text($payload['server_id'] ?? $header_server_id, 120);
+
+    if ($server_id === '') {
+        throw new InvalidArgumentException('Map upload server_id is required.');
+    }
+
+    if ($header_server_id !== '' && !hash_equals($header_server_id, $server_id)) {
+        throw new InvalidArgumentException('Map upload server_id does not match the authenticated server.');
+    }
+
+    $image_base64 = (string) ($payload['image_base64'] ?? $payload['image'] ?? '');
+    $image = raidlands_server_map_validate_image($image_base64);
+    $written = raidlands_server_map_write_image($server_id, (string) $image['extension'], (string) $image['bytes']);
+    $wipe_key = raidlands_server_status_clean_text($payload['wipe_key'] ?? '', 160);
+
+    if ($wipe_key === '') {
+        $wipe_key = $server_id . '-current';
+    }
+
+    $values = [
+        'server_id' => $server_id,
+        'wipe_key' => $wipe_key,
+        'map_name' => raidlands_server_status_clean_text($payload['map_name'] ?? '', 120),
+        'render_name' => raidlands_server_status_clean_text($payload['render_name'] ?? '', 120),
+        'public_url' => (string) $written['public_url'],
+        'relative_path' => (string) $written['relative_path'],
+        'image_hash' => (string) $image['hash'],
+        'image_mime' => (string) $image['mime'],
+        'image_extension' => (string) $image['extension'],
+        'image_bytes' => (int) $image['size'],
+        'image_width' => (int) $image['width'],
+        'image_height' => (int) $image['height'],
+        'resolution' => raidlands_server_status_int($payload['resolution'] ?? 0, 0),
+        'world_size' => raidlands_server_status_int($payload['world_size'] ?? 0, 0),
+        'seed' => raidlands_server_status_int($payload['seed'] ?? 0, 0),
+        'protocol_network' => raidlands_server_status_int($payload['protocol'] ?? $payload['protocol_network'] ?? 0, 0),
+        'generated_at' => raidlands_server_status_timestamp($payload['generated_at'] ?? null),
+    ];
+
+    raidlands_db_execute(
+        'INSERT INTO server_map_images
+            (server_id, wipe_key, map_name, render_name, public_url, relative_path, image_hash, image_mime, image_extension,
+             image_bytes, image_width, image_height, resolution, world_size, seed, protocol_network, generated_at, published_at)
+         VALUES
+            (:server_id, :wipe_key, :map_name, :render_name, :public_url, :relative_path, :image_hash, :image_mime, :image_extension,
+             :image_bytes, :image_width, :image_height, :resolution, :world_size, :seed, :protocol_network, :generated_at, NOW())
+         ON DUPLICATE KEY UPDATE
+            wipe_key = VALUES(wipe_key),
+            map_name = VALUES(map_name),
+            render_name = VALUES(render_name),
+            public_url = VALUES(public_url),
+            relative_path = VALUES(relative_path),
+            image_hash = VALUES(image_hash),
+            image_mime = VALUES(image_mime),
+            image_extension = VALUES(image_extension),
+            image_bytes = VALUES(image_bytes),
+            image_width = VALUES(image_width),
+            image_height = VALUES(image_height),
+            resolution = VALUES(resolution),
+            world_size = VALUES(world_size),
+            seed = VALUES(seed),
+            protocol_network = VALUES(protocol_network),
+            generated_at = VALUES(generated_at),
+            published_at = VALUES(published_at),
+            updated_at = NOW()',
+        $values
+    );
+
+    $row = raidlands_server_map_latest($server_id, $wipe_key) ?? array_merge($values, [
+        'published_at' => gmdate('Y-m-d H:i:s'),
+        'updated_at' => gmdate('Y-m-d H:i:s'),
+    ]);
+
+    return raidlands_server_map_row_public($row) ?? [];
+}
+
+function raidlands_server_map_latest(?string $server_id = null, string $wipe_key = ''): ?array
+{
+    if (!raidlands_server_map_images_is_ready()) {
+        return null;
+    }
+
+    $server_id = $server_id ?? raidlands_server_status_server_id();
+    $params = ['server_id' => $server_id];
+    $where = 'server_id = :server_id';
+
+    if (trim($wipe_key) !== '') {
+        $where .= ' AND wipe_key = :wipe_key';
+        $params['wipe_key'] = trim($wipe_key);
+    }
+
+    return raidlands_db_fetch_one(
+        'SELECT *
+         FROM server_map_images
+         WHERE ' . $where . '
+         ORDER BY published_at DESC
+         LIMIT 1',
+        $params
+    );
+}
+
+function raidlands_server_map_row_public(?array $row): ?array
+{
+    if ($row === null) {
+        return null;
+    }
+
+    $public_url = (string) ($row['public_url'] ?? '');
+    $relative_path = (string) ($row['relative_path'] ?? '');
+
+    if ($public_url === '' && $relative_path !== '') {
+        $public_url = raidlands_server_map_public_url($relative_path);
+    }
+
+    return [
+        'url' => $public_url,
+        'publicUrl' => $public_url,
+        'relativePath' => $relative_path,
+        'serverId' => (string) ($row['server_id'] ?? ''),
+        'wipeKey' => (string) ($row['wipe_key'] ?? ''),
+        'mapName' => (string) ($row['map_name'] ?? ''),
+        'renderName' => (string) ($row['render_name'] ?? ''),
+        'hash' => (string) ($row['image_hash'] ?? ''),
+        'mime' => (string) ($row['image_mime'] ?? ''),
+        'extension' => (string) ($row['image_extension'] ?? ''),
+        'bytes' => (int) ($row['image_bytes'] ?? 0),
+        'width' => (int) ($row['image_width'] ?? 0),
+        'height' => (int) ($row['image_height'] ?? 0),
+        'resolution' => (int) ($row['resolution'] ?? 0),
+        'worldSize' => (int) ($row['world_size'] ?? 0),
+        'seed' => (int) ($row['seed'] ?? 0),
+        'protocol' => (int) ($row['protocol_network'] ?? 0),
+        'generatedAt' => raidlands_server_status_iso($row['generated_at'] ?? ''),
+        'publishedAt' => raidlands_server_status_iso($row['published_at'] ?? ''),
+        'updatedAt' => raidlands_server_status_iso($row['updated_at'] ?? ''),
+    ];
 }
 
 function raidlands_server_status_timestamp($value): ?string
@@ -953,6 +1232,12 @@ function raidlands_server_status_row_public(array $row, int $stale_seconds, arra
         $status_label = raidlands_server_status_label($online, $status);
     }
 
+    $map_image = raidlands_server_map_latest(
+        (string) ($row['server_id'] ?? raidlands_server_status_server_id()),
+        (string) ($row['wipe_key'] ?? '')
+    );
+    $map_image_public = raidlands_server_map_row_public($map_image);
+
     return [
         'source' => 'raidlands',
         'sourceLabel' => $stale ? 'Raidlands delayed' : 'Raidlands live',
@@ -966,6 +1251,8 @@ function raidlands_server_status_row_public(array $row, int $stale_seconds, arra
         'joining' => (int) ($row['joining'] ?? 0),
         'sleepers' => (int) ($row['sleepers'] ?? 0),
         'mapName' => (string) ($row['map_name'] ?: $site_config['mapName']),
+        'mapImageUrl' => (string) ($map_image_public['url'] ?? ''),
+        'mapImage' => $map_image_public,
         'serverFps' => (string) ($row['server_fps'] ?: $site_config['serverFps']),
         'serverFpsAverage' => (string) ($row['server_fps_average'] ?? ''),
         'entityCount' => (int) ($row['entity_count'] ?? 0),
@@ -1005,6 +1292,8 @@ function raidlands_server_status_fallback(string $error): array
         'joining' => 0,
         'sleepers' => 0,
         'mapName' => (string) $site_config['mapName'],
+        'mapImageUrl' => '',
+        'mapImage' => null,
         'serverFps' => (string) $site_config['serverFps'],
         'serverFpsAverage' => '',
         'entityCount' => 0,

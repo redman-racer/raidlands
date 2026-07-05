@@ -6,3 +6,5 @@ data/raidlands-secrets.php
 data/site-content.json
 data/*.log
 dist/
+assets/media/maps/*
+!assets/media/maps/.gitkeep

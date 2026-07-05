@@ -15,6 +15,8 @@ $server_age_label = $server_age === null
     ? 'Waiting on first heartbeat'
     : ($server_age < 60 ? $server_age . 's old' : floor($server_age / 60) . 'm ' . str_pad((string) ($server_age % 60), 2, '0', STR_PAD_LEFT) . 's old');
 $server_health_label = raidlands_server_page_health_label($server_status);
+$server_map_image = is_array($server_status['mapImage'] ?? null) ? $server_status['mapImage'] : null;
+$server_map_url = (string) ($server_status['mapImageUrl'] ?? ($server_map_image['url'] ?? ''));
 
 function raidlands_server_page_value($value, string $fallback = 'Pending'): string
 {
@@ -117,6 +119,28 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
     </div>
   </div>
 </section>
+
+<?php if ($server_map_url !== ''): ?>
+<section class="section alt">
+  <div class="section-inner">
+    <div class="metal-panel server-map-panel">
+      <div class="server-map-copy">
+        <p class="section-kicker">Current map</p>
+        <h2>Latest wipe map</h2>
+        <p class="section-lede">Generated from the live Raidlands game server.</p>
+        <dl class="server-map-meta">
+          <div><dt>Render</dt><dd><?= e(raidlands_server_page_value($server_map_image['renderName'] ?? '', 'Map')) ?></dd></div>
+          <div><dt>Seed</dt><dd><?= e(raidlands_server_page_number($server_map_image['seed'] ?? ($server_status['seed'] ?? 0), 'Pending')) ?></dd></div>
+          <div><dt>Published</dt><dd><?= e(raidlands_server_page_date($server_map_image['publishedAt'] ?? '', 'Pending')) ?></dd></div>
+        </dl>
+      </div>
+      <a class="server-map-frame" href="<?= e($server_map_url) ?>" target="_blank" rel="noopener">
+        <img src="<?= e($server_map_url) ?>" alt="Current Raidlands wipe map" loading="lazy">
+      </a>
+    </div>
+  </div>
+</section>
+<?php endif; ?>
 
 <section class="section alt">
   <div class="section-inner">
