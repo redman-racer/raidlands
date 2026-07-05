@@ -75,6 +75,8 @@ function raidlands_admin_handle_request(): void
             raidlands_admin_redirect($section);
         }
 
+        $redirect_params = [];
+
         try {
             if ($section === 'store') {
                 raidlands_store_admin_save_product_rows($_POST['store_products'] ?? []);
@@ -97,13 +99,9 @@ function raidlands_admin_handle_request(): void
                     : 'Group permission draft saved.';
                 raidlands_admin_set_flash('success', $message);
             } elseif ($section === 'grants') {
-                $ends_at = trim((string) ($_POST['ends_at'] ?? ''));
-                raidlands_store_admin_manual_grant(
-                    (string) ($_POST['steam_id64'] ?? ''),
-                    (int) ($_POST['product_id'] ?? 0),
-                    $ends_at === '' ? null : $ends_at
-                );
-                raidlands_admin_set_flash('success', 'Manual entitlement granted.');
+                $result = raidlands_admin_handle_grants_action($_POST);
+                $redirect_params = $result['redirect'] ?? [];
+                raidlands_admin_set_flash('success', (string) ($result['message'] ?? 'Player access updated.'));
             } elseif ($section === 'feedback') {
                 $updated = raidlands_feedback_admin_save_rows($_POST['feedback_rows'] ?? []);
                 $conversion_message = raidlands_features_admin_handle_feedback_action($_POST);
@@ -121,13 +119,141 @@ function raidlands_admin_handle_request(): void
 
             raidlands_admin_audit('save_' . $section, 'admin_section', $section);
         } catch (Throwable $error) {
+            if ($section === 'grants') {
+                $steam_id64 = raidlands_store_normalize_steam_id64($_POST['steam_id64'] ?? '');
+
+                if ($steam_id64 !== '') {
+                    $redirect_params['steam_id64'] = $steam_id64;
+                }
+            }
+
             raidlands_admin_set_flash('error', 'Settings could not be saved: ' . $error->getMessage());
         }
 
-        raidlands_admin_redirect($section);
+        raidlands_admin_redirect($section, $redirect_params);
     }
 
     raidlands_admin_redirect($section);
+}
+
+function raidlands_admin_handle_grants_action(array $post): array
+{
+    $grant_action = (string) ($post['grant_action'] ?? '');
+    $steam_id64 = raidlands_store_normalize_steam_id64($post['steam_id64'] ?? '');
+    $redirect = [];
+
+    if ($steam_id64 !== '') {
+        $redirect['steam_id64'] = $steam_id64;
+    }
+
+    if ($grant_action === '') {
+        $grant_action = 'grant_product';
+    }
+
+    if ($grant_action === 'load_player') {
+        if (!raidlands_store_validate_steam_id64($steam_id64)) {
+            throw new InvalidArgumentException('Enter a valid SteamID64 to load player access.');
+        }
+
+        return [
+            'message' => 'Loaded player access for ' . $steam_id64 . '.',
+            'redirect' => $redirect,
+        ];
+    }
+
+    $actor = '';
+    $admin_user = raidlands_admin_current_user();
+
+    if ($admin_user !== null && !empty($admin_user['steam_id64'])) {
+        $actor = (string) $admin_user['steam_id64'];
+    }
+
+    if ($grant_action === 'grant_product') {
+        $ends_at = raidlands_store_normalize_admin_datetime($post['product_ends_at'] ?? ($post['ends_at'] ?? ''), 'Product grant end date');
+        $note = raidlands_store_clean_admin_note($post['product_admin_note'] ?? '');
+        $result = raidlands_store_admin_grant_product_access(
+            $steam_id64,
+            (int) ($post['product_id'] ?? 0),
+            $ends_at
+        );
+        $product = $result['product'] ?? [];
+        $groups = (array) ($result['groups'] ?? []);
+
+        raidlands_admin_audit('grant_product_access', 'player', $steam_id64, [
+            'product_id' => (int) ($product['id'] ?? 0),
+            'product_name' => (string) ($product['name'] ?? ''),
+            'entitlement_id' => (int) ($result['entitlement_id'] ?? 0),
+            'groups' => $groups,
+            'ends_at' => $ends_at,
+            'note' => $note,
+        ]);
+
+        return [
+            'message' => 'Granted ' . (string) ($product['name'] ?? 'product access') . ' to ' . $steam_id64 . '.',
+            'redirect' => $redirect,
+        ];
+    }
+
+    if ($grant_action === 'grant_direct_groups') {
+        $ends_at = raidlands_store_normalize_admin_datetime($post['group_ends_at'] ?? '', 'Group grant end date');
+        $note = raidlands_store_clean_admin_note($post['group_admin_note'] ?? '');
+        $result = raidlands_store_admin_grant_direct_groups(
+            $steam_id64,
+            (array) ($post['direct_groups'] ?? []),
+            $ends_at,
+            $note,
+            $actor
+        );
+        $groups = (array) ($result['groups'] ?? []);
+
+        raidlands_admin_audit('grant_direct_groups', 'player', $steam_id64, [
+            'groups' => $groups,
+            'ends_at' => $ends_at,
+            'note' => $note,
+        ]);
+
+        return [
+            'message' => 'Added ' . count($groups) . ' direct group' . (count($groups) === 1 ? '' : 's') . ' to ' . $steam_id64 . '.',
+            'redirect' => $redirect,
+        ];
+    }
+
+    if (str_starts_with($grant_action, 'revoke_manual_entitlement:')) {
+        $entitlement_id = (int) substr($grant_action, strlen('revoke_manual_entitlement:'));
+        $row = raidlands_store_admin_revoke_manual_entitlement($entitlement_id, $steam_id64);
+        $steam_id64 = (string) ($row['steam_id64'] ?? $steam_id64);
+        $redirect['steam_id64'] = $steam_id64;
+
+        raidlands_admin_audit('revoke_manual_entitlement', 'player', $steam_id64, [
+            'entitlement_id' => $entitlement_id,
+            'product_id' => (int) ($row['product_id'] ?? 0),
+            'product_name' => (string) ($row['product_name'] ?? ''),
+        ]);
+
+        return [
+            'message' => 'Revoked manual product access for ' . $steam_id64 . '.',
+            'redirect' => $redirect,
+        ];
+    }
+
+    if (str_starts_with($grant_action, 'revoke_direct_group:')) {
+        $assignment_id = (int) substr($grant_action, strlen('revoke_direct_group:'));
+        $row = raidlands_store_admin_revoke_direct_group($assignment_id, $steam_id64, $actor);
+        $steam_id64 = (string) ($row['steam_id64'] ?? $steam_id64);
+        $redirect['steam_id64'] = $steam_id64;
+
+        raidlands_admin_audit('revoke_direct_group', 'player', $steam_id64, [
+            'assignment_id' => $assignment_id,
+            'group_name' => (string) ($row['group_name'] ?? ''),
+        ]);
+
+        return [
+            'message' => 'Revoked direct group ' . (string) ($row['group_name'] ?? '') . ' for ' . $steam_id64 . '.',
+            'redirect' => $redirect,
+        ];
+    }
+
+    throw new InvalidArgumentException('Choose a player access action.');
 }
 
 function raidlands_admin_handle_login(): void
@@ -269,14 +395,27 @@ function raidlands_admin_take_flash(): ?array
     return is_array($flash) ? $flash : null;
 }
 
-function raidlands_admin_redirect(?string $section = null): void
+function raidlands_admin_redirect(?string $section = null, array $params = []): void
 {
     $target = (string) ($_SERVER['REQUEST_URI'] ?? './');
     $target = strtok($target, '?') ?: './';
     $section = $section === null ? null : raidlands_admin_clean_section($section);
+    $query = [];
 
     if ($section !== null && $section !== 'identity') {
-        $target .= '?section=' . rawurlencode($section);
+        $query['section'] = $section;
+    }
+
+    foreach ($params as $key => $value) {
+        $value = trim((string) $value);
+
+        if ($value !== '') {
+            $query[$key] = $value;
+        }
+    }
+
+    if ($query !== []) {
+        $target .= '?' . http_build_query($query);
     }
 
     header('Location: ' . $target, true, 303);

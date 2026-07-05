@@ -42,7 +42,7 @@ $admin_sections_all = [
     'store' => ['label' => 'Store', 'kicker' => 'Offers', 'title' => 'Products and Prices', 'summary' => 'Kit bundles, individual kits, standalone perks, RP offers, Stripe Price IDs, and managed access groups.'],
     'kits' => ['label' => 'Kits', 'kicker' => 'Loadouts', 'title' => 'Kit Catalog', 'summary' => 'Rust kit contents, images, cooldowns, uses, RP shop rows, and required Kits plugin permissions.'],
     'groups' => ['label' => 'Groups', 'kicker' => 'Permissions', 'title' => 'Oxide Groups', 'summary' => 'Website-owned group permissions, live snapshots, and bridge-published revisions.'],
-    'grants' => ['label' => 'Grants', 'kicker' => 'Access', 'title' => 'Manual Entitlement Grant', 'summary' => 'Grant a product to a SteamID64 without going through Stripe.'],
+    'grants' => ['label' => 'Player Access', 'kicker' => 'Access', 'title' => 'Player Access', 'summary' => 'Load a SteamID64, grant products, add standalone shop groups, and remove website-owned manual access.'],
     'sync' => ['label' => 'Sync', 'kicker' => 'Bridge', 'title' => 'WebsiteVipBridge State', 'summary' => 'Entitlement sync, stats ingest status, and server API endpoints.'],
 ];
 $admin_nav_groups = [
@@ -107,6 +107,11 @@ $admin_store_ready = false;
 $admin_store_error = '';
 $admin_store_rows = [];
 $admin_store_catalog = ['products' => []];
+$admin_access_steam_id64 = raidlands_store_normalize_steam_id64($_GET['steam_id64'] ?? '');
+$admin_access_state = null;
+$admin_access_group_rows = [];
+$admin_access_assignments_ready = false;
+$admin_access_lookup_error = '';
 $admin_sync_rows = [];
 $admin_feedback_rows = [];
 $admin_feedback_counts = [];
@@ -168,7 +173,27 @@ try {
         $admin_permission_options = raidlands_permissions_permission_names();
     }
 
-    if (in_array($active_section, ['grants', 'sync'], true)) {
+    if ($active_section === 'grants') {
+        $admin_store_catalog = raidlands_store_catalog(true);
+
+        if (!empty($admin_store_catalog['setupRequired'])) {
+            $admin_store_ready = false;
+            $admin_store_error = (string) ($admin_store_catalog['error'] ?? $admin_store_error);
+        }
+
+        $admin_access_assignments_ready = raidlands_store_player_group_assignments_ready();
+        $admin_access_group_rows = raidlands_store_admin_assignable_group_rows();
+
+        if ($admin_access_steam_id64 !== '') {
+            if (raidlands_store_validate_steam_id64($admin_access_steam_id64)) {
+                $admin_access_state = raidlands_store_admin_player_access_state($admin_access_steam_id64);
+            } else {
+                $admin_access_lookup_error = 'Enter a valid SteamID64. It should be 17 digits and start with 7656119.';
+            }
+        }
+    }
+
+    if ($active_section === 'sync') {
         $admin_store_catalog = raidlands_store_catalog(false);
 
         if (!empty($admin_store_catalog['setupRequired'])) {
@@ -3811,43 +3836,214 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                 <?php if ($active_section === 'grants') : ?>
                   <section class="admin-section">
                     <?php if (!$admin_store_ready) : ?>
-                      <div class="admin-alert warning">MySQL must be configured before manual grants can be recorded. <?= $admin_store_error !== '' ? e($admin_store_error) : '' ?></div>
-                    <?php elseif (empty($admin_store_catalog['products'])) : ?>
-                      <div class="admin-alert warning">No products are available to grant yet. Add at least one active store product with an applied group before using manual grants.</div>
+                      <div class="admin-alert warning">MySQL must be configured before player access can be managed. <?= $admin_store_error !== '' ? e($admin_store_error) : '' ?></div>
                     <?php else : ?>
                       <?php
                         $admin_grant_products = array_values(array_filter(
                             $admin_store_catalog['products'],
                             static fn (array $product): bool => raidlands_store_clean_groups((array) ($product['fulfillment_groups'] ?? [])) !== []
                         ));
+                        $admin_access_player = is_array($admin_access_state) ? ($admin_access_state['player'] ?? null) : null;
+                        $admin_access_entitlements = is_array($admin_access_state) ? (array) ($admin_access_state['entitlements'] ?? []) : [];
+                        $admin_access_direct_groups = is_array($admin_access_state) ? (array) ($admin_access_state['direct_groups'] ?? []) : [];
+                        $admin_access_groups = is_array($admin_access_state) ? (array) ($admin_access_state['groups'] ?? []) : [];
                       ?>
-                      <?php if ($admin_grant_products === []) : ?>
-                        <div class="admin-alert warning">No products with valid applied groups are available to grant yet.</div>
-                      <?php else : ?>
-                        <div class="admin-grid two">
-                          <label class="admin-field">
-                            <?= admin_field_head('SteamID64', 'The 17-digit Rust player ID that should receive this entitlement.') ?>
-                            <input type="text" name="steam_id64" inputmode="numeric" pattern="[0-9]{17}" maxlength="17" placeholder="7656119XXXXXXXXXX" required>
-                            <?= admin_hint('Manual grants link directly to the selected player. Double-check the ID before saving.') ?>
-                          </label>
-                          <label class="admin-field">
-                            <?= admin_field_head('Product', 'The selected product controls the server groups WebsiteVipBridge will sync.') ?>
-                            <select name="product_id" required>
-                              <option value="" disabled selected>Choose a product to grant</option>
-                              <?php foreach ($admin_grant_products as $product) : ?>
-                                <?php $grant_groups = raidlands_store_clean_groups((array) ($product['fulfillment_groups'] ?? [])); ?>
-                                <option value="<?= e((string) $product['id']) ?>"><?= e((string) $product['name']) ?> (<?= e(implode(', ', $grant_groups)) ?>)</option>
-                              <?php endforeach; ?>
-                            </select>
-                          </label>
-                          <label class="admin-field">
-                            <?= admin_field_head('Ends at', 'Optional MySQL datetime such as 2026-07-31 23:59:59. Leave blank for no scheduled expiration.') ?>
-                            <input type="text" name="ends_at" placeholder="YYYY-MM-DD HH:MM:SS">
-                            <?= admin_hint('Timed manual grants should have an end date. Lifetime grants can stay blank.') ?>
-                          </label>
+                      <div class="admin-grid two">
+                        <label class="admin-field">
+                          <?= admin_field_head('SteamID64', 'The 17-digit Rust player ID to load or update.') ?>
+                          <input type="text" name="steam_id64" inputmode="numeric" pattern="[0-9]{17}" maxlength="17" placeholder="7656119XXXXXXXXXX" value="<?= e($admin_access_steam_id64) ?>" required>
+                          <?= admin_hint('Loading does not create a player record. Granting access creates one if needed.') ?>
+                        </label>
+                        <div class="admin-field">
+                          <span class="admin-label-row"><span>Lookup</span></span>
+                          <button class="btn btn-secondary" type="submit" name="grant_action" value="load_player">Load Player</button>
+                          <?= admin_hint('Use this before granting or removing access so current sources are visible.') ?>
                         </div>
+                      </div>
+
+                      <?php if ($admin_access_lookup_error !== '') : ?>
+                        <div class="admin-alert error"><?= e($admin_access_lookup_error) ?></div>
+                      <?php elseif ($admin_access_steam_id64 === '') : ?>
+                        <div class="admin-alert warning">Load a SteamID64 to review current access before making changes.</div>
+                      <?php elseif ($admin_access_state !== null) : ?>
+                        <div class="admin-grid two">
+                          <div class="metal-panel">
+                            <p class="section-kicker">Player</p>
+                            <h3><?= e((string) ($admin_access_player['display_name'] ?? $admin_access_player['steam_display_name'] ?? 'Uncreated player')) ?></h3>
+                            <p class="store-muted"><code><?= e($admin_access_steam_id64) ?></code></p>
+                            <?php if ($admin_access_player === null) : ?>
+                              <p class="store-muted">No website player row exists yet. Granting a product or direct group will create it.</p>
+                            <?php else : ?>
+                              <p class="store-muted">Player ID <?= e((string) ($admin_access_player['id'] ?? '')) ?> - Last seen <?= e((string) ($admin_access_player['last_seen_at'] ?? 'Pending')) ?></p>
+                            <?php endif; ?>
+                          </div>
+                          <div class="metal-panel">
+                            <p class="section-kicker">Desired Groups</p>
+                            <h3><?= e((string) count($admin_access_groups)) ?> active</h3>
+                            <?php if ($admin_access_groups === []) : ?>
+                              <p class="store-muted">No website-owned groups are currently active for this player.</p>
+                            <?php else : ?>
+                              <ul class="list-clean">
+                                <?php foreach ($admin_access_groups as $group) : ?>
+                                  <li><code><?= e((string) $group) ?></code></li>
+                                <?php endforeach; ?>
+                              </ul>
+                            <?php endif; ?>
+                          </div>
+                        </div>
+
+                        <section class="admin-section">
+                          <div class="admin-subsection-head">
+                            <h3>Product Access</h3>
+                            <p>Paid access is shown as locked. Manual product grants can be revoked from here.</p>
+                          </div>
+                          <?php if ($admin_access_entitlements === []) : ?>
+                            <div class="admin-alert warning">No active product access is recorded for this player.</div>
+                          <?php else : ?>
+                            <div class="store-table-wrap">
+                              <table class="store-table">
+                                <thead>
+                                  <tr>
+                                    <th>Source</th>
+                                    <th>Product</th>
+                                    <th>Groups</th>
+                                    <th>Ends</th>
+                                    <th>Updated</th>
+                                    <th>Action</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  <?php foreach ($admin_access_entitlements as $entitlement) : ?>
+                                    <?php
+                                      $entitlement_groups = raidlands_store_clean_groups((array) ($entitlement['fulfillment_groups'] ?? [$entitlement['oxide_group'] ?? '']));
+                                      $can_revoke_entitlement = !empty($entitlement['can_revoke']);
+                                    ?>
+                                    <tr>
+                                      <td><span class="status-pill <?= $can_revoke_entitlement ? 'active' : 'pending' ?>"><?= e((string) ($entitlement['source_label'] ?? 'Product')) ?></span></td>
+                                      <td><?= e((string) ($entitlement['name'] ?? 'Product')) ?></td>
+                                      <td><code><?= e($entitlement_groups !== [] ? implode(', ', $entitlement_groups) : 'None') ?></code></td>
+                                      <td><?= e((string) ($entitlement['ends_at'] ?: 'Lifetime')) ?></td>
+                                      <td><?= e((string) ($entitlement['changed_at'] ?? '')) ?></td>
+                                      <td>
+                                        <?php if ($can_revoke_entitlement) : ?>
+                                          <button class="btn btn-secondary" type="submit" name="grant_action" value="revoke_manual_entitlement:<?= e((string) $entitlement['id']) ?>">Revoke</button>
+                                        <?php else : ?>
+                                          <span class="store-muted">Locked</span>
+                                        <?php endif; ?>
+                                      </td>
+                                    </tr>
+                                  <?php endforeach; ?>
+                                </tbody>
+                              </table>
+                            </div>
+                          <?php endif; ?>
+                        </section>
+
+                        <section class="admin-section">
+                          <div class="admin-subsection-head">
+                            <h3>Direct Group Access</h3>
+                            <p>These are website-owned player-to-group assignments, separate from store purchases.</p>
+                          </div>
+                          <?php if (!$admin_access_assignments_ready) : ?>
+                            <div class="admin-alert warning">Direct group assignments are not installed yet. Run <code>database/migrations/023_player_group_assignments.sql</code>.</div>
+                          <?php elseif ($admin_access_direct_groups === []) : ?>
+                            <div class="admin-alert warning">No direct group assignments are active for this player.</div>
+                          <?php else : ?>
+                            <div class="store-table-wrap">
+                              <table class="store-table">
+                                <thead>
+                                  <tr>
+                                    <th>Group</th>
+                                    <th>Ends</th>
+                                    <th>Note</th>
+                                    <th>Updated</th>
+                                    <th>Action</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  <?php foreach ($admin_access_direct_groups as $assignment) : ?>
+                                    <tr>
+                                      <td><code><?= e((string) $assignment['group_name']) ?></code></td>
+                                      <td><?= e((string) ($assignment['ends_at'] ?: 'Lifetime')) ?></td>
+                                      <td><?= e((string) ($assignment['admin_note'] ?: '')) ?></td>
+                                      <td><?= e((string) ($assignment['changed_at'] ?? '')) ?></td>
+                                      <td>
+                                        <button class="btn btn-secondary" type="submit" name="grant_action" value="revoke_direct_group:<?= e((string) $assignment['id']) ?>">Revoke</button>
+                                      </td>
+                                    </tr>
+                                  <?php endforeach; ?>
+                                </tbody>
+                              </table>
+                            </div>
+                          <?php endif; ?>
+                        </section>
                       <?php endif; ?>
-                    <?php endif; ?>
+
+                      <div class="admin-grid two">
+                        <section class="admin-section">
+                          <div class="admin-subsection-head">
+                            <h3>Grant Product</h3>
+                            <p>Products apply their configured store groups and remain visible as manual product access.</p>
+                          </div>
+                          <?php if ($admin_grant_products === []) : ?>
+                            <div class="admin-alert warning">No active products with applied groups are available to grant.</div>
+                          <?php else : ?>
+                            <label class="admin-field">
+                              <?= admin_field_head('Product', 'The selected product controls the server groups WebsiteVipBridge will sync.') ?>
+                              <select name="product_id">
+                                <option value="">Choose a product</option>
+                                <?php foreach ($admin_grant_products as $product) : ?>
+                                  <?php $grant_groups = raidlands_store_clean_groups((array) ($product['fulfillment_groups'] ?? [])); ?>
+                                  <option value="<?= e((string) $product['id']) ?>"><?= e((string) $product['name']) ?> (<?= e(implode(', ', $grant_groups)) ?>)</option>
+                                <?php endforeach; ?>
+                              </select>
+                            </label>
+                            <label class="admin-field">
+                              <?= admin_field_head('Ends at', 'Optional datetime such as 2026-07-31 23:59:59. Leave blank for lifetime access.') ?>
+                              <input type="text" name="product_ends_at" placeholder="YYYY-MM-DD HH:MM:SS">
+                            </label>
+                            <label class="admin-field">
+                              <?= admin_field_head('Admin note', 'Optional note recorded in the admin audit log for this product grant.') ?>
+                              <input type="text" name="product_admin_note" maxlength="500" placeholder="Reason or context">
+                            </label>
+                            <button class="btn btn-primary" type="submit" name="grant_action" value="grant_product">Grant Product</button>
+                          <?php endif; ?>
+                        </section>
+
+                        <section class="admin-section">
+                          <div class="admin-subsection-head">
+                            <h3>Add Direct Groups</h3>
+                            <p>Standalone shop groups must be active VIP, perk, or store groups in Groups.</p>
+                          </div>
+                          <?php if (!$admin_access_assignments_ready) : ?>
+                            <div class="admin-alert warning">Run <code>database/migrations/023_player_group_assignments.sql</code> before assigning direct groups.</div>
+                          <?php elseif ($admin_access_group_rows === []) : ?>
+                            <div class="admin-alert warning">No active standalone store-access groups are available. Create one in Groups with category store, VIP, or perk.</div>
+                          <?php else : ?>
+                            <div class="admin-permission-grid">
+                              <?php foreach ($admin_access_group_rows as $group_row) : ?>
+                                <label class="admin-check admin-permission-option">
+                                  <input type="checkbox" name="direct_groups[]" value="<?= e((string) $group_row['group_name']) ?>">
+                                  <span class="admin-permission-option-copy">
+                                    <span class="admin-permission-name"><?= e((string) $group_row['group_name']) ?></span>
+                                    <small><?= e(ucwords((string) $group_row['category'])) ?></small>
+                                  </span>
+                                </label>
+                              <?php endforeach; ?>
+                            </div>
+                            <label class="admin-field">
+                              <?= admin_field_head('Ends at', 'Optional datetime such as 2026-07-31 23:59:59. Leave blank for lifetime access.') ?>
+                              <input type="text" name="group_ends_at" placeholder="YYYY-MM-DD HH:MM:SS">
+                            </label>
+                            <label class="admin-field">
+                              <?= admin_field_head('Admin note', 'Optional note stored with the direct group assignment.') ?>
+                              <input type="text" name="group_admin_note" maxlength="500" placeholder="Reason or context">
+                            </label>
+                            <button class="btn btn-primary" type="submit" name="grant_action" value="grant_direct_groups">Add Groups</button>
+                          <?php endif; ?>
+                        </section>
+                      </div>
+                      <?php endif; ?>
                   </section>
                 <?php endif; ?>
 
@@ -4051,13 +4247,13 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                     $admin_save_allowed = raidlands_admin_can_save_section($active_section);
                     $admin_save_hidden = !$admin_save_allowed
                         || $active_section === 'sync'
+                        || $active_section === 'grants'
                         || ($active_section === 'feedback' && (!$admin_feedback_ready || $admin_feedback_rows === []))
                         || ($active_section === 'features' && !$admin_features_ready);
                     $admin_save_disabled = ($active_section === 'store' && !$admin_store_ready)
                         || ($active_section === 'features' && !$admin_features_ready)
                         || ($active_section === 'kits' && !$admin_kits_ready)
-                        || ($active_section === 'groups' && !$admin_permissions_ready)
-                        || ($active_section === 'grants' && (!$admin_store_ready || empty($admin_store_catalog['products'])));
+                        || ($active_section === 'groups' && !$admin_permissions_ready);
                     $admin_disabled_label = match ($active_section) {
                         'store' => 'Store Unavailable',
                         'features' => 'Features Unavailable',

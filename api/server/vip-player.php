@@ -21,6 +21,7 @@ try {
         'managed_groups' => raidlands_store_managed_groups(),
         'groups' => $state['groups'],
         'entitlements' => $state['entitlements'],
+        'direct_groups' => $state['direct_groups'] ?? [],
         'cursor' => $state['cursor'],
     ]);
 } catch (Throwable $error) {

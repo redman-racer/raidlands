@@ -464,6 +464,116 @@ function raidlands_store_sql_in_params(array $values, string $prefix = 'value'):
     return [$placeholders, $params];
 }
 
+function raidlands_store_table_exists(string $table): bool
+{
+    if (!raidlands_db_is_configured()) {
+        return false;
+    }
+
+    try {
+        $statement = raidlands_db_required()->prepare(
+            'SELECT COUNT(*)
+             FROM information_schema.tables
+             WHERE table_schema = DATABASE() AND table_name = :table_name'
+        );
+        $statement->execute(['table_name' => $table]);
+
+        return (int) $statement->fetchColumn() > 0;
+    } catch (Throwable $error) {
+        return false;
+    }
+}
+
+function raidlands_store_player_group_assignments_ready(): bool
+{
+    return raidlands_store_table_exists('player_group_assignments');
+}
+
+function raidlands_store_normalize_steam_id64($value): string
+{
+    return preg_replace('/\D+/', '', (string) $value) ?? '';
+}
+
+function raidlands_store_clean_admin_note($value, int $max_length = 500): string
+{
+    $note = trim(str_replace("\0", '', (string) $value));
+    $note = preg_replace('/[ \t\r\n]+/', ' ', strip_tags($note)) ?? $note;
+
+    if (function_exists('mb_substr')) {
+        return mb_substr($note, 0, $max_length);
+    }
+
+    return substr($note, 0, $max_length);
+}
+
+function raidlands_store_normalize_admin_datetime($value, string $label = 'End date'): ?string
+{
+    $value = trim((string) $value);
+
+    if ($value === '') {
+        return null;
+    }
+
+    $timestamp = strtotime($value);
+
+    if ($timestamp === false) {
+        throw new InvalidArgumentException($label . ' must be a valid date/time.');
+    }
+
+    if ($timestamp <= time()) {
+        throw new InvalidArgumentException($label . ' must be in the future.');
+    }
+
+    return date('Y-m-d H:i:s', $timestamp);
+}
+
+function raidlands_store_admin_player_by_steam(string $steam_id64): ?array
+{
+    $steam_id64 = raidlands_store_normalize_steam_id64($steam_id64);
+
+    if (!raidlands_store_validate_steam_id64($steam_id64) || !raidlands_db_is_configured()) {
+        return null;
+    }
+
+    $player = raidlands_db_fetch_one(
+        'SELECT id, steam_id64, display_name, created_at, updated_at, last_seen_at
+         FROM players
+         WHERE steam_id64 = :steam_id64',
+        ['steam_id64' => $steam_id64]
+    );
+
+    if ($player === null) {
+        return null;
+    }
+
+    return raidlands_store_attach_steam_profiles([$player])[0] ?? $player;
+}
+
+function raidlands_store_admin_ensure_player_for_steam(string $steam_id64): array
+{
+    $steam_id64 = raidlands_store_normalize_steam_id64($steam_id64);
+
+    if (!raidlands_store_validate_steam_id64($steam_id64)) {
+        throw new InvalidArgumentException('Enter a valid SteamID64.');
+    }
+
+    $pdo = raidlands_db_required();
+    $statement = $pdo->prepare(
+        'INSERT INTO players (steam_id64, last_seen_at)
+         VALUES (:steam_id64, NOW())
+         ON DUPLICATE KEY UPDATE last_seen_at = NOW(), updated_at = NOW()'
+    );
+    $statement->execute(['steam_id64' => $steam_id64]);
+
+    $player = raidlands_store_admin_player_by_steam($steam_id64);
+
+    if ($player === null || empty($player['id'])) {
+        throw new RuntimeException('The player record could not be created.');
+    }
+
+    return $player;
+}
+
 function raidlands_store_upsert_steam_identity(PDO $pdo, int $player_id, string $steam_id64, array $profile, bool $verified): void
 {
     if ($player_id <= 0 || !raidlands_store_validate_steam_id64($steam_id64)) {
@@ -2102,6 +2212,24 @@ function raidlands_store_managed_groups(): array
 
         try {
             $rows = raidlands_db_fetch_all(
+                'SELECT DISTINCT group_name
+                 FROM player_group_assignments
+                 WHERE group_name <> ""'
+            );
+
+            foreach ($rows as $row) {
+                $group = raidlands_store_clean_group($row['group_name'] ?? '');
+
+                if ($group !== '') {
+                    $groups[] = $group;
+                }
+            }
+        } catch (Throwable $error) {
+            // Direct player group assignments are available after migration 023.
+        }
+
+        try {
+            $rows = raidlands_db_fetch_all(
                 "SELECT group_name
                  FROM oxide_groups
                  WHERE deleted_at IS NOT NULL"
@@ -2311,6 +2439,7 @@ function raidlands_store_grant_entitlement(
 
     try {
         if (raidlands_store_normalize_product_type((string) $product['product_type']) === 'kit_bundle' && empty($product['is_stackable'])) {
+            $source_clause = $source_type === 'manual' ? "AND e.source_type = 'manual'" : '';
             $revoke = $pdo->prepare(
                 "UPDATE entitlements e
                  INNER JOIN store_products p ON p.id = e.product_id
@@ -2319,7 +2448,8 @@ function raidlands_store_grant_entitlement(
                     AND e.status = 'active'
                     AND p.product_type IN ('kit_bundle', 'vip_subscription')
                     AND p.is_stackable = 0
-                    AND e.product_id <> :product_id"
+                    AND e.product_id <> :product_id
+                    $source_clause"
             );
             $revoke->execute([
                 'player_id' => $player_id,
@@ -2371,6 +2501,444 @@ function raidlands_store_revoke_entitlements(string $source_type, string $source
             'source_id' => $source_id,
         ]
     );
+}
+
+function raidlands_store_expire_stale_player_group_assignments(): void
+{
+    if (!raidlands_store_player_group_assignments_ready()) {
+        return;
+    }
+
+    try {
+        raidlands_db_execute(
+            "UPDATE player_group_assignments
+             SET status = 'expired',
+                 changed_at = NOW(),
+                 updated_at = NOW()
+             WHERE status = 'active'
+               AND ends_at IS NOT NULL
+               AND ends_at <= NOW()"
+        );
+    } catch (Throwable $error) {
+        // Expiration is opportunistic; callers should still return available state.
+    }
+}
+
+function raidlands_store_admin_assignable_group_rows(): array
+{
+    if (!raidlands_db_is_configured()) {
+        return [];
+    }
+
+    $rows = [];
+
+    try {
+        $rows = raidlands_db_fetch_all(
+            "SELECT group_name, title, category, sort_order
+             FROM oxide_groups
+             WHERE is_active = 1
+               AND is_read_only = 0
+               AND deleted_at IS NULL
+               AND category IN ('vip', 'perk', 'store')
+             ORDER BY category ASC, sort_order ASC, group_name ASC"
+        );
+    } catch (Throwable $error) {
+        $rows = array_map(
+            static fn (string $group): array => [
+                'group_name' => $group,
+                'title' => $group,
+                'category' => 'store',
+                'sort_order' => 100,
+            ],
+            raidlands_store_managed_groups()
+        );
+    }
+
+    $result = [];
+    $seen = [];
+
+    foreach ($rows as $row) {
+        $group = raidlands_store_clean_group($row['group_name'] ?? '');
+
+        if ($group === '' || isset($seen[$group])) {
+            continue;
+        }
+
+        $seen[$group] = true;
+        $title = trim((string) ($row['title'] ?? ''));
+        $category = trim((string) ($row['category'] ?? 'store'));
+        $result[] = [
+            'group_name' => $group,
+            'title' => $title !== '' ? $title : $group,
+            'category' => $category !== '' ? $category : 'store',
+            'sort_order' => (int) ($row['sort_order'] ?? 100),
+        ];
+    }
+
+    return $result;
+}
+
+function raidlands_store_admin_assignable_group_map(): array
+{
+    $map = [];
+
+    foreach (raidlands_store_admin_assignable_group_rows() as $row) {
+        $group = raidlands_store_clean_group($row['group_name'] ?? '');
+
+        if ($group !== '') {
+            $map[$group] = $row;
+        }
+    }
+
+    return $map;
+}
+
+function raidlands_store_active_player_group_assignments(int $player_id): array
+{
+    if ($player_id <= 0 || !raidlands_store_player_group_assignments_ready()) {
+        return [];
+    }
+
+    raidlands_store_expire_stale_player_group_assignments();
+
+    return raidlands_db_fetch_all(
+        "SELECT id, player_id, group_name, status, starts_at, ends_at, revoked_at, changed_at,
+                created_by_steam_id64, revoked_by_steam_id64, admin_note, created_at, updated_at
+         FROM player_group_assignments
+         WHERE player_id = :player_id
+           AND status = 'active'
+           AND (ends_at IS NULL OR ends_at > NOW())
+         ORDER BY group_name ASC",
+        ['player_id' => $player_id]
+    );
+}
+
+function raidlands_store_admin_grant_product_access(string $steam_id64, int $product_id, ?string $ends_at = null): array
+{
+    if ($product_id <= 0) {
+        throw new InvalidArgumentException('Choose a product to grant.');
+    }
+
+    $product = raidlands_store_product_by_id($product_id);
+
+    if ($product === null || empty($product['is_active'])) {
+        throw new InvalidArgumentException('Choose an active store product.');
+    }
+
+    $fulfillment_groups = raidlands_store_effective_fulfillment_groups($product_id, $product['oxide_group'] ?? '');
+
+    if ($fulfillment_groups === []) {
+        throw new InvalidArgumentException('That product does not have any applied server groups.');
+    }
+
+    $player = raidlands_store_admin_ensure_player_for_steam($steam_id64);
+    $player_id = (int) $player['id'];
+    $source_id = 'admin-player-' . $player_id . '-product-' . $product_id;
+
+    raidlands_store_grant_entitlement($player_id, $product_id, 'manual', $source_id, $ends_at);
+
+    $entitlement = raidlands_db_fetch_one(
+        'SELECT id
+         FROM entitlements
+         WHERE source_type = "manual"
+           AND source_id = :source_id
+           AND product_id = :product_id',
+        [
+            'source_id' => $source_id,
+            'product_id' => $product_id,
+        ]
+    );
+
+    return [
+        'player' => $player,
+        'product' => $product,
+        'groups' => $fulfillment_groups,
+        'source_id' => $source_id,
+        'entitlement_id' => (int) ($entitlement['id'] ?? 0),
+    ];
+}
+
+function raidlands_store_admin_revoke_manual_entitlement(int $entitlement_id, string $steam_id64 = ''): array
+{
+    if ($entitlement_id <= 0) {
+        throw new InvalidArgumentException('Choose a manual entitlement to revoke.');
+    }
+
+    $row = raidlands_db_fetch_one(
+        'SELECT e.*, p.steam_id64, sp.name AS product_name, sp.slug AS product_slug
+         FROM entitlements e
+         INNER JOIN players p ON p.id = e.player_id
+         INNER JOIN store_products sp ON sp.id = e.product_id
+         WHERE e.id = :id',
+        ['id' => $entitlement_id]
+    );
+
+    if ($row === null) {
+        throw new RuntimeException('That entitlement could not be found.');
+    }
+
+    $expected_steam = raidlands_store_normalize_steam_id64($steam_id64);
+
+    if ($expected_steam !== '' && $expected_steam !== (string) $row['steam_id64']) {
+        throw new RuntimeException('That entitlement does not belong to the selected player.');
+    }
+
+    if ((string) ($row['source_type'] ?? '') !== 'manual') {
+        throw new RuntimeException('Only manual product grants can be revoked here.');
+    }
+
+    if (!in_array((string) ($row['status'] ?? ''), ['pending', 'active'], true)) {
+        throw new RuntimeException('That manual entitlement is already inactive.');
+    }
+
+    raidlands_db_execute(
+        "UPDATE entitlements
+         SET status = 'revoked',
+             changed_at = NOW(),
+             updated_at = NOW()
+         WHERE id = :id
+           AND source_type = 'manual'
+           AND status IN ('pending', 'active')",
+        ['id' => $entitlement_id]
+    );
+
+    return $row;
+}
+
+function raidlands_store_admin_grant_direct_groups(
+    string $steam_id64,
+    array $groups,
+    ?string $ends_at = null,
+    string $admin_note = '',
+    string $actor_steam_id64 = ''
+): array {
+    if (!raidlands_store_player_group_assignments_ready()) {
+        throw new RuntimeException('Player group assignments are not installed yet. Run database/migrations/023_player_group_assignments.sql.');
+    }
+
+    $groups = raidlands_store_clean_groups($groups);
+
+    if ($groups === []) {
+        throw new InvalidArgumentException('Choose at least one group to add.');
+    }
+
+    $assignable = raidlands_store_admin_assignable_group_map();
+    $invalid = array_values(array_filter(
+        $groups,
+        static fn (string $group): bool => !isset($assignable[$group])
+    ));
+
+    if ($invalid !== []) {
+        throw new InvalidArgumentException('Unavailable group(s): ' . implode(', ', $invalid) . '. Create them as active store, VIP, or perk groups first.');
+    }
+
+    $player = raidlands_store_admin_ensure_player_for_steam($steam_id64);
+    $player_id = (int) $player['id'];
+    $actor_steam_id64 = raidlands_store_normalize_steam_id64($actor_steam_id64);
+    $actor_steam_id64 = raidlands_store_validate_steam_id64($actor_steam_id64) ? $actor_steam_id64 : null;
+    $admin_note = raidlands_store_clean_admin_note($admin_note);
+    $pdo = raidlands_db_required();
+    $statement = $pdo->prepare(
+        "INSERT INTO player_group_assignments
+            (player_id, group_name, status, starts_at, ends_at, revoked_at, changed_at, created_by_steam_id64, revoked_by_steam_id64, admin_note)
+         VALUES
+            (:player_id, :group_name, 'active', NOW(), :ends_at, NULL, NOW(), :created_by_steam_id64, NULL, :admin_note)
+         ON DUPLICATE KEY UPDATE
+            status = 'active',
+            starts_at = NOW(),
+            ends_at = VALUES(ends_at),
+            revoked_at = NULL,
+            changed_at = NOW(),
+            created_by_steam_id64 = VALUES(created_by_steam_id64),
+            revoked_by_steam_id64 = NULL,
+            admin_note = VALUES(admin_note),
+            updated_at = NOW()"
+    );
+
+    foreach ($groups as $group) {
+        $statement->execute([
+            'player_id' => $player_id,
+            'group_name' => $group,
+            'ends_at' => $ends_at,
+            'created_by_steam_id64' => $actor_steam_id64,
+            'admin_note' => $admin_note,
+        ]);
+    }
+
+    return [
+        'player' => $player,
+        'groups' => $groups,
+        'count' => count($groups),
+    ];
+}
+
+function raidlands_store_admin_revoke_direct_group(
+    int $assignment_id,
+    string $steam_id64 = '',
+    string $actor_steam_id64 = ''
+): array {
+    if (!raidlands_store_player_group_assignments_ready()) {
+        throw new RuntimeException('Player group assignments are not installed yet. Run database/migrations/023_player_group_assignments.sql.');
+    }
+
+    if ($assignment_id <= 0) {
+        throw new InvalidArgumentException('Choose a direct group assignment to revoke.');
+    }
+
+    $row = raidlands_db_fetch_one(
+        'SELECT pga.*, p.steam_id64
+         FROM player_group_assignments pga
+         INNER JOIN players p ON p.id = pga.player_id
+         WHERE pga.id = :id',
+        ['id' => $assignment_id]
+    );
+
+    if ($row === null) {
+        throw new RuntimeException('That group assignment could not be found.');
+    }
+
+    $expected_steam = raidlands_store_normalize_steam_id64($steam_id64);
+
+    if ($expected_steam !== '' && $expected_steam !== (string) $row['steam_id64']) {
+        throw new RuntimeException('That group assignment does not belong to the selected player.');
+    }
+
+    if ((string) ($row['status'] ?? '') !== 'active') {
+        throw new RuntimeException('That group assignment is already inactive.');
+    }
+
+    $actor_steam_id64 = raidlands_store_normalize_steam_id64($actor_steam_id64);
+    $actor_steam_id64 = raidlands_store_validate_steam_id64($actor_steam_id64) ? $actor_steam_id64 : null;
+
+    raidlands_db_execute(
+        "UPDATE player_group_assignments
+         SET status = 'revoked',
+             revoked_at = NOW(),
+             revoked_by_steam_id64 = :revoked_by_steam_id64,
+             changed_at = NOW(),
+             updated_at = NOW()
+         WHERE id = :id
+           AND status = 'active'",
+        [
+            'id' => $assignment_id,
+            'revoked_by_steam_id64' => $actor_steam_id64,
+        ]
+    );
+
+    return $row;
+}
+
+function raidlands_store_admin_player_access_state(string $steam_id64): array
+{
+    $steam_id64 = raidlands_store_normalize_steam_id64($steam_id64);
+
+    if (!raidlands_store_validate_steam_id64($steam_id64)) {
+        throw new InvalidArgumentException('Enter a valid SteamID64.');
+    }
+
+    raidlands_store_expire_stale_entitlements();
+    raidlands_store_expire_stale_player_group_assignments();
+
+    $player = raidlands_store_admin_player_by_steam($steam_id64);
+
+    if ($player === null || empty($player['id'])) {
+        return [
+            'steam_id64' => $steam_id64,
+            'player' => null,
+            'entitlements' => [],
+            'direct_groups' => [],
+            'group_sources' => [],
+            'groups' => [],
+        ];
+    }
+
+    $player_id = (int) $player['id'];
+    $entitlements = raidlands_db_fetch_all(
+        "SELECT e.id, e.player_id, e.product_id, e.source_type, e.source_id, e.oxide_group,
+                e.status, e.starts_at, e.ends_at, e.changed_at,
+                sp.slug, sp.name, sp.product_type
+         FROM entitlements e
+         INNER JOIN store_products sp ON sp.id = e.product_id
+         WHERE e.player_id = :player_id
+           AND e.status = 'active'
+           AND (e.ends_at IS NULL OR e.ends_at > NOW())
+         ORDER BY sp.product_type ASC, sp.tier_priority DESC, sp.sort_order ASC, e.changed_at DESC",
+        ['player_id' => $player_id]
+    );
+
+    $groups_by_product = raidlands_store_fulfillment_groups_for_products(array_map(
+        static fn (array $row): int => (int) ($row['product_id'] ?? 0),
+        $entitlements
+    ));
+    $group_sources = [];
+    $groups = [];
+
+    foreach ($entitlements as &$row) {
+        $product_id = (int) ($row['product_id'] ?? 0);
+        $row_groups = $groups_by_product[$product_id] ?? [];
+        $fallback_group = raidlands_store_clean_group($row['oxide_group'] ?? '');
+
+        if ($row_groups === [] && $fallback_group !== '') {
+            $row_groups = [$fallback_group];
+        }
+
+        $row['fulfillment_groups'] = $row_groups;
+        $row['oxide_group'] = $row_groups[0] ?? $fallback_group;
+        $row['can_revoke'] = (string) ($row['source_type'] ?? '') === 'manual';
+        $row['source_label'] = $row['can_revoke'] ? 'Manual product' : 'Paid product';
+
+        foreach ($row_groups as $group) {
+            if ($group === '') {
+                continue;
+            }
+
+            $groups[] = $group;
+            $group_sources[$group][] = [
+                'kind' => 'product',
+                'label' => (string) ($row['name'] ?? $group),
+                'source_type' => (string) ($row['source_type'] ?? ''),
+                'can_revoke' => (bool) $row['can_revoke'],
+                'id' => (int) ($row['id'] ?? 0),
+            ];
+        }
+    }
+    unset($row);
+
+    $direct_groups = raidlands_store_active_player_group_assignments($player_id);
+
+    foreach ($direct_groups as &$row) {
+        $group = raidlands_store_clean_group($row['group_name'] ?? '');
+        $row['group_name'] = $group;
+        $row['can_revoke'] = true;
+        $row['source_label'] = 'Direct group';
+
+        if ($group === '') {
+            continue;
+        }
+
+        $groups[] = $group;
+        $group_sources[$group][] = [
+            'kind' => 'direct',
+            'label' => 'Direct group',
+            'source_type' => 'direct',
+            'can_revoke' => true,
+            'id' => (int) ($row['id'] ?? 0),
+        ];
+    }
+    unset($row);
+
+    $groups = array_values(array_unique(array_filter($groups)));
+    sort($groups, SORT_NATURAL | SORT_FLAG_CASE);
+    ksort($group_sources, SORT_NATURAL | SORT_FLAG_CASE);
+
+    return [
+        'steam_id64' => $steam_id64,
+        'player' => $player,
+        'entitlements' => $entitlements,
+        'direct_groups' => $direct_groups,
+        'group_sources' => $group_sources,
+        'groups' => $groups,
+    ];
 }
 
 function raidlands_store_timestamp($value): ?string
@@ -2780,6 +3348,7 @@ function raidlands_bridge_authorize(string $body = ''): void
 function raidlands_store_active_groups_for_steam(string $steam_id64): array
 {
     raidlands_store_expire_stale_entitlements();
+    raidlands_store_expire_stale_player_group_assignments();
 
     $player = raidlands_db_fetch_one(
         'SELECT id, steam_id64, display_name FROM players WHERE steam_id64 = :steam_id64',
@@ -2791,6 +3360,7 @@ function raidlands_store_active_groups_for_steam(string $steam_id64): array
             'player' => null,
             'groups' => [],
             'entitlements' => [],
+            'direct_groups' => [],
             'cursor' => time(),
         ];
     }
@@ -2832,10 +3402,23 @@ function raidlands_store_active_groups_for_steam(string $steam_id64): array
     }
     unset($row);
 
+    $direct_groups = raidlands_store_active_player_group_assignments((int) $player['id']);
+
+    foreach ($direct_groups as &$row) {
+        $group = raidlands_store_clean_group($row['group_name'] ?? '');
+        $row['group_name'] = $group;
+
+        if ($group !== '') {
+            $groups[] = $group;
+        }
+    }
+    unset($row);
+
     return [
         'player' => $player,
         'groups' => array_values(array_unique($groups)),
         'entitlements' => $rows,
+        'direct_groups' => $direct_groups,
         'cursor' => time(),
     ];
 }
@@ -2843,7 +3426,9 @@ function raidlands_store_active_groups_for_steam(string $steam_id64): array
 function raidlands_store_bridge_changes(int $since): array
 {
     raidlands_store_expire_stale_entitlements();
+    raidlands_store_expire_stale_player_group_assignments();
     $since = max(0, $since);
+    $steam_ids = [];
 
     if ($since === 0) {
         $players = raidlands_db_fetch_all(
@@ -2861,15 +3446,43 @@ function raidlands_store_bridge_changes(int $since): array
         );
     }
 
-    $states = [];
-
     foreach ($players as $player) {
         $steam_id64 = (string) $player['steam_id64'];
+        $steam_ids[$steam_id64] = $steam_id64;
+    }
+
+    if (raidlands_store_player_group_assignments_ready()) {
+        if ($since === 0) {
+            $direct_players = raidlands_db_fetch_all(
+                "SELECT DISTINCT p.steam_id64
+                 FROM players p
+                 INNER JOIN player_group_assignments pga ON pga.player_id = p.id"
+            );
+        } else {
+            $direct_players = raidlands_db_fetch_all(
+                "SELECT DISTINCT p.steam_id64
+                 FROM players p
+                 INNER JOIN player_group_assignments pga ON pga.player_id = p.id
+                 WHERE UNIX_TIMESTAMP(pga.changed_at) > :since",
+                ['since' => $since]
+            );
+        }
+
+        foreach ($direct_players as $player) {
+            $steam_id64 = (string) $player['steam_id64'];
+            $steam_ids[$steam_id64] = $steam_id64;
+        }
+    }
+
+    $states = [];
+
+    foreach (array_values($steam_ids) as $steam_id64) {
         $state = raidlands_store_active_groups_for_steam($steam_id64);
         $states[] = [
             'steam_id64' => $steam_id64,
             'groups' => $state['groups'],
             'entitlements' => $state['entitlements'],
+            'direct_groups' => $state['direct_groups'] ?? [],
         ];
     }
 
@@ -3470,29 +4083,7 @@ function raidlands_store_admin_save_product_rows($rows): void
 
 function raidlands_store_admin_manual_grant(string $steam_id64, int $product_id, ?string $ends_at = null): void
 {
-    $steam_id64 = preg_replace('/\D+/', '', $steam_id64) ?? '';
-
-    if (!raidlands_store_validate_steam_id64($steam_id64)) {
-        throw new InvalidArgumentException('Enter a valid SteamID64 for the manual grant.');
-    }
-
-    $pdo = raidlands_db_required();
-    $statement = $pdo->prepare(
-        'INSERT INTO players (steam_id64, last_seen_at)
-         VALUES (:steam_id64, NOW())
-         ON DUPLICATE KEY UPDATE last_seen_at = NOW(), updated_at = NOW()'
-    );
-    $statement->execute(['steam_id64' => $steam_id64]);
-    $player = raidlands_db_fetch_one(
-        'SELECT id FROM players WHERE steam_id64 = :steam_id64',
-        ['steam_id64' => $steam_id64]
-    );
-
-    if ($player === null || empty($player['id'])) {
-        throw new RuntimeException('The player record could not be created.');
-    }
-
-    raidlands_store_grant_entitlement((int) $player['id'], $product_id, 'manual', 'admin-' . time(), $ends_at);
+    raidlands_store_admin_grant_product_access($steam_id64, $product_id, $ends_at);
 }
 
 function raidlands_store_bridge_cursors(): array

@@ -1,0 +1,21 @@
+CREATE TABLE IF NOT EXISTS player_group_assignments (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  player_id BIGINT UNSIGNED NOT NULL,
+  group_name VARCHAR(120) NOT NULL,
+  status ENUM('active', 'revoked', 'expired') NOT NULL DEFAULT 'active',
+  starts_at TIMESTAMP NULL DEFAULT NULL,
+  ends_at TIMESTAMP NULL DEFAULT NULL,
+  revoked_at TIMESTAMP NULL DEFAULT NULL,
+  changed_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  created_by_steam_id64 VARCHAR(32) NULL DEFAULT NULL,
+  revoked_by_steam_id64 VARCHAR(32) NULL DEFAULT NULL,
+  admin_note VARCHAR(500) NOT NULL DEFAULT '',
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_player_group_assignment (player_id, group_name),
+  KEY idx_player_group_assignments_group_status (group_name, status),
+  KEY idx_player_group_assignments_status_ends (status, ends_at),
+  KEY idx_player_group_assignments_changed (changed_at),
+  CONSTRAINT fk_player_group_assignments_player FOREIGN KEY (player_id) REFERENCES players (id) ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
