@@ -71,35 +71,41 @@ The store uses MySQL as the source of truth, Stripe Checkout for cash purchases,
 2. Create a MySQL database.
 3. Run `database/migrations/001_vip_store.sql`.
 4. Run `database/migrations/002_player_stats.sql`.
-5. Run `database/migrations/004_clan_management.sql`.
-6. Run `database/migrations/005_clan_api_keys.sql`.
-7. Run `database/migrations/006_game_kits.sql`.
-8. Run `database/migrations/007_admin_auth.sql`.
-9. Run `database/migrations/008_oxide_permissions.sql`.
-10. Run `database/migrations/009_server_status.sql`.
-11. Run `database/migrations/010_server_status_samples.sql`.
-12. Run `database/migrations/011_server_status_rollups.sql`.
-13. Run `database/migrations/012_rp_shop.sql`.
-14. Run `database/migrations/013_pvp_kit_permission_cleanup.sql`.
-15. Run `database/migrations/014_kit_group_delete_tombstones.sql`.
-16. Run `database/migrations/015_feature_planning.sql`.
-17. Run `database/migrations/016_player_stats_wipe_rp_baseline.sql`.
-18. Run `database/migrations/017_feature_voting_status.sql`.
-19. Run `database/migrations/018_store_bundle_offer_matrix.sql`.
-20. Run `database/migrations/019_raidlands_vip_kits_permissions_seed.sql`.
-21. Run `database/migrations/020_store_product_fulfillment_groups.sql`.
-22. Run `database/migrations/021_group_owned_kit_permissions.sql`.
-23. Run `database/seeds/001_store_products.sql`.
-24. Copy `.env.example` to `.env`.
-25. Fill in MySQL, Stripe, Steam API, bridge secret, and clan API limit values.
-26. Add at least one owner SteamID64 to `admin_users` and `admin_user_roles`.
-27. Configure product RP costs and Stripe Price IDs in `/admin/?section=store`.
+5. Run `database/migrations/003_support_feedback.sql`.
+6. Run `database/migrations/004_clan_management.sql`.
+7. Run `database/migrations/005_clan_api_keys.sql`.
+8. Run `database/migrations/006_game_kits.sql`.
+9. Run `database/migrations/007_admin_auth.sql`.
+10. Run `database/migrations/008_oxide_permissions.sql`.
+11. Run `database/migrations/009_server_status.sql`.
+12. Run `database/migrations/010_server_status_samples.sql`.
+13. Run `database/migrations/011_server_status_rollups.sql`.
+14. Run `database/migrations/012_rp_shop.sql`.
+15. Run `database/migrations/013_pvp_kit_permission_cleanup.sql`.
+16. Run `database/migrations/014_kit_group_delete_tombstones.sql`.
+17. Run `database/migrations/015_feature_planning.sql`.
+18. Run `database/migrations/016_player_stats_wipe_rp_baseline.sql`.
+19. Run `database/migrations/017_feature_voting_status.sql`.
+20. Run `database/migrations/018_store_bundle_offer_matrix.sql`.
+21. Run `database/migrations/019_raidlands_vip_kits_permissions_seed.sql`.
+22. Run `database/migrations/020_store_product_fulfillment_groups.sql`.
+23. Run `database/migrations/021_group_owned_kit_permissions.sql`.
+24. Run `database/migrations/022_bot_stats.sql`.
+25. Run `database/migrations/023_player_group_assignments.sql`.
+26. Run `database/migrations/024_server_map_images.sql`.
+27. Run `database/migrations/025_store_lifetime_kit_unlock_groups.sql`.
+28. Run `database/seeds/001_store_products.sql`.
+29. Copy `.env.example` to `.env`.
+30. Fill in MySQL, Stripe, Steam API, bridge secret, and clan API limit values.
+31. Add at least one owner SteamID64 to `admin_users` and `admin_user_roles`.
+32. Configure product RP costs and Stripe Price IDs in `/admin/?section=store`, or use the Store editor's Stripe Price creation buttons after the Stripe test or live secret key is set.
 
 Public store flow:
 
 - `/link/` links a SteamID64 into the browser session.
 - `/store/` lists main kit bundles, individual shop kits, and standalone perks.
 - `/store/checkout.php` creates Stripe Checkout Sessions.
+- Admin > Store can create or reuse Stripe Prices from configured cash offer rows once `RAIDLANDS_STRIPE_SECRET_KEY` is set.
 - `/profile/billing-portal.php` opens Stripe Billing Portal for recurring cash subscriptions.
 - `/api/stripe-webhook.php` records paid orders, subscriptions, refunds, and entitlement changes.
 - Store products apply one or more managed groups for purchases and manual grants; Kits and Groups control the permissions those groups receive.

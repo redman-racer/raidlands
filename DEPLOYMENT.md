@@ -83,7 +83,9 @@ the host or upload it through a private channel.
    - `RAIDLANDS_AUTH_STEAM_URL` (legacy placeholder; Steam linking uses native Steam OpenID)
    - `RAIDLANDS_AUTH_DISCORD_URL`
    - `RAIDLANDS_DB_DSN`
+   - `RAIDLANDS_STRIPE_PUBLISHABLE_KEY`
    - `RAIDLANDS_STRIPE_SECRET_KEY`
+   - `RAIDLANDS_STRIPE_WEBHOOK_SECRET`
    - `RAIDLANDS_STRIPE_BILLING_PORTAL_CONFIGURATION_ID` (optional)
    - `RAIDLANDS_BRIDGE_SHARED_SECRET`
    - `RAIDLANDS_CLAN_API_RATE_LIMIT_PER_MINUTE`
@@ -107,6 +109,7 @@ the host or upload it through a private channel.
 
    - `database/migrations/001_vip_store.sql`
    - `database/migrations/002_player_stats.sql`
+   - `database/migrations/003_support_feedback.sql`
    - `database/migrations/004_clan_management.sql`
    - `database/migrations/005_clan_api_keys.sql`
    - `database/migrations/006_game_kits.sql`
@@ -125,9 +128,13 @@ the host or upload it through a private channel.
    - `database/migrations/019_raidlands_vip_kits_permissions_seed.sql`
    - `database/migrations/020_store_product_fulfillment_groups.sql`
    - `database/migrations/021_group_owned_kit_permissions.sql`
+   - `database/migrations/022_bot_stats.sql`
+   - `database/migrations/023_player_group_assignments.sql`
+   - `database/migrations/024_server_map_images.sql`
+   - `database/migrations/025_store_lifetime_kit_unlock_groups.sql`
    - `database/seeds/001_store_products.sql`
 
-   Then configure RP costs, cash amounts, and Stripe Price IDs in `/admin/?section=store`.
+   Then configure RP costs and cash amounts in `/admin/?section=store`. After Stripe keys are present, use the Store editor's Stripe Price creation buttons or paste existing matching `price_...` IDs.
 
 5. Click through the local site.
 

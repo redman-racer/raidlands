@@ -6499,6 +6499,18 @@ button.admin-permission-chip:focus-visible {
   grid-column: 1 / -1;
 }
 
+.admin-store-stripe-actions {
+  display: grid;
+  gap: 6px;
+}
+
+.admin-store-stripe-button {
+  width: 100%;
+  min-height: 38px;
+  padding: 8px 10px;
+  font-size: .72rem;
+}
+
 .admin-store-kit-grid {
   grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
   max-height: 230px;

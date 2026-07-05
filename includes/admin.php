@@ -79,8 +79,28 @@ function raidlands_admin_handle_request(): void
 
         try {
             if ($section === 'store') {
-                raidlands_store_admin_save_product_rows($_POST['store_products'] ?? []);
-                raidlands_admin_set_flash('success', 'Store products saved.');
+                $store_rows = $_POST['store_products'] ?? [];
+                $stripe_price_target = (string) ($_POST['store_stripe_create_price'] ?? '');
+
+                raidlands_store_admin_save_product_rows($store_rows);
+
+                if ($stripe_price_target !== '') {
+                    try {
+                        $stripe_result = raidlands_store_admin_create_stripe_price_from_post($store_rows, $stripe_price_target);
+                        $stripe_price_id = (string) ($stripe_result['stripe_price_id'] ?? '');
+                        $mode = (string) ($stripe_result['mode'] ?? 'configured');
+                        $verb = !empty($stripe_result['created']) ? 'created' : 'linked';
+
+                        raidlands_admin_set_flash(
+                            'success',
+                            'Store products saved. Stripe Price ' . $stripe_price_id . ' ' . $verb . ' for ' . (string) ($stripe_result['product_name'] ?? 'product') . ' (' . $mode . ' mode).'
+                        );
+                    } catch (Throwable $stripe_error) {
+                        raidlands_admin_set_flash('error', 'Store products saved, but Stripe Price creation failed: ' . $stripe_error->getMessage());
+                    }
+                } else {
+                    raidlands_admin_set_flash('success', 'Store products saved.');
+                }
             } elseif ($section === 'features') {
                 raidlands_admin_set_flash('success', raidlands_features_admin_save($_POST));
             } elseif ($section === 'kits') {

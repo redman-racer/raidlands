@@ -5,27 +5,32 @@
 1. Create a MySQL database and user.
 2. Run `database/migrations/001_vip_store.sql`.
 3. Run `database/migrations/002_player_stats.sql`.
-4. Run `database/migrations/004_clan_management.sql`.
-5. Run `database/migrations/005_clan_api_keys.sql`.
-6. Run `database/migrations/006_game_kits.sql`.
-7. Run `database/migrations/007_admin_auth.sql`.
-8. Run `database/migrations/008_oxide_permissions.sql`.
-9. Run `database/migrations/009_server_status.sql`.
-10. Run `database/migrations/010_server_status_samples.sql`.
-11. Run `database/migrations/011_server_status_rollups.sql`.
-12. Run `database/migrations/012_rp_shop.sql`.
-13. Run `database/migrations/013_pvp_kit_permission_cleanup.sql`.
-14. Run `database/migrations/014_kit_group_delete_tombstones.sql`.
-15. Run `database/migrations/015_feature_planning.sql`.
-16. Run `database/migrations/016_player_stats_wipe_rp_baseline.sql`.
-17. Run `database/migrations/017_feature_voting_status.sql`.
-18. Run `database/migrations/018_store_bundle_offer_matrix.sql`.
-19. Run `database/migrations/019_raidlands_vip_kits_permissions_seed.sql`.
-20. Run `database/migrations/020_store_product_fulfillment_groups.sql`.
-21. Run `database/migrations/021_group_owned_kit_permissions.sql`.
-22. Run `database/seeds/001_store_products.sql`.
-23. Copy the root `.env.example` file to `.env`.
-24. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
+4. Run `database/migrations/003_support_feedback.sql`.
+5. Run `database/migrations/004_clan_management.sql`.
+6. Run `database/migrations/005_clan_api_keys.sql`.
+7. Run `database/migrations/006_game_kits.sql`.
+8. Run `database/migrations/007_admin_auth.sql`.
+9. Run `database/migrations/008_oxide_permissions.sql`.
+10. Run `database/migrations/009_server_status.sql`.
+11. Run `database/migrations/010_server_status_samples.sql`.
+12. Run `database/migrations/011_server_status_rollups.sql`.
+13. Run `database/migrations/012_rp_shop.sql`.
+14. Run `database/migrations/013_pvp_kit_permission_cleanup.sql`.
+15. Run `database/migrations/014_kit_group_delete_tombstones.sql`.
+16. Run `database/migrations/015_feature_planning.sql`.
+17. Run `database/migrations/016_player_stats_wipe_rp_baseline.sql`.
+18. Run `database/migrations/017_feature_voting_status.sql`.
+19. Run `database/migrations/018_store_bundle_offer_matrix.sql`.
+20. Run `database/migrations/019_raidlands_vip_kits_permissions_seed.sql`.
+21. Run `database/migrations/020_store_product_fulfillment_groups.sql`.
+22. Run `database/migrations/021_group_owned_kit_permissions.sql`.
+23. Run `database/migrations/022_bot_stats.sql`.
+24. Run `database/migrations/023_player_group_assignments.sql`.
+25. Run `database/migrations/024_server_map_images.sql`.
+26. Run `database/migrations/025_store_lifetime_kit_unlock_groups.sql`.
+27. Run `database/seeds/001_store_products.sql`.
+28. Copy the root `.env.example` file to `.env`.
+29. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
 
 The root `.env` file is ignored by Git and protected from direct web access by the root `.htaccess`.
 
@@ -40,7 +45,8 @@ The root `.env` file is ignored by Git and protected from direct web access by t
 Cash checkout remains inactive until real Stripe prices are configured.
 
 - Keep Stripe prices inactive or placeholder-only until a payment processor is ready.
-- Create one-time Stripe Prices for cash passes and recurring Stripe Prices for cash subscriptions, paste those `price_...` IDs into Admin > Store, and enable only the offers that should be purchasable.
+- Create one-time Stripe Prices for cash passes and recurring Stripe Prices for cash subscriptions from Admin > Store after `RAIDLANDS_STRIPE_SECRET_KEY` is set, or paste existing matching `price_...` IDs into Admin > Store.
+- Test `price_...` IDs work with test secret keys, and live `price_...` IDs work with live secret keys. Do not mix modes.
 - Set the webhook URL to `/api/stripe-webhook.php`.
 - Configure `RAIDLANDS_STRIPE_PUBLISHABLE_KEY`, `RAIDLANDS_STRIPE_SECRET_KEY`, and `RAIDLANDS_STRIPE_WEBHOOK_SECRET` in `.env`.
 - Optionally set `RAIDLANDS_STRIPE_BILLING_PORTAL_CONFIGURATION_ID`; leave it blank to use Stripe's default Billing Portal configuration.
@@ -48,7 +54,8 @@ Cash checkout remains inactive until real Stripe prices are configured.
 ## RP shop
 
 - Admin > Store controls RP offers per product: RP cost, active flag, lifetime/timed duration, and optional auto-renew for timed offers.
-- Each active store product must have at least one applied group. Purchases and manual grants apply those groups; Kits and Groups control the permissions those groups receive.
+- Admin > Store controls cash offers per product: amount, currency, active flag, Stripe Price ID, and lifetime/timed/recurring access. Lifetime cash passes grant access with no scheduled expiration.
+- Each active store product must have at least one applied group. Purchases and manual grants apply those groups; Kits and Groups control the permissions those groups receive. Migration `025_store_lifetime_kit_unlock_groups.sql` creates managed groups for the individual kit unlock products.
 - The website queues RP purchases first. `WebsiteVipBridge` polls `/api/server/rp-purchases.php`, verifies and deducts live ServerRewards RP, then posts the result to `/api/server/rp-purchase-result.php`.
 - Entitlements activate only after the bridge confirms the debit.
 - Fixed purchases with insufficient RP are rejected. Auto-renew renewals with insufficient RP become past due and the current entitlement expires normally.

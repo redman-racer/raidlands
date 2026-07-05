@@ -2105,7 +2105,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                 <?php if ($active_section === 'store') : ?>
                   <?php if (!$admin_store_ready) : ?>
                     <section class="admin-section">
-                      <div class="admin-alert warning">Store tables are not ready yet. Run <code>database/migrations/001_vip_store.sql</code>, <code>database/migrations/012_rp_shop.sql</code>, <code>database/migrations/013_pvp_kit_permission_cleanup.sql</code>, <code>database/migrations/014_kit_group_delete_tombstones.sql</code>, <code>database/migrations/018_store_bundle_offer_matrix.sql</code>, <code>database/migrations/019_raidlands_vip_kits_permissions_seed.sql</code>, <code>database/migrations/020_store_product_fulfillment_groups.sql</code>, <code>database/migrations/021_group_owned_kit_permissions.sql</code>, then <code>database/seeds/001_store_products.sql</code>, and confirm the database credentials in your environment config. <?= $admin_store_error !== '' ? e($admin_store_error) : '' ?></div>
+                      <div class="admin-alert warning">Store tables are not ready yet. Run the numbered files in <code>database/migrations/</code> through <code>025_store_lifetime_kit_unlock_groups.sql</code>, then <code>database/seeds/001_store_products.sql</code>, and confirm the database credentials in your environment config. <?= $admin_store_error !== '' ? e($admin_store_error) : '' ?></div>
                     </section>
                   <?php else : ?>
                     <section class="admin-section admin-store-editor-section">
@@ -2115,6 +2115,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                       </div>
                       <?php
                         $product_rows = array_values($admin_store_rows);
+                        $admin_store_stripe_status = raidlands_store_stripe_setup_status();
                         $admin_store_price_labels = [];
                         $admin_store_currencies = [];
                         $admin_store_groups = [];
@@ -2179,6 +2180,23 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                         $store_selector_items = [];
                         $store_has_active_panel = false;
                       ?>
+                      <div class="admin-grid three">
+                        <div class="metal-panel">
+                          <p class="section-kicker">Stripe API</p>
+                          <h3><?= !empty($admin_store_stripe_status['secret_configured']) ? e(ucfirst((string) $admin_store_stripe_status['secret_mode']) . ' mode') : 'Not configured' ?></h3>
+                          <p class="store-muted">Secret key comes from <code>RAIDLANDS_STRIPE_SECRET_KEY</code>.</p>
+                        </div>
+                        <div class="metal-panel">
+                          <p class="section-kicker">Webhook</p>
+                          <h3><?= !empty($admin_store_stripe_status['webhook_configured']) ? 'Secret set' : 'Needs secret' ?></h3>
+                          <p class="store-muted">Fulfillment expects <code>RAIDLANDS_STRIPE_WEBHOOK_SECRET</code>.</p>
+                        </div>
+                        <div class="metal-panel">
+                          <p class="section-kicker">Price creation</p>
+                          <h3><?= !empty($admin_store_stripe_status['autoload_available']) ? 'Stripe PHP ready' : 'Composer needed' ?></h3>
+                          <p class="store-muted">Use each cash offer button after setting amount and currency.</p>
+                        </div>
+                      </div>
                       <div class="admin-store-editor-shell" data-admin-store-editor>
                         <div class="admin-store-panels">
                         <?php for ($index = 0; $index < $product_total; $index += 1) : ?>
@@ -2415,13 +2433,16 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
 
                               <details class="admin-details admin-store-details">
                                 <summary>Cash passes <small>One-time Stripe payments with optional expiration</small></summary>
-                                <p class="admin-detail-note">Cash passes charge once. Lifetime has no scheduled expiration; timed passes expire on the website after the chosen duration.</p>
+                                <p class="admin-detail-note">Cash passes charge once. Lifetime has no scheduled expiration; timed passes expire on the website after the chosen duration. Test and live Stripe prices both work when they match the secret key mode above.</p>
                                 <div class="admin-rp-offer-grid admin-store-price-grid">
                                   <?php foreach ($rp_intervals as $cash_interval) : ?>
                                     <?php
                                       $cash_row = (array) ($cash_pass_prices[$cash_interval] ?? []);
                                       $cash_label = (string) ($cash_row['label'] ?? raidlands_store_admin_offer_default_label('cash_pass', $cash_interval));
                                       $cash_amount = ((int) ($cash_row['amount_cents'] ?? 0)) / 100;
+                                      $cash_stripe_price_id = trim((string) ($cash_row['stripe_price_id'] ?? ''));
+                                      $cash_has_stripe_price = str_starts_with($cash_stripe_price_id, 'price_');
+                                      $cash_stripe_disabled = $cash_has_stripe_price || empty($admin_store_stripe_status['secret_configured']) || empty($admin_store_stripe_status['autoload_available']);
                                     ?>
                                     <article class="admin-rp-offer-card admin-store-price-card">
                                       <input type="hidden" name="store_products[<?= e((string) $index) ?>][cash_pass_prices][<?= e($cash_interval) ?>][id]" value="<?= e((string) ($cash_row['id'] ?? '')) ?>">
@@ -2445,6 +2466,12 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                         <span>Currency</span>
                                         <input type="text" list="admin-currency-options" name="store_products[<?= e((string) $index) ?>][cash_pass_prices][<?= e($cash_interval) ?>][currency]" maxlength="3" value="<?= e((string) ($cash_row['currency'] ?? 'usd')) ?>">
                                       </label>
+                                      <div class="admin-store-price-field admin-store-price-field-wide admin-store-stripe-actions">
+                                        <button class="btn btn-secondary admin-store-stripe-button" type="submit" name="store_stripe_create_price" value="<?= e((string) $index . ':cash_pass:' . $cash_interval) ?>" <?= $cash_stripe_disabled ? 'disabled' : '' ?>>
+                                          <?= $cash_has_stripe_price ? 'Stripe Price Linked' : 'Create Stripe Price' ?>
+                                        </button>
+                                        <small><?= $cash_has_stripe_price ? e($cash_stripe_price_id) : 'Creates or reuses a Stripe Price from this amount, currency, label, and interval.' ?></small>
+                                      </div>
                                       <label class="admin-check">
                                         <input type="checkbox" name="store_products[<?= e((string) $index) ?>][cash_pass_prices][<?= e($cash_interval) ?>][is_active]" value="1" <?= !empty($cash_row['is_active']) ? 'checked' : '' ?>>
                                         <span>Active</span>
@@ -2463,6 +2490,9 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                       $cash_row = (array) ($cash_subscription_prices[$cash_interval] ?? []);
                                       $cash_label = (string) ($cash_row['label'] ?? raidlands_store_admin_offer_default_label('cash_sub', $cash_interval));
                                       $cash_amount = ((int) ($cash_row['amount_cents'] ?? 0)) / 100;
+                                      $cash_stripe_price_id = trim((string) ($cash_row['stripe_price_id'] ?? ''));
+                                      $cash_has_stripe_price = str_starts_with($cash_stripe_price_id, 'price_');
+                                      $cash_stripe_disabled = $cash_has_stripe_price || empty($admin_store_stripe_status['secret_configured']) || empty($admin_store_stripe_status['autoload_available']);
                                     ?>
                                     <article class="admin-rp-offer-card admin-store-price-card">
                                       <input type="hidden" name="store_products[<?= e((string) $index) ?>][cash_subscription_prices][<?= e($cash_interval) ?>][id]" value="<?= e((string) ($cash_row['id'] ?? '')) ?>">
@@ -2486,6 +2516,12 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                         <span>Currency</span>
                                         <input type="text" list="admin-currency-options" name="store_products[<?= e((string) $index) ?>][cash_subscription_prices][<?= e($cash_interval) ?>][currency]" maxlength="3" value="<?= e((string) ($cash_row['currency'] ?? 'usd')) ?>">
                                       </label>
+                                      <div class="admin-store-price-field admin-store-price-field-wide admin-store-stripe-actions">
+                                        <button class="btn btn-secondary admin-store-stripe-button" type="submit" name="store_stripe_create_price" value="<?= e((string) $index . ':cash_sub:' . $cash_interval) ?>" <?= $cash_stripe_disabled ? 'disabled' : '' ?>>
+                                          <?= $cash_has_stripe_price ? 'Stripe Price Linked' : 'Create Stripe Price' ?>
+                                        </button>
+                                        <small><?= $cash_has_stripe_price ? e($cash_stripe_price_id) : 'Creates or reuses a recurring Stripe Price from this amount, currency, label, and interval.' ?></small>
+                                      </div>
                                       <label class="admin-check">
                                         <input type="checkbox" name="store_products[<?= e((string) $index) ?>][cash_subscription_prices][<?= e($cash_interval) ?>][is_active]" value="1" <?= !empty($cash_row['is_active']) ? 'checked' : '' ?>>
                                         <span>Active</span>
