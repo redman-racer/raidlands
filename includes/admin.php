@@ -80,26 +80,19 @@ function raidlands_admin_handle_request(): void
         try {
             if ($section === 'store') {
                 $store_rows = $_POST['store_products'] ?? [];
-                $stripe_price_target = (string) ($_POST['store_stripe_create_price'] ?? '');
 
                 raidlands_store_admin_save_product_rows($store_rows);
+                $stripe_sync = raidlands_store_admin_sync_stripe_catalog();
+                $stripe_summary = raidlands_store_admin_stripe_sync_summary_text($stripe_sync);
+                $stripe_errors = array_slice((array) ($stripe_sync['errors'] ?? []), 0, 3);
 
-                if ($stripe_price_target !== '') {
-                    try {
-                        $stripe_result = raidlands_store_admin_create_stripe_price_from_post($store_rows, $stripe_price_target);
-                        $stripe_price_id = (string) ($stripe_result['stripe_price_id'] ?? '');
-                        $mode = (string) ($stripe_result['mode'] ?? 'configured');
-                        $verb = !empty($stripe_result['created']) ? 'created' : 'linked';
-
-                        raidlands_admin_set_flash(
-                            'success',
-                            'Store products saved. Stripe Price ' . $stripe_price_id . ' ' . $verb . ' for ' . (string) ($stripe_result['product_name'] ?? 'product') . ' (' . $mode . ' mode).'
-                        );
-                    } catch (Throwable $stripe_error) {
-                        raidlands_admin_set_flash('error', 'Store products saved, but Stripe Price creation failed: ' . $stripe_error->getMessage());
-                    }
+                if (!empty($stripe_sync['skipped'])) {
+                    raidlands_admin_set_flash('warning', 'Store products saved. ' . $stripe_summary);
+                } elseif (empty($stripe_sync['ok'])) {
+                    $error_suffix = $stripe_errors === [] ? '' : ' ' . implode(' ', $stripe_errors);
+                    raidlands_admin_set_flash('warning', 'Store products saved, but some Stripe catalog rows need attention. ' . $stripe_summary . $error_suffix);
                 } else {
-                    raidlands_admin_set_flash('success', 'Store products saved.');
+                    raidlands_admin_set_flash('success', 'Store products saved. ' . $stripe_summary);
                 }
             } elseif ($section === 'features') {
                 raidlands_admin_set_flash('success', raidlands_features_admin_save($_POST));

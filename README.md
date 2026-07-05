@@ -94,18 +94,19 @@ The store uses MySQL as the source of truth, Stripe Checkout for cash purchases,
 25. Run `database/migrations/023_player_group_assignments.sql`.
 26. Run `database/migrations/024_server_map_images.sql`.
 27. Run `database/migrations/025_store_lifetime_kit_unlock_groups.sql`.
-28. Run `database/seeds/001_store_products.sql`.
-29. Copy `.env.example` to `.env`.
-30. Fill in MySQL, Stripe, Steam API, bridge secret, and clan API limit values.
-31. Add at least one owner SteamID64 to `admin_users` and `admin_user_roles`.
-32. Configure product RP costs and Stripe Price IDs in `/admin/?section=store`, or use the Store editor's Stripe Price creation buttons after the Stripe test or live secret key is set.
+28. Run `database/migrations/026_store_stripe_catalog_sync.sql`.
+29. Run `database/seeds/001_store_products.sql`.
+30. Copy `.env.example` to `.env`.
+31. Fill in MySQL, Stripe, Steam API, bridge secret, and clan API limit values.
+32. Add at least one owner SteamID64 to `admin_users` and `admin_user_roles`.
+33. Configure product RP costs and cash offer amounts in `/admin/?section=store`; active cash offers automatically sync Stripe Products and Prices on Store save when the Stripe secret key is set.
 
 Public store flow:
 
 - `/link/` links a SteamID64 into the browser session.
 - `/store/` lists main kit bundles, individual shop kits, and standalone perks.
 - `/store/checkout.php` creates Stripe Checkout Sessions.
-- Admin > Store can create or reuse Stripe Prices from configured cash offer rows once `RAIDLANDS_STRIPE_SECRET_KEY` is set.
+- Admin > Store automatically creates, reuses, replaces, or archives Raidlands-managed Stripe Products and Prices from configured cash offer rows once `RAIDLANDS_STRIPE_SECRET_KEY` is set.
 - `/profile/billing-portal.php` opens Stripe Billing Portal for recurring cash subscriptions.
 - `/api/stripe-webhook.php` records paid orders, subscriptions, refunds, and entitlement changes.
 - Store products apply one or more managed groups for purchases and manual grants; Kits and Groups control the permissions those groups receive.

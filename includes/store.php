@@ -2303,19 +2303,6 @@ function raidlands_store_stripe_setup_status(): array
     ];
 }
 
-function raidlands_store_admin_price_lookup_key(
-    string $slug,
-    string $kind,
-    string $interval,
-    string $currency,
-    int $amount_cents
-): string {
-    $raw = 'raidlands_' . $slug . '_' . $kind . '_' . $interval . '_' . $currency . '_' . $amount_cents;
-    $key = strtolower(preg_replace('/[^a-z0-9_]+/', '_', $raw) ?? $raw);
-
-    return substr(trim($key, '_'), 0, 190);
-}
-
 function raidlands_store_stripe_object_array($object): array
 {
     if (is_object($object) && method_exists($object, 'toArray')) {
@@ -2325,17 +2312,352 @@ function raidlands_store_stripe_object_array($object): array
     return is_array($object) ? $object : [];
 }
 
-function raidlands_store_stripe_price_matches(array $price, string $kind, string $interval, string $currency, int $amount_cents): bool
+function raidlands_store_table_columns(string $table): array
 {
-    if ((int) ($price['unit_amount'] ?? 0) !== $amount_cents) {
+    static $columns = [];
+
+    $table = trim($table);
+
+    if ($table === '' || !raidlands_db_is_configured()) {
+        return [];
+    }
+
+    if (isset($columns[$table])) {
+        return $columns[$table];
+    }
+
+    try {
+        $rows = raidlands_db_fetch_all(
+            'SELECT COLUMN_NAME
+             FROM INFORMATION_SCHEMA.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = :table_name',
+            ['table_name' => $table]
+        );
+    } catch (Throwable $error) {
+        $columns[$table] = [];
+        return [];
+    }
+
+    $columns[$table] = array_fill_keys(array_map(
+        static fn (array $row): string => (string) ($row['COLUMN_NAME'] ?? ''),
+        $rows
+    ), true);
+    unset($columns[$table]['']);
+
+    return $columns[$table];
+}
+
+function raidlands_store_table_has_columns(string $table, array $required): bool
+{
+    $columns = raidlands_store_table_columns($table);
+
+    foreach ($required as $column) {
+        if (!isset($columns[$column])) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
+function raidlands_store_stripe_catalog_sync_schema_ready(): bool
+{
+    return raidlands_store_table_has_columns('store_products', [
+        'stripe_product_id',
+        'stripe_sync_mode',
+        'stripe_sync_status',
+        'stripe_sync_error',
+        'stripe_last_synced_at',
+    ]) && raidlands_store_table_has_columns('store_prices', [
+        'stripe_lookup_key',
+        'stripe_managed',
+        'stripe_sync_mode',
+        'stripe_sync_status',
+        'stripe_sync_error',
+        'stripe_last_synced_at',
+    ]);
+}
+
+function raidlands_store_admin_stripe_sync_empty_result(): array
+{
+    return [
+        'ok' => true,
+        'skipped' => false,
+        'mode' => raidlands_store_stripe_key_mode(raidlands_store_stripe_secret_key()),
+        'products' => [
+            'created' => 0,
+            'updated' => 0,
+            'archived' => 0,
+            'skipped' => 0,
+            'external' => 0,
+        ],
+        'prices' => [
+            'created' => 0,
+            'updated' => 0,
+            'reused' => 0,
+            'replaced' => 0,
+            'archived' => 0,
+            'skipped' => 0,
+            'external' => 0,
+        ],
+        'errors' => [],
+        'message' => '',
+    ];
+}
+
+function raidlands_store_admin_stripe_sync_increment(array &$result, string $group, string $key): void
+{
+    if (!isset($result[$group]) || !is_array($result[$group])) {
+        $result[$group] = [];
+    }
+
+    $result[$group][$key] = (int) ($result[$group][$key] ?? 0) + 1;
+}
+
+function raidlands_store_admin_stripe_sync_add_error(array &$result, string $message): void
+{
+    $message = trim($message);
+
+    if ($message === '') {
+        return;
+    }
+
+    $result['ok'] = false;
+    $result['errors'][] = $message;
+}
+
+function raidlands_store_admin_stripe_sync_error_text($error, int $max_length = 500): string
+{
+    $message = $error instanceof Throwable ? $error->getMessage() : (string) $error;
+    $message = trim(preg_replace('/\s+/', ' ', $message) ?? $message);
+
+    if (function_exists('mb_substr')) {
+        return mb_substr($message, 0, $max_length);
+    }
+
+    return substr($message, 0, $max_length);
+}
+
+function raidlands_store_admin_stripe_price_lookup_key(int $store_price_id): string
+{
+    return 'raidlands_store_price_' . max(0, $store_price_id);
+}
+
+function raidlands_store_admin_stripe_price_kind(array $price): string
+{
+    return (string) ($price['billing_interval'] ?? 'one_time') === 'one_time'
+        ? 'cash_pass'
+        : 'cash_sub';
+}
+
+function raidlands_store_admin_stripe_price_interval(array $price): string
+{
+    $kind = raidlands_store_admin_stripe_price_kind($price);
+
+    return $kind === 'cash_sub'
+        ? (string) ($price['billing_interval'] ?? 'month')
+        : (string) ($price['access_interval'] ?? 'one_time');
+}
+
+function raidlands_store_admin_stripe_metadata(array $product, ?array $price = null): array
+{
+    $metadata = [
+        'app' => 'raidlands',
+        'managed_by' => 'raidlands_admin_store',
+        'product_id' => (string) ($product['id'] ?? ''),
+        'store_product_id' => (string) ($product['id'] ?? ''),
+        'product_slug' => (string) ($product['slug'] ?? ''),
+    ];
+
+    if ($price !== null) {
+        $kind = raidlands_store_admin_stripe_price_kind($price);
+        $interval = raidlands_store_admin_stripe_price_interval($price);
+        $metadata += [
+            'store_price_id' => (string) ($price['id'] ?? ''),
+            'offer_kind' => $kind,
+            'access_interval' => (string) ($price['access_interval'] ?? 'one_time'),
+            'billing_interval' => $kind === 'cash_sub' ? $interval : 'one_time',
+        ];
+    }
+
+    return $metadata;
+}
+
+function raidlands_store_admin_stripe_product_description(array $product): string
+{
+    $description = trim((string) ($product['description'] ?? ''));
+
+    if ($description === '') {
+        $description = trim((string) ($product['short_description'] ?? ''));
+    }
+
+    if (function_exists('mb_substr')) {
+        return mb_substr($description, 0, 1000);
+    }
+
+    return substr($description, 0, 1000);
+}
+
+function raidlands_store_admin_stripe_object_managed(array $object, array $expected_metadata = [], string $expected_lookup_key = ''): bool
+{
+    $metadata = raidlands_store_metadata($object);
+
+    if ((string) ($metadata['app'] ?? '') === 'raidlands' && (string) ($metadata['managed_by'] ?? '') === 'raidlands_admin_store') {
+        return true;
+    }
+
+    if ($expected_lookup_key !== '' && (string) ($object['lookup_key'] ?? '') === $expected_lookup_key) {
+        return true;
+    }
+
+    if ((string) ($metadata['app'] ?? '') !== 'raidlands') {
         return false;
     }
 
-    if (strtolower((string) ($price['currency'] ?? '')) !== $currency) {
+    foreach ($expected_metadata as $key => $value) {
+        $value = (string) $value;
+
+        if ($value !== '' && (string) ($metadata[$key] ?? '') !== $value) {
+            return false;
+        }
+    }
+
+    return $expected_metadata !== [];
+}
+
+function raidlands_store_admin_record_product_stripe_sync(
+    PDO $pdo,
+    int $product_id,
+    string $mode,
+    string $status,
+    string $error = '',
+    string $stripe_product_id = '',
+    bool $set_product_id = false
+): void {
+    if ($product_id <= 0) {
+        return;
+    }
+
+    $set = [
+        'stripe_sync_mode = :sync_mode',
+        'stripe_sync_status = :sync_status',
+        'stripe_sync_error = :sync_error',
+        'stripe_last_synced_at = NOW()',
+    ];
+    $params = [
+        'sync_mode' => $mode,
+        'sync_status' => $status,
+        'sync_error' => raidlands_store_admin_stripe_sync_error_text($error),
+        'id' => $product_id,
+    ];
+
+    if ($set_product_id) {
+        $set[] = 'stripe_product_id = :stripe_product_id';
+        $params['stripe_product_id'] = $stripe_product_id;
+    }
+
+    $statement = $pdo->prepare('UPDATE store_products SET ' . implode(', ', $set) . ', updated_at = NOW() WHERE id = :id');
+    $statement->execute($params);
+}
+
+function raidlands_store_admin_record_price_stripe_sync(
+    PDO $pdo,
+    int $price_id,
+    string $mode,
+    string $status,
+    string $error = '',
+    string $stripe_price_id = '',
+    bool $set_price_id = false,
+    string $lookup_key = '',
+    int $managed = 0
+): void {
+    if ($price_id <= 0) {
+        return;
+    }
+
+    $set = [
+        'stripe_lookup_key = :stripe_lookup_key',
+        'stripe_managed = :stripe_managed',
+        'stripe_sync_mode = :sync_mode',
+        'stripe_sync_status = :sync_status',
+        'stripe_sync_error = :sync_error',
+        'stripe_last_synced_at = NOW()',
+    ];
+    $params = [
+        'stripe_lookup_key' => $lookup_key,
+        'stripe_managed' => $managed,
+        'sync_mode' => $mode,
+        'sync_status' => $status,
+        'sync_error' => raidlands_store_admin_stripe_sync_error_text($error),
+        'id' => $price_id,
+    ];
+
+    if ($set_price_id) {
+        $set[] = 'stripe_price_id = :stripe_price_id';
+        $params['stripe_price_id'] = $stripe_price_id;
+    }
+
+    $statement = $pdo->prepare('UPDATE store_prices SET ' . implode(', ', $set) . ', updated_at = NOW() WHERE id = :id');
+    $statement->execute($params);
+}
+
+function raidlands_store_admin_retrieve_stripe_product(string $stripe_product_id): ?array
+{
+    if ($stripe_product_id === '' || !str_starts_with($stripe_product_id, 'prod_')) {
+        return null;
+    }
+
+    return raidlands_store_stripe_object_array(\Stripe\Product::retrieve($stripe_product_id));
+}
+
+function raidlands_store_admin_retrieve_stripe_price(string $stripe_price_id): ?array
+{
+    if ($stripe_price_id === '' || !str_starts_with($stripe_price_id, 'price_')) {
+        return null;
+    }
+
+    return raidlands_store_stripe_object_array(\Stripe\Price::retrieve($stripe_price_id));
+}
+
+function raidlands_store_admin_find_stripe_price_by_lookup(string $lookup_key): ?array
+{
+    if ($lookup_key === '') {
+        return null;
+    }
+
+    foreach ([true, false] as $active) {
+        $prices = \Stripe\Price::all([
+            'lookup_keys' => [$lookup_key],
+            'active' => $active,
+            'limit' => 1,
+        ]);
+
+        foreach ((array) ($prices->data ?? []) as $price_object) {
+            $price = raidlands_store_stripe_object_array($price_object);
+
+            if (!empty($price['id'])) {
+                return $price;
+            }
+        }
+    }
+
+    return null;
+}
+
+function raidlands_store_admin_stripe_price_matches_row(array $stripe_price, array $price): bool
+{
+    if ((int) ($stripe_price['unit_amount'] ?? 0) !== (int) ($price['amount_cents'] ?? 0)) {
         return false;
     }
 
-    $recurring = $price['recurring'] ?? null;
+    if (strtolower((string) ($stripe_price['currency'] ?? '')) !== strtolower((string) ($price['currency'] ?? 'usd'))) {
+        return false;
+    }
+
+    $kind = raidlands_store_admin_stripe_price_kind($price);
+    $interval = raidlands_store_admin_stripe_price_interval($price);
+    $recurring = $stripe_price['recurring'] ?? null;
 
     if ($kind === 'cash_sub') {
         return is_array($recurring)
@@ -2346,105 +2668,19 @@ function raidlands_store_stripe_price_matches(array $price, string $kind, string
     return $recurring === null;
 }
 
-function raidlands_store_admin_find_stripe_price(string $lookup_key, string $kind, string $interval, string $currency, int $amount_cents): ?array
+function raidlands_store_admin_stripe_price_create_params(array $product, array $price, string $stripe_product_id, string $lookup_key): array
 {
-    $prices = \Stripe\Price::all([
-        'lookup_keys' => [$lookup_key],
-        'active' => true,
-        'limit' => 10,
-    ]);
-
-    foreach ((array) ($prices->data ?? []) as $price_object) {
-        $price = raidlands_store_stripe_object_array($price_object);
-
-        if (raidlands_store_stripe_price_matches($price, $kind, $interval, $currency, $amount_cents)) {
-            return $price;
-        }
-    }
-
-    return null;
-}
-
-function raidlands_store_admin_create_or_reuse_stripe_price(array $product, array $price, string $kind, string $interval): array
-{
-    $secret_key = raidlands_store_stripe_secret_key();
-
-    if ($secret_key === '') {
-        throw new RuntimeException('Stripe secret key is not configured.');
-    }
-
-    raidlands_store_load_stripe();
-    \Stripe\Stripe::setApiKey($secret_key);
-
-    $existing_price_id = trim((string) ($price['stripe_price_id'] ?? ''));
-
-    if (str_starts_with($existing_price_id, 'price_')) {
-        return [
-            'stripe_price_id' => $existing_price_id,
-            'created' => false,
-            'reused' => true,
-            'already_configured' => true,
-            'mode' => raidlands_store_stripe_key_mode($secret_key),
-        ];
-    }
-
-    $amount_cents = (int) ($price['amount_cents'] ?? 0);
-
-    if ($amount_cents <= 0) {
-        throw new InvalidArgumentException('Set an amount greater than zero before creating a Stripe Price.');
-    }
-
-    $currency = strtolower(trim((string) ($price['currency'] ?? 'usd')));
-
-    if (!preg_match('/^[a-z]{3}$/', $currency)) {
-        throw new InvalidArgumentException('Stripe currency must be a three-letter ISO currency code.');
-    }
-
-    if ($kind === 'cash_sub' && !in_array($interval, raidlands_store_admin_subscription_intervals(), true)) {
-        throw new InvalidArgumentException('Choose a supported recurring interval before creating a Stripe Price.');
-    }
-
-    if ($kind !== 'cash_sub' && !in_array($interval, raidlands_store_offer_intervals(true), true)) {
-        throw new InvalidArgumentException('Choose a supported cash-pass interval before creating a Stripe Price.');
-    }
-
-    $slug = (string) ($product['slug'] ?? ('product-' . (int) ($product['id'] ?? 0)));
+    $kind = raidlands_store_admin_stripe_price_kind($price);
+    $interval = raidlands_store_admin_stripe_price_interval($price);
     $label = raidlands_store_offer_label($price, $kind === 'cash_sub' ? 'Subscription' : 'Cash Pass');
-    $lookup_key = raidlands_store_admin_price_lookup_key($slug, $kind, $interval, $currency, $amount_cents);
-    $metadata = [
-        'app' => 'raidlands',
-        'product_id' => (string) ($product['id'] ?? ''),
-        'product_slug' => $slug,
-        'offer_kind' => $kind,
-        'access_interval' => $interval,
-        'billing_interval' => $kind === 'cash_sub' ? $interval : 'one_time',
-    ];
-    $existing = raidlands_store_admin_find_stripe_price($lookup_key, $kind, $interval, $currency, $amount_cents);
-
-    if ($existing !== null && !empty($existing['id'])) {
-        return [
-            'stripe_price_id' => (string) $existing['id'],
-            'created' => false,
-            'reused' => true,
-            'already_configured' => false,
-            'mode' => raidlands_store_stripe_key_mode($secret_key),
-        ];
-    }
-
     $params = [
-        'currency' => $currency,
-        'unit_amount' => $amount_cents,
+        'product' => $stripe_product_id,
+        'currency' => strtolower((string) ($price['currency'] ?? 'usd')),
+        'unit_amount' => (int) ($price['amount_cents'] ?? 0),
         'nickname' => $label,
         'lookup_key' => $lookup_key,
-        'metadata' => $metadata,
-        'product_data' => [
-            'name' => (string) ($product['name'] ?? $slug),
-            'metadata' => [
-                'app' => 'raidlands',
-                'product_id' => (string) ($product['id'] ?? ''),
-                'product_slug' => $slug,
-            ],
-        ],
+        'transfer_lookup_key' => true,
+        'metadata' => raidlands_store_admin_stripe_metadata($product, $price),
     ];
 
     if ($kind === 'cash_sub') {
@@ -2454,28 +2690,472 @@ function raidlands_store_admin_create_or_reuse_stripe_price(array $product, arra
         ];
     }
 
+    return $params;
+}
+
+function raidlands_store_admin_update_stripe_price_metadata(array $product, array $price, array $stripe_price, string $lookup_key): void
+{
+    $stripe_price_id = (string) ($stripe_price['id'] ?? '');
+
+    if ($stripe_price_id === '') {
+        return;
+    }
+
+    \Stripe\Price::update($stripe_price_id, [
+        'active' => true,
+        'lookup_key' => $lookup_key,
+        'nickname' => raidlands_store_offer_label($price, raidlands_store_admin_stripe_price_kind($price) === 'cash_sub' ? 'Subscription' : 'Cash Pass'),
+        'metadata' => raidlands_store_admin_stripe_metadata($product, $price),
+    ]);
+}
+
+function raidlands_store_admin_create_stripe_catalog_price(array $product, array $price, string $stripe_product_id, string $lookup_key): array
+{
+    $params = raidlands_store_admin_stripe_price_create_params($product, $price, $stripe_product_id, $lookup_key);
     $stripe_price = \Stripe\Price::create($params, [
-        'idempotency_key' => 'raidlands-price-' . hash('sha256', implode('|', [
-            $slug,
-            $kind,
-            $interval,
-            $currency,
-            (string) $amount_cents,
+        'idempotency_key' => 'raidlands-store-price-' . hash('sha256', implode('|', [
+            (string) ($price['id'] ?? ''),
+            (string) ($price['amount_cents'] ?? 0),
+            strtolower((string) ($price['currency'] ?? 'usd')),
+            (string) ($price['billing_interval'] ?? 'one_time'),
+            (string) ($price['access_interval'] ?? 'one_time'),
         ])),
     ]);
+
     $created = raidlands_store_stripe_object_array($stripe_price);
 
     if (empty($created['id'])) {
         throw new RuntimeException('Stripe did not return a Price ID.');
     }
 
-    return [
-        'stripe_price_id' => (string) $created['id'],
-        'created' => true,
-        'reused' => false,
-        'already_configured' => false,
-        'mode' => raidlands_store_stripe_key_mode($secret_key),
+    return $created;
+}
+
+function raidlands_store_admin_archive_stripe_price_if_managed(
+    PDO $pdo,
+    array $product,
+    array $price,
+    array &$result,
+    string $reason = 'Inactive offer'
+): void {
+    $price_id = (int) ($price['id'] ?? 0);
+    $stripe_price_id = trim((string) ($price['stripe_price_id'] ?? ''));
+    $lookup_key = (string) ($price['stripe_lookup_key'] ?? '');
+
+    if ($lookup_key === '') {
+        $lookup_key = raidlands_store_admin_stripe_price_lookup_key($price_id);
+    }
+
+    if ($price_id <= 0 || !str_starts_with($stripe_price_id, 'price_')) {
+        raidlands_store_admin_record_price_stripe_sync($pdo, $price_id, 'auto', 'skipped', $reason, '', false, $lookup_key, 0);
+        raidlands_store_admin_stripe_sync_increment($result, 'prices', 'skipped');
+        return;
+    }
+
+    try {
+        $stripe_price = raidlands_store_admin_retrieve_stripe_price($stripe_price_id);
+        $managed = !empty($price['stripe_managed']) || (
+            $stripe_price !== null
+            && raidlands_store_admin_stripe_object_managed(
+                $stripe_price,
+                [
+                    'product_id' => (string) ($product['id'] ?? ''),
+                    'product_slug' => (string) ($product['slug'] ?? ''),
+                ],
+                $lookup_key
+            )
+        );
+
+        if (!$managed) {
+            raidlands_store_admin_record_price_stripe_sync($pdo, $price_id, 'external', 'external', 'External Stripe Price is not managed by Raidlands.', '', false, $lookup_key, 0);
+            raidlands_store_admin_stripe_sync_increment($result, 'prices', 'external');
+            return;
+        }
+
+        \Stripe\Price::update($stripe_price_id, ['active' => false]);
+        raidlands_store_admin_record_price_stripe_sync($pdo, $price_id, 'auto', 'archived', '', '', false, $lookup_key, 1);
+        raidlands_store_admin_stripe_sync_increment($result, 'prices', 'archived');
+    } catch (Throwable $error) {
+        $message = 'Could not archive Stripe Price ' . $stripe_price_id . ': ' . raidlands_store_admin_stripe_sync_error_text($error);
+        raidlands_store_admin_record_price_stripe_sync($pdo, $price_id, 'auto', 'error', $message, '', false, $lookup_key, !empty($price['stripe_managed']) ? 1 : 0);
+        raidlands_store_admin_stripe_sync_add_error($result, $message);
+    }
+}
+
+function raidlands_store_admin_sync_stripe_price(
+    PDO $pdo,
+    array $product,
+    array $price,
+    string $stripe_product_id,
+    array &$result
+): ?string {
+    $price_id = (int) ($price['id'] ?? 0);
+    $lookup_key = (string) ($price['stripe_lookup_key'] ?? '');
+
+    if ($lookup_key === '') {
+        $lookup_key = raidlands_store_admin_stripe_price_lookup_key($price_id);
+    }
+
+    if ($price_id <= 0 || (string) ($price['payment_method'] ?? '') !== 'stripe') {
+        raidlands_store_admin_stripe_sync_increment($result, 'prices', 'skipped');
+        return null;
+    }
+
+    if (empty($price['is_active']) || (int) ($price['amount_cents'] ?? 0) <= 0) {
+        raidlands_store_admin_archive_stripe_price_if_managed($pdo, $product, $price, $result, 'Inactive or zero-amount cash offer.');
+        return null;
+    }
+
+    $currency = strtolower((string) ($price['currency'] ?? 'usd'));
+
+    if (!preg_match('/^[a-z]{3}$/', $currency)) {
+        $message = 'Store price ' . $price_id . ' has an invalid Stripe currency.';
+        raidlands_store_admin_record_price_stripe_sync($pdo, $price_id, 'auto', 'error', $message, '', false, $lookup_key, !empty($price['stripe_managed']) ? 1 : 0);
+        raidlands_store_admin_stripe_sync_add_error($result, $message);
+        return null;
+    }
+
+    $existing_price_id = trim((string) ($price['stripe_price_id'] ?? ''));
+    $existing = null;
+    $existing_managed = !empty($price['stripe_managed']);
+
+    try {
+        if (str_starts_with($existing_price_id, 'price_')) {
+            $existing = raidlands_store_admin_retrieve_stripe_price($existing_price_id);
+            $existing_managed = $existing_managed || (
+                $existing !== null
+                && raidlands_store_admin_stripe_object_managed(
+                    $existing,
+                    [
+                        'product_id' => (string) ($product['id'] ?? ''),
+                        'product_slug' => (string) ($product['slug'] ?? ''),
+                    ],
+                    $lookup_key
+                )
+            );
+
+            if (!$existing_managed) {
+                raidlands_store_admin_record_price_stripe_sync($pdo, $price_id, 'external', 'external', 'External Stripe Price is not managed by Raidlands.', '', false, $lookup_key, 0);
+                raidlands_store_admin_stripe_sync_increment($result, 'prices', 'external');
+                return null;
+            }
+        }
+
+        if ($existing !== null && $existing_managed && raidlands_store_admin_stripe_price_matches_row($existing, $price)) {
+            raidlands_store_admin_update_stripe_price_metadata($product, $price, $existing, $lookup_key);
+            raidlands_store_admin_record_price_stripe_sync($pdo, $price_id, 'auto', 'synced', '', (string) $existing['id'], true, $lookup_key, 1);
+            raidlands_store_admin_stripe_sync_increment($result, 'prices', 'updated');
+            return (string) $existing['id'];
+        }
+
+        $lookup_price = raidlands_store_admin_find_stripe_price_by_lookup($lookup_key);
+
+        if (
+            $lookup_price !== null
+            && raidlands_store_admin_stripe_object_managed($lookup_price, [], $lookup_key)
+            && raidlands_store_admin_stripe_price_matches_row($lookup_price, $price)
+        ) {
+            raidlands_store_admin_update_stripe_price_metadata($product, $price, $lookup_price, $lookup_key);
+            raidlands_store_admin_record_price_stripe_sync($pdo, $price_id, 'auto', 'synced', '', (string) $lookup_price['id'], true, $lookup_key, 1);
+            raidlands_store_admin_stripe_sync_increment($result, 'prices', 'reused');
+            return (string) $lookup_price['id'];
+        }
+
+        $created = raidlands_store_admin_create_stripe_catalog_price($product, $price, $stripe_product_id, $lookup_key);
+        $created_id = (string) $created['id'];
+        $was_replacement = $existing !== null && $existing_managed && !raidlands_store_admin_stripe_price_matches_row($existing, $price);
+
+        if ($was_replacement && $existing_price_id !== '' && $existing_price_id !== $created_id) {
+            \Stripe\Price::update($existing_price_id, ['active' => false]);
+            raidlands_store_admin_stripe_sync_increment($result, 'prices', 'archived');
+        }
+
+        raidlands_store_admin_record_price_stripe_sync($pdo, $price_id, 'auto', 'synced', '', $created_id, true, $lookup_key, 1);
+        raidlands_store_admin_stripe_sync_increment($result, 'prices', $was_replacement ? 'replaced' : 'created');
+
+        return $created_id;
+    } catch (Throwable $error) {
+        $message = 'Store price ' . $price_id . ' could not sync to Stripe: ' . raidlands_store_admin_stripe_sync_error_text($error);
+        raidlands_store_admin_record_price_stripe_sync($pdo, $price_id, 'auto', 'error', $message, '', false, $lookup_key, $existing_managed ? 1 : 0);
+        raidlands_store_admin_stripe_sync_add_error($result, $message);
+        return null;
+    }
+}
+
+function raidlands_store_admin_product_needs_stripe_sync(array $product, array $prices): bool
+{
+    if (empty($product['is_active'])) {
+        return false;
+    }
+
+    foreach ($prices as $price) {
+        if (
+            (string) ($price['payment_method'] ?? '') === 'stripe'
+            && !empty($price['is_active'])
+            && (int) ($price['amount_cents'] ?? 0) > 0
+            && ((string) ($price['stripe_sync_mode'] ?? 'auto') !== 'external' || !str_starts_with((string) ($price['stripe_price_id'] ?? ''), 'price_'))
+        ) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function raidlands_store_admin_sync_stripe_product(PDO $pdo, array $product, bool $active, array &$result): ?string
+{
+    $product_id = (int) ($product['id'] ?? 0);
+    $stripe_product_id = trim((string) ($product['stripe_product_id'] ?? ''));
+    $metadata = raidlands_store_admin_stripe_metadata($product);
+    $params = [
+        'name' => (string) ($product['name'] ?? ('Store product ' . $product_id)),
+        'active' => $active,
+        'description' => raidlands_store_admin_stripe_product_description($product),
+        'metadata' => $metadata,
     ];
+
+    if ($product_id <= 0) {
+        return null;
+    }
+
+    try {
+        if (str_starts_with($stripe_product_id, 'prod_')) {
+            $existing = raidlands_store_admin_retrieve_stripe_product($stripe_product_id);
+
+            if ($existing !== null && !raidlands_store_admin_stripe_object_managed($existing, ['product_id' => (string) $product_id])) {
+                raidlands_store_admin_record_product_stripe_sync($pdo, $product_id, 'external', 'external', 'External Stripe Product is not managed by Raidlands.');
+                raidlands_store_admin_stripe_sync_increment($result, 'products', 'external');
+                return null;
+            }
+
+            \Stripe\Product::update($stripe_product_id, $params);
+            raidlands_store_admin_record_product_stripe_sync($pdo, $product_id, 'auto', $active ? 'synced' : 'archived', '', $stripe_product_id, true);
+            raidlands_store_admin_stripe_sync_increment($result, 'products', $active ? 'updated' : 'archived');
+
+            return $stripe_product_id;
+        }
+
+        if (!$active) {
+            raidlands_store_admin_record_product_stripe_sync($pdo, $product_id, 'auto', 'skipped', 'No active managed cash offers.');
+            raidlands_store_admin_stripe_sync_increment($result, 'products', 'skipped');
+            return null;
+        }
+
+        $stripe_product = \Stripe\Product::create($params, [
+            'idempotency_key' => 'raidlands-store-product-' . hash('sha256', (string) $product_id . '|' . (string) ($product['slug'] ?? '')),
+        ]);
+        $created = raidlands_store_stripe_object_array($stripe_product);
+        $created_id = (string) ($created['id'] ?? '');
+
+        if ($created_id === '') {
+            throw new RuntimeException('Stripe did not return a Product ID.');
+        }
+
+        raidlands_store_admin_record_product_stripe_sync($pdo, $product_id, 'auto', 'synced', '', $created_id, true);
+        raidlands_store_admin_stripe_sync_increment($result, 'products', 'created');
+
+        return $created_id;
+    } catch (Throwable $error) {
+        $message = 'Store product "' . (string) ($product['name'] ?? $product_id) . '" could not sync to Stripe: ' . raidlands_store_admin_stripe_sync_error_text($error);
+        raidlands_store_admin_record_product_stripe_sync($pdo, $product_id, 'auto', 'error', $message, '', false);
+        raidlands_store_admin_stripe_sync_add_error($result, $message);
+        return null;
+    }
+}
+
+function raidlands_store_admin_update_stripe_product_default_price(PDO $pdo, array $product, string $stripe_product_id, string $default_price_id, array &$result): void
+{
+    if ($stripe_product_id === '' || $default_price_id === '') {
+        return;
+    }
+
+    try {
+        \Stripe\Product::update($stripe_product_id, ['default_price' => $default_price_id]);
+    } catch (Throwable $error) {
+        $message = 'Could not set default Stripe Price for "' . (string) ($product['name'] ?? $stripe_product_id) . '": ' . raidlands_store_admin_stripe_sync_error_text($error);
+        raidlands_store_admin_record_product_stripe_sync($pdo, (int) ($product['id'] ?? 0), 'auto', 'error', $message, $stripe_product_id, true);
+        raidlands_store_admin_stripe_sync_add_error($result, $message);
+    }
+}
+
+function raidlands_store_admin_stripe_product_rows(PDO $pdo): array
+{
+    return $pdo->query('SELECT * FROM store_products ORDER BY sort_order ASC, id ASC')->fetchAll();
+}
+
+function raidlands_store_admin_stripe_prices_by_product(PDO $pdo, array $product_ids): array
+{
+    $product_ids = array_values(array_filter(array_map('intval', $product_ids)));
+
+    if ($product_ids === []) {
+        return [];
+    }
+
+    [$placeholders, $params] = raidlands_store_sql_in_params($product_ids, 'product_id');
+    $statement = $pdo->prepare(
+        'SELECT *
+         FROM store_prices
+         WHERE product_id IN (' . implode(', ', $placeholders) . ')
+           AND payment_method = "stripe"
+         ORDER BY product_id ASC, is_default DESC, billing_interval ASC, access_interval ASC, id ASC'
+    );
+    $statement->execute($params);
+    $by_product = [];
+
+    foreach ($statement->fetchAll() as $row) {
+        $by_product[(int) ($row['product_id'] ?? 0)][] = $row;
+    }
+
+    return $by_product;
+}
+
+function raidlands_store_admin_sync_stripe_catalog(): array
+{
+    $result = raidlands_store_admin_stripe_sync_empty_result();
+    $status = raidlands_store_stripe_setup_status();
+
+    if (!raidlands_db_is_configured()) {
+        $result['ok'] = false;
+        $result['skipped'] = true;
+        $result['message'] = 'Database is not configured.';
+        return $result;
+    }
+
+    if (!raidlands_store_stripe_catalog_sync_schema_ready()) {
+        $result['ok'] = false;
+        $result['skipped'] = true;
+        $result['message'] = 'Run database/migrations/026_store_stripe_catalog_sync.sql before Stripe catalog sync.';
+        return $result;
+    }
+
+    if (empty($status['secret_configured'])) {
+        $result['ok'] = false;
+        $result['skipped'] = true;
+        $result['message'] = 'RAIDLANDS_STRIPE_SECRET_KEY is not configured.';
+        return $result;
+    }
+
+    if (empty($status['autoload_available'])) {
+        $result['ok'] = false;
+        $result['skipped'] = true;
+        $result['message'] = 'Stripe PHP is not installed. Run composer install.';
+        return $result;
+    }
+
+    raidlands_store_load_stripe();
+    \Stripe\Stripe::setApiKey(raidlands_store_stripe_secret_key());
+
+    $pdo = raidlands_db_required();
+    $products = raidlands_store_admin_stripe_product_rows($pdo);
+    $prices_by_product = raidlands_store_admin_stripe_prices_by_product(
+        $pdo,
+        array_map(static fn (array $product): int => (int) ($product['id'] ?? 0), $products)
+    );
+
+    foreach ($products as $product) {
+        $product_id = (int) ($product['id'] ?? 0);
+        $prices = $prices_by_product[$product_id] ?? [];
+        $needs_product = raidlands_store_admin_product_needs_stripe_sync($product, $prices);
+        $has_existing_product = str_starts_with((string) ($product['stripe_product_id'] ?? ''), 'prod_');
+
+        if (!$needs_product && !$has_existing_product) {
+            raidlands_store_admin_record_product_stripe_sync($pdo, $product_id, 'auto', 'skipped', 'No active managed cash offers.');
+            raidlands_store_admin_stripe_sync_increment($result, 'products', 'skipped');
+
+            foreach ($prices as $price) {
+                raidlands_store_admin_archive_stripe_price_if_managed($pdo, $product, $price, $result, 'No active managed cash offer.');
+            }
+
+            continue;
+        }
+
+        $stripe_product_id = raidlands_store_admin_sync_stripe_product($pdo, $product, $needs_product, $result);
+
+        if ($stripe_product_id === null || $stripe_product_id === '') {
+            foreach ($prices as $price) {
+                if (str_starts_with((string) ($price['stripe_price_id'] ?? ''), 'price_')) {
+                    raidlands_store_admin_archive_stripe_price_if_managed($pdo, $product, $price, $result, 'Product was not available for managed sync.');
+                }
+            }
+
+            continue;
+        }
+
+        if (!$needs_product) {
+            foreach ($prices as $price) {
+                raidlands_store_admin_archive_stripe_price_if_managed($pdo, $product, $price, $result, 'Product has no active managed cash offers.');
+            }
+
+            continue;
+        }
+
+        $default_price_id = '';
+
+        foreach ($prices as $price) {
+            $synced_price_id = raidlands_store_admin_sync_stripe_price($pdo, $product, $price, $stripe_product_id, $result);
+
+            if ($synced_price_id !== null && $default_price_id === '') {
+                $default_price_id = $synced_price_id;
+            }
+        }
+
+        if ($needs_product && $default_price_id !== '') {
+            raidlands_store_admin_update_stripe_product_default_price($pdo, $product, $stripe_product_id, $default_price_id, $result);
+        }
+    }
+
+    return $result;
+}
+
+function raidlands_store_admin_stripe_sync_summary_text(array $result): string
+{
+    if (!empty($result['skipped'])) {
+        return 'Stripe catalog sync skipped: ' . (string) ($result['message'] ?? 'not ready.');
+    }
+
+    $parts = [];
+    $product_labels = [
+        'created' => 'created',
+        'updated' => 'updated',
+        'archived' => 'archived',
+        'skipped' => 'skipped',
+        'external' => 'external',
+    ];
+    $price_labels = [
+        'created' => 'created',
+        'updated' => 'updated',
+        'reused' => 'reused',
+        'replaced' => 'replaced',
+        'archived' => 'archived',
+        'skipped' => 'skipped',
+        'external' => 'external',
+    ];
+
+    foreach ($product_labels as $key => $label) {
+        $count = (int) ($result['products'][$key] ?? 0);
+
+        if ($count > 0) {
+            $parts[] = $count . ' product' . ($count === 1 ? '' : 's') . ' ' . $label;
+        }
+    }
+
+    foreach ($price_labels as $key => $label) {
+        $count = (int) ($result['prices'][$key] ?? 0);
+
+        if ($count > 0) {
+            $parts[] = $count . ' price' . ($count === 1 ? '' : 's') . ' ' . $label;
+        }
+    }
+
+    $errors = count((array) ($result['errors'] ?? []));
+
+    if ($errors > 0) {
+        $parts[] = $errors . ' error' . ($errors === 1 ? '' : 's');
+    }
+
+    return $parts === []
+        ? 'Stripe catalog sync found no cash offers to update.'
+        : 'Stripe catalog sync: ' . implode(', ', $parts) . '.';
 }
 
 function raidlands_store_checkout_for_price(int $price_id): string
@@ -4044,6 +4724,58 @@ function raidlands_store_admin_offer_default_label(string $kind, string $interva
     };
 }
 
+function raidlands_store_admin_record_saved_price_sync_state(
+    PDO $pdo,
+    int $price_id,
+    string $payment_method,
+    string $stripe_price_id,
+    string $previous_stripe_price_id,
+    int $is_active,
+    int $amount_cents
+): void {
+    if (
+        $price_id <= 0
+        || $payment_method !== 'stripe'
+        || !raidlands_store_stripe_catalog_sync_schema_ready()
+    ) {
+        return;
+    }
+
+    $lookup_key = raidlands_store_admin_stripe_price_lookup_key($price_id);
+    $has_stripe_price = str_starts_with($stripe_price_id, 'price_');
+    $id_changed = $previous_stripe_price_id !== $stripe_price_id;
+
+    if ($has_stripe_price && $id_changed) {
+        raidlands_store_admin_record_price_stripe_sync(
+            $pdo,
+            $price_id,
+            'external',
+            'external',
+            'External Stripe Price is not managed by Raidlands.',
+            '',
+            false,
+            $lookup_key,
+            0
+        );
+        return;
+    }
+
+    if (!$has_stripe_price) {
+        $ready_for_sync = $is_active === 1 && $amount_cents > 0;
+        raidlands_store_admin_record_price_stripe_sync(
+            $pdo,
+            $price_id,
+            'auto',
+            $ready_for_sync ? 'pending' : 'skipped',
+            $ready_for_sync ? '' : 'Inactive or zero-amount cash offer.',
+            '',
+            false,
+            $lookup_key,
+            0
+        );
+    }
+}
+
 function raidlands_store_admin_save_offer_price(PDO $pdo, int $product_id, string $slug, string $kind, string $interval, array $row): void
 {
     $allowed = $kind === 'cash_sub'
@@ -4064,6 +4796,14 @@ function raidlands_store_admin_save_offer_price(PDO $pdo, int $product_id, strin
 
     $is_rp = $kind === 'rp';
     $is_subscription = $kind === 'cash_sub';
+    $previous_stripe_price_id = '';
+
+    if ($price_id > 0 && raidlands_store_stripe_catalog_sync_schema_ready()) {
+        $previous_statement = $pdo->prepare('SELECT stripe_price_id FROM store_prices WHERE id = :id');
+        $previous_statement->execute(['id' => $price_id]);
+        $previous_stripe_price_id = (string) ($previous_statement->fetchColumn() ?: '');
+    }
+
     $stripe_price_id = $is_rp
         ? raidlands_store_admin_offer_placeholder($slug, 'rp', $interval)
         : trim(strip_tags((string) ($row['stripe_price_id'] ?? '')));
@@ -4109,6 +4849,15 @@ function raidlands_store_admin_save_offer_price(PDO $pdo, int $product_id, strin
         );
         unset($price['product_id']);
         $statement->execute($price);
+        raidlands_store_admin_record_saved_price_sync_state(
+            $pdo,
+            $price_id,
+            (string) $price['payment_method'],
+            (string) $price['stripe_price_id'],
+            $previous_stripe_price_id,
+            (int) $price['is_active'],
+            (int) $price['amount_cents']
+        );
         return;
     }
 
@@ -4133,6 +4882,24 @@ function raidlands_store_admin_save_offer_price(PDO $pdo, int $product_id, strin
             updated_at = NOW()'
     );
     $statement->execute($price);
+
+    $saved_price_id = (int) ($pdo->lastInsertId() ?: 0);
+
+    if ($saved_price_id <= 0) {
+        $lookup = $pdo->prepare('SELECT id FROM store_prices WHERE stripe_price_id = :stripe_price_id');
+        $lookup->execute(['stripe_price_id' => $stripe_price_id]);
+        $saved_price_id = (int) ($lookup->fetchColumn() ?: 0);
+    }
+
+    raidlands_store_admin_record_saved_price_sync_state(
+        $pdo,
+        $saved_price_id,
+        (string) $price['payment_method'],
+        (string) $price['stripe_price_id'],
+        $previous_stripe_price_id,
+        (int) $price['is_active'],
+        (int) $price['amount_cents']
+    );
 }
 
 function raidlands_store_admin_save_rp_price(PDO $pdo, int $product_id, string $slug, string $product_type, string $interval, array $row): void
@@ -4290,107 +5057,6 @@ function raidlands_store_admin_save_product_rows($rows): void
     if ($publish_permissions && function_exists('raidlands_permissions_publish_from_related_change')) {
         raidlands_permissions_publish_from_related_change('Published permission sync from store product group changes.');
     }
-}
-
-function raidlands_store_admin_normalize_product_slug_from_row(array $row): string
-{
-    $slug = strtolower(trim(preg_replace('/[^a-z0-9-]+/', '-', (string) ($row['slug'] ?? '')), '-'));
-
-    if ($slug !== '') {
-        return $slug;
-    }
-
-    return strtolower(trim(preg_replace('/[^a-z0-9-]+/', '-', (string) ($row['name'] ?? '')), '-'));
-}
-
-function raidlands_store_admin_price_for_offer(int $product_id, string $kind, string $interval): ?array
-{
-    if ($product_id <= 0) {
-        return null;
-    }
-
-    $billing_interval = $kind === 'cash_sub' ? $interval : 'one_time';
-
-    return raidlands_db_fetch_one(
-        "SELECT *
-         FROM store_prices
-         WHERE product_id = :product_id
-           AND payment_method = 'stripe'
-           AND billing_interval = :billing_interval
-           AND access_interval = :access_interval
-         ORDER BY id DESC
-         LIMIT 1",
-        [
-            'product_id' => $product_id,
-            'billing_interval' => $billing_interval,
-            'access_interval' => $interval,
-        ]
-    );
-}
-
-function raidlands_store_admin_create_stripe_price_from_post($rows, string $target): array
-{
-    $parts = explode(':', $target);
-
-    if (count($parts) !== 3) {
-        throw new InvalidArgumentException('Choose a cash offer to create in Stripe.');
-    }
-
-    [$index, $kind, $interval] = $parts;
-
-    if (!in_array($kind, ['cash_pass', 'cash_sub'], true)) {
-        throw new InvalidArgumentException('Only cash offers can create Stripe Prices.');
-    }
-
-    $offer_key = $kind === 'cash_sub' ? 'cash_subscription_prices' : 'cash_pass_prices';
-    $rows = (array) $rows;
-    $row = (array) ($rows[$index] ?? []);
-    $slug = raidlands_store_admin_normalize_product_slug_from_row($row);
-
-    if ($slug === '') {
-        throw new InvalidArgumentException('Save the product name or slug before creating a Stripe Price.');
-    }
-
-    $product = raidlands_db_fetch_one(
-        'SELECT * FROM store_products WHERE slug = :slug',
-        ['slug' => $slug]
-    );
-
-    if ($product === null) {
-        throw new RuntimeException('Save the product before creating a Stripe Price.');
-    }
-
-    $price = raidlands_store_admin_price_for_offer((int) $product['id'], $kind, $interval);
-
-    if ($price === null) {
-        throw new RuntimeException('Save the offer row before creating a Stripe Price.');
-    }
-
-    $stripe_result = raidlands_store_admin_create_or_reuse_stripe_price($product, $price, $kind, $interval);
-    $stripe_price_id = (string) ($stripe_result['stripe_price_id'] ?? '');
-
-    if ($stripe_price_id === '') {
-        throw new RuntimeException('Stripe did not return a Price ID.');
-    }
-
-    raidlands_db_execute(
-        'UPDATE store_prices
-         SET stripe_price_id = :stripe_price_id,
-             updated_at = NOW()
-         WHERE id = :id',
-        [
-            'stripe_price_id' => $stripe_price_id,
-            'id' => (int) $price['id'],
-        ]
-    );
-
-    return $stripe_result + [
-        'product_id' => (int) $product['id'],
-        'product_name' => (string) ($product['name'] ?? ''),
-        'price_label' => raidlands_store_offer_label($price, $kind === 'cash_sub' ? 'Subscription' : 'Cash Pass'),
-        'interval' => $interval,
-        'offer_key' => $offer_key,
-    ];
 }
 
 function raidlands_store_admin_manual_grant(string $steam_id64, int $product_id, ?string $ends_at = null): void

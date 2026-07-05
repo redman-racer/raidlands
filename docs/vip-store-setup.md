@@ -28,9 +28,10 @@
 24. Run `database/migrations/023_player_group_assignments.sql`.
 25. Run `database/migrations/024_server_map_images.sql`.
 26. Run `database/migrations/025_store_lifetime_kit_unlock_groups.sql`.
-27. Run `database/seeds/001_store_products.sql`.
-28. Copy the root `.env.example` file to `.env`.
-29. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
+27. Run `database/migrations/026_store_stripe_catalog_sync.sql`.
+28. Run `database/seeds/001_store_products.sql`.
+29. Copy the root `.env.example` file to `.env`.
+30. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
 
 The root `.env` file is ignored by Git and protected from direct web access by the root `.htaccess`.
 
@@ -45,7 +46,7 @@ The root `.env` file is ignored by Git and protected from direct web access by t
 Cash checkout remains inactive until real Stripe prices are configured.
 
 - Keep Stripe prices inactive or placeholder-only until a payment processor is ready.
-- Create one-time Stripe Prices for cash passes and recurring Stripe Prices for cash subscriptions from Admin > Store after `RAIDLANDS_STRIPE_SECRET_KEY` is set, or paste existing matching `price_...` IDs into Admin > Store.
+- Admin > Store creates, reuses, replaces, or archives Raidlands-managed Stripe Products and Prices automatically on Store save after `RAIDLANDS_STRIPE_SECRET_KEY` is set. Pasted external `price_...` IDs are marked external and protected from automatic updates.
 - Test `price_...` IDs work with test secret keys, and live `price_...` IDs work with live secret keys. Do not mix modes.
 - Set the webhook URL to `/api/stripe-webhook.php`.
 - Configure `RAIDLANDS_STRIPE_PUBLISHABLE_KEY`, `RAIDLANDS_STRIPE_SECRET_KEY`, and `RAIDLANDS_STRIPE_WEBHOOK_SECRET` in `.env`.
@@ -54,7 +55,7 @@ Cash checkout remains inactive until real Stripe prices are configured.
 ## RP shop
 
 - Admin > Store controls RP offers per product: RP cost, active flag, lifetime/timed duration, and optional auto-renew for timed offers.
-- Admin > Store controls cash offers per product: amount, currency, active flag, Stripe Price ID, and lifetime/timed/recurring access. Lifetime cash passes grant access with no scheduled expiration.
+- Admin > Store controls cash offers per product: amount, currency, active flag, optional external Stripe Price ID, and lifetime/timed/recurring access. Lifetime cash passes grant access with no scheduled expiration.
 - Each active store product must have at least one applied group. Purchases and manual grants apply those groups; Kits and Groups control the permissions those groups receive. Migration `025_store_lifetime_kit_unlock_groups.sql` creates managed groups for the individual kit unlock products.
 - The website queues RP purchases first. `WebsiteVipBridge` polls `/api/server/rp-purchases.php`, verifies and deducts live ServerRewards RP, then posts the result to `/api/server/rp-purchase-result.php`.
 - Entitlements activate only after the bridge confirms the debit.
