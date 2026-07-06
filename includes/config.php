@@ -85,6 +85,8 @@ $vip_bridge_config = [
     'serverId' => raidlands_env('RAIDLANDS_BRIDGE_SERVER_ID', 'raidlands-main'),
     'sharedSecret' => trim(raidlands_env('RAIDLANDS_BRIDGE_SHARED_SECRET', '')),
     'hmacSkewSeconds' => raidlands_env_int('RAIDLANDS_BRIDGE_HMAC_SKEW_SECONDS', 300),
+    'statsMaxPlayers' => raidlands_env_int('RAIDLANDS_STATS_MAX_PLAYERS', 5000),
+    'statsMaxBots' => raidlands_env_int('RAIDLANDS_STATS_MAX_BOTS', 0),
     'managedGroups' => raidlands_env_csv('RAIDLANDS_BRIDGE_MANAGED_GROUPS', [
         'rank_vip',
         'rank_vip_plus',

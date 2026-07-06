@@ -15,7 +15,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteVipBridge", "Raidlands", "1.5.7")]
+    [Info("WebsiteVipBridge", "Raidlands", "1.5.8")]
     [Description("Syncs website VIP entitlements and player stats between Raidlands.net and the Rust server.")]
     public class WebsiteVipBridge : CovalencePlugin
     {
@@ -274,6 +274,7 @@ namespace Oxide.Plugins
             public bool StatsEnabled = true;
             public int StatsSyncIntervalSeconds = 300;
             public int StatsDebounceSeconds = 30;
+            public int StatsBotSnapshotLimit = 0;
             public bool RpPurchasesEnabled = true;
             public int RpPurchasePollIntervalSeconds = 30;
             public int RpPurchasePollLimit = 10;
@@ -557,6 +558,14 @@ namespace Oxide.Plugins
             public string display_name;
             public string kit_name;
             public string skill_tier;
+            public string behavior_model_key;
+            public string player_profile_key;
+            public string clan_key;
+            public string clan_tag;
+            public string clan_name;
+            public string squad_role;
+            public int team_id;
+            public int spawns;
             public int kills;
             public int deaths;
         }
@@ -589,6 +598,14 @@ namespace Oxide.Plugins
             public string display_name;
             public string kit_name;
             public string skill_tier;
+            public string behavior_model_key;
+            public string player_profile_key;
+            public string clan_key;
+            public string clan_tag;
+            public string clan_name;
+            public string squad_role;
+            public int team_id;
+            public int spawns;
             public int kills;
             public int deaths;
         }
@@ -2620,16 +2637,31 @@ namespace Oxide.Plugins
                     display_name = source?.display_name ?? botKey,
                     kit_name = source?.kit_name ?? "",
                     skill_tier = source?.skill_tier ?? "",
+                    behavior_model_key = source?.behavior_model_key ?? "",
+                    player_profile_key = source?.player_profile_key ?? "",
+                    clan_key = source?.clan_key ?? "",
+                    clan_tag = source?.clan_tag ?? "",
+                    clan_name = source?.clan_name ?? "",
+                    squad_role = source?.squad_role ?? "",
+                    team_id = Math.Max(0, source?.team_id ?? 0),
+                    spawns = Math.Max(0, source?.spawns ?? 0),
                     kills = Math.Max(0, source?.kills ?? 0),
                     deaths = Math.Max(0, source?.deaths ?? 0)
                 });
             }
 
-            return bots
+            var ordered = bots
                 .OrderByDescending(bot => bot.kills)
+                .ThenByDescending(bot => bot.spawns)
                 .ThenBy(bot => bot.deaths)
                 .ThenBy(bot => bot.bot_key)
                 .ToList();
+
+            var limit = Math.Max(0, config.StatsBotSnapshotLimit);
+
+            return limit > 0 && ordered.Count > limit
+                ? ordered.Take(limit).ToList()
+                : ordered;
         }
 
         private StatsPlayer EnsureStatsPlayer(Dictionary<string, StatsPlayer> playersById, string steamId)

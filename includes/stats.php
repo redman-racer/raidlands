@@ -87,6 +87,68 @@ function raidlands_stats_bot_key($value): string
     return substr($bot_key, 0, 120);
 }
 
+function raidlands_stats_snapshot_limit(string $config_key, int $default): int
+{
+    global $vip_bridge_config;
+
+    $value = $vip_bridge_config[$config_key] ?? $default;
+
+    return is_numeric($value) ? max(0, (int) $value) : $default;
+}
+
+function raidlands_stats_first_present(array $row, array $keys, $default = '')
+{
+    foreach ($keys as $key) {
+        if (!array_key_exists($key, $row)) {
+            continue;
+        }
+
+        $value = $row[$key];
+
+        if (is_scalar($value) && trim((string) $value) !== '') {
+            return $value;
+        }
+    }
+
+    return $default;
+}
+
+function raidlands_stats_bot_activity_score(array $bot): int
+{
+    return raidlands_stats_int($bot['kills'] ?? 0)
+        + raidlands_stats_int($bot['deaths'] ?? 0)
+        + raidlands_stats_int($bot['spawns'] ?? 0);
+}
+
+function raidlands_stats_normalize_bot_payload(array $bots, int &$errors): array
+{
+    $normalized = [];
+
+    foreach ($bots as $payload_key => $bot) {
+        if (!is_array($bot)) {
+            $errors++;
+            continue;
+        }
+
+        $fallback_key = is_int($payload_key) ? '' : (string) $payload_key;
+        $bot_key = raidlands_stats_bot_key(raidlands_stats_first_present($bot, ['bot_key', 'bot_id', 'id', 'key'], $fallback_key));
+
+        if ($bot_key === '') {
+            $errors++;
+            continue;
+        }
+
+        $bot['bot_key'] = $bot_key;
+        $existing = $normalized[$bot_key] ?? null;
+
+        if ($existing === null || raidlands_stats_bot_activity_score($bot) >= raidlands_stats_bot_activity_score($existing)) {
+            $normalized[$bot_key] = $bot;
+        }
+    }
+
+    return array_values($normalized);
+}
+
 function raidlands_stats_ingest_snapshot(array $payload, string $server_id, string $body): array
 {
     if (!raidlands_stats_is_ready()) {
@@ -99,6 +161,9 @@ function raidlands_stats_ingest_snapshot(array $payload, string $server_id, stri
     $generated_at = raidlands_stats_timestamp($payload['generated_at'] ?? null) ?? gmdate('Y-m-d H:i:s');
     $players = $payload['players'] ?? [];
     $bots = $payload['bots'] ?? [];
+    $preprocess_errors = 0;
+    $players_received = is_array($players) ? count($players) : 0;
+    $bots_received = is_array($bots) ? count($bots) : 0;
 
     if (!is_array($players)) {
         throw new InvalidArgumentException('Stats snapshot players must be an array.');
@@ -108,11 +173,15 @@ function raidlands_stats_ingest_snapshot(array $payload, string $server_id, stri
         throw new InvalidArgumentException('Stats snapshot bots must be an array.');
     }
 
-    if (count($players) > 5000) {
+    $players_limit = raidlands_stats_snapshot_limit('statsMaxPlayers', 5000);
+    $bots_limit = raidlands_stats_snapshot_limit('statsMaxBots', 0);
+    $bots = raidlands_stats_normalize_bot_payload($bots, $preprocess_errors);
+
+    if ($players_limit > 0 && count($players) > $players_limit) {
         throw new InvalidArgumentException('Stats snapshot has too many players.');
     }
 
-    if (count($bots) > 1000) {
+    if ($bots_limit > 0 && count($bots) > $bots_limit) {
         throw new InvalidArgumentException('Stats snapshot has too many bots.');
     }
 
@@ -121,20 +190,20 @@ function raidlands_stats_ingest_snapshot(array $payload, string $server_id, stri
 
     $accepted = 0;
     $bots_accepted = 0;
-    $errors = 0;
+    $errors = $preprocess_errors;
 
     try {
         $season = raidlands_stats_get_or_create_wipe($pdo, $server_id, $wipe_key, $wipe_started_at);
         $wipe_id = (int) $season['id'];
         $is_first_season = !empty($season['is_first_season']);
 
-        foreach ($players as $player) {
+        foreach ($players as $payload_key => $player) {
             if (!is_array($player)) {
                 $errors++;
                 continue;
             }
 
-            $steam_id64 = preg_replace('/\D+/', '', (string) ($player['steam_id64'] ?? '')) ?? '';
+            $steam_id64 = preg_replace('/\D+/', '', (string) raidlands_stats_first_present($player, ['steam_id64', 'steam_id', 'id'], $payload_key)) ?? '';
 
             if (!raidlands_store_validate_steam_id64($steam_id64)) {
                 $errors++;
@@ -197,7 +266,7 @@ function raidlands_stats_ingest_snapshot(array $payload, string $server_id, stri
             'wipe_id' => $wipe_id,
             'wipe_key' => $wipe_key,
             'generated_at' => $generated_at,
-            'players_received' => count($players),
+            'players_received' => $players_received,
             'players_accepted' => $accepted,
             'error_count' => $errors,
             'payload_hash' => hash('sha256', $body),
@@ -208,9 +277,9 @@ function raidlands_stats_ingest_snapshot(array $payload, string $server_id, stri
         return [
             'wipe_id' => $wipe_id,
             'wipe_key' => $wipe_key,
-            'players_received' => count($players),
+            'players_received' => $players_received,
             'players_accepted' => $accepted,
-            'bots_received' => count($bots),
+            'bots_received' => $bots_received,
             'bots_accepted' => $bots_accepted,
             'error_count' => $errors,
         ];
@@ -431,9 +500,9 @@ function raidlands_stats_upsert_bot_wipe(PDO $pdo, int $wipe_id, string $bot_key
     $kills = max(0, $raw['kills'] - $baseline['kills']);
     $deaths = max(0, $raw['deaths'] - $baseline['deaths']);
     $kdr = $deaths === 0 ? (float) $kills : round($kills / $deaths, 3);
-    $display_name = raidlands_stats_clean_text($bot['display_name'] ?? $bot_key, 120);
-    $kit_name = raidlands_stats_clean_text($bot['kit_name'] ?? '', 80);
-    $skill_tier = raidlands_stats_clean_text($bot['skill_tier'] ?? '', 40);
+    $display_name = raidlands_stats_clean_text(raidlands_stats_first_present($bot, ['display_name', 'bot_name', 'name'], $bot_key), 120);
+    $kit_name = raidlands_stats_clean_text(raidlands_stats_first_present($bot, ['kit_name', 'kit', 'kit_type', 'loadout'], ''), 80);
+    $skill_tier = raidlands_stats_clean_text(raidlands_stats_first_present($bot, ['skill_tier', 'skill', 'tier', 'difficulty'], ''), 40);
 
     $statement = $pdo->prepare(
         'INSERT INTO bot_wipe_stats

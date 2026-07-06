@@ -30,6 +30,7 @@
     "StatsEnabled":  true,
     "StatsSyncIntervalSeconds":  300,
     "StatsDebounceSeconds":  30,
+    "StatsBotSnapshotLimit":  0,
     "RpPurchasesEnabled":  true,
     "RpPurchasePollIntervalSeconds":  30,
     "RpPurchasePollLimit":  10,
