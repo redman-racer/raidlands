@@ -3716,7 +3716,6 @@ namespace Oxide.Plugins
         {
             var result = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
             {
-                "admin",
                 "authenticated"
             };
 
@@ -3963,14 +3962,15 @@ namespace Oxide.Plugins
 
         private bool IsPermissionManageableGroupName(string group)
         {
-            return IsGroupName(group) && !string.Equals(group, "admin", StringComparison.OrdinalIgnoreCase)
-                && !string.Equals(group, "authenticated", StringComparison.OrdinalIgnoreCase);
+            return IsGroupName(group) && !string.Equals(group, "authenticated", StringComparison.OrdinalIgnoreCase);
         }
 
         private bool IsProtectedPermissionGroupName(string group)
         {
             return string.Equals(group, "default", StringComparison.OrdinalIgnoreCase)
-                || string.Equals(group, "discord", StringComparison.OrdinalIgnoreCase);
+                || string.Equals(group, "discord", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(group, "admin", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(group, "authenticated", StringComparison.OrdinalIgnoreCase);
         }
 
         private bool IsSafePermissionName(string permissionName)

@@ -135,7 +135,7 @@ function raidlands_permissions_permission_prefix(string $permission): string
 
 function raidlands_permissions_read_only_groups(): array
 {
-    return ['admin', 'authenticated'];
+    return ['authenticated'];
 }
 
 function raidlands_permissions_group_is_read_only(string $group_name): bool
@@ -151,6 +151,16 @@ function raidlands_permissions_protected_groups(): array
 function raidlands_permissions_group_has_forced_protection(string $group_name): bool
 {
     return in_array(raidlands_permissions_clean_group($group_name), raidlands_permissions_protected_groups(), true);
+}
+
+function raidlands_permissions_forced_managed_groups(): array
+{
+    return ['admin'];
+}
+
+function raidlands_permissions_group_is_forced_managed(string $group_name): bool
+{
+    return in_array(raidlands_permissions_clean_group($group_name), raidlands_permissions_forced_managed_groups(), true);
 }
 
 function raidlands_permissions_default_group_names(): array
@@ -583,13 +593,14 @@ function raidlands_permissions_upsert_group(PDO $pdo, array $row, bool $from_sna
     $title = raidlands_permissions_clean_text($row['title'] ?? $group_name, 160);
     $category = raidlands_permissions_clean_text($row['category'] ?? ($from_snapshot ? 'snapshot' : 'custom'), 80);
     $parent = raidlands_permissions_clean_group($row['parent_group'] ?? $row['parent'] ?? '');
+    $managed = raidlands_permissions_group_is_forced_managed($group_name) || !empty($row['is_managed']);
     $params = [
         'group_name' => $group_name,
         'title' => $title !== '' ? $title : $group_name,
         'rank' => max(0, min(9999, (int) ($row['rank'] ?? 0))),
         'parent_group' => $parent,
         'category' => $category !== '' ? $category : 'custom',
-        'is_managed' => $read_only ? 0 : (empty($row['is_managed']) ? 0 : 1),
+        'is_managed' => $read_only ? 0 : ($managed ? 1 : 0),
         'is_protected' => $protected || !empty($row['is_protected']) ? 1 : 0,
         'is_read_only' => $read_only ? 1 : 0,
         'is_active' => empty($row['is_active']) ? 0 : 1,
@@ -1016,7 +1027,7 @@ function raidlands_permissions_admin_save(array $post): array
                 'rank' => $row['rank'] ?? 0,
                 'parent_group' => $row['parent_group'] ?? '',
                 'category' => $row['category'] ?? 'custom',
-                'is_managed' => !empty($row['is_managed']),
+                'is_managed' => raidlands_permissions_group_is_forced_managed($group_name) || !empty($row['is_managed']),
                 'is_protected' => raidlands_permissions_group_has_forced_protection($group_name) || !empty($row['is_protected']),
                 'is_read_only' => $is_read_only,
                 'is_active' => empty($row['is_active']) ? 0 : 1,
@@ -1092,7 +1103,7 @@ function raidlands_permissions_admin_save(array $post): array
             raidlands_db_execute(
                 'UPDATE oxide_groups
                  SET published_revision = :revision, published_at = NOW(), updated_at = NOW()
-                 WHERE is_managed = 1 AND is_active = 1 AND group_name NOT IN ("admin", "authenticated")',
+                 WHERE is_managed = 1 AND is_active = 1 AND is_read_only = 0',
                 ['revision' => $revision]
             );
         }
@@ -1145,7 +1156,7 @@ function raidlands_permissions_desired_map(): array
          WHERE og.is_managed = 1
            AND og.is_active = 1
            AND og.deleted_at IS NULL
-           AND og.group_name NOT IN ("admin", "authenticated")
+           AND og.is_read_only = 0
          ORDER BY og.group_name ASC, op.permission_name ASC'
     );
     $map = [];

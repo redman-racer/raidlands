@@ -3487,7 +3487,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               </label>
                               <label class="admin-check admin-check-field">
                                 <input type="checkbox" name="permission_groups[<?= e((string) $index) ?>][is_managed]" value="1" <?= !empty($row['is_managed']) && !$is_read_only ? 'checked' : '' ?> <?= $is_read_only ? 'disabled' : '' ?>>
-                                <?= admin_check_copy('Website managed', 'Managed groups are included in published permission sync. Read-only system groups are never published.') ?>
+                                <?= admin_check_copy('Website managed', 'Managed groups are included in published permission sync. Authenticated remains read-only; admin is protected but can publish permission grants.') ?>
                               </label>
                               <label class="admin-check admin-check-field">
                                 <input type="checkbox" name="permission_groups[<?= e((string) $index) ?>][is_protected]" value="1" <?= $is_protected ? 'checked' : '' ?> <?= $is_forced_protected ? 'disabled' : '' ?>>
@@ -3510,7 +3510,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 <span>Edit status</span>
                                 <strong>Protected group</strong>
                                 <?php if ($is_forced_protected) : ?>
-                                  <p><code><?= e($group_name) ?></code> is protected by its group name. Non-kit grants below can still be selected, but title, rank, and parent changes are guarded; use a custom managed group if you need normal structural editing.</p>
+                                  <p><code><?= e($group_name) ?></code> is protected by its group name. Permission grants below can still be selected, but title, rank, and parent changes are guarded; use a custom managed group if you need normal structural editing.</p>
                                 <?php else : ?>
                                   <p>Protected is on for this group. Non-kit grants below can still be selected; to return this group to normal edit mode, clear Protected and then Save Draft or Publish.</p>
                                 <?php endif; ?>
@@ -3875,7 +3875,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 } elseif ($selector_is_protected) {
                                     $selector_title = $selector_is_forced_protected ? 'Protected built-in group' : 'Protected group';
                                     $selector_message = $selector_is_forced_protected
-                                        ? 'The ' . ($selector_name !== '' ? $selector_name : 'selected') . ' group is protected by its group name. Non-kit grants can be reviewed, but normal structural editing is guarded; use a custom managed group for fully editable behavior.'
+                                        ? 'The ' . ($selector_name !== '' ? $selector_name : 'selected') . ' group is protected by its group name. Permission grants can be edited, but normal structural editing is guarded; use a custom managed group for fully editable behavior.'
                                         : 'Protected is turned on for ' . ($selector_name !== '' ? $selector_name : 'this group') . '. Clear the Protected checkbox and save if you want it to behave like a normal editable group.';
                                     $selector_tooltip = 'Protected group. Click for what is guarded and how to change it.';
                                 }
