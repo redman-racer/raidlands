@@ -518,10 +518,21 @@ function raidlands_kits_canonical_image_path(string $kit_name, string $permissio
     ];
 
     if ($permission_key !== '' && isset($by_permission[$permission_key])) {
-        return $by_permission[$permission_key];
+        return raidlands_kits_game_image_path($by_permission[$permission_key]);
     }
 
-    return $by_name[$kit_key] ?? '';
+    return raidlands_kits_game_image_path($by_name[$kit_key] ?? '');
+}
+
+function raidlands_kits_game_image_path(string $path): string
+{
+    $path = trim($path);
+
+    if (preg_match('#^/assets/media/kits/.+\.webp$#i', $path)) {
+        return substr($path, 0, -5) . '.png';
+    }
+
+    return $path;
 }
 
 function raidlands_kits_file_at_index(array $files, string $field, int $index): ?array

@@ -11,7 +11,7 @@ deployment:
     - '/bin/cp .htaccess .env.example browserconfig.xml composer.json composer.lock favicon.ico index.php robots.txt site.webmanifest "$DEPLOYPATH"'
 
     # Public routes, shared PHP includes, APIs, and assets.
-    - '/bin/cp -R admin api api-docs assets bans clans discord events features includes leaderboard link pages play privacy profile rules server store support terms vote "$DEPLOYPATH"'
+    - '/bin/cp -R admin api api-docs assets bans clans discord events features includes leaderboard link pages play privacy profile rp-games rules server store support terms vote "$DEPLOYPATH"'
 
     # Operator/setup references that are safe to publish with the site checkout.
     - '/bin/cp -R database docs server-plugins "$DEPLOYPATH"'

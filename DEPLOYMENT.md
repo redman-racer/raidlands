@@ -189,6 +189,7 @@ Compress-Archive -Force -DestinationPath .\dist\raidlands-godaddy.zip -Path `
   .\play, `
   .\privacy, `
   .\profile, `
+  .\rp-games, `
   .\rules, `
   .\store, `
   .\support, `
