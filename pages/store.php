@@ -126,6 +126,26 @@ function store_product_primary_image_path(array $product): string
     return '';
 }
 
+function store_linked_kit_image_url(array $kit): string
+{
+    $image = raidlands_kits_public_image_url((string) ($kit['image_path'] ?? ''));
+
+    if ($image !== '') {
+        return $image;
+    }
+
+    if (!function_exists('raidlands_kits_canonical_image_path')) {
+        return '';
+    }
+
+    $canonical = raidlands_kits_canonical_image_path(
+        (string) ($kit['kit_name'] ?? $kit['reward_display_name'] ?? ''),
+        (string) ($kit['required_permission'] ?? $kit['reward_permission'] ?? '')
+    );
+
+    return raidlands_kits_public_image_url($canonical);
+}
+
 function render_store_product_symbol(array $product, string $type, array $linked_kits): string
 {
     if ($type === 'perk') {
@@ -154,7 +174,7 @@ function render_store_product_symbol(array $product, string $type, array $linked
 
     foreach ($linked_kits as $kit) {
         $kit = (array) $kit;
-        $image = raidlands_kits_public_image_url((string) ($kit['image_path'] ?? ''));
+        $image = store_linked_kit_image_url($kit);
 
         if ($image === '') {
             continue;
@@ -220,7 +240,8 @@ function render_store_product_card(array $product, ?array $player, string $csrf,
         $kit_html .= '<div class="store-kit-details">';
 
         foreach (array_slice($linked_kits, 0, 3) as $kit) {
-            $image = raidlands_kits_public_image_url((string) ($kit['image_path'] ?? ''));
+            $kit = (array) $kit;
+            $image = store_linked_kit_image_url($kit);
             $uses = (int) ($kit['maximum_uses'] ?? 0);
             $cooldown = (int) ($kit['cooldown_seconds'] ?? 0);
             $items = raidlands_kits_item_summary($kit, 5);
