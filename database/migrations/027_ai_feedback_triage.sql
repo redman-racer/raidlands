@@ -1,0 +1,25 @@
+CREATE TABLE IF NOT EXISTS ai_feedback_reviews (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  source_type ENUM('feedback', 'suggestion') NOT NULL,
+  source_id BIGINT UNSIGNED NOT NULL,
+  status ENUM('skipped', 'failed', 'reviewed', 'applied') NOT NULL DEFAULT 'skipped',
+  model VARCHAR(80) NOT NULL DEFAULT '',
+  action ENUM('group_existing', 'create_public_card', 'close_invalid', 'needs_review', 'none') NOT NULL DEFAULT 'none',
+  confidence DECIMAL(5,4) NOT NULL DEFAULT 0.0000,
+  target_feature_id BIGINT UNSIGNED NULL,
+  target_suggestion_id BIGINT UNSIGNED NULL,
+  admin_note TEXT NULL,
+  result_json JSON NULL,
+  error_text TEXT NULL,
+  reviewed_at TIMESTAMP NULL DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uq_ai_feedback_reviews_source (source_type, source_id),
+  KEY idx_ai_feedback_reviews_status (status, updated_at),
+  KEY idx_ai_feedback_reviews_feature (target_feature_id),
+  KEY idx_ai_feedback_reviews_suggestion (target_suggestion_id),
+  CONSTRAINT fk_ai_feedback_reviews_feature FOREIGN KEY (target_feature_id) REFERENCES feature_items (id) ON DELETE SET NULL,
+  CONSTRAINT fk_ai_feedback_reviews_suggestion FOREIGN KEY (target_suggestion_id) REFERENCES feature_suggestions (id) ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+

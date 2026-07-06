@@ -119,6 +119,14 @@ $admin_feedback_ready = false;
 $admin_feedback_error = '';
 $admin_feedback_feature_rows = [];
 $admin_feedback_feature_links = [];
+$admin_feedback_ai_summary = [
+    'ready' => false,
+    'configured' => false,
+    'unchecked' => 0,
+    'latest' => null,
+    'message' => '',
+];
+$admin_feedback_ai_reviews = [];
 $admin_feedback_features_ready = false;
 $admin_feedback_features_error = '';
 $admin_features_state = [
@@ -130,6 +138,14 @@ $admin_features_state = [
     'feedback_import_count' => 0,
     'window' => [],
 ];
+$admin_features_ai_summary = [
+    'ready' => false,
+    'configured' => false,
+    'unchecked' => 0,
+    'latest' => null,
+    'message' => '',
+];
+$admin_features_ai_reviews = [];
 $admin_features_ready = false;
 $admin_features_error = '';
 $admin_kits_ready = false;
@@ -216,6 +232,15 @@ try {
         $admin_features_state = raidlands_features_admin_state();
         $admin_features_ready = !empty($admin_features_state['ready']);
         $admin_features_error = (string) ($admin_features_state['error'] ?? '');
+
+        if ($admin_features_ready) {
+            $admin_features_ai_summary = raidlands_ai_review_summary('suggestion');
+            $admin_feature_suggestion_ids = array_merge(
+                array_column((array) ($admin_features_state['pending_suggestions'] ?? []), 'id'),
+                array_column((array) ($admin_features_state['grouped_suggestions'] ?? []), 'id')
+            );
+            $admin_features_ai_reviews = raidlands_ai_reviews_for_sources('suggestion', $admin_feature_suggestion_ids);
+        }
     }
 
     if ($active_section === 'feedback') {
@@ -224,6 +249,8 @@ try {
         if ($admin_feedback_ready) {
             $admin_feedback_rows = raidlands_feedback_submissions();
             $admin_feedback_counts = raidlands_feedback_status_counts($admin_feedback_rows);
+            $admin_feedback_ai_summary = raidlands_ai_review_summary('feedback');
+            $admin_feedback_ai_reviews = raidlands_ai_reviews_for_sources('feedback', array_column($admin_feedback_rows, 'id'));
             $admin_feedback_features_ready = raidlands_features_is_ready();
 
             if ($admin_feedback_features_ready) {
@@ -1151,6 +1178,11 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                     $grouped_suggestions = array_values((array) ($admin_features_state['grouped_suggestions'] ?? []));
                     $feedback_import_count = (int) ($admin_features_state['feedback_import_count'] ?? 0);
                     $feature_window = (array) ($admin_features_state['window'] ?? []);
+                    $features_ai_unchecked = (int) ($admin_features_ai_summary['unchecked'] ?? 0);
+                    $features_ai_latest = is_array($admin_features_ai_summary['latest'] ?? null) ? $admin_features_ai_summary['latest'] : null;
+                    $features_ai_latest_label = $features_ai_latest !== null
+                        ? raidlands_ai_review_label($features_ai_latest) . ' at ' . (string) ($features_ai_latest['updated_at'] ?? '')
+                        : 'No AI run yet';
                     $admin_feature_icon_values = [];
 
                     foreach ($feature_rows as $row) {
@@ -1224,6 +1256,11 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                           <p class="section-kicker">Vote window</p>
                           <h3><?= e((string) ($feature_window['expires_label'] ?? 'Current wipe')) ?></h3>
                           <p class="store-muted">votes refresh here</p>
+                        </div>
+                        <div class="metal-panel admin-feedback-stat">
+                          <p class="section-kicker">AI unchecked</p>
+                          <h3><?= e((string) $features_ai_unchecked) ?></h3>
+                          <p class="store-muted"><?= e($features_ai_latest_label) ?></p>
                         </div>
                       </div>
                     </section>
@@ -1491,6 +1528,15 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                           <button class="btn btn-secondary" type="submit" name="features_admin_action" value="import_feedback">Import Feedback Ideas</button>
                         </div>
                       <?php endif; ?>
+                      <div class="admin-alert <?= !empty($admin_features_ai_summary['configured']) ? 'success' : 'warning' ?> admin-action-alert">
+                        <span>
+                          AI triage has <?= e((string) $features_ai_unchecked) ?> unchecked pending suggestion<?= $features_ai_unchecked === 1 ? '' : 's' ?>.
+                          <?= !empty($admin_features_ai_summary['ready']) ? e($features_ai_latest_label) : e((string) ($admin_features_ai_summary['message'] ?? raidlands_ai_readiness_message())) ?>
+                        </span>
+                        <button class="btn btn-secondary" type="submit" name="features_admin_action" value="ai_process_unchecked" <?= empty($admin_features_ai_summary['ready']) || empty($admin_features_ai_summary['configured']) || $features_ai_unchecked <= 0 ? 'disabled' : '' ?>>
+                          <?= empty($admin_features_ai_summary['configured']) ? 'AI Key Missing' : 'Process unchecked with AI' ?>
+                        </button>
+                      </div>
 
                       <?php if ($pending_suggestions === []) : ?>
                         <div class="admin-alert warning">No pending feature suggestions are waiting for review.</div>
@@ -1525,12 +1571,16 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                           <?php foreach ($pending_suggestions as $suggestion) : ?>
                             <?php
                               $suggestion_id = (int) ($suggestion['id'] ?? 0);
+                              $suggestion_ai_review = $admin_features_ai_reviews[$suggestion_id] ?? null;
+                              $suggestion_ai_target = raidlands_ai_review_target_label($suggestion_ai_review);
                               $matches = array_values((array) ($suggestion['matches'] ?? []));
                               $suggestion_source = (string) ($suggestion['source_type'] ?? 'public');
                               $suggestion_source_label = ucwords(str_replace('_', ' ', $suggestion_source));
                               $suggestion_search_text = trim(implode(' ', [
                                   (string) ($suggestion['title'] ?? ''),
                                   (string) ($suggestion['details'] ?? ''),
+                                  (string) ($suggestion_ai_review['admin_note'] ?? ''),
+                                  (string) ($suggestion_ai_review['error_text'] ?? ''),
                                   $suggestion_source,
                                   $suggestion_source_label,
                                   (string) ($suggestion['steam_id64'] ?? ''),
@@ -1558,6 +1608,23 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
 
                               <div class="admin-feedback-body">
                                 <div class="admin-feedback-details"><?= nl2br(e((string) ($suggestion['details'] ?? ''))) ?></div>
+                                <div class="admin-feedback-feature-linked">
+                                  <span class="tag">
+                                    <span class="tag-label">AI</span>
+                                    <span class="tag-value"><?= e(raidlands_ai_review_label($suggestion_ai_review)) ?></span>
+                                  </span>
+                                  <?php if ($suggestion_ai_target !== '') : ?>
+                                    <span class="tag">
+                                      <span class="tag-label">Target</span>
+                                      <span class="tag-value"><?= e($suggestion_ai_target) ?></span>
+                                    </span>
+                                  <?php endif; ?>
+                                  <?php if ($suggestion_ai_review !== null && trim((string) ($suggestion_ai_review['admin_note'] ?? '')) !== '') : ?>
+                                    <small><?= e((string) $suggestion_ai_review['admin_note']) ?></small>
+                                  <?php elseif ($suggestion_ai_review !== null && trim((string) ($suggestion_ai_review['error_text'] ?? '')) !== '') : ?>
+                                    <small><?= e((string) $suggestion_ai_review['error_text']) ?></small>
+                                  <?php endif; ?>
+                                </div>
                                 <?php if ($matches !== []) : ?>
                                   <div class="feature-match-list">
                                     <?php foreach ($matches as $match) : ?>
@@ -1746,9 +1813,15 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                           + (int) ($admin_feedback_counts['closed'] ?? 0);
                       $feedback_candidate_count = count(array_filter(
                           $admin_feedback_rows,
-                          static fn (array $row): bool => in_array((string) ($row['type'] ?? ''), raidlands_features_feedback_types(), true)
+                          fn (array $row): bool => in_array((string) ($row['type'] ?? ''), raidlands_features_feedback_types(), true)
+                              || isset($admin_feedback_feature_links[(int) ($row['id'] ?? 0)])
                       ));
                       $feedback_linked_count = count($admin_feedback_feature_links);
+                      $feedback_ai_unchecked = (int) ($admin_feedback_ai_summary['unchecked'] ?? 0);
+                      $feedback_ai_latest = is_array($admin_feedback_ai_summary['latest'] ?? null) ? $admin_feedback_ai_summary['latest'] : null;
+                      $feedback_ai_latest_label = $feedback_ai_latest !== null
+                          ? raidlands_ai_review_label($feedback_ai_latest) . ' at ' . (string) ($feedback_ai_latest['updated_at'] ?? '')
+                          : 'No AI run yet';
                     ?>
                     <section class="admin-section">
                       <div class="admin-grid four">
@@ -1772,17 +1845,33 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                           <h3><?= e((string) $feedback_closed_count) ?></h3>
                           <p class="store-muted">resolved or closed</p>
                         </div>
+                        <div class="metal-panel admin-feedback-stat">
+                          <p class="section-kicker">AI unchecked</p>
+                          <h3><?= e((string) $feedback_ai_unchecked) ?></h3>
+                          <p class="store-muted"><?= e($feedback_ai_latest_label) ?></p>
+                        </div>
                       </div>
                     </section>
                   <?php endif; ?>
 
                   <section class="admin-section">
-                    <div class="admin-subsection-head">
-                      <h3>Support page submissions</h3>
-                      <p>Search the queue, pick one submission, update staff notes, and route feature ideas without leaving the inbox.</p>
-                    </div>
-                    <?php if (!$admin_feedback_ready) : ?>
-                      <div class="admin-alert warning">The feedback inbox will appear here after the migration is installed.</div>
+                      <div class="admin-subsection-head">
+                        <h3>Support page submissions</h3>
+                        <p>Search the queue, pick one submission, update staff notes, and route feature ideas without leaving the inbox.</p>
+                      </div>
+                      <?php if ($admin_feedback_ready) : ?>
+                        <div class="admin-alert <?= !empty($admin_feedback_ai_summary['configured']) ? 'success' : 'warning' ?> admin-action-alert">
+                          <span>
+                            AI triage has <?= e((string) $feedback_ai_unchecked) ?> unchecked feedback item<?= $feedback_ai_unchecked === 1 ? '' : 's' ?>.
+                            <?= !empty($admin_feedback_ai_summary['ready']) ? e($feedback_ai_latest_label) : e((string) ($admin_feedback_ai_summary['message'] ?? raidlands_ai_readiness_message())) ?>
+                          </span>
+                          <button class="btn btn-secondary" type="submit" name="feedback_admin_action" value="ai_process_unchecked" <?= empty($admin_feedback_ai_summary['ready']) || empty($admin_feedback_ai_summary['configured']) || $feedback_ai_unchecked <= 0 ? 'disabled' : '' ?>>
+                            <?= empty($admin_feedback_ai_summary['configured']) ? 'AI Key Missing' : 'Process unchecked with AI' ?>
+                          </button>
+                        </div>
+                      <?php endif; ?>
+                      <?php if (!$admin_feedback_ready) : ?>
+                        <div class="admin-alert warning">The feedback inbox will appear here after the migration is installed.</div>
                     <?php elseif ($admin_feedback_rows === []) : ?>
                       <div class="admin-alert warning">No bug reports, suggestions, or feature requests have been submitted yet.</div>
                     <?php else : ?>
@@ -1829,6 +1918,8 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                           <?php foreach ($admin_feedback_rows as $feedback_index => $feedback_row) : ?>
                             <?php
                               $feedback_id = (string) ($feedback_row['id'] ?? '');
+                              $feedback_ai_review = $admin_feedback_ai_reviews[(int) $feedback_id] ?? null;
+                              $feedback_ai_target = raidlands_ai_review_target_label($feedback_ai_review);
                               $feedback_status = (string) ($feedback_row['status'] ?? 'open');
                               $feedback_type = (string) ($feedback_row['type'] ?? 'bug');
                               $feedback_contact = trim((string) ($feedback_row['contact_name'] ?? ''));
@@ -1855,9 +1946,9 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               $feedback_feature_link = $admin_feedback_feature_links[(int) $feedback_id] ?? null;
                               $feedback_feature_link_title = trim((string) ($feedback_feature_link['feature_title'] ?? ''));
                               $feedback_feature_default = (string) ((int) ($feedback_feature_link['feature_id'] ?? 0) > 0 ? (int) $feedback_feature_link['feature_id'] : '');
-                              $feedback_feature_state = !$feedback_is_feature_candidate
-                                  ? 'none'
-                                  : ($feedback_feature_link !== null ? 'linked' : 'candidate');
+                              $feedback_feature_state = $feedback_feature_link !== null
+                                  ? 'linked'
+                                  : (!$feedback_is_feature_candidate ? 'none' : 'candidate');
                               $feedback_feature_state_label = match ($feedback_feature_state) {
                                   'linked' => 'Linked feature',
                                   'candidate' => 'Feature candidate',
@@ -1897,6 +1988,8 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                   $feedback_page,
                                   $feedback_browser,
                                   (string) ($feedback_row['admin_note'] ?? ''),
+                                  (string) ($feedback_ai_review['admin_note'] ?? ''),
+                                  (string) ($feedback_ai_review['error_text'] ?? ''),
                               ]);
                               $feedback_selector_meta = $feedback_type_label . ' / ' . $feedback_submitted . ' / ' . $feedback_status_label;
                               $feedback_selector_items[] = [
@@ -1954,6 +2047,10 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                   <small>Updated</small>
                                   <strong><?= e($feedback_updated !== '' ? $feedback_updated : 'Not updated') ?></strong>
                                 </span>
+                                <span>
+                                  <small>AI</small>
+                                  <strong><?= e(raidlands_ai_review_label($feedback_ai_review)) ?></strong>
+                                </span>
                               </div>
 
                               <div class="admin-feedback-section-stack">
@@ -1999,6 +2096,35 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                         <dd><code><?= e((string) ($feedback_row['public_id'] ?? '')) ?></code></dd>
                                       </div>
                                     </dl>
+                                  </div>
+                                </details>
+
+                                <details class="admin-details admin-feedback-details-panel" open>
+                                  <summary>AI triage <small>Automation status and target</small></summary>
+                                  <div class="admin-feedback-feature-linked">
+                                    <span class="tag">
+                                      <span class="tag-label">AI</span>
+                                      <span class="tag-value"><?= e(raidlands_ai_review_label($feedback_ai_review)) ?></span>
+                                    </span>
+                                    <?php if ($feedback_ai_target !== '') : ?>
+                                      <span class="tag">
+                                        <span class="tag-label">Target</span>
+                                        <span class="tag-value"><?= e($feedback_ai_target) ?></span>
+                                      </span>
+                                    <?php endif; ?>
+                                    <?php if ($feedback_ai_review !== null && trim((string) ($feedback_ai_review['confidence'] ?? '')) !== '') : ?>
+                                      <span class="tag">
+                                        <span class="tag-label">Confidence</span>
+                                        <span class="tag-value"><?= e(number_format((float) ($feedback_ai_review['confidence'] ?? 0), 2)) ?></span>
+                                      </span>
+                                    <?php endif; ?>
+                                    <?php if ($feedback_ai_review !== null && trim((string) ($feedback_ai_review['admin_note'] ?? '')) !== '') : ?>
+                                      <small><?= e((string) $feedback_ai_review['admin_note']) ?></small>
+                                    <?php elseif ($feedback_ai_review !== null && trim((string) ($feedback_ai_review['error_text'] ?? '')) !== '') : ?>
+                                      <small><?= e((string) $feedback_ai_review['error_text']) ?></small>
+                                    <?php else : ?>
+                                      <small>This item has not been successfully checked by AI yet.</small>
+                                    <?php endif; ?>
                                   </div>
                                 </details>
 

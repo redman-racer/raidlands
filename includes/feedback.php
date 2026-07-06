@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/store.php';
+require_once __DIR__ . '/ai-triage.php';
 
 function raidlands_feedback_type_options(): array
 {
@@ -176,6 +177,8 @@ function raidlands_feedback_create_from_post(array $post): string
         'page_url' => $page_url,
         'browser' => raidlands_feedback_clean_text($_SERVER['HTTP_USER_AGENT'] ?? '', 240),
     ]);
+
+    raidlands_ai_process_feedback_inline((int) $pdo->lastInsertId());
 
     return $public_id;
 }

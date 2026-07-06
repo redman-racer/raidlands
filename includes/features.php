@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/store.php';
+require_once __DIR__ . '/ai-triage.php';
 
 const RAIDLANDS_FEATURE_OWNER_STEAM_ID64 = '76561198274680338';
 
@@ -212,7 +213,11 @@ function raidlands_features_create_public_suggestion(array $post): int
         ]
     );
 
-    return (int) raidlands_db_required()->lastInsertId();
+    $suggestion_id = (int) raidlands_db_required()->lastInsertId();
+
+    raidlands_ai_process_suggestion_inline($suggestion_id);
+
+    return $suggestion_id;
 }
 
 function raidlands_features_vote(int $feature_id): void
@@ -1193,6 +1198,12 @@ function raidlands_features_admin_save(array $post): string
         return $imported === 1
             ? 'Imported 1 feedback idea as a pending feature suggestion.'
             : 'Imported ' . $imported . ' feedback ideas as pending feature suggestions.';
+    }
+
+    if ($admin_action === 'ai_process_unchecked') {
+        $unchecked = raidlands_ai_unchecked_count('suggestion');
+
+        return raidlands_ai_batch_message('pending suggestion' . ($unchecked === 1 ? '' : 's'), raidlands_ai_process_suggestion_batch());
     }
 
     $saved = raidlands_features_admin_save_items($post['feature_items'] ?? []);

@@ -117,7 +117,15 @@ function raidlands_admin_handle_request(): void
                 raidlands_admin_set_flash('success', (string) ($result['message'] ?? 'Player access updated.'));
             } elseif ($section === 'feedback') {
                 $updated = raidlands_feedback_admin_save_rows($_POST['feedback_rows'] ?? []);
-                $conversion_message = raidlands_features_admin_handle_feedback_action($_POST);
+                $feedback_admin_action = (string) ($_POST['feedback_admin_action'] ?? '');
+
+                if ($feedback_admin_action === 'ai_process_unchecked') {
+                    $unchecked = raidlands_ai_unchecked_count('feedback');
+                    $conversion_message = raidlands_ai_batch_message('feedback item' . ($unchecked === 1 ? '' : 's'), raidlands_ai_process_feedback_batch());
+                } else {
+                    $conversion_message = raidlands_features_admin_handle_feedback_action($_POST);
+                }
+
                 $feedback_message = $updated === 0
                     ? 'No feedback items changed.'
                     : ($updated === 1 ? 'Feedback item updated.' : $updated . ' feedback items updated.');

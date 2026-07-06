@@ -49,6 +49,7 @@ over `.env` and stay ignored by Git.
 - `RAIDLANDS_STRIPE_PUBLISHABLE_KEY`, `RAIDLANDS_STRIPE_SECRET_KEY`, `RAIDLANDS_STRIPE_WEBHOOK_SECRET`, `RAIDLANDS_STRIPE_BILLING_PORTAL_CONFIGURATION_ID`
 - `RAIDLANDS_BRIDGE_SERVER_ID`, `RAIDLANDS_BRIDGE_SHARED_SECRET`
 - `RAIDLANDS_STEAM_API_KEY`
+- `OPENAI_RAIDLANDS_API_KEY`, `OPENAI_RAIDLANDS_MODEL`, `OPENAI_RAIDLANDS_AI_ENABLED`, `OPENAI_RAIDLANDS_TIMEOUT_SECONDS`
 - `RAIDLANDS_CONNECT_COMMAND`, `RAIDLANDS_STEAM_CONNECT_URL`, `RAIDLANDS_DISCORD_INVITE_URL`
 - `RAIDLANDS_SERVER_STATS_PROVIDER`, `RAIDLANDS_SERVER_STATUS_CACHE_SECONDS`, `RAIDLANDS_SERVER_STATUS_STALE_SECONDS`
 - `RAIDLANDS_SERVER_STATUS_SAMPLE_RETENTION_DAYS`, `RAIDLANDS_SERVER_STATUS_HOURLY_RETENTION_MONTHS`
@@ -60,6 +61,8 @@ Live server status is served by `api/server-status.php`. WebsiteVipBridge posts 
 Steam account linking uses native Steam OpenID only. Manual SteamID64 entry is intentionally disabled so users can only link accounts Steam has verified they own. Discord linking buttons remain ready for a future OAuth URL.
 
 Steam avatars and profile links are only fetched when `RAIDLANDS_STEAM_API_KEY` is set in `.env`. Without that key, account and leaderboard pages render without Steam profile metadata.
+
+AI feedback triage is optional. When `OPENAI_RAIDLANDS_AI_ENABLED=true` and `OPENAI_RAIDLANDS_API_KEY` is set, new support feedback and feature suggestions are sent through OpenAI with content-only payloads. Missing keys or API failures leave items unchecked so Admin > Feedback or Admin > Features can retry them.
 
 The admin panel uses Steam sign-in once `database/migrations/007_admin_auth.sql` is installed. Add approved Steam IDs to `admin_users` and attach roles through `admin_user_roles`; the migration includes a commented owner bootstrap query.
 
@@ -95,11 +98,12 @@ The store uses MySQL as the source of truth, Stripe Checkout for cash purchases,
 26. Run `database/migrations/024_server_map_images.sql`.
 27. Run `database/migrations/025_store_lifetime_kit_unlock_groups.sql`.
 28. Run `database/migrations/026_store_stripe_catalog_sync.sql`.
-29. Run `database/seeds/001_store_products.sql`.
-30. Copy `.env.example` to `.env`.
-31. Fill in MySQL, Stripe, Steam API, bridge secret, and clan API limit values.
-32. Add at least one owner SteamID64 to `admin_users` and `admin_user_roles`.
-33. Configure product RP costs and cash offer amounts in `/admin/?section=store`; active cash offers automatically sync Stripe Products and Prices on Store save when the Stripe secret key is set.
+29. Run `database/migrations/027_ai_feedback_triage.sql`.
+30. Run `database/seeds/001_store_products.sql`.
+31. Copy `.env.example` to `.env`.
+32. Fill in MySQL, Stripe, Steam API, OpenAI AI triage key if enabled, bridge secret, and clan API limit values.
+33. Add at least one owner SteamID64 to `admin_users` and `admin_user_roles`.
+34. Configure product RP costs and cash offer amounts in `/admin/?section=store`; active cash offers automatically sync Stripe Products and Prices on Store save when the Stripe secret key is set.
 
 Public store flow:
 

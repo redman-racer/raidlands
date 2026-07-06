@@ -74,6 +74,13 @@ $steam_api_config = [
     'cacheSeconds' => raidlands_env_int('RAIDLANDS_STEAM_API_CACHE_SECONDS', 86400),
 ];
 
+$openai_config = [
+    'enabled' => raidlands_env_bool('OPENAI_RAIDLANDS_AI_ENABLED', true),
+    'apiKey' => raidlands_env('OPENAI_RAIDLANDS_API_KEY', ''),
+    'model' => raidlands_env('OPENAI_RAIDLANDS_MODEL', 'gpt-5.4-mini'),
+    'timeoutSeconds' => raidlands_env_int('OPENAI_RAIDLANDS_TIMEOUT_SECONDS', 4),
+];
+
 $vip_bridge_config = [
     'serverId' => raidlands_env('RAIDLANDS_BRIDGE_SERVER_ID', 'raidlands-main'),
     'sharedSecret' => trim(raidlands_env('RAIDLANDS_BRIDGE_SHARED_SECRET', '')),
