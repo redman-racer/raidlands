@@ -42,6 +42,7 @@ Deploy the site files from the repository root:
 - `privacy/`
 - `profile/`
 - `rules/`
+- `rp-games/`
 - `store/`
 - `support/`
 - `terms/`
@@ -133,6 +134,7 @@ the host or upload it through a private channel.
    - `database/migrations/024_server_map_images.sql`
    - `database/migrations/025_store_lifetime_kit_unlock_groups.sql`
    - `database/migrations/026_store_stripe_catalog_sync.sql`
+   - `database/migrations/034_vote_rewards_rp_games.sql`
    - `database/seeds/001_store_products.sql`
 
    Then configure RP costs and cash amounts in `/admin/?section=store`. After Stripe keys are present, saving the Store editor automatically creates or updates Raidlands-managed Stripe Products and Prices for active cash offers. You can still paste existing matching `price_...` IDs when they should stay external and unmanaged.
@@ -263,6 +265,7 @@ public_html/
   privacy/
   profile/
   rules/
+  rp-games/
   store/
   support/
   terms/
@@ -323,6 +326,7 @@ Check these URLs on the live domain:
 - `/server/`
 - `/discord/`
 - `/vote/`
+- `/rp-games/`
 - `/rules/`
 - `/leaderboard/`
 - `/store/`
@@ -331,6 +335,8 @@ Check these URLs on the live domain:
 - `/api/server-status.php`
 - `/api/server-status-history.php`
 - `/api/server/status-heartbeat.php` rejects unsigned requests
+- `/api/server/rp-point-requests.php` rejects unsigned requests
+- `/api/server/rp-point-result.php` rejects unsigned requests
 - `/support/`
 - `/privacy/`
 - `/terms/`

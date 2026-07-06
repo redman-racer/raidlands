@@ -11,6 +11,8 @@
     <p>Steam and Discord connections may be required for rewards, profiles, statistics, events, roles, support, appeals, or store access.</p>
     <h2>Supporter Perks</h2>
     <p>Raidlands kit bundles, individual kits, standalone perks, and subscriptions may change, rotate, or be removed if they harm server balance, server stability, or community trust.</p>
+    <h2>Vote Rewards and RP Games</h2>
+    <p>Vote rewards and RP games use in-game Raidlands RP only. RP has no cash value, cannot be cashed out, and point changes are not final until the Rust server confirms the ServerRewards balance change. RP games show odds and payout rules before play, and admins may pause rewards, games, entries, or payouts to protect server balance, prevent abuse, or review technical issues.</p>
     <h2>Facepunch Disclaimer</h2>
     <p>Raidlands is not affiliated with Facepunch Studios.</p>
   </div>

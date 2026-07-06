@@ -6,6 +6,7 @@ require_once __DIR__ . '/features.php';
 require_once __DIR__ . '/todos.php';
 require_once __DIR__ . '/kits.php';
 require_once __DIR__ . '/permissions.php';
+require_once __DIR__ . '/rewards.php';
 
 function raidlands_admin_boot(): void
 {
@@ -115,6 +116,8 @@ function raidlands_admin_handle_request(): void
                     ? 'Group permission revision ' . $result['revision'] . ' published for server sync.'
                     : 'Group permission draft saved.';
                 raidlands_admin_set_flash('success', $message);
+            } elseif ($section === 'vote-rewards' || $section === 'rp-games') {
+                raidlands_admin_set_flash('success', raidlands_rewards_admin_handle_save($section, $_POST));
             } elseif ($section === 'grants') {
                 $result = raidlands_admin_handle_grants_action($_POST);
                 $redirect_params = $result['redirect'] ?? [];
@@ -449,7 +452,7 @@ function raidlands_admin_redirect(?string $section = null, array $params = []): 
 
 function raidlands_admin_section_keys(): array
 {
-    return ['identity', 'links', 'wipe', 'todo', 'features', 'pages', 'seo', 'feedback', 'store', 'kits', 'groups', 'grants', 'sync'];
+    return ['identity', 'links', 'wipe', 'todo', 'features', 'pages', 'seo', 'feedback', 'store', 'vote-rewards', 'rp-games', 'kits', 'groups', 'grants', 'sync'];
 }
 
 function raidlands_admin_allowed_section_keys(): array
@@ -465,6 +468,7 @@ function raidlands_admin_section_permission(string $section): string
     return match (raidlands_admin_clean_section($section)) {
         'feedback' => 'admin.feedback.manage',
         'store' => 'admin.store.manage',
+        'vote-rewards', 'rp-games' => 'admin.rewards.manage',
         'kits' => 'admin.kits.manage',
         'groups' => 'admin.permissions.manage',
         'grants' => 'admin.grants.manage',

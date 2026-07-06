@@ -137,6 +137,8 @@ $primary_nav = [
     ['clans', 'clans', 'Clans'],
     ['link', 'link', 'Link Account'],
     ['store', 'store', 'Store'],
+    ['vote', 'vote', 'Vote'],
+    ['rp-games', 'rp-games', 'RP Games'],
     ['leaderboard', 'leaderboard', 'Leaderboards'],
     ['profile', 'profile', 'Profile'],
 ];
@@ -382,7 +384,11 @@ $page_copy = [
     ],
     'vote' => [
         'title' => 'Vote Rewards',
-        'lede' => 'Voting loops for discovery, rewards, and community growth can connect through linked accounts.',
+        'lede' => 'Vote for Raidlands, claim linked-account RP rewards, and keep server discovery tied to your Steam profile.',
+    ],
+    'rp-games' => [
+        'title' => 'RP Games',
+        'lede' => 'Use in-game Raidlands RP on server-confirmed coinflip, dice, and jackpot rounds with clear odds and limits.',
     ],
     'bans' => [
         'title' => 'Bans and Appeals',
@@ -487,9 +493,15 @@ $seo_pages = [
     ],
     'vote' => [
         'title' => 'Raidlands Vote Rewards',
-        'description' => 'Raidlands vote rewards connect server discovery, player rewards, and community growth.',
+        'description' => 'Claim Raidlands vote rewards with a linked Steam account and server-confirmed ServerRewards RP credits.',
         'ogTitle' => 'Raidlands Vote Rewards',
-        'ogDescription' => 'Vote rewards for Raidlands players.',
+        'ogDescription' => 'Vote for Raidlands and claim linked-account RP rewards.',
+    ],
+    'rp-games' => [
+        'title' => 'Raidlands RP Games | Coinflip, Dice, Jackpot',
+        'description' => 'Play Raidlands RP coinflip, dice, and jackpot with in-game ServerRewards RP, clear odds, and server-confirmed point changes.',
+        'ogTitle' => 'Raidlands RP Games',
+        'ogDescription' => 'In-game RP games for linked Raidlands players.',
     ],
     'bans' => [
         'title' => 'Raidlands Bans and Appeals',

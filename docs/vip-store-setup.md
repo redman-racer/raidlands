@@ -29,9 +29,10 @@
 25. Run `database/migrations/024_server_map_images.sql`.
 26. Run `database/migrations/025_store_lifetime_kit_unlock_groups.sql`.
 27. Run `database/migrations/026_store_stripe_catalog_sync.sql`.
-28. Run `database/seeds/001_store_products.sql`.
-29. Copy the root `.env.example` file to `.env`.
-30. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
+28. Run `database/migrations/034_vote_rewards_rp_games.sql`.
+29. Run `database/seeds/001_store_products.sql`.
+30. Copy the root `.env.example` file to `.env`.
+31. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
 
 The root `.env` file is ignored by Git and protected from direct web access by the root `.htaccess`.
 
@@ -58,6 +59,7 @@ Cash checkout remains inactive until real Stripe prices are configured.
 - Admin > Store controls cash offers per product: amount, currency, active flag, optional external Stripe Price ID, and lifetime/timed/recurring access. Lifetime cash passes grant access with no scheduled expiration.
 - Each active store product must have at least one applied group. Purchases and manual grants apply those groups; Kits and Groups control the permissions those groups receive. Migration `025_store_lifetime_kit_unlock_groups.sql` creates managed groups for the individual kit unlock products.
 - The website queues RP purchases first. `WebsiteVipBridge` polls `/api/server/rp-purchases.php`, verifies and deducts live ServerRewards RP, then posts the result to `/api/server/rp-purchase-result.php`.
+- Vote rewards and RP games queue generic point changes through `/api/server/rp-point-requests.php`; `WebsiteVipBridge` confirms ServerRewards debits/credits exactly once and posts results to `/api/server/rp-point-result.php`.
 - Entitlements activate only after the bridge confirms the debit.
 - Fixed purchases with insufficient RP are rejected. Auto-renew renewals with insufficient RP become past due and the current entitlement expires normally.
 - After running `013_pvp_kit_permission_cleanup.sql`, publish once from Admin > Kits or Admin > Groups so the server receives the unique PvP kit permissions.

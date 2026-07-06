@@ -41,6 +41,8 @@ $admin_sections_all = [
     'seo' => ['label' => 'SEO', 'kicker' => 'Search', 'title' => 'SEO Metadata', 'summary' => 'Browser titles, descriptions, and social sharing copy.'],
     'feedback' => ['label' => 'Feedback', 'kicker' => 'Inbox', 'title' => 'Player Feedback', 'summary' => 'Bug reports, suggestions, and feature requests submitted from the support page.'],
     'store' => ['label' => 'Store', 'kicker' => 'Offers', 'title' => 'Products and Prices', 'summary' => 'Kit bundles, individual kits, standalone perks, RP offers, Stripe Price IDs, and managed access groups.'],
+    'vote-rewards' => ['label' => 'Vote Rewards', 'kicker' => 'Rewards', 'title' => 'Vote Reward Sites', 'summary' => 'Manage public vote links, cooldowns, rewards, callback tokens, and verification mode.'],
+    'rp-games' => ['label' => 'RP Games', 'kicker' => 'Rewards', 'title' => 'RP Games', 'summary' => 'Manage coinflip, dice, jackpot, daily limits, and reward-game queue state.'],
     'kits' => ['label' => 'Kits', 'kicker' => 'Loadouts', 'title' => 'Kit Catalog', 'summary' => 'Rust kit contents, images, cooldowns, uses, RP shop rows, and required Kits plugin permissions.'],
     'groups' => ['label' => 'Groups', 'kicker' => 'Permissions', 'title' => 'Oxide Groups', 'summary' => 'Website-owned group permissions, live snapshots, and bridge-published revisions.'],
     'grants' => ['label' => 'Player Access', 'kicker' => 'Access', 'title' => 'Player Access', 'summary' => 'Load a SteamID64, grant products, add standalone shop groups, and remove website-owned manual access.'],
@@ -49,7 +51,7 @@ $admin_sections_all = [
 $admin_nav_groups = [
     'site-setup' => ['label' => 'Site Setup', 'sections' => ['identity', 'links']],
     'content' => ['label' => 'Content', 'sections' => ['todo', 'features', 'pages', 'seo', 'feedback']],
-    'store-access' => ['label' => 'Store & Access', 'sections' => ['store', 'kits', 'groups', 'grants']],
+    'store-access' => ['label' => 'Store & Access', 'sections' => ['store', 'vote-rewards', 'rp-games', 'kits', 'groups', 'grants']],
     'server-ops' => ['label' => 'Server Ops', 'sections' => ['wipe', 'sync']],
 ];
 $admin_sections = $admin_sections_all;
@@ -192,6 +194,17 @@ $admin_clan_summary = [
     'latest_action' => null,
     'recent_actions' => [],
 ];
+$admin_rewards_state = [
+    'ready' => false,
+    'message' => '',
+    'settings' => [],
+    'sites' => [],
+    'recent_requests' => [],
+    'recent_game_rounds' => [],
+    'recent_jackpots' => [],
+];
+$admin_rewards_ready = false;
+$admin_rewards_error = '';
 
 try {
     $admin_store_ready = raidlands_db_is_configured() && raidlands_db() instanceof PDO;
@@ -221,6 +234,12 @@ try {
                 $admin_access_lookup_error = 'Enter a valid SteamID64. It should be 17 digits and start with 7656119.';
             }
         }
+    }
+
+    if ($active_section === 'vote-rewards' || $active_section === 'rp-games') {
+        $admin_rewards_state = raidlands_rewards_admin_state();
+        $admin_rewards_ready = !empty($admin_rewards_state['ready']);
+        $admin_rewards_error = (string) ($admin_rewards_state['message'] ?? '');
     }
 
     if ($active_section === 'sync') {
@@ -323,6 +342,8 @@ try {
     $admin_kits_error = $error->getMessage();
     $admin_permissions_ready = false;
     $admin_permissions_error = $error->getMessage();
+    $admin_rewards_ready = false;
+    $admin_rewards_error = $error->getMessage();
 }
 
 function admin_page_label(string $key): string
@@ -3066,6 +3087,257 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                   <?php endif; ?>
                 <?php endif; ?>
 
+                <?php if ($active_section === 'vote-rewards') : ?>
+                  <?php if (!$admin_rewards_ready) : ?>
+                    <section class="admin-section">
+                      <div class="admin-alert warning"><?= e($admin_rewards_error !== '' ? $admin_rewards_error : raidlands_rewards_readiness_message(true)) ?></div>
+                    </section>
+                  <?php else : ?>
+                    <?php
+                      $vote_site_rows = array_values((array) ($admin_rewards_state['sites'] ?? []));
+                      $vote_site_total = count($vote_site_rows) + 2;
+                    ?>
+                    <section class="admin-section">
+                      <div class="admin-subsection-head">
+                        <h3>Vote site rewards</h3>
+                        <p>Each active site appears on <code>/vote/</code>. Use <code>{steam_id64}</code> in vote URLs when the target site supports identity passthrough.</p>
+                      </div>
+                      <div class="admin-grid">
+                        <?php for ($index = 0; $index < $vote_site_total; $index += 1) : ?>
+                          <?php
+                            $site_row = $vote_site_rows[$index] ?? [
+                                'id' => '',
+                                'slug' => '',
+                                'name' => '',
+                                'description' => '',
+                                'vote_url_template' => '',
+                                'verification_mode' => 'hybrid',
+                                'callback_token' => '',
+                                'reward_rp' => 200,
+                                'cooldown_hours' => 24,
+                                'is_active' => 0,
+                                'sort_order' => 100,
+                            ];
+                            $callback_slug = raidlands_rewards_clean_slug((string) ($site_row['slug'] ?: $site_row['name'] ?: 'site'));
+                            $callback_token = trim((string) ($site_row['callback_token'] ?? ''));
+                            $callback_url = $callback_token !== ''
+                                ? raidlands_store_absolute_url('api/vote/callback.php?site=' . rawurlencode($callback_slug) . '&token=' . rawurlencode($callback_token))
+                                : '';
+                          ?>
+                          <article class="metal-panel admin-reward-site-row">
+                            <input type="hidden" name="vote_sites[<?= e((string) $index) ?>][id]" value="<?= e((string) ($site_row['id'] ?? '')) ?>">
+                            <div class="admin-grid two">
+                              <label class="admin-field">
+                                <?= admin_field_head('Name', 'Public display name for this vote site.') ?>
+                                <input type="text" name="vote_sites[<?= e((string) $index) ?>][name]" maxlength="160" value="<?= e((string) ($site_row['name'] ?? '')) ?>">
+                              </label>
+                              <label class="admin-field">
+                                <?= admin_field_head('Slug', 'Stable callback and admin identifier. Leave blank for new rows to derive it from the name.') ?>
+                                <input type="text" name="vote_sites[<?= e((string) $index) ?>][slug]" maxlength="120" value="<?= e((string) ($site_row['slug'] ?? '')) ?>">
+                              </label>
+                            </div>
+                            <label class="admin-field">
+                              <?= admin_field_head('Vote URL template', 'Use {steam_id64} where the player SteamID64 should be inserted.') ?>
+                              <input type="url" name="vote_sites[<?= e((string) $index) ?>][vote_url_template]" maxlength="700" value="<?= e((string) ($site_row['vote_url_template'] ?? '')) ?>" placeholder="https://example.com/vote?steam={steam_id64}">
+                            </label>
+                            <label class="admin-field">
+                              <?= admin_field_head('Description', 'Short public note shown on the vote card.') ?>
+                              <input type="text" name="vote_sites[<?= e((string) $index) ?>][description]" maxlength="500" value="<?= e((string) ($site_row['description'] ?? '')) ?>">
+                            </label>
+                            <div class="admin-grid four">
+                              <label class="admin-field">
+                                <?= admin_field_head('Reward RP', 'RP credited after the claim or callback is confirmed by the Rust server.') ?>
+                                <input type="number" min="1" max="1000000" name="vote_sites[<?= e((string) $index) ?>][reward_rp]" value="<?= e((string) ($site_row['reward_rp'] ?? 200)) ?>">
+                              </label>
+                              <label class="admin-field">
+                                <?= admin_field_head('Cooldown hours', 'How long a player waits before claiming this site again.') ?>
+                                <input type="number" min="1" max="8760" name="vote_sites[<?= e((string) $index) ?>][cooldown_hours]" value="<?= e((string) ($site_row['cooldown_hours'] ?? 24)) ?>">
+                              </label>
+                              <label class="admin-field">
+                                <?= admin_field_head('Verification', 'Hybrid allows manual claim plus callback. Strict waits for callback. Manual never requires callback.') ?>
+                                <select name="vote_sites[<?= e((string) $index) ?>][verification_mode]">
+                                  <?= admin_render_keyed_options(['hybrid' => 'Hybrid', 'strict' => 'Strict callback', 'manual' => 'Manual claim'], (string) ($site_row['verification_mode'] ?? 'hybrid')) ?>
+                                </select>
+                              </label>
+                              <label class="admin-field">
+                                <?= admin_field_head('Sort', 'Lower numbers appear first.') ?>
+                                <input type="number" name="vote_sites[<?= e((string) $index) ?>][sort_order]" value="<?= e((string) ($site_row['sort_order'] ?? 100)) ?>">
+                              </label>
+                            </div>
+                            <div class="admin-grid two">
+                              <label class="admin-field">
+                                <?= admin_field_head('Callback token', 'Secret token vote sites must include when posting callback results.') ?>
+                                <input type="text" name="vote_sites[<?= e((string) $index) ?>][callback_token]" maxlength="80" value="<?= e($callback_token) ?>" placeholder="Generate a private token">
+                              </label>
+                              <label class="admin-check admin-check-field">
+                                <input type="checkbox" name="vote_sites[<?= e((string) $index) ?>][is_active]" value="1" <?= !empty($site_row['is_active']) ? 'checked' : '' ?>>
+                                <?= admin_check_copy('Active', 'Show this vote site publicly on /vote/.') ?>
+                              </label>
+                            </div>
+                            <?php if ($callback_url !== '') : ?>
+                              <p class="store-muted">Callback URL: <code><?= e($callback_url) ?></code></p>
+                            <?php endif; ?>
+                          </article>
+                        <?php endfor; ?>
+                      </div>
+                    </section>
+                  <?php endif; ?>
+                <?php endif; ?>
+
+                <?php if ($active_section === 'rp-games') : ?>
+                  <?php if (!$admin_rewards_ready) : ?>
+                    <section class="admin-section">
+                      <div class="admin-alert warning"><?= e($admin_rewards_error !== '' ? $admin_rewards_error : raidlands_rewards_readiness_message(true)) ?></div>
+                    </section>
+                  <?php else : ?>
+                    <?php
+                      $game_settings = (array) ($admin_rewards_state['settings'] ?? []);
+                      $recent_point_requests = (array) ($admin_rewards_state['recent_requests'] ?? []);
+                      $recent_game_rounds = (array) ($admin_rewards_state['recent_game_rounds'] ?? []);
+                      $recent_jackpots = (array) ($admin_rewards_state['recent_jackpots'] ?? []);
+                    ?>
+                    <section class="admin-section">
+                      <div class="admin-grid three">
+                        <label class="admin-check admin-check-field">
+                          <input type="checkbox" name="games_enabled" value="1" <?= !empty($game_settings['games_enabled']) ? 'checked' : '' ?>>
+                          <?= admin_check_copy('All RP games enabled', 'Master switch for coinflip, dice, jackpot entries, and new rounds.') ?>
+                        </label>
+                        <label class="admin-check admin-check-field">
+                          <input type="checkbox" name="coinflip_enabled" value="1" <?= !empty($game_settings['coinflip_enabled']) ? 'checked' : '' ?>>
+                          <?= admin_check_copy('Coinflip enabled', 'Allows players to queue coinflip wagers.') ?>
+                        </label>
+                        <label class="admin-check admin-check-field">
+                          <input type="checkbox" name="dice_enabled" value="1" <?= !empty($game_settings['dice_enabled']) ? 'checked' : '' ?>>
+                          <?= admin_check_copy('Dice enabled', 'Allows players to queue dice wagers.') ?>
+                        </label>
+                        <label class="admin-check admin-check-field">
+                          <input type="checkbox" name="jackpot_enabled" value="1" <?= !empty($game_settings['jackpot_enabled']) ? 'checked' : '' ?>>
+                          <?= admin_check_copy('Jackpot enabled', 'Allows ticket purchases and jackpot payout draws.') ?>
+                        </label>
+                        <label class="admin-check admin-check-field">
+                          <input type="checkbox" name="self_exclusion_enabled" value="1" <?= !empty($game_settings['self_exclusion_enabled']) ? 'checked' : '' ?>>
+                          <?= admin_check_copy('Self-exclusion enforced', 'Honor self-exclusion rows when present.') ?>
+                        </label>
+                      </div>
+
+                      <div class="admin-grid four">
+                        <label class="admin-field">
+                          <?= admin_field_head('Min stake RP', 'Minimum stake for coinflip and dice.') ?>
+                          <input type="number" min="1" name="min_stake_rp" value="<?= e((string) ($game_settings['min_stake_rp'] ?? 200)) ?>">
+                        </label>
+                        <label class="admin-field">
+                          <?= admin_field_head('Max stake RP', 'Maximum stake for coinflip and dice.') ?>
+                          <input type="number" min="1" name="max_stake_rp" value="<?= e((string) ($game_settings['max_stake_rp'] ?? 2000)) ?>">
+                        </label>
+                        <label class="admin-field">
+                          <?= admin_field_head('Daily wager cap', '0 disables the wager cap.') ?>
+                          <input type="number" min="0" name="daily_wager_cap_rp" value="<?= e((string) ($game_settings['daily_wager_cap_rp'] ?? 10000)) ?>">
+                        </label>
+                        <label class="admin-field">
+                          <?= admin_field_head('Daily loss cap', '0 disables the loss cap.') ?>
+                          <input type="number" min="0" name="daily_loss_cap_rp" value="<?= e((string) ($game_settings['daily_loss_cap_rp'] ?? 5000)) ?>">
+                        </label>
+                      </div>
+
+                      <div class="admin-grid four">
+                        <label class="admin-field">
+                          <?= admin_field_head('Coinflip payout basis', '200 means 2.00x gross payout on wins.') ?>
+                          <input type="number" min="100" max="1000" name="coinflip_payout_multiplier_basis" value="<?= e((string) ($game_settings['coinflip_payout_multiplier_basis'] ?? 200)) ?>">
+                        </label>
+                        <label class="admin-field">
+                          <?= admin_field_head('Dice win chance %', 'Chance to win a dice roll. The public page shows the threshold.') ?>
+                          <input type="number" min="1" max="95" name="dice_win_chance_percent" value="<?= e((string) ($game_settings['dice_win_chance_percent'] ?? 45)) ?>">
+                        </label>
+                        <label class="admin-field">
+                          <?= admin_field_head('Dice payout basis', '200 means 2.00x gross payout on wins.') ?>
+                          <input type="number" min="100" max="1000" name="dice_payout_multiplier_basis" value="<?= e((string) ($game_settings['dice_payout_multiplier_basis'] ?? 200)) ?>">
+                        </label>
+                        <label class="admin-field">
+                          <?= admin_field_head('Ticket cost RP', 'Cost for each jackpot ticket.') ?>
+                          <input type="number" min="1" name="jackpot_ticket_cost_rp" value="<?= e((string) ($game_settings['jackpot_ticket_cost_rp'] ?? 200)) ?>">
+                        </label>
+                      </div>
+
+                      <div class="admin-grid four">
+                        <label class="admin-field">
+                          <?= admin_field_head('Max tickets/player', 'Per-player ticket limit per jackpot round.') ?>
+                          <input type="number" min="1" name="jackpot_max_entries_per_player" value="<?= e((string) ($game_settings['jackpot_max_entries_per_player'] ?? 10)) ?>">
+                        </label>
+                        <label class="admin-field">
+                          <?= admin_field_head('Round minutes', 'How long new jackpot rounds stay open.') ?>
+                          <input type="number" min="5" max="1440" name="jackpot_round_minutes" value="<?= e((string) ($game_settings['jackpot_round_minutes'] ?? 30)) ?>">
+                        </label>
+                        <label class="admin-field">
+                          <?= admin_field_head('House edge %', 'Percent of confirmed jackpot pot burned before payout.') ?>
+                          <input type="number" min="0" max="50" name="jackpot_house_edge_percent" value="<?= e((string) ($game_settings['jackpot_house_edge_percent'] ?? 10)) ?>">
+                        </label>
+                      </div>
+
+                      <label class="admin-field">
+                        <?= admin_field_head('Terms copy', 'Public guardrail copy shown on /rp-games/.') ?>
+                        <textarea name="terms_copy" rows="4"><?= e((string) ($game_settings['terms_copy'] ?? '')) ?></textarea>
+                      </label>
+
+                      <div class="admin-grid two">
+                        <div class="metal-panel">
+                          <p class="section-kicker">Recent point queue</p>
+                          <h3><?= e((string) count($recent_point_requests)) ?> rows</h3>
+                          <?php if ($recent_point_requests !== []) : ?>
+                            <div class="store-table-wrap">
+                              <table class="store-table">
+                                <thead>
+                                  <tr>
+                                    <th>Source</th>
+                                    <th>Debit</th>
+                                    <th>Credit</th>
+                                    <th>Status</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  <?php foreach (array_slice($recent_point_requests, 0, 8) as $request_row) : ?>
+                                    <tr>
+                                      <td><?= e((string) $request_row['source_type']) ?></td>
+                                      <td><?= e(raidlands_store_rp((int) $request_row['debit_rp'])) ?></td>
+                                      <td><?= e(raidlands_store_rp((int) $request_row['credit_rp'])) ?></td>
+                                      <td><span class="status-pill <?= e((string) $request_row['status']) ?>"><?= e((string) $request_row['status']) ?></span></td>
+                                    </tr>
+                                  <?php endforeach; ?>
+                                </tbody>
+                              </table>
+                            </div>
+                          <?php endif; ?>
+                        </div>
+                        <div class="metal-panel">
+                          <p class="section-kicker">Recent jackpots</p>
+                          <h3><?= e((string) count($recent_jackpots)) ?> rounds</h3>
+                          <?php if ($recent_jackpots !== []) : ?>
+                            <div class="store-table-wrap">
+                              <table class="store-table">
+                                <thead>
+                                  <tr>
+                                    <th>Round</th>
+                                    <th>Pot</th>
+                                    <th>Status</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  <?php foreach (array_slice($recent_jackpots, 0, 8) as $jackpot_row) : ?>
+                                    <tr>
+                                      <td><code><?= e((string) $jackpot_row['round_key']) ?></code></td>
+                                      <td><?= e(raidlands_store_rp((int) $jackpot_row['pot_rp'])) ?></td>
+                                      <td><span class="status-pill <?= e((string) $jackpot_row['status']) ?>"><?= e((string) $jackpot_row['status']) ?></span></td>
+                                    </tr>
+                                  <?php endforeach; ?>
+                                </tbody>
+                              </table>
+                            </div>
+                          <?php endif; ?>
+                        </div>
+                      </div>
+                    </section>
+                  <?php endif; ?>
+                <?php endif; ?>
+
                 <?php if ($active_section === 'kits') : ?>
                   <?php if (!$admin_kits_ready) : ?>
                     <section class="admin-section">
@@ -4727,12 +4999,14 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                     $admin_save_disabled = ($active_section === 'store' && !$admin_store_ready)
                         || ($active_section === 'features' && !$admin_features_ready)
                         || ($active_section === 'kits' && !$admin_kits_ready)
-                        || ($active_section === 'groups' && !$admin_permissions_ready);
+                        || ($active_section === 'groups' && !$admin_permissions_ready)
+                        || (in_array($active_section, ['vote-rewards', 'rp-games'], true) && !$admin_rewards_ready);
                     $admin_disabled_label = match ($active_section) {
                         'store' => 'Store Unavailable',
                         'features' => 'Features Unavailable',
                         'kits' => 'Kits Unavailable',
                         'groups' => 'Groups Unavailable',
+                        'vote-rewards', 'rp-games' => 'Rewards Unavailable',
                         default => 'Grant Unavailable',
                     };
                   ?>

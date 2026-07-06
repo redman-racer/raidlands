@@ -3499,7 +3499,9 @@ a.leaderboard-steam:hover,
 }
 
 .status-pill.pending,
-.status-pill.queued {
+.status-pill.queued,
+.status-pill.pending_callback,
+.status-pill.payout_queued {
   border-color: rgba(255, 209, 102, .5);
   color: var(--yellow);
 }
@@ -3516,7 +3518,9 @@ a.leaderboard-steam:hover,
 }
 
 .status-pill.resolved,
-.status-pill.grouped {
+.status-pill.grouped,
+.status-pill.confirmed,
+.status-pill.paid {
   border-color: rgba(124, 255, 107, .5);
   color: var(--green);
 }
@@ -3529,6 +3533,7 @@ a.leaderboard-steam:hover,
 .status-pill.revoked,
 .status-pill.expired,
 .status-pill.closed,
+.status-pill.canceled,
 .status-pill.rejected {
   border-color: rgba(179, 38, 30, .55);
   color: #ffb3ad;
@@ -9052,6 +9057,34 @@ button.admin-permission-chip:focus-visible {
 
 .admin-body .rust-kit-slot.is-filled .rust-kit-slot-title:not(:empty) {
   background: linear-gradient(180deg, transparent, rgba(0, 0, 0, .74));
+}
+
+.reward-site-card,
+.rp-game-layout .metal-panel {
+  display: flex;
+  flex-direction: column;
+  gap: 16px;
+}
+
+.reward-site-card form,
+.rp-game-layout form,
+.metal-panel > form.feedback-form {
+  margin: 0;
+}
+
+.reward-site-card .button-row {
+  margin-top: auto;
+}
+
+.admin-reward-site-row {
+  display: flex;
+  flex-direction: column;
+  gap: 14px;
+}
+
+.admin-reward-site-row code,
+.rp-game-layout code {
+  overflow-wrap: anywhere;
 }
 
 @media (max-width: 1100px) {

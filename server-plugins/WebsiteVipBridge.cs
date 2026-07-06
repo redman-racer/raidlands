@@ -30,6 +30,7 @@ namespace Oxide.Plugins
         private Timer permissionSyncTimer;
         private Timer pendingPermissionSnapshotTimer;
         private Timer rpPurchaseTimer;
+        private Timer rpPointTimer;
         private long cursor;
         private long kitRevision;
         private long permissionRevision;
@@ -37,14 +38,18 @@ namespace Oxide.Plugins
         private Dictionary<string, string> secrets;
         private const string SecretsConfigName = "Secrets.local";
         private const string RpPurchaseDataFile = "WebsiteVipBridge/rp_purchases";
+        private const string RpPointDataFile = "WebsiteVipBridge/rp_point_requests";
         private const string DeletedGroupsDataFile = "WebsiteVipBridge/deleted_groups";
         private const string StorefrontOverridesDataFile = "WebsiteVipBridge/storefront_overrides";
         private string secretsConfigSource;
         private RpPurchaseLedger rpPurchaseData;
+        private RpPointLedger rpPointData;
         private DeletedGroupState deletedGroupState;
         private StorefrontOverrideState storefrontOverrideState;
         private bool rpPurchasePollInFlight;
+        private bool rpPointPollInFlight;
         private readonly HashSet<string> rpResultPostsInFlight = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private readonly HashSet<string> rpPointResultPostsInFlight = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
 
         [PluginReference]
         private Plugin ServerRewards;
@@ -279,6 +284,10 @@ namespace Oxide.Plugins
             public int RpPurchasePollIntervalSeconds = 30;
             public int RpPurchasePollLimit = 10;
             public int RpPurchaseProcessedRetentionDays = 0;
+            public bool RpPointRequestsEnabled = true;
+            public int RpPointRequestPollIntervalSeconds = 30;
+            public int RpPointRequestPollLimit = 10;
+            public int RpPointRequestProcessedRetentionDays = 0;
             public bool KitSyncEnabled = true;
             public int KitSyncIntervalSeconds = 180;
             public bool PermissionSyncEnabled = true;
@@ -461,6 +470,22 @@ namespace Oxide.Plugins
             public Dictionary<string, RpPurchaseLedgerEntry> processed = new Dictionary<string, RpPurchaseLedgerEntry>(StringComparer.OrdinalIgnoreCase);
         }
 
+        private class RpPointRequest
+        {
+            public string request_id;
+            public string steam_id64;
+            public string source_type;
+            public string source_id;
+            public int debit_rp;
+            public int credit_rp;
+            public string reason;
+        }
+
+        private class RpPointLedger
+        {
+            public Dictionary<string, RpPointLedgerEntry> processed = new Dictionary<string, RpPointLedgerEntry>(StringComparer.OrdinalIgnoreCase);
+        }
+
         private class DeletedGroupState
         {
             public List<string> groups = new List<string>();
@@ -492,6 +517,27 @@ namespace Oxide.Plugins
             public string purchase_type;
             public string subscription_id;
             public string subscription_status;
+            public string transaction_id;
+            public string processed_at;
+            public bool posted;
+            public string posted_at;
+            public int post_attempts;
+            public string last_post_error;
+        }
+
+        private class RpPointLedgerEntry
+        {
+            public string request_id;
+            public string steam_id64;
+            public string source_type;
+            public string source_id;
+            public int debit_rp;
+            public int credit_rp;
+            public string status;
+            public string reason;
+            public string message;
+            public int balance_before;
+            public int balance_after;
             public string transaction_id;
             public string processed_at;
             public bool posted;
@@ -687,6 +733,21 @@ namespace Oxide.Plugins
                 config.RpPurchaseProcessedRetentionDays = defaults.RpPurchaseProcessedRetentionDays;
             }
 
+            if (config.RpPointRequestPollIntervalSeconds <= 0)
+            {
+                config.RpPointRequestPollIntervalSeconds = defaults.RpPointRequestPollIntervalSeconds;
+            }
+
+            if (config.RpPointRequestPollLimit <= 0)
+            {
+                config.RpPointRequestPollLimit = defaults.RpPointRequestPollLimit;
+            }
+
+            if (config.RpPointRequestProcessedRetentionDays < 0)
+            {
+                config.RpPointRequestProcessedRetentionDays = defaults.RpPointRequestProcessedRetentionDays;
+            }
+
             if (config.StatusHeartbeatIntervalSeconds <= 0)
             {
                 config.StatusHeartbeatIntervalSeconds = defaults.StatusHeartbeatIntervalSeconds;
@@ -763,6 +824,7 @@ namespace Oxide.Plugins
             StartPermissionSync();
             StartStatusHeartbeat();
             StartRpPurchasePolling();
+            StartRpPointPolling();
 
             var interval = Math.Max(30, config.SyncIntervalSeconds);
             syncTimer = timer.Every(interval, () => RunScheduled("VIP change sync timer", SyncChanges));
@@ -791,7 +853,9 @@ namespace Oxide.Plugins
             permissionSyncTimer?.Destroy();
             pendingPermissionSnapshotTimer?.Destroy();
             rpPurchaseTimer?.Destroy();
+            rpPointTimer?.Destroy();
             SaveRpPurchaseData();
+            SaveRpPointData();
             SaveDeletedGroupState();
             SaveStorefrontOverrides();
         }
@@ -1106,6 +1170,36 @@ namespace Oxide.Plugins
             var unposted = rpPurchaseData?.processed?.Values.Count(entry => entry != null && !entry.posted) ?? 0;
             var interval = Math.Max(10, config.RpPurchasePollIntervalSeconds);
             var message = $"RP purchase polling enabled={config.RpPurchasesEnabled}, interval={interval}s, processed={processed}, unposted_results={unposted}.";
+
+            ReplyBridge(player, message);
+        }
+
+        [Command("websitevip.rp.points.sync")]
+        private void RpPointSyncCommand(IPlayer player, string command, string[] args)
+        {
+            if (!CanRunBridgeCommand(player))
+            {
+                return;
+            }
+
+            SyncRpPointRequests();
+            ReplyBridge(player, "Requested RP point request sync from the website.");
+        }
+
+        [Command("websitevip.rp.points.status")]
+        private void RpPointStatusCommand(IPlayer player, string command, string[] args)
+        {
+            if (!CanRunBridgeCommand(player))
+            {
+                return;
+            }
+
+            LoadRpPointData();
+
+            var processed = rpPointData?.processed?.Count ?? 0;
+            var unposted = rpPointData?.processed?.Values.Count(entry => entry != null && !entry.posted) ?? 0;
+            var interval = Math.Max(10, config.RpPointRequestPollIntervalSeconds);
+            var message = $"RP point request polling enabled={config.RpPointRequestsEnabled}, interval={interval}s, processed={processed}, unposted_results={unposted}.";
 
             ReplyBridge(player, message);
         }
@@ -2071,6 +2165,40 @@ namespace Oxide.Plugins
             }
         }
 
+        private bool TryAddServerRewardsPoints(string steamId, int amount, out string error)
+        {
+            if (ServerRewards == null)
+            {
+                error = "ServerRewards plugin is not loaded.";
+                return false;
+            }
+
+            if (amount <= 0)
+            {
+                error = "RP amount must be positive.";
+                return false;
+            }
+
+            try
+            {
+                var result = ServerRewards.Call("AddPoints", steamId, amount);
+
+                if (result is bool && (bool)result)
+                {
+                    error = "";
+                    return true;
+                }
+
+                error = "ServerRewards rejected the RP credit.";
+                return false;
+            }
+            catch (Exception ex)
+            {
+                error = $"ServerRewards AddPoints failed: {ex.Message}";
+                return false;
+            }
+        }
+
         private void LoadRpPurchaseData()
         {
             if (rpPurchaseData != null)
@@ -2235,6 +2363,486 @@ namespace Oxide.Plugins
             }
 
             SaveRpPurchaseData();
+        }
+
+        private void StartRpPointPolling()
+        {
+            LoadRpPointData();
+            PruneRpPointData();
+
+            if (!config.RpPointRequestsEnabled)
+            {
+                Puts("WebsiteVipBridge RP point request polling is disabled.");
+                return;
+            }
+
+            var interval = Math.Max(10, config.RpPointRequestPollIntervalSeconds);
+            timer.Once(25f, () => RunScheduled("Initial RP point request sync", SyncRpPointRequests));
+            rpPointTimer = timer.Every(interval, () => RunScheduled("RP point request sync timer", SyncRpPointRequests));
+            Puts($"WebsiteVipBridge polling RP point requests every {interval} seconds.");
+        }
+
+        private void SyncRpPointRequests()
+        {
+            if (!config.RpPointRequestsEnabled || !CanRequest())
+            {
+                return;
+            }
+
+            if (rpPointPollInFlight)
+            {
+                Puts("RP point request sync skipped because a previous poll is still in flight.");
+                return;
+            }
+
+            LoadRpPointData();
+            PruneRpPointData();
+            PostPendingRpPointResults();
+
+            rpPointPollInFlight = true;
+            var limit = Math.Max(1, config.RpPointRequestPollLimit);
+            var url = $"{TrimSlash(config.ApiBaseUrl)}/api/server/rp-point-requests.php?limit={limit}";
+
+            SendGet(url, (code, response) =>
+            {
+                try
+                {
+                    if (!IsSuccess(code, response, out var error))
+                    {
+                        PrintWarning($"RP point request sync failed: {error}");
+                        return;
+                    }
+
+                    JObject payload;
+
+                    try
+                    {
+                        payload = JObject.Parse(response);
+                    }
+                    catch (Exception ex)
+                    {
+                        PrintWarning($"RP point request sync failed: invalid response ({ex.Message})");
+                        return;
+                    }
+
+                    if (JsonToken(payload, "ok") != null && !JsonBool(payload, false, "ok"))
+                    {
+                        PrintWarning($"RP point request sync failed: {JsonString(payload, "error", "message", "reason")}");
+                        return;
+                    }
+
+                    var requests = ExtractRpPointRequests(payload);
+                    var handled = 0;
+
+                    foreach (var request in requests)
+                    {
+                        if (HandleRpPointRequest(request))
+                        {
+                            handled++;
+                        }
+                    }
+
+                    if (handled > 0)
+                    {
+                        Puts($"Handled {handled} RP point request(s).");
+                    }
+                }
+                finally
+                {
+                    rpPointPollInFlight = false;
+                }
+            });
+        }
+
+        private List<JObject> ExtractRpPointRequests(JObject payload)
+        {
+            var requests = new List<JObject>();
+            var array = JsonToken(payload, "requests", "point_requests", "rp_point_requests") as JArray;
+
+            if (array == null)
+            {
+                return requests;
+            }
+
+            foreach (var item in array.OfType<JObject>())
+            {
+                requests.Add(item);
+            }
+
+            return requests;
+        }
+
+        private bool HandleRpPointRequest(JObject item)
+        {
+            var request = ParseRpPointRequest(item);
+
+            if (string.IsNullOrWhiteSpace(request.request_id))
+            {
+                PrintWarning("Ignored RP point request without request_id.");
+                return false;
+            }
+
+            LoadRpPointData();
+
+            RpPointLedgerEntry existing;
+
+            if (rpPointData.processed.TryGetValue(request.request_id, out existing) && existing != null)
+            {
+                if (!string.Equals(existing.steam_id64, request.steam_id64, StringComparison.OrdinalIgnoreCase)
+                    || existing.debit_rp != request.debit_rp
+                    || existing.credit_rp != request.credit_rp)
+                {
+                    PrintWarning($"Duplicate RP point request {request.request_id} changed details; returning saved {existing.status} result.");
+                }
+
+                PostRpPointResult(existing, true);
+                return true;
+            }
+
+            var entry = ProcessRpPointRequest(request);
+            rpPointData.processed[entry.request_id] = entry;
+            SaveRpPointData();
+
+            Puts($"RP point request {entry.request_id} {entry.status}: {entry.message}");
+            PostRpPointResult(entry, true);
+
+            if (string.Equals(entry.status, "confirmed", StringComparison.OrdinalIgnoreCase))
+            {
+                QueueStatsSync();
+            }
+
+            return true;
+        }
+
+        private RpPointRequest ParseRpPointRequest(JObject item)
+        {
+            return new RpPointRequest
+            {
+                request_id = JsonString(item, "request_id", "id", "point_request_id", "rp_point_request_id"),
+                steam_id64 = JsonString(item, "steam_id64", "steam_id", "player_steam_id", "player_steam_id64"),
+                source_type = JsonString(item, "source_type", "type", "kind"),
+                source_id = JsonString(item, "source_id", "source", "round_id", "claim_id"),
+                debit_rp = JsonInt(item, 0, "debit_rp", "debit", "cost_rp", "stake_rp"),
+                credit_rp = JsonInt(item, 0, "credit_rp", "credit", "reward_rp", "payout_rp"),
+                reason = JsonString(item, "reason", "message", "description")
+            };
+        }
+
+        private RpPointLedgerEntry ProcessRpPointRequest(RpPointRequest request)
+        {
+            if (!IsSteamId64(request.steam_id64))
+            {
+                return BuildRpPointResult(request, "failed", "invalid_steam_id", "RP point request has an invalid SteamID64.", 0, 0);
+            }
+
+            request.debit_rp = Math.Max(0, request.debit_rp);
+            request.credit_rp = Math.Max(0, request.credit_rp);
+
+            if (request.debit_rp <= 0 && request.credit_rp <= 0)
+            {
+                return BuildRpPointResult(request, "failed", "invalid_point_amount", "RP point request has no debit or credit amount.", 0, 0);
+            }
+
+            int balanceBefore;
+            string balanceError;
+
+            if (!TryGetServerRewardsBalance(request.steam_id64, out balanceBefore, out balanceError))
+            {
+                return BuildRpPointResult(request, "failed", "server_rewards_unavailable", balanceError, 0, 0);
+            }
+
+            if (request.debit_rp > 0 && balanceBefore < request.debit_rp)
+            {
+                return BuildRpPointResult(
+                    request,
+                    "rejected",
+                    "insufficient_rp",
+                    $"Insufficient RP: required {request.debit_rp}, available {balanceBefore}.",
+                    balanceBefore,
+                    balanceBefore);
+            }
+
+            if (request.debit_rp > 0)
+            {
+                string debitError;
+
+                if (!TryTakeServerRewardsPoints(request.steam_id64, request.debit_rp, out debitError))
+                {
+                    int retryBalance;
+
+                    if (TryGetServerRewardsBalance(request.steam_id64, out retryBalance, out balanceError) && retryBalance < request.debit_rp)
+                    {
+                        return BuildRpPointResult(
+                            request,
+                            "rejected",
+                            "insufficient_rp",
+                            $"Insufficient RP: required {request.debit_rp}, available {retryBalance}.",
+                            retryBalance,
+                            retryBalance);
+                    }
+
+                    return BuildRpPointResult(request, "failed", "debit_failed", debitError, balanceBefore, balanceBefore);
+                }
+            }
+
+            if (request.credit_rp > 0)
+            {
+                string creditError;
+
+                if (!TryAddServerRewardsPoints(request.steam_id64, request.credit_rp, out creditError))
+                {
+                    if (request.debit_rp > 0)
+                    {
+                        string refundError;
+                        TryAddServerRewardsPoints(request.steam_id64, request.debit_rp, out refundError);
+                    }
+
+                    int failedBalance;
+                    if (!TryGetServerRewardsBalance(request.steam_id64, out failedBalance, out balanceError))
+                    {
+                        failedBalance = Math.Max(0, balanceBefore - request.debit_rp);
+                    }
+
+                    return BuildRpPointResult(request, "failed", "credit_failed", creditError, balanceBefore, failedBalance);
+                }
+            }
+
+            int balanceAfter;
+
+            if (!TryGetServerRewardsBalance(request.steam_id64, out balanceAfter, out balanceError))
+            {
+                balanceAfter = Math.Max(0, balanceBefore - request.debit_rp + request.credit_rp);
+            }
+
+            var action = request.debit_rp > 0 && request.credit_rp > 0
+                ? $"Debited {request.debit_rp} RP and credited {request.credit_rp} RP"
+                : (request.debit_rp > 0 ? $"Debited {request.debit_rp} RP" : $"Credited {request.credit_rp} RP");
+
+            return BuildRpPointResult(
+                request,
+                "confirmed",
+                "confirmed",
+                $"{action} for {request.steam_id64}.",
+                balanceBefore,
+                balanceAfter);
+        }
+
+        private RpPointLedgerEntry BuildRpPointResult(
+            RpPointRequest request,
+            string status,
+            string reason,
+            string message,
+            int balanceBefore,
+            int balanceAfter)
+        {
+            return new RpPointLedgerEntry
+            {
+                request_id = request.request_id,
+                steam_id64 = request.steam_id64,
+                source_type = request.source_type,
+                source_id = request.source_id,
+                debit_rp = Math.Max(0, request.debit_rp),
+                credit_rp = Math.Max(0, request.credit_rp),
+                status = status,
+                reason = reason,
+                message = message,
+                balance_before = Math.Max(0, balanceBefore),
+                balance_after = Math.Max(0, balanceAfter),
+                transaction_id = $"rp-point:{request.request_id}",
+                processed_at = DateTime.UtcNow.ToString("o"),
+                posted = false,
+                posted_at = "",
+                post_attempts = 0,
+                last_post_error = ""
+            };
+        }
+
+        private void PostPendingRpPointResults()
+        {
+            LoadRpPointData();
+
+            var limit = Math.Max(1, config.RpPointRequestPollLimit);
+            var pending = rpPointData.processed.Values
+                .Where(entry => entry != null && !entry.posted)
+                .OrderBy(entry => entry.processed_at ?? "")
+                .Take(limit)
+                .ToList();
+
+            foreach (var entry in pending)
+            {
+                PostRpPointResult(entry, false);
+            }
+        }
+
+        private void PostRpPointResult(RpPointLedgerEntry entry, bool force)
+        {
+            if (entry == null || string.IsNullOrWhiteSpace(entry.request_id))
+            {
+                return;
+            }
+
+            if (entry.posted && !force)
+            {
+                return;
+            }
+
+            if (rpPointResultPostsInFlight.Contains(entry.request_id))
+            {
+                return;
+            }
+
+            rpPointResultPostsInFlight.Add(entry.request_id);
+
+            var body = BuildRpPointResultPayload(entry).ToString(Formatting.None);
+            var url = $"{TrimSlash(config.ApiBaseUrl)}/api/server/rp-point-result.php";
+
+            SendPost(url, body, (code, response) =>
+            {
+                rpPointResultPostsInFlight.Remove(entry.request_id);
+                entry.post_attempts++;
+
+                if (!IsSuccess(code, response, out var error))
+                {
+                    entry.last_post_error = error;
+                    SaveRpPointData();
+                    PrintWarning($"RP point result post failed for {entry.request_id}: {error}");
+                    return;
+                }
+
+                JObject payload;
+
+                try
+                {
+                    payload = JObject.Parse(response);
+                }
+                catch (Exception ex)
+                {
+                    entry.last_post_error = $"invalid response ({ex.Message})";
+                    SaveRpPointData();
+                    PrintWarning($"RP point result post failed for {entry.request_id}: {entry.last_post_error}");
+                    return;
+                }
+
+                if (JsonToken(payload, "ok") != null && !JsonBool(payload, false, "ok"))
+                {
+                    entry.last_post_error = JsonString(payload, "error", "message", "reason");
+                    SaveRpPointData();
+                    PrintWarning($"RP point result post failed for {entry.request_id}: {entry.last_post_error}");
+                    return;
+                }
+
+                entry.posted = true;
+                entry.posted_at = DateTime.UtcNow.ToString("o");
+                entry.last_post_error = "";
+                SaveRpPointData();
+            });
+        }
+
+        private JObject BuildRpPointResultPayload(RpPointLedgerEntry entry)
+        {
+            return new JObject
+            {
+                ["server_id"] = config.ServerId,
+                ["request_id"] = entry.request_id,
+                ["steam_id64"] = entry.steam_id64,
+                ["source_type"] = entry.source_type,
+                ["source_id"] = entry.source_id,
+                ["status"] = entry.status,
+                ["result"] = entry.status,
+                ["reason"] = entry.reason,
+                ["message"] = entry.message,
+                ["debit_rp"] = entry.debit_rp,
+                ["credit_rp"] = entry.credit_rp,
+                ["balance_before"] = entry.balance_before,
+                ["balance_after"] = entry.balance_after,
+                ["transaction_id"] = entry.transaction_id,
+                ["processed_at"] = entry.processed_at
+            };
+        }
+
+        private void LoadRpPointData()
+        {
+            if (rpPointData != null)
+            {
+                return;
+            }
+
+            rpPointData = ReadDataFile<RpPointLedger>(RpPointDataFile) ?? new RpPointLedger();
+
+            if (rpPointData.processed == null)
+            {
+                rpPointData.processed = new Dictionary<string, RpPointLedgerEntry>(StringComparer.OrdinalIgnoreCase);
+                return;
+            }
+
+            var processed = new Dictionary<string, RpPointLedgerEntry>(StringComparer.OrdinalIgnoreCase);
+
+            foreach (var entry in rpPointData.processed)
+            {
+                if (!string.IsNullOrWhiteSpace(entry.Key) && entry.Value != null)
+                {
+                    processed[entry.Key] = entry.Value;
+                }
+            }
+
+            rpPointData.processed = processed;
+        }
+
+        private void SaveRpPointData()
+        {
+            if (rpPointData == null)
+            {
+                return;
+            }
+
+            try
+            {
+                Interface.Oxide.DataFileSystem.WriteObject(RpPointDataFile, rpPointData, true);
+            }
+            catch (Exception ex)
+            {
+                PrintWarning($"Could not write data file {RpPointDataFile}: {ex.Message}");
+            }
+        }
+
+        private void PruneRpPointData()
+        {
+            LoadRpPointData();
+
+            if (config.RpPointRequestProcessedRetentionDays <= 0)
+            {
+                return;
+            }
+
+            var cutoff = DateTime.UtcNow.AddDays(-Math.Max(1, config.RpPointRequestProcessedRetentionDays));
+            var remove = new List<string>();
+
+            foreach (var entry in rpPointData.processed)
+            {
+                DateTime processedAt;
+
+                if (entry.Value == null || !entry.Value.posted || !DateTime.TryParse(entry.Value.processed_at, out processedAt))
+                {
+                    continue;
+                }
+
+                if (processedAt.ToUniversalTime() < cutoff)
+                {
+                    remove.Add(entry.Key);
+                }
+            }
+
+            if (remove.Count == 0)
+            {
+                return;
+            }
+
+            foreach (var requestId in remove)
+            {
+                rpPointData.processed.Remove(requestId);
+            }
+
+            SaveRpPointData();
         }
 
         private void StartStatusHeartbeat()
