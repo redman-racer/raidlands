@@ -35,6 +35,7 @@ $admin_sections_all = [
     'identity' => ['label' => 'Identity', 'kicker' => 'Core', 'title' => 'Server Identity', 'summary' => 'Names, fallback status, map, region, and the numbers used when live status is unavailable.'],
     'links' => ['label' => 'Links', 'kicker' => 'Launch', 'title' => 'Links and Integrations', 'summary' => 'Join buttons, Discord invites, live status settings, and future OAuth links.'],
     'wipe' => ['label' => 'Wipe', 'kicker' => 'Schedule', 'title' => 'Wipe Settings', 'summary' => 'The wipe days and time used by countdowns and schedule text.'],
+    'todo' => ['label' => 'TODO', 'kicker' => 'Priority', 'title' => 'Work Queue', 'summary' => 'Ranked next work from bug reports, pending suggestions, feature cards, and current vote signal.'],
     'features' => ['label' => 'Features', 'kicker' => 'Content', 'title' => 'Feature Lists', 'summary' => 'Public feature planning records, voting candidates, and suggestion review.'],
     'pages' => ['label' => 'Pages', 'kicker' => 'Copy', 'title' => 'Hero Copy', 'summary' => 'The title and intro text shown at the top of each page.'],
     'seo' => ['label' => 'SEO', 'kicker' => 'Search', 'title' => 'SEO Metadata', 'summary' => 'Browser titles, descriptions, and social sharing copy.'],
@@ -47,7 +48,7 @@ $admin_sections_all = [
 ];
 $admin_nav_groups = [
     'site-setup' => ['label' => 'Site Setup', 'sections' => ['identity', 'links']],
-    'content' => ['label' => 'Content', 'sections' => ['features', 'pages', 'seo', 'feedback']],
+    'content' => ['label' => 'Content', 'sections' => ['todo', 'features', 'pages', 'seo', 'feedback']],
     'store-access' => ['label' => 'Store & Access', 'sections' => ['store', 'kits', 'groups', 'grants']],
     'server-ops' => ['label' => 'Server Ops', 'sections' => ['wipe', 'sync']],
 ];
@@ -113,6 +114,19 @@ $admin_access_group_rows = [];
 $admin_access_assignments_ready = false;
 $admin_access_lookup_error = '';
 $admin_sync_rows = [];
+$admin_todo_state = [
+    'ready' => false,
+    'feedback_ready' => false,
+    'features_ready' => false,
+    'snapshot_ready' => false,
+    'ai_configured' => false,
+    'items' => [],
+    'stats' => ['total' => 0, 'bugs' => 0, 'suggestions' => 0, 'features' => 0, 'critical' => 0, 'high' => 0],
+    'latest' => null,
+    'source_hash' => '',
+    'daily_stale' => true,
+    'message' => '',
+];
 $admin_feedback_rows = [];
 $admin_feedback_counts = [];
 $admin_feedback_ready = false;
@@ -226,6 +240,10 @@ try {
             $admin_sync_rows = raidlands_store_recent_sync_rows(30);
             $admin_stats_summary = raidlands_stats_admin_summary();
         }
+    }
+
+    if ($active_section === 'todo') {
+        $admin_todo_state = raidlands_todo_admin_state();
     }
 
     if ($active_section === 'features') {
@@ -1168,6 +1186,194 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                         </div>
                       </div>
                     </div>
+                  </section>
+                <?php endif; ?>
+
+                <?php if ($active_section === 'todo') : ?>
+                  <?php
+                    $todo_items = array_values((array) ($admin_todo_state['items'] ?? []));
+                    $todo_stats = (array) ($admin_todo_state['stats'] ?? []);
+                    $todo_latest = is_array($admin_todo_state['latest'] ?? null) ? $admin_todo_state['latest'] : null;
+                    $todo_generated = is_array($todo_latest['generated'] ?? null) ? $todo_latest['generated'] : null;
+                    $todo_latest_generated_at = (string) ($todo_latest['generated_at'] ?? '');
+                    $todo_latest_status = (string) ($todo_latest['status'] ?? '');
+                    $todo_latest_error = trim((string) ($todo_latest['error_text'] ?? ''));
+                    $todo_daily_stale = !empty($admin_todo_state['daily_stale']);
+                    $todo_snapshot_ready = !empty($admin_todo_state['snapshot_ready']);
+                    $todo_ai_configured = !empty($admin_todo_state['ai_configured']);
+                    $todo_can_ai_refresh = $todo_snapshot_ready && $todo_ai_configured && $todo_items !== [];
+                    $todo_refresh_label = !$todo_snapshot_ready
+                        ? 'Run Migration'
+                        : (!$todo_ai_configured
+                            ? 'AI Key Missing'
+                            : ($todo_items === [] ? 'No Work Waiting' : 'Update AI TODO'));
+                    $todo_item_by_key = [];
+
+                    foreach ($todo_items as $todo_item) {
+                        $todo_item_by_key[(string) ($todo_item['key'] ?? '')] = $todo_item;
+                    }
+                  ?>
+
+                  <?php if (empty($admin_todo_state['ready'])) : ?>
+                    <section class="admin-section">
+                      <div class="admin-alert warning"><?= e((string) ($admin_todo_state['message'] ?? 'Feedback and feature tables are not ready yet.')) ?></div>
+                    </section>
+                  <?php endif; ?>
+
+                  <section class="admin-section">
+                    <div class="admin-grid four">
+                      <div class="metal-panel admin-feedback-stat">
+                        <p class="section-kicker">Queue</p>
+                        <h3><?= e((string) ($todo_stats['total'] ?? 0)) ?></h3>
+                        <p class="store-muted">ranked items</p>
+                      </div>
+                      <div class="metal-panel admin-feedback-stat">
+                        <p class="section-kicker">Bugs</p>
+                        <h3><?= e((string) ($todo_stats['bugs'] ?? 0)) ?></h3>
+                        <p class="store-muted">open reports</p>
+                      </div>
+                      <div class="metal-panel admin-feedback-stat">
+                        <p class="section-kicker">Ideas</p>
+                        <h3><?= e((string) ($todo_stats['suggestions'] ?? 0)) ?></h3>
+                        <p class="store-muted">pending decisions</p>
+                      </div>
+                      <div class="metal-panel admin-feedback-stat">
+                        <p class="section-kicker">Hot</p>
+                        <h3><?= e((string) ((int) ($todo_stats['critical'] ?? 0) + (int) ($todo_stats['high'] ?? 0))) ?></h3>
+                        <p class="store-muted">critical or high</p>
+                      </div>
+                    </div>
+                  </section>
+
+                  <section class="admin-section">
+                    <div class="admin-subsection-head">
+                      <h3>Daily AI TODO</h3>
+                      <p><?= $todo_latest_generated_at !== '' ? 'Last generated ' . e($todo_latest_generated_at) : 'No saved AI brief yet.' ?></p>
+                    </div>
+                    <div class="admin-alert <?= $todo_can_ai_refresh ? 'success' : 'warning' ?> admin-action-alert">
+                      <span>
+                        <?= $todo_snapshot_ready ? 'The live queue is available now.' : e(raidlands_todo_readiness_message()) ?>
+                        <?php if ($todo_snapshot_ready && !$todo_ai_configured) : ?>
+                          Replace the placeholder OpenAI key to enable AI refreshes.
+                        <?php elseif ($todo_snapshot_ready && $todo_daily_stale && $todo_generated !== null) : ?>
+                          The saved brief is ready for a fresh daily pass.
+                        <?php endif; ?>
+                      </span>
+                      <button class="btn btn-secondary" type="submit" name="todo_admin_action" value="ai_refresh" <?= !$todo_can_ai_refresh ? 'disabled' : '' ?>>
+                        <?= e($todo_refresh_label) ?>
+                      </button>
+                    </div>
+
+                    <?php if ($todo_generated !== null && $todo_latest_status === 'generated') : ?>
+                      <article class="admin-repeat-card admin-todo-ai-brief">
+                        <div class="admin-repeat-card-head">
+                          <div>
+                            <h3><?= e((string) ($todo_generated['headline'] ?? 'Daily TODO')) ?></h3>
+                            <p class="admin-feedback-subtitle"><?= e((string) ($todo_generated['generated_for'] ?? $todo_latest_generated_at)) ?></p>
+                          </div>
+                          <span class="status-pill <?= $todo_daily_stale ? 'planned' : 'active' ?>"><?= $todo_daily_stale ? 'Stale' : 'Fresh' ?></span>
+                        </div>
+                        <?php if (trim((string) ($todo_generated['summary'] ?? '')) !== '') : ?>
+                          <p class="admin-todo-summary"><?= e((string) $todo_generated['summary']) ?></p>
+                        <?php endif; ?>
+                        <?php if (!empty($todo_generated['items']) && is_array($todo_generated['items'])) : ?>
+                          <div class="admin-todo-ai-list">
+                            <?php foreach ((array) $todo_generated['items'] as $ai_item) : ?>
+                              <?php
+                                $source_key = (string) ($ai_item['source_key'] ?? '');
+                                $source_item = $todo_item_by_key[$source_key] ?? null;
+                                $source_section = is_array($source_item) ? (string) ($source_item['admin_section'] ?? 'todo') : 'todo';
+                                $priority = (string) ($ai_item['priority'] ?? 'P2');
+                              ?>
+                              <article class="admin-todo-ai-item">
+                                <div>
+                                  <span class="admin-todo-priority ai"><?= e($priority) ?></span>
+                                  <h4><?= e((string) ($ai_item['title'] ?? 'TODO item')) ?></h4>
+                                </div>
+                                <p><?= e((string) ($ai_item['why_now'] ?? '')) ?></p>
+                                <strong><?= e((string) ($ai_item['next_step'] ?? '')) ?></strong>
+                                <small>
+                                  <?= e((string) ($ai_item['owner_hint'] ?? 'Staff')) ?>
+                                  <?php if ($source_item !== null) : ?>
+                                    / <a href="<?= e(admin_section_url($source_section)) ?>">Open source</a>
+                                  <?php endif; ?>
+                                </small>
+                              </article>
+                            <?php endforeach; ?>
+                          </div>
+                        <?php endif; ?>
+                        <?php if (!empty($todo_generated['watchlist']) && is_array($todo_generated['watchlist'])) : ?>
+                          <div class="admin-todo-watchlist">
+                            <?php foreach ((array) $todo_generated['watchlist'] as $watch_item) : ?>
+                              <span class="tag"><span class="tag-value"><?= e((string) $watch_item) ?></span></span>
+                            <?php endforeach; ?>
+                          </div>
+                        <?php endif; ?>
+                      </article>
+                    <?php elseif ($todo_latest_status === 'failed') : ?>
+                      <div class="admin-alert warning">
+                        Latest AI TODO refresh failed<?= $todo_latest_generated_at !== '' ? ' at ' . e($todo_latest_generated_at) : '' ?>.
+                        <?= $todo_latest_error !== '' ? e($todo_latest_error) : 'Check the OpenAI key and try again.' ?>
+                      </div>
+                    <?php else : ?>
+                      <div class="admin-alert warning">No AI TODO has been generated yet. The live queue below is already ranked from current admin data.</div>
+                    <?php endif; ?>
+                  </section>
+
+                  <section class="admin-section">
+                    <div class="admin-subsection-head">
+                      <h3>Ranked next work</h3>
+                      <p>Live priority from open bug reports, pending feature decisions, public feature status, votes, support score, and age.</p>
+                    </div>
+
+                    <?php if ($todo_items === []) : ?>
+                      <div class="admin-alert warning">No open bug reports, pending suggestions, or non-archived feature work are waiting right now.</div>
+                    <?php else : ?>
+                      <div class="admin-repeat-list admin-todo-list">
+                        <?php foreach (array_slice($todo_items, 0, 24) as $todo_item) : ?>
+                          <?php
+                            $todo_priority = (string) ($todo_item['priority_label'] ?? 'Low');
+                            $todo_priority_class = strtolower((string) ($todo_item['priority_class'] ?? $todo_priority));
+                            $todo_source_section = (string) ($todo_item['admin_section'] ?? 'todo');
+                          ?>
+                          <article class="admin-repeat-card admin-todo-card">
+                            <div class="admin-repeat-card-head admin-feedback-card-head">
+                              <div>
+                                <h3><?= e((string) ($todo_item['title'] ?? 'TODO item')) ?></h3>
+                                <p class="admin-feedback-subtitle">
+                                  <?= e((string) ($todo_item['source_label'] ?? 'Source')) ?>
+                                  / <?= e((string) ($todo_item['status_label'] ?? 'Open')) ?>
+                                  / score <?= e((string) ($todo_item['priority_score'] ?? 0)) ?>
+                                </p>
+                              </div>
+                              <span class="admin-todo-priority <?= e($todo_priority_class) ?>"><?= e($todo_priority) ?></span>
+                            </div>
+                            <div class="admin-feedback-body">
+                              <?php if (trim((string) ($todo_item['details'] ?? '')) !== '') : ?>
+                                <div class="admin-feedback-details"><?= nl2br(e((string) ($todo_item['details'] ?? ''))) ?></div>
+                              <?php endif; ?>
+                              <div class="admin-feedback-feature-linked">
+                                <span class="tag">
+                                  <span class="tag-label">Why</span>
+                                  <span class="tag-value"><?= e((string) ($todo_item['reason'] ?? 'Needs staff review')) ?></span>
+                                </span>
+                                <span class="tag">
+                                  <span class="tag-label">Signal</span>
+                                  <span class="tag-value"><?= e((string) ($todo_item['signal'] ?? 'Admin queue')) ?></span>
+                                </span>
+                              </div>
+                              <div class="admin-todo-next-step">
+                                <strong>Next:</strong>
+                                <span><?= e((string) ($todo_item['next_step'] ?? 'Review this item.')) ?></span>
+                              </div>
+                            </div>
+                            <div class="button-row">
+                              <a class="btn btn-secondary" href="<?= e(admin_section_url($todo_source_section)) ?>">Open <?= e(admin_page_label($todo_source_section)) ?></a>
+                            </div>
+                          </article>
+                        <?php endforeach; ?>
+                      </div>
+                    <?php endif; ?>
                   </section>
                 <?php endif; ?>
 
@@ -4511,6 +4717,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                   <?php
                     $admin_save_allowed = raidlands_admin_can_save_section($active_section);
                     $admin_save_hidden = !$admin_save_allowed
+                        || $active_section === 'todo'
                         || $active_section === 'sync'
                         || $active_section === 'grants'
                         || ($active_section === 'feedback' && (!$admin_feedback_ready || $admin_feedback_rows === []))

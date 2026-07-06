@@ -20,7 +20,32 @@ function raidlands_ai_is_configured(): bool
 {
     $config = raidlands_ai_config();
 
-    return !empty($config['enabled']) && trim((string) $config['apiKey']) !== '';
+    return !empty($config['enabled']) && raidlands_ai_api_key_is_usable((string) $config['apiKey']);
+}
+
+function raidlands_ai_api_key_is_usable(string $api_key): bool
+{
+    $key = trim($api_key);
+
+    if ($key === '') {
+        return false;
+    }
+
+    $normalized = strtolower(trim($key, "\"' \t\n\r\0\x0B"));
+    $placeholders = [
+        'insert_key_here',
+        'your_openai_api_key',
+        'your_openai_key',
+        'change-me',
+        'changeme',
+        'sk-...',
+    ];
+
+    if (in_array($normalized, $placeholders, true)) {
+        return false;
+    }
+
+    return !str_contains($normalized, 'insert_key_here');
 }
 
 function raidlands_ai_reviews_is_ready(): bool

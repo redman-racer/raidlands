@@ -7359,6 +7359,120 @@ button.admin-permission-chip:focus-visible {
   line-height: 1;
 }
 
+.admin-todo-list {
+  gap: 12px;
+}
+
+.admin-todo-card,
+.admin-todo-ai-brief {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-todo-priority {
+  display: inline-flex;
+  min-width: 74px;
+  justify-content: center;
+  align-items: center;
+  padding: 5px 9px;
+  border: 1px solid rgba(181, 170, 160, .26);
+  border-radius: 999px;
+  color: var(--white);
+  font-size: .76rem;
+  font-weight: 900;
+  letter-spacing: 0;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.admin-todo-priority.critical {
+  border-color: rgba(179, 38, 30, .62);
+  color: #ffb3ad;
+}
+
+.admin-todo-priority.high,
+.admin-todo-priority.ai {
+  border-color: rgba(255, 138, 40, .58);
+  color: var(--orange);
+}
+
+.admin-todo-priority.medium {
+  border-color: rgba(255, 209, 102, .5);
+  color: var(--yellow);
+}
+
+.admin-todo-priority.low {
+  border-color: rgba(124, 255, 107, .42);
+  color: var(--green);
+}
+
+.admin-todo-next-step {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  align-items: baseline;
+  color: var(--muted);
+  font-size: .95rem;
+  line-height: 1.5;
+}
+
+.admin-todo-next-step strong {
+  color: var(--white);
+}
+
+.admin-todo-summary {
+  max-width: 900px;
+  margin: 0;
+  color: var(--muted);
+  line-height: 1.55;
+}
+
+.admin-todo-ai-list {
+  display: grid;
+  gap: 10px;
+}
+
+.admin-todo-ai-item {
+  min-width: 0;
+  padding: 14px;
+  display: grid;
+  gap: 8px;
+  border: 1px solid rgba(181, 170, 160, .16);
+  border-radius: var(--radius);
+  background:
+    var(--console-scan) center / 220px repeat,
+    rgba(0, 0, 0, .2);
+}
+
+.admin-todo-ai-item > div {
+  display: flex;
+  gap: 10px;
+  align-items: center;
+}
+
+.admin-todo-ai-item h4,
+.admin-todo-ai-item p,
+.admin-todo-ai-item strong,
+.admin-todo-ai-item small {
+  margin: 0;
+}
+
+.admin-todo-ai-item h4,
+.admin-todo-ai-item strong {
+  color: var(--white);
+}
+
+.admin-todo-ai-item p,
+.admin-todo-ai-item small {
+  color: var(--muted);
+}
+
+.admin-todo-watchlist {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
 .admin-feedback-workbench {
   display: grid;
   gap: 16px;

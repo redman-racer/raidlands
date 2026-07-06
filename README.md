@@ -62,7 +62,7 @@ Steam account linking uses native Steam OpenID only. Manual SteamID64 entry is i
 
 Steam avatars and profile links are only fetched when `RAIDLANDS_STEAM_API_KEY` is set in `.env`. Without that key, account and leaderboard pages render without Steam profile metadata.
 
-AI feedback triage is optional. When `OPENAI_RAIDLANDS_AI_ENABLED=true` and `OPENAI_RAIDLANDS_API_KEY` is set, new support feedback and feature suggestions are sent through OpenAI with content-only payloads. Multi-idea submissions can be split into standalone child suggestions, then each child is checked again for grouping or public-card creation. Missing keys or API failures leave items unchecked so Admin > Feedback or Admin > Features can retry them.
+AI feedback triage is optional. When `OPENAI_RAIDLANDS_AI_ENABLED=true` and `OPENAI_RAIDLANDS_API_KEY` is set to a real key, new support feedback and feature suggestions are sent through OpenAI with content-only payloads. Multi-idea submissions can be split into standalone child suggestions, then each child is checked again for grouping or public-card creation. Missing keys, placeholder keys, or API failures leave items unchecked so Admin > Feedback or Admin > Features can retry them. Admin > TODO always shows a live ranked work queue, and can save an AI-generated daily brief when the OpenAI key and TODO snapshot table are ready.
 
 The admin panel uses Steam sign-in once `database/migrations/007_admin_auth.sql` is installed. Add approved Steam IDs to `admin_users` and attach roles through `admin_user_roles`; the migration includes a commented owner bootstrap query.
 
@@ -100,11 +100,12 @@ The store uses MySQL as the source of truth, Stripe Checkout for cash purchases,
 28. Run `database/migrations/026_store_stripe_catalog_sync.sql`.
 29. Run `database/migrations/027_ai_feedback_triage.sql`.
 30. Run `database/migrations/028_ai_feedback_split_suggestions.sql`.
-31. Run `database/seeds/001_store_products.sql`.
-32. Copy `.env.example` to `.env`.
-33. Fill in MySQL, Stripe, Steam API, OpenAI AI triage key if enabled, bridge secret, and clan API limit values.
-34. Add at least one owner SteamID64 to `admin_users` and `admin_user_roles`.
-35. Configure product RP costs and cash offer amounts in `/admin/?section=store`; active cash offers automatically sync Stripe Products and Prices on Store save when the Stripe secret key is set.
+31. Run `database/migrations/029_admin_todo_snapshots.sql`.
+32. Run `database/seeds/001_store_products.sql`.
+33. Copy `.env.example` to `.env`.
+34. Fill in MySQL, Stripe, Steam API, OpenAI AI triage key if enabled, bridge secret, and clan API limit values.
+35. Add at least one owner SteamID64 to `admin_users` and `admin_user_roles`.
+36. Configure product RP costs and cash offer amounts in `/admin/?section=store`; active cash offers automatically sync Stripe Products and Prices on Store save when the Stripe secret key is set.
 
 Public store flow:
 

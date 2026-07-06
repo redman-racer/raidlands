@@ -3,6 +3,7 @@
 require_once __DIR__ . '/store.php';
 require_once __DIR__ . '/feedback.php';
 require_once __DIR__ . '/features.php';
+require_once __DIR__ . '/todos.php';
 require_once __DIR__ . '/kits.php';
 require_once __DIR__ . '/permissions.php';
 
@@ -94,6 +95,9 @@ function raidlands_admin_handle_request(): void
                 } else {
                     raidlands_admin_set_flash('success', 'Store products saved. ' . $stripe_summary);
                 }
+            } elseif ($section === 'todo') {
+                $result = raidlands_todo_admin_handle_action($_POST);
+                raidlands_admin_set_flash((string) ($result['type'] ?? 'success'), (string) ($result['message'] ?? 'TODO list refreshed.'));
             } elseif ($section === 'features') {
                 raidlands_admin_set_flash('success', raidlands_features_admin_save($_POST));
             } elseif ($section === 'kits') {
@@ -445,7 +449,7 @@ function raidlands_admin_redirect(?string $section = null, array $params = []): 
 
 function raidlands_admin_section_keys(): array
 {
-    return ['identity', 'links', 'wipe', 'features', 'pages', 'seo', 'feedback', 'store', 'kits', 'groups', 'grants', 'sync'];
+    return ['identity', 'links', 'wipe', 'todo', 'features', 'pages', 'seo', 'feedback', 'store', 'kits', 'groups', 'grants', 'sync'];
 }
 
 function raidlands_admin_allowed_section_keys(): array
@@ -471,6 +475,10 @@ function raidlands_admin_section_permission(string $section): string
 
 function raidlands_admin_can_view_section(string $section): bool
 {
+    if (raidlands_admin_clean_section($section) === 'todo') {
+        return raidlands_admin_can('admin.feedback.manage') || raidlands_admin_can('admin.content.manage');
+    }
+
     return raidlands_admin_can(raidlands_admin_section_permission($section));
 }
 
@@ -480,6 +488,10 @@ function raidlands_admin_can_save_section(string $section): bool
 
     if ($section === 'sync') {
         return false;
+    }
+
+    if ($section === 'todo') {
+        return raidlands_admin_can_view_section($section);
     }
 
     return raidlands_admin_can(raidlands_admin_section_permission($section));
