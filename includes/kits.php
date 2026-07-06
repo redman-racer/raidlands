@@ -109,6 +109,85 @@ function raidlands_kits_decimal($value, float $min, float $max): float
     return max($min, min($max, (float) $value));
 }
 
+function raidlands_kits_condition_defaults(): array
+{
+    static $defaults = null;
+
+    if ($defaults === null) {
+        $defaults = [
+            'autoturret' => 100.0,
+            'computerstation' => 100.0,
+            'diving.mask' => 200.0,
+            'diving.tank' => 600.0,
+            'electric.generator.small' => 100.0,
+            'flashlight.held' => 50.0,
+            'hatchet' => 400.0,
+            'jackhammer' => 300.0,
+            'keycard_blue' => 4.0,
+            'keycard_green' => 4.0,
+            'keycard_red' => 2.0,
+            'lmg.m249' => 500.0,
+            'm16a2' => 200.0,
+            'metal.facemask' => 320.0,
+            'metal.plate.torso' => 360.0,
+            'multiplegrenadelauncher' => 200.0,
+            'rifle.ak' => 150.0,
+            'rifle.l96' => 60.0,
+            'rifle.lr300' => 150.0,
+            'roadsign.kilt' => 150.0,
+            'rocket.launcher' => 100.0,
+            'samsite' => 100.0,
+            'smg.mp5' => 150.0,
+            'weapon.mod.muzzleboost' => 100.0,
+            'weapon.mod.muzzlebrake' => 200.0,
+            'weapon.mod.silencer' => 100.0,
+        ];
+    }
+
+    return $defaults;
+}
+
+function raidlands_kits_condition_max_for_shortname(string $shortname): float
+{
+    $defaults = raidlands_kits_condition_defaults();
+    $key = strtolower(trim($shortname));
+
+    return $defaults[$key] ?? 0.0;
+}
+
+function raidlands_kits_normalize_condition_item(string $shortname, int $amount, float $condition, float $max_condition): array
+{
+    $default_max = raidlands_kits_condition_max_for_shortname($shortname);
+
+    if ($default_max <= 0) {
+        return [
+            'amount' => $amount,
+            'condition' => $condition,
+            'max_condition' => $max_condition,
+        ];
+    }
+
+    $bad_max_condition = $max_condition <= 0 || $max_condition < $default_max || $max_condition > $default_max;
+
+    if ($bad_max_condition) {
+        $max_condition = $default_max;
+    }
+
+    if ($condition <= 0 || $condition < $max_condition || $condition > $max_condition || $bad_max_condition) {
+        $condition = $max_condition;
+    }
+
+    if ($amount > 1) {
+        $amount = 1;
+    }
+
+    return [
+        'amount' => $amount,
+        'condition' => $condition,
+        'max_condition' => $max_condition,
+    ];
+}
+
 function raidlands_kits_clean_permission($value): string
 {
     $permission = strtolower(raidlands_kits_clean_text($value, 160));
@@ -1074,6 +1153,11 @@ function raidlands_kits_save_items(PDO $pdo, int $kit_id, array $item_rows): voi
                 throw new InvalidArgumentException('Item shortnames can only use letters, numbers, dots, dashes, and underscores.');
             }
 
+            $amount = raidlands_kits_int($row['amount'] ?? $row['Amount'] ?? 1, 1, 1000000);
+            $condition = raidlands_kits_decimal($row['condition'] ?? $row['Condition'] ?? 0, 0, 1000000);
+            $max_condition = raidlands_kits_decimal($row['max_condition'] ?? $row['MaxCondition'] ?? 0, 0, 1000000);
+            $condition_item = raidlands_kits_normalize_condition_item($shortname, $amount, $condition, $max_condition);
+
             $insert->execute([
                 'kit_id' => $kit_id,
                 'container_name' => $container,
@@ -1081,9 +1165,9 @@ function raidlands_kits_save_items(PDO $pdo, int $kit_id, array $item_rows): voi
                 'shortname' => $shortname,
                 'display_name' => raidlands_kits_clean_text($row['display_name'] ?? $row['DisplayName'] ?? '', 160) ?: null,
                 'skin' => max(0, (int) ($row['skin'] ?? $row['Skin'] ?? $row['SkinID'] ?? 0)),
-                'amount' => raidlands_kits_int($row['amount'] ?? $row['Amount'] ?? 1, 1, 1000000),
-                'condition_value' => raidlands_kits_decimal($row['condition'] ?? $row['Condition'] ?? 0, 0, 1000000),
-                'max_condition' => raidlands_kits_decimal($row['max_condition'] ?? $row['MaxCondition'] ?? 0, 0, 1000000),
+                'amount' => $condition_item['amount'],
+                'condition_value' => $condition_item['condition'],
+                'max_condition' => $condition_item['max_condition'],
                 'ammo' => raidlands_kits_int($row['ammo'] ?? $row['Ammo'] ?? 0, 0, 1000000),
                 'ammo_type' => raidlands_kits_clean_text($row['ammo_type'] ?? $row['Ammotype'] ?? $row['AmmoType'] ?? '', 160) ?: null,
                 'frequency' => raidlands_kits_int($row['frequency'] ?? $row['Frequency'] ?? -1, -1, 999999),
@@ -1413,14 +1497,21 @@ function raidlands_kits_item_to_rust(array $item): array
     $container = $item['container_json'] !== null && $item['container_json'] !== ''
         ? json_decode((string) $item['container_json'], true)
         : null;
+    $shortname = (string) $item['shortname'];
+    $condition_item = raidlands_kits_normalize_condition_item(
+        $shortname,
+        max(1, (int) $item['amount']),
+        (float) $item['condition_value'],
+        (float) $item['max_condition']
+    );
 
     return [
-        'Shortname' => (string) $item['shortname'],
+        'Shortname' => $shortname,
         'DisplayName' => $item['display_name'] === null ? null : (string) $item['display_name'],
         'Skin' => (int) $item['skin'],
-        'Amount' => (int) $item['amount'],
-        'Condition' => (float) $item['condition_value'],
-        'MaxCondition' => (float) $item['max_condition'],
+        'Amount' => $condition_item['amount'],
+        'Condition' => $condition_item['condition'],
+        'MaxCondition' => $condition_item['max_condition'],
         'Ammo' => (int) $item['ammo'],
         'Ammotype' => $item['ammo_type'] === null ? null : (string) $item['ammo_type'],
         'Position' => (int) $item['position'],
