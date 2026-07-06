@@ -528,11 +528,39 @@ function raidlands_kits_game_image_path(string $path): string
 {
     $path = trim($path);
 
-    if (preg_match('#^/assets/media/kits/.+\.webp$#i', $path)) {
+    if (preg_match('~^(https?://[^?#]+/assets/media/kits/.+)\.webp([?#].*)?$~i', $path, $matches)) {
+        return $matches[1] . '.png' . ($matches[2] ?? '');
+    }
+
+    if (preg_match('#^(/?assets/media/kits/.+)\.webp$#i', $path)) {
         return substr($path, 0, -5) . '.png';
     }
 
     return $path;
+}
+
+function raidlands_kits_sync_image_url(string $path): string
+{
+    $path = raidlands_kits_game_image_path($path);
+
+    if ($path === '') {
+        return '';
+    }
+
+    $url = filter_var($path, FILTER_VALIDATE_URL) !== false
+        ? $path
+        : raidlands_store_absolute_url(ltrim($path, '/'));
+    $parts = parse_url($url);
+    $host = strtolower((string) ($parts['host'] ?? ''));
+
+    if (
+        strtolower((string) ($parts['scheme'] ?? '')) === 'http'
+        && !in_array($host, ['localhost', '127.0.0.1', '::1'], true)
+    ) {
+        $url = 'https://' . substr($url, strlen('http://'));
+    }
+
+    return raidlands_kits_game_image_path($url);
 }
 
 function raidlands_kits_file_at_index(array $files, string $field, int $index): ?array
@@ -1437,7 +1465,7 @@ function raidlands_kits_sync_payload(?int $revision = null): array
             'Cost' => (int) $kit['cost'],
             'IsHidden' => !empty($kit['is_hidden']),
             'CopyPasteFile' => (string) $kit['copy_paste_file'],
-            'KitImage' => (string) $kit['image_path'],
+            'KitImage' => raidlands_kits_sync_image_url((string) $kit['image_path']),
             'IsActive' => !empty($kit['is_active']),
         ], $items);
 
@@ -1449,7 +1477,7 @@ function raidlands_kits_sync_payload(?int $revision = null): array
                 'DisplayName' => (string) ($kit['reward_display_name'] ?: $kit['kit_name']),
                 'Cost' => (int) $kit['reward_cost'],
                 'Cooldown' => (int) $kit['reward_cooldown'],
-                'IconURL' => (string) ($kit['reward_icon_url'] ?: $kit['image_path']),
+                'IconURL' => raidlands_kits_sync_image_url((string) ($kit['reward_icon_url'] ?: $kit['image_path'])),
                 'Permission' => (string) $kit['reward_permission'],
             ];
         }

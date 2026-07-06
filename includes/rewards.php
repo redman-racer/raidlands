@@ -1052,6 +1052,7 @@ function raidlands_rewards_active_jackpot_round(array $settings, bool $create = 
         "SELECT *
          FROM rp_jackpot_rounds
          WHERE status = 'open'
+           AND (closes_at IS NULL OR closes_at > NOW())
          ORDER BY closes_at ASC, id ASC
          LIMIT 1"
     );
@@ -1112,17 +1113,18 @@ function raidlands_rewards_enter_jackpot(int $tickets): array
     }
 
     try {
-        $round_statement = $pdo->prepare('SELECT * FROM rp_jackpot_rounds WHERE id = :id FOR UPDATE');
+        $round_statement = $pdo->prepare(
+            'SELECT *
+             FROM rp_jackpot_rounds
+             WHERE id = :id
+               AND status = "open"
+               AND (closes_at IS NULL OR closes_at > NOW())
+             FOR UPDATE'
+        );
         $round_statement->execute(['id' => (int) $round['id']]);
         $locked_round = $round_statement->fetch(PDO::FETCH_ASSOC);
 
-        if (!is_array($locked_round) || (string) $locked_round['status'] !== 'open') {
-            throw new RuntimeException('That jackpot round is no longer open.');
-        }
-
-        $closes_at = strtotime((string) ($locked_round['closes_at'] ?? ''));
-
-        if ($closes_at > 0 && $closes_at <= time()) {
+        if (!is_array($locked_round)) {
             throw new RuntimeException('That jackpot round is closing. Refresh and join the next round.');
         }
 
