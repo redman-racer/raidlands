@@ -3215,6 +3215,14 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                           <?= admin_check_copy('Jackpot enabled', 'Allows ticket purchases and jackpot payout draws.') ?>
                         </label>
                         <label class="admin-check admin-check-field">
+                          <input type="checkbox" name="high_low_enabled" value="1" <?= !empty($game_settings['high_low_enabled']) ? 'checked' : '' ?> <?= raidlands_rewards_game_backend_ready('high_low') ? '' : 'disabled' ?>>
+                          <?= admin_check_copy('High-Low enabled', raidlands_rewards_game_backend_ready('high_low') ? 'Allows players to call high or low against a 1-100 roll.' : 'Run database/migrations/039_more_rp_games.sql before enabling High-Low.') ?>
+                        </label>
+                        <label class="admin-check admin-check-field">
+                          <input type="checkbox" name="wheel_enabled" value="1" <?= !empty($game_settings['wheel_enabled']) ? 'checked' : '' ?> <?= raidlands_rewards_game_backend_ready('wheel') ? '' : 'disabled' ?>>
+                          <?= admin_check_copy('Wheel enabled', raidlands_rewards_game_backend_ready('wheel') ? 'Allows players to pick a wheel segment with different odds and payouts.' : 'Run database/migrations/039_more_rp_games.sql before enabling Wheel.') ?>
+                        </label>
+                        <label class="admin-check admin-check-field">
                           <input type="checkbox" name="self_exclusion_enabled" value="1" <?= !empty($game_settings['self_exclusion_enabled']) ? 'checked' : '' ?>>
                           <?= admin_check_copy('Self-exclusion enforced', 'Honor self-exclusion rows when present.') ?>
                         </label>

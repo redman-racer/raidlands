@@ -26,6 +26,55 @@ function raidlands_rewards_table_exists(string $table): bool
     return raidlands_store_table_exists($table);
 }
 
+function raidlands_rewards_enum_allows(string $table, string $column, string $value): bool
+{
+    static $cache = [];
+
+    $key = $table . '.' . $column;
+    $value = trim($value);
+
+    if ($value === '' || !raidlands_db_is_configured()) {
+        return false;
+    }
+
+    if (!isset($cache[$key])) {
+        try {
+            $row = raidlands_db_fetch_one(
+                'SELECT COLUMN_TYPE
+                 FROM INFORMATION_SCHEMA.COLUMNS
+                 WHERE TABLE_SCHEMA = DATABASE()
+                   AND TABLE_NAME = :table_name
+                   AND COLUMN_NAME = :column_name
+                 LIMIT 1',
+                [
+                    'table_name' => $table,
+                    'column_name' => $column,
+                ]
+            );
+            $cache[$key] = (string) ($row['COLUMN_TYPE'] ?? '');
+        } catch (Throwable $error) {
+            $cache[$key] = '';
+        }
+    }
+
+    return $cache[$key] !== ''
+        && preg_match("/'(" . preg_quote($value, '/') . ")'/", $cache[$key]) === 1;
+}
+
+function raidlands_rewards_game_backend_ready(string $game_key): bool
+{
+    if (in_array($game_key, ['coinflip', 'dice', 'jackpot'], true)) {
+        return true;
+    }
+
+    if (!in_array($game_key, ['high_low', 'wheel'], true)) {
+        return false;
+    }
+
+    return raidlands_rewards_enum_allows('rp_game_rounds', 'game_type', $game_key)
+        && raidlands_rewards_enum_allows('rp_point_requests', 'source_type', $game_key);
+}
+
 function raidlands_rewards_is_ready(): bool
 {
     foreach (raidlands_rewards_tables() as $table) {
@@ -170,6 +219,8 @@ function raidlands_rewards_settings(): array
             'coinflip_enabled' => 1,
             'dice_enabled' => 1,
             'jackpot_enabled' => 1,
+            'high_low_enabled' => raidlands_rewards_game_backend_ready('high_low') ? 1 : 0,
+            'wheel_enabled' => raidlands_rewards_game_backend_ready('wheel') ? 1 : 0,
             'min_stake_rp' => 200,
             'max_stake_rp' => 2000,
             'coinflip_payout_multiplier_basis' => 200,
@@ -191,6 +242,8 @@ function raidlands_rewards_settings(): array
         'coinflip_enabled',
         'dice_enabled',
         'jackpot_enabled',
+        'high_low_enabled',
+        'wheel_enabled',
         'min_stake_rp',
         'max_stake_rp',
         'coinflip_payout_multiplier_basis',
@@ -204,6 +257,12 @@ function raidlands_rewards_settings(): array
         'daily_loss_cap_rp',
         'self_exclusion_enabled',
     ] as $key) {
+        if (!array_key_exists($key, $row)) {
+            $row[$key] = in_array($key, ['high_low_enabled', 'wheel_enabled'], true)
+                ? (raidlands_rewards_game_backend_ready(str_replace('_enabled', '', $key)) ? 1 : 0)
+                : 0;
+        }
+
         $row[$key] = (int) ($row[$key] ?? 0);
     }
 
@@ -421,7 +480,7 @@ function raidlands_rewards_queue_point_request(
         throw new InvalidArgumentException('RP point request requires a linked Steam player.');
     }
 
-    if (!in_array($source_type, ['vote_reward', 'coinflip', 'dice', 'jackpot_entry', 'jackpot_payout', 'admin_adjustment'], true)) {
+    if (!in_array($source_type, ['vote_reward', 'coinflip', 'dice', 'high_low', 'wheel', 'jackpot_entry', 'jackpot_payout', 'admin_adjustment'], true)) {
         throw new InvalidArgumentException('Unsupported RP point request source.');
     }
 
@@ -1042,6 +1101,217 @@ function raidlands_rewards_play_dice(int $stake): array
     }
 }
 
+function raidlands_rewards_play_high_low(string $choice, int $stake): array
+{
+    if (!raidlands_rewards_is_ready()) {
+        throw new RuntimeException(raidlands_rewards_readiness_message(true));
+    }
+
+    if (!raidlands_rewards_game_backend_ready('high_low')) {
+        throw new RuntimeException('High-Low is staged until the latest RP games update is installed.');
+    }
+
+    $settings = raidlands_rewards_settings();
+    raidlands_rewards_require_games_open($settings, 'high_low');
+    $player = raidlands_rewards_require_player();
+
+    if (raidlands_rewards_self_excluded((int) $player['id'])) {
+        throw new RuntimeException('RP games are disabled for this account.');
+    }
+
+    $choice = strtolower(trim($choice));
+
+    if (!in_array($choice, ['low', 'high'], true)) {
+        throw new InvalidArgumentException('Choose high or low.');
+    }
+
+    $stake = raidlands_rewards_normalize_stake($stake, $settings);
+    $roll = random_int(1, 100);
+    $push = $roll >= 46 && $roll <= 55;
+    $win = !$push && (($choice === 'low' && $roll <= 45) || ($choice === 'high' && $roll >= 56));
+    $payout = $push ? $stake : ($win ? $stake * 2 : 0);
+    $loss = $win || $push ? 0 : $stake;
+
+    raidlands_rewards_check_daily_limits($player, $settings, $stake, $loss);
+
+    $pdo = raidlands_db_required();
+    $owns_transaction = !$pdo->inTransaction();
+
+    if ($owns_transaction) {
+        $pdo->beginTransaction();
+    }
+
+    try {
+        $insert = $pdo->prepare(
+            'INSERT INTO rp_game_rounds
+                (game_type, player_id, steam_id64, stake_rp, payout_rp, net_rp, odds_basis_points, player_choice, roll_result, status, message)
+             VALUES
+                ("high_low", :player_id, :steam_id64, :stake_rp, :payout_rp, :net_rp, 4500, :player_choice, :roll_result, "queued", :message)'
+        );
+        $message = $push
+            ? 'Rolled ' . $roll . ' for a push. Stake return waiting for server confirmation.'
+            : ($win ? 'Called ' . $choice . ' and rolled ' . $roll . '. Waiting for server confirmation.' : 'Called ' . $choice . ' and rolled ' . $roll . '. Waiting for server confirmation.');
+        $insert->execute([
+            'player_id' => (int) $player['id'],
+            'steam_id64' => (string) $player['steam_id64'],
+            'stake_rp' => $stake,
+            'payout_rp' => $payout,
+            'net_rp' => $payout - $stake,
+            'player_choice' => $choice,
+            'roll_result' => (string) $roll,
+            'message' => $message,
+        ]);
+        $round_id = (int) $pdo->lastInsertId();
+
+        $request = raidlands_rewards_queue_point_request(
+            $pdo,
+            (int) $player['id'],
+            (string) $player['steam_id64'],
+            'high_low',
+            (string) $round_id,
+            $stake,
+            $payout,
+            'RP High-Low',
+            ['choice' => $choice, 'roll' => $roll, 'won' => $win, 'push' => $push]
+        );
+
+        $update = $pdo->prepare('UPDATE rp_game_rounds SET rp_point_request_id = :request_id, request_token = :request_token WHERE id = :id');
+        $update->execute(['request_id' => $request['id'], 'request_token' => $request['request_token'], 'id' => $round_id]);
+        raidlands_rewards_record_daily_wager($pdo, $player, $stake, $loss);
+
+        if ($owns_transaction) {
+            $pdo->commit();
+        }
+
+        return ['round_id' => $round_id, 'won' => $win, 'push' => $push, 'roll' => $roll, 'choice' => $choice, 'payout_rp' => $payout, 'stake_rp' => $stake];
+    } catch (Throwable $error) {
+        if ($owns_transaction && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $error;
+    }
+}
+
+function raidlands_rewards_wheel_segments(): array
+{
+    return [
+        'green' => ['label' => 'Green Jackpot', 'chance' => 5, 'multiplier_basis' => 1000],
+        'orange' => ['label' => 'Orange Raid', 'chance' => 20, 'multiplier_basis' => 350],
+        'steel' => ['label' => 'Steel Line', 'chance' => 35, 'multiplier_basis' => 220],
+        'ash' => ['label' => 'Ash Cover', 'chance' => 40, 'multiplier_basis' => 180],
+    ];
+}
+
+function raidlands_rewards_wheel_roll_outcome(int $roll): string
+{
+    if ($roll <= 5) {
+        return 'green';
+    }
+
+    if ($roll <= 25) {
+        return 'orange';
+    }
+
+    if ($roll <= 60) {
+        return 'steel';
+    }
+
+    return 'ash';
+}
+
+function raidlands_rewards_play_wheel(string $choice, int $stake): array
+{
+    if (!raidlands_rewards_is_ready()) {
+        throw new RuntimeException(raidlands_rewards_readiness_message(true));
+    }
+
+    if (!raidlands_rewards_game_backend_ready('wheel')) {
+        throw new RuntimeException('Wheel is staged until the latest RP games update is installed.');
+    }
+
+    $settings = raidlands_rewards_settings();
+    raidlands_rewards_require_games_open($settings, 'wheel');
+    $player = raidlands_rewards_require_player();
+
+    if (raidlands_rewards_self_excluded((int) $player['id'])) {
+        throw new RuntimeException('RP games are disabled for this account.');
+    }
+
+    $segments = raidlands_rewards_wheel_segments();
+    $choice = strtolower(trim($choice));
+
+    if (!isset($segments[$choice])) {
+        throw new InvalidArgumentException('Choose a wheel segment.');
+    }
+
+    $stake = raidlands_rewards_normalize_stake($stake, $settings);
+    $roll = random_int(1, 100);
+    $outcome = raidlands_rewards_wheel_roll_outcome($roll);
+    $win = $outcome === $choice;
+    $payout = $win ? (int) floor($stake * ((int) $segments[$choice]['multiplier_basis'] / 100)) : 0;
+    $loss = $win ? 0 : $stake;
+
+    raidlands_rewards_check_daily_limits($player, $settings, $stake, $loss);
+
+    $pdo = raidlands_db_required();
+    $owns_transaction = !$pdo->inTransaction();
+
+    if ($owns_transaction) {
+        $pdo->beginTransaction();
+    }
+
+    try {
+        $insert = $pdo->prepare(
+            'INSERT INTO rp_game_rounds
+                (game_type, player_id, steam_id64, stake_rp, payout_rp, net_rp, odds_basis_points, player_choice, roll_result, status, message)
+             VALUES
+                ("wheel", :player_id, :steam_id64, :stake_rp, :payout_rp, :net_rp, :odds_basis_points, :player_choice, :roll_result, "queued", :message)'
+        );
+        $message = $win
+            ? 'Wheel landed on ' . $segments[$outcome]['label'] . '. Waiting for server confirmation.'
+            : 'Wheel landed on ' . $segments[$outcome]['label'] . '. Waiting for server confirmation.';
+        $insert->execute([
+            'player_id' => (int) $player['id'],
+            'steam_id64' => (string) $player['steam_id64'],
+            'stake_rp' => $stake,
+            'payout_rp' => $payout,
+            'net_rp' => $payout - $stake,
+            'odds_basis_points' => (int) $segments[$choice]['chance'] * 100,
+            'player_choice' => $choice,
+            'roll_result' => $segments[$outcome]['label'] . ' (' . $roll . ')',
+            'message' => $message,
+        ]);
+        $round_id = (int) $pdo->lastInsertId();
+
+        $request = raidlands_rewards_queue_point_request(
+            $pdo,
+            (int) $player['id'],
+            (string) $player['steam_id64'],
+            'wheel',
+            (string) $round_id,
+            $stake,
+            $payout,
+            'RP Wheel',
+            ['choice' => $choice, 'outcome' => $outcome, 'roll' => $roll, 'won' => $win]
+        );
+
+        $update = $pdo->prepare('UPDATE rp_game_rounds SET rp_point_request_id = :request_id, request_token = :request_token WHERE id = :id');
+        $update->execute(['request_id' => $request['id'], 'request_token' => $request['request_token'], 'id' => $round_id]);
+        raidlands_rewards_record_daily_wager($pdo, $player, $stake, $loss);
+
+        if ($owns_transaction) {
+            $pdo->commit();
+        }
+
+        return ['round_id' => $round_id, 'won' => $win, 'roll' => $roll, 'choice' => $choice, 'outcome' => $outcome, 'payout_rp' => $payout, 'stake_rp' => $stake];
+    } catch (Throwable $error) {
+        if ($owns_transaction && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $error;
+    }
+}
+
 function raidlands_rewards_active_jackpot_round(array $settings, bool $create = true): ?array
 {
     if (!raidlands_rewards_is_ready() || empty($settings['jackpot_enabled']) || empty($settings['games_enabled'])) {
@@ -1441,6 +1711,10 @@ function raidlands_rewards_public_games_state(): array
             'game_rounds' => [],
             'jackpot_entries' => [],
             'jackpot_rounds' => [],
+            'game_backend' => [
+                'high_low' => false,
+                'wheel' => false,
+            ],
         ];
     }
 
@@ -1460,7 +1734,35 @@ function raidlands_rewards_public_games_state(): array
         'game_rounds' => $player_id > 0 ? raidlands_rewards_recent_game_rounds($player_id, 10) : raidlands_rewards_recent_game_rounds(0, 6),
         'jackpot_entries' => $player_id > 0 ? raidlands_rewards_recent_jackpot_entries($player_id, 10) : [],
         'jackpot_rounds' => raidlands_rewards_recent_jackpot_rounds(6),
+        'game_backend' => [
+            'high_low' => raidlands_rewards_game_backend_ready('high_low'),
+            'wheel' => raidlands_rewards_game_backend_ready('wheel'),
+        ],
     ];
+}
+
+function raidlands_rewards_games_wants_json(): bool
+{
+    $accept = strtolower((string) ($_SERVER['HTTP_ACCEPT'] ?? ''));
+    $requested_with = strtolower((string) ($_SERVER['HTTP_X_REQUESTED_WITH'] ?? ''));
+
+    return str_contains($accept, 'application/json')
+        || in_array($requested_with, ['fetch', 'xmlhttprequest'], true)
+        || (string) ($_POST['format'] ?? '') === 'json';
+}
+
+function raidlands_rewards_games_json_response(bool $ok, string $type, string $message, array $result = []): void
+{
+    header('Content-Type: application/json; charset=utf-8');
+    http_response_code($ok ? 200 : 422);
+    echo json_encode([
+        'ok' => $ok,
+        'type' => $type,
+        'message' => $message,
+        'result' => $result,
+        'state' => raidlands_rewards_public_games_state(),
+    ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+    exit;
 }
 
 function raidlands_rewards_handle_games_request(): void
@@ -1473,9 +1775,14 @@ function raidlands_rewards_handle_games_request(): void
 
     $action = (string) ($_POST['action'] ?? '');
 
-    if (!in_array($action, ['play_coinflip', 'play_dice', 'enter_jackpot'], true)) {
+    if (!in_array($action, ['play_coinflip', 'play_dice', 'play_high_low', 'play_wheel', 'enter_jackpot'], true)) {
         return;
     }
+
+    $wants_json = raidlands_rewards_games_wants_json();
+    $result = [];
+    $message = '';
+    $type = 'success';
 
     try {
         if (!raidlands_store_validate_csrf((string) ($_POST['csrf'] ?? ''))) {
@@ -1487,21 +1794,44 @@ function raidlands_rewards_handle_games_request(): void
             $message = $result['won']
                 ? 'Coinflip hit ' . $result['roll'] . '. ' . raidlands_store_rp((int) $result['payout_rp']) . ' payout queued for server confirmation.'
                 : 'Coinflip hit ' . $result['roll'] . '. Loss queued for server confirmation.';
-            raidlands_store_flash('success', $message);
         } elseif ($action === 'play_dice') {
             $result = raidlands_rewards_play_dice((int) ($_POST['stake_rp'] ?? 0));
             $message = $result['won']
                 ? 'Dice rolled ' . $result['roll'] . '. ' . raidlands_store_rp((int) $result['payout_rp']) . ' payout queued for server confirmation.'
                 : 'Dice rolled ' . $result['roll'] . '. Loss queued for server confirmation.';
-            raidlands_store_flash('success', $message);
+        } elseif ($action === 'play_high_low') {
+            $result = raidlands_rewards_play_high_low((string) ($_POST['choice'] ?? ''), (int) ($_POST['stake_rp'] ?? 0));
+            if (!empty($result['push'])) {
+                $message = 'High-Low rolled ' . $result['roll'] . '. Push queued to return ' . raidlands_store_rp((int) $result['payout_rp']) . '.';
+            } else {
+                $message = $result['won']
+                    ? 'High-Low rolled ' . $result['roll'] . '. ' . raidlands_store_rp((int) $result['payout_rp']) . ' payout queued for server confirmation.'
+                    : 'High-Low rolled ' . $result['roll'] . '. Loss queued for server confirmation.';
+            }
+        } elseif ($action === 'play_wheel') {
+            $result = raidlands_rewards_play_wheel((string) ($_POST['choice'] ?? ''), (int) ($_POST['stake_rp'] ?? 0));
+            $outcome = ucwords(str_replace('_', ' ', (string) ($result['outcome'] ?? 'segment')));
+            $message = $result['won']
+                ? 'Wheel landed on ' . $outcome . '. ' . raidlands_store_rp((int) $result['payout_rp']) . ' payout queued for server confirmation.'
+                : 'Wheel landed on ' . $outcome . '. Loss queued for server confirmation.';
         } else {
             $result = raidlands_rewards_enter_jackpot((int) ($_POST['tickets'] ?? 1));
-            raidlands_store_flash('success', (string) $result['tickets'] . ' jackpot ticket' . ((int) $result['tickets'] === 1 ? '' : 's') . ' queued for ' . raidlands_store_rp((int) $result['cost_rp']) . '.');
+            $message = (string) $result['tickets'] . ' jackpot ticket' . ((int) $result['tickets'] === 1 ? '' : 's') . ' queued for ' . raidlands_store_rp((int) $result['cost_rp']) . '.';
+        }
+
+        if ($wants_json) {
+            raidlands_rewards_games_json_response(true, $type, $message, $result);
         }
     } catch (Throwable $error) {
-        raidlands_store_flash('error', $error->getMessage());
+        $type = 'error';
+        $message = $error->getMessage();
+
+        if ($wants_json) {
+            raidlands_rewards_games_json_response(false, $type, $message, []);
+        }
     }
 
+    raidlands_store_flash($type, $message);
     raidlands_store_redirect('rp-games');
 }
 
@@ -1675,7 +2005,7 @@ function raidlands_rewards_sync_source_from_point_result(PDO $pdo, array $reques
         return;
     }
 
-    if (in_array($source_type, ['coinflip', 'dice'], true)) {
+    if (in_array($source_type, ['coinflip', 'dice', 'high_low', 'wheel'], true)) {
         $round = raidlands_db_fetch_one('SELECT * FROM rp_game_rounds WHERE id = :id LIMIT 1', ['id' => $source_id]);
         $update = $pdo->prepare(
             'UPDATE rp_game_rounds
@@ -1864,46 +2194,61 @@ function raidlands_rewards_admin_save_game_settings(array $post): void
     $max_stake = raidlands_rewards_limit_int($post['max_stake_rp'] ?? 2000, 1, 1000000, 2000);
     $max_stake = max($min_stake, $max_stake);
 
+    $set = [
+        'games_enabled = :games_enabled',
+        'coinflip_enabled = :coinflip_enabled',
+        'dice_enabled = :dice_enabled',
+        'jackpot_enabled = :jackpot_enabled',
+        'min_stake_rp = :min_stake_rp',
+        'max_stake_rp = :max_stake_rp',
+        'coinflip_payout_multiplier_basis = :coinflip_payout_multiplier_basis',
+        'dice_win_chance_percent = :dice_win_chance_percent',
+        'dice_payout_multiplier_basis = :dice_payout_multiplier_basis',
+        'jackpot_ticket_cost_rp = :jackpot_ticket_cost_rp',
+        'jackpot_max_entries_per_player = :jackpot_max_entries_per_player',
+        'jackpot_round_minutes = :jackpot_round_minutes',
+        'jackpot_house_edge_percent = :jackpot_house_edge_percent',
+        'daily_wager_cap_rp = :daily_wager_cap_rp',
+        'daily_loss_cap_rp = :daily_loss_cap_rp',
+        'self_exclusion_enabled = :self_exclusion_enabled',
+        'terms_copy = :terms_copy',
+    ];
+    $params = [
+        'games_enabled' => raidlands_rewards_bool($post['games_enabled'] ?? null),
+        'coinflip_enabled' => raidlands_rewards_bool($post['coinflip_enabled'] ?? null),
+        'dice_enabled' => raidlands_rewards_bool($post['dice_enabled'] ?? null),
+        'jackpot_enabled' => raidlands_rewards_bool($post['jackpot_enabled'] ?? null),
+        'min_stake_rp' => $min_stake,
+        'max_stake_rp' => $max_stake,
+        'coinflip_payout_multiplier_basis' => raidlands_rewards_limit_int($post['coinflip_payout_multiplier_basis'] ?? 200, 100, 1000, 200),
+        'dice_win_chance_percent' => raidlands_rewards_limit_int($post['dice_win_chance_percent'] ?? 45, 1, 95, 45),
+        'dice_payout_multiplier_basis' => raidlands_rewards_limit_int($post['dice_payout_multiplier_basis'] ?? 200, 100, 1000, 200),
+        'jackpot_ticket_cost_rp' => raidlands_rewards_limit_int($post['jackpot_ticket_cost_rp'] ?? 200, 1, 1000000, 200),
+        'jackpot_max_entries_per_player' => raidlands_rewards_limit_int($post['jackpot_max_entries_per_player'] ?? 10, 1, 10000, 10),
+        'jackpot_round_minutes' => raidlands_rewards_limit_int($post['jackpot_round_minutes'] ?? 30, 5, 1440, 30),
+        'jackpot_house_edge_percent' => raidlands_rewards_limit_int($post['jackpot_house_edge_percent'] ?? 10, 0, 50, 10),
+        'daily_wager_cap_rp' => raidlands_rewards_limit_int($post['daily_wager_cap_rp'] ?? 10000, 0, 100000000, 10000),
+        'daily_loss_cap_rp' => raidlands_rewards_limit_int($post['daily_loss_cap_rp'] ?? 5000, 0, 100000000, 5000),
+        'self_exclusion_enabled' => raidlands_rewards_bool($post['self_exclusion_enabled'] ?? null),
+        'terms_copy' => $terms,
+    ];
+
+    if (raidlands_store_table_has_columns('rp_game_settings', ['high_low_enabled'])) {
+        $set[] = 'high_low_enabled = :high_low_enabled';
+        $params['high_low_enabled'] = raidlands_rewards_bool($post['high_low_enabled'] ?? null);
+    }
+
+    if (raidlands_store_table_has_columns('rp_game_settings', ['wheel_enabled'])) {
+        $set[] = 'wheel_enabled = :wheel_enabled';
+        $params['wheel_enabled'] = raidlands_rewards_bool($post['wheel_enabled'] ?? null);
+    }
+
     raidlands_db_execute(
         'UPDATE rp_game_settings
-         SET games_enabled = :games_enabled,
-             coinflip_enabled = :coinflip_enabled,
-             dice_enabled = :dice_enabled,
-             jackpot_enabled = :jackpot_enabled,
-             min_stake_rp = :min_stake_rp,
-             max_stake_rp = :max_stake_rp,
-             coinflip_payout_multiplier_basis = :coinflip_payout_multiplier_basis,
-             dice_win_chance_percent = :dice_win_chance_percent,
-             dice_payout_multiplier_basis = :dice_payout_multiplier_basis,
-             jackpot_ticket_cost_rp = :jackpot_ticket_cost_rp,
-             jackpot_max_entries_per_player = :jackpot_max_entries_per_player,
-             jackpot_round_minutes = :jackpot_round_minutes,
-             jackpot_house_edge_percent = :jackpot_house_edge_percent,
-             daily_wager_cap_rp = :daily_wager_cap_rp,
-             daily_loss_cap_rp = :daily_loss_cap_rp,
-             self_exclusion_enabled = :self_exclusion_enabled,
-             terms_copy = :terms_copy,
+         SET ' . implode(",\n             ", $set) . ',
              updated_at = NOW()
          WHERE id = 1',
-        [
-            'games_enabled' => raidlands_rewards_bool($post['games_enabled'] ?? null),
-            'coinflip_enabled' => raidlands_rewards_bool($post['coinflip_enabled'] ?? null),
-            'dice_enabled' => raidlands_rewards_bool($post['dice_enabled'] ?? null),
-            'jackpot_enabled' => raidlands_rewards_bool($post['jackpot_enabled'] ?? null),
-            'min_stake_rp' => $min_stake,
-            'max_stake_rp' => $max_stake,
-            'coinflip_payout_multiplier_basis' => raidlands_rewards_limit_int($post['coinflip_payout_multiplier_basis'] ?? 200, 100, 1000, 200),
-            'dice_win_chance_percent' => raidlands_rewards_limit_int($post['dice_win_chance_percent'] ?? 45, 1, 95, 45),
-            'dice_payout_multiplier_basis' => raidlands_rewards_limit_int($post['dice_payout_multiplier_basis'] ?? 200, 100, 1000, 200),
-            'jackpot_ticket_cost_rp' => raidlands_rewards_limit_int($post['jackpot_ticket_cost_rp'] ?? 200, 1, 1000000, 200),
-            'jackpot_max_entries_per_player' => raidlands_rewards_limit_int($post['jackpot_max_entries_per_player'] ?? 10, 1, 10000, 10),
-            'jackpot_round_minutes' => raidlands_rewards_limit_int($post['jackpot_round_minutes'] ?? 30, 5, 1440, 30),
-            'jackpot_house_edge_percent' => raidlands_rewards_limit_int($post['jackpot_house_edge_percent'] ?? 10, 0, 50, 10),
-            'daily_wager_cap_rp' => raidlands_rewards_limit_int($post['daily_wager_cap_rp'] ?? 10000, 0, 100000000, 10000),
-            'daily_loss_cap_rp' => raidlands_rewards_limit_int($post['daily_loss_cap_rp'] ?? 5000, 0, 100000000, 5000),
-            'self_exclusion_enabled' => raidlands_rewards_bool($post['self_exclusion_enabled'] ?? null),
-            'terms_copy' => $terms,
-        ]
+        $params
     );
 }
 

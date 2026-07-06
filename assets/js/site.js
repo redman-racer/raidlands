@@ -69,6 +69,7 @@
   function init() {
     bindNav();
     bindActions();
+    initRpGames();
     initClanManagement();
     initLeaderboards();
     initEffectsWhenLoaderReveals();
@@ -306,6 +307,259 @@
         showToast(`${provider === "steam" ? "Steam" : "Discord"} is not connected on this browser.`);
       });
     });
+  }
+
+  function initRpGames() {
+    const root = app.querySelector("[data-rp-games]");
+
+    if (!root) return;
+
+    const tabs = Array.from(root.querySelectorAll("[data-rp-game-tab]"));
+    const panels = Array.from(root.querySelectorAll("[data-rp-game-panel]"));
+
+    if (!tabs.length || !panels.length) return;
+
+    activateRpGame(root, normalizeRpGameKey(root, window.location.hash) || tabs[0].dataset.rpGameTab || "coinflip", false);
+
+    tabs.forEach(tab => {
+      tab.addEventListener("click", event => {
+        event.preventDefault();
+        activateRpGame(root, tab.dataset.rpGameTab || "", true);
+      });
+    });
+
+    window.addEventListener("hashchange", () => {
+      const key = normalizeRpGameKey(root, window.location.hash);
+
+      if (key) {
+        activateRpGame(root, key, false);
+      }
+    });
+
+    root.addEventListener("submit", event => {
+      const form = event.target;
+
+      if (!(form instanceof HTMLFormElement) || !form.matches("[data-rp-game-form]")) {
+        return;
+      }
+
+      if (!window.fetch) {
+        return;
+      }
+
+      event.preventDefault();
+      submitRpGameForm(root, form);
+    });
+  }
+
+  function normalizeRpGameKey(root, value) {
+    const key = String(value || "")
+      .replace(/^#/, "")
+      .trim()
+      .toLowerCase()
+      .replace(/_/g, "-");
+
+    if (!key) return "";
+
+    return root.querySelector(`[data-rp-game-panel="${escapeSelector(key)}"]`) ? key : "";
+  }
+
+  function activateRpGame(root, gameKey, pushHistory) {
+    const key = normalizeRpGameKey(root, gameKey) || "coinflip";
+
+    root.querySelectorAll("[data-rp-game-tab]").forEach(tab => {
+      const selected = tab.dataset.rpGameTab === key;
+
+      tab.classList.toggle("is-active", selected);
+      tab.setAttribute("aria-selected", String(selected));
+    });
+
+    root.querySelectorAll("[data-rp-game-panel]").forEach(panel => {
+      const selected = panel.dataset.rpGamePanel === key;
+
+      panel.hidden = !selected;
+      panel.classList.toggle("is-active", selected);
+    });
+
+    root.dataset.activeGame = key;
+
+    if (pushHistory && window.history && window.history.pushState) {
+      const next = `${window.location.pathname}${window.location.search}#${key}`;
+      const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+      if (next !== current) {
+        window.history.pushState({ rpGame: key }, "", next);
+      }
+    }
+  }
+
+  async function submitRpGameForm(root, form) {
+    const panel = form.closest("[data-rp-game-panel]");
+    const submitter = form.querySelector('[type="submit"]');
+
+    panel?.classList.add("is-spinning");
+    form.classList.add("is-submitting");
+
+    if (submitter) {
+      submitter.disabled = true;
+      submitter.dataset.originalText = submitter.textContent || "";
+      submitter.textContent = "Queuing...";
+    }
+
+    try {
+      const response = await fetch(form.action || window.location.href, {
+        method: "POST",
+        body: new FormData(form),
+        credentials: "same-origin",
+        headers: {
+          Accept: "application/json",
+          "X-Requested-With": "fetch"
+        }
+      });
+      const payload = await readJsonResponse(response);
+
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.message || payload.error || `RP game request failed with HTTP ${response.status}.`);
+      }
+
+      showRpGamesFlash(root, payload.type || "success", payload.message || "RP game queued.");
+      applyRpGamesState(payload.state || {});
+      showToast(payload.message || "RP game queued.");
+      track(`rp_game_${form.dataset.rpGameForm || "play"}_queued`);
+    } catch (error) {
+      const message = error && error.message ? error.message : "RP game could not be queued.";
+      showRpGamesFlash(root, "error", message);
+      showToast(message);
+    } finally {
+      window.setTimeout(() => {
+        panel?.classList.remove("is-spinning");
+      }, 520);
+      form.classList.remove("is-submitting");
+
+      if (submitter) {
+        submitter.disabled = false;
+        submitter.textContent = submitter.dataset.originalText || "Submit";
+      }
+    }
+  }
+
+  function showRpGamesFlash(root, type, message) {
+    const flash = root.querySelector("[data-rp-games-flash]");
+
+    if (!flash) return;
+
+    flash.hidden = false;
+    flash.className = `form-status ${type === "error" ? "error" : "success"}`;
+    flash.textContent = message;
+  }
+
+  function applyRpGamesState(state) {
+    if (!state || typeof state !== "object") return;
+
+    const balance = state.balance && typeof state.balance === "object" ? state.balance : {};
+    const daily = state.daily && typeof state.daily === "object" ? state.daily : {};
+    setPanelText('[data-rp-stat="balance"]', formatRp(balance.reward_points));
+    setPanelText('[data-rp-stat="wagered"]', formatRp(daily.wagered_rp));
+    setPanelText('[data-rp-stat="loss"]', formatRp(daily.loss_rp));
+    applyRpJackpotState(state.active_jackpot || null);
+    renderRpGameRounds(Array.isArray(state.game_rounds) ? state.game_rounds : []);
+    renderRpJackpotEntries(Array.isArray(state.jackpot_entries) ? state.jackpot_entries : []);
+    updateRpHistoryEmpty(state);
+  }
+
+  function applyRpJackpotState(jackpot) {
+    if (!jackpot || typeof jackpot !== "object") return;
+
+    setPanelText('[data-rp-jackpot="ticket"]', formatRp(jackpot.ticket_cost_rp));
+    setPanelText('[data-rp-jackpot="entries"]', String(Number(jackpot.total_entries) || 0));
+    setPanelText('[data-rp-jackpot="pot"]', formatRp(jackpot.pot_rp));
+    setPanelText('[data-rp-jackpot="closes"]', `Closes ${jackpot.closes_at || ""} UTC. Only confirmed entries count.`);
+  }
+
+  function renderRpGameRounds(rounds) {
+    const body = app.querySelector("[data-rp-rounds-body]");
+    const table = app.querySelector("[data-rp-rounds-table]");
+
+    if (!body || !table) return;
+
+    table.hidden = rounds.length === 0;
+    body.innerHTML = rounds.map(round => {
+      const status = String(round.status || "queued");
+      const gameType = String(round.game_type || "game");
+
+      return `
+        <tr>
+          <td>${escapeHtml(rpGameLabel(gameType))}</td>
+          <td>${escapeHtml(formatRp(round.stake_rp))}</td>
+          <td>${escapeHtml(round.roll_result || "")}</td>
+          <td>${escapeHtml(formatRp(round.payout_rp))}</td>
+          <td><span class="status-pill ${escapeAttr(status)}">${escapeHtml(status)}</span></td>
+          <td>${escapeHtml(round.created_at || "")}</td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  function renderRpJackpotEntries(entries) {
+    const body = app.querySelector("[data-rp-jackpot-entries-body]");
+    const table = app.querySelector("[data-rp-jackpot-entries-table]");
+
+    if (!body || !table) return;
+
+    table.hidden = entries.length === 0;
+    body.innerHTML = entries.map(entry => {
+      const status = String(entry.status || "queued");
+
+      return `
+        <tr>
+          <td>${escapeHtml(entry.round_key || "Jackpot")}</td>
+          <td>${escapeHtml(String(Number(entry.ticket_count) || 0))}</td>
+          <td>${escapeHtml(formatRp(entry.cost_rp))}</td>
+          <td><span class="status-pill ${escapeAttr(status)}">${escapeHtml(status)}</span></td>
+          <td>${escapeHtml(entry.created_at || "")}</td>
+        </tr>
+      `;
+    }).join("");
+  }
+
+  function updateRpHistoryEmpty(state) {
+    const empty = app.querySelector("[data-rp-history-empty]");
+
+    if (!empty) return;
+
+    const rounds = Array.isArray(state.game_rounds) ? state.game_rounds : [];
+    const entries = Array.isArray(state.jackpot_entries) ? state.jackpot_entries : [];
+    const jackpots = Array.isArray(state.jackpot_rounds) ? state.jackpot_rounds : [];
+    empty.hidden = rounds.length > 0 || entries.length > 0 || jackpots.length > 0;
+  }
+
+  function rpGameLabel(gameType) {
+    const labels = {
+      coinflip: "Coinflip",
+      dice: "Dice",
+      high_low: "High-Low",
+      wheel: "Wheel"
+    };
+
+    if (labels[gameType]) {
+      return labels[gameType];
+    }
+
+    return String(gameType || "Game").replace(/_/g, " ").replace(/\b\w/g, letter => letter.toUpperCase());
+  }
+
+  function formatRp(value) {
+    const number = Math.max(0, Number(value) || 0);
+
+    return `${number.toLocaleString("en-US")} RP`;
+  }
+
+  function escapeSelector(value) {
+    if (window.CSS && typeof window.CSS.escape === "function") {
+      return window.CSS.escape(value);
+    }
+
+    return String(value).replace(/[^a-zA-Z0-9_-]/g, "\\$&");
   }
 
   function initLeaderboards() {

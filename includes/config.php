@@ -388,7 +388,7 @@ $page_copy = [
     ],
     'rp-games' => [
         'title' => 'RP Games',
-        'lede' => 'Use in-game Raidlands RP on server-confirmed coinflip, dice, and jackpot rounds with clear odds and limits.',
+        'lede' => 'Use in-game Raidlands RP on server-confirmed coinflip, dice, jackpot, High-Low, and Wheel rounds with clear odds and limits.',
     ],
     'bans' => [
         'title' => 'Bans and Appeals',
@@ -498,10 +498,10 @@ $seo_pages = [
         'ogDescription' => 'Vote for Raidlands and claim linked-account RP rewards.',
     ],
     'rp-games' => [
-        'title' => 'Raidlands RP Games | Coinflip, Dice, Jackpot',
-        'description' => 'Play Raidlands RP coinflip, dice, and jackpot with in-game ServerRewards RP, clear odds, and server-confirmed point changes.',
+        'title' => 'Raidlands RP Games | Coinflip, Dice, Jackpot, High-Low, Wheel',
+        'description' => 'Play Raidlands RP coinflip, dice, jackpot, High-Low, and Wheel with in-game ServerRewards RP, clear odds, and server-confirmed point changes.',
         'ogTitle' => 'Raidlands RP Games',
-        'ogDescription' => 'In-game RP games for linked Raidlands players.',
+        'ogDescription' => 'In-game RP games for linked Raidlands players, with clear odds and server-confirmed point changes.',
     ],
     'bans' => [
         'title' => 'Raidlands Bans and Appeals',
