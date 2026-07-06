@@ -667,6 +667,8 @@ function raidlands_todo_request_ai_brief(array $payload, array $config): array
         throw new RuntimeException('PHP cURL is required for AI TODO generation.');
     }
 
+    $timeout_seconds = raidlands_todo_ai_timeout_seconds($config);
+    $connect_timeout_seconds = min(10, max(5, $timeout_seconds));
     $body = [
         'model' => (string) $config['model'],
         'store' => false,
@@ -714,8 +716,8 @@ function raidlands_todo_request_ai_brief(array $payload, array $config): array
             'Content-Type: application/json',
         ],
         CURLOPT_POSTFIELDS => json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
-        CURLOPT_CONNECTTIMEOUT => (int) $config['timeoutSeconds'],
-        CURLOPT_TIMEOUT => (int) $config['timeoutSeconds'],
+        CURLOPT_CONNECTTIMEOUT => $connect_timeout_seconds,
+        CURLOPT_TIMEOUT => $timeout_seconds,
     ]);
 
     $raw = curl_exec($handle);
@@ -745,6 +747,11 @@ function raidlands_todo_request_ai_brief(array $payload, array $config): array
     }
 
     return raidlands_todo_normalize_ai_brief($generated);
+}
+
+function raidlands_todo_ai_timeout_seconds(array $config): int
+{
+    return max(20, min(45, (int) ($config['timeoutSeconds'] ?? 20)));
 }
 
 function raidlands_todo_ai_prompt(): string

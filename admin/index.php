@@ -1257,6 +1257,8 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                           Replace the placeholder OpenAI key to enable AI refreshes.
                         <?php elseif ($todo_snapshot_ready && $todo_daily_stale && $todo_generated !== null) : ?>
                           The saved brief is ready for a fresh daily pass.
+                        <?php elseif ($todo_snapshot_ready && $todo_ai_configured) : ?>
+                          AI refreshes may take up to 20 seconds.
                         <?php endif; ?>
                       </span>
                       <button class="btn btn-secondary" type="submit" name="todo_admin_action" value="ai_refresh" <?= !$todo_can_ai_refresh ? 'disabled' : '' ?>>
