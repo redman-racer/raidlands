@@ -3215,6 +3215,12 @@ h3,
   gap: 18px;
 }
 
+.leaderboard-board-panel[hidden],
+.leaderboard-table-wrap[hidden],
+[data-leaderboard-empty][hidden] {
+  display: none;
+}
+
 .leaderboard-panel-head {
   display: flex;
   gap: 16px;
