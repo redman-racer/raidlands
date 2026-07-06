@@ -3332,6 +3332,11 @@ a.leaderboard-steam:hover,
   color: var(--green);
 }
 
+.status-pill.split {
+  border-color: rgba(109, 179, 255, .52);
+  color: #a9d4ff;
+}
+
 .status-pill.revoked,
 .status-pill.expired,
 .status-pill.closed,

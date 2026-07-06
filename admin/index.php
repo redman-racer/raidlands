@@ -1576,9 +1576,11 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               $matches = array_values((array) ($suggestion['matches'] ?? []));
                               $suggestion_source = (string) ($suggestion['source_type'] ?? 'public');
                               $suggestion_source_label = ucwords(str_replace('_', ' ', $suggestion_source));
+                              $parent_suggestion_title = trim((string) ($suggestion['parent_suggestion_title'] ?? ''));
                               $suggestion_search_text = trim(implode(' ', [
                                   (string) ($suggestion['title'] ?? ''),
                                   (string) ($suggestion['details'] ?? ''),
+                                  $parent_suggestion_title,
                                   (string) ($suggestion_ai_review['admin_note'] ?? ''),
                                   (string) ($suggestion_ai_review['error_text'] ?? ''),
                                   $suggestion_source,
@@ -1601,6 +1603,9 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                   <p class="admin-feedback-subtitle">
                                     <?= e($suggestion_source_label) ?>
                                     suggestion from <code><?= e((string) ($suggestion['steam_id64'] ?? RAIDLANDS_FEATURE_OWNER_STEAM_ID64)) ?></code>
+                                    <?php if ($parent_suggestion_title !== '') : ?>
+                                      <br>Split from <?= e($parent_suggestion_title) ?>
+                                    <?php endif; ?>
                                   </p>
                                 </div>
                                 <span class="status-pill pending">Pending</span>
@@ -1617,6 +1622,12 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                     <span class="tag">
                                       <span class="tag-label">Target</span>
                                       <span class="tag-value"><?= e($suggestion_ai_target) ?></span>
+                                    </span>
+                                  <?php endif; ?>
+                                  <?php if ($parent_suggestion_title !== '') : ?>
+                                    <span class="tag">
+                                      <span class="tag-label">Split</span>
+                                      <span class="tag-value"><?= e($parent_suggestion_title) ?></span>
                                     </span>
                                   <?php endif; ?>
                                   <?php if ($suggestion_ai_review !== null && trim((string) ($suggestion_ai_review['admin_note'] ?? '')) !== '') : ?>
@@ -1666,7 +1677,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                     <section class="admin-section">
                       <div class="admin-subsection-head">
                         <h3>Recent suggestion decisions</h3>
-                        <p>Grouped suggestions count toward the destination feature. Rejected suggestions stay here briefly so staff can audit recent triage.</p>
+                        <p>Grouped suggestions count toward the destination feature. Split parents and rejected suggestions stay here briefly so staff can audit recent triage.</p>
                       </div>
                       <?php if ($grouped_suggestions === []) : ?>
                         <div class="admin-alert warning">No suggestion decisions have been recorded yet.</div>
@@ -1712,9 +1723,17 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 <?php foreach ($grouped_suggestions as $suggestion) : ?>
                                   <?php
                                     $decision_status = (string) ($suggestion['status'] ?? 'pending');
+                                    $split_child_count = (int) ($suggestion['split_child_count'] ?? 0);
+                                    $decision_feature_label = (string) (($suggestion['feature_title'] ?? '') ?: 'None');
+
+                                    if ($decision_status === 'split') {
+                                        $decision_feature_label = 'Split into ' . $split_child_count . ' suggestion' . ($split_child_count === 1 ? '' : 's');
+                                    }
+
                                     $decision_search_text = trim(implode(' ', [
                                         (string) ($suggestion['title'] ?? ''),
-                                        (string) ($suggestion['feature_title'] ?? ''),
+                                        $decision_feature_label,
+                                        (string) ($suggestion['parent_suggestion_title'] ?? ''),
                                         $decision_status,
                                         (string) ($suggestion['steam_id64'] ?? ''),
                                     ]));
@@ -1727,7 +1746,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                     data-feature-queue-updated="<?= e((string) ($suggestion['updated_at'] ?? '')) ?>"
                                     data-feature-queue-search="<?= e($decision_search_text) ?>">
                                   <td><?= e((string) ($suggestion['title'] ?? 'Feature suggestion')) ?></td>
-                                  <td><?= e((string) (($suggestion['feature_title'] ?? '') ?: 'None')) ?></td>
+                                  <td><?= e($decision_feature_label) ?></td>
                                   <td><code><?= e((string) ($suggestion['steam_id64'] ?? '')) ?></code></td>
                                   <td><span class="status-pill <?= e($decision_status) ?>"><?= e($decision_status) ?></span></td>
                                   <td><?= e((string) ($suggestion['updated_at'] ?? '')) ?></td>

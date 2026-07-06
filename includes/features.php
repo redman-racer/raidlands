@@ -1085,22 +1085,53 @@ function raidlands_features_admin_state(): array
 
     $window = raidlands_features_current_wipe_window();
     $features = raidlands_features_attach_scores(raidlands_features_admin_items(), $window);
-    $pending = raidlands_db_fetch_all(
-        "SELECT fs.*, sf.public_id AS feedback_public_id, sf.status AS feedback_status
-         FROM feature_suggestions fs
-         LEFT JOIN support_feedback sf ON sf.id = fs.support_feedback_id
-         WHERE fs.status = 'pending'
-         ORDER BY fs.created_at DESC, fs.id DESC
-         LIMIT 100"
-    );
-    $grouped = raidlands_db_fetch_all(
-        "SELECT fs.*, fi.title AS feature_title
-         FROM feature_suggestions fs
-         LEFT JOIN feature_items fi ON fi.id = fs.feature_id
-         WHERE fs.status IN ('grouped', 'rejected')
-         ORDER BY fs.updated_at DESC, fs.id DESC
-         LIMIT 40"
-    );
+    if (raidlands_features_split_lineage_is_ready()) {
+        $pending = raidlands_db_fetch_all(
+            "SELECT fs.*,
+                    sf.public_id AS feedback_public_id,
+                    sf.status AS feedback_status,
+                    parent_fs.title AS parent_suggestion_title
+             FROM feature_suggestions fs
+             LEFT JOIN support_feedback sf ON sf.id = fs.support_feedback_id
+             LEFT JOIN feature_suggestions parent_fs ON parent_fs.id = fs.parent_suggestion_id
+             WHERE fs.status = 'pending'
+             ORDER BY fs.created_at DESC, fs.id DESC
+             LIMIT 100"
+        );
+        $grouped = raidlands_db_fetch_all(
+            "SELECT fs.*,
+                    fi.title AS feature_title,
+                    parent_fs.title AS parent_suggestion_title,
+                    (
+                        SELECT COUNT(*)
+                        FROM feature_suggestions child_fs
+                        WHERE child_fs.parent_suggestion_id = fs.id
+                    ) AS split_child_count
+             FROM feature_suggestions fs
+             LEFT JOIN feature_items fi ON fi.id = fs.feature_id
+             LEFT JOIN feature_suggestions parent_fs ON parent_fs.id = fs.parent_suggestion_id
+             WHERE fs.status IN ('grouped', 'rejected', 'split')
+             ORDER BY fs.updated_at DESC, fs.id DESC
+             LIMIT 40"
+        );
+    } else {
+        $pending = raidlands_db_fetch_all(
+            "SELECT fs.*, sf.public_id AS feedback_public_id, sf.status AS feedback_status
+             FROM feature_suggestions fs
+             LEFT JOIN support_feedback sf ON sf.id = fs.support_feedback_id
+             WHERE fs.status = 'pending'
+             ORDER BY fs.created_at DESC, fs.id DESC
+             LIMIT 100"
+        );
+        $grouped = raidlands_db_fetch_all(
+            "SELECT fs.*, fi.title AS feature_title
+             FROM feature_suggestions fs
+             LEFT JOIN feature_items fi ON fi.id = fs.feature_id
+             WHERE fs.status IN ('grouped', 'rejected')
+             ORDER BY fs.updated_at DESC, fs.id DESC
+             LIMIT 40"
+        );
+    }
 
     foreach ($pending as &$suggestion) {
         $suggestion['matches'] = raidlands_features_suggest_matches($suggestion, $features);
@@ -1125,6 +1156,31 @@ function raidlands_features_admin_items(): array
          FROM feature_items
          ORDER BY FIELD(public_status, 'active', 'voting', 'in_development', 'planned', 'under_review', 'archived'), sort_order ASC, title ASC, id ASC"
     );
+}
+
+function raidlands_features_split_lineage_is_ready(): bool
+{
+    static $ready = null;
+
+    if ($ready !== null) {
+        return $ready;
+    }
+
+    try {
+        $row = raidlands_db_fetch_one(
+            "SELECT COUNT(*) AS total
+             FROM INFORMATION_SCHEMA.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME = 'feature_suggestions'
+               AND COLUMN_NAME IN ('parent_suggestion_id', 'split_group_key', 'split_index', 'ai_kind')"
+        );
+
+        $ready = (int) ($row['total'] ?? 0) >= 4;
+    } catch (Throwable $error) {
+        $ready = false;
+    }
+
+    return $ready;
 }
 
 function raidlands_features_feedback_workflow_state(array $feedback_ids): array

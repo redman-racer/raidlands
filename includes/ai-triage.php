@@ -43,7 +43,7 @@ function raidlands_ai_readiness_message(): string
         return 'Database credentials are not configured.';
     }
 
-    return 'AI triage history is not ready. Run database/migrations/027_ai_feedback_triage.sql.';
+    return 'AI triage history is not ready. Run database/migrations/027_ai_feedback_triage.sql and database/migrations/028_ai_feedback_split_suggestions.sql.';
 }
 
 function raidlands_ai_success_statuses(): array
@@ -356,9 +356,10 @@ function raidlands_ai_process_source(string $source_type, int $source_id, array 
             throw new RuntimeException('AI source item could not be found.');
         }
 
-        $payload = raidlands_ai_build_payload($source_type, $source);
+        $allow_split = array_key_exists('allow_split', $options) ? !empty($options['allow_split']) : true;
+        $payload = raidlands_ai_build_payload($source_type, $source, $allow_split);
         $decision = raidlands_ai_request_decision($payload, $config);
-        $normalized = raidlands_ai_normalize_decision($source_type, $source, $decision);
+        $normalized = raidlands_ai_normalize_decision($source_type, $source, $decision, ['allow_split' => $allow_split]);
         $applied = raidlands_ai_apply_decision($source_type, $source, $normalized, (string) $config['model']);
 
         return $applied;
@@ -388,7 +389,7 @@ function raidlands_ai_source_row(string $source_type, int $source_id): ?array
     );
 }
 
-function raidlands_ai_build_payload(string $source_type, array $source): array
+function raidlands_ai_build_payload(string $source_type, array $source, bool $allow_split = true): array
 {
     raidlands_ai_require_features();
 
@@ -419,18 +420,20 @@ function raidlands_ai_build_payload(string $source_type, array $source): array
     if ($source_type === 'feedback') {
         $source_payload = [
             'source_type' => 'feedback',
-            'feedback_type' => (string) ($source['type'] ?? 'bug'),
+            'feedback_type' => raidlands_ai_source_kind($source_type, $source),
             'title' => (string) ($source['summary'] ?? ''),
             'details' => (string) ($source['details'] ?? ''),
             'page_url' => (string) ($source['page_url'] ?? ''),
+            'allow_split' => $allow_split,
         ];
     } else {
         $source_payload = [
             'source_type' => 'suggestion',
-            'feedback_type' => 'feature_request',
+            'feedback_type' => raidlands_ai_source_kind($source_type, $source),
             'title' => (string) ($source['title'] ?? ''),
             'details' => (string) ($source['details'] ?? ''),
             'page_url' => '',
+            'allow_split' => $allow_split,
         ];
     }
 
@@ -532,6 +535,9 @@ function raidlands_ai_prompt(): string
     return implode("\n", [
         'You triage Raidlands Rust server website submissions into the public feature planning system.',
         'Only use the supplied content. Do not infer identity from missing metadata.',
+        'Use split_submission first when one submission contains two or more materially different actionable ideas. Return one split item per distinct idea, written as a standalone player submission.',
+        'Do not split one idea into steps, examples, or implementation details. Split only unrelated or independently actionable requests, bugs, tuning changes, events, shop items, commands, map changes, and balance asks.',
+        'When source.allow_split is false, do not return split_submission; choose the best grouping, public-card, invalid, or review action for that standalone item.',
         'Use group_existing only when the submission is clearly the same request or bug as a non-archived existing feature.',
         'Use create_public_card for valid new suggestions and valid new bugs. Suggestions and feature requests should become public voting cards. Bugs should become public under_review, non-voteable fix cards.',
         'Use close_invalid only for high-confidence spam, empty, abusive, impossible, or unusable submissions.',
@@ -545,11 +551,11 @@ function raidlands_ai_response_schema(): array
     return [
         'type' => 'object',
         'additionalProperties' => false,
-        'required' => ['action', 'valid', 'confidence', 'reason', 'target_feature_id', 'public_card', 'admin_note'],
+        'required' => ['action', 'valid', 'confidence', 'reason', 'target_feature_id', 'public_card', 'split_items', 'admin_note'],
         'properties' => [
             'action' => [
                 'type' => 'string',
-                'enum' => ['group_existing', 'create_public_card', 'close_invalid', 'needs_review'],
+                'enum' => ['group_existing', 'create_public_card', 'close_invalid', 'needs_review', 'split_submission'],
             ],
             'valid' => ['type' => 'boolean'],
             'confidence' => ['type' => 'number'],
@@ -569,6 +575,23 @@ function raidlands_ai_response_schema(): array
                     ],
                     'is_voteable' => ['type' => 'boolean'],
                     'icon_alias' => ['type' => 'string'],
+                ],
+            ],
+            'split_items' => [
+                'type' => 'array',
+                'maxItems' => 12,
+                'items' => [
+                    'type' => 'object',
+                    'additionalProperties' => false,
+                    'required' => ['title', 'details', 'kind'],
+                    'properties' => [
+                        'title' => ['type' => 'string'],
+                        'details' => ['type' => 'string'],
+                        'kind' => [
+                            'type' => 'string',
+                            'enum' => ['bug', 'suggestion', 'feature_request'],
+                        ],
+                    ],
                 ],
             ],
             'admin_note' => ['type' => 'string'],
@@ -593,26 +616,39 @@ function raidlands_ai_response_text(array $response): string
     throw new RuntimeException('AI triage response did not include output text.');
 }
 
-function raidlands_ai_normalize_decision(string $source_type, array $source, array $decision): array
+function raidlands_ai_normalize_decision(string $source_type, array $source, array $decision, array $options = []): array
 {
     raidlands_ai_require_features();
 
     $action = (string) ($decision['action'] ?? 'needs_review');
-    $allowed = ['group_existing', 'create_public_card', 'close_invalid', 'needs_review'];
+    $allowed = ['group_existing', 'create_public_card', 'close_invalid', 'needs_review', 'split_submission'];
 
     if (!in_array($action, $allowed, true)) {
         $action = 'needs_review';
     }
 
     $confidence = max(0.0, min(1.0, (float) ($decision['confidence'] ?? 0)));
-    $source_kind = $source_type === 'feedback' ? (string) ($source['type'] ?? 'bug') : 'feature_request';
+    $source_kind = raidlands_ai_source_kind($source_type, $source);
     $reason = raidlands_ai_clean_text($decision['reason'] ?? '', 700);
     $admin_note = raidlands_ai_clean_text($decision['admin_note'] ?? '', 900);
+    $split_items = raidlands_ai_normalize_split_items((array) ($decision['split_items'] ?? []));
 
     if ($admin_note === '') {
         $admin_note = $reason !== '' ? 'AI triage: ' . $reason : 'AI triage completed.';
     } elseif (!str_starts_with(strtolower($admin_note), 'ai')) {
         $admin_note = 'AI triage: ' . $admin_note;
+    }
+
+    if ($action === 'split_submission') {
+        if (empty($options['allow_split'])) {
+            $action = 'needs_review';
+            $split_items = [];
+            $admin_note = raidlands_ai_append_note($admin_note, 'Split was requested for a child item, so staff review is required.');
+        } elseif ($confidence < 0.6 || count($split_items) < 2) {
+            $action = 'needs_review';
+            $split_items = [];
+            $admin_note = raidlands_ai_append_note($admin_note, 'Confidence was too low or too few distinct items were found to split automatically.');
+        }
     }
 
     if ($action === 'group_existing') {
@@ -679,6 +715,7 @@ function raidlands_ai_normalize_decision(string $source_type, array $source, arr
             'icon_alias' => $icon_alias !== '' ? $icon_alias : 'EVENT',
             'sort_order' => 500,
         ],
+        'split_items' => $split_items,
     ];
 }
 
@@ -692,6 +729,8 @@ function raidlands_ai_apply_decision(string $source_type, array $source, array $
     $status = 'reviewed';
     $target_feature_id = 0;
     $target_suggestion_id = 0;
+    $split_child_suggestion_ids = [];
+    $child_results = [];
 
     if ($owns_transaction) {
         $pdo->beginTransaction();
@@ -712,6 +751,16 @@ function raidlands_ai_apply_decision(string $source_type, array $source, array $
         } elseif ($action === 'close_invalid') {
             raidlands_ai_close_source($source_type, $source, $note);
             $status = 'applied';
+        } elseif ($action === 'split_submission') {
+            $split_result = raidlands_ai_split_source($source_type, $source, $decision, $note);
+            $target_suggestion_id = (int) ($split_result['parent_suggestion_id'] ?? 0);
+            $split_child_suggestion_ids = array_values(array_filter(
+                array_map('intval', (array) ($split_result['child_suggestion_ids'] ?? [])),
+                static fn (int $id): bool => $id > 0
+            ));
+            $decision['parent_suggestion_id'] = $target_suggestion_id;
+            $decision['child_suggestion_ids'] = $split_child_suggestion_ids;
+            $status = 'applied';
         }
 
         raidlands_ai_record_review($source_type, $source_id, [
@@ -729,6 +778,15 @@ function raidlands_ai_apply_decision(string $source_type, array $source, array $
         if ($owns_transaction) {
             $pdo->commit();
         }
+
+        if ($split_child_suggestion_ids !== [] && !$pdo->inTransaction()) {
+            foreach ($split_child_suggestion_ids as $child_suggestion_id) {
+                $child_results[$child_suggestion_id] = raidlands_ai_process_source('suggestion', $child_suggestion_id, [
+                    'inline' => true,
+                    'allow_split' => false,
+                ]);
+            }
+        }
     } catch (Throwable $error) {
         if ($owns_transaction && $pdo->inTransaction()) {
             $pdo->rollBack();
@@ -742,6 +800,8 @@ function raidlands_ai_apply_decision(string $source_type, array $source, array $
         'message' => $action,
         'target_feature_id' => $target_feature_id,
         'target_suggestion_id' => $target_suggestion_id,
+        'child_suggestion_ids' => $split_child_suggestion_ids,
+        'child_results' => $child_results,
     ];
 }
 
@@ -776,6 +836,254 @@ function raidlands_ai_group_source(string $source_type, array $source, int $feat
     );
 
     return $suggestion_id;
+}
+
+function raidlands_ai_split_source(string $source_type, array $source, array $decision, string $admin_note): array
+{
+    raidlands_ai_require_features();
+
+    $source_id = (int) ($source['id'] ?? 0);
+    $split_items = array_values((array) ($decision['split_items'] ?? []));
+
+    if ($source_id <= 0 || count($split_items) < 2) {
+        throw new RuntimeException('AI split requires at least two standalone items.');
+    }
+
+    $split_group_key = $source_type . '-' . $source_id;
+    $parent_suggestion_id = $source_type === 'feedback'
+        ? raidlands_ai_ensure_feedback_split_parent($source, $admin_note, $split_group_key)
+        : raidlands_ai_mark_suggestion_split_parent($source, $admin_note, $split_group_key);
+
+    $child_suggestion_ids = [];
+    $index = 1;
+
+    foreach ($split_items as $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+
+        $child_id = raidlands_ai_upsert_split_child(
+            $source_type,
+            $source,
+            $parent_suggestion_id,
+            $split_group_key,
+            $index,
+            $item
+        );
+
+        if ($child_id > 0) {
+            $child_suggestion_ids[] = $child_id;
+            $index += 1;
+        }
+    }
+
+    if (count($child_suggestion_ids) < 2) {
+        throw new RuntimeException('AI split did not produce enough child suggestions.');
+    }
+
+    if ($source_type === 'feedback') {
+        raidlands_ai_mark_feedback_split((int) ($source['id'] ?? 0), raidlands_ai_append_note($admin_note, 'Split into ' . count($child_suggestion_ids) . ' standalone suggestions.'));
+    }
+
+    return [
+        'parent_suggestion_id' => $parent_suggestion_id,
+        'child_suggestion_ids' => $child_suggestion_ids,
+    ];
+}
+
+function raidlands_ai_ensure_feedback_split_parent(array $feedback, string $admin_note, string $split_group_key): int
+{
+    $feedback_id = (int) ($feedback['id'] ?? 0);
+
+    if ($feedback_id <= 0) {
+        throw new RuntimeException('Feedback record is required for AI splitting.');
+    }
+
+    $identity = raidlands_ai_suggestion_identity_from_feedback($feedback);
+    $title = raidlands_features_clean_text($feedback['summary'] ?? '', 180) ?: 'Split feedback submission';
+    $details = raidlands_features_clean_multiline($feedback['details'] ?? '', 3000);
+    $ai_kind = raidlands_ai_source_kind('feedback', $feedback);
+    $existing = raidlands_db_fetch_one(
+        'SELECT id, admin_note FROM feature_suggestions WHERE support_feedback_id = :support_feedback_id LIMIT 1',
+        ['support_feedback_id' => $feedback_id]
+    );
+
+    if ($existing !== null) {
+        $suggestion_id = (int) ($existing['id'] ?? 0);
+        raidlands_db_execute(
+            "UPDATE feature_suggestions
+             SET feature_id = NULL,
+                 parent_suggestion_id = NULL,
+                 split_group_key = :split_group_key,
+                 split_index = 0,
+                 player_id = :player_id,
+                 steam_id64 = :steam_id64,
+                 source_type = :source_type,
+                 ai_kind = :ai_kind,
+                 status = 'split',
+                 title = :title,
+                 details = :details,
+                 admin_note = :admin_note,
+                 updated_at = NOW()
+             WHERE id = :id",
+            [
+                'split_group_key' => $split_group_key,
+                'player_id' => $identity['player_id'],
+                'steam_id64' => $identity['steam_id64'],
+                'source_type' => $identity['source_type'],
+                'ai_kind' => $ai_kind,
+                'title' => $title,
+                'details' => $details,
+                'admin_note' => raidlands_features_append_admin_note((string) ($existing['admin_note'] ?? ''), $admin_note),
+                'id' => $suggestion_id,
+            ]
+        );
+
+        return $suggestion_id;
+    }
+
+    raidlands_db_execute(
+        'INSERT INTO feature_suggestions
+            (feature_id, support_feedback_id, parent_suggestion_id, split_group_key, split_index, player_id, steam_id64, source_type, ai_kind, status, title, details, admin_note, created_by_steam_id64, created_at, updated_at)
+         VALUES
+            (NULL, :support_feedback_id, NULL, :split_group_key, 0, :player_id, :steam_id64, :source_type, :ai_kind, "split", :title, :details, :admin_note, :created_by, :created_at, :updated_at)',
+        [
+            'support_feedback_id' => $feedback_id,
+            'split_group_key' => $split_group_key,
+            'player_id' => $identity['player_id'],
+            'steam_id64' => $identity['steam_id64'],
+            'source_type' => $identity['source_type'],
+            'ai_kind' => $ai_kind,
+            'title' => $title,
+            'details' => $details,
+            'admin_note' => $admin_note,
+            'created_by' => raidlands_features_admin_actor_steam(),
+            'created_at' => (string) ($feedback['submitted_at'] ?? date('Y-m-d H:i:s')),
+            'updated_at' => date('Y-m-d H:i:s'),
+        ]
+    );
+
+    return (int) raidlands_db_required()->lastInsertId();
+}
+
+function raidlands_ai_mark_suggestion_split_parent(array $suggestion, string $admin_note, string $split_group_key): int
+{
+    $suggestion_id = (int) ($suggestion['id'] ?? 0);
+
+    if ($suggestion_id <= 0) {
+        throw new RuntimeException('Suggestion record is required for AI splitting.');
+    }
+
+    raidlands_db_execute(
+        "UPDATE feature_suggestions
+         SET feature_id = NULL,
+             parent_suggestion_id = NULL,
+             split_group_key = :split_group_key,
+             split_index = 0,
+             status = 'split',
+             admin_note = :admin_note,
+             updated_at = NOW()
+         WHERE id = :id",
+        [
+            'split_group_key' => $split_group_key,
+            'admin_note' => raidlands_features_append_admin_note((string) ($suggestion['admin_note'] ?? ''), $admin_note),
+            'id' => $suggestion_id,
+        ]
+    );
+
+    return $suggestion_id;
+}
+
+function raidlands_ai_upsert_split_child(string $source_type, array $source, int $parent_suggestion_id, string $split_group_key, int $split_index, array $item): int
+{
+    if ($parent_suggestion_id <= 0 || $split_index <= 0) {
+        return 0;
+    }
+
+    $title = raidlands_features_clean_text($item['title'] ?? '', 180);
+    $details = raidlands_features_clean_multiline($item['details'] ?? '', 3000);
+    $ai_kind = raidlands_ai_split_kind($item['kind'] ?? raidlands_ai_source_kind($source_type, $source));
+
+    if ($title === '') {
+        $title = $ai_kind === 'bug' ? 'Bug fix request' : 'Player suggestion';
+    }
+
+    if ($details === '') {
+        $details = $title;
+    }
+
+    $identity = $source_type === 'feedback'
+        ? raidlands_ai_suggestion_identity_from_feedback($source)
+        : raidlands_ai_suggestion_identity_from_suggestion($source);
+    $admin_note = 'AI split from ' . ($source_type === 'feedback' ? 'support feedback' : 'suggestion') . ' #' . (int) ($source['id'] ?? 0) . '.';
+
+    raidlands_db_execute(
+        'INSERT INTO feature_suggestions
+            (feature_id, support_feedback_id, parent_suggestion_id, split_group_key, split_index, player_id, steam_id64, source_type, ai_kind, status, title, details, admin_note, created_by_steam_id64, created_at, updated_at)
+         VALUES
+            (NULL, NULL, :parent_suggestion_id, :split_group_key, :split_index, :player_id, :steam_id64, :source_type, :ai_kind, "pending", :title, :details, :admin_note, :created_by, NOW(), NOW())
+         ON DUPLICATE KEY UPDATE
+            parent_suggestion_id = VALUES(parent_suggestion_id),
+            player_id = VALUES(player_id),
+            steam_id64 = VALUES(steam_id64),
+            source_type = VALUES(source_type),
+            ai_kind = VALUES(ai_kind),
+            title = VALUES(title),
+            details = VALUES(details),
+            admin_note = IF(admin_note IS NULL OR admin_note = \'\', VALUES(admin_note), admin_note),
+            updated_at = NOW()',
+        [
+            'parent_suggestion_id' => $parent_suggestion_id,
+            'split_group_key' => $split_group_key,
+            'split_index' => $split_index,
+            'player_id' => $identity['player_id'],
+            'steam_id64' => $identity['steam_id64'],
+            'source_type' => $identity['source_type'],
+            'ai_kind' => $ai_kind,
+            'title' => $title,
+            'details' => $details,
+            'admin_note' => $admin_note,
+            'created_by' => $identity['created_by'],
+        ]
+    );
+
+    $row = raidlands_db_fetch_one(
+        'SELECT id FROM feature_suggestions WHERE split_group_key = :split_group_key AND split_index = :split_index LIMIT 1',
+        [
+            'split_group_key' => $split_group_key,
+            'split_index' => $split_index,
+        ]
+    );
+
+    return (int) ($row['id'] ?? 0);
+}
+
+function raidlands_ai_mark_feedback_split(int $feedback_id, string $admin_note): void
+{
+    if ($feedback_id <= 0) {
+        return;
+    }
+
+    $feedback = raidlands_db_fetch_one(
+        'SELECT admin_note FROM support_feedback WHERE id = :id LIMIT 1',
+        ['id' => $feedback_id]
+    );
+
+    if ($feedback === null) {
+        return;
+    }
+
+    raidlands_db_execute(
+        "UPDATE support_feedback
+         SET status = 'reviewing',
+             admin_note = :admin_note,
+             updated_at = NOW()
+         WHERE id = :id",
+        [
+            'admin_note' => raidlands_features_append_admin_note((string) ($feedback['admin_note'] ?? ''), $admin_note),
+            'id' => $feedback_id,
+        ]
+    );
 }
 
 function raidlands_ai_close_source(string $source_type, array $source, string $admin_note): void
@@ -849,7 +1157,7 @@ function raidlands_ai_record_review(string $source_type, int $source_id, array $
             'source_id' => $source_id,
             'status' => in_array($status, ['skipped', 'failed', 'reviewed', 'applied'], true) ? $status : 'failed',
             'model' => $model,
-            'action' => in_array($action, ['group_existing', 'create_public_card', 'close_invalid', 'needs_review', 'none'], true) ? $action : 'none',
+            'action' => in_array($action, ['group_existing', 'create_public_card', 'close_invalid', 'needs_review', 'split_submission', 'none'], true) ? $action : 'none',
             'confidence' => $confidence,
             'target_feature_id' => (int) ($data['target_feature_id'] ?? 0) > 0 ? (int) $data['target_feature_id'] : null,
             'target_suggestion_id' => (int) ($data['target_suggestion_id'] ?? 0) > 0 ? (int) $data['target_suggestion_id'] : null,
@@ -897,6 +1205,101 @@ function raidlands_ai_review_target_label(?array $review): string
     $suggestion = trim((string) ($review['target_suggestion_title'] ?? ''));
 
     return $suggestion;
+}
+
+function raidlands_ai_source_kind(string $source_type, array $source): string
+{
+    if ($source_type === 'feedback') {
+        return raidlands_ai_split_kind($source['type'] ?? 'bug');
+    }
+
+    return raidlands_ai_split_kind($source['ai_kind'] ?? 'feature_request');
+}
+
+function raidlands_ai_normalize_split_items(array $items): array
+{
+    $normalized = [];
+
+    foreach ($items as $item) {
+        if (!is_array($item)) {
+            continue;
+        }
+
+        $title = raidlands_ai_clean_text($item['title'] ?? '', 180);
+        $details = raidlands_ai_clean_text($item['details'] ?? '', 3000);
+        $kind = raidlands_ai_split_kind($item['kind'] ?? 'feature_request');
+
+        if ($title === '' && $details === '') {
+            continue;
+        }
+
+        if ($title === '') {
+            $title = $kind === 'bug' ? 'Bug fix request' : 'Player suggestion';
+        }
+
+        if ($details === '') {
+            $details = $title;
+        }
+
+        $normalized[] = [
+            'title' => $title,
+            'details' => $details,
+            'kind' => $kind,
+        ];
+
+        if (count($normalized) >= 12) {
+            break;
+        }
+    }
+
+    return $normalized;
+}
+
+function raidlands_ai_split_kind($value): string
+{
+    $kind = strtolower(trim((string) $value));
+
+    if ($kind === 'bug') {
+        return 'bug';
+    }
+
+    if ($kind === 'suggestion') {
+        return 'suggestion';
+    }
+
+    return 'feature_request';
+}
+
+function raidlands_ai_suggestion_identity_from_feedback(array $feedback): array
+{
+    $steam_id64 = raidlands_features_valid_steam_or_owner((string) (($feedback['steam_id64'] ?? '') ?: ($feedback['player_steam_id64'] ?? '')));
+    $source_type = $steam_id64 === RAIDLANDS_FEATURE_OWNER_STEAM_ID64 && empty($feedback['steam_id64']) && empty($feedback['player_steam_id64'])
+        ? 'staff_import'
+        : 'feedback';
+
+    return [
+        'player_id' => (int) ($feedback['player_id'] ?? 0) > 0 ? (int) $feedback['player_id'] : null,
+        'steam_id64' => $steam_id64,
+        'source_type' => $source_type,
+        'created_by' => raidlands_features_admin_actor_steam(),
+    ];
+}
+
+function raidlands_ai_suggestion_identity_from_suggestion(array $suggestion): array
+{
+    $steam_id64 = raidlands_features_valid_steam_or_owner((string) ($suggestion['steam_id64'] ?? ''));
+    $source_type = (string) ($suggestion['source_type'] ?? 'public');
+
+    if (!in_array($source_type, ['public', 'feedback', 'staff', 'staff_import'], true)) {
+        $source_type = 'public';
+    }
+
+    return [
+        'player_id' => (int) ($suggestion['player_id'] ?? 0) > 0 ? (int) $suggestion['player_id'] : null,
+        'steam_id64' => $steam_id64,
+        'source_type' => $source_type,
+        'created_by' => raidlands_features_valid_steam_or_owner((string) ($suggestion['created_by_steam_id64'] ?? $steam_id64)),
+    ];
 }
 
 function raidlands_ai_clean_text($value, int $max_length): string
