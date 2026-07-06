@@ -9432,6 +9432,22 @@ button.admin-permission-chip:focus-visible {
   min-height: 250px;
 }
 
+.wheel-machine::before {
+  top: 22px;
+  right: auto;
+  bottom: auto;
+  left: 50%;
+  z-index: 2;
+  width: 0;
+  height: 0;
+  border: 0;
+  border-right: 12px solid transparent;
+  border-left: 12px solid transparent;
+  border-top: 24px solid var(--yellow);
+  filter: drop-shadow(0 0 8px rgba(255, 209, 102, .5));
+  transform: translateX(-50%);
+}
+
 .wheel-machine span {
   position: relative;
   width: 166px;
@@ -9447,20 +9463,6 @@ button.admin-permission-chip:focus-visible {
     );
   box-shadow: 0 0 38px rgba(255, 138, 40, .28), inset 0 0 0 12px rgba(0, 0, 0, .28);
   animation: rp-wheel-turn 7s cubic-bezier(.48, .02, .24, 1) infinite;
-}
-
-.wheel-machine span::after {
-  position: absolute;
-  top: 24px;
-  left: 50%;
-  width: 0;
-  height: 0;
-  content: "";
-  border-right: 11px solid transparent;
-  border-left: 11px solid transparent;
-  border-top: 22px solid var(--yellow);
-  filter: drop-shadow(0 0 8px rgba(255, 209, 102, .5));
-  transform: translateX(-50%);
 }
 
 .rp-wheel-odds {
