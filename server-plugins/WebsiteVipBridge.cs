@@ -15,7 +15,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteVipBridge", "Raidlands", "1.5.5")]
+    [Info("WebsiteVipBridge", "Raidlands", "1.5.6")]
     [Description("Syncs website VIP entitlements and player stats between Raidlands.net and the Rust server.")]
     public class WebsiteVipBridge : CovalencePlugin
     {
@@ -84,6 +84,127 @@ namespace Oxide.Plugins
             "perk_vehicle_hp_150",
             "perk_tc_12",
             "perk_minicopter_instant_takeoff"
+        };
+
+        private static readonly Dictionary<string, string> CanonicalKitImagePathsByName = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["starter kit"] = "/assets/media/kits/starter-kit.webp",
+            ["autokit"] = "/assets/media/kits/autokit.webp",
+            ["raidlands_pvp_light"] = "/assets/media/kits/pvp-light-kit.webp",
+            ["pvp_light"] = "/assets/media/kits/pvp-light-kit.webp",
+            ["raidlands_pvp_rifle"] = "/assets/media/kits/pvp-rifle-kit.webp",
+            ["pvp_rifle"] = "/assets/media/kits/pvp-rifle-kit.webp",
+            ["raidlands_pvp_roamer"] = "/assets/media/kits/pvp-roamer-kit.webp",
+            ["pvp_roamer"] = "/assets/media/kits/pvp-roamer-kit.webp",
+            ["raidlands_pvp_heavy"] = "/assets/media/kits/pvp-heavy-kit.webp",
+            ["pvp_heavy"] = "/assets/media/kits/pvp-heavy-kit.webp",
+            ["raidlands_pvp_elite"] = "/assets/media/kits/pvp-elite-kit.webp",
+            ["pvp_elite"] = "/assets/media/kits/pvp-elite-kit.webp",
+            ["raidlands_pvp_breach"] = "/assets/media/kits/pvp-breach-kit.webp",
+            ["pvp_breach"] = "/assets/media/kits/pvp-breach-kit.webp",
+            ["vip"] = "/assets/media/kits/vip-kit.webp",
+            ["kit_vip"] = "/assets/media/kits/vip-kit.webp",
+            ["diamond"] = "/assets/media/kits/vip-diamond-kit.webp",
+            ["kit_vip_diamond"] = "/assets/media/kits/vip-diamond-kit.webp",
+            ["vip_plus"] = "/assets/media/kits/vip-plus-kit.webp",
+            ["kit_vip_plus"] = "/assets/media/kits/vip-plus-kit.webp",
+            ["kit_vip_plus_diamond"] = "/assets/media/kits/vip-plus-diamond-kit.webp",
+            ["mvp"] = "/assets/media/kits/mvp-kit.webp",
+            ["kit_mvp"] = "/assets/media/kits/mvp-kit.webp",
+            ["golden"] = "/assets/media/kits/golden-vip-kit.webp",
+            ["kit_golden_vip"] = "/assets/media/kits/golden-vip-kit.webp",
+            ["ultimate"] = "/assets/media/kits/ultimate-vip-kit.webp",
+            ["kit_ultimate_vip"] = "/assets/media/kits/ultimate-vip-kit.webp",
+            ["titan"] = "/assets/media/kits/titan-vip-kit.webp",
+            ["kit_titan_vip"] = "/assets/media/kits/titan-vip-kit.webp",
+            ["sentry"] = "/assets/media/kits/sentry-small-pack.webp",
+            ["pack_sentry_small"] = "/assets/media/kits/sentry-small-pack.webp",
+            ["sentry_large"] = "/assets/media/kits/sentry-large-pack.webp",
+            ["pack_sentry_large"] = "/assets/media/kits/sentry-large-pack.webp",
+            ["portafort"] = "/assets/media/kits/portafort-token.webp",
+            ["vehicles"] = "/assets/media/kits/vehicle-pack.webp",
+            ["pack_vehicle"] = "/assets/media/kits/vehicle-pack.webp",
+            ["steam_name_rewards"] = "/assets/media/kits/steam-name-rewards-kit.webp",
+            ["kit_claim_steam_name_rewards"] = "/assets/media/kits/steam-name-rewards-kit.webp",
+            ["steam"] = "/assets/media/kits/steam-rewards-kit.webp",
+            ["kit_claim_steam_rewards"] = "/assets/media/kits/steam-rewards-kit.webp",
+            ["discord_booster"] = "/assets/media/kits/discord-booster-kit.webp",
+            ["kit_claim_discord_booster"] = "/assets/media/kits/discord-booster-kit.webp",
+            ["discord_raid"] = "/assets/media/kits/discord-raid-kit.webp",
+            ["kit_claim_discord_raid"] = "/assets/media/kits/discord-raid-kit.webp",
+            ["discord"] = "/assets/media/kits/discord-kit.webp",
+            ["kit_claim_discord"] = "/assets/media/kits/discord-kit.webp",
+            ["556"] = "/assets/media/kits/556-kit.webp",
+            ["kit_claim_556"] = "/assets/media/kits/556-kit.webp",
+            ["cards"] = "/assets/media/kits/cards-kit.webp",
+            ["kit_claim_cards"] = "/assets/media/kits/cards-kit.webp",
+            ["scrap"] = "/assets/media/kits/scrap-kit.webp",
+            ["kit_claim_scrap"] = "/assets/media/kits/scrap-kit.webp",
+            ["scuba"] = "/assets/media/kits/scuba-kit.webp",
+            ["kit_claim_scuba"] = "/assets/media/kits/scuba-kit.webp",
+            ["components"] = "/assets/media/kits/comps-kit.webp",
+            ["comps"] = "/assets/media/kits/comps-kit.webp",
+            ["kit_claim_components"] = "/assets/media/kits/comps-kit.webp",
+            ["build"] = "/assets/media/kits/build-kit.webp",
+            ["build kit"] = "/assets/media/kits/build-kit.webp",
+            ["kit_claim_build"] = "/assets/media/kits/build-kit.webp",
+            ["raid"] = "/assets/media/kits/raid-kit.webp",
+            ["raid kit"] = "/assets/media/kits/raid-kit.webp",
+            ["kit_claim_raid"] = "/assets/media/kits/raid-kit.webp",
+            ["medical"] = "/assets/media/kits/medical-kit.webp",
+            ["kit_claim_medical"] = "/assets/media/kits/medical-kit.webp",
+            ["mp5"] = "/assets/media/kits/mp5-kit.webp",
+            ["kit_claim_mp5"] = "/assets/media/kits/mp5-kit.webp",
+            ["lr300"] = "/assets/media/kits/lr300-kit.webp",
+            ["kit_claim_lr300"] = "/assets/media/kits/lr300-kit.webp",
+            ["m16"] = "/assets/media/kits/m16a2-kit.webp",
+            ["kit_claim_m16a2"] = "/assets/media/kits/m16a2-kit.webp",
+            ["ak"] = "/assets/media/kits/ak-kit.webp",
+            ["kit_claim_ak"] = "/assets/media/kits/ak-kit.webp"
+        };
+
+        private static readonly Dictionary<string, string> CanonicalKitImagePathsByPermission = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            ["kits.autokit"] = "/assets/media/kits/autokit.webp",
+            ["kits.pvp.light"] = "/assets/media/kits/pvp-light-kit.webp",
+            ["kits.pvp.rifle"] = "/assets/media/kits/pvp-rifle-kit.webp",
+            ["kits.pvp.roamer"] = "/assets/media/kits/pvp-roamer-kit.webp",
+            ["kits.pvp.heavy"] = "/assets/media/kits/pvp-heavy-kit.webp",
+            ["kits.pvp.elite"] = "/assets/media/kits/pvp-elite-kit.webp",
+            ["kits.pvp.breach"] = "/assets/media/kits/pvp-breach-kit.webp",
+            ["kits.vip"] = "/assets/media/kits/vip-kit.webp",
+            ["kits.vip.diamond"] = "/assets/media/kits/vip-diamond-kit.webp",
+            ["kits.vipplus"] = "/assets/media/kits/vip-plus-kit.webp",
+            ["kits.vipplus.diamond"] = "/assets/media/kits/vip-plus-diamond-kit.webp",
+            ["kits.mvp"] = "/assets/media/kits/mvp-kit.webp",
+            ["kits.goldenvip"] = "/assets/media/kits/golden-vip-kit.webp",
+            ["kits.ultimatevip"] = "/assets/media/kits/ultimate-vip-kit.webp",
+            ["kits.titanvip"] = "/assets/media/kits/titan-vip-kit.webp",
+            ["kits.sentry.small"] = "/assets/media/kits/sentry-small-pack.webp",
+            ["kits.sentry.large"] = "/assets/media/kits/sentry-large-pack.webp",
+            ["kits.portafort"] = "/assets/media/kits/portafort-token.webp",
+            ["kits.vehicle"] = "/assets/media/kits/vehicle-pack.webp",
+            ["kits.claim.steam_name_rewards"] = "/assets/media/kits/steam-name-rewards-kit.webp",
+            ["kits.claim.steam_rewards"] = "/assets/media/kits/steam-rewards-kit.webp",
+            ["kits.claim.discord_booster"] = "/assets/media/kits/discord-booster-kit.webp",
+            ["kits.claim.discord_raid"] = "/assets/media/kits/discord-raid-kit.webp",
+            ["kits.claim.discord"] = "/assets/media/kits/discord-kit.webp",
+            ["kits.claim.556"] = "/assets/media/kits/556-kit.webp",
+            ["kits.claim.cards"] = "/assets/media/kits/cards-kit.webp",
+            ["kits.claim.scrap"] = "/assets/media/kits/scrap-kit.webp",
+            ["kits.claim.scuba"] = "/assets/media/kits/scuba-kit.webp",
+            ["kits.claim.components"] = "/assets/media/kits/comps-kit.webp",
+            ["kits.comp"] = "/assets/media/kits/comps-kit.webp",
+            ["kits.claim.build"] = "/assets/media/kits/build-kit.webp",
+            ["kits.build"] = "/assets/media/kits/build-kit.webp",
+            ["kits.claim.raid"] = "/assets/media/kits/raid-kit.webp",
+            ["kits.raid"] = "/assets/media/kits/raid-kit.webp",
+            ["kits.claim.medical"] = "/assets/media/kits/medical-kit.webp",
+            ["kits.medical"] = "/assets/media/kits/medical-kit.webp",
+            ["kits.claim.mp5"] = "/assets/media/kits/mp5-kit.webp",
+            ["kits.claim.lr300"] = "/assets/media/kits/lr300-kit.webp",
+            ["kits.claim.m16a2"] = "/assets/media/kits/m16a2-kit.webp",
+            ["kits.claim.ak"] = "/assets/media/kits/ak-kit.webp"
         };
 
         private static Dictionary<string, StorefrontGroupBundle> DefaultStorefrontBundles()
@@ -863,6 +984,30 @@ namespace Oxide.Plugins
 
             var message = $"Kit sync enabled={config.KitSyncEnabled}, interval={Math.Max(60, config.KitSyncIntervalSeconds)}s, last revision={kitRevision}, backups={KitBackupDirectory()}";
             ReplyBridge(player, message);
+        }
+
+        [Command("websitevip.kits.repairimages")]
+        private void KitRepairImagesCommand(IPlayer player, string command, string[] args)
+        {
+            if (!CanRunBridgeCommand(player))
+            {
+                return;
+            }
+
+            RunScheduled("Kit image repair", () =>
+            {
+                int kitImagesChanged;
+                int rewardIconsChanged;
+                RepairCanonicalKitImages(out kitImagesChanged, out rewardIconsChanged);
+
+                if (kitImagesChanged > 0 || rewardIconsChanged > 0)
+                {
+                    ReplyBridge(player, $"Updated {kitImagesChanged} Kits image URL(s) and {rewardIconsChanged} ServerRewards kit icon URL(s), then reloaded Kits and ServerRewards.");
+                    return;
+                }
+
+                ReplyBridge(player, "Kit image URLs are already current.");
+            });
         }
 
         [Command("websitevip.permissions.snapshot")]
@@ -2839,11 +2984,153 @@ namespace Oxide.Plugins
                 ["Cost"] = Math.Max(0, KitInt(source, "Cost", 0)),
                 ["IsHidden"] = KitBool(source, "IsHidden", false),
                 ["CopyPasteFile"] = KitString(source, "CopyPasteFile"),
-                ["KitImage"] = AssetUrl(KitString(source, "KitImage")),
+                ["KitImage"] = ResolveKitImageUrl(source),
                 ["MainItems"] = NormalizeItemArray(source["MainItems"] as JArray),
                 ["WearItems"] = NormalizeItemArray(source["WearItems"] as JArray),
                 ["BeltItems"] = NormalizeItemArray(source["BeltItems"] as JArray)
             };
+        }
+
+        private void RepairCanonicalKitImages(out int kitImagesChanged, out int rewardIconsChanged)
+        {
+            kitImagesChanged = RepairKitsDataImages();
+            rewardIconsChanged = RepairServerRewardsKitIcons();
+
+            if (kitImagesChanged > 0 || rewardIconsChanged > 0)
+            {
+                ReloadKitPlugins();
+            }
+        }
+
+        private int RepairKitsDataImages()
+        {
+            var path = KitDataPath("Kits", "kits_data.json");
+            var kitsData = ReadJsonFile(path);
+            var kitsRoot = kitsData["_kits"] as JObject;
+
+            if (kitsRoot == null)
+            {
+                return 0;
+            }
+
+            var changed = 0;
+
+            foreach (var property in kitsRoot.Properties().ToList())
+            {
+                var kit = property.Value as JObject;
+
+                if (kit == null)
+                {
+                    continue;
+                }
+
+                var image = ResolveKitImageUrl(kit, property.Name);
+
+                if (string.IsNullOrWhiteSpace(image))
+                {
+                    continue;
+                }
+
+                var current = KitString(kit, "KitImage").Trim();
+
+                if (string.Equals(current, image, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                kit["KitImage"] = image;
+                changed++;
+            }
+
+            if (changed > 0)
+            {
+                WriteJsonAtomic(path, kitsData);
+            }
+
+            return changed;
+        }
+
+        private int RepairServerRewardsKitIcons()
+        {
+            var path = KitDataPath("ServerRewards", "products.json");
+            var products = ReadJsonFile(path);
+            var kitRows = products["Kits"] as JArray;
+
+            if (kitRows == null)
+            {
+                return 0;
+            }
+
+            var changed = 0;
+
+            foreach (var token in kitRows)
+            {
+                var row = token as JObject;
+
+                if (row == null)
+                {
+                    continue;
+                }
+
+                var image = ResolveKitImageUrl(row, KitString(row, "KitName"), KitString(row, "Permission"));
+
+                if (string.IsNullOrWhiteSpace(image))
+                {
+                    continue;
+                }
+
+                var current = KitString(row, "IconURL").Trim();
+
+                if (string.Equals(current, image, StringComparison.OrdinalIgnoreCase))
+                {
+                    continue;
+                }
+
+                row["IconURL"] = image;
+                changed++;
+            }
+
+            if (changed > 0)
+            {
+                WriteJsonAtomic(path, products);
+            }
+
+            return changed;
+        }
+
+        private string ResolveKitImageUrl(JObject source, string fallbackName = "", string fallbackPermission = "")
+        {
+            var name = FirstNonEmpty(KitString(source, "Name"), FirstNonEmpty(KitString(source, "KitName"), fallbackName));
+            var permissionName = FirstNonEmpty(KitString(source, "RequiredPermission"), FirstNonEmpty(KitString(source, "Permission"), fallbackPermission));
+            var canonical = CanonicalKitImagePath(name, permissionName);
+            var configured = FirstNonEmpty(KitString(source, "KitImage"), KitString(source, "IconURL"));
+
+            return AssetUrl(FirstNonEmpty(canonical, configured));
+        }
+
+        private string CanonicalKitImagePath(string kitName, string permissionName)
+        {
+            string image;
+            var permissionKey = NormalizePermissionName(permissionName);
+
+            if (!string.IsNullOrWhiteSpace(permissionKey) && CanonicalKitImagePathsByPermission.TryGetValue(permissionKey, out image))
+            {
+                return image;
+            }
+
+            var nameKey = CanonicalKitImageNameKey(kitName);
+
+            if (!string.IsNullOrWhiteSpace(nameKey) && CanonicalKitImagePathsByName.TryGetValue(nameKey, out image))
+            {
+                return image;
+            }
+
+            return "";
+        }
+
+        private static string CanonicalKitImageNameKey(string value)
+        {
+            return (value ?? "").Trim().ToLowerInvariant();
         }
 
         private JArray NormalizeItemArray(JArray source)
@@ -2922,7 +3209,7 @@ namespace Oxide.Plugins
                     ["DisplayName"] = KitString(row, "DisplayName"),
                     ["Cost"] = Math.Max(0, KitInt(row, "Cost", 0)),
                     ["Cooldown"] = Math.Max(0, KitInt(row, "Cooldown", 0)),
-                    ["IconURL"] = AssetUrl(KitString(row, "IconURL")),
+                    ["IconURL"] = ResolveKitImageUrl(row),
                     ["Permission"] = KitString(row, "Permission")
                 };
 

@@ -74,10 +74,74 @@ function store_product_image_key(string $value): string
     return preg_replace('/[^a-z0-9]+/', '', $value) ?? '';
 }
 
+function store_product_primary_image_path(array $product): string
+{
+    $keys = array_values(array_filter([
+        store_product_image_key((string) ($product['slug'] ?? '')),
+        store_product_image_key((string) ($product['name'] ?? '')),
+    ]));
+    $images = [
+        'rankvip' => '/assets/media/kits/vip-kit.webp',
+        'vip' => '/assets/media/kits/vip-kit.webp',
+        'redeemkitvip' => '/assets/media/kits/vip-kit.webp',
+        'vipkitredeem' => '/assets/media/kits/vip-kit.webp',
+        'rankvipplus' => '/assets/media/kits/vip-plus-kit.webp',
+        'vipplus' => '/assets/media/kits/vip-plus-kit.webp',
+        'redeemkitvipplus' => '/assets/media/kits/vip-plus-kit.webp',
+        'vippluskitredeem' => '/assets/media/kits/vip-plus-kit.webp',
+        'rankmvp' => '/assets/media/kits/mvp-kit.webp',
+        'mvp' => '/assets/media/kits/mvp-kit.webp',
+        'redeemkitmvp' => '/assets/media/kits/mvp-kit.webp',
+        'mvpkitredeem' => '/assets/media/kits/mvp-kit.webp',
+        'rankgoldenvip' => '/assets/media/kits/golden-vip-kit.webp',
+        'goldenvip' => '/assets/media/kits/golden-vip-kit.webp',
+        'redeemkitgoldenvip' => '/assets/media/kits/golden-vip-kit.webp',
+        'goldenvipkitredeem' => '/assets/media/kits/golden-vip-kit.webp',
+        'rankdiamondvip' => '/assets/media/kits/vip-diamond-kit.webp',
+        'diamondvip' => '/assets/media/kits/vip-diamond-kit.webp',
+        'rankultimatevip' => '/assets/media/kits/ultimate-vip-kit.webp',
+        'ultimatevip' => '/assets/media/kits/ultimate-vip-kit.webp',
+        'redeemkitultimatevip' => '/assets/media/kits/ultimate-vip-kit.webp',
+        'ultimatevipkitredeem' => '/assets/media/kits/ultimate-vip-kit.webp',
+        'ranktitanvip' => '/assets/media/kits/titan-vip-kit.webp',
+        'titanvip' => '/assets/media/kits/titan-vip-kit.webp',
+        'redeemkittitanvip' => '/assets/media/kits/titan-vip-kit.webp',
+        'titanvipkitredeem' => '/assets/media/kits/titan-vip-kit.webp',
+        'redeempacksentrysmall' => '/assets/media/kits/sentry-small-pack.webp',
+        'sentrypacksmall' => '/assets/media/kits/sentry-small-pack.webp',
+        'redeempacksentrylarge' => '/assets/media/kits/sentry-large-pack.webp',
+        'sentrypacklarge' => '/assets/media/kits/sentry-large-pack.webp',
+        'redeempackportafort' => '/assets/media/kits/portafort-token.webp',
+        'portafortpack' => '/assets/media/kits/portafort-token.webp',
+        'redeempackvehicle' => '/assets/media/kits/vehicle-pack.webp',
+        'vehiclepack' => '/assets/media/kits/vehicle-pack.webp',
+    ];
+
+    foreach ($keys as $key) {
+        if (isset($images[$key])) {
+            return $images[$key];
+        }
+    }
+
+    return '';
+}
+
 function render_store_product_symbol(array $product, string $type, array $linked_kits): string
 {
-    if ($type === 'perk' || $linked_kits === []) {
-        return render_feature_symbol($type === 'perk' ? 'SHOP' : 'KIT');
+    if ($type === 'perk') {
+        return render_feature_symbol('SHOP');
+    }
+
+    $product_image = store_product_primary_image_path($product);
+
+    if ($product_image !== '') {
+        return '<span class="feature-symbol feature-symbol-image store-product-symbol" aria-hidden="true">'
+            . '<img src="' . e(raidlands_kits_public_image_url($product_image)) . '" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">'
+            . '</span>';
+    }
+
+    if ($linked_kits === []) {
+        return render_feature_symbol('KIT');
     }
 
     $product_keys = array_values(array_filter([
