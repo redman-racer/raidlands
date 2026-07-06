@@ -7,6 +7,20 @@
   const pageId = doc.dataset.page || "home";
   const CONFIG = getSiteConfig();
   const MOBILE_PERFORMANCE_QUERY = "(max-width: 700px), (pointer: coarse)";
+  const REDUCED_MOTION_QUERY = "(prefers-reduced-motion: reduce)";
+  const RP_GAME_MOTION = {
+    coinflip: { minMs: 2200, settleMs: 520, resultLockMs: 1100 },
+    dice: { minMs: 2500, settleMs: 620, resultLockMs: 1100 },
+    jackpot: { minMs: 1800, settleMs: 520, resultLockMs: 1000 },
+    "high-low": { minMs: 2200, settleMs: 560, resultLockMs: 1100 },
+    wheel: { minMs: 3200, settleMs: 1600, resultLockMs: 1200 }
+  };
+  const RP_WHEEL_RESULT_ROTATIONS = {
+    green: 351,
+    orange: 306,
+    steel: 207,
+    ash: 72
+  };
   let serverHistoryPayload = null;
   let serverHistoryRange = "6h";
   let serverHistoryResizeTimer = null;
@@ -396,52 +410,405 @@
   async function submitRpGameForm(root, form) {
     const panel = form.closest("[data-rp-game-panel]");
     const submitter = form.querySelector('[type="submit"]');
+    const gameKey = form.dataset.rpGameForm || panel?.dataset.rpGamePanel || "game";
+    const formData = new FormData(form);
+    const timing = startRpGameMotion(panel, gameKey);
 
-    panel?.classList.add("is-spinning");
     form.classList.add("is-submitting");
+    setRpGameFormLocked(form, true);
 
     if (submitter) {
-      submitter.disabled = true;
       submitter.dataset.originalText = submitter.textContent || "";
-      submitter.textContent = "Queuing...";
+      submitter.textContent = "Syncing...";
     }
 
     try {
       const actionUrl = form.getAttribute("action") || window.location.href;
-      const response = await fetch(actionUrl, {
-        method: "POST",
-        body: new FormData(form),
-        credentials: "same-origin",
-        headers: {
-          Accept: "application/json",
-          "X-Requested-With": "fetch"
-        }
-      });
-      const payload = await readJsonResponse(response);
+      const request = (async () => {
+        const response = await fetch(actionUrl, {
+          method: "POST",
+          body: formData,
+          credentials: "same-origin",
+          headers: {
+            Accept: "application/json",
+            "X-Requested-With": "fetch"
+          }
+        });
+        const payload = await readJsonResponse(response);
+
+        return { response, payload };
+      })();
+      const [{ response, payload }] = await Promise.all([request, delay(timing.minMs)]);
 
       if (!response.ok || !payload.ok) {
         throw new Error(payload.message || payload.error || `RP game request failed with HTTP ${response.status}.`);
       }
 
+      if (submitter) {
+        submitter.textContent = "Revealing...";
+      }
+
+      await settleRpGameMotion(panel, gameKey, payload.result || {}, timing);
+      showRpGameOutcome(panel, gameKey, payload.result || {}, payload.message || "RP game queued.");
       showRpGamesFlash(root, payload.type || "success", payload.message || "RP game queued.");
       applyRpGamesState(payload.state || {});
       showToast(payload.message || "RP game queued.");
       track(`rp_game_${form.dataset.rpGameForm || "play"}_queued`);
+      await delay(timing.resultLockMs);
     } catch (error) {
       const message = error && error.message ? error.message : "RP game could not be queued.";
+      stopRpGameMotion(panel);
       showRpGamesFlash(root, "error", message);
       showToast(message);
     } finally {
-      window.setTimeout(() => {
-        panel?.classList.remove("is-spinning");
-      }, 520);
       form.classList.remove("is-submitting");
+      setRpGameFormLocked(form, false);
 
       if (submitter) {
-        submitter.disabled = false;
         submitter.textContent = submitter.dataset.originalText || "Submit";
       }
     }
+  }
+
+  function getRpGameTiming(gameKey) {
+    const base = RP_GAME_MOTION[gameKey] || RP_GAME_MOTION.coinflip;
+
+    if (window.matchMedia && window.matchMedia(REDUCED_MOTION_QUERY).matches) {
+      return {
+        minMs: Math.min(650, base.minMs),
+        settleMs: 0,
+        resultLockMs: Math.min(800, base.resultLockMs)
+      };
+    }
+
+    return base;
+  }
+
+  function startRpGameMotion(panel, gameKey) {
+    const timing = getRpGameTiming(gameKey);
+
+    if (!panel) return timing;
+
+    clearRpGameOutcome(panel);
+    stopHighLowTicker(panel);
+    panel.classList.remove("result-win", "result-loss", "result-push", "result-neutral");
+    panel.classList.add("is-spinning");
+
+    const coin = panel.querySelector("[data-rp-coin-strip]");
+    if (coin) {
+      coin.removeAttribute("data-rp-coin-result");
+    }
+
+    const dice = panel.querySelector("[data-rp-dice-strip]");
+    if (dice) {
+      dice.removeAttribute("data-rp-dice-face");
+    }
+
+    const highLow = panel.querySelector(".high-low-machine");
+    if (highLow) {
+      highLow.removeAttribute("data-rp-outcome");
+      const roll = highLow.querySelector("[data-rp-high-low-roll]");
+
+      if (roll) {
+        roll.classList.remove("is-settled");
+        startHighLowTicker(panel, roll);
+      }
+    }
+
+    startWheelSpin(panel, timing);
+
+    return timing;
+  }
+
+  async function settleRpGameMotion(panel, gameKey, result, timing) {
+    if (!panel) return;
+
+    const normalized = normalizeRpPlayedGame(gameKey);
+
+    if (normalized === "coinflip") {
+      settleCoinFlip(panel, result);
+    } else if (normalized === "dice") {
+      settleDice(panel, result);
+    } else if (normalized === "high-low") {
+      settleHighLow(panel, result);
+    } else if (normalized === "wheel") {
+      settleWheel(panel, result, timing);
+    }
+
+    await delay(timing.settleMs);
+    panel.classList.remove("is-spinning");
+  }
+
+  function stopRpGameMotion(panel) {
+    if (!panel) return;
+
+    stopHighLowTicker(panel);
+    panel.classList.remove("is-spinning");
+  }
+
+  function normalizeRpPlayedGame(gameKey) {
+    return String(gameKey || "").replace(/_/g, "-");
+  }
+
+  function startWheelSpin(panel, timing) {
+    const wheel = panel?.querySelector("[data-rp-wheel]");
+
+    if (!wheel) return;
+
+    const current = Number(wheel.dataset.rpRotation || 0);
+    const extra = window.matchMedia && window.matchMedia(REDUCED_MOTION_QUERY).matches ? 0 : 1080 + Math.round(Math.random() * 220);
+    const target = current + extra + 360;
+    wheel.style.transition = extra === 0 ? "none" : `transform ${Math.max(900, timing.minMs)}ms cubic-bezier(.16, .78, .22, 1)`;
+    wheel.style.transform = `rotate(${target}deg)`;
+    wheel.dataset.rpRotation = String(target);
+  }
+
+  function settleWheel(panel, result, timing) {
+    const wheel = panel?.querySelector("[data-rp-wheel]");
+
+    if (!wheel) return;
+
+    const outcome = String(result.outcome || "").toLowerCase();
+    const finalRotation = Object.prototype.hasOwnProperty.call(RP_WHEEL_RESULT_ROTATIONS, outcome)
+      ? RP_WHEEL_RESULT_ROTATIONS[outcome]
+      : 0;
+    const current = Number(wheel.dataset.rpRotation || 0);
+    const turns = Math.max(1, Math.ceil((current - finalRotation) / 360) + 1);
+    const target = turns * 360 + finalRotation;
+
+    wheel.style.transition = timing.settleMs <= 0 ? "none" : `transform ${timing.settleMs}ms cubic-bezier(.12, .72, .18, 1)`;
+    wheel.style.transform = `rotate(${target}deg)`;
+    wheel.dataset.rpRotation = String(target);
+
+    panel.querySelectorAll(".rp-wheel-odd").forEach(segment => {
+      segment.classList.toggle("is-result", segment.classList.contains(outcome));
+    });
+  }
+
+  function settleCoinFlip(panel, result) {
+    const coin = panel?.querySelector("[data-rp-coin-strip]");
+    const roll = String(result.roll || "").toLowerCase();
+
+    if (coin && (roll === "heads" || roll === "tails")) {
+      coin.setAttribute("data-rp-coin-result", roll);
+    }
+  }
+
+  function settleDice(panel, result) {
+    const dice = panel?.querySelector("[data-rp-dice-strip]");
+    const roll = Number(result.roll) || 1;
+    const face = Math.max(1, Math.min(6, Number(result.face) || (((roll - 1) % 6) + 1)));
+
+    if (dice) {
+      dice.setAttribute("data-rp-dice-face", String(face));
+    }
+  }
+
+  function startHighLowTicker(panel, rollElement) {
+    let value = Math.floor(Math.random() * 100) + 1;
+    const timer = window.setInterval(() => {
+      value = ((value + 17) % 100) + 1;
+      rollElement.textContent = String(value).padStart(2, "0");
+    }, 72);
+
+    panel.dataset.rpHighLowTimer = String(timer);
+  }
+
+  function stopHighLowTicker(panel) {
+    const timer = Number(panel?.dataset.rpHighLowTimer || 0);
+
+    if (timer) {
+      window.clearInterval(timer);
+      delete panel.dataset.rpHighLowTimer;
+    }
+  }
+
+  function settleHighLow(panel, result) {
+    const machine = panel?.querySelector(".high-low-machine");
+    const roll = machine?.querySelector("[data-rp-high-low-roll]");
+    const value = Number(result.roll) || 0;
+
+    stopHighLowTicker(panel);
+
+    if (roll) {
+      roll.textContent = value > 0 ? String(value) : "46-55";
+      roll.classList.add("is-settled");
+    }
+
+    if (machine) {
+      const outcome = result.push ? "push" : (value <= 45 ? "low" : (value >= 56 ? "high" : ""));
+
+      if (outcome) {
+        machine.setAttribute("data-rp-outcome", outcome);
+      }
+    }
+  }
+
+  function showRpGameOutcome(panel, gameKey, result, fallbackMessage) {
+    if (!panel) return;
+
+    const overlay = ensureRpGameOutcome(panel);
+    const outcome = describeRpGameOutcome(gameKey, result, fallbackMessage);
+
+    panel.classList.add(`result-${outcome.type}`);
+    overlay.hidden = false;
+    overlay.className = `rp-game-result ${outcome.type} is-visible`;
+    overlay.querySelector("[data-rp-result-eyebrow]").textContent = outcome.eyebrow;
+    overlay.querySelector("[data-rp-result-title]").textContent = outcome.title;
+    overlay.querySelector("[data-rp-result-amount]").textContent = outcome.amount;
+    overlay.querySelector("[data-rp-result-detail]").textContent = outcome.detail;
+
+    const existing = Number(panel.dataset.rpResultTimer || 0);
+    if (existing) {
+      window.clearTimeout(existing);
+    }
+
+    panel.dataset.rpResultTimer = String(window.setTimeout(() => {
+      overlay.classList.add("is-hiding");
+      window.setTimeout(() => {
+        overlay.hidden = true;
+        overlay.className = "rp-game-result";
+        delete panel.dataset.rpResultTimer;
+      }, 300);
+    }, 3600));
+  }
+
+  function clearRpGameOutcome(panel) {
+    const overlay = panel?.querySelector("[data-rp-game-result]");
+
+    if (!panel || !overlay) return;
+
+    const existing = Number(panel.dataset.rpResultTimer || 0);
+    if (existing) {
+      window.clearTimeout(existing);
+      delete panel.dataset.rpResultTimer;
+    }
+
+    overlay.hidden = true;
+    overlay.className = "rp-game-result";
+  }
+
+  function ensureRpGameOutcome(panel) {
+    let overlay = panel.querySelector("[data-rp-game-result]");
+
+    if (overlay) return overlay;
+
+    overlay = document.createElement("div");
+    overlay.className = "rp-game-result";
+    overlay.dataset.rpGameResult = "";
+    overlay.hidden = true;
+    overlay.setAttribute("role", "status");
+    overlay.setAttribute("aria-live", "polite");
+    overlay.innerHTML = `
+      <div class="rp-game-result-inner">
+        <span data-rp-result-eyebrow></span>
+        <strong data-rp-result-title></strong>
+        <em data-rp-result-amount></em>
+        <small data-rp-result-detail></small>
+      </div>
+    `;
+    panel.appendChild(overlay);
+
+    return overlay;
+  }
+
+  function describeRpGameOutcome(gameKey, result, fallbackMessage) {
+    const normalized = normalizeRpPlayedGame(gameKey);
+    const won = Boolean(result && result.won);
+    const push = Boolean(result && result.push);
+    const stake = Number(result?.stake_rp || 0);
+    const payout = Number(result?.payout_rp || 0);
+    const cost = Number(result?.cost_rp || 0);
+    const tickets = Number(result?.tickets || 0);
+    const net = Math.round(payout - stake);
+
+    if (normalized === "jackpot") {
+      return {
+        type: "neutral",
+        eyebrow: "Server sync queued",
+        title: "Entry Queued",
+        amount: formatSignedRp(-cost),
+        detail: `${tickets || 1} jackpot ticket${tickets === 1 ? "" : "s"} waiting for RP debit confirmation.`
+      };
+    }
+
+    if (push) {
+      return {
+        type: "push",
+        eyebrow: "Server sync queued",
+        title: "Push",
+        amount: formatSignedRp(0),
+        detail: result.roll ? `Rolled ${result.roll}. Your stake return is queued for confirmation.` : fallbackMessage
+      };
+    }
+
+    if (won) {
+      return {
+        type: "win",
+        eyebrow: "Server sync queued",
+        title: "You Won",
+        amount: formatSignedRp(net > 0 ? net : payout),
+        detail: outcomeDetail(normalized, result, fallbackMessage)
+      };
+    }
+
+    return {
+      type: "loss",
+      eyebrow: "Server sync queued",
+      title: "You Lost",
+      amount: formatSignedRp(-stake),
+      detail: outcomeDetail(normalized, result, fallbackMessage)
+    };
+  }
+
+  function outcomeDetail(gameKey, result, fallbackMessage) {
+    if (gameKey === "coinflip" && result.roll) {
+      return `Coin landed ${String(result.roll).toLowerCase()}. ${fallbackMessage}`;
+    }
+
+    if (gameKey === "dice" && result.roll) {
+      return `Rolled ${result.roll}. Display die face ${Number(result.face) || (((Number(result.roll) - 1) % 6) + 1)}.`;
+    }
+
+    if (gameKey === "high-low" && result.roll) {
+      const choice = result.choice ? ` after calling ${result.choice}` : "";
+      return `Rolled ${result.roll}${choice}. ${fallbackMessage}`;
+    }
+
+    if (gameKey === "wheel" && result.outcome) {
+      return `Wheel landed on ${String(result.outcome).replace(/_/g, " ")}. ${fallbackMessage}`;
+    }
+
+    return fallbackMessage;
+  }
+
+  function setRpGameFormLocked(form, locked) {
+    Array.from(form.elements).forEach(control => {
+      if (!(control instanceof HTMLElement) || !("disabled" in control) || (control instanceof HTMLInputElement && control.type === "hidden")) {
+        return;
+      }
+
+      if (locked) {
+        control.dataset.rpWasDisabled = control.disabled ? "1" : "0";
+        control.disabled = true;
+      } else if (control.dataset.rpWasDisabled !== undefined) {
+        control.disabled = control.dataset.rpWasDisabled === "1";
+        delete control.dataset.rpWasDisabled;
+      }
+    });
+  }
+
+  function formatSignedRp(value) {
+    const number = Math.round(Number(value) || 0);
+    const sign = number > 0 ? "+" : (number < 0 ? "-" : "");
+
+    return `${sign}${Math.abs(number).toLocaleString("en-US")} RP`;
+  }
+
+  function delay(ms) {
+    return new Promise(resolve => {
+      window.setTimeout(resolve, Math.max(0, Number(ms) || 0));
+    });
   }
 
   function showRpGamesFlash(root, type, message) {

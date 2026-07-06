@@ -1092,7 +1092,7 @@ function raidlands_rewards_play_dice(int $stake): array
             $pdo->commit();
         }
 
-        return ['round_id' => $round_id, 'won' => $win, 'roll' => $roll, 'threshold' => $threshold, 'payout_rp' => $payout, 'stake_rp' => $stake];
+        return ['round_id' => $round_id, 'won' => $win, 'roll' => $roll, 'face' => (($roll - 1) % 6) + 1, 'threshold' => $threshold, 'payout_rp' => $payout, 'stake_rp' => $stake];
     } catch (Throwable $error) {
         if ($owns_transaction && $pdo->inTransaction()) {
             $pdo->rollBack();

@@ -9217,7 +9217,9 @@ button.admin-permission-chip:focus-visible {
 }
 
 .rp-game-panel {
+  position: relative;
   min-height: 520px;
+  overflow: hidden;
 }
 
 .rp-game-panel[hidden] {
@@ -9298,43 +9300,26 @@ button.admin-permission-chip:focus-visible {
 }
 
 .coin-strip {
-  width: clamp(138px, 24vw, 188px);
-  aspect-ratio: 188 / 217;
+  width: clamp(154px, 25vw, 210px);
+  aspect-ratio: 1;
   display: block;
   background-image: image-set(
-    url("../media/rp-games/rp-coin-strip.webp") type("image/webp"),
-    url("../media/rp-games/rp-coin-strip.png") type("image/png")
+    url("../media/rp-games/rp-coin-flip-v2.webp") type("image/webp"),
+    url("../media/rp-games/rp-coin-flip-v2.png") type("image/png")
   );
   background-repeat: no-repeat;
-  background-position: 0 50%;
-  background-size: 600% 100%;
+  background-position: var(--rp-coin-position, 0%) 50%;
+  background-size: 1600% 100%;
   filter: drop-shadow(0 0 28px rgba(255, 138, 40, .42));
-  animation: rp-coin-strip 1.25s steps(5) infinite;
+  transform: translateZ(0);
 }
 
-.coin-face {
-  grid-area: 1 / 1;
-  width: 112px;
-  height: 112px;
-  display: grid;
-  place-items: center;
-  border: 3px solid rgba(255, 209, 102, .7);
-  border-radius: 50%;
-  background:
-    radial-gradient(circle at 34% 28%, rgba(255, 255, 255, .42), transparent 20%),
-    radial-gradient(circle, rgba(255, 209, 102, .92), rgba(179, 87, 28, .86));
-  color: #140907;
-  font-family: var(--font-display);
-  font-size: 4rem;
-  line-height: 1;
-  box-shadow: 0 0 34px rgba(255, 138, 40, .32);
-  backface-visibility: hidden;
-  animation: rp-coin-flip 4s ease-in-out infinite;
+.coin-strip[data-rp-coin-result="heads"] {
+  --rp-coin-position: 100%;
 }
 
-.coin-face.tails {
-  transform: rotateY(180deg);
-  animation-delay: -2s;
+.coin-strip[data-rp-coin-result="tails"] {
+  --rp-coin-position: 66.6667%;
 }
 
 .dice-machine {
@@ -9342,54 +9327,43 @@ button.admin-permission-chip:focus-visible {
   place-items: center;
 }
 
-.dice-machine picture,
-.dice-machine img {
+.dice-strip {
+  width: clamp(176px, 30vw, 240px);
+  aspect-ratio: 1;
   display: block;
-}
-
-.dice-machine img {
-  width: min(82%, 340px);
-  height: auto;
+  background-image: image-set(
+    url("../media/rp-games/rp-dice-roll-v2.webp") type("image/webp"),
+    url("../media/rp-games/rp-dice-roll-v2.png") type("image/png")
+  );
+  background-repeat: no-repeat;
+  background-position: var(--rp-dice-position, 70.5882%) 50%;
+  background-size: 1800% 100%;
   filter: drop-shadow(0 0 26px rgba(255, 138, 40, .34));
-  animation: rp-dice-float 3.2s ease-in-out infinite;
+  transform: translateZ(0);
 }
 
-.dice-machine span {
-  width: 24px;
-  height: 24px;
-  border-radius: 50%;
-  background: var(--white);
-  box-shadow: 0 0 18px rgba(243, 238, 227, .34);
-  animation: rp-dice-pip 2.4s ease-in-out infinite;
+.dice-strip[data-rp-dice-face="1"] {
+  --rp-dice-position: 70.5882%;
 }
 
-.dice-machine span:nth-child(1) {
-  grid-column: 1;
-  grid-row: 1;
+.dice-strip[data-rp-dice-face="2"] {
+  --rp-dice-position: 76.4706%;
 }
 
-.dice-machine span:nth-child(2) {
-  grid-column: 3;
-  grid-row: 1;
-  animation-delay: .12s;
+.dice-strip[data-rp-dice-face="3"] {
+  --rp-dice-position: 82.3529%;
 }
 
-.dice-machine span:nth-child(3) {
-  grid-column: 2;
-  grid-row: 2;
-  animation-delay: .24s;
+.dice-strip[data-rp-dice-face="4"] {
+  --rp-dice-position: 88.2353%;
 }
 
-.dice-machine span:nth-child(4) {
-  grid-column: 1;
-  grid-row: 3;
-  animation-delay: .36s;
+.dice-strip[data-rp-dice-face="5"] {
+  --rp-dice-position: 94.1176%;
 }
 
-.dice-machine span:nth-child(5) {
-  grid-column: 3;
-  grid-row: 3;
-  animation-delay: .48s;
+.dice-strip[data-rp-dice-face="6"] {
+  --rp-dice-position: 100%;
 }
 
 .jackpot-machine {
@@ -9454,6 +9428,28 @@ button.admin-permission-chip:focus-visible {
   animation-delay: -1.3s;
 }
 
+.high-low-machine strong.is-settled {
+  color: var(--white);
+  border-color: rgba(255, 209, 102, .44);
+  background: rgba(255, 138, 40, .18);
+  box-shadow: 0 0 26px rgba(255, 138, 40, .18);
+  animation: rp-result-pop .64s ease both;
+}
+
+.high-low-machine[data-rp-outcome="low"] [data-rp-high-low-marker="low"],
+.high-low-machine[data-rp-outcome="high"] [data-rp-high-low-marker="high"] {
+  color: var(--yellow);
+  border-color: rgba(255, 209, 102, .58);
+  background: rgba(255, 209, 102, .12);
+  box-shadow: 0 0 24px rgba(255, 209, 102, .18);
+}
+
+.high-low-machine[data-rp-outcome="push"] strong {
+  color: var(--green);
+  border-color: rgba(124, 255, 107, .46);
+  background: rgba(124, 255, 107, .10);
+}
+
 .wheel-machine {
   min-height: 250px;
 }
@@ -9489,7 +9485,9 @@ button.admin-permission-chip:focus-visible {
   background-size: contain;
   box-shadow: none;
   filter: drop-shadow(0 0 34px rgba(255, 138, 40, .34));
-  animation: rp-wheel-turn 7s cubic-bezier(.48, .02, .24, 1) infinite;
+  transform: rotate(0deg);
+  transition: transform 1.6s cubic-bezier(.12, .72, .18, 1);
+  will-change: transform;
 }
 
 .rp-wheel-odds {
@@ -9533,14 +9531,19 @@ button.admin-permission-chip:focus-visible {
   border-color: rgba(86, 97, 106, .42);
 }
 
-.rp-game-panel.is-spinning .coin-strip,
-.rp-game-panel.is-spinning .coin-face {
-  animation-duration: .52s;
+.rp-wheel-odd.is-result {
+  color: var(--white);
+  background: rgba(255, 209, 102, .10);
+  box-shadow: 0 0 24px rgba(255, 209, 102, .16);
+  animation: rp-result-pop .64s ease both;
 }
 
-.rp-game-panel.is-spinning .dice-machine img,
-.rp-game-panel.is-spinning .dice-machine span {
-  animation-duration: .42s;
+.rp-game-panel.is-spinning .coin-strip {
+  animation: rp-coin-strip 1.05s steps(15) infinite;
+}
+
+.rp-game-panel.is-spinning .dice-strip {
+  animation: rp-dice-roll-strip .72s steps(11) infinite;
 }
 
 .rp-game-panel.is-spinning .jackpot-machine span {
@@ -9552,7 +9555,142 @@ button.admin-permission-chip:focus-visible {
 }
 
 .rp-game-panel.is-spinning .wheel-machine span {
-  animation-duration: .82s;
+  filter: drop-shadow(0 0 42px rgba(255, 138, 40, .46));
+}
+
+.rp-game-result {
+  position: absolute;
+  inset: 18px;
+  z-index: 6;
+  display: grid;
+  place-items: center;
+  padding: 22px;
+  border: 1px solid rgba(255, 138, 40, .38);
+  border-radius: var(--radius);
+  overflow: hidden;
+  text-align: center;
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255, 138, 40, .26), transparent 34%),
+    linear-gradient(180deg, rgba(14, 17, 16, .92), rgba(2, 4, 5, .94));
+  box-shadow: inset 0 0 0 1px rgba(243, 238, 227, .05), 0 24px 80px rgba(0, 0, 0, .44);
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(.94) translateY(14px);
+}
+
+.rp-game-result::before,
+.rp-game-result::after {
+  position: absolute;
+  content: "";
+  pointer-events: none;
+}
+
+.rp-game-result::before {
+  inset: -20%;
+  background-image: image-set(
+    url("../media/rp-games/rp-result-spark.webp") type("image/webp"),
+    url("../media/rp-games/rp-result-spark.png") type("image/png")
+  );
+  background-size: 74px 74px;
+  opacity: .28;
+  animation: rp-result-sparks 1.2s ease-out both;
+}
+
+.rp-game-result::after {
+  inset: 18px;
+  border: 1px solid rgba(243, 238, 227, .12);
+  border-radius: calc(var(--radius) - 2px);
+}
+
+.rp-game-result[hidden] {
+  display: none;
+}
+
+.rp-game-result.is-visible {
+  animation: rp-result-reveal .46s cubic-bezier(.2, .8, .2, 1) both;
+}
+
+.rp-game-result.is-hiding {
+  animation: rp-result-hide .28s ease both;
+}
+
+.rp-game-result.win {
+  border-color: rgba(124, 255, 107, .55);
+  background:
+    radial-gradient(circle at 50% 42%, rgba(124, 255, 107, .22), transparent 34%),
+    linear-gradient(180deg, rgba(13, 22, 14, .93), rgba(2, 4, 5, .94));
+}
+
+.rp-game-result.loss {
+  border-color: rgba(255, 90, 64, .54);
+  background:
+    radial-gradient(circle at 50% 42%, rgba(255, 90, 64, .22), transparent 34%),
+    linear-gradient(180deg, rgba(30, 10, 8, .93), rgba(2, 4, 5, .94));
+}
+
+.rp-game-result.push,
+.rp-game-result.neutral {
+  border-color: rgba(255, 209, 102, .52);
+}
+
+.rp-game-result-inner {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  justify-items: center;
+  gap: 8px;
+  max-width: 420px;
+}
+
+.rp-game-result span {
+  color: var(--muted);
+  font-size: .74rem;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-transform: uppercase;
+}
+
+.rp-game-result strong {
+  color: var(--white);
+  font-family: var(--font-display);
+  font-size: clamp(2rem, 6vw, 4.8rem);
+  line-height: .9;
+  text-transform: uppercase;
+  text-shadow: 0 0 28px rgba(255, 138, 40, .26);
+}
+
+.rp-game-result em {
+  color: var(--yellow);
+  font-family: var(--font-display);
+  font-size: clamp(1.4rem, 4vw, 3rem);
+  font-style: normal;
+  line-height: 1;
+}
+
+.rp-game-result.win em {
+  color: var(--green);
+}
+
+.rp-game-result.loss em {
+  color: #ff7c61;
+}
+
+.rp-game-result small {
+  max-width: 36rem;
+  color: var(--muted);
+  font-size: .88rem;
+  font-weight: 800;
+  line-height: 1.45;
+}
+
+.rp-game-panel.result-win .rp-game-machine {
+  border-color: rgba(124, 255, 107, .44);
+  box-shadow: 0 0 36px rgba(124, 255, 107, .12);
+}
+
+.rp-game-panel.result-loss .rp-game-machine {
+  border-color: rgba(255, 90, 64, .44);
+  box-shadow: 0 0 36px rgba(255, 90, 64, .12);
 }
 
 .rp-games-info-grid {
@@ -9607,6 +9745,16 @@ button.admin-permission-chip:focus-visible {
 
   to {
     background-position: 100% 50%;
+  }
+}
+
+@keyframes rp-dice-roll-strip {
+  from {
+    background-position: 0 50%;
+  }
+
+  to {
+    background-position: 64.7059% 50%;
   }
 }
 
@@ -9671,17 +9819,73 @@ button.admin-permission-chip:focus-visible {
   }
 }
 
+@keyframes rp-result-reveal {
+  from {
+    opacity: 0;
+    transform: scale(.94) translateY(14px);
+    filter: blur(3px);
+  }
+
+  to {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+    filter: blur(0);
+  }
+}
+
+@keyframes rp-result-hide {
+  from {
+    opacity: 1;
+    transform: scale(1) translateY(0);
+  }
+
+  to {
+    opacity: 0;
+    transform: scale(.98) translateY(-8px);
+  }
+}
+
+@keyframes rp-result-pop {
+  0% {
+    transform: scale(.92);
+  }
+
+  70% {
+    transform: scale(1.07);
+  }
+
+  100% {
+    transform: scale(1);
+  }
+}
+
+@keyframes rp-result-sparks {
+  from {
+    background-position: 0 0;
+    opacity: .36;
+    transform: scale(.92) rotate(0deg);
+  }
+
+  to {
+    background-position: 92px -74px;
+    opacity: 0;
+    transform: scale(1.16) rotate(7deg);
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   .rp-game-panel.is-active,
   .rp-game-machine::after,
   .coin-strip,
-  .coin-face,
-  .dice-machine img,
-  .dice-machine span,
+  .dice-strip,
   .jackpot-machine span,
   .high-low-machine span,
-  .wheel-machine span {
+  .high-low-machine strong,
+  .wheel-machine span,
+  .rp-game-result,
+  .rp-game-result::before {
     animation: none;
+    transition: none;
   }
 }
 

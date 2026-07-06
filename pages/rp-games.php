@@ -146,7 +146,7 @@ $rp_game_tabs = [
               <h2>Coinflip</h2>
               <p class="section-lede">Pick heads or tails. Wins pay <?= e(number_format(((int) ($settings['coinflip_payout_multiplier_basis'] ?? 200)) / 100, 2)) ?>x gross before server confirmation.</p>
               <div class="rp-game-machine coin-machine" aria-hidden="true">
-                <span class="coin-strip"></span>
+                <span class="coin-strip" data-rp-coin-strip></span>
               </div>
             </div>
             <form class="feedback-form rp-game-form" method="post" action="<?= e(route_url('rp-games')) ?>" data-rp-game-form="coinflip">
@@ -175,10 +175,7 @@ $rp_game_tabs = [
               <h2>Dice</h2>
               <p class="section-lede">Roll <?= e((string) $dice_threshold) ?> or higher on a 1-100 die. Wins pay <?= e(number_format(((int) ($settings['dice_payout_multiplier_basis'] ?? 200)) / 100, 2)) ?>x gross.</p>
               <div class="rp-game-machine dice-machine" aria-hidden="true">
-                <picture>
-                  <source srcset="<?= e(asset_url('media/rp-games/rp-dice.webp')) ?>" type="image/webp">
-                  <img src="<?= e(asset_url('media/rp-games/rp-dice.png')) ?>" alt="" loading="lazy" decoding="async">
-                </picture>
+                <span class="dice-strip" data-rp-dice-strip></span>
               </div>
             </div>
             <form class="feedback-form rp-game-form" method="post" action="<?= e(route_url('rp-games')) ?>" data-rp-game-form="dice">
@@ -236,9 +233,9 @@ $rp_game_tabs = [
               <h2>High-Low</h2>
               <p class="section-lede">Call low for 1-45 or high for 56-100. Rolls 46-55 push and queue your stake back for server confirmation.</p>
               <div class="rp-game-machine high-low-machine" aria-hidden="true">
-                <span>LOW</span>
-                <strong>46-55</strong>
-                <span>HIGH</span>
+                <span data-rp-high-low-marker="low">LOW</span>
+                <strong data-rp-high-low-roll>46-55</strong>
+                <span data-rp-high-low-marker="high">HIGH</span>
               </div>
               <?php if (!$high_low_backend) : ?>
                 <div class="form-status warning">High-Low is staged and will unlock after the next RP games update.</div>
@@ -270,7 +267,7 @@ $rp_game_tabs = [
               <h2>Wheel</h2>
               <p class="section-lede">Pick a segment before the wheel spins. Smaller slices pay harder, and every result waits for live RP confirmation.</p>
               <div class="rp-game-machine wheel-machine" aria-hidden="true">
-                <span></span>
+                <span data-rp-wheel></span>
               </div>
               <?php if ($wheel_segments !== []) : ?>
                 <div class="rp-wheel-odds">
