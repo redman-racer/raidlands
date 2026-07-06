@@ -135,7 +135,7 @@ function raidlands_permissions_permission_prefix(string $permission): string
 
 function raidlands_permissions_read_only_groups(): array
 {
-    return ['authenticated'];
+    return ['admin', 'authenticated'];
 }
 
 function raidlands_permissions_group_is_read_only(string $group_name): bool
@@ -155,7 +155,7 @@ function raidlands_permissions_group_has_forced_protection(string $group_name): 
 
 function raidlands_permissions_forced_managed_groups(): array
 {
-    return ['admin'];
+    return [];
 }
 
 function raidlands_permissions_group_is_forced_managed(string $group_name): bool
@@ -1165,6 +1165,10 @@ function raidlands_permissions_desired_map(): array
         $group = raidlands_permissions_clean_group($row['group_name'] ?? '');
 
         if ($group === '') {
+            continue;
+        }
+
+        if (raidlands_permissions_group_is_read_only($group)) {
             continue;
         }
 
