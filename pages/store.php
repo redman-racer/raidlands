@@ -67,6 +67,78 @@ function render_store_offer_group(string $title, array $offers, string $csrf, st
     return $html . '</div></div>';
 }
 
+function store_product_image_key(string $value): string
+{
+    $value = strtolower(str_replace('+', 'plus', $value));
+
+    return preg_replace('/[^a-z0-9]+/', '', $value) ?? '';
+}
+
+function render_store_product_symbol(array $product, string $type, array $linked_kits): string
+{
+    if ($type === 'perk' || $linked_kits === []) {
+        return render_feature_symbol($type === 'perk' ? 'SHOP' : 'KIT');
+    }
+
+    $product_keys = array_values(array_filter([
+        store_product_image_key((string) ($product['name'] ?? '')),
+        store_product_image_key((string) ($product['slug'] ?? '')),
+    ]));
+    $fallback_image = '';
+    $best_image = '';
+    $best_score = -1;
+
+    foreach ($linked_kits as $kit) {
+        $kit = (array) $kit;
+        $image = raidlands_kits_public_image_url((string) ($kit['image_path'] ?? ''));
+
+        if ($image === '') {
+            continue;
+        }
+
+        if ($fallback_image === '') {
+            $fallback_image = $image;
+        }
+
+        $kit_keys = array_values(array_filter([
+            store_product_image_key((string) ($kit['kit_name'] ?? '')),
+            store_product_image_key((string) ($kit['reward_display_name'] ?? '')),
+        ]));
+        $score = 0;
+
+        foreach ($product_keys as $product_key) {
+            foreach ($kit_keys as $kit_key) {
+                if ($product_key === '' || $kit_key === '') {
+                    continue;
+                }
+
+                if ($product_key === $kit_key) {
+                    $score = max($score, 4);
+                } elseif (strlen($product_key) >= 4 && str_contains($kit_key, $product_key)) {
+                    $score = max($score, 3);
+                } elseif (strlen($kit_key) >= 4 && str_contains($product_key, $kit_key)) {
+                    $score = max($score, 2);
+                }
+            }
+        }
+
+        if ($score > $best_score) {
+            $best_score = $score;
+            $best_image = $image;
+        }
+    }
+
+    $image = $best_image !== '' ? $best_image : $fallback_image;
+
+    if ($image === '') {
+        return render_feature_symbol('KIT');
+    }
+
+    return '<span class="feature-symbol feature-symbol-image store-product-symbol" aria-hidden="true">'
+        . '<img src="' . e($image) . '" alt="" loading="lazy" decoding="async" referrerpolicy="no-referrer">'
+        . '</span>';
+}
+
 function render_store_product_card(array $product, ?array $player, string $csrf, bool $cash_ready): string
 {
     $rp_offers = raidlands_store_rp_offers($product, true);
@@ -151,7 +223,7 @@ function render_store_product_card(array $product, ?array $player, string $csrf,
 
     return '<article class="metal-card store-product-card">'
         . '<div class="store-card-top">'
-        . render_feature_symbol($type === 'perk' ? 'SHOP' : 'KIT')
+        . render_store_product_symbol($product, $type, $linked_kits)
         . '<span class="status-tag ' . e($type === 'kit_bundle' ? 'review' : 'planned') . '">' . e(raidlands_store_type_label($type)) . '</span>'
         . '</div>'
         . '<h3>' . e((string) $product['name']) . '</h3>'
