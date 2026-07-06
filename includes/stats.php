@@ -573,22 +573,53 @@ function raidlands_stats_metric(string $metric): string
     return in_array($metric, ['kills', 'kdr', 'playtime', 'rp', 'npc_kills', 'deaths_by_npc'], true) ? $metric : 'kills';
 }
 
+function raidlands_stats_bot_metric(string $metric): string
+{
+    return in_array($metric, ['kdr', 'kills', 'deaths'], true) ? $metric : 'kdr';
+}
+
 function raidlands_stats_scope(string $scope): string
 {
     return $scope === 'all-time' ? 'all-time' : 'current';
 }
 
-function raidlands_stats_leaderboard(string $metric = 'kills', string $scope = 'current', int $limit = 25): array
+function raidlands_stats_page_size($value, int $default = 25): int
 {
-    if (!raidlands_stats_is_ready()) {
-        return [];
-    }
+    $size = is_numeric($value) ? (int) $value : $default;
 
-    $metric = raidlands_stats_metric($metric);
-    $scope = raidlands_stats_scope($scope);
-    $limit = max(1, min(100, $limit));
+    return max(5, min(100, $size));
+}
 
-    $order = match ($metric) {
+function raidlands_stats_page_number($value): int
+{
+    $page = is_numeric($value) ? (int) $value : 1;
+
+    return max(1, $page);
+}
+
+function raidlands_stats_search(string $search): string
+{
+    return raidlands_stats_clean_text($search, 80);
+}
+
+function raidlands_stats_page_result(array $rows, int $total, int $page, int $per_page): array
+{
+    $total = max(0, $total);
+    $per_page = raidlands_stats_page_size($per_page);
+    $pages = max(1, (int) ceil($total / $per_page));
+
+    return [
+        'rows' => $rows,
+        'total' => $total,
+        'page' => min(max(1, $page), $pages),
+        'per_page' => $per_page,
+        'pages' => $pages,
+    ];
+}
+
+function raidlands_stats_leaderboard_order(string $metric): string
+{
+    return match (raidlands_stats_metric($metric)) {
         'kdr' => 'kdr DESC, kills DESC, deaths ASC',
         'playtime' => 'playtime_seconds DESC, kills DESC',
         'rp' => 'reward_points DESC, kills DESC',
@@ -596,13 +627,68 @@ function raidlands_stats_leaderboard(string $metric = 'kills', string $scope = '
         'deaths_by_npc' => 'deaths_by_npc DESC, npc_kills DESC, kills DESC',
         default => 'kills DESC, deaths ASC, kdr DESC',
     };
+}
+
+function raidlands_stats_bot_leaderboard_order(string $metric): string
+{
+    return match (raidlands_stats_bot_metric($metric)) {
+        'kills' => 'kills DESC, kdr DESC, deaths ASC, display_name ASC',
+        'deaths' => 'deaths DESC, kills DESC, kdr DESC, display_name ASC',
+        default => 'kdr DESC, kills DESC, deaths ASC, display_name ASC',
+    };
+}
+
+function raidlands_stats_leaderboard_result(
+    string $metric = 'kills',
+    string $scope = 'current',
+    int $page = 1,
+    int $per_page = 25,
+    string $search = ''
+): array
+{
+    if (!raidlands_stats_is_ready()) {
+        return raidlands_stats_page_result([], 0, $page, $per_page);
+    }
+
+    $metric = raidlands_stats_metric($metric);
+    $scope = raidlands_stats_scope($scope);
+    $page = raidlands_stats_page_number($page);
+    $per_page = raidlands_stats_page_size($per_page);
+    $search = raidlands_stats_search($search);
+    $params = [];
+    $search_sql = '';
+
+    if ($search !== '') {
+        $like = '%' . $search . '%';
+        $params['search_steam_id'] = $like;
+        $params['search_player_name'] = $like;
+        $params['search_stats_name'] = $like;
+        $search_sql = ' AND (p.steam_id64 LIKE :search_steam_id OR p.display_name LIKE :search_player_name OR s.display_name LIKE :search_stats_name)';
+    }
+
+    $order = raidlands_stats_leaderboard_order($metric);
 
     if ($scope === 'current') {
         $wipe = raidlands_stats_active_wipe();
 
         if ($wipe === null) {
-            return [];
+            return raidlands_stats_page_result([], 0, $page, $per_page);
         }
+
+        $params['wipe_id'] = (int) $wipe['id'];
+        $total_row = raidlands_db_fetch_one(
+            "SELECT COUNT(*) AS total
+             FROM player_wipe_stats s
+             INNER JOIN players p ON p.id = s.player_id
+             WHERE s.wipe_id = :wipe_id
+               AND s.playtime_seconds > 0
+               $search_sql",
+            $params
+        );
+        $total = (int) ($total_row['total'] ?? 0);
+        $pages = max(1, (int) ceil($total / $per_page));
+        $page = min($page, $pages);
+        $offset = ($page - 1) * $per_page;
 
         $rows = raidlands_db_fetch_all(
             "SELECT
@@ -621,11 +707,29 @@ function raidlands_stats_leaderboard(string $metric = 'kills', string $scope = '
              INNER JOIN players p ON p.id = s.player_id
              WHERE s.wipe_id = :wipe_id
                AND s.playtime_seconds > 0
+               $search_sql
              ORDER BY $order
-             LIMIT $limit",
-            ['wipe_id' => (int) $wipe['id']]
+             LIMIT $per_page OFFSET $offset",
+            $params
         );
     } else {
+        $where_sql = $search !== '' ? 'WHERE (p.steam_id64 LIKE :search_steam_id OR p.display_name LIKE :search_player_name OR s.display_name LIKE :search_stats_name)' : '';
+        $total_row = raidlands_db_fetch_one(
+            "SELECT COUNT(*) AS total
+             FROM (
+                SELECT p.id
+                FROM player_wipe_stats s
+                INNER JOIN players p ON p.id = s.player_id
+                $where_sql
+                GROUP BY p.id
+             ) counted",
+            $params
+        );
+        $total = (int) ($total_row['total'] ?? 0);
+        $pages = max(1, (int) ceil($total / $per_page));
+        $page = min($page, $pages);
+        $offset = ($page - 1) * $per_page;
+
         $rows = raidlands_db_fetch_all(
             "SELECT
                 p.id AS player_id,
@@ -641,13 +745,15 @@ function raidlands_stats_leaderboard(string $metric = 'kills', string $scope = '
                 MAX(s.last_seen_at) AS last_seen_at
              FROM player_wipe_stats s
              INNER JOIN players p ON p.id = s.player_id
+             $where_sql
              GROUP BY p.id, p.steam_id64, p.display_name
              ORDER BY $order
-             LIMIT $limit"
+             LIMIT $per_page OFFSET $offset",
+            $params
         );
     }
 
-    $rank = 1;
+    $rank = (($page - 1) * $per_page) + 1;
 
     foreach ($rows as &$row) {
         $row['rank'] = $rank++;
@@ -663,25 +769,65 @@ function raidlands_stats_leaderboard(string $metric = 'kills', string $scope = '
 
     $rows = raidlands_store_attach_steam_profiles($rows);
 
-    return $rows;
+    return raidlands_stats_page_result($rows, $total, $page, $per_page);
 }
 
-function raidlands_stats_bot_leaderboard(string $scope = 'current', int $limit = 25): array
+function raidlands_stats_leaderboard(string $metric = 'kills', string $scope = 'current', int $limit = 25): array
+{
+    return raidlands_stats_leaderboard_result($metric, $scope, 1, $limit)['rows'];
+}
+
+function raidlands_stats_bot_leaderboard_result(
+    string $scope = 'current',
+    int $page = 1,
+    int $per_page = 25,
+    string $search = '',
+    string $metric = 'kdr'
+): array
 {
     if (!raidlands_stats_is_ready()) {
-        return [];
+        return raidlands_stats_page_result([], 0, $page, $per_page);
     }
 
     $scope = raidlands_stats_scope($scope);
-    $limit = max(1, min(100, $limit));
-    $order = 'kdr DESC, kills DESC, deaths ASC, display_name ASC';
+    $page = raidlands_stats_page_number($page);
+    $per_page = raidlands_stats_page_size($per_page);
+    $search = raidlands_stats_search($search);
+    $metric = raidlands_stats_bot_metric($metric);
+    $params = [];
+    $search_sql = '';
+
+    if ($search !== '') {
+        $like = '%' . $search . '%';
+        $params['search_bot_key'] = $like;
+        $params['search_bot_name'] = $like;
+        $params['search_bot_kit'] = $like;
+        $params['search_bot_skill'] = $like;
+        $search_sql = ' AND (bot_key LIKE :search_bot_key OR display_name LIKE :search_bot_name OR kit_name LIKE :search_bot_kit OR skill_tier LIKE :search_bot_skill)';
+    }
+
+    $order = raidlands_stats_bot_leaderboard_order($metric);
 
     if ($scope === 'current') {
         $wipe = raidlands_stats_active_wipe();
 
         if ($wipe === null) {
-            return [];
+            return raidlands_stats_page_result([], 0, $page, $per_page);
         }
+
+        $params['wipe_id'] = (int) $wipe['id'];
+        $total_row = raidlands_db_fetch_one(
+            "SELECT COUNT(*) AS total
+             FROM bot_wipe_stats
+             WHERE wipe_id = :wipe_id
+               AND (kills > 0 OR deaths > 0)
+               $search_sql",
+            $params
+        );
+        $total = (int) ($total_row['total'] ?? 0);
+        $pages = max(1, (int) ceil($total / $per_page));
+        $page = min($page, $pages);
+        $offset = ($page - 1) * $per_page;
 
         $rows = raidlands_db_fetch_all(
             "SELECT
@@ -696,11 +842,29 @@ function raidlands_stats_bot_leaderboard(string $scope = 'current', int $limit =
              FROM bot_wipe_stats
              WHERE wipe_id = :wipe_id
                AND (kills > 0 OR deaths > 0)
+               $search_sql
              ORDER BY $order
-             LIMIT $limit",
-            ['wipe_id' => (int) $wipe['id']]
+             LIMIT $per_page OFFSET $offset",
+            $params
         );
     } else {
+        $where_sql = $search !== '' ? 'WHERE (bot_key LIKE :search_bot_key OR display_name LIKE :search_bot_name OR kit_name LIKE :search_bot_kit OR skill_tier LIKE :search_bot_skill)' : '';
+        $total_row = raidlands_db_fetch_one(
+            "SELECT COUNT(*) AS total
+             FROM (
+                SELECT bot_key
+                FROM bot_wipe_stats
+                $where_sql
+                GROUP BY bot_key
+                HAVING SUM(kills) > 0 OR SUM(deaths) > 0
+             ) counted",
+            $params
+        );
+        $total = (int) ($total_row['total'] ?? 0);
+        $pages = max(1, (int) ceil($total / $per_page));
+        $page = min($page, $pages);
+        $offset = ($page - 1) * $per_page;
+
         $rows = raidlands_db_fetch_all(
             "SELECT
                 bot_key,
@@ -712,14 +876,16 @@ function raidlands_stats_bot_leaderboard(string $scope = 'current', int $limit =
                 CASE WHEN SUM(deaths) = 0 THEN SUM(kills) ELSE ROUND(SUM(kills) / SUM(deaths), 3) END AS kdr,
                 MAX(last_seen_at) AS last_seen_at
              FROM bot_wipe_stats
+             $where_sql
              GROUP BY bot_key
              HAVING SUM(kills) > 0 OR SUM(deaths) > 0
              ORDER BY $order
-             LIMIT $limit"
+             LIMIT $per_page OFFSET $offset",
+            $params
         );
     }
 
-    $rank = 1;
+    $rank = (($page - 1) * $per_page) + 1;
 
     foreach ($rows as &$row) {
         $row['rank'] = $rank++;
@@ -729,7 +895,12 @@ function raidlands_stats_bot_leaderboard(string $scope = 'current', int $limit =
     }
     unset($row);
 
-    return $rows;
+    return raidlands_stats_page_result($rows, $total, $page, $per_page);
+}
+
+function raidlands_stats_bot_leaderboard(string $scope = 'current', int $limit = 25, string $metric = 'kdr'): array
+{
+    return raidlands_stats_bot_leaderboard_result($scope, 1, $limit, '', $metric)['rows'];
 }
 
 function raidlands_stats_player_summary(int $player_id): array

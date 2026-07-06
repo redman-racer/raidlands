@@ -3,14 +3,36 @@
 require_once $site_root . '/includes/stats.php';
 
 $leaderboard_ready = raidlands_stats_is_ready();
+$leaderboard_board = ((string) ($_GET['board'] ?? 'players')) === 'bots' ? 'bots' : 'players';
 $leaderboard_scope = raidlands_stats_scope((string) ($_GET['scope'] ?? 'current'));
-$leaderboard_metric = raidlands_stats_metric((string) ($_GET['metric'] ?? 'kills'));
-$leaderboard_rows = $leaderboard_ready
-    ? raidlands_stats_leaderboard($leaderboard_metric, $leaderboard_scope, 25)
-    : [];
-$leaderboard_bot_rows = $leaderboard_ready
-    ? raidlands_stats_bot_leaderboard($leaderboard_scope, 25)
-    : [];
+$leaderboard_page = raidlands_stats_page_number($_GET['page'] ?? 1);
+$leaderboard_per_page = raidlands_stats_page_size($_GET['per_page'] ?? 25);
+$leaderboard_search = raidlands_stats_search((string) ($_GET['q'] ?? ''));
+$leaderboard_metric_query = (string) ($_GET['metric'] ?? '');
+$leaderboard_player_metric = $leaderboard_board === 'players'
+    ? raidlands_stats_metric($leaderboard_metric_query)
+    : 'kills';
+$leaderboard_bot_metric = $leaderboard_board === 'bots'
+    ? raidlands_stats_bot_metric($leaderboard_metric_query)
+    : 'kdr';
+$leaderboard_player_result = $leaderboard_ready
+    ? raidlands_stats_leaderboard_result(
+        $leaderboard_player_metric,
+        $leaderboard_scope,
+        $leaderboard_board === 'players' ? $leaderboard_page : 1,
+        $leaderboard_per_page,
+        $leaderboard_search
+    )
+    : raidlands_stats_page_result([], 0, 1, $leaderboard_per_page);
+$leaderboard_bot_result = $leaderboard_ready
+    ? raidlands_stats_bot_leaderboard_result(
+        $leaderboard_scope,
+        $leaderboard_board === 'bots' ? $leaderboard_page : 1,
+        $leaderboard_per_page,
+        $leaderboard_search,
+        $leaderboard_bot_metric
+    )
+    : raidlands_stats_page_result([], 0, 1, $leaderboard_per_page);
 $leaderboard_wipe = $leaderboard_ready ? raidlands_stats_active_wipe() : null;
 $leaderboard_ingest = $leaderboard_ready ? raidlands_stats_latest_ingest() : null;
 $leaderboard_metrics = [
@@ -21,22 +43,57 @@ $leaderboard_metrics = [
     'npc_kills' => 'NPC Kills',
     'deaths_by_npc' => 'Killed by NPCs',
 ];
+$leaderboard_bot_metrics = [
+    'kdr' => 'K/D',
+    'kills' => 'Kills',
+    'deaths' => 'Deaths',
+];
+$leaderboard_page_sizes = [10, 25, 50, 100];
+$leaderboard_api_url = $base_path . 'api/leaderboard.php';
 
-function leaderboard_url(string $scope, string $metric): string
-{
-    return route_url('leaderboard') . '?scope=' . rawurlencode($scope) . '&metric=' . rawurlencode($metric);
+function leaderboard_url(
+    string $board = 'players',
+    string $scope = 'current',
+    string $metric = 'kills',
+    int $page = 1,
+    int $per_page = 25,
+    string $search = ''
+): string {
+    $query = [
+        'board' => $board === 'bots' ? 'bots' : 'players',
+        'scope' => raidlands_stats_scope($scope),
+        'metric' => $board === 'bots' ? raidlands_stats_bot_metric($metric) : raidlands_stats_metric($metric),
+        'page' => max(1, $page),
+        'per_page' => raidlands_stats_page_size($per_page),
+    ];
+    $search = raidlands_stats_search($search);
+
+    if ($search !== '') {
+        $query['q'] = $search;
+    }
+
+    return route_url('leaderboard') . '?' . http_build_query($query);
 }
 
-function leaderboard_metric_value(array $row, string $metric): string
+function leaderboard_page_summary(array $result): string
 {
-    return match ($metric) {
-        'kdr' => raidlands_stats_format_kdr($row['kdr'] ?? 0),
-        'playtime' => raidlands_stats_format_duration($row['playtime_seconds'] ?? 0),
-        'rp' => raidlands_stats_format_number($row['reward_points'] ?? 0),
-        'npc_kills' => raidlands_stats_format_number($row['npc_kills'] ?? 0),
-        'deaths_by_npc' => raidlands_stats_format_number($row['deaths_by_npc'] ?? 0),
-        default => raidlands_stats_format_number($row['kills'] ?? 0),
-    };
+    $total = (int) ($result['total'] ?? 0);
+
+    if ($total === 0) {
+        return '0 results';
+    }
+
+    $page = (int) ($result['page'] ?? 1);
+    $per_page = (int) ($result['per_page'] ?? 25);
+    $start = (($page - 1) * $per_page) + 1;
+    $end = min($total, $page * $per_page);
+
+    return number_format($start) . '-' . number_format($end) . ' of ' . number_format($total);
+}
+
+function leaderboard_panel_classes(string $board, string $active_board): string
+{
+    return 'leaderboard-board-panel' . ($board === $active_board ? ' is-active' : '');
 }
 ?>
 <?= render_page_hero('leaderboard',
@@ -48,30 +105,12 @@ function leaderboard_metric_value(array $row, string $metric): string
   <div class="section-inner">
     <div class="section-header">
       <p class="section-kicker">Rankings</p>
-      <h2>Player standings</h2>
-      <p class="section-lede">Stats update from the game server into the website. Current wipe rankings start with this wipe; all-time totals combine tracked seasons.</p>
-    </div>
-
-    <div class="leaderboard-toolbar">
-      <div class="leaderboard-tabs" aria-label="Leaderboard scope">
-        <a class="<?= $leaderboard_scope === 'current' ? 'is-active' : '' ?>" href="<?= e(leaderboard_url('current', $leaderboard_metric)) ?>">Current Wipe</a>
-        <a class="<?= $leaderboard_scope === 'all-time' ? 'is-active' : '' ?>" href="<?= e(leaderboard_url('all-time', $leaderboard_metric)) ?>">All Time</a>
-      </div>
-      <div class="leaderboard-tabs" aria-label="Leaderboard metric">
-        <?php foreach ($leaderboard_metrics as $metric_key => $metric_label) : ?>
-          <a class="<?= $leaderboard_metric === $metric_key ? 'is-active' : '' ?>" href="<?= e(leaderboard_url($leaderboard_scope, $metric_key)) ?>"><?= e($metric_label) ?></a>
-        <?php endforeach; ?>
-      </div>
+      <h2>Raidlands leaderboards</h2>
+      <p class="section-lede">Current-wipe and all-time standings update from the game server into the website.</p>
     </div>
 
     <?php if (!$leaderboard_ready) : ?>
       <div class="form-status warning">Leaderboards are waiting on stats setup before they can receive server data.</div>
-    <?php elseif ($leaderboard_rows === []) : ?>
-      <div class="metal-panel">
-        <p class="section-kicker">No stats yet</p>
-        <h2>Waiting for the first server update</h2>
-        <p class="section-lede">Once the server sends stats, this page will fill with current-wipe and all-time standings.</p>
-      </div>
     <?php else : ?>
       <div class="split-panel leaderboard-summary">
         <div class="metal-panel">
@@ -86,105 +125,244 @@ function leaderboard_metric_value(array $row, string $metric): string
         </div>
       </div>
 
-      <div class="store-table-wrap leaderboard-table-wrap">
-        <table class="store-table leaderboard-table">
-          <thead>
-            <tr>
-              <th>Rank</th>
-              <th>Player</th>
-              <th><?= e($leaderboard_metrics[$leaderboard_metric]) ?></th>
-              <th>Kills</th>
-              <th>Deaths</th>
-              <th>NPC Kills</th>
-              <th>Killed by NPCs</th>
-              <th>K/D</th>
-              <th>Playtime</th>
-              <th>RP</th>
-            </tr>
-          </thead>
-          <tbody>
-            <?php foreach ($leaderboard_rows as $row) : ?>
-              <?php
-                $leaderboard_name = (string) ($row['display_name'] ?: ($row['steam_display_name'] ?? 'Raidlands Player'));
-                $leaderboard_avatar = render_steam_avatar(
-                    (string) ($row['steam_avatar_url'] ?? ''),
-                    (string) ($row['steam_profile_url'] ?? ''),
-                    $leaderboard_name,
-                    'steam-avatar-sm'
-                );
-                $leaderboard_profile_url = trim((string) ($row['steam_profile_url'] ?? ''));
-              ?>
-              <tr>
-                <td><span class="leaderboard-rank">#<?= e((string) $row['rank']) ?></span></td>
-                <td>
-                  <div class="leaderboard-player">
-                    <?= $leaderboard_avatar ?>
-                    <span class="leaderboard-player-copy">
-                      <strong><?= e($leaderboard_name) ?></strong>
-                      <?php if ($leaderboard_profile_url !== '') : ?>
-                        <a class="leaderboard-steam" href="<?= e($leaderboard_profile_url) ?>" target="_blank" rel="noopener noreferrer"><?= e((string) $row['steam_id64']) ?></a>
-                      <?php else : ?>
-                        <span class="leaderboard-steam"><?= e((string) $row['steam_id64']) ?></span>
-                      <?php endif; ?>
-                    </span>
-                  </div>
-                </td>
-                <td><strong><?= e(leaderboard_metric_value($row, $leaderboard_metric)) ?></strong></td>
-                <td><?= e(raidlands_stats_format_number($row['kills'])) ?></td>
-                <td><?= e(raidlands_stats_format_number($row['deaths'])) ?></td>
-                <td><?= e(raidlands_stats_format_number($row['npc_kills'])) ?></td>
-                <td><?= e(raidlands_stats_format_number($row['deaths_by_npc'])) ?></td>
-                <td><?= e(raidlands_stats_format_kdr($row['kdr'])) ?></td>
-                <td><?= e(raidlands_stats_format_duration($row['playtime_seconds'])) ?></td>
-                <td><?= e(raidlands_stats_format_number($row['reward_points'])) ?></td>
-              </tr>
-            <?php endforeach; ?>
-          </tbody>
-        </table>
-      </div>
-    <?php endif; ?>
-
-    <?php if ($leaderboard_ready) : ?>
-      <div class="section-header leaderboard-bot-header">
-        <p class="section-kicker">Roaming bots</p>
-        <h2>Bot K/D standings</h2>
-        <p class="section-lede">Bot combat is tracked separately so normal PvP K/D stays clean while the roaming NPCs still have visible standings.</p>
-      </div>
-
-      <?php if ($leaderboard_bot_rows === []) : ?>
-        <div class="metal-panel">
-          <p class="section-lede">No bot combat has been reported for this scope yet.</p>
+      <div
+        class="leaderboard-shell"
+        data-leaderboard
+        data-api-url="<?= e($leaderboard_api_url) ?>"
+        data-active-board="<?= e($leaderboard_board) ?>">
+        <div class="leaderboard-board-tabs" role="tablist" aria-label="Leaderboard type">
+          <a
+            class="<?= $leaderboard_board === 'players' ? 'is-active' : '' ?>"
+            href="<?= e(leaderboard_url('players', $leaderboard_scope, $leaderboard_player_metric, 1, $leaderboard_per_page, $leaderboard_search)) ?>"
+            role="tab"
+            aria-selected="<?= $leaderboard_board === 'players' ? 'true' : 'false' ?>"
+            aria-controls="leaderboard-players"
+            data-leaderboard-tab="players">Player Stats</a>
+          <a
+            class="<?= $leaderboard_board === 'bots' ? 'is-active' : '' ?>"
+            href="<?= e(leaderboard_url('bots', $leaderboard_scope, $leaderboard_bot_metric, 1, $leaderboard_per_page, $leaderboard_search)) ?>"
+            role="tab"
+            aria-selected="<?= $leaderboard_board === 'bots' ? 'true' : 'false' ?>"
+            aria-controls="leaderboard-bots"
+            data-leaderboard-tab="bots">Bot Stats</a>
         </div>
-      <?php else : ?>
-        <div class="store-table-wrap leaderboard-table-wrap">
-          <table class="store-table leaderboard-table">
-            <thead>
-              <tr>
-                <th>Rank</th>
-                <th>Bot</th>
-                <th>Kit</th>
-                <th>Skill</th>
-                <th>Kills</th>
-                <th>Deaths</th>
-                <th>K/D</th>
-              </tr>
-            </thead>
-            <tbody>
-              <?php foreach ($leaderboard_bot_rows as $row) : ?>
-                <tr>
-                  <td><span class="leaderboard-rank">#<?= e((string) $row['rank']) ?></span></td>
-                  <td><strong><?= e((string) ($row['display_name'] ?: $row['bot_key'])) ?></strong></td>
-                  <td><?= e((string) ($row['kit_name'] ?: 'Unknown')) ?></td>
-                  <td><?= e((string) ($row['skill_tier'] ?: 'Unknown')) ?></td>
-                  <td><?= e(raidlands_stats_format_number($row['kills'])) ?></td>
-                  <td><?= e(raidlands_stats_format_number($row['deaths'])) ?></td>
-                  <td><?= e(raidlands_stats_format_kdr($row['kdr'])) ?></td>
-                </tr>
+
+        <section
+          id="leaderboard-players"
+          class="<?= e(leaderboard_panel_classes('players', $leaderboard_board)) ?>"
+          role="tabpanel"
+          data-leaderboard-panel
+          data-board="players"
+          data-scope="<?= e($leaderboard_scope) ?>"
+          data-metric="<?= e($leaderboard_player_metric) ?>"
+          data-page="<?= e((string) ($leaderboard_player_result['page'] ?? 1)) ?>"
+          data-per-page="<?= e((string) ($leaderboard_player_result['per_page'] ?? $leaderboard_per_page)) ?>"
+          data-total="<?= e((string) ($leaderboard_player_result['total'] ?? 0)) ?>"
+          data-pages="<?= e((string) ($leaderboard_player_result['pages'] ?? 1)) ?>"
+          data-search="<?= e($leaderboard_search) ?>"
+          <?= $leaderboard_board === 'players' ? '' : 'hidden' ?>>
+          <div class="leaderboard-panel-head">
+            <div>
+              <p class="section-kicker">Player standings</p>
+              <h3>Player Stats</h3>
+              <p class="section-lede">Sort players by combat, survival time, NPC fights, and ServerRewards RP.</p>
+            </div>
+            <span class="status-pill" data-leaderboard-count><?= e(leaderboard_page_summary($leaderboard_player_result)) ?></span>
+          </div>
+
+          <div class="leaderboard-toolbar">
+            <div class="leaderboard-tabs" aria-label="Player leaderboard scope">
+              <a class="<?= $leaderboard_scope === 'current' ? 'is-active' : '' ?>" href="<?= e(leaderboard_url('players', 'current', $leaderboard_player_metric, 1, $leaderboard_per_page, $leaderboard_search)) ?>" data-leaderboard-scope="current">Current Wipe</a>
+              <a class="<?= $leaderboard_scope === 'all-time' ? 'is-active' : '' ?>" href="<?= e(leaderboard_url('players', 'all-time', $leaderboard_player_metric, 1, $leaderboard_per_page, $leaderboard_search)) ?>" data-leaderboard-scope="all-time">All Time</a>
+            </div>
+            <div class="leaderboard-tabs" aria-label="Player leaderboard metric">
+              <?php foreach ($leaderboard_metrics as $metric_key => $metric_label) : ?>
+                <a class="<?= $leaderboard_player_metric === $metric_key ? 'is-active' : '' ?>" href="<?= e(leaderboard_url('players', $leaderboard_scope, $metric_key, 1, $leaderboard_per_page, $leaderboard_search)) ?>" data-leaderboard-metric="<?= e($metric_key) ?>"><?= e($metric_label) ?></a>
               <?php endforeach; ?>
-            </tbody>
-          </table>
-        </div>
-      <?php endif; ?>
+            </div>
+          </div>
+
+          <form class="leaderboard-filterbar" method="get" action="<?= e(route_url('leaderboard')) ?>" data-leaderboard-form>
+            <input type="hidden" name="board" value="players">
+            <input type="hidden" name="scope" value="<?= e($leaderboard_scope) ?>" data-leaderboard-field="scope">
+            <input type="hidden" name="metric" value="<?= e($leaderboard_player_metric) ?>" data-leaderboard-field="metric">
+            <label>
+              <span>Search</span>
+              <input type="search" name="q" maxlength="80" placeholder="Player name or Steam ID" value="<?= e($leaderboard_search) ?>" data-leaderboard-search>
+            </label>
+            <label>
+              <span>Rows</span>
+              <select name="per_page" data-leaderboard-page-size>
+                <?php foreach ($leaderboard_page_sizes as $page_size) : ?>
+                  <option value="<?= e((string) $page_size) ?>"<?= $leaderboard_per_page === $page_size ? ' selected' : '' ?>><?= e((string) $page_size) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </label>
+            <button class="btn btn-secondary copy-small" type="submit">Search</button>
+          </form>
+
+          <div class="store-table-wrap leaderboard-table-wrap" data-leaderboard-table-wrap<?= $leaderboard_player_result['rows'] === [] ? ' hidden' : '' ?>>
+            <table class="store-table leaderboard-table">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Player</th>
+                  <th>Kills</th>
+                  <th>Deaths</th>
+                  <th>NPC Kills</th>
+                  <th>Killed by NPCs</th>
+                  <th>K/D</th>
+                  <th>Playtime</th>
+                  <th>RP</th>
+                </tr>
+              </thead>
+              <tbody data-leaderboard-rows>
+                <?php foreach ($leaderboard_player_result['rows'] as $row) : ?>
+                  <?php
+                    $leaderboard_name = (string) ($row['display_name'] ?: ($row['steam_display_name'] ?? 'Raidlands Player'));
+                    $leaderboard_avatar = render_steam_avatar(
+                        (string) ($row['steam_avatar_url'] ?? ''),
+                        (string) ($row['steam_profile_url'] ?? ''),
+                        $leaderboard_name,
+                        'steam-avatar-sm'
+                    );
+                    $leaderboard_profile_url = trim((string) ($row['steam_profile_url'] ?? ''));
+                  ?>
+                  <tr>
+                    <td><span class="leaderboard-rank">#<?= e((string) $row['rank']) ?></span></td>
+                    <td>
+                      <div class="leaderboard-player">
+                        <?= $leaderboard_avatar ?>
+                        <span class="leaderboard-player-copy">
+                          <strong><?= e($leaderboard_name) ?></strong>
+                          <?php if ($leaderboard_profile_url !== '') : ?>
+                            <a class="leaderboard-steam" href="<?= e($leaderboard_profile_url) ?>" target="_blank" rel="noopener noreferrer"><?= e((string) $row['steam_id64']) ?></a>
+                          <?php else : ?>
+                            <span class="leaderboard-steam"><?= e((string) $row['steam_id64']) ?></span>
+                          <?php endif; ?>
+                        </span>
+                      </div>
+                    </td>
+                    <td><strong><?= e(raidlands_stats_format_number($row['kills'])) ?></strong></td>
+                    <td><?= e(raidlands_stats_format_number($row['deaths'])) ?></td>
+                    <td><?= e(raidlands_stats_format_number($row['npc_kills'])) ?></td>
+                    <td><?= e(raidlands_stats_format_number($row['deaths_by_npc'])) ?></td>
+                    <td><?= e(raidlands_stats_format_kdr($row['kdr'])) ?></td>
+                    <td><?= e(raidlands_stats_format_duration($row['playtime_seconds'])) ?></td>
+                    <td><?= e(raidlands_stats_format_number($row['reward_points'])) ?></td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+          <div class="form-status warning" data-leaderboard-empty<?= $leaderboard_player_result['rows'] === [] ? '' : ' hidden' ?>>No player stats match this view.</div>
+
+          <nav class="leaderboard-pagination" aria-label="Player leaderboard pages" data-leaderboard-pagination>
+            <a class="<?= (int) $leaderboard_player_result['page'] <= 1 ? 'is-disabled' : '' ?>" href="<?= e(leaderboard_url('players', $leaderboard_scope, $leaderboard_player_metric, max(1, (int) $leaderboard_player_result['page'] - 1), $leaderboard_per_page, $leaderboard_search)) ?>" data-leaderboard-page-link="prev">Previous</a>
+            <span data-leaderboard-page-summary>Page <?= e((string) $leaderboard_player_result['page']) ?> of <?= e((string) $leaderboard_player_result['pages']) ?></span>
+            <a class="<?= (int) $leaderboard_player_result['page'] >= (int) $leaderboard_player_result['pages'] ? 'is-disabled' : '' ?>" href="<?= e(leaderboard_url('players', $leaderboard_scope, $leaderboard_player_metric, min((int) $leaderboard_player_result['pages'], (int) $leaderboard_player_result['page'] + 1), $leaderboard_per_page, $leaderboard_search)) ?>" data-leaderboard-page-link="next">Next</a>
+          </nav>
+        </section>
+
+        <section
+          id="leaderboard-bots"
+          class="<?= e(leaderboard_panel_classes('bots', $leaderboard_board)) ?>"
+          role="tabpanel"
+          data-leaderboard-panel
+          data-board="bots"
+          data-scope="<?= e($leaderboard_scope) ?>"
+          data-metric="<?= e($leaderboard_bot_metric) ?>"
+          data-page="<?= e((string) ($leaderboard_bot_result['page'] ?? 1)) ?>"
+          data-per-page="<?= e((string) ($leaderboard_bot_result['per_page'] ?? $leaderboard_per_page)) ?>"
+          data-total="<?= e((string) ($leaderboard_bot_result['total'] ?? 0)) ?>"
+          data-pages="<?= e((string) ($leaderboard_bot_result['pages'] ?? 1)) ?>"
+          data-search="<?= e($leaderboard_search) ?>"
+          <?= $leaderboard_board === 'bots' ? '' : 'hidden' ?>>
+          <div class="leaderboard-panel-head">
+            <div>
+              <p class="section-kicker">Roaming bots</p>
+              <h3>Bot Stats</h3>
+              <p class="section-lede">Bot combat is tracked separately so normal player PvP K/D stays clean.</p>
+            </div>
+            <span class="status-pill" data-leaderboard-count><?= e(leaderboard_page_summary($leaderboard_bot_result)) ?></span>
+          </div>
+
+          <div class="leaderboard-toolbar">
+            <div class="leaderboard-tabs" aria-label="Bot leaderboard scope">
+              <a class="<?= $leaderboard_scope === 'current' ? 'is-active' : '' ?>" href="<?= e(leaderboard_url('bots', 'current', $leaderboard_bot_metric, 1, $leaderboard_per_page, $leaderboard_search)) ?>" data-leaderboard-scope="current">Current Wipe</a>
+              <a class="<?= $leaderboard_scope === 'all-time' ? 'is-active' : '' ?>" href="<?= e(leaderboard_url('bots', 'all-time', $leaderboard_bot_metric, 1, $leaderboard_per_page, $leaderboard_search)) ?>" data-leaderboard-scope="all-time">All Time</a>
+            </div>
+            <div class="leaderboard-tabs" aria-label="Bot leaderboard metric">
+              <?php foreach ($leaderboard_bot_metrics as $metric_key => $metric_label) : ?>
+                <a class="<?= $leaderboard_bot_metric === $metric_key ? 'is-active' : '' ?>" href="<?= e(leaderboard_url('bots', $leaderboard_scope, $metric_key, 1, $leaderboard_per_page, $leaderboard_search)) ?>" data-leaderboard-metric="<?= e($metric_key) ?>"><?= e($metric_label) ?></a>
+              <?php endforeach; ?>
+            </div>
+          </div>
+
+          <form class="leaderboard-filterbar" method="get" action="<?= e(route_url('leaderboard')) ?>" data-leaderboard-form>
+            <input type="hidden" name="board" value="bots">
+            <input type="hidden" name="scope" value="<?= e($leaderboard_scope) ?>" data-leaderboard-field="scope">
+            <input type="hidden" name="metric" value="<?= e($leaderboard_bot_metric) ?>" data-leaderboard-field="metric">
+            <label>
+              <span>Search</span>
+              <input type="search" name="q" maxlength="80" placeholder="Bot, kit, or skill" value="<?= e($leaderboard_search) ?>" data-leaderboard-search>
+            </label>
+            <label>
+              <span>Rows</span>
+              <select name="per_page" data-leaderboard-page-size>
+                <?php foreach ($leaderboard_page_sizes as $page_size) : ?>
+                  <option value="<?= e((string) $page_size) ?>"<?= $leaderboard_per_page === $page_size ? ' selected' : '' ?>><?= e((string) $page_size) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </label>
+            <button class="btn btn-secondary copy-small" type="submit">Search</button>
+          </form>
+
+          <div class="store-table-wrap leaderboard-table-wrap" data-leaderboard-table-wrap<?= $leaderboard_bot_result['rows'] === [] ? ' hidden' : '' ?>>
+            <table class="store-table leaderboard-table">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Bot</th>
+                  <th>Kit</th>
+                  <th>Skill</th>
+                  <th>Kills</th>
+                  <th>Deaths</th>
+                  <th>K/D</th>
+                </tr>
+              </thead>
+              <tbody data-leaderboard-rows>
+                <?php foreach ($leaderboard_bot_result['rows'] as $row) : ?>
+                  <tr>
+                    <td><span class="leaderboard-rank">#<?= e((string) $row['rank']) ?></span></td>
+                    <td>
+                      <div class="leaderboard-player">
+                        <span class="leaderboard-bot-avatar" aria-hidden="true">AI</span>
+                        <span class="leaderboard-player-copy">
+                          <strong><?= e((string) ($row['display_name'] ?: $row['bot_key'])) ?></strong>
+                          <span class="leaderboard-steam"><?= e((string) $row['bot_key']) ?></span>
+                        </span>
+                      </div>
+                    </td>
+                    <td><?= e((string) ($row['kit_name'] ?: 'Unknown')) ?></td>
+                    <td><?= e((string) ($row['skill_tier'] ?: 'Unknown')) ?></td>
+                    <td><strong><?= e(raidlands_stats_format_number($row['kills'])) ?></strong></td>
+                    <td><?= e(raidlands_stats_format_number($row['deaths'])) ?></td>
+                    <td><?= e(raidlands_stats_format_kdr($row['kdr'])) ?></td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+          <div class="form-status warning" data-leaderboard-empty<?= $leaderboard_bot_result['rows'] === [] ? '' : ' hidden' ?>>No bot stats match this view.</div>
+
+          <nav class="leaderboard-pagination" aria-label="Bot leaderboard pages" data-leaderboard-pagination>
+            <a class="<?= (int) $leaderboard_bot_result['page'] <= 1 ? 'is-disabled' : '' ?>" href="<?= e(leaderboard_url('bots', $leaderboard_scope, $leaderboard_bot_metric, max(1, (int) $leaderboard_bot_result['page'] - 1), $leaderboard_per_page, $leaderboard_search)) ?>" data-leaderboard-page-link="prev">Previous</a>
+            <span data-leaderboard-page-summary>Page <?= e((string) $leaderboard_bot_result['page']) ?> of <?= e((string) $leaderboard_bot_result['pages']) ?></span>
+            <a class="<?= (int) $leaderboard_bot_result['page'] >= (int) $leaderboard_bot_result['pages'] ? 'is-disabled' : '' ?>" href="<?= e(leaderboard_url('bots', $leaderboard_scope, $leaderboard_bot_metric, min((int) $leaderboard_bot_result['pages'], (int) $leaderboard_bot_result['page'] + 1), $leaderboard_per_page, $leaderboard_search)) ?>" data-leaderboard-page-link="next">Next</a>
+          </nav>
+        </section>
+      </div>
     <?php endif; ?>
   </div>
 </section>

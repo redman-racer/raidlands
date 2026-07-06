@@ -70,6 +70,7 @@
     bindNav();
     bindActions();
     initClanManagement();
+    initLeaderboards();
     initEffectsWhenLoaderReveals();
     bindServerHistoryControls();
     hydrateDates();
@@ -305,6 +306,554 @@
         showToast(`${provider === "steam" ? "Steam" : "Discord"} is not connected on this browser.`);
       });
     });
+  }
+
+  function initLeaderboards() {
+    app.querySelectorAll("[data-leaderboard]").forEach(root => {
+      const panels = Array.from(root.querySelectorAll("[data-leaderboard-panel]"));
+
+      if (!panels.length || !window.fetch) return;
+
+      activateLeaderboardBoard(root, root.dataset.activeBoard || "players", false);
+      updateLeaderboardControls(root);
+
+      root.addEventListener("click", event => {
+        const tab = event.target.closest("[data-leaderboard-tab]");
+
+        if (tab && root.contains(tab)) {
+          event.preventDefault();
+          const board = tab.getAttribute("data-leaderboard-tab") || "players";
+          const panel = leaderboardPanel(root, board);
+
+          if (!panel) return;
+
+          readLeaderboardLink(panel, tab.href, true);
+          activateLeaderboardBoard(root, board, false);
+          loadLeaderboardPanel(root, panel, true);
+          return;
+        }
+
+        const scope = event.target.closest("[data-leaderboard-scope]");
+
+        if (scope && root.contains(scope)) {
+          event.preventDefault();
+          const panel = scope.closest("[data-leaderboard-panel]");
+
+          if (!panel) return;
+
+          panel.dataset.scope = scope.getAttribute("data-leaderboard-scope") || "current";
+          panel.dataset.page = "1";
+          syncLeaderboardSharedState(root, panel);
+          loadLeaderboardPanel(root, panel, true);
+          return;
+        }
+
+        const metric = event.target.closest("[data-leaderboard-metric]");
+
+        if (metric && root.contains(metric)) {
+          event.preventDefault();
+          const panel = metric.closest("[data-leaderboard-panel]");
+
+          if (!panel) return;
+
+          panel.dataset.metric = normalizeLeaderboardMetric(panel.dataset.board, metric.getAttribute("data-leaderboard-metric"));
+          panel.dataset.page = "1";
+          loadLeaderboardPanel(root, panel, true);
+          return;
+        }
+
+        const pageLink = event.target.closest("[data-leaderboard-page-link]");
+
+        if (pageLink && root.contains(pageLink)) {
+          event.preventDefault();
+
+          if (pageLink.classList.contains("is-disabled")) return;
+
+          const panel = pageLink.closest("[data-leaderboard-panel]");
+
+          if (!panel) return;
+
+          readLeaderboardLink(panel, pageLink.href, false);
+          loadLeaderboardPanel(root, panel, true);
+        }
+      });
+
+      root.addEventListener("submit", event => {
+        const form = event.target;
+
+        if (!(form instanceof HTMLFormElement) || !form.matches("[data-leaderboard-form]")) {
+          return;
+        }
+
+        event.preventDefault();
+        applyLeaderboardForm(root, form);
+      });
+
+      panels.forEach(panel => {
+        const search = panel.querySelector("[data-leaderboard-search]");
+        const pageSize = panel.querySelector("[data-leaderboard-page-size]");
+
+        if (search) {
+          search.addEventListener("input", () => {
+            window.clearTimeout(panel.__leaderboardSearchTimer);
+            panel.__leaderboardSearchTimer = window.setTimeout(() => {
+              panel.dataset.search = search.value.trim();
+              panel.dataset.page = "1";
+              syncLeaderboardSharedState(root, panel);
+              loadLeaderboardPanel(root, panel, true);
+            }, 320);
+          });
+        }
+
+        if (pageSize) {
+          pageSize.addEventListener("change", () => {
+            panel.dataset.perPage = normalizeLeaderboardPageSize(pageSize.value);
+            panel.dataset.page = "1";
+            syncLeaderboardSharedState(root, panel);
+            loadLeaderboardPanel(root, panel, true);
+          });
+        }
+      });
+
+      window.addEventListener("popstate", () => {
+        const params = new URLSearchParams(window.location.search);
+        const board = params.get("board") === "bots" ? "bots" : "players";
+        const panel = leaderboardPanel(root, board);
+
+        if (!panel) return;
+
+        readLeaderboardParams(panel, params, false);
+        activateLeaderboardBoard(root, board, false);
+        syncLeaderboardSharedState(root, panel);
+        loadLeaderboardPanel(root, panel, false);
+      });
+    });
+  }
+
+  function applyLeaderboardForm(root, form) {
+    const panel = form.closest("[data-leaderboard-panel]");
+
+    if (!panel) return;
+
+    const formData = new FormData(form);
+    panel.dataset.scope = normalizeLeaderboardScope(formData.get("scope"));
+    panel.dataset.metric = normalizeLeaderboardMetric(panel.dataset.board, formData.get("metric"));
+    panel.dataset.search = String(formData.get("q") || "").trim();
+    panel.dataset.perPage = normalizeLeaderboardPageSize(formData.get("per_page"));
+    panel.dataset.page = "1";
+    syncLeaderboardSharedState(root, panel);
+    loadLeaderboardPanel(root, panel, true);
+  }
+
+  function leaderboardPanel(root, board) {
+    return root.querySelector(`[data-leaderboard-panel][data-board="${board === "bots" ? "bots" : "players"}"]`);
+  }
+
+  function activateLeaderboardBoard(root, board, updateUrl) {
+    const activeBoard = board === "bots" ? "bots" : "players";
+
+    root.dataset.activeBoard = activeBoard;
+    root.querySelectorAll("[data-leaderboard-tab]").forEach(tab => {
+      const selected = tab.getAttribute("data-leaderboard-tab") === activeBoard;
+
+      tab.classList.toggle("is-active", selected);
+      tab.setAttribute("aria-selected", String(selected));
+    });
+
+    root.querySelectorAll("[data-leaderboard-panel]").forEach(panel => {
+      const selected = panel.dataset.board === activeBoard;
+
+      panel.hidden = !selected;
+      panel.classList.toggle("is-active", selected);
+    });
+
+    updateLeaderboardControls(root);
+
+    if (updateUrl) {
+      const panel = leaderboardPanel(root, activeBoard);
+
+      if (panel) {
+        updateLeaderboardHistory(panel, true);
+      }
+    }
+  }
+
+  function readLeaderboardLink(panel, href, resetPage) {
+    try {
+      readLeaderboardParams(panel, new URL(href, window.location.href).searchParams, resetPage);
+    } catch (error) {
+      if (resetPage) {
+        panel.dataset.page = "1";
+      }
+    }
+  }
+
+  function readLeaderboardParams(panel, params, resetPage) {
+    panel.dataset.scope = normalizeLeaderboardScope(params.get("scope"));
+    panel.dataset.metric = normalizeLeaderboardMetric(panel.dataset.board, params.get("metric"));
+    panel.dataset.search = String(params.get("q") || "");
+    panel.dataset.perPage = normalizeLeaderboardPageSize(params.get("per_page"));
+    panel.dataset.page = resetPage ? "1" : normalizeLeaderboardPage(params.get("page"));
+  }
+
+  async function loadLeaderboardPanel(root, panel, updateUrl) {
+    syncLeaderboardSharedState(root, panel);
+    updateLeaderboardControls(root);
+    panel.classList.add("is-loading");
+
+    const requestId = String(Date.now()) + String(Math.random());
+    panel.dataset.requestId = requestId;
+
+    try {
+      const response = await fetch(leaderboardApiUrl(root, panel), {
+        cache: "no-store",
+        headers: {
+          Accept: "application/json"
+        }
+      });
+      const payload = await readJsonResponse(response);
+
+      if (panel.dataset.requestId !== requestId) return;
+
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.error || `Leaderboard request failed with HTTP ${response.status}.`);
+      }
+
+      applyLeaderboardPayload(root, panel, payload);
+
+      if (updateUrl) {
+        updateLeaderboardHistory(panel, true);
+      }
+    } catch (error) {
+      showToast(error.message || "Leaderboard could not be loaded.");
+    } finally {
+      if (panel.dataset.requestId === requestId) {
+        panel.classList.remove("is-loading");
+      }
+    }
+  }
+
+  function leaderboardApiUrl(root, panel) {
+    const url = new URL(root.dataset.apiUrl || `${doc.dataset.base || "./"}api/leaderboard.php`, window.location.href);
+
+    url.searchParams.set("board", panel.dataset.board || "players");
+    url.searchParams.set("scope", normalizeLeaderboardScope(panel.dataset.scope));
+    url.searchParams.set("metric", normalizeLeaderboardMetric(panel.dataset.board, panel.dataset.metric));
+    url.searchParams.set("page", normalizeLeaderboardPage(panel.dataset.page));
+    url.searchParams.set("per_page", normalizeLeaderboardPageSize(panel.dataset.perPage));
+
+    if ((panel.dataset.search || "").trim()) {
+      url.searchParams.set("q", panel.dataset.search.trim());
+    }
+
+    return url.toString();
+  }
+
+  function leaderboardPageUrl(panel) {
+    const url = new URL(window.location.href);
+
+    url.searchParams.set("board", panel.dataset.board || "players");
+    url.searchParams.set("scope", normalizeLeaderboardScope(panel.dataset.scope));
+    url.searchParams.set("metric", normalizeLeaderboardMetric(panel.dataset.board, panel.dataset.metric));
+    url.searchParams.set("page", normalizeLeaderboardPage(panel.dataset.page));
+    url.searchParams.set("per_page", normalizeLeaderboardPageSize(panel.dataset.perPage));
+
+    if ((panel.dataset.search || "").trim()) {
+      url.searchParams.set("q", panel.dataset.search.trim());
+    } else {
+      url.searchParams.delete("q");
+    }
+
+    return `${url.pathname}${url.search}${url.hash}`;
+  }
+
+  function updateLeaderboardHistory(panel, push) {
+    if (!window.history || !window.history.pushState) return;
+
+    const next = leaderboardPageUrl(panel);
+    const current = `${window.location.pathname}${window.location.search}${window.location.hash}`;
+
+    if (next === current) return;
+
+    if (push) {
+      window.history.pushState({ leaderboard: true }, "", next);
+      return;
+    }
+
+    window.history.replaceState({ leaderboard: true }, "", next);
+  }
+
+  function applyLeaderboardPayload(root, panel, payload) {
+    const rows = Array.isArray(payload.rows) ? payload.rows : [];
+
+    panel.dataset.scope = normalizeLeaderboardScope(payload.scope);
+    panel.dataset.metric = normalizeLeaderboardMetric(panel.dataset.board, payload.metric);
+    panel.dataset.search = String(payload.search || "");
+    panel.dataset.page = normalizeLeaderboardPage(payload.page);
+    panel.dataset.perPage = normalizeLeaderboardPageSize(payload.per_page);
+    panel.dataset.total = String(Math.max(0, Number(payload.total) || 0));
+    panel.dataset.pages = normalizeLeaderboardPage(payload.pages);
+    renderLeaderboardRows(panel, rows);
+    updateLeaderboardControls(root);
+  }
+
+  function renderLeaderboardRows(panel, rows) {
+    const body = panel.querySelector("[data-leaderboard-rows]");
+    const tableWrap = panel.querySelector("[data-leaderboard-table-wrap]");
+    const empty = panel.querySelector("[data-leaderboard-empty]");
+
+    if (body) {
+      body.innerHTML = rows.map(row => (
+        panel.dataset.board === "bots" ? renderBotLeaderboardRow(row) : renderPlayerLeaderboardRow(row)
+      )).join("");
+    }
+
+    if (tableWrap) {
+      tableWrap.hidden = rows.length === 0;
+    }
+
+    if (empty) {
+      empty.hidden = rows.length > 0;
+    }
+  }
+
+  function renderPlayerLeaderboardRow(row) {
+    const name = String(row.display_name || row.steam_display_name || "Raidlands Player");
+    const steamId = String(row.steam_id64 || "");
+    const profileUrl = String(row.steam_profile_url || "").trim();
+    const steamMeta = profileUrl
+      ? `<a class="leaderboard-steam" href="${escapeAttr(profileUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(steamId)}</a>`
+      : `<span class="leaderboard-steam">${escapeHtml(steamId)}</span>`;
+
+    return `<tr>
+      <td><span class="leaderboard-rank">#${escapeHtml(row.rank || "0")}</span></td>
+      <td>
+        <div class="leaderboard-player">
+          ${renderLeaderboardAvatar(row, name)}
+          <span class="leaderboard-player-copy">
+            <strong>${escapeHtml(name)}</strong>
+            ${steamMeta}
+          </span>
+        </div>
+      </td>
+      <td><strong>${formatLeaderboardNumber(row.kills)}</strong></td>
+      <td>${formatLeaderboardNumber(row.deaths)}</td>
+      <td>${formatLeaderboardNumber(row.npc_kills)}</td>
+      <td>${formatLeaderboardNumber(row.deaths_by_npc)}</td>
+      <td>${formatLeaderboardKdr(row.kdr)}</td>
+      <td>${formatLeaderboardDuration(row.playtime_seconds)}</td>
+      <td>${formatLeaderboardNumber(row.reward_points)}</td>
+    </tr>`;
+  }
+
+  function renderLeaderboardAvatar(row, name) {
+    const avatarUrl = String(row.steam_avatar_url || "").trim();
+    const profileUrl = String(row.steam_profile_url || "").trim();
+
+    if (!avatarUrl) return "";
+
+    const image = `<img src="${escapeAttr(avatarUrl)}" alt="${escapeAttr(name)} Steam avatar" loading="lazy" referrerpolicy="no-referrer">`;
+
+    if (profileUrl) {
+      return `<a class="steam-avatar steam-avatar-sm" href="${escapeAttr(profileUrl)}" target="_blank" rel="noopener noreferrer" aria-label="${escapeAttr(name)} Steam profile">${image}</a>`;
+    }
+
+    return `<span class="steam-avatar steam-avatar-sm">${image}</span>`;
+  }
+
+  function renderBotLeaderboardRow(row) {
+    const name = String(row.display_name || row.bot_key || "Raidlands Bot");
+    const botKey = String(row.bot_key || "");
+
+    return `<tr>
+      <td><span class="leaderboard-rank">#${escapeHtml(row.rank || "0")}</span></td>
+      <td>
+        <div class="leaderboard-player">
+          <span class="leaderboard-bot-avatar" aria-hidden="true">AI</span>
+          <span class="leaderboard-player-copy">
+            <strong>${escapeHtml(name)}</strong>
+            <span class="leaderboard-steam">${escapeHtml(botKey)}</span>
+          </span>
+        </div>
+      </td>
+      <td>${escapeHtml(row.kit_name || "Unknown")}</td>
+      <td>${escapeHtml(row.skill_tier || "Unknown")}</td>
+      <td><strong>${formatLeaderboardNumber(row.kills)}</strong></td>
+      <td>${formatLeaderboardNumber(row.deaths)}</td>
+      <td>${formatLeaderboardKdr(row.kdr)}</td>
+    </tr>`;
+  }
+
+  function syncLeaderboardSharedState(root, sourcePanel) {
+    root.querySelectorAll("[data-leaderboard-panel]").forEach(panel => {
+      if (panel === sourcePanel) return;
+
+      panel.dataset.scope = normalizeLeaderboardScope(sourcePanel.dataset.scope);
+      panel.dataset.search = String(sourcePanel.dataset.search || "");
+      panel.dataset.perPage = normalizeLeaderboardPageSize(sourcePanel.dataset.perPage);
+      panel.dataset.page = "1";
+    });
+  }
+
+  function updateLeaderboardControls(root) {
+    root.querySelectorAll("[data-leaderboard-panel]").forEach(panel => {
+      const board = panel.dataset.board || "players";
+      const scope = normalizeLeaderboardScope(panel.dataset.scope);
+      const metric = normalizeLeaderboardMetric(board, panel.dataset.metric);
+      const page = Number(normalizeLeaderboardPage(panel.dataset.page));
+      const perPage = normalizeLeaderboardPageSize(panel.dataset.perPage);
+      const total = Math.max(0, Number(panel.dataset.total) || 0);
+      const pages = Math.max(1, Number(normalizeLeaderboardPage(panel.dataset.pages)));
+
+      panel.querySelectorAll("[data-leaderboard-scope]").forEach(link => {
+        const selected = link.getAttribute("data-leaderboard-scope") === scope;
+
+        link.classList.toggle("is-active", selected);
+        link.href = leaderboardHref(panel, { scope: link.getAttribute("data-leaderboard-scope"), page: 1 });
+      });
+
+      panel.querySelectorAll("[data-leaderboard-metric]").forEach(link => {
+        const selected = link.getAttribute("data-leaderboard-metric") === metric;
+
+        link.classList.toggle("is-active", selected);
+        link.href = leaderboardHref(panel, { metric: link.getAttribute("data-leaderboard-metric"), page: 1 });
+      });
+
+      panel.querySelectorAll("[data-leaderboard-field='scope']").forEach(input => {
+        input.value = scope;
+      });
+
+      panel.querySelectorAll("[data-leaderboard-field='metric']").forEach(input => {
+        input.value = metric;
+      });
+
+      panel.querySelectorAll("[data-leaderboard-search]").forEach(input => {
+        if (document.activeElement !== input) {
+          input.value = panel.dataset.search || "";
+        }
+      });
+
+      panel.querySelectorAll("[data-leaderboard-page-size]").forEach(select => {
+        select.value = perPage;
+      });
+
+      panel.querySelectorAll("[data-leaderboard-count]").forEach(item => {
+        item.textContent = leaderboardResultSummary(total, page, Number(perPage));
+      });
+
+      panel.querySelectorAll("[data-leaderboard-page-summary]").forEach(item => {
+        item.textContent = `Page ${page} of ${pages}`;
+      });
+
+      panel.querySelectorAll("[data-leaderboard-page-link]").forEach(link => {
+        const direction = link.getAttribute("data-leaderboard-page-link");
+        const nextPage = direction === "next" ? Math.min(pages, page + 1) : Math.max(1, page - 1);
+        const disabled = direction === "next" ? page >= pages : page <= 1;
+
+        link.classList.toggle("is-disabled", disabled);
+        link.setAttribute("aria-disabled", String(disabled));
+        link.href = leaderboardHref(panel, { page: nextPage });
+      });
+    });
+
+    root.querySelectorAll("[data-leaderboard-tab]").forEach(tab => {
+      const board = tab.getAttribute("data-leaderboard-tab") === "bots" ? "bots" : "players";
+      const panel = leaderboardPanel(root, board);
+      const selected = root.dataset.activeBoard === board;
+
+      tab.classList.toggle("is-active", selected);
+      tab.setAttribute("aria-selected", String(selected));
+
+      if (panel) {
+        tab.href = leaderboardHref(panel, { page: 1 });
+      }
+    });
+  }
+
+  function leaderboardHref(panel, overrides = {}) {
+    const url = new URL(window.location.href);
+    const board = panel.dataset.board || "players";
+    const scope = normalizeLeaderboardScope(overrides.scope || panel.dataset.scope);
+    const metric = normalizeLeaderboardMetric(board, overrides.metric || panel.dataset.metric);
+    const page = normalizeLeaderboardPage(overrides.page || panel.dataset.page);
+    const perPage = normalizeLeaderboardPageSize(overrides.perPage || panel.dataset.perPage);
+    const search = overrides.search !== undefined ? String(overrides.search || "") : String(panel.dataset.search || "");
+
+    url.searchParams.set("board", board);
+    url.searchParams.set("scope", scope);
+    url.searchParams.set("metric", metric);
+    url.searchParams.set("page", page);
+    url.searchParams.set("per_page", perPage);
+
+    if (search.trim()) {
+      url.searchParams.set("q", search.trim());
+    } else {
+      url.searchParams.delete("q");
+    }
+
+    return `${url.pathname}${url.search}${url.hash}`;
+  }
+
+  function leaderboardResultSummary(total, page, perPage) {
+    if (total <= 0) {
+      return "0 results";
+    }
+
+    const start = ((page - 1) * perPage) + 1;
+    const end = Math.min(total, page * perPage);
+
+    return `${formatLeaderboardNumber(start)}-${formatLeaderboardNumber(end)} of ${formatLeaderboardNumber(total)}`;
+  }
+
+  function normalizeLeaderboardScope(scope) {
+    return scope === "all-time" ? "all-time" : "current";
+  }
+
+  function normalizeLeaderboardMetric(board, metric) {
+    const value = String(metric || "");
+
+    if (board === "bots") {
+      return ["kdr", "kills", "deaths"].includes(value) ? value : "kdr";
+    }
+
+    return ["kills", "kdr", "playtime", "rp", "npc_kills", "deaths_by_npc"].includes(value) ? value : "kills";
+  }
+
+  function normalizeLeaderboardPage(value) {
+    const page = parseInt(value, 10);
+
+    return String(Number.isFinite(page) && page > 0 ? page : 1);
+  }
+
+  function normalizeLeaderboardPageSize(value) {
+    const pageSize = parseInt(value, 10);
+    const normalized = Number.isFinite(pageSize) ? Math.max(5, Math.min(100, pageSize)) : 25;
+
+    return String(normalized);
+  }
+
+  function formatLeaderboardNumber(value) {
+    const number = Number(value) || 0;
+
+    return new Intl.NumberFormat().format(Math.trunc(number));
+  }
+
+  function formatLeaderboardKdr(value) {
+    const number = Number(value) || 0;
+
+    return number.toFixed(2);
+  }
+
+  function formatLeaderboardDuration(value) {
+    const seconds = Math.max(0, Math.trunc(Number(value) || 0));
+    const hours = Math.trunc(seconds / 3600);
+    const minutes = Math.trunc((seconds % 3600) / 60);
+
+    if (hours > 0) {
+      return `${hours}h ${String(minutes).padStart(2, "0")}m`;
+    }
+
+    return `${minutes}m`;
   }
 
   function initClanManagement() {
