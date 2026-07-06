@@ -395,6 +395,135 @@ function raidlands_kits_public_image_url(string $path): string
     return $path;
 }
 
+function raidlands_kits_canonical_image_path(string $kit_name, string $permission = ''): string
+{
+    $kit_key = strtolower(raidlands_kits_clean_text($kit_name, 160));
+    $permission_key = raidlands_kits_clean_claim_permission($permission);
+    $by_name = [
+        'starter kit' => '/assets/media/kits/starter-kit.webp',
+        'autokit' => '/assets/media/kits/autokit.webp',
+        'raidlands_pvp_light' => '/assets/media/kits/pvp-light-kit.webp',
+        'pvp_light' => '/assets/media/kits/pvp-light-kit.webp',
+        'raidlands_pvp_rifle' => '/assets/media/kits/pvp-rifle-kit.webp',
+        'pvp_rifle' => '/assets/media/kits/pvp-rifle-kit.webp',
+        'raidlands_pvp_roamer' => '/assets/media/kits/pvp-roamer-kit.webp',
+        'pvp_roamer' => '/assets/media/kits/pvp-roamer-kit.webp',
+        'raidlands_pvp_heavy' => '/assets/media/kits/pvp-heavy-kit.webp',
+        'pvp_heavy' => '/assets/media/kits/pvp-heavy-kit.webp',
+        'raidlands_pvp_elite' => '/assets/media/kits/pvp-elite-kit.webp',
+        'pvp_elite' => '/assets/media/kits/pvp-elite-kit.webp',
+        'raidlands_pvp_breach' => '/assets/media/kits/pvp-breach-kit.webp',
+        'pvp_breach' => '/assets/media/kits/pvp-breach-kit.webp',
+        'vip' => '/assets/media/kits/vip-kit.webp',
+        'kit_vip' => '/assets/media/kits/vip-kit.webp',
+        'diamond' => '/assets/media/kits/vip-diamond-kit.webp',
+        'kit_vip_diamond' => '/assets/media/kits/vip-diamond-kit.webp',
+        'vip_plus' => '/assets/media/kits/vip-plus-kit.webp',
+        'kit_vip_plus' => '/assets/media/kits/vip-plus-kit.webp',
+        'kit_vip_plus_diamond' => '/assets/media/kits/vip-plus-diamond-kit.webp',
+        'mvp' => '/assets/media/kits/mvp-kit.webp',
+        'kit_mvp' => '/assets/media/kits/mvp-kit.webp',
+        'golden' => '/assets/media/kits/golden-vip-kit.webp',
+        'kit_golden_vip' => '/assets/media/kits/golden-vip-kit.webp',
+        'ultimate' => '/assets/media/kits/ultimate-vip-kit.webp',
+        'kit_ultimate_vip' => '/assets/media/kits/ultimate-vip-kit.webp',
+        'titan' => '/assets/media/kits/titan-vip-kit.webp',
+        'kit_titan_vip' => '/assets/media/kits/titan-vip-kit.webp',
+        'sentry' => '/assets/media/kits/sentry-small-pack.webp',
+        'pack_sentry_small' => '/assets/media/kits/sentry-small-pack.webp',
+        'sentry_large' => '/assets/media/kits/sentry-large-pack.webp',
+        'pack_sentry_large' => '/assets/media/kits/sentry-large-pack.webp',
+        'portafort' => '/assets/media/kits/portafort-token.webp',
+        'vehicles' => '/assets/media/kits/vehicle-pack.webp',
+        'pack_vehicle' => '/assets/media/kits/vehicle-pack.webp',
+        'steam_name_rewards' => '/assets/media/kits/steam-name-rewards-kit.webp',
+        'kit_claim_steam_name_rewards' => '/assets/media/kits/steam-name-rewards-kit.webp',
+        'steam' => '/assets/media/kits/steam-rewards-kit.webp',
+        'kit_claim_steam_rewards' => '/assets/media/kits/steam-rewards-kit.webp',
+        'discord_booster' => '/assets/media/kits/discord-booster-kit.webp',
+        'kit_claim_discord_booster' => '/assets/media/kits/discord-booster-kit.webp',
+        'discord_raid' => '/assets/media/kits/discord-raid-kit.webp',
+        'kit_claim_discord_raid' => '/assets/media/kits/discord-raid-kit.webp',
+        'discord' => '/assets/media/kits/discord-kit.webp',
+        'kit_claim_discord' => '/assets/media/kits/discord-kit.webp',
+        '556' => '/assets/media/kits/556-kit.webp',
+        'kit_claim_556' => '/assets/media/kits/556-kit.webp',
+        'cards' => '/assets/media/kits/cards-kit.webp',
+        'kit_claim_cards' => '/assets/media/kits/cards-kit.webp',
+        'scrap' => '/assets/media/kits/scrap-kit.webp',
+        'kit_claim_scrap' => '/assets/media/kits/scrap-kit.webp',
+        'scuba' => '/assets/media/kits/scuba-kit.webp',
+        'kit_claim_scuba' => '/assets/media/kits/scuba-kit.webp',
+        'components' => '/assets/media/kits/comps-kit.webp',
+        'comps' => '/assets/media/kits/comps-kit.webp',
+        'kit_claim_components' => '/assets/media/kits/comps-kit.webp',
+        'build' => '/assets/media/kits/build-kit.webp',
+        'build kit' => '/assets/media/kits/build-kit.webp',
+        'kit_claim_build' => '/assets/media/kits/build-kit.webp',
+        'raid' => '/assets/media/kits/raid-kit.webp',
+        'raid kit' => '/assets/media/kits/raid-kit.webp',
+        'kit_claim_raid' => '/assets/media/kits/raid-kit.webp',
+        'medical' => '/assets/media/kits/medical-kit.webp',
+        'kit_claim_medical' => '/assets/media/kits/medical-kit.webp',
+        'mp5' => '/assets/media/kits/mp5-kit.webp',
+        'kit_claim_mp5' => '/assets/media/kits/mp5-kit.webp',
+        'lr300' => '/assets/media/kits/lr300-kit.webp',
+        'kit_claim_lr300' => '/assets/media/kits/lr300-kit.webp',
+        'm16' => '/assets/media/kits/m16a2-kit.webp',
+        'kit_claim_m16a2' => '/assets/media/kits/m16a2-kit.webp',
+        'ak' => '/assets/media/kits/ak-kit.webp',
+        'kit_claim_ak' => '/assets/media/kits/ak-kit.webp',
+    ];
+    $by_permission = [
+        'kits.autokit' => '/assets/media/kits/autokit.webp',
+        'kits.pvp.light' => '/assets/media/kits/pvp-light-kit.webp',
+        'kits.pvp.rifle' => '/assets/media/kits/pvp-rifle-kit.webp',
+        'kits.pvp.roamer' => '/assets/media/kits/pvp-roamer-kit.webp',
+        'kits.pvp.heavy' => '/assets/media/kits/pvp-heavy-kit.webp',
+        'kits.pvp.elite' => '/assets/media/kits/pvp-elite-kit.webp',
+        'kits.pvp.breach' => '/assets/media/kits/pvp-breach-kit.webp',
+        'kits.vip' => '/assets/media/kits/vip-kit.webp',
+        'kits.vip.diamond' => '/assets/media/kits/vip-diamond-kit.webp',
+        'kits.vipplus' => '/assets/media/kits/vip-plus-kit.webp',
+        'kits.vipplus.diamond' => '/assets/media/kits/vip-plus-diamond-kit.webp',
+        'kits.mvp' => '/assets/media/kits/mvp-kit.webp',
+        'kits.goldenvip' => '/assets/media/kits/golden-vip-kit.webp',
+        'kits.ultimatevip' => '/assets/media/kits/ultimate-vip-kit.webp',
+        'kits.titanvip' => '/assets/media/kits/titan-vip-kit.webp',
+        'kits.sentry.small' => '/assets/media/kits/sentry-small-pack.webp',
+        'kits.sentry.large' => '/assets/media/kits/sentry-large-pack.webp',
+        'kits.portafort' => '/assets/media/kits/portafort-token.webp',
+        'kits.vehicle' => '/assets/media/kits/vehicle-pack.webp',
+        'kits.claim.steam_name_rewards' => '/assets/media/kits/steam-name-rewards-kit.webp',
+        'kits.claim.steam_rewards' => '/assets/media/kits/steam-rewards-kit.webp',
+        'kits.claim.discord_booster' => '/assets/media/kits/discord-booster-kit.webp',
+        'kits.claim.discord_raid' => '/assets/media/kits/discord-raid-kit.webp',
+        'kits.claim.discord' => '/assets/media/kits/discord-kit.webp',
+        'kits.claim.556' => '/assets/media/kits/556-kit.webp',
+        'kits.claim.cards' => '/assets/media/kits/cards-kit.webp',
+        'kits.claim.scrap' => '/assets/media/kits/scrap-kit.webp',
+        'kits.claim.scuba' => '/assets/media/kits/scuba-kit.webp',
+        'kits.claim.components' => '/assets/media/kits/comps-kit.webp',
+        'kits.comp' => '/assets/media/kits/comps-kit.webp',
+        'kits.claim.build' => '/assets/media/kits/build-kit.webp',
+        'kits.build' => '/assets/media/kits/build-kit.webp',
+        'kits.claim.raid' => '/assets/media/kits/raid-kit.webp',
+        'kits.raid' => '/assets/media/kits/raid-kit.webp',
+        'kits.claim.medical' => '/assets/media/kits/medical-kit.webp',
+        'kits.medical' => '/assets/media/kits/medical-kit.webp',
+        'kits.claim.mp5' => '/assets/media/kits/mp5-kit.webp',
+        'kits.claim.lr300' => '/assets/media/kits/lr300-kit.webp',
+        'kits.claim.m16a2' => '/assets/media/kits/m16a2-kit.webp',
+        'kits.claim.ak' => '/assets/media/kits/ak-kit.webp',
+    ];
+
+    if ($permission_key !== '' && isset($by_permission[$permission_key])) {
+        return $by_permission[$permission_key];
+    }
+
+    return $by_name[$kit_key] ?? '';
+}
+
 function raidlands_kits_file_at_index(array $files, string $field, int $index): ?array
 {
     if (empty($files[$field]) || !is_array($files[$field])) {
@@ -1492,6 +1621,7 @@ function raidlands_kits_import_snapshot(array $payload): array
                 $incoming_permission = raidlands_kits_permission_from_name($name);
             }
 
+            $canonical_image_path = raidlands_kits_canonical_image_path($name, $incoming_permission);
             $params = [
                 'kit_name' => $name,
                 'description' => raidlands_kits_clean_multiline($kit['Description'] ?? ''),
@@ -1502,7 +1632,9 @@ function raidlands_kits_import_snapshot(array $payload): array
                 'cost' => raidlands_kits_int($kit['Cost'] ?? 0, 0, 99999999),
                 'is_hidden' => empty($kit['IsHidden']) ? 0 : 1,
                 'copy_paste_file' => raidlands_kits_clean_text($kit['CopyPasteFile'] ?? '', 160),
-                'image_path' => raidlands_kits_clean_image_path($kit['KitImage'] ?? ''),
+                'image_path' => $canonical_image_path !== ''
+                    ? $canonical_image_path
+                    : raidlands_kits_clean_image_path($kit['KitImage'] ?? ''),
                 'draft_revision' => $revision,
             ];
 
