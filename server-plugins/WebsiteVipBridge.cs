@@ -15,7 +15,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteVipBridge", "Raidlands", "1.5.6")]
+    [Info("WebsiteVipBridge", "Raidlands", "1.5.7")]
     [Description("Syncs website VIP entitlements and player stats between Raidlands.net and the Rust server.")]
     public class WebsiteVipBridge : CovalencePlugin
     {
@@ -88,123 +88,123 @@ namespace Oxide.Plugins
 
         private static readonly Dictionary<string, string> CanonicalKitImagePathsByName = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            ["starter kit"] = "/assets/media/kits/starter-kit.webp",
-            ["autokit"] = "/assets/media/kits/autokit.webp",
-            ["raidlands_pvp_light"] = "/assets/media/kits/pvp-light-kit.webp",
-            ["pvp_light"] = "/assets/media/kits/pvp-light-kit.webp",
-            ["raidlands_pvp_rifle"] = "/assets/media/kits/pvp-rifle-kit.webp",
-            ["pvp_rifle"] = "/assets/media/kits/pvp-rifle-kit.webp",
-            ["raidlands_pvp_roamer"] = "/assets/media/kits/pvp-roamer-kit.webp",
-            ["pvp_roamer"] = "/assets/media/kits/pvp-roamer-kit.webp",
-            ["raidlands_pvp_heavy"] = "/assets/media/kits/pvp-heavy-kit.webp",
-            ["pvp_heavy"] = "/assets/media/kits/pvp-heavy-kit.webp",
-            ["raidlands_pvp_elite"] = "/assets/media/kits/pvp-elite-kit.webp",
-            ["pvp_elite"] = "/assets/media/kits/pvp-elite-kit.webp",
-            ["raidlands_pvp_breach"] = "/assets/media/kits/pvp-breach-kit.webp",
-            ["pvp_breach"] = "/assets/media/kits/pvp-breach-kit.webp",
-            ["vip"] = "/assets/media/kits/vip-kit.webp",
-            ["kit_vip"] = "/assets/media/kits/vip-kit.webp",
-            ["diamond"] = "/assets/media/kits/vip-diamond-kit.webp",
-            ["kit_vip_diamond"] = "/assets/media/kits/vip-diamond-kit.webp",
-            ["vip_plus"] = "/assets/media/kits/vip-plus-kit.webp",
-            ["kit_vip_plus"] = "/assets/media/kits/vip-plus-kit.webp",
-            ["kit_vip_plus_diamond"] = "/assets/media/kits/vip-plus-diamond-kit.webp",
-            ["mvp"] = "/assets/media/kits/mvp-kit.webp",
-            ["kit_mvp"] = "/assets/media/kits/mvp-kit.webp",
-            ["golden"] = "/assets/media/kits/golden-vip-kit.webp",
-            ["kit_golden_vip"] = "/assets/media/kits/golden-vip-kit.webp",
-            ["ultimate"] = "/assets/media/kits/ultimate-vip-kit.webp",
-            ["kit_ultimate_vip"] = "/assets/media/kits/ultimate-vip-kit.webp",
-            ["titan"] = "/assets/media/kits/titan-vip-kit.webp",
-            ["kit_titan_vip"] = "/assets/media/kits/titan-vip-kit.webp",
-            ["sentry"] = "/assets/media/kits/sentry-small-pack.webp",
-            ["pack_sentry_small"] = "/assets/media/kits/sentry-small-pack.webp",
-            ["sentry_large"] = "/assets/media/kits/sentry-large-pack.webp",
-            ["pack_sentry_large"] = "/assets/media/kits/sentry-large-pack.webp",
-            ["portafort"] = "/assets/media/kits/portafort-token.webp",
-            ["vehicles"] = "/assets/media/kits/vehicle-pack.webp",
-            ["pack_vehicle"] = "/assets/media/kits/vehicle-pack.webp",
-            ["steam_name_rewards"] = "/assets/media/kits/steam-name-rewards-kit.webp",
-            ["kit_claim_steam_name_rewards"] = "/assets/media/kits/steam-name-rewards-kit.webp",
-            ["steam"] = "/assets/media/kits/steam-rewards-kit.webp",
-            ["kit_claim_steam_rewards"] = "/assets/media/kits/steam-rewards-kit.webp",
-            ["discord_booster"] = "/assets/media/kits/discord-booster-kit.webp",
-            ["kit_claim_discord_booster"] = "/assets/media/kits/discord-booster-kit.webp",
-            ["discord_raid"] = "/assets/media/kits/discord-raid-kit.webp",
-            ["kit_claim_discord_raid"] = "/assets/media/kits/discord-raid-kit.webp",
-            ["discord"] = "/assets/media/kits/discord-kit.webp",
-            ["kit_claim_discord"] = "/assets/media/kits/discord-kit.webp",
-            ["556"] = "/assets/media/kits/556-kit.webp",
-            ["kit_claim_556"] = "/assets/media/kits/556-kit.webp",
-            ["cards"] = "/assets/media/kits/cards-kit.webp",
-            ["kit_claim_cards"] = "/assets/media/kits/cards-kit.webp",
-            ["scrap"] = "/assets/media/kits/scrap-kit.webp",
-            ["kit_claim_scrap"] = "/assets/media/kits/scrap-kit.webp",
-            ["scuba"] = "/assets/media/kits/scuba-kit.webp",
-            ["kit_claim_scuba"] = "/assets/media/kits/scuba-kit.webp",
-            ["components"] = "/assets/media/kits/comps-kit.webp",
-            ["comps"] = "/assets/media/kits/comps-kit.webp",
-            ["kit_claim_components"] = "/assets/media/kits/comps-kit.webp",
-            ["build"] = "/assets/media/kits/build-kit.webp",
-            ["build kit"] = "/assets/media/kits/build-kit.webp",
-            ["kit_claim_build"] = "/assets/media/kits/build-kit.webp",
-            ["raid"] = "/assets/media/kits/raid-kit.webp",
-            ["raid kit"] = "/assets/media/kits/raid-kit.webp",
-            ["kit_claim_raid"] = "/assets/media/kits/raid-kit.webp",
-            ["medical"] = "/assets/media/kits/medical-kit.webp",
-            ["kit_claim_medical"] = "/assets/media/kits/medical-kit.webp",
-            ["mp5"] = "/assets/media/kits/mp5-kit.webp",
-            ["kit_claim_mp5"] = "/assets/media/kits/mp5-kit.webp",
-            ["lr300"] = "/assets/media/kits/lr300-kit.webp",
-            ["kit_claim_lr300"] = "/assets/media/kits/lr300-kit.webp",
-            ["m16"] = "/assets/media/kits/m16a2-kit.webp",
-            ["kit_claim_m16a2"] = "/assets/media/kits/m16a2-kit.webp",
-            ["ak"] = "/assets/media/kits/ak-kit.webp",
-            ["kit_claim_ak"] = "/assets/media/kits/ak-kit.webp"
+            ["starter kit"] = "/assets/media/kits/starter-kit.png",
+            ["autokit"] = "/assets/media/kits/autokit.png",
+            ["raidlands_pvp_light"] = "/assets/media/kits/pvp-light-kit.png",
+            ["pvp_light"] = "/assets/media/kits/pvp-light-kit.png",
+            ["raidlands_pvp_rifle"] = "/assets/media/kits/pvp-rifle-kit.png",
+            ["pvp_rifle"] = "/assets/media/kits/pvp-rifle-kit.png",
+            ["raidlands_pvp_roamer"] = "/assets/media/kits/pvp-roamer-kit.png",
+            ["pvp_roamer"] = "/assets/media/kits/pvp-roamer-kit.png",
+            ["raidlands_pvp_heavy"] = "/assets/media/kits/pvp-heavy-kit.png",
+            ["pvp_heavy"] = "/assets/media/kits/pvp-heavy-kit.png",
+            ["raidlands_pvp_elite"] = "/assets/media/kits/pvp-elite-kit.png",
+            ["pvp_elite"] = "/assets/media/kits/pvp-elite-kit.png",
+            ["raidlands_pvp_breach"] = "/assets/media/kits/pvp-breach-kit.png",
+            ["pvp_breach"] = "/assets/media/kits/pvp-breach-kit.png",
+            ["vip"] = "/assets/media/kits/vip-kit.png",
+            ["kit_vip"] = "/assets/media/kits/vip-kit.png",
+            ["diamond"] = "/assets/media/kits/vip-diamond-kit.png",
+            ["kit_vip_diamond"] = "/assets/media/kits/vip-diamond-kit.png",
+            ["vip_plus"] = "/assets/media/kits/vip-plus-kit.png",
+            ["kit_vip_plus"] = "/assets/media/kits/vip-plus-kit.png",
+            ["kit_vip_plus_diamond"] = "/assets/media/kits/vip-plus-diamond-kit.png",
+            ["mvp"] = "/assets/media/kits/mvp-kit.png",
+            ["kit_mvp"] = "/assets/media/kits/mvp-kit.png",
+            ["golden"] = "/assets/media/kits/golden-vip-kit.png",
+            ["kit_golden_vip"] = "/assets/media/kits/golden-vip-kit.png",
+            ["ultimate"] = "/assets/media/kits/ultimate-vip-kit.png",
+            ["kit_ultimate_vip"] = "/assets/media/kits/ultimate-vip-kit.png",
+            ["titan"] = "/assets/media/kits/titan-vip-kit.png",
+            ["kit_titan_vip"] = "/assets/media/kits/titan-vip-kit.png",
+            ["sentry"] = "/assets/media/kits/sentry-small-pack.png",
+            ["pack_sentry_small"] = "/assets/media/kits/sentry-small-pack.png",
+            ["sentry_large"] = "/assets/media/kits/sentry-large-pack.png",
+            ["pack_sentry_large"] = "/assets/media/kits/sentry-large-pack.png",
+            ["portafort"] = "/assets/media/kits/portafort-token.png",
+            ["vehicles"] = "/assets/media/kits/vehicle-pack.png",
+            ["pack_vehicle"] = "/assets/media/kits/vehicle-pack.png",
+            ["steam_name_rewards"] = "/assets/media/kits/steam-name-rewards-kit.png",
+            ["kit_claim_steam_name_rewards"] = "/assets/media/kits/steam-name-rewards-kit.png",
+            ["steam"] = "/assets/media/kits/steam-rewards-kit.png",
+            ["kit_claim_steam_rewards"] = "/assets/media/kits/steam-rewards-kit.png",
+            ["discord_booster"] = "/assets/media/kits/discord-booster-kit.png",
+            ["kit_claim_discord_booster"] = "/assets/media/kits/discord-booster-kit.png",
+            ["discord_raid"] = "/assets/media/kits/discord-raid-kit.png",
+            ["kit_claim_discord_raid"] = "/assets/media/kits/discord-raid-kit.png",
+            ["discord"] = "/assets/media/kits/discord-kit.png",
+            ["kit_claim_discord"] = "/assets/media/kits/discord-kit.png",
+            ["556"] = "/assets/media/kits/556-kit.png",
+            ["kit_claim_556"] = "/assets/media/kits/556-kit.png",
+            ["cards"] = "/assets/media/kits/cards-kit.png",
+            ["kit_claim_cards"] = "/assets/media/kits/cards-kit.png",
+            ["scrap"] = "/assets/media/kits/scrap-kit.png",
+            ["kit_claim_scrap"] = "/assets/media/kits/scrap-kit.png",
+            ["scuba"] = "/assets/media/kits/scuba-kit.png",
+            ["kit_claim_scuba"] = "/assets/media/kits/scuba-kit.png",
+            ["components"] = "/assets/media/kits/comps-kit.png",
+            ["comps"] = "/assets/media/kits/comps-kit.png",
+            ["kit_claim_components"] = "/assets/media/kits/comps-kit.png",
+            ["build"] = "/assets/media/kits/build-kit.png",
+            ["build kit"] = "/assets/media/kits/build-kit.png",
+            ["kit_claim_build"] = "/assets/media/kits/build-kit.png",
+            ["raid"] = "/assets/media/kits/raid-kit.png",
+            ["raid kit"] = "/assets/media/kits/raid-kit.png",
+            ["kit_claim_raid"] = "/assets/media/kits/raid-kit.png",
+            ["medical"] = "/assets/media/kits/medical-kit.png",
+            ["kit_claim_medical"] = "/assets/media/kits/medical-kit.png",
+            ["mp5"] = "/assets/media/kits/mp5-kit.png",
+            ["kit_claim_mp5"] = "/assets/media/kits/mp5-kit.png",
+            ["lr300"] = "/assets/media/kits/lr300-kit.png",
+            ["kit_claim_lr300"] = "/assets/media/kits/lr300-kit.png",
+            ["m16"] = "/assets/media/kits/m16a2-kit.png",
+            ["kit_claim_m16a2"] = "/assets/media/kits/m16a2-kit.png",
+            ["ak"] = "/assets/media/kits/ak-kit.png",
+            ["kit_claim_ak"] = "/assets/media/kits/ak-kit.png"
         };
 
         private static readonly Dictionary<string, string> CanonicalKitImagePathsByPermission = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
-            ["kits.autokit"] = "/assets/media/kits/autokit.webp",
-            ["kits.pvp.light"] = "/assets/media/kits/pvp-light-kit.webp",
-            ["kits.pvp.rifle"] = "/assets/media/kits/pvp-rifle-kit.webp",
-            ["kits.pvp.roamer"] = "/assets/media/kits/pvp-roamer-kit.webp",
-            ["kits.pvp.heavy"] = "/assets/media/kits/pvp-heavy-kit.webp",
-            ["kits.pvp.elite"] = "/assets/media/kits/pvp-elite-kit.webp",
-            ["kits.pvp.breach"] = "/assets/media/kits/pvp-breach-kit.webp",
-            ["kits.vip"] = "/assets/media/kits/vip-kit.webp",
-            ["kits.vip.diamond"] = "/assets/media/kits/vip-diamond-kit.webp",
-            ["kits.vipplus"] = "/assets/media/kits/vip-plus-kit.webp",
-            ["kits.vipplus.diamond"] = "/assets/media/kits/vip-plus-diamond-kit.webp",
-            ["kits.mvp"] = "/assets/media/kits/mvp-kit.webp",
-            ["kits.goldenvip"] = "/assets/media/kits/golden-vip-kit.webp",
-            ["kits.ultimatevip"] = "/assets/media/kits/ultimate-vip-kit.webp",
-            ["kits.titanvip"] = "/assets/media/kits/titan-vip-kit.webp",
-            ["kits.sentry.small"] = "/assets/media/kits/sentry-small-pack.webp",
-            ["kits.sentry.large"] = "/assets/media/kits/sentry-large-pack.webp",
-            ["kits.portafort"] = "/assets/media/kits/portafort-token.webp",
-            ["kits.vehicle"] = "/assets/media/kits/vehicle-pack.webp",
-            ["kits.claim.steam_name_rewards"] = "/assets/media/kits/steam-name-rewards-kit.webp",
-            ["kits.claim.steam_rewards"] = "/assets/media/kits/steam-rewards-kit.webp",
-            ["kits.claim.discord_booster"] = "/assets/media/kits/discord-booster-kit.webp",
-            ["kits.claim.discord_raid"] = "/assets/media/kits/discord-raid-kit.webp",
-            ["kits.claim.discord"] = "/assets/media/kits/discord-kit.webp",
-            ["kits.claim.556"] = "/assets/media/kits/556-kit.webp",
-            ["kits.claim.cards"] = "/assets/media/kits/cards-kit.webp",
-            ["kits.claim.scrap"] = "/assets/media/kits/scrap-kit.webp",
-            ["kits.claim.scuba"] = "/assets/media/kits/scuba-kit.webp",
-            ["kits.claim.components"] = "/assets/media/kits/comps-kit.webp",
-            ["kits.comp"] = "/assets/media/kits/comps-kit.webp",
-            ["kits.claim.build"] = "/assets/media/kits/build-kit.webp",
-            ["kits.build"] = "/assets/media/kits/build-kit.webp",
-            ["kits.claim.raid"] = "/assets/media/kits/raid-kit.webp",
-            ["kits.raid"] = "/assets/media/kits/raid-kit.webp",
-            ["kits.claim.medical"] = "/assets/media/kits/medical-kit.webp",
-            ["kits.medical"] = "/assets/media/kits/medical-kit.webp",
-            ["kits.claim.mp5"] = "/assets/media/kits/mp5-kit.webp",
-            ["kits.claim.lr300"] = "/assets/media/kits/lr300-kit.webp",
-            ["kits.claim.m16a2"] = "/assets/media/kits/m16a2-kit.webp",
-            ["kits.claim.ak"] = "/assets/media/kits/ak-kit.webp"
+            ["kits.autokit"] = "/assets/media/kits/autokit.png",
+            ["kits.pvp.light"] = "/assets/media/kits/pvp-light-kit.png",
+            ["kits.pvp.rifle"] = "/assets/media/kits/pvp-rifle-kit.png",
+            ["kits.pvp.roamer"] = "/assets/media/kits/pvp-roamer-kit.png",
+            ["kits.pvp.heavy"] = "/assets/media/kits/pvp-heavy-kit.png",
+            ["kits.pvp.elite"] = "/assets/media/kits/pvp-elite-kit.png",
+            ["kits.pvp.breach"] = "/assets/media/kits/pvp-breach-kit.png",
+            ["kits.vip"] = "/assets/media/kits/vip-kit.png",
+            ["kits.vip.diamond"] = "/assets/media/kits/vip-diamond-kit.png",
+            ["kits.vipplus"] = "/assets/media/kits/vip-plus-kit.png",
+            ["kits.vipplus.diamond"] = "/assets/media/kits/vip-plus-diamond-kit.png",
+            ["kits.mvp"] = "/assets/media/kits/mvp-kit.png",
+            ["kits.goldenvip"] = "/assets/media/kits/golden-vip-kit.png",
+            ["kits.ultimatevip"] = "/assets/media/kits/ultimate-vip-kit.png",
+            ["kits.titanvip"] = "/assets/media/kits/titan-vip-kit.png",
+            ["kits.sentry.small"] = "/assets/media/kits/sentry-small-pack.png",
+            ["kits.sentry.large"] = "/assets/media/kits/sentry-large-pack.png",
+            ["kits.portafort"] = "/assets/media/kits/portafort-token.png",
+            ["kits.vehicle"] = "/assets/media/kits/vehicle-pack.png",
+            ["kits.claim.steam_name_rewards"] = "/assets/media/kits/steam-name-rewards-kit.png",
+            ["kits.claim.steam_rewards"] = "/assets/media/kits/steam-rewards-kit.png",
+            ["kits.claim.discord_booster"] = "/assets/media/kits/discord-booster-kit.png",
+            ["kits.claim.discord_raid"] = "/assets/media/kits/discord-raid-kit.png",
+            ["kits.claim.discord"] = "/assets/media/kits/discord-kit.png",
+            ["kits.claim.556"] = "/assets/media/kits/556-kit.png",
+            ["kits.claim.cards"] = "/assets/media/kits/cards-kit.png",
+            ["kits.claim.scrap"] = "/assets/media/kits/scrap-kit.png",
+            ["kits.claim.scuba"] = "/assets/media/kits/scuba-kit.png",
+            ["kits.claim.components"] = "/assets/media/kits/comps-kit.png",
+            ["kits.comp"] = "/assets/media/kits/comps-kit.png",
+            ["kits.claim.build"] = "/assets/media/kits/build-kit.png",
+            ["kits.build"] = "/assets/media/kits/build-kit.png",
+            ["kits.claim.raid"] = "/assets/media/kits/raid-kit.png",
+            ["kits.raid"] = "/assets/media/kits/raid-kit.png",
+            ["kits.claim.medical"] = "/assets/media/kits/medical-kit.png",
+            ["kits.medical"] = "/assets/media/kits/medical-kit.png",
+            ["kits.claim.mp5"] = "/assets/media/kits/mp5-kit.png",
+            ["kits.claim.lr300"] = "/assets/media/kits/lr300-kit.png",
+            ["kits.claim.m16a2"] = "/assets/media/kits/m16a2-kit.png",
+            ["kits.claim.ak"] = "/assets/media/kits/ak-kit.png"
         };
 
         private static Dictionary<string, StorefrontGroupBundle> DefaultStorefrontBundles()
@@ -3105,7 +3105,7 @@ namespace Oxide.Plugins
             var canonical = CanonicalKitImagePath(name, permissionName);
             var configured = FirstNonEmpty(KitString(source, "KitImage"), KitString(source, "IconURL"));
 
-            return AssetUrl(FirstNonEmpty(canonical, configured));
+            return AssetUrl(RustKitImagePath(FirstNonEmpty(canonical, configured)));
         }
 
         private string CanonicalKitImagePath(string kitName, string permissionName)
@@ -3131,6 +3131,25 @@ namespace Oxide.Plugins
         private static string CanonicalKitImageNameKey(string value)
         {
             return (value ?? "").Trim().ToLowerInvariant();
+        }
+
+        private static string RustKitImagePath(string value)
+        {
+            var trimmed = (value ?? "").Trim();
+
+            if (trimmed.EndsWith(".webp", StringComparison.OrdinalIgnoreCase)
+                && trimmed.IndexOf("/assets/media/kits/", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                return trimmed.Substring(0, trimmed.Length - 5) + ".png";
+            }
+
+            if (trimmed.EndsWith(".webp", StringComparison.OrdinalIgnoreCase)
+                && trimmed.StartsWith("assets/media/kits/", StringComparison.OrdinalIgnoreCase))
+            {
+                return trimmed.Substring(0, trimmed.Length - 5) + ".png";
+            }
+
+            return trimmed;
         }
 
         private JArray NormalizeItemArray(JArray source)
