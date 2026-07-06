@@ -12,6 +12,8 @@
     coinflip: { minMs: 2200, settleMs: 520, resultLockMs: 1100 },
     dice: { minMs: 2500, settleMs: 620, resultLockMs: 1100 },
     jackpot: { minMs: 1800, settleMs: 520, resultLockMs: 1000 },
+    "raid-duel": { minMs: 1100, settleMs: 260, resultLockMs: 900 },
+    "supply-run": { minMs: 1100, settleMs: 260, resultLockMs: 900 },
     "high-low": { minMs: 2200, settleMs: 560, resultLockMs: 1100 },
     wheel: { minMs: 3200, settleMs: 1600, resultLockMs: 1200 }
   };
@@ -24,6 +26,8 @@
   let serverHistoryPayload = null;
   let serverHistoryRange = "6h";
   let serverHistoryResizeTimer = null;
+  let animationDiagnosticFlushTimer = null;
+  let animationDiagnosticInFlight = false;
 
   function getSiteConfig() {
     const basePath = doc.dataset.base || "./";
@@ -47,6 +51,12 @@
       auth: {
         steamUrl: "",
         discordUrl: ""
+      },
+      animationDiagnostics: {
+        enabled: false,
+        endpointUrl: `${basePath}api/animation-diagnostics.php`,
+        csrfToken: "",
+        maxEvents: 24
       }
     };
     const configNode = document.getElementById("site-config");
@@ -69,6 +79,10 @@
           ...defaults.auth,
           ...(parsed.auth || {})
         },
+        animationDiagnostics: {
+          ...defaults.animationDiagnostics,
+          ...(parsed.animationDiagnostics || {})
+        },
         serverStats: {
           ...defaults.serverStats,
           ...(parsed.serverStats || {})
@@ -81,6 +95,7 @@
   }
 
   function init() {
+    initAnimationDiagnostics();
     bindNav();
     bindActions();
     initRpGames();
@@ -111,20 +126,31 @@
 
   function initEffectsWhenLoaderReveals() {
     let started = false;
-    const start = () => {
+    const start = reason => {
       if (started) return;
 
       started = true;
+      recordAnimationDiagnostic("effects_start", {
+        reason,
+        rootClassName: doc.className,
+        documentReadyState: document.readyState
+      });
       initEffects();
     };
 
+    recordAnimationDiagnostic("effects_gate", {
+      rootLoading: doc.classList.contains("raidlands-loading"),
+      loaderSkipped: doc.classList.contains("raidlands-loader-skipped"),
+      loaderSession: window.__raidlandsLoaderSession || {}
+    });
+
     if (!doc.classList.contains("raidlands-loading")) {
-      start();
+      start("immediate");
       return;
     }
 
-    window.addEventListener("raidlands:site-reveal", start, { once: true });
-    window.setTimeout(start, 9000);
+    window.addEventListener("raidlands:site-reveal", () => start("site-reveal"), { once: true });
+    window.setTimeout(() => start("loader-timeout"), 9000);
   }
 
   function initEffects() {
@@ -132,6 +158,13 @@
     const mobilePerformance = isMobilePerformanceMode();
 
     doc.classList.toggle("mobile-performance-mode", mobilePerformance);
+    recordAnimationDiagnostic("effects_configured", {
+      reducedMotion,
+      mobilePerformance,
+      matchMedia: Boolean(window.matchMedia),
+      intersectionObserver: "IntersectionObserver" in window,
+      requestIdleCallback: "requestIdleCallback" in window
+    });
     initCardGlareTiming(reducedMotion, mobilePerformance);
     initScrollReveals(reducedMotion, mobilePerformance);
 
@@ -153,6 +186,9 @@
 
   function queueEmberField() {
     const start = () => createEmberField();
+    recordAnimationDiagnostic("ember_field_queued", {
+      requestIdleCallback: "requestIdleCallback" in window
+    });
 
     if ("requestIdleCallback" in window) {
       window.requestIdleCallback(start, { timeout: 1200 });
@@ -164,7 +200,13 @@
 
   function createEmberField() {
     const shell = app.querySelector(".app-shell") || (app.classList.contains("app-shell") ? app : null);
-    if (!shell || shell.querySelector(".ambient-effects")) return;
+    if (!shell || shell.querySelector(".ambient-effects")) {
+      recordAnimationDiagnostic("ember_field_skipped", {
+        hasShell: Boolean(shell),
+        alreadyExists: Boolean(shell && shell.querySelector(".ambient-effects"))
+      });
+      return;
+    }
 
     const field = document.createElement("div");
     const mobilePerformance = isMobilePerformanceMode();
@@ -199,6 +241,11 @@
 
     field.appendChild(particles);
     shell.prepend(field);
+    recordAnimationDiagnostic("ember_field_created", {
+      particleCount,
+      mobilePerformance,
+      isMobile
+    });
   }
 
   function initScrollReveals(reducedMotion, mobilePerformance) {
@@ -222,11 +269,21 @@
     });
 
     if (reducedMotion || !("IntersectionObserver" in window)) {
+      recordAnimationDiagnostic("scroll_reveals_fallback", {
+        count: elements.length,
+        reason: reducedMotion ? "reduced-motion" : "missing-intersection-observer"
+      });
       elements.forEach(element => markRevealVisible(element, true));
       return;
     }
 
     doc.classList.add("motion-ready");
+    recordAnimationDiagnostic("scroll_reveals_initialized", {
+      count: elements.length,
+      mobilePerformance,
+      rootMargin: mobilePerformance ? "0px 0px -4% 0px" : "0px 0px -12% 0px",
+      threshold: mobilePerformance ? .05 : .12
+    });
 
     const observer = new IntersectionObserver(entries => {
       entries.forEach(entry => {
@@ -732,6 +789,19 @@
       };
     }
 
+    if (normalized === "raid-duel" || normalized === "supply-run") {
+      const label = normalized === "raid-duel" ? "Raid Duel" : "Supply Run";
+      const choice = result.choice_label || result.choice || "pick";
+
+      return {
+        type: "neutral",
+        eyebrow: "Server sync queued",
+        title: "Entry Queued",
+        amount: formatSignedRp(-stake),
+        detail: `${label} entry on ${choice} is waiting for RP debit confirmation.`
+      };
+    }
+
     if (push) {
       return {
         type: "push",
@@ -767,7 +837,7 @@
     }
 
     if (gameKey === "dice" && result.roll) {
-      return `Rolled ${result.roll}. Display die face ${Number(result.face) || (((Number(result.roll) - 1) % 6) + 1)}.`;
+      return `Die landed on ${Number(result.face) || Number(result.roll)}. ${fallbackMessage}`;
     }
 
     if (gameKey === "high-low" && result.roll) {
@@ -830,6 +900,7 @@
     setPanelText('[data-rp-stat="wagered"]', formatRp(daily.wagered_rp));
     setPanelText('[data-rp-stat="loss"]', formatRp(daily.loss_rp));
     applyRpJackpotState(state.active_jackpot || null);
+    renderRpPoolRounds(state.pool_rounds || {});
     renderRpGameRounds(Array.isArray(state.game_rounds) ? state.game_rounds : []);
     renderRpJackpotEntries(Array.isArray(state.jackpot_entries) ? state.jackpot_entries : []);
     updateRpHistoryEmpty(state);
@@ -842,6 +913,65 @@
     setPanelText('[data-rp-jackpot="entries"]', String(Number(jackpot.total_entries) || 0));
     setPanelText('[data-rp-jackpot="pot"]', formatRp(jackpot.pot_rp));
     setPanelText('[data-rp-jackpot="closes"]', `Closes ${jackpot.closes_at || ""} UTC. Only confirmed entries count.`);
+  }
+
+  function renderRpPoolRounds(poolRounds) {
+    if (!poolRounds || typeof poolRounds !== "object") return;
+
+    Object.entries(poolRounds).forEach(([gameKey, poolState]) => {
+      const round = poolState && typeof poolState === "object" ? poolState.round : null;
+
+      if (!round || typeof round !== "object") return;
+
+      setPanelText(`[data-rp-pool-total="${escapeSelector(gameKey)}"]`, formatRp(round.total_stake_rp));
+      setPanelText(
+        `[data-rp-pool-closes="${escapeSelector(gameKey)}"]`,
+        round.closes_at ? `Closes ${round.closes_at} UTC` : "Waiting for the next open round"
+      );
+      renderRpPoolOptions(gameKey, Array.isArray(round.breakdown) ? round.breakdown : []);
+      renderRpPoolEntries(gameKey, Array.isArray(round.entries) ? round.entries : []);
+    });
+  }
+
+  function renderRpPoolOptions(gameKey, breakdown) {
+    const container = app.querySelector(`[data-rp-pool-options="${escapeSelector(gameKey)}"]`);
+
+    if (!container) return;
+
+    container.innerHTML = breakdown.map(row => {
+      const key = String(row.key || "");
+      const percent = Math.max(0, Math.min(100, Number(row.percent) || 0));
+
+      return `
+        <div class="rp-pool-option" data-rp-pool-option="${escapeAttr(key)}">
+          <span>
+            <strong>${escapeHtml(row.label || "Option")}</strong>
+            <small>${escapeHtml(String(Number(row.chance) || 0))}% roll chance</small>
+          </span>
+          <em>${escapeHtml(formatRp(row.stake_rp))}</em>
+          <i style="--pool-share: ${percent}%"></i>
+        </div>
+      `;
+    }).join("");
+  }
+
+  function renderRpPoolEntries(gameKey, entries) {
+    const container = app.querySelector(`[data-rp-pool-feed-list="${escapeSelector(gameKey)}"]`);
+
+    if (!container) return;
+
+    if (!entries.length) {
+      container.innerHTML = '<p class="store-muted">No visible entries in this round yet.</p>';
+      return;
+    }
+
+    container.innerHTML = entries.map(entry => `
+      <span class="rp-pool-feed-row">
+        <strong>${escapeHtml(entry.player_label || "Raidlands Player")}</strong>
+        <em>${escapeHtml(entry.option_label || "Pick")}</em>
+        <small>${escapeHtml(formatRp(entry.stake_rp))}</small>
+      </span>
+    `).join("");
   }
 
   function renderRpGameRounds(rounds) {
@@ -898,7 +1028,12 @@
     const rounds = Array.isArray(state.game_rounds) ? state.game_rounds : [];
     const entries = Array.isArray(state.jackpot_entries) ? state.jackpot_entries : [];
     const jackpots = Array.isArray(state.jackpot_rounds) ? state.jackpot_rounds : [];
-    empty.hidden = rounds.length > 0 || entries.length > 0 || jackpots.length > 0;
+    const pools = state.pool_rounds && typeof state.pool_rounds === "object" ? Object.values(state.pool_rounds) : [];
+    const poolEntries = pools.some(pool => {
+      const round = pool && typeof pool === "object" ? pool.round : null;
+      return round && Array.isArray(round.entries) && round.entries.length > 0;
+    });
+    empty.hidden = rounds.length > 0 || entries.length > 0 || jackpots.length > 0 || poolEntries;
   }
 
   function rpGameLabel(gameType) {
@@ -906,7 +1041,9 @@
       coinflip: "Coinflip",
       dice: "Dice",
       high_low: "High-Low",
-      wheel: "Wheel"
+      wheel: "Wheel",
+      raid_duel: "Raid Duel",
+      supply_run: "Supply Run"
     };
 
     if (labels[gameType]) {
@@ -2075,6 +2212,247 @@
     } catch (error) {
       return false;
     }
+  }
+
+  function initAnimationDiagnostics() {
+    if (!animationDiagnosticsEnabled()) return;
+
+    recordAnimationDiagnostic("site_script_ready", {
+      documentReadyState: document.readyState,
+      rootClassName: doc.className,
+      appClassName: app.className,
+      connection: animationConnectionDetails()
+    });
+
+    window.addEventListener("load", () => {
+      recordAnimationDiagnostic("window_loaded", {
+        rootClassName: doc.className,
+        appClassName: app.className,
+        performance: animationPerformanceSummary()
+      });
+    }, { once: true });
+
+    window.addEventListener("error", event => {
+      recordAnimationDiagnostic("animation_diagnostic_error", {
+        message: event.message || "",
+        source: event.filename || "",
+        line: event.lineno || 0,
+        column: event.colno || 0
+      });
+    });
+
+    window.addEventListener("unhandledrejection", event => {
+      const reason = event.reason || {};
+      recordAnimationDiagnostic("animation_diagnostic_error", {
+        message: reason.message || String(reason || "Unhandled promise rejection"),
+        source: "unhandledrejection"
+      });
+    });
+
+    document.addEventListener("visibilitychange", () => {
+      if (document.visibilityState === "hidden") {
+        flushAnimationDiagnostics(true);
+      }
+    });
+    window.addEventListener("pagehide", () => flushAnimationDiagnostics(true));
+    flushAnimationDiagnosticsSoon();
+  }
+
+  function animationDiagnosticsConfig() {
+    const globalConfig = window.__raidlandsAnimationDiagnostics || {};
+    const config = {
+      ...(CONFIG.animationDiagnostics || {}),
+      ...globalConfig
+    };
+
+    if (!Array.isArray(config.queue)) {
+      config.queue = [];
+    }
+
+    window.__raidlandsAnimationDiagnostics = config;
+
+    return config;
+  }
+
+  function animationDiagnosticsEnabled() {
+    const config = animationDiagnosticsConfig();
+
+    return Boolean(config.enabled && config.endpointUrl);
+  }
+
+  function recordAnimationDiagnostic(eventType, details = {}) {
+    if (!animationDiagnosticsEnabled()) return;
+
+    try {
+      if (typeof window.__raidlandsRecordAnimationDiagnostic === "function") {
+        window.__raidlandsRecordAnimationDiagnostic(eventType, details);
+      } else {
+        const config = animationDiagnosticsConfig();
+        config.queue.push(buildAnimationDiagnosticEvent(eventType, details));
+      }
+
+      flushAnimationDiagnosticsSoon();
+    } catch (error) {
+      // Diagnostics are best-effort and should never affect the site.
+    }
+  }
+
+  function buildAnimationDiagnosticEvent(eventType, details) {
+    return {
+      eventType: String(eventType || ""),
+      at: new Date().toISOString(),
+      page: {
+        id: pageId,
+        url: window.location.href,
+        referrer: document.referrer || ""
+      },
+      viewport: {
+        width: window.innerWidth || 0,
+        height: window.innerHeight || 0,
+        devicePixelRatio: window.devicePixelRatio || 1,
+        screenWidth: window.screen ? window.screen.width : 0,
+        screenHeight: window.screen ? window.screen.height : 0
+      },
+      capabilities: animationCapabilities(),
+      loader: window.__raidlandsLoaderSession || {},
+      details: details || {}
+    };
+  }
+
+  function animationCapabilities() {
+    const capabilities = {
+      matchMedia: typeof window.matchMedia === "function",
+      reducedMotion: false,
+      mobilePerformance: false,
+      intersectionObserver: "IntersectionObserver" in window,
+      requestAnimationFrame: "requestAnimationFrame" in window,
+      requestIdleCallback: "requestIdleCallback" in window,
+      cssSupportsAnimation: Boolean(window.CSS && CSS.supports && CSS.supports("animation-name", "raidlands-test")),
+      localStorage: false,
+      sessionStorage: false,
+      cookiesEnabled: Boolean(navigator.cookieEnabled),
+      saveData: Boolean(navigator.connection && navigator.connection.saveData)
+    };
+
+    try {
+      capabilities.reducedMotion = capabilities.matchMedia && window.matchMedia(REDUCED_MOTION_QUERY).matches;
+      capabilities.mobilePerformance = isMobilePerformanceMode();
+    } catch (error) {
+      capabilities.matchMedia = false;
+    }
+
+    try {
+      window.localStorage.setItem("raidlands-diagnostic-test", "1");
+      window.localStorage.removeItem("raidlands-diagnostic-test");
+      capabilities.localStorage = true;
+    } catch (error) {
+      capabilities.localStorage = false;
+    }
+
+    try {
+      window.sessionStorage.setItem("raidlands-diagnostic-test", "1");
+      window.sessionStorage.removeItem("raidlands-diagnostic-test");
+      capabilities.sessionStorage = true;
+    } catch (error) {
+      capabilities.sessionStorage = false;
+    }
+
+    return capabilities;
+  }
+
+  function animationConnectionDetails() {
+    const connection = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+
+    if (!connection) {
+      return {};
+    }
+
+    return {
+      effectiveType: connection.effectiveType || "",
+      downlink: connection.downlink || 0,
+      rtt: connection.rtt || 0,
+      saveData: Boolean(connection.saveData)
+    };
+  }
+
+  function animationPerformanceSummary() {
+    const navigation = performance && performance.getEntriesByType
+      ? performance.getEntriesByType("navigation")[0]
+      : null;
+
+    if (!navigation) {
+      return {};
+    }
+
+    return {
+      type: navigation.type || "",
+      domContentLoadedMs: Math.round(navigation.domContentLoadedEventEnd || 0),
+      loadMs: Math.round(navigation.loadEventEnd || 0),
+      transferSize: Math.round(navigation.transferSize || 0)
+    };
+  }
+
+  function flushAnimationDiagnosticsSoon() {
+    window.clearTimeout(animationDiagnosticFlushTimer);
+    animationDiagnosticFlushTimer = window.setTimeout(() => flushAnimationDiagnostics(false), 350);
+  }
+
+  function flushAnimationDiagnostics(useBeacon) {
+    const config = animationDiagnosticsConfig();
+    const queue = Array.isArray(config.queue) ? config.queue : [];
+    const maxEvents = Math.max(1, Number(config.maxEvents) || 24);
+
+    if (!config.enabled || !config.endpointUrl || !queue.length || animationDiagnosticInFlight) {
+      return;
+    }
+
+    const events = queue.splice(0, maxEvents);
+    const body = JSON.stringify({
+      csrf: config.csrfToken || "",
+      events
+    });
+
+    if (useBeacon && navigator.sendBeacon) {
+      const blob = new Blob([body], { type: "application/json" });
+
+      if (navigator.sendBeacon(config.endpointUrl, blob)) {
+        return;
+      }
+    }
+
+    if (!window.fetch) {
+      queue.unshift(...events);
+      return;
+    }
+
+    animationDiagnosticInFlight = true;
+    fetch(config.endpointUrl, {
+      method: "POST",
+      credentials: "same-origin",
+      keepalive: useBeacon,
+      headers: {
+        Accept: "application/json",
+        "Content-Type": "application/json",
+        "X-Requested-With": "fetch",
+        "X-Raidlands-CSRF": config.csrfToken || ""
+      },
+      body
+    })
+      .then(response => {
+        if (!response.ok) {
+          throw new Error(`Animation diagnostics failed with HTTP ${response.status}.`);
+        }
+      })
+      .catch(() => {
+        queue.unshift(...events);
+
+        if (queue.length > maxEvents) {
+          queue.splice(maxEvents);
+        }
+      })
+      .finally(() => {
+        animationDiagnosticInFlight = false;
+      });
   }
 
   function track(name) {

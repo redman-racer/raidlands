@@ -7,6 +7,7 @@ require_once __DIR__ . '/todos.php';
 require_once __DIR__ . '/kits.php';
 require_once __DIR__ . '/permissions.php';
 require_once __DIR__ . '/rewards.php';
+require_once __DIR__ . '/animation-diagnostics.php';
 
 function raidlands_admin_boot(): void
 {
@@ -452,7 +453,7 @@ function raidlands_admin_redirect(?string $section = null, array $params = []): 
 
 function raidlands_admin_section_keys(): array
 {
-    return ['identity', 'links', 'wipe', 'todo', 'features', 'pages', 'seo', 'feedback', 'store', 'vote-rewards', 'rp-games', 'kits', 'groups', 'grants', 'sync'];
+    return ['identity', 'links', 'wipe', 'todo', 'features', 'pages', 'seo', 'feedback', 'store', 'vote-rewards', 'rp-games', 'kits', 'groups', 'grants', 'sync', 'animations'];
 }
 
 function raidlands_admin_allowed_section_keys(): array
@@ -472,7 +473,7 @@ function raidlands_admin_section_permission(string $section): string
         'kits' => 'admin.kits.manage',
         'groups' => 'admin.permissions.manage',
         'grants' => 'admin.grants.manage',
-        'sync' => 'admin.sync.view',
+        'sync', 'animations' => 'admin.sync.view',
         default => 'admin.content.manage',
     };
 }
@@ -490,7 +491,7 @@ function raidlands_admin_can_save_section(string $section): bool
 {
     $section = raidlands_admin_clean_section($section);
 
-    if ($section === 'sync') {
+    if ($section === 'sync' || $section === 'animations') {
         return false;
     }
 

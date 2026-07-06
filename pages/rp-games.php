@@ -7,24 +7,47 @@ $game_backend = is_array($rp_games_state['game_backend'] ?? null) ? $rp_games_st
 $games_balance = is_array($rp_games_state['balance'] ?? null) ? $rp_games_state['balance'] : null;
 $daily = is_array($rp_games_state['daily'] ?? null) ? $rp_games_state['daily'] : [];
 $active_jackpot = is_array($rp_games_state['active_jackpot'] ?? null) ? $rp_games_state['active_jackpot'] : null;
+$pool_rounds = is_array($rp_games_state['pool_rounds'] ?? null) ? $rp_games_state['pool_rounds'] : [];
+$raid_duel_state = is_array($pool_rounds['raid_duel'] ?? null) ? $pool_rounds['raid_duel'] : [];
+$supply_run_state = is_array($pool_rounds['supply_run'] ?? null) ? $pool_rounds['supply_run'] : [];
+$raid_duel_round = is_array($raid_duel_state['round'] ?? null) ? $raid_duel_state['round'] : null;
+$supply_run_round = is_array($supply_run_state['round'] ?? null) ? $supply_run_state['round'] : null;
 $game_rounds = (array) ($rp_games_state['game_rounds'] ?? []);
 $jackpot_entries = (array) ($rp_games_state['jackpot_entries'] ?? []);
 $jackpot_rounds = (array) ($rp_games_state['jackpot_rounds'] ?? []);
 $can_play = $games_ready && $games_player !== null && !empty($games_player['id']) && !empty($settings['games_enabled']);
 $min_stake = (int) ($settings['min_stake_rp'] ?? 200);
 $max_stake = (int) ($settings['max_stake_rp'] ?? 2000);
-$dice_chance = (int) ($settings['dice_win_chance_percent'] ?? 45);
-$dice_threshold = 101 - max(1, min(95, $dice_chance));
+$dice_target = function_exists('raidlands_rewards_dice_target') ? raidlands_rewards_dice_target($settings) : 4;
+$dice_win_faces = max(1, 7 - $dice_target);
+$dice_chance = (int) round(($dice_win_faces / 6) * 100);
+$dice_roll_label = $dice_target >= 6 ? '6' : $dice_target . '-6';
 $high_low_backend = !empty($game_backend['high_low']);
 $wheel_backend = !empty($game_backend['wheel']);
+$raid_duel_backend = !empty($game_backend['raid_duel']);
+$supply_run_backend = !empty($game_backend['supply_run']);
 $high_low_enabled = $high_low_backend && !empty($settings['high_low_enabled']);
 $wheel_enabled = $wheel_backend && !empty($settings['wheel_enabled']);
+$raid_duel_enabled = $raid_duel_backend && !empty($settings['raid_duel_enabled']);
+$supply_run_enabled = $supply_run_backend && !empty($settings['supply_run_enabled']);
 $wheel_segments = function_exists('raidlands_rewards_wheel_segments') ? raidlands_rewards_wheel_segments() : [];
+$pool_options = static function (array $pool_state): array {
+    $round = is_array($pool_state['round'] ?? null) ? $pool_state['round'] : [];
+    $game = is_array($pool_state['game'] ?? null) ? $pool_state['game'] : [];
+
+    return is_array($round['options'] ?? null) && $round['options'] !== []
+        ? (array) $round['options']
+        : (array) ($game['options'] ?? []);
+};
+$raid_duel_options = $pool_options($raid_duel_state);
+$supply_run_options = $pool_options($supply_run_state);
 $game_names = [
     'coinflip' => 'Coinflip',
     'dice' => 'Dice',
     'high_low' => 'High-Low',
     'wheel' => 'Wheel',
+    'raid_duel' => 'Raid Duel',
+    'supply_run' => 'Supply Run',
 ];
 $rp_game_tabs = [
     [
@@ -38,7 +61,7 @@ $rp_game_tabs = [
     [
         'key' => 'dice',
         'label' => 'Dice',
-        'meta' => (string) $dice_chance . '% chance',
+        'meta' => 'Roll ' . $dice_roll_label,
         'icon' => 'STAT',
         'enabled' => $can_play && !empty($settings['dice_enabled']),
         'ready' => true,
@@ -50,6 +73,22 @@ $rp_game_tabs = [
         'icon' => 'SHOP',
         'enabled' => $can_play && !empty($settings['jackpot_enabled']) && $active_jackpot !== null,
         'ready' => true,
+    ],
+    [
+        'key' => 'raid-duel',
+        'label' => 'Raid Duel',
+        'meta' => $raid_duel_round === null ? 'PvP pool' : raidlands_store_rp((int) ($raid_duel_round['total_stake_rp'] ?? 0)) . ' pool',
+        'icon' => 'RISK',
+        'enabled' => $can_play && $raid_duel_enabled && $raid_duel_round !== null,
+        'ready' => $raid_duel_backend,
+    ],
+    [
+        'key' => 'supply-run',
+        'label' => 'Supply Run',
+        'meta' => $supply_run_round === null ? 'PvE pool' : raidlands_store_rp((int) ($supply_run_round['total_stake_rp'] ?? 0)) . ' pool',
+        'icon' => 'EVENT',
+        'enabled' => $can_play && $supply_run_enabled && $supply_run_round !== null,
+        'ready' => $supply_run_backend,
     ],
     [
         'key' => 'high-low',
@@ -171,9 +210,9 @@ $rp_game_tabs = [
         <article class="metal-panel rp-game-panel" id="rp-panel-dice" role="tabpanel" aria-labelledby="rp-tab-dice" data-rp-game-panel="dice" hidden>
           <div class="rp-game-panel-grid">
             <div>
-              <p class="section-kicker"><?= e((string) $dice_chance) ?>% win chance</p>
+              <p class="section-kicker">D6 / <?= e((string) $dice_chance) ?>% win chance</p>
               <h2>Dice</h2>
-              <p class="section-lede">Roll <?= e((string) $dice_threshold) ?> or higher on a 1-100 die. Wins pay <?= e(number_format(((int) ($settings['dice_payout_multiplier_basis'] ?? 200)) / 100, 2)) ?>x gross.</p>
+              <p class="section-lede">Roll <?= e($dice_roll_label) ?> on a six-sided die. Wins pay <?= e(number_format(((int) ($settings['dice_payout_multiplier_basis'] ?? 200)) / 100, 2)) ?>x gross before server confirmation.</p>
               <div class="rp-game-machine dice-machine" aria-hidden="true">
                 <span class="dice-strip" data-rp-dice-strip></span>
               </div>
@@ -223,6 +262,154 @@ $rp_game_tabs = [
             <?php else : ?>
               <div class="form-status warning">Jackpot entries are waiting for the next open round.</div>
             <?php endif; ?>
+          </div>
+        </article>
+
+        <article class="metal-panel rp-game-panel" id="rp-panel-raid-duel" role="tabpanel" aria-labelledby="rp-tab-raid-duel" data-rp-game-panel="raid-duel" data-rp-pool-game="raid_duel" hidden>
+          <?php
+            $raid_duel_breakdown = (array) ($raid_duel_round['breakdown'] ?? []);
+            $raid_duel_entries = (array) ($raid_duel_round['entries'] ?? []);
+          ?>
+          <div class="rp-game-panel-grid">
+            <div>
+              <p class="section-kicker">PvP side pool</p>
+              <h2>Raid Duel</h2>
+              <p class="section-lede">Back raiders or defenders before the round closes. Visible entries show on the board, and the winning side splits confirmed stake after house edge.</p>
+              <div class="rp-game-machine rp-pool-machine raid-duel-machine" aria-hidden="true">
+                <?php foreach ($raid_duel_options as $option_key => $option) : ?>
+                  <span><?= e((string) ($option['label'] ?? ucwords(str_replace('_', ' ', (string) $option_key)))) ?></span>
+                <?php endforeach; ?>
+              </div>
+              <?php if (!$raid_duel_backend) : ?>
+                <div class="form-status warning">Raid Duel is staged. Run <code>database/migrations/040_multiplayer_rp_games.sql</code> before enabling it.</div>
+              <?php endif; ?>
+            </div>
+            <form class="feedback-form rp-game-form" method="post" action="<?= e(route_url('rp-games')) ?>" data-rp-game-form="raid-duel">
+              <input type="hidden" name="csrf" value="<?= e($rp_games_csrf) ?>">
+              <input type="hidden" name="action" value="enter_raid_duel">
+              <label class="store-field">
+                <span>Stake</span>
+                <input type="number" name="stake_rp" min="<?= e((string) $min_stake) ?>" max="<?= e((string) $max_stake) ?>" step="1" value="<?= e((string) $min_stake) ?>" <?= $can_play && $raid_duel_enabled && $raid_duel_round !== null ? '' : 'disabled' ?>>
+              </label>
+              <label class="store-field">
+                <span>Side</span>
+                <select name="choice" <?= $can_play && $raid_duel_enabled && $raid_duel_round !== null ? '' : 'disabled' ?>>
+                  <?php foreach ($raid_duel_options as $option_key => $option) : ?>
+                    <option value="<?= e((string) $option_key) ?>"><?= e((string) ($option['label'] ?? ucwords(str_replace('_', ' ', (string) $option_key)))) ?></option>
+                  <?php endforeach; ?>
+                </select>
+              </label>
+              <button class="btn btn-primary" type="submit" <?= $can_play && $raid_duel_enabled && $raid_duel_round !== null ? '' : 'disabled' ?>>Join Duel</button>
+            </form>
+          </div>
+
+          <div class="rp-pool-board" data-rp-pool-board="raid_duel">
+            <div class="rp-pool-board-head">
+              <strong data-rp-pool-total="raid_duel"><?= e(raidlands_store_rp((int) ($raid_duel_round['total_stake_rp'] ?? 0))) ?></strong>
+              <span data-rp-pool-closes="raid_duel"><?= $raid_duel_round !== null ? 'Closes ' . e((string) ($raid_duel_round['closes_at'] ?? '')) . ' UTC' : 'Waiting for the next open round' ?></span>
+            </div>
+            <div class="rp-pool-options" data-rp-pool-options="raid_duel">
+              <?php foreach ($raid_duel_breakdown as $row) : ?>
+                <div class="rp-pool-option" data-rp-pool-option="<?= e((string) ($row['key'] ?? '')) ?>">
+                  <span>
+                    <strong><?= e((string) ($row['label'] ?? 'Option')) ?></strong>
+                    <small><?= e((string) ($row['chance'] ?? 0)) ?>% roll chance</small>
+                  </span>
+                  <em><?= e(raidlands_store_rp((int) ($row['stake_rp'] ?? 0))) ?></em>
+                  <i style="--pool-share: <?= e((string) min(100, max(0, (float) ($row['percent'] ?? 0)))) ?>%"></i>
+                </div>
+              <?php endforeach; ?>
+            </div>
+            <div class="rp-pool-feed">
+              <strong>Recent entries</strong>
+              <div class="rp-pool-feed-list" data-rp-pool-feed-list="raid_duel">
+                <?php if ($raid_duel_entries !== []) : ?>
+                  <?php foreach ($raid_duel_entries as $entry) : ?>
+                    <span class="rp-pool-feed-row">
+                      <strong><?= e((string) ($entry['player_label'] ?? 'Raidlands Player')) ?></strong>
+                      <em><?= e((string) ($entry['option_label'] ?? 'Side')) ?></em>
+                      <small><?= e(raidlands_store_rp((int) ($entry['stake_rp'] ?? 0))) ?></small>
+                    </span>
+                  <?php endforeach; ?>
+                <?php else : ?>
+                  <p class="store-muted">No visible entries in this round yet.</p>
+                <?php endif; ?>
+              </div>
+            </div>
+          </div>
+        </article>
+
+        <article class="metal-panel rp-game-panel" id="rp-panel-supply-run" role="tabpanel" aria-labelledby="rp-tab-supply-run" data-rp-game-panel="supply-run" data-rp-pool-game="supply_run" hidden>
+          <?php
+            $supply_run_breakdown = (array) ($supply_run_round['breakdown'] ?? []);
+            $supply_run_entries = (array) ($supply_run_round['entries'] ?? []);
+          ?>
+          <div class="rp-game-panel-grid">
+            <div>
+              <p class="section-kicker">PvE route pool</p>
+              <h2>Supply Run</h2>
+              <p class="section-lede">Pick the route the convoy survives. Safer routes roll more often, riskier routes can pay harder when fewer players crowd them.</p>
+              <div class="rp-game-machine rp-pool-machine supply-run-machine" aria-hidden="true">
+                <?php foreach ($supply_run_options as $option_key => $option) : ?>
+                  <span><?= e((string) ($option['label'] ?? ucwords(str_replace('_', ' ', (string) $option_key)))) ?></span>
+                <?php endforeach; ?>
+              </div>
+              <?php if (!$supply_run_backend) : ?>
+                <div class="form-status warning">Supply Run is staged. Run <code>database/migrations/040_multiplayer_rp_games.sql</code> before enabling it.</div>
+              <?php endif; ?>
+            </div>
+            <form class="feedback-form rp-game-form" method="post" action="<?= e(route_url('rp-games')) ?>" data-rp-game-form="supply-run">
+              <input type="hidden" name="csrf" value="<?= e($rp_games_csrf) ?>">
+              <input type="hidden" name="action" value="enter_supply_run">
+              <label class="store-field">
+                <span>Stake</span>
+                <input type="number" name="stake_rp" min="<?= e((string) $min_stake) ?>" max="<?= e((string) $max_stake) ?>" step="1" value="<?= e((string) $min_stake) ?>" <?= $can_play && $supply_run_enabled && $supply_run_round !== null ? '' : 'disabled' ?>>
+              </label>
+              <label class="store-field">
+                <span>Route</span>
+                <select name="choice" <?= $can_play && $supply_run_enabled && $supply_run_round !== null ? '' : 'disabled' ?>>
+                  <?php foreach ($supply_run_options as $option_key => $option) : ?>
+                    <option value="<?= e((string) $option_key) ?>"><?= e((string) ($option['label'] ?? ucwords(str_replace('_', ' ', (string) $option_key)))) ?> - <?= e((string) ($option['chance'] ?? 0)) ?>%</option>
+                  <?php endforeach; ?>
+                </select>
+              </label>
+              <button class="btn btn-primary" type="submit" <?= $can_play && $supply_run_enabled && $supply_run_round !== null ? '' : 'disabled' ?>>Back Route</button>
+            </form>
+          </div>
+
+          <div class="rp-pool-board" data-rp-pool-board="supply_run">
+            <div class="rp-pool-board-head">
+              <strong data-rp-pool-total="supply_run"><?= e(raidlands_store_rp((int) ($supply_run_round['total_stake_rp'] ?? 0))) ?></strong>
+              <span data-rp-pool-closes="supply_run"><?= $supply_run_round !== null ? 'Closes ' . e((string) ($supply_run_round['closes_at'] ?? '')) . ' UTC' : 'Waiting for the next open round' ?></span>
+            </div>
+            <div class="rp-pool-options" data-rp-pool-options="supply_run">
+              <?php foreach ($supply_run_breakdown as $row) : ?>
+                <div class="rp-pool-option" data-rp-pool-option="<?= e((string) ($row['key'] ?? '')) ?>">
+                  <span>
+                    <strong><?= e((string) ($row['label'] ?? 'Option')) ?></strong>
+                    <small><?= e((string) ($row['chance'] ?? 0)) ?>% roll chance</small>
+                  </span>
+                  <em><?= e(raidlands_store_rp((int) ($row['stake_rp'] ?? 0))) ?></em>
+                  <i style="--pool-share: <?= e((string) min(100, max(0, (float) ($row['percent'] ?? 0)))) ?>%"></i>
+                </div>
+              <?php endforeach; ?>
+            </div>
+            <div class="rp-pool-feed">
+              <strong>Recent entries</strong>
+              <div class="rp-pool-feed-list" data-rp-pool-feed-list="supply_run">
+                <?php if ($supply_run_entries !== []) : ?>
+                  <?php foreach ($supply_run_entries as $entry) : ?>
+                    <span class="rp-pool-feed-row">
+                      <strong><?= e((string) ($entry['player_label'] ?? 'Raidlands Player')) ?></strong>
+                      <em><?= e((string) ($entry['option_label'] ?? 'Route')) ?></em>
+                      <small><?= e(raidlands_store_rp((int) ($entry['stake_rp'] ?? 0))) ?></small>
+                    </span>
+                  <?php endforeach; ?>
+                <?php else : ?>
+                  <p class="store-muted">No visible entries in this round yet.</p>
+                <?php endif; ?>
+              </div>
+            </div>
           </div>
         </article>
 
@@ -328,6 +515,7 @@ $rp_game_tabs = [
         <span class="tag">Server-confirmed</span>
         <span class="tag">Daily limits</span>
         <span class="tag">Linked Steam</span>
+        <span class="tag">Multiplayer pools</span>
       </div>
     </article>
   </div>

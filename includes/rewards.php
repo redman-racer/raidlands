@@ -67,12 +67,91 @@ function raidlands_rewards_game_backend_ready(string $game_key): bool
         return true;
     }
 
+    if (in_array($game_key, ['raid_duel', 'supply_run'], true)) {
+        return raidlands_rewards_pool_backend_ready($game_key);
+    }
+
     if (!in_array($game_key, ['high_low', 'wheel'], true)) {
         return false;
     }
 
     return raidlands_rewards_enum_allows('rp_game_rounds', 'game_type', $game_key)
         && raidlands_rewards_enum_allows('rp_point_requests', 'source_type', $game_key);
+}
+
+function raidlands_rewards_pool_games(): array
+{
+    return [
+        'raid_duel' => [
+            'label' => 'Raid Duel',
+            'short_label' => 'Duel',
+            'kicker' => 'PvP pool',
+            'prefix' => 'duel',
+            'entry_source' => 'raid_duel_entry',
+            'payout_source' => 'raid_duel_payout',
+            'description' => 'Back raiders or defenders before the round closes. The winning side splits the confirmed pot after house edge.',
+            'options' => [
+                'raiders' => ['label' => 'Raiders', 'chance' => 50],
+                'defenders' => ['label' => 'Defenders', 'chance' => 50],
+            ],
+        ],
+        'supply_run' => [
+            'label' => 'Supply Run',
+            'short_label' => 'Supply',
+            'kicker' => 'PvE pool',
+            'prefix' => 'supply',
+            'entry_source' => 'supply_run_entry',
+            'payout_source' => 'supply_run_payout',
+            'description' => 'Pick the route the convoy survives. Riskier routes hit less often, but crowding changes the payout split.',
+            'options' => [
+                'river' => ['label' => 'River Route', 'chance' => 55],
+                'scrapyard' => ['label' => 'Scrapyard Push', 'chance' => 30],
+                'launch' => ['label' => 'Launch Run', 'chance' => 15],
+            ],
+        ],
+    ];
+}
+
+function raidlands_rewards_pool_game(string $game_type): ?array
+{
+    $game_type = strtolower(trim($game_type));
+    $games = raidlands_rewards_pool_games();
+
+    return $games[$game_type] ?? null;
+}
+
+function raidlands_rewards_pool_backend_ready(string $game_type = ''): bool
+{
+    if (!raidlands_db_is_configured()
+        || !raidlands_rewards_table_exists('rp_pool_rounds')
+        || !raidlands_rewards_table_exists('rp_pool_entries')
+        || !raidlands_store_table_has_columns('rp_game_settings', [
+            'raid_duel_enabled',
+            'supply_run_enabled',
+            'pool_round_minutes',
+            'pool_house_edge_percent',
+        ])) {
+        return false;
+    }
+
+    $games = raidlands_rewards_pool_games();
+
+    if ($game_type !== '') {
+        $game = $games[$game_type] ?? null;
+
+        return $game !== null
+            && raidlands_rewards_enum_allows('rp_point_requests', 'source_type', (string) $game['entry_source'])
+            && raidlands_rewards_enum_allows('rp_point_requests', 'source_type', (string) $game['payout_source']);
+    }
+
+    foreach ($games as $game) {
+        if (!raidlands_rewards_enum_allows('rp_point_requests', 'source_type', (string) $game['entry_source'])
+            || !raidlands_rewards_enum_allows('rp_point_requests', 'source_type', (string) $game['payout_source'])) {
+            return false;
+        }
+    }
+
+    return true;
 }
 
 function raidlands_rewards_is_ready(): bool
@@ -221,6 +300,8 @@ function raidlands_rewards_settings(): array
             'jackpot_enabled' => 1,
             'high_low_enabled' => raidlands_rewards_game_backend_ready('high_low') ? 1 : 0,
             'wheel_enabled' => raidlands_rewards_game_backend_ready('wheel') ? 1 : 0,
+            'raid_duel_enabled' => raidlands_rewards_game_backend_ready('raid_duel') ? 1 : 0,
+            'supply_run_enabled' => raidlands_rewards_game_backend_ready('supply_run') ? 1 : 0,
             'min_stake_rp' => 200,
             'max_stake_rp' => 2000,
             'coinflip_payout_multiplier_basis' => 200,
@@ -230,12 +311,23 @@ function raidlands_rewards_settings(): array
             'jackpot_max_entries_per_player' => 10,
             'jackpot_round_minutes' => 30,
             'jackpot_house_edge_percent' => 10,
+            'pool_round_minutes' => 20,
+            'pool_house_edge_percent' => 8,
             'daily_wager_cap_rp' => 10000,
             'daily_loss_cap_rp' => 5000,
             'self_exclusion_enabled' => 1,
             'terms_copy' => 'RP games use in-game Raidlands RP only. RP has no cash value, outcomes are not final until the Rust server confirms the point change, and admins may pause games at any time.',
         ];
     }
+
+    $defaults = [
+        'high_low_enabled' => raidlands_rewards_game_backend_ready('high_low') ? 1 : 0,
+        'wheel_enabled' => raidlands_rewards_game_backend_ready('wheel') ? 1 : 0,
+        'raid_duel_enabled' => raidlands_rewards_game_backend_ready('raid_duel') ? 1 : 0,
+        'supply_run_enabled' => raidlands_rewards_game_backend_ready('supply_run') ? 1 : 0,
+        'pool_round_minutes' => 20,
+        'pool_house_edge_percent' => 8,
+    ];
 
     foreach ([
         'games_enabled',
@@ -244,6 +336,8 @@ function raidlands_rewards_settings(): array
         'jackpot_enabled',
         'high_low_enabled',
         'wheel_enabled',
+        'raid_duel_enabled',
+        'supply_run_enabled',
         'min_stake_rp',
         'max_stake_rp',
         'coinflip_payout_multiplier_basis',
@@ -253,14 +347,14 @@ function raidlands_rewards_settings(): array
         'jackpot_max_entries_per_player',
         'jackpot_round_minutes',
         'jackpot_house_edge_percent',
+        'pool_round_minutes',
+        'pool_house_edge_percent',
         'daily_wager_cap_rp',
         'daily_loss_cap_rp',
         'self_exclusion_enabled',
     ] as $key) {
         if (!array_key_exists($key, $row)) {
-            $row[$key] = in_array($key, ['high_low_enabled', 'wheel_enabled'], true)
-                ? (raidlands_rewards_game_backend_ready(str_replace('_enabled', '', $key)) ? 1 : 0)
-                : 0;
+            $row[$key] = $defaults[$key] ?? 0;
         }
 
         $row[$key] = (int) ($row[$key] ?? 0);
@@ -480,7 +574,20 @@ function raidlands_rewards_queue_point_request(
         throw new InvalidArgumentException('RP point request requires a linked Steam player.');
     }
 
-    if (!in_array($source_type, ['vote_reward', 'coinflip', 'dice', 'high_low', 'wheel', 'jackpot_entry', 'jackpot_payout', 'admin_adjustment'], true)) {
+    if (!in_array($source_type, [
+        'vote_reward',
+        'coinflip',
+        'dice',
+        'high_low',
+        'wheel',
+        'jackpot_entry',
+        'jackpot_payout',
+        'raid_duel_entry',
+        'raid_duel_payout',
+        'supply_run_entry',
+        'supply_run_payout',
+        'admin_adjustment',
+    ], true)) {
         throw new InvalidArgumentException('Unsupported RP point request source.');
     }
 
@@ -922,6 +1029,23 @@ function raidlands_rewards_normalize_stake($value, array $settings): int
     return $stake;
 }
 
+function raidlands_rewards_dice_win_faces(array $settings): int
+{
+    $chance = max(1, min(95, (int) ($settings['dice_win_chance_percent'] ?? 45)));
+
+    return max(1, min(5, (int) round($chance / (100 / 6))));
+}
+
+function raidlands_rewards_dice_target(array $settings): int
+{
+    return 7 - raidlands_rewards_dice_win_faces($settings);
+}
+
+function raidlands_rewards_dice_odds_basis_points(array $settings): int
+{
+    return (int) round((raidlands_rewards_dice_win_faces($settings) / 6) * 10000);
+}
+
 function raidlands_rewards_require_games_open(array $settings, string $game_key): void
 {
     if (empty($settings['games_enabled'])) {
@@ -1033,10 +1157,11 @@ function raidlands_rewards_play_dice(int $stake): array
     }
 
     $stake = raidlands_rewards_normalize_stake($stake, $settings);
-    $chance = max(1, min(95, (int) ($settings['dice_win_chance_percent'] ?? 45)));
-    $threshold = 101 - $chance;
-    $roll = random_int(1, 100);
-    $win = $roll >= $threshold;
+    $target = raidlands_rewards_dice_target($settings);
+    $winning_faces = raidlands_rewards_dice_win_faces($settings);
+    $odds_basis_points = raidlands_rewards_dice_odds_basis_points($settings);
+    $roll = random_int(1, 6);
+    $win = $roll >= $target;
     $multiplier = max(100, (int) ($settings['dice_payout_multiplier_basis'] ?? 200));
     $payout = $win ? (int) floor($stake * ($multiplier / 100)) : 0;
     $loss = $win ? 0 : $stake;
@@ -1057,15 +1182,15 @@ function raidlands_rewards_play_dice(int $stake): array
              VALUES
                 ("dice", :player_id, :steam_id64, :stake_rp, :payout_rp, :net_rp, :odds_basis_points, :player_choice, :roll_result, "queued", :message)'
         );
-        $choice = 'roll ' . $threshold . '+';
-        $message = $win ? 'Rolled ' . $roll . ' and won. Waiting for server confirmation.' : 'Rolled ' . $roll . ' and lost. Waiting for server confirmation.';
+        $choice = 'roll ' . $target . '-6';
+        $message = $win ? 'Rolled a ' . $roll . ' and won. Waiting for server confirmation.' : 'Rolled a ' . $roll . ' and lost. Waiting for server confirmation.';
         $insert->execute([
             'player_id' => (int) $player['id'],
             'steam_id64' => (string) $player['steam_id64'],
             'stake_rp' => $stake,
             'payout_rp' => $payout,
             'net_rp' => $payout - $stake,
-            'odds_basis_points' => $chance * 100,
+            'odds_basis_points' => $odds_basis_points,
             'player_choice' => $choice,
             'roll_result' => (string) $roll,
             'message' => $message,
@@ -1081,7 +1206,7 @@ function raidlands_rewards_play_dice(int $stake): array
             $stake,
             $payout,
             'RP dice',
-            ['threshold' => $threshold, 'roll' => $roll, 'won' => $win]
+            ['target' => $target, 'winning_faces' => $winning_faces, 'roll' => $roll, 'face' => $roll, 'won' => $win]
         );
 
         $update = $pdo->prepare('UPDATE rp_game_rounds SET rp_point_request_id = :request_id, request_token = :request_token WHERE id = :id');
@@ -1092,7 +1217,7 @@ function raidlands_rewards_play_dice(int $stake): array
             $pdo->commit();
         }
 
-        return ['round_id' => $round_id, 'won' => $win, 'roll' => $roll, 'face' => (($roll - 1) % 6) + 1, 'threshold' => $threshold, 'payout_rp' => $payout, 'stake_rp' => $stake];
+        return ['round_id' => $round_id, 'won' => $win, 'roll' => $roll, 'face' => $roll, 'target' => $target, 'winning_faces' => $winning_faces, 'payout_rp' => $payout, 'stake_rp' => $stake];
     } catch (Throwable $error) {
         if ($owns_transaction && $pdo->inTransaction()) {
             $pdo->rollBack();
@@ -1460,6 +1585,704 @@ function raidlands_rewards_enter_jackpot(int $tickets): array
     }
 }
 
+function raidlands_rewards_pool_game_for_source(string $source_type, string $kind = ''): ?array
+{
+    foreach (raidlands_rewards_pool_games() as $game_type => $game) {
+        if (($kind === '' || $kind === 'entry') && $source_type === (string) $game['entry_source']) {
+            $game['key'] = $game_type;
+            return $game;
+        }
+
+        if (($kind === '' || $kind === 'payout') && $source_type === (string) $game['payout_source']) {
+            $game['key'] = $game_type;
+            return $game;
+        }
+    }
+
+    return null;
+}
+
+function raidlands_rewards_pool_round_options(array $round, array $game): array
+{
+    $options = [];
+    $decoded = json_decode((string) ($round['options_json'] ?? ''), true);
+    $source = is_array($decoded) && $decoded !== [] ? $decoded : (array) ($game['options'] ?? []);
+
+    foreach ($source as $key => $option) {
+        if (!is_array($option)) {
+            continue;
+        }
+
+        $key = strtolower(trim((string) $key));
+
+        if ($key === '') {
+            continue;
+        }
+
+        $label = raidlands_store_clean_profile_text((string) ($option['label'] ?? ucwords(str_replace('_', ' ', $key))), 80);
+        $chance = max(0, (int) ($option['chance'] ?? 0));
+
+        $options[$key] = [
+            'label' => $label !== '' ? $label : ucwords(str_replace('_', ' ', $key)),
+            'chance' => $chance,
+        ];
+    }
+
+    return $options !== [] ? $options : (array) ($game['options'] ?? []);
+}
+
+function raidlands_rewards_pool_option_label(array $options, string $option_key): string
+{
+    $option_key = strtolower(trim($option_key));
+
+    return (string) ($options[$option_key]['label'] ?? ucwords(str_replace('_', ' ', $option_key)));
+}
+
+function raidlands_rewards_pool_round_breakdown(int $round_id, array $options): array
+{
+    $breakdown = [];
+
+    foreach ($options as $option_key => $option) {
+        $breakdown[$option_key] = [
+            'key' => (string) $option_key,
+            'label' => (string) ($option['label'] ?? ucwords(str_replace('_', ' ', (string) $option_key))),
+            'chance' => (int) ($option['chance'] ?? 0),
+            'stake_rp' => 0,
+            'entries' => 0,
+            'percent' => 0.0,
+        ];
+    }
+
+    if ($round_id <= 0 || !raidlands_rewards_pool_backend_ready()) {
+        return $breakdown;
+    }
+
+    $rows = raidlands_db_fetch_all(
+        "SELECT option_key, COALESCE(SUM(stake_rp), 0) AS stake_rp, COUNT(*) AS entries
+         FROM rp_pool_entries
+         WHERE round_id = :round_id
+           AND status IN ('queued', 'processing', 'confirmed', 'payout_queued', 'paid', 'lost')
+         GROUP BY option_key",
+        ['round_id' => $round_id]
+    );
+    $total = 0;
+
+    foreach ($rows as $row) {
+        $option_key = strtolower(trim((string) ($row['option_key'] ?? '')));
+
+        if ($option_key === '') {
+            continue;
+        }
+
+        if (!isset($breakdown[$option_key])) {
+            $breakdown[$option_key] = [
+                'key' => $option_key,
+                'label' => ucwords(str_replace('_', ' ', $option_key)),
+                'chance' => 0,
+                'stake_rp' => 0,
+                'entries' => 0,
+                'percent' => 0.0,
+            ];
+        }
+
+        $breakdown[$option_key]['stake_rp'] = max(0, (int) ($row['stake_rp'] ?? 0));
+        $breakdown[$option_key]['entries'] = max(0, (int) ($row['entries'] ?? 0));
+        $total += $breakdown[$option_key]['stake_rp'];
+    }
+
+    foreach ($breakdown as &$row) {
+        $row['percent'] = $total > 0 ? round(((int) $row['stake_rp'] / $total) * 100, 1) : 0.0;
+    }
+    unset($row);
+
+    return $breakdown;
+}
+
+function raidlands_rewards_pool_round_entries(int $round_id, array $options, int $limit = 8): array
+{
+    if ($round_id <= 0 || !raidlands_rewards_pool_backend_ready()) {
+        return [];
+    }
+
+    $rows = raidlands_db_fetch_all(
+        "SELECT e.*, p.display_name
+         FROM rp_pool_entries e
+         INNER JOIN players p ON p.id = e.player_id
+         WHERE e.round_id = :round_id
+           AND e.status IN ('queued', 'processing', 'confirmed', 'payout_queued', 'paid', 'lost')
+         ORDER BY e.created_at DESC, e.id DESC
+         LIMIT " . max(1, min(25, $limit)),
+        ['round_id' => $round_id]
+    );
+
+    foreach ($rows as &$row) {
+        $name = trim((string) ($row['display_name'] ?? ''));
+
+        if ($name === '') {
+            $steam = (string) ($row['steam_id64'] ?? '');
+            $name = $steam !== '' ? 'Steam ' . substr($steam, -6) : 'Raidlands Player';
+        }
+
+        $row['player_label'] = raidlands_store_clean_profile_text($name, 80);
+        $row['option_label'] = raidlands_rewards_pool_option_label($options, (string) ($row['option_key'] ?? ''));
+    }
+    unset($row);
+
+    return $rows;
+}
+
+function raidlands_rewards_pool_round_state(?array $round, string $game_type = ''): ?array
+{
+    if ($round === null) {
+        return null;
+    }
+
+    $game_type = (string) ($round['game_type'] ?? $game_type);
+    $game = raidlands_rewards_pool_game($game_type);
+
+    if ($game === null) {
+        return null;
+    }
+
+    $options = raidlands_rewards_pool_round_options($round, $game);
+    $breakdown = raidlands_rewards_pool_round_breakdown((int) ($round['id'] ?? 0), $options);
+    $entries = raidlands_rewards_pool_round_entries((int) ($round['id'] ?? 0), $options, 8);
+    $public_total = array_sum(array_map(static fn (array $row): int => (int) ($row['stake_rp'] ?? 0), $breakdown));
+    $public_entries = array_sum(array_map(static fn (array $row): int => (int) ($row['entries'] ?? 0), $breakdown));
+
+    return [
+        'id' => (int) ($round['id'] ?? 0),
+        'game_type' => $game_type,
+        'round_key' => (string) ($round['round_key'] ?? ''),
+        'status' => (string) ($round['status'] ?? ''),
+        'options' => $options,
+        'breakdown' => array_values($breakdown),
+        'entries' => $entries,
+        'total_stake_rp' => $public_total,
+        'total_entries' => $public_entries,
+        'confirmed_stake_rp' => (int) ($round['total_stake_rp'] ?? 0),
+        'confirmed_entries' => (int) ($round['total_entries'] ?? 0),
+        'house_edge_percent' => (int) ($round['house_edge_percent'] ?? 0),
+        'outcome_key' => (string) ($round['outcome_key'] ?? ''),
+        'outcome_label' => raidlands_rewards_pool_option_label($options, (string) ($round['outcome_key'] ?? '')),
+        'outcome_roll' => (int) ($round['outcome_roll'] ?? 0),
+        'message' => (string) ($round['message'] ?? ''),
+        'opens_at' => (string) ($round['opens_at'] ?? ''),
+        'closes_at' => (string) ($round['closes_at'] ?? ''),
+    ];
+}
+
+function raidlands_rewards_active_pool_round(string $game_type, array $settings, bool $create = true): ?array
+{
+    $game = raidlands_rewards_pool_game($game_type);
+
+    if ($game === null
+        || !raidlands_rewards_pool_backend_ready($game_type)
+        || empty($settings['games_enabled'])
+        || empty($settings[$game_type . '_enabled'])) {
+        return null;
+    }
+
+    $row = raidlands_db_fetch_one(
+        "SELECT *
+         FROM rp_pool_rounds
+         WHERE game_type = :game_type
+           AND status = 'open'
+           AND (closes_at IS NULL OR closes_at > NOW())
+         ORDER BY closes_at ASC, id ASC
+         LIMIT 1",
+        ['game_type' => $game_type]
+    );
+
+    if ($row !== null || !$create) {
+        return $row;
+    }
+
+    $minutes = max(5, min(1440, (int) ($settings['pool_round_minutes'] ?? 20)));
+    $round_key = (string) $game['prefix'] . '-' . gmdate('YmdHis') . '-' . bin2hex(random_bytes(3));
+    $options_json = json_encode($game['options'], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
+
+    raidlands_db_execute(
+        'INSERT INTO rp_pool_rounds
+            (game_type, round_key, status, options_json, house_edge_percent, opens_at, closes_at)
+         VALUES
+            (:game_type, :round_key, "open", :options_json, :house_edge, NOW(), DATE_ADD(NOW(), INTERVAL ' . $minutes . ' MINUTE))',
+        [
+            'game_type' => $game_type,
+            'round_key' => $round_key,
+            'options_json' => $options_json,
+            'house_edge' => max(0, min(50, (int) ($settings['pool_house_edge_percent'] ?? 8))),
+        ]
+    );
+
+    return raidlands_db_fetch_one('SELECT * FROM rp_pool_rounds WHERE round_key = :round_key LIMIT 1', ['round_key' => $round_key]);
+}
+
+function raidlands_rewards_pool_rounds_state(array $settings): array
+{
+    $state = [];
+
+    foreach (raidlands_rewards_pool_games() as $game_type => $game) {
+        $ready = raidlands_rewards_pool_backend_ready($game_type);
+        $round = $ready ? raidlands_rewards_active_pool_round($game_type, $settings, true) : null;
+        $state[$game_type] = [
+            'ready' => $ready,
+            'enabled' => $ready && !empty($settings['games_enabled']) && !empty($settings[$game_type . '_enabled']),
+            'game' => [
+                'key' => $game_type,
+                'label' => (string) $game['label'],
+                'short_label' => (string) $game['short_label'],
+                'kicker' => (string) $game['kicker'],
+                'description' => (string) $game['description'],
+                'options' => (array) $game['options'],
+            ],
+            'round' => raidlands_rewards_pool_round_state($round, $game_type),
+        ];
+    }
+
+    return $state;
+}
+
+function raidlands_rewards_enter_pool_game(string $game_type, string $option_key, int $stake): array
+{
+    if (!raidlands_rewards_is_ready()) {
+        throw new RuntimeException(raidlands_rewards_readiness_message(true));
+    }
+
+    $game = raidlands_rewards_pool_game($game_type);
+
+    if ($game === null) {
+        throw new InvalidArgumentException('Choose a supported multiplayer RP game.');
+    }
+
+    if (!raidlands_rewards_pool_backend_ready($game_type)) {
+        throw new RuntimeException((string) $game['label'] . ' is staged until the latest multiplayer RP games update is installed.');
+    }
+
+    $settings = raidlands_rewards_settings();
+    raidlands_rewards_require_games_open($settings, $game_type);
+    $player = raidlands_rewards_require_player();
+
+    if (raidlands_rewards_self_excluded((int) $player['id'])) {
+        throw new RuntimeException('RP games are disabled for this account.');
+    }
+
+    $option_key = strtolower(trim($option_key));
+
+    if (!isset($game['options'][$option_key])) {
+        throw new InvalidArgumentException('Choose a valid ' . (string) $game['short_label'] . ' side.');
+    }
+
+    $stake = raidlands_rewards_normalize_stake($stake, $settings);
+    raidlands_rewards_check_daily_limits($player, $settings, $stake, $stake);
+    raidlands_rewards_run_due_pool_rounds();
+    $round = raidlands_rewards_active_pool_round($game_type, $settings, true);
+
+    if ($round === null) {
+        throw new RuntimeException('No ' . (string) $game['label'] . ' round is open.');
+    }
+
+    $pdo = raidlands_db_required();
+    $owns_transaction = !$pdo->inTransaction();
+
+    if ($owns_transaction) {
+        $pdo->beginTransaction();
+    }
+
+    try {
+        $round_statement = $pdo->prepare(
+            'SELECT *
+             FROM rp_pool_rounds
+             WHERE id = :id
+               AND game_type = :game_type
+               AND status = "open"
+               AND (closes_at IS NULL OR closes_at > NOW())
+             FOR UPDATE'
+        );
+        $round_statement->execute([
+            'id' => (int) $round['id'],
+            'game_type' => $game_type,
+        ]);
+        $locked_round = $round_statement->fetch(PDO::FETCH_ASSOC);
+
+        if (!is_array($locked_round)) {
+            throw new RuntimeException('That round is closing. Refresh and join the next one.');
+        }
+
+        $insert = $pdo->prepare(
+            'INSERT INTO rp_pool_entries
+                (round_id, player_id, steam_id64, option_key, stake_rp, net_rp, status, message)
+             VALUES
+                (:round_id, :player_id, :steam_id64, :option_key, :stake_rp, :net_rp, "queued", "Queued for server RP debit confirmation.")'
+        );
+        $insert->execute([
+            'round_id' => (int) $locked_round['id'],
+            'player_id' => (int) $player['id'],
+            'steam_id64' => (string) $player['steam_id64'],
+            'option_key' => $option_key,
+            'stake_rp' => $stake,
+            'net_rp' => -$stake,
+        ]);
+        $entry_id = (int) $pdo->lastInsertId();
+        $request = raidlands_rewards_queue_point_request(
+            $pdo,
+            (int) $player['id'],
+            (string) $player['steam_id64'],
+            (string) $game['entry_source'],
+            (string) $entry_id,
+            $stake,
+            0,
+            'RP ' . (string) $game['label'] . ' entry',
+            [
+                'game_type' => $game_type,
+                'round_id' => (int) $locked_round['id'],
+                'round_key' => (string) $locked_round['round_key'],
+                'option' => $option_key,
+            ]
+        );
+
+        $update = $pdo->prepare('UPDATE rp_pool_entries SET entry_request_id = :request_id, entry_request_token = :request_token WHERE id = :id');
+        $update->execute(['request_id' => $request['id'], 'request_token' => $request['request_token'], 'id' => $entry_id]);
+        raidlands_rewards_record_daily_wager($pdo, $player, $stake, $stake);
+
+        if ($owns_transaction) {
+            $pdo->commit();
+        }
+
+        return [
+            'entry_id' => $entry_id,
+            'round_id' => (int) $locked_round['id'],
+            'game_type' => $game_type,
+            'choice' => $option_key,
+            'choice_label' => (string) $game['options'][$option_key]['label'],
+            'stake_rp' => $stake,
+            'round_key' => (string) $locked_round['round_key'],
+            'closes_at' => (string) ($locked_round['closes_at'] ?? ''),
+        ];
+    } catch (Throwable $error) {
+        if ($owns_transaction && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $error;
+    }
+}
+
+function raidlands_rewards_weighted_pool_outcome(array $options): array
+{
+    $total = array_sum(array_map(static fn (array $option): int => max(0, (int) ($option['chance'] ?? 0)), $options));
+
+    if ($total <= 0) {
+        $keys = array_keys($options);
+        $key = (string) ($keys[0] ?? '');
+
+        return ['key' => $key, 'roll' => 0];
+    }
+
+    $roll = random_int(1, $total);
+    $cursor = 0;
+
+    foreach ($options as $key => $option) {
+        $cursor += max(0, (int) ($option['chance'] ?? 0));
+
+        if ($roll <= $cursor) {
+            return ['key' => (string) $key, 'roll' => $roll];
+        }
+    }
+
+    $keys = array_keys($options);
+
+    return ['key' => (string) end($keys), 'roll' => $roll];
+}
+
+function raidlands_rewards_queue_pool_payout(PDO $pdo, array $entry, array $game, int $payout, string $message, array $metadata = []): void
+{
+    $payout = max(0, $payout);
+
+    if ($payout <= 0) {
+        return;
+    }
+
+    $entry_id = (int) ($entry['id'] ?? 0);
+    $stake = max(0, (int) ($entry['stake_rp'] ?? 0));
+    $request = raidlands_rewards_queue_point_request(
+        $pdo,
+        (int) $entry['player_id'],
+        (string) $entry['steam_id64'],
+        (string) $game['payout_source'],
+        (string) $entry_id,
+        0,
+        $payout,
+        'RP ' . (string) $game['label'] . ' payout',
+        $metadata
+    );
+
+    $update = $pdo->prepare(
+        'UPDATE rp_pool_entries
+         SET payout_request_id = :request_id,
+             payout_request_token = :request_token,
+             payout_rp = :payout_rp,
+             net_rp = :net_rp,
+             status = "payout_queued",
+             message = :message,
+             updated_at = NOW()
+         WHERE id = :id'
+    );
+    $update->execute([
+        'request_id' => $request['id'],
+        'request_token' => $request['request_token'],
+        'payout_rp' => $payout,
+        'net_rp' => $payout - $stake,
+        'message' => $message,
+        'id' => $entry_id,
+    ]);
+}
+
+function raidlands_rewards_run_due_pool_rounds(): void
+{
+    if (!raidlands_rewards_pool_backend_ready()) {
+        return;
+    }
+
+    $settings = raidlands_rewards_settings();
+
+    if (empty($settings['games_enabled'])) {
+        return;
+    }
+
+    $rounds = raidlands_db_fetch_all(
+        "SELECT *
+         FROM rp_pool_rounds
+         WHERE status = 'open'
+           AND closes_at IS NOT NULL
+           AND closes_at <= NOW()
+         ORDER BY closes_at ASC, id ASC
+         LIMIT 10"
+    );
+
+    foreach ($rounds as $round) {
+        raidlands_rewards_draw_pool_round((int) $round['id']);
+    }
+}
+
+function raidlands_rewards_draw_pool_round(int $round_id): void
+{
+    if ($round_id <= 0 || !raidlands_rewards_pool_backend_ready()) {
+        return;
+    }
+
+    $pdo = raidlands_db_required();
+    $owns_transaction = !$pdo->inTransaction();
+
+    if ($owns_transaction) {
+        $pdo->beginTransaction();
+    }
+
+    try {
+        $round_statement = $pdo->prepare('SELECT * FROM rp_pool_rounds WHERE id = :id FOR UPDATE');
+        $round_statement->execute(['id' => $round_id]);
+        $round = $round_statement->fetch(PDO::FETCH_ASSOC);
+
+        if (!is_array($round) || (string) $round['status'] !== 'open') {
+            if ($owns_transaction) {
+                $pdo->commit();
+            }
+            return;
+        }
+
+        $game_type = (string) ($round['game_type'] ?? '');
+        $game = raidlands_rewards_pool_game($game_type);
+
+        if ($game === null) {
+            $pdo->prepare('UPDATE rp_pool_rounds SET status = "failed", message = "Unsupported pool game.", updated_at = NOW() WHERE id = :id')->execute(['id' => $round_id]);
+
+            if ($owns_transaction) {
+                $pdo->commit();
+            }
+            return;
+        }
+
+        $entries = raidlands_db_fetch_all(
+            "SELECT *
+             FROM rp_pool_entries
+             WHERE round_id = :round_id
+               AND status = 'confirmed'
+             ORDER BY id ASC
+             FOR UPDATE",
+            ['round_id' => $round_id]
+        );
+
+        if ($entries === []) {
+            $pdo->prepare('UPDATE rp_pool_rounds SET status = "canceled", message = "No confirmed entries joined this round.", updated_at = NOW() WHERE id = :id')->execute(['id' => $round_id]);
+
+            if ($owns_transaction) {
+                $pdo->commit();
+            }
+            return;
+        }
+
+        $options = raidlands_rewards_pool_round_options($round, $game);
+        $option_stakes = [];
+        $total_stake = 0;
+
+        foreach ($entries as $entry) {
+            $option = (string) ($entry['option_key'] ?? '');
+            $stake = max(0, (int) ($entry['stake_rp'] ?? 0));
+            $option_stakes[$option] = ($option_stakes[$option] ?? 0) + $stake;
+            $total_stake += $stake;
+        }
+
+        $active_options = array_values(array_filter($option_stakes, static fn (int $stake): bool => $stake > 0));
+
+        if ($game_type === 'raid_duel' && count($active_options) < 2) {
+            foreach ($entries as $entry) {
+                raidlands_rewards_queue_pool_payout(
+                    $pdo,
+                    $entry,
+                    $game,
+                    (int) $entry['stake_rp'],
+                    'No opposing side formed; stake refund queued.',
+                    ['round_id' => $round_id, 'refund' => true]
+                );
+            }
+
+            $pdo->prepare(
+                'UPDATE rp_pool_rounds
+                 SET status = "payout_queued",
+                     total_stake_rp = :total_stake,
+                     total_entries = :total_entries,
+                     message = "No opposing side formed; refunds queued.",
+                     updated_at = NOW()
+                 WHERE id = :id'
+            )->execute([
+                'total_stake' => $total_stake,
+                'total_entries' => count($entries),
+                'id' => $round_id,
+            ]);
+
+            if ($owns_transaction) {
+                $pdo->commit();
+            }
+            return;
+        }
+
+        $outcome = raidlands_rewards_weighted_pool_outcome($options);
+        $outcome_key = (string) $outcome['key'];
+        $outcome_label = raidlands_rewards_pool_option_label($options, $outcome_key);
+        $winner_stake = max(0, (int) ($option_stakes[$outcome_key] ?? 0));
+        $edge = max(0, min(50, (int) ($round['house_edge_percent'] ?? 8)));
+        $payout_pool = (int) floor($total_stake * ((100 - $edge) / 100));
+        $queued_payouts = 0;
+
+        foreach ($entries as $entry) {
+            $entry_id = (int) $entry['id'];
+
+            if ((string) ($entry['option_key'] ?? '') !== $outcome_key || $winner_stake <= 0 || $payout_pool <= 0) {
+                $pdo->prepare(
+                    'UPDATE rp_pool_entries
+                     SET payout_rp = 0,
+                         net_rp = -stake_rp,
+                         status = "lost",
+                         message = :message,
+                         updated_at = NOW()
+                     WHERE id = :id'
+                )->execute([
+                    'message' => (string) $game['label'] . ' hit ' . $outcome_label . '. Entry lost.',
+                    'id' => $entry_id,
+                ]);
+                continue;
+            }
+
+            $payout = max(1, (int) floor($payout_pool * ((int) $entry['stake_rp'] / $winner_stake)));
+            raidlands_rewards_queue_pool_payout(
+                $pdo,
+                $entry,
+                $game,
+                $payout,
+                (string) $game['label'] . ' hit ' . $outcome_label . '. Payout queued.',
+                [
+                    'round_id' => $round_id,
+                    'outcome' => $outcome_key,
+                    'roll' => (int) $outcome['roll'],
+                ]
+            );
+            $queued_payouts += 1;
+        }
+
+        $round_status = $queued_payouts > 0 ? 'payout_queued' : 'paid';
+        $round_message = $queued_payouts > 0
+            ? (string) $game['label'] . ' hit ' . $outcome_label . '; ' . $queued_payouts . ' payout' . ($queued_payouts === 1 ? '' : 's') . ' queued.'
+            : (string) $game['label'] . ' hit ' . $outcome_label . '; no winning entries were confirmed.';
+
+        $pdo->prepare(
+            'UPDATE rp_pool_rounds
+             SET status = :status,
+                 total_stake_rp = :total_stake,
+                 total_entries = :total_entries,
+                 outcome_key = :outcome_key,
+                 outcome_roll = :outcome_roll,
+                 message = :message,
+                 updated_at = NOW()
+             WHERE id = :id'
+        )->execute([
+            'status' => $round_status,
+            'total_stake' => $total_stake,
+            'total_entries' => count($entries),
+            'outcome_key' => $outcome_key,
+            'outcome_roll' => (int) $outcome['roll'],
+            'message' => $round_message,
+            'id' => $round_id,
+        ]);
+
+        if ($owns_transaction) {
+            $pdo->commit();
+        }
+    } catch (Throwable $error) {
+        if ($owns_transaction && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+        throw $error;
+    }
+}
+
+function raidlands_rewards_refresh_pool_round_status(PDO $pdo, int $round_id): void
+{
+    if ($round_id <= 0) {
+        return;
+    }
+
+    $summary = raidlands_db_fetch_one(
+        "SELECT
+            SUM(CASE WHEN status = 'payout_queued' THEN 1 ELSE 0 END) AS pending_payouts,
+            SUM(CASE WHEN status = 'failed' AND payout_request_id IS NOT NULL THEN 1 ELSE 0 END) AS failed_payouts
+         FROM rp_pool_entries
+         WHERE round_id = :round_id",
+        ['round_id' => $round_id]
+    );
+
+    $pending = (int) ($summary['pending_payouts'] ?? 0);
+    $failed = (int) ($summary['failed_payouts'] ?? 0);
+
+    if ($pending > 0) {
+        return;
+    }
+
+    $status = $failed > 0 ? 'failed' : 'paid';
+    $message = $failed > 0 ? 'One or more pool payouts failed.' : 'All pool payouts have been processed.';
+    $statement = $pdo->prepare(
+        'UPDATE rp_pool_rounds
+         SET status = :status,
+             message = CASE WHEN message = "" THEN :message ELSE message END,
+             updated_at = NOW()
+         WHERE id = :id
+           AND status = "payout_queued"'
+    );
+    $statement->execute([
+        'status' => $status,
+        'message' => $message,
+        'id' => $round_id,
+    ]);
+}
+
 function raidlands_rewards_run_due_jackpots(): void
 {
     if (!raidlands_rewards_is_ready()) {
@@ -1694,6 +2517,20 @@ function raidlands_rewards_recent_jackpot_rounds(int $limit = 8): array
     );
 }
 
+function raidlands_rewards_recent_pool_rounds(int $limit = 8): array
+{
+    if (!raidlands_rewards_pool_backend_ready()) {
+        return [];
+    }
+
+    return raidlands_db_fetch_all(
+        'SELECT *
+         FROM rp_pool_rounds
+         ORDER BY created_at DESC, id DESC
+         LIMIT ' . max(1, min(25, $limit))
+    );
+}
+
 function raidlands_rewards_public_games_state(): array
 {
     $ready = raidlands_rewards_is_ready();
@@ -1708,17 +2545,21 @@ function raidlands_rewards_public_games_state(): array
             'balance' => null,
             'daily' => [],
             'active_jackpot' => null,
+            'pool_rounds' => [],
             'game_rounds' => [],
             'jackpot_entries' => [],
             'jackpot_rounds' => [],
             'game_backend' => [
                 'high_low' => false,
                 'wheel' => false,
+                'raid_duel' => false,
+                'supply_run' => false,
             ],
         ];
     }
 
     raidlands_rewards_run_due_jackpots();
+    raidlands_rewards_run_due_pool_rounds();
     $settings = raidlands_rewards_settings();
     $active_jackpot = raidlands_rewards_active_jackpot_round($settings, true);
     $player_id = raidlands_rewards_player_ready($player) ? (int) $player['id'] : 0;
@@ -1731,12 +2572,15 @@ function raidlands_rewards_public_games_state(): array
         'balance' => $player_id > 0 ? raidlands_store_current_rp_balance($player_id) : null,
         'daily' => $player_id > 0 ? raidlands_rewards_daily_limit_row($player_id) : [],
         'active_jackpot' => $active_jackpot,
+        'pool_rounds' => raidlands_rewards_pool_rounds_state($settings),
         'game_rounds' => $player_id > 0 ? raidlands_rewards_recent_game_rounds($player_id, 10) : raidlands_rewards_recent_game_rounds(0, 6),
         'jackpot_entries' => $player_id > 0 ? raidlands_rewards_recent_jackpot_entries($player_id, 10) : [],
         'jackpot_rounds' => raidlands_rewards_recent_jackpot_rounds(6),
         'game_backend' => [
             'high_low' => raidlands_rewards_game_backend_ready('high_low'),
             'wheel' => raidlands_rewards_game_backend_ready('wheel'),
+            'raid_duel' => raidlands_rewards_game_backend_ready('raid_duel'),
+            'supply_run' => raidlands_rewards_game_backend_ready('supply_run'),
         ],
     ];
 }
@@ -1775,7 +2619,7 @@ function raidlands_rewards_handle_games_request(): void
 
     $action = (string) ($_POST['action'] ?? '');
 
-    if (!in_array($action, ['play_coinflip', 'play_dice', 'play_high_low', 'play_wheel', 'enter_jackpot'], true)) {
+    if (!in_array($action, ['play_coinflip', 'play_dice', 'play_high_low', 'play_wheel', 'enter_jackpot', 'enter_raid_duel', 'enter_supply_run'], true)) {
         return;
     }
 
@@ -1797,8 +2641,8 @@ function raidlands_rewards_handle_games_request(): void
         } elseif ($action === 'play_dice') {
             $result = raidlands_rewards_play_dice((int) ($_POST['stake_rp'] ?? 0));
             $message = $result['won']
-                ? 'Dice rolled ' . $result['roll'] . '. ' . raidlands_store_rp((int) $result['payout_rp']) . ' payout queued for server confirmation.'
-                : 'Dice rolled ' . $result['roll'] . '. Loss queued for server confirmation.';
+                ? 'Dice landed on ' . $result['roll'] . '. ' . raidlands_store_rp((int) $result['payout_rp']) . ' payout queued for server confirmation.'
+                : 'Dice landed on ' . $result['roll'] . '. Loss queued for server confirmation.';
         } elseif ($action === 'play_high_low') {
             $result = raidlands_rewards_play_high_low((string) ($_POST['choice'] ?? ''), (int) ($_POST['stake_rp'] ?? 0));
             if (!empty($result['push'])) {
@@ -1814,6 +2658,12 @@ function raidlands_rewards_handle_games_request(): void
             $message = $result['won']
                 ? 'Wheel landed on ' . $outcome . '. ' . raidlands_store_rp((int) $result['payout_rp']) . ' payout queued for server confirmation.'
                 : 'Wheel landed on ' . $outcome . '. Loss queued for server confirmation.';
+        } elseif ($action === 'enter_raid_duel') {
+            $result = raidlands_rewards_enter_pool_game('raid_duel', (string) ($_POST['choice'] ?? ''), (int) ($_POST['stake_rp'] ?? 0));
+            $message = 'Raid Duel entry queued on ' . (string) $result['choice_label'] . ' for ' . raidlands_store_rp((int) $result['stake_rp']) . '.';
+        } elseif ($action === 'enter_supply_run') {
+            $result = raidlands_rewards_enter_pool_game('supply_run', (string) ($_POST['choice'] ?? ''), (int) ($_POST['stake_rp'] ?? 0));
+            $message = 'Supply Run entry queued on ' . (string) $result['choice_label'] . ' for ' . raidlands_store_rp((int) $result['stake_rp']) . '.';
         } else {
             $result = raidlands_rewards_enter_jackpot((int) ($_POST['tickets'] ?? 1));
             $message = (string) $result['tickets'] . ' jackpot ticket' . ((int) $result['tickets'] === 1 ? '' : 's') . ' queued for ' . raidlands_store_rp((int) $result['cost_rp']) . '.';
@@ -1842,6 +2692,7 @@ function raidlands_rewards_bridge_point_requests(int $limit = 25): array
     }
 
     raidlands_rewards_run_due_jackpots();
+    raidlands_rewards_run_due_pool_rounds();
 
     raidlands_db_execute(
         "UPDATE rp_point_requests
@@ -2070,6 +2921,83 @@ function raidlands_rewards_sync_source_from_point_result(PDO $pdo, array $reques
         return;
     }
 
+    $pool_entry_game = raidlands_rewards_pool_game_for_source($source_type, 'entry');
+
+    if ($pool_entry_game !== null && raidlands_rewards_pool_backend_ready((string) $pool_entry_game['key'])) {
+        $entry = raidlands_db_fetch_one('SELECT * FROM rp_pool_entries WHERE id = :id LIMIT 1', ['id' => $source_id]);
+        $update = $pdo->prepare(
+            'UPDATE rp_pool_entries
+             SET status = :status,
+                 message = :message,
+                 updated_at = NOW()
+             WHERE id = :id'
+        );
+        $update->execute([
+            'status' => $source_status,
+            'message' => $message !== '' ? $message : ($status === 'confirmed' ? 'Pool entry confirmed by the Rust server.' : 'Pool entry was not confirmed.'),
+            'id' => $source_id,
+        ]);
+
+        if ($entry !== null && $status === 'confirmed') {
+            $round = raidlands_db_fetch_one('SELECT * FROM rp_pool_rounds WHERE id = :id LIMIT 1', ['id' => (int) $entry['round_id']]);
+
+            if ($round !== null && (string) ($round['status'] ?? '') === 'open') {
+                $round_update = $pdo->prepare(
+                    'UPDATE rp_pool_rounds
+                     SET total_stake_rp = total_stake_rp + :stake_rp,
+                         total_entries = total_entries + 1,
+                         updated_at = NOW()
+                     WHERE id = :round_id'
+                );
+                $round_update->execute([
+                    'stake_rp' => (int) $entry['stake_rp'],
+                    'round_id' => (int) $entry['round_id'],
+                ]);
+            } else {
+                raidlands_rewards_queue_pool_payout(
+                    $pdo,
+                    $entry,
+                    $pool_entry_game,
+                    (int) $entry['stake_rp'],
+                    'Round already closed; stake refund queued.',
+                    ['round_id' => (int) $entry['round_id'], 'late_confirmation_refund' => true]
+                );
+            }
+        } elseif ($entry !== null && in_array($status, ['rejected', 'failed'], true)) {
+            raidlands_rewards_rollback_daily_wager(
+                $pdo,
+                (int) $entry['player_id'],
+                (int) $entry['stake_rp'],
+                (int) $entry['stake_rp']
+            );
+        }
+        return;
+    }
+
+    $pool_payout_game = raidlands_rewards_pool_game_for_source($source_type, 'payout');
+
+    if ($pool_payout_game !== null && raidlands_rewards_pool_backend_ready((string) $pool_payout_game['key'])) {
+        $entry = raidlands_db_fetch_one('SELECT * FROM rp_pool_entries WHERE id = :id LIMIT 1', ['id' => $source_id]);
+        $entry_status = $status === 'confirmed' ? 'paid' : 'failed';
+        $update = $pdo->prepare(
+            'UPDATE rp_pool_entries
+             SET status = :status,
+                 message = :message,
+                 updated_at = NOW()
+             WHERE id = :id'
+        );
+        $update->execute([
+            'status' => $entry_status,
+            'message' => $message !== '' ? $message : ($status === 'confirmed' ? 'Pool payout confirmed by the Rust server.' : 'Pool payout was not confirmed.'),
+            'id' => $source_id,
+        ]);
+
+        if ($entry !== null) {
+            raidlands_rewards_refresh_pool_round_status($pdo, (int) $entry['round_id']);
+        }
+        return;
+    }
+
     if ($source_type === 'jackpot_payout') {
         $update = $pdo->prepare(
             'UPDATE rp_jackpot_rounds
@@ -2208,6 +3136,8 @@ function raidlands_rewards_admin_save_game_settings(array $post): void
         'jackpot_max_entries_per_player = :jackpot_max_entries_per_player',
         'jackpot_round_minutes = :jackpot_round_minutes',
         'jackpot_house_edge_percent = :jackpot_house_edge_percent',
+        'pool_round_minutes = :pool_round_minutes',
+        'pool_house_edge_percent = :pool_house_edge_percent',
         'daily_wager_cap_rp = :daily_wager_cap_rp',
         'daily_loss_cap_rp = :daily_loss_cap_rp',
         'self_exclusion_enabled = :self_exclusion_enabled',
@@ -2227,6 +3157,8 @@ function raidlands_rewards_admin_save_game_settings(array $post): void
         'jackpot_max_entries_per_player' => raidlands_rewards_limit_int($post['jackpot_max_entries_per_player'] ?? 10, 1, 10000, 10),
         'jackpot_round_minutes' => raidlands_rewards_limit_int($post['jackpot_round_minutes'] ?? 30, 5, 1440, 30),
         'jackpot_house_edge_percent' => raidlands_rewards_limit_int($post['jackpot_house_edge_percent'] ?? 10, 0, 50, 10),
+        'pool_round_minutes' => raidlands_rewards_limit_int($post['pool_round_minutes'] ?? 20, 5, 1440, 20),
+        'pool_house_edge_percent' => raidlands_rewards_limit_int($post['pool_house_edge_percent'] ?? 8, 0, 50, 8),
         'daily_wager_cap_rp' => raidlands_rewards_limit_int($post['daily_wager_cap_rp'] ?? 10000, 0, 100000000, 10000),
         'daily_loss_cap_rp' => raidlands_rewards_limit_int($post['daily_loss_cap_rp'] ?? 5000, 0, 100000000, 5000),
         'self_exclusion_enabled' => raidlands_rewards_bool($post['self_exclusion_enabled'] ?? null),
@@ -2241,6 +3173,26 @@ function raidlands_rewards_admin_save_game_settings(array $post): void
     if (raidlands_store_table_has_columns('rp_game_settings', ['wheel_enabled'])) {
         $set[] = 'wheel_enabled = :wheel_enabled';
         $params['wheel_enabled'] = raidlands_rewards_bool($post['wheel_enabled'] ?? null);
+    }
+
+    if (raidlands_store_table_has_columns('rp_game_settings', ['raid_duel_enabled'])) {
+        $set[] = 'raid_duel_enabled = :raid_duel_enabled';
+        $params['raid_duel_enabled'] = raidlands_rewards_bool($post['raid_duel_enabled'] ?? null);
+    }
+
+    if (raidlands_store_table_has_columns('rp_game_settings', ['supply_run_enabled'])) {
+        $set[] = 'supply_run_enabled = :supply_run_enabled';
+        $params['supply_run_enabled'] = raidlands_rewards_bool($post['supply_run_enabled'] ?? null);
+    }
+
+    if (!raidlands_store_table_has_columns('rp_game_settings', ['pool_round_minutes'])) {
+        $set = array_values(array_filter($set, static fn (string $item): bool => $item !== 'pool_round_minutes = :pool_round_minutes'));
+        unset($params['pool_round_minutes']);
+    }
+
+    if (!raidlands_store_table_has_columns('rp_game_settings', ['pool_house_edge_percent'])) {
+        $set = array_values(array_filter($set, static fn (string $item): bool => $item !== 'pool_house_edge_percent = :pool_house_edge_percent'));
+        unset($params['pool_house_edge_percent']);
     }
 
     raidlands_db_execute(
@@ -2265,11 +3217,13 @@ function raidlands_rewards_admin_state(): array
             'recent_requests' => [],
             'recent_game_rounds' => [],
             'recent_jackpots' => [],
+            'recent_pool_rounds' => [],
         ];
     }
 
     raidlands_rewards_seed_defaults();
     raidlands_rewards_run_due_jackpots();
+    raidlands_rewards_run_due_pool_rounds();
 
     return [
         'ready' => true,
@@ -2279,6 +3233,7 @@ function raidlands_rewards_admin_state(): array
         'recent_requests' => raidlands_rewards_recent_point_requests(20),
         'recent_game_rounds' => raidlands_rewards_recent_game_rounds(0, 12),
         'recent_jackpots' => raidlands_rewards_recent_jackpot_rounds(10),
+        'recent_pool_rounds' => raidlands_rewards_recent_pool_rounds(10),
     ];
 }
 

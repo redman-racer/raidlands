@@ -8,7 +8,7 @@
     <h2>Connected Accounts</h2>
     <p>Steam connection may store your Steam account ID, display name, avatar, and profile link. Discord connection may store your Discord user ID, username, avatar, server membership status, and when it was connected.</p>
     <h2>Analytics</h2>
-    <p>The website is prepared to track basic site events such as join clicks, copied commands, Discord joins, account connection starts, and page views. Do not enable third-party analytics until the provider is named here.</p>
+    <p>The website may track basic site events such as join clicks, copied commands, Discord joins, account connection starts, and page views. When you are signed in with Steam, Raidlands may also store first-party browser diagnostics for loader and animation troubleshooting, including page path, viewport size, reduced-motion status, mobile performance mode, loader state, user agent, and timing/error signals. Do not enable third-party analytics until the provider is named here.</p>
     <h2>Support and Moderation</h2>
     <p>Reports, appeals, and tickets may include account identifiers, messages, screenshots, timestamps, and staff decisions. These records help enforce server rules and handle appeals.</p>
     <h2>Contact</h2>

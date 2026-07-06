@@ -42,17 +42,18 @@ $admin_sections_all = [
     'feedback' => ['label' => 'Feedback', 'kicker' => 'Inbox', 'title' => 'Player Feedback', 'summary' => 'Bug reports, suggestions, and feature requests submitted from the support page.'],
     'store' => ['label' => 'Store', 'kicker' => 'Offers', 'title' => 'Products and Prices', 'summary' => 'Kit bundles, individual kits, standalone perks, RP offers, Stripe Price IDs, and managed access groups.'],
     'vote-rewards' => ['label' => 'Vote Rewards', 'kicker' => 'Rewards', 'title' => 'Vote Reward Sites', 'summary' => 'Manage public vote links, cooldowns, rewards, callback tokens, and verification mode.'],
-    'rp-games' => ['label' => 'RP Games', 'kicker' => 'Rewards', 'title' => 'RP Games', 'summary' => 'Manage coinflip, dice, jackpot, daily limits, and reward-game queue state.'],
+    'rp-games' => ['label' => 'RP Games', 'kicker' => 'Rewards', 'title' => 'RP Games', 'summary' => 'Manage coinflip, dice, jackpot, multiplayer pools, daily limits, and reward-game queue state.'],
     'kits' => ['label' => 'Kits', 'kicker' => 'Loadouts', 'title' => 'Kit Catalog', 'summary' => 'Rust kit contents, images, cooldowns, uses, RP shop rows, and required Kits plugin permissions.'],
     'groups' => ['label' => 'Groups', 'kicker' => 'Permissions', 'title' => 'Oxide Groups', 'summary' => 'Website-owned group permissions, live snapshots, and bridge-published revisions.'],
     'grants' => ['label' => 'Player Access', 'kicker' => 'Access', 'title' => 'Player Access', 'summary' => 'Load a SteamID64, grant products, add standalone shop groups, and remove website-owned manual access.'],
     'sync' => ['label' => 'Sync', 'kicker' => 'Bridge', 'title' => 'WebsiteVipBridge State', 'summary' => 'Entitlement sync, stats ingest status, and server API endpoints.'],
+    'animations' => ['label' => 'Animations', 'kicker' => 'Diagnostics', 'title' => 'Animation Diagnostics', 'summary' => 'Steam-linked browser diagnostics for loader, motion, and visual-effect startup issues.'],
 ];
 $admin_nav_groups = [
     'site-setup' => ['label' => 'Site Setup', 'sections' => ['identity', 'links']],
     'content' => ['label' => 'Content', 'sections' => ['todo', 'features', 'pages', 'seo', 'feedback']],
     'store-access' => ['label' => 'Store & Access', 'sections' => ['store', 'vote-rewards', 'rp-games', 'kits', 'groups', 'grants']],
-    'server-ops' => ['label' => 'Server Ops', 'sections' => ['wipe', 'sync']],
+    'server-ops' => ['label' => 'Server Ops', 'sections' => ['wipe', 'sync', 'animations']],
 ];
 $admin_sections = $admin_sections_all;
 
@@ -202,9 +203,26 @@ $admin_rewards_state = [
     'recent_requests' => [],
     'recent_game_rounds' => [],
     'recent_jackpots' => [],
+    'recent_pool_rounds' => [],
 ];
 $admin_rewards_ready = false;
 $admin_rewards_error = '';
+$admin_animation_state = [
+    'ready' => false,
+    'message' => '',
+    'events' => [],
+    'players' => [],
+    'summary' => [
+        'event_count' => 0,
+        'player_count' => 0,
+        'session_count' => 0,
+        'last_seen_at' => null,
+        'loader_skipped_count' => 0,
+        'effects_start_count' => 0,
+        'reduced_motion_count' => 0,
+        'mobile_performance_count' => 0,
+    ],
+];
 
 try {
     $admin_store_ready = raidlands_db_is_configured() && raidlands_db() instanceof PDO;
@@ -259,6 +277,10 @@ try {
             $admin_sync_rows = raidlands_store_recent_sync_rows(30);
             $admin_stats_summary = raidlands_stats_admin_summary();
         }
+    }
+
+    if ($active_section === 'animations') {
+        $admin_animation_state = raidlands_animation_diagnostics_admin_state();
     }
 
     if ($active_section === 'todo') {
@@ -344,6 +366,8 @@ try {
     $admin_permissions_error = $error->getMessage();
     $admin_rewards_ready = false;
     $admin_rewards_error = $error->getMessage();
+    $admin_animation_state['ready'] = false;
+    $admin_animation_state['message'] = $error->getMessage();
 }
 
 function admin_page_label(string $key): string
@@ -381,6 +405,20 @@ function admin_check_copy(string $label, string $help): string
 function admin_hint(string $text): string
 {
     return '<small class="admin-inline-hint">' . e($text) . '</small>';
+}
+
+function admin_diag_flag($value, string $yes = 'Yes', string $no = 'No'): string
+{
+    if ($value === null || $value === '') {
+        return 'Unknown';
+    }
+
+    return (int) $value === 1 ? $yes : $no;
+}
+
+function admin_diag_json(array $value): string
+{
+    return json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: '{}';
 }
 
 function admin_permission_status_guide(): string
@@ -3195,6 +3233,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                       $recent_point_requests = (array) ($admin_rewards_state['recent_requests'] ?? []);
                       $recent_game_rounds = (array) ($admin_rewards_state['recent_game_rounds'] ?? []);
                       $recent_jackpots = (array) ($admin_rewards_state['recent_jackpots'] ?? []);
+                      $recent_pool_rounds = (array) ($admin_rewards_state['recent_pool_rounds'] ?? []);
                     ?>
                     <section class="admin-section">
                       <div class="admin-grid three">
@@ -3221,6 +3260,14 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                         <label class="admin-check admin-check-field">
                           <input type="checkbox" name="wheel_enabled" value="1" <?= !empty($game_settings['wheel_enabled']) ? 'checked' : '' ?> <?= raidlands_rewards_game_backend_ready('wheel') ? '' : 'disabled' ?>>
                           <?= admin_check_copy('Wheel enabled', raidlands_rewards_game_backend_ready('wheel') ? 'Allows players to pick a wheel segment with different odds and payouts.' : 'Run database/migrations/039_more_rp_games.sql before enabling Wheel.') ?>
+                        </label>
+                        <label class="admin-check admin-check-field">
+                          <input type="checkbox" name="raid_duel_enabled" value="1" <?= !empty($game_settings['raid_duel_enabled']) ? 'checked' : '' ?> <?= raidlands_rewards_game_backend_ready('raid_duel') ? '' : 'disabled' ?>>
+                          <?= admin_check_copy('Raid Duel enabled', raidlands_rewards_game_backend_ready('raid_duel') ? 'Allows players to join the PvP raiders-vs-defenders pool.' : 'Run database/migrations/040_multiplayer_rp_games.sql before enabling Raid Duel.') ?>
+                        </label>
+                        <label class="admin-check admin-check-field">
+                          <input type="checkbox" name="supply_run_enabled" value="1" <?= !empty($game_settings['supply_run_enabled']) ? 'checked' : '' ?> <?= raidlands_rewards_game_backend_ready('supply_run') ? '' : 'disabled' ?>>
+                          <?= admin_check_copy('Supply Run enabled', raidlands_rewards_game_backend_ready('supply_run') ? 'Allows players to join the PvE route pool.' : 'Run database/migrations/040_multiplayer_rp_games.sql before enabling Supply Run.') ?>
                         </label>
                         <label class="admin-check admin-check-field">
                           <input type="checkbox" name="self_exclusion_enabled" value="1" <?= !empty($game_settings['self_exclusion_enabled']) ? 'checked' : '' ?>>
@@ -3253,7 +3300,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                           <input type="number" min="100" max="1000" name="coinflip_payout_multiplier_basis" value="<?= e((string) ($game_settings['coinflip_payout_multiplier_basis'] ?? 200)) ?>">
                         </label>
                         <label class="admin-field">
-                          <?= admin_field_head('Dice win chance %', 'Chance to win a dice roll. The public page shows the threshold.') ?>
+                          <?= admin_field_head('Dice win chance %', 'Maps to the nearest six-sided die target. The default 45% displays as roll 4-6.') ?>
                           <input type="number" min="1" max="95" name="dice_win_chance_percent" value="<?= e((string) ($game_settings['dice_win_chance_percent'] ?? 45)) ?>">
                         </label>
                         <label class="admin-field">
@@ -3278,6 +3325,14 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                         <label class="admin-field">
                           <?= admin_field_head('House edge %', 'Percent of confirmed jackpot pot burned before payout.') ?>
                           <input type="number" min="0" max="50" name="jackpot_house_edge_percent" value="<?= e((string) ($game_settings['jackpot_house_edge_percent'] ?? 10)) ?>">
+                        </label>
+                        <label class="admin-field">
+                          <?= admin_field_head('Pool round minutes', 'How long new Raid Duel and Supply Run rounds stay open.') ?>
+                          <input type="number" min="5" max="1440" name="pool_round_minutes" value="<?= e((string) ($game_settings['pool_round_minutes'] ?? 20)) ?>">
+                        </label>
+                        <label class="admin-field">
+                          <?= admin_field_head('Pool house edge %', 'Percent of confirmed multiplayer pool stake withheld before winner payouts.') ?>
+                          <input type="number" min="0" max="50" name="pool_house_edge_percent" value="<?= e((string) ($game_settings['pool_house_edge_percent'] ?? 8)) ?>">
                         </label>
                       </div>
 
@@ -3334,6 +3389,32 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                       <td><code><?= e((string) $jackpot_row['round_key']) ?></code></td>
                                       <td><?= e(raidlands_store_rp((int) $jackpot_row['pot_rp'])) ?></td>
                                       <td><span class="status-pill <?= e((string) $jackpot_row['status']) ?>"><?= e((string) $jackpot_row['status']) ?></span></td>
+                                    </tr>
+                                  <?php endforeach; ?>
+                                </tbody>
+                              </table>
+                            </div>
+                          <?php endif; ?>
+                        </div>
+                        <div class="metal-panel">
+                          <p class="section-kicker">Recent pool rounds</p>
+                          <h3><?= e((string) count($recent_pool_rounds)) ?> rounds</h3>
+                          <?php if ($recent_pool_rounds !== []) : ?>
+                            <div class="store-table-wrap">
+                              <table class="store-table">
+                                <thead>
+                                  <tr>
+                                    <th>Game</th>
+                                    <th>Stake</th>
+                                    <th>Status</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  <?php foreach (array_slice($recent_pool_rounds, 0, 8) as $pool_row) : ?>
+                                    <tr>
+                                      <td><code><?= e((string) $pool_row['round_key']) ?></code><br><small><?= e(ucwords(str_replace('_', ' ', (string) $pool_row['game_type']))) ?></small></td>
+                                      <td><?= e(raidlands_store_rp((int) $pool_row['total_stake_rp'])) ?></td>
+                                      <td><span class="status-pill <?= e((string) $pool_row['status']) ?>"><?= e((string) $pool_row['status']) ?></span></td>
                                     </tr>
                                   <?php endforeach; ?>
                                 </tbody>
@@ -4800,6 +4881,140 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                   </section>
                 <?php endif; ?>
 
+                <?php if ($active_section === 'animations') : ?>
+                  <section class="admin-section">
+                    <?php if (empty($admin_animation_state['ready'])) : ?>
+                      <div class="admin-alert warning"><?= e((string) ($admin_animation_state['message'] ?: 'Animation diagnostics are not ready yet.')) ?></div>
+                    <?php else : ?>
+                      <?php $animation_summary = (array) ($admin_animation_state['summary'] ?? []); ?>
+                      <div class="admin-grid three">
+                        <div class="metal-panel">
+                          <p class="section-kicker">Last 14 days</p>
+                          <h3><?= e((string) ($animation_summary['event_count'] ?? 0)) ?></h3>
+                          <p class="store-muted">diagnostic events</p>
+                        </div>
+                        <div class="metal-panel">
+                          <p class="section-kicker">Steam-linked players</p>
+                          <h3><?= e((string) ($animation_summary['player_count'] ?? 0)) ?></h3>
+                          <p class="store-muted"><?= e((string) ($animation_summary['session_count'] ?? 0)) ?> browser sessions</p>
+                        </div>
+                        <div class="metal-panel">
+                          <p class="section-kicker">Last seen</p>
+                          <h3><?= e((string) (($animation_summary['last_seen_at'] ?? '') ?: 'Waiting')) ?></h3>
+                          <p class="store-muted"><?= e((string) ($animation_summary['loader_skipped_count'] ?? 0)) ?> loader skips / <?= e((string) ($animation_summary['effects_start_count'] ?? 0)) ?> effect starts</p>
+                        </div>
+                      </div>
+                    <?php endif; ?>
+                  </section>
+
+                  <?php if (!empty($admin_animation_state['ready'])) : ?>
+                    <section class="admin-section">
+                      <div class="admin-subsection-head">
+                        <h3>Player signals</h3>
+                        <p>Use this to spot owner-specific patterns like reduced motion, mobile-lite mode, repeated loader skips, or effects never starting.</p>
+                      </div>
+                      <?php if (empty($admin_animation_state['players'])) : ?>
+                        <div class="admin-alert warning">No logged-in Steam users have posted animation diagnostics yet.</div>
+                      <?php else : ?>
+                        <div class="store-table-wrap">
+                          <table class="store-table">
+                            <thead>
+                              <tr>
+                                <th>SteamID64</th>
+                                <th>Events</th>
+                                <th>Sessions</th>
+                                <th>Motion flags</th>
+                                <th>Loader / effects</th>
+                                <th>Last seen</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <?php foreach ((array) $admin_animation_state['players'] as $player_row) : ?>
+                                <tr>
+                                  <td><code><?= e((string) ($player_row['steam_id64'] ?? '')) ?></code></td>
+                                  <td><?= e((string) ($player_row['event_count'] ?? 0)) ?></td>
+                                  <td><?= e((string) ($player_row['session_count'] ?? 0)) ?></td>
+                                  <td>
+                                    <span>Reduced: <?= e(admin_diag_flag($player_row['ever_reduced_motion'] ?? null)) ?></span><br>
+                                    <span>Mobile-lite: <?= e(admin_diag_flag($player_row['ever_mobile_performance'] ?? null)) ?></span>
+                                  </td>
+                                  <td>
+                                    <span>Skipped <?= e((string) ($player_row['loader_skipped_count'] ?? 0)) ?></span><br>
+                                    <span>Started <?= e((string) ($player_row['effects_start_count'] ?? 0)) ?> / Errors <?= e((string) ($player_row['error_count'] ?? 0)) ?></span>
+                                  </td>
+                                  <td><?= e((string) ($player_row['last_seen_at'] ?? '')) ?></td>
+                                </tr>
+                              <?php endforeach; ?>
+                            </tbody>
+                          </table>
+                        </div>
+                      <?php endif; ?>
+                    </section>
+
+                    <section class="admin-section">
+                      <div class="admin-subsection-head">
+                        <h3>Recent events</h3>
+                        <p>Each row is attached to the verified Steam session on the server, not a client-submitted SteamID.</p>
+                      </div>
+                      <?php if (empty($admin_animation_state['events'])) : ?>
+                        <div class="admin-alert warning">No animation diagnostic events have been recorded yet.</div>
+                      <?php else : ?>
+                        <div class="store-table-wrap">
+                          <table class="store-table">
+                            <thead>
+                              <tr>
+                                <th>Time</th>
+                                <th>SteamID64</th>
+                                <th>Event</th>
+                                <th>Page</th>
+                                <th>Signals</th>
+                                <th>Details</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <?php foreach ((array) $admin_animation_state['events'] as $event_row) : ?>
+                                <?php
+                                  $event_details = is_array($event_row['details'] ?? null) ? $event_row['details'] : [];
+                                  $viewport = ((int) ($event_row['viewport_width'] ?? 0)) . 'x' . ((int) ($event_row['viewport_height'] ?? 0));
+                                  $page_url = trim((string) ($event_row['page_url'] ?? ''));
+                                  $referrer_url = trim((string) ($event_row['referrer_url'] ?? ''));
+                                  $user_agent = trim((string) ($event_row['user_agent'] ?? ''));
+                                ?>
+                                <tr>
+                                  <td><?= e((string) ($event_row['created_at'] ?? '')) ?></td>
+                                  <td><code><?= e((string) ($event_row['steam_id64'] ?? '')) ?></code></td>
+                                  <td><code><?= e((string) ($event_row['event_type'] ?? '')) ?></code></td>
+                                  <td><?= e((string) ($event_row['page_id'] ?? '')) ?></td>
+                                  <td>
+                                    <span><?= e($viewport) ?> @ <?= e((string) ($event_row['device_pixel_ratio'] ?? '1')) ?>x</span><br>
+                                    <span>Reduced <?= e(admin_diag_flag($event_row['reduced_motion'] ?? null)) ?> / Mobile <?= e(admin_diag_flag($event_row['mobile_performance'] ?? null)) ?></span><br>
+                                    <span>Loader show <?= e(admin_diag_flag($event_row['loader_should_show'] ?? null)) ?></span>
+                                  </td>
+                                  <td>
+                                    <details class="admin-details admin-diagnostic-details">
+                                      <summary>
+                                        Inspect
+                                        <small><?= e($user_agent !== '' ? mb_substr($user_agent, 0, 80) : 'No user agent') ?></small>
+                                      </summary>
+                                      <?php if ($page_url !== '') : ?>
+                                        <p class="store-muted">URL: <code><?= e($page_url) ?></code></p>
+                                      <?php endif; ?>
+                                      <?php if ($referrer_url !== '') : ?>
+                                        <p class="store-muted">Referrer: <code><?= e($referrer_url) ?></code></p>
+                                      <?php endif; ?>
+                                      <pre class="admin-json-pre"><?= e(admin_diag_json($event_details)) ?></pre>
+                                    </details>
+                                  </td>
+                                </tr>
+                              <?php endforeach; ?>
+                            </tbody>
+                          </table>
+                        </div>
+                      <?php endif; ?>
+                    </section>
+                  <?php endif; ?>
+                <?php endif; ?>
+
                 <?php if ($active_section === 'sync') : ?>
                   <section class="admin-section">
                     <div class="admin-grid two">
@@ -5001,6 +5216,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                     $admin_save_hidden = !$admin_save_allowed
                         || $active_section === 'todo'
                         || $active_section === 'sync'
+                        || $active_section === 'animations'
                         || $active_section === 'grants'
                         || ($active_section === 'feedback' && (!$admin_feedback_ready || $admin_feedback_rows === []))
                         || ($active_section === 'features' && !$admin_features_ready);

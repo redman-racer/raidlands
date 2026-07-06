@@ -498,8 +498,8 @@ $seo_pages = [
         'ogDescription' => 'Vote for Raidlands and claim linked-account RP rewards.',
     ],
     'rp-games' => [
-        'title' => 'Raidlands RP Games | Coinflip, Dice, Jackpot, High-Low, Wheel',
-        'description' => 'Play Raidlands RP coinflip, dice, jackpot, High-Low, and Wheel with in-game ServerRewards RP, clear odds, and server-confirmed point changes.',
+        'title' => 'Raidlands RP Games | Coinflip, Jackpot, Raid Duel, Supply Run',
+        'description' => 'Play Raidlands RP coinflip, dice, jackpot, High-Low, Wheel, Raid Duel, and Supply Run with in-game ServerRewards RP, clear odds, multiplayer pools, and server-confirmed point changes.',
         'ogTitle' => 'Raidlands RP Games',
         'ogDescription' => 'In-game RP games for linked Raidlands players, with clear odds and server-confirmed point changes.',
     ],

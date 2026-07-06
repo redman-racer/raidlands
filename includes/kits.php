@@ -188,6 +188,28 @@ function raidlands_kits_normalize_condition_item(string $shortname, int $amount,
     ];
 }
 
+function raidlands_kits_is_super_serum_shortname(string $shortname): bool
+{
+    $shortname = strtolower(trim($shortname));
+
+    return $shortname === 'supertea' || $shortname === 'maxhealthtea.pure';
+}
+
+function raidlands_kits_normalize_super_serum_item(string $shortname, ?string $display_name): array
+{
+    if (!raidlands_kits_is_super_serum_shortname($shortname)) {
+        return [
+            'shortname' => $shortname,
+            'display_name' => $display_name,
+        ];
+    }
+
+    return [
+        'shortname' => 'supertea',
+        'display_name' => 'Super Serum',
+    ];
+}
+
 function raidlands_kits_clean_permission($value): string
 {
     $permission = strtolower(raidlands_kits_clean_text($value, 160));
@@ -1153,6 +1175,16 @@ function raidlands_kits_save_items(PDO $pdo, int $kit_id, array $item_rows): voi
                 throw new InvalidArgumentException('Item shortnames can only use letters, numbers, dots, dashes, and underscores.');
             }
 
+            $display_name = raidlands_kits_clean_text($row['display_name'] ?? $row['DisplayName'] ?? '', 160) ?: null;
+            $serum_item = raidlands_kits_normalize_super_serum_item($shortname, $display_name);
+            $shortname = $serum_item['shortname'];
+            $display_name = $serum_item['display_name'];
+            $skin = max(0, (int) ($row['skin'] ?? $row['Skin'] ?? $row['SkinID'] ?? 0));
+
+            if (raidlands_kits_is_super_serum_shortname($shortname) && $display_name === 'Super Serum') {
+                $skin = 0;
+            }
+
             $amount = raidlands_kits_int($row['amount'] ?? $row['Amount'] ?? 1, 1, 1000000);
             $condition = raidlands_kits_decimal($row['condition'] ?? $row['Condition'] ?? 0, 0, 1000000);
             $max_condition = raidlands_kits_decimal($row['max_condition'] ?? $row['MaxCondition'] ?? 0, 0, 1000000);
@@ -1163,8 +1195,8 @@ function raidlands_kits_save_items(PDO $pdo, int $kit_id, array $item_rows): voi
                 'container_name' => $container,
                 'position' => raidlands_kits_int($row['position'] ?? $row['Position'] ?? $index, 0, $container === 'main' ? 23 : ($container === 'wear' ? 7 : 5)),
                 'shortname' => $shortname,
-                'display_name' => raidlands_kits_clean_text($row['display_name'] ?? $row['DisplayName'] ?? '', 160) ?: null,
-                'skin' => max(0, (int) ($row['skin'] ?? $row['Skin'] ?? $row['SkinID'] ?? 0)),
+                'display_name' => $display_name,
+                'skin' => $skin,
                 'amount' => $condition_item['amount'],
                 'condition_value' => $condition_item['condition'],
                 'max_condition' => $condition_item['max_condition'],
@@ -1498,6 +1530,16 @@ function raidlands_kits_item_to_rust(array $item): array
         ? json_decode((string) $item['container_json'], true)
         : null;
     $shortname = (string) $item['shortname'];
+    $display_name = $item['display_name'] === null ? null : (string) $item['display_name'];
+    $serum_item = raidlands_kits_normalize_super_serum_item($shortname, $display_name);
+    $shortname = $serum_item['shortname'];
+    $display_name = $serum_item['display_name'];
+    $skin = (int) $item['skin'];
+
+    if (raidlands_kits_is_super_serum_shortname($shortname) && $display_name === 'Super Serum') {
+        $skin = 0;
+    }
+
     $condition_item = raidlands_kits_normalize_condition_item(
         $shortname,
         max(1, (int) $item['amount']),
@@ -1507,8 +1549,8 @@ function raidlands_kits_item_to_rust(array $item): array
 
     return [
         'Shortname' => $shortname,
-        'DisplayName' => $item['display_name'] === null ? null : (string) $item['display_name'],
-        'Skin' => (int) $item['skin'],
+        'DisplayName' => $display_name,
+        'Skin' => $skin,
         'Amount' => $condition_item['amount'],
         'Condition' => $condition_item['condition'],
         'MaxCondition' => $condition_item['max_condition'],

@@ -4,12 +4,22 @@
   const dataNode = document.getElementById("raidlands-loader-data");
   const loaderSession = getLoaderSession();
 
+  recordAnimationDiagnostic("loader_script_start", {
+    hasLoader: Boolean(loader),
+    hasDataNode: Boolean(dataNode),
+    loaderSession
+  });
+
   if (window.__raidlandsLoaderFallback) {
     window.clearTimeout(window.__raidlandsLoaderFallback);
     window.__raidlandsLoaderFallback = null;
   }
 
   if (!loaderSession.shouldShow) {
+    recordAnimationDiagnostic("loader_skipped", {
+      reason: "session",
+      loaderSession
+    });
     root.classList.remove("raidlands-loading", "raidlands-loader-fading");
     if (loader) {
       loader.remove();
@@ -18,6 +28,10 @@
   }
 
   if (!loader || !dataNode) {
+    recordAnimationDiagnostic("loader_missing_markup", {
+      hasLoader: Boolean(loader),
+      hasDataNode: Boolean(dataNode)
+    });
     root.classList.remove("raidlands-loading");
     return;
   }
@@ -49,12 +63,25 @@
   const pageLoadPromise = waitForPageLoad();
   const statusResultPromise = requestServerStatus();
   const explosionAssetsPromise = preloadImageAssets(explosionAssetUrls, explosionAssetTimeoutMs);
+  explosionAssetsPromise.then(result => {
+    recordAnimationDiagnostic("loader_explosion_assets", {
+      mode: mobilePerformance ? "mobile-lite" : "desktop",
+      expected: explosionAssetUrls.length,
+      ...result
+    });
+  });
   let mobileExplosionAssetsReady = false;
   if (mobilePerformance) {
     preloadImageAssets(mobileExplosionAssetUrls, explosionAssetTimeoutMs).then(result => {
       mobileExplosionAssetsReady = mobileExplosionAssetUrls.length > 0
         && result.loaded === mobileExplosionAssetUrls.length
         && result.failed === 0;
+      recordAnimationDiagnostic("loader_explosion_assets", {
+        mode: "mobile",
+        expected: mobileExplosionAssetUrls.length,
+        ready: mobileExplosionAssetsReady,
+        ...result
+      });
 
       return result;
     });
@@ -67,6 +94,17 @@
   const startupPromise = playStartupFlicker();
 
   root.classList.toggle("raidlands-loader-mobile-lite", mobilePerformance);
+  recordAnimationDiagnostic("loader_runtime_config", {
+    reducedMotion,
+    mobilePerformance,
+    startupMs,
+    minVisibleMs,
+    maxVisibleMs,
+    explosionAssetCount: explosionAssetUrls.length,
+    mobileExplosionAssetCount: mobileExplosionAssetUrls.length,
+    hasLoadGate,
+    documentReadyState: document.readyState
+  });
 
   let currentProgress = 0;
   let domReady = document.readyState !== "loading";
@@ -113,6 +151,12 @@
   }, reducedMotion ? 0 : 460);
 
   runLoader().catch(error => {
+    recordAnimationDiagnostic("loader_error", {
+      message: error && error.message ? error.message : String(error || "unknown"),
+      typedLines,
+      expectedLines,
+      currentProgress
+    });
     console.warn("Raidlands loader failed open.", error);
     finishLoader();
   });
@@ -890,6 +934,15 @@
 
     exitStarted = true;
     closed = true;
+    recordAnimationDiagnostic("loader_reveal", {
+      elapsedMs: Math.round(performance.now() - startedAt),
+      typedLines,
+      expectedLines,
+      currentProgress: Math.round(currentProgress),
+      reducedMotion,
+      mobilePerformance,
+      mobileExplosionAssetsReady
+    });
     markLoaderSeen();
     window.clearInterval(progressTimer);
     window.clearTimeout(earlyScopeTimer);
@@ -1049,5 +1102,17 @@
 
   function clamp(value, min, max) {
     return Math.min(max, Math.max(min, value));
+  }
+
+  function recordAnimationDiagnostic(eventType, details = {}) {
+    if (typeof window.__raidlandsRecordAnimationDiagnostic !== "function") {
+      return;
+    }
+
+    try {
+      window.__raidlandsRecordAnimationDiagnostic(eventType, details);
+    } catch (error) {
+      // Diagnostics should never affect the loading experience.
+    }
   }
 })();

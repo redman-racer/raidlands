@@ -5101,6 +5101,31 @@ a.leaderboard-steam:hover,
   margin: 0 16px 14px;
 }
 
+.admin-diagnostic-details {
+  min-width: min(100%, 320px);
+}
+
+.admin-diagnostic-details p {
+  margin: 0 16px 10px;
+}
+
+.admin-json-pre {
+  max-width: min(72vw, 760px);
+  max-height: 340px;
+  margin: 0 16px 16px;
+  padding: 12px;
+  overflow: auto;
+  border: 1px solid rgba(181, 170, 160, .2);
+  border-radius: var(--radius);
+  background: rgba(0, 0, 0, .34);
+  color: var(--muted);
+  font-family: Consolas, "Courier New", monospace;
+  font-size: .78rem;
+  line-height: 1.45;
+  white-space: pre-wrap;
+  overflow-wrap: anywhere;
+}
+
 .admin-group-edit-status {
   margin: 0 16px 16px;
   padding: 12px 14px;
@@ -9538,6 +9563,190 @@ button.admin-permission-chip:focus-visible {
   animation: rp-result-pop .64s ease both;
 }
 
+.rp-pool-machine {
+  grid-template-columns: repeat(auto-fit, minmax(112px, 1fr));
+  gap: 12px;
+  padding: 18px;
+}
+
+.rp-pool-machine span {
+  min-height: 116px;
+  display: grid;
+  place-items: center;
+  padding: 12px;
+  border: 1px solid rgba(181, 170, 160, .2);
+  border-radius: 4px;
+  color: var(--white);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .04), rgba(0, 0, 0, .18)),
+    rgba(0, 0, 0, .22);
+  font-family: var(--font-display);
+  font-size: clamp(1.05rem, 3vw, 1.5rem);
+  line-height: 1;
+  text-align: center;
+  text-transform: uppercase;
+  box-shadow: inset 0 0 0 1px rgba(243, 238, 227, .04);
+}
+
+.raid-duel-machine span:first-child {
+  border-color: rgba(255, 90, 64, .42);
+  background: linear-gradient(180deg, rgba(255, 90, 64, .16), rgba(0, 0, 0, .18));
+}
+
+.raid-duel-machine span:last-child {
+  border-color: rgba(124, 255, 107, .36);
+  background: linear-gradient(180deg, rgba(124, 255, 107, .12), rgba(0, 0, 0, .18));
+}
+
+.supply-run-machine span {
+  border-color: rgba(118, 187, 255, .28);
+}
+
+.rp-pool-board {
+  margin-top: 18px;
+  padding: 16px;
+  border: 1px solid rgba(181, 170, 160, .16);
+  border-radius: var(--radius);
+  background:
+    var(--console-scan) center / 260px repeat,
+    rgba(0, 0, 0, .22);
+}
+
+.rp-pool-board-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+  align-items: baseline;
+  margin-bottom: 12px;
+  color: var(--muted);
+  font-size: .8rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.rp-pool-board-head strong {
+  color: var(--yellow);
+  font-family: var(--font-display);
+  font-size: 1.35rem;
+  line-height: 1;
+}
+
+.rp-pool-options {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+  gap: 10px;
+}
+
+.rp-pool-option {
+  position: relative;
+  min-height: 88px;
+  display: grid;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(181, 170, 160, .16);
+  border-radius: 4px;
+  overflow: hidden;
+  background: rgba(0, 0, 0, .22);
+}
+
+.rp-pool-option span {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  justify-content: space-between;
+  gap: 10px;
+}
+
+.rp-pool-option strong,
+.rp-pool-option small,
+.rp-pool-option em {
+  position: relative;
+  z-index: 1;
+}
+
+.rp-pool-option strong {
+  color: var(--white);
+  font-family: var(--font-display);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.rp-pool-option small {
+  color: var(--muted);
+  font-size: .72rem;
+  font-weight: 900;
+  text-align: right;
+  text-transform: uppercase;
+}
+
+.rp-pool-option em {
+  color: var(--yellow);
+  font-style: normal;
+  font-weight: 900;
+}
+
+.rp-pool-option i {
+  position: absolute;
+  right: auto;
+  bottom: 0;
+  left: 0;
+  width: var(--pool-share, 0%);
+  height: 4px;
+  background: linear-gradient(90deg, var(--orange), var(--yellow));
+  box-shadow: 0 0 18px rgba(255, 138, 40, .28);
+}
+
+.rp-pool-feed {
+  display: grid;
+  gap: 10px;
+  margin-top: 14px;
+}
+
+.rp-pool-feed > strong {
+  color: var(--white);
+  font-size: .82rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.rp-pool-feed-list {
+  display: grid;
+  gap: 8px;
+}
+
+.rp-pool-feed-row {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto auto;
+  gap: 10px;
+  align-items: center;
+  padding: 8px 10px;
+  border: 1px solid rgba(181, 170, 160, .12);
+  border-radius: 4px;
+  color: var(--muted);
+  background: rgba(0, 0, 0, .2);
+  font-size: .78rem;
+  font-weight: 900;
+}
+
+.rp-pool-feed-row strong,
+.rp-pool-feed-row em,
+.rp-pool-feed-row small {
+  min-width: 0;
+}
+
+.rp-pool-feed-row strong {
+  color: var(--white);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.rp-pool-feed-row em {
+  color: var(--yellow);
+  font-style: normal;
+  text-transform: uppercase;
+}
+
 .rp-game-panel.is-spinning .coin-strip {
   animation: rp-coin-strip 1.05s steps(15) infinite;
 }
@@ -9964,12 +10173,32 @@ button.admin-permission-chip:focus-visible {
   }
 
   .high-low-machine,
-  .rp-wheel-odds {
+  .rp-wheel-odds,
+  .rp-pool-options {
     grid-template-columns: 1fr;
   }
 
   .high-low-machine strong {
     min-height: 52px;
+  }
+
+  .rp-pool-board-head,
+  .rp-pool-option span,
+  .rp-pool-feed-row {
+    grid-template-columns: 1fr;
+    align-items: start;
+  }
+
+  .rp-pool-board-head {
+    display: grid;
+  }
+
+  .rp-pool-option span {
+    display: grid;
+  }
+
+  .rp-pool-option small {
+    text-align: left;
   }
 
   .admin-body .admin-kit-picker-controls,
