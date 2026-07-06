@@ -9297,6 +9297,21 @@ button.admin-permission-chip:focus-visible {
   perspective: 700px;
 }
 
+.coin-strip {
+  width: clamp(138px, 24vw, 188px);
+  aspect-ratio: 188 / 217;
+  display: block;
+  background-image: image-set(
+    url("../media/rp-games/rp-coin-strip.webp") type("image/webp"),
+    url("../media/rp-games/rp-coin-strip.png") type("image/png")
+  );
+  background-repeat: no-repeat;
+  background-position: 0 50%;
+  background-size: 600% 100%;
+  filter: drop-shadow(0 0 28px rgba(255, 138, 40, .42));
+  animation: rp-coin-strip 1.25s steps(5) infinite;
+}
+
 .coin-face {
   grid-area: 1 / 1;
   width: 112px;
@@ -9323,9 +9338,20 @@ button.admin-permission-chip:focus-visible {
 }
 
 .dice-machine {
-  grid-template-columns: repeat(3, 30px);
-  grid-template-rows: repeat(3, 30px);
-  gap: 18px;
+  display: grid;
+  place-items: center;
+}
+
+.dice-machine picture,
+.dice-machine img {
+  display: block;
+}
+
+.dice-machine img {
+  width: min(82%, 340px);
+  height: auto;
+  filter: drop-shadow(0 0 26px rgba(255, 138, 40, .34));
+  animation: rp-dice-float 3.2s ease-in-out infinite;
 }
 
 .dice-machine span {
@@ -9450,18 +9476,19 @@ button.admin-permission-chip:focus-visible {
 
 .wheel-machine span {
   position: relative;
-  width: 166px;
-  height: 166px;
-  border: 5px solid rgba(243, 238, 227, .15);
+  width: clamp(168px, 36vw, 216px);
+  aspect-ratio: 1;
+  border: 0;
   border-radius: 50%;
-  background:
-    conic-gradient(
-      var(--green) 0deg 18deg,
-      var(--orange) 18deg 90deg,
-      #97a4ad 90deg 216deg,
-      #3e464d 216deg 360deg
-    );
-  box-shadow: 0 0 38px rgba(255, 138, 40, .28), inset 0 0 0 12px rgba(0, 0, 0, .28);
+  background-image: image-set(
+    url("../media/rp-games/rp-wheel.webp") type("image/webp"),
+    url("../media/rp-games/rp-wheel.png") type("image/png")
+  );
+  background-position: center;
+  background-repeat: no-repeat;
+  background-size: contain;
+  box-shadow: none;
+  filter: drop-shadow(0 0 34px rgba(255, 138, 40, .34));
   animation: rp-wheel-turn 7s cubic-bezier(.48, .02, .24, 1) infinite;
 }
 
@@ -9506,10 +9533,12 @@ button.admin-permission-chip:focus-visible {
   border-color: rgba(86, 97, 106, .42);
 }
 
+.rp-game-panel.is-spinning .coin-strip,
 .rp-game-panel.is-spinning .coin-face {
   animation-duration: .52s;
 }
 
+.rp-game-panel.is-spinning .dice-machine img,
 .rp-game-panel.is-spinning .dice-machine span {
   animation-duration: .42s;
 }
@@ -9571,6 +9600,27 @@ button.admin-permission-chip:focus-visible {
   }
 }
 
+@keyframes rp-coin-strip {
+  from {
+    background-position: 0 50%;
+  }
+
+  to {
+    background-position: 100% 50%;
+  }
+}
+
+@keyframes rp-dice-float {
+  0%,
+  100% {
+    transform: translateY(0) rotate(-2deg);
+  }
+
+  50% {
+    transform: translateY(-10px) rotate(2deg);
+  }
+}
+
 @keyframes rp-dice-pip {
   0%,
   100% {
@@ -9624,7 +9674,9 @@ button.admin-permission-chip:focus-visible {
 @media (prefers-reduced-motion: reduce) {
   .rp-game-panel.is-active,
   .rp-game-machine::after,
+  .coin-strip,
   .coin-face,
+  .dice-machine img,
   .dice-machine span,
   .jackpot-machine span,
   .high-low-machine span,

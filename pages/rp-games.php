@@ -146,8 +146,7 @@ $rp_game_tabs = [
               <h2>Coinflip</h2>
               <p class="section-lede">Pick heads or tails. Wins pay <?= e(number_format(((int) ($settings['coinflip_payout_multiplier_basis'] ?? 200)) / 100, 2)) ?>x gross before server confirmation.</p>
               <div class="rp-game-machine coin-machine" aria-hidden="true">
-                <span class="coin-face heads">H</span>
-                <span class="coin-face tails">T</span>
+                <span class="coin-strip"></span>
               </div>
             </div>
             <form class="feedback-form rp-game-form" method="post" action="<?= e(route_url('rp-games')) ?>" data-rp-game-form="coinflip">
@@ -176,7 +175,10 @@ $rp_game_tabs = [
               <h2>Dice</h2>
               <p class="section-lede">Roll <?= e((string) $dice_threshold) ?> or higher on a 1-100 die. Wins pay <?= e(number_format(((int) ($settings['dice_payout_multiplier_basis'] ?? 200)) / 100, 2)) ?>x gross.</p>
               <div class="rp-game-machine dice-machine" aria-hidden="true">
-                <span></span><span></span><span></span><span></span><span></span>
+                <picture>
+                  <source srcset="<?= e(asset_url('media/rp-games/rp-dice.webp')) ?>" type="image/webp">
+                  <img src="<?= e(asset_url('media/rp-games/rp-dice.png')) ?>" alt="" loading="lazy" decoding="async">
+                </picture>
               </div>
             </div>
             <form class="feedback-form rp-game-form" method="post" action="<?= e(route_url('rp-games')) ?>" data-rp-game-form="dice">
