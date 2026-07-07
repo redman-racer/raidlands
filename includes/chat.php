@@ -757,12 +757,12 @@ function render_raidlands_chat_widget(?array $player = null): string
     $linked = is_array($player) && raidlands_store_validate_steam_id64(raidlands_store_normalize_steam_id64($player['steam_id64'] ?? ''));
     $display_name = $linked ? raidlands_chat_player_display_name($player) : '';
 
-    return '<div class="chat-widget" data-chat-widget data-chat-open="false">'
+    return '<div class="chat-widget" data-chat-widget data-chat-open="false" data-chat-has-unread="false">'
         . '<button class="chat-launcher" type="button" data-chat-toggle aria-expanded="false" aria-controls="raidlands-chat-panel">'
         . render_feature_symbol('CHAT')
         . '<span class="chat-launcher-copy"><strong>Chat</strong><small>Public Lobby</small></span>'
-        . '<span class="chat-unread" data-chat-unread hidden>0</span>'
         . '</button>'
+        . '<span class="chat-unread" data-chat-unread hidden role="status" aria-live="polite">0</span>'
         . '<section class="chat-panel" id="raidlands-chat-panel" data-chat-panel hidden aria-label="Raidlands public chat">'
         . '<header class="chat-panel-head">'
         . '<div><p class="section-kicker">Public lobby</p><h2>Raidlands Chat</h2></div>'

@@ -358,10 +358,18 @@
     if (!unreadNode) return;
 
     const count = Math.max(0, Number(unreadCount) || 0);
-    unreadNode.hidden = count <= 0;
-    unreadNode.toggleAttribute("hidden", count <= 0);
-    unreadNode.textContent = count > 0 ? String(count) : "";
-    unreadNode.setAttribute("aria-label", count === 1 ? "1 unread chat message" : `${count} unread chat messages`);
+    const hasUnread = count > 0;
+    const label = count === 1 ? "1 unread chat message" : `${count} unread chat messages`;
+
+    root.dataset.chatHasUnread = hasUnread ? "true" : "false";
+    unreadNode.hidden = !hasUnread;
+    unreadNode.toggleAttribute("hidden", !hasUnread);
+    unreadNode.textContent = count > 9 ? "9+" : String(count);
+    unreadNode.setAttribute("aria-label", label);
+
+    if (launcher) {
+      launcher.title = hasUnread ? label : "Open Raidlands public lobby chat";
+    }
   }
 
   function syncReadState(messages) {

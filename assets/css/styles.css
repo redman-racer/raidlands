@@ -3812,7 +3812,7 @@ a.leaderboard-steam:hover,
 .feedback-chip {
   position: fixed;
   right: 18px;
-  bottom: 88px;
+  bottom: 24px;
   z-index: 90;
   min-width: 164px;
   min-height: 58px;
@@ -3877,17 +3877,17 @@ a.leaderboard-steam:hover,
 .chat-widget {
   position: fixed;
   right: 196px;
-  bottom: 88px;
+  bottom: 24px;
   z-index: 92;
   font-family: var(--font-body);
 }
 
 .chat-launcher {
   position: relative;
-  width: 176px;
-  min-width: 176px;
+  width: 172px;
+  min-width: 172px;
   min-height: 58px;
-  padding: 9px 14px 9px 10px;
+  padding: 8px 13px 8px 9px;
   display: inline-flex;
   align-items: center;
   gap: 10px;
@@ -3928,7 +3928,8 @@ a.leaderboard-steam:hover,
 
 .chat-launcher:hover,
 .chat-launcher:focus-visible,
-.chat-widget[data-chat-open="true"] .chat-launcher {
+.chat-widget[data-chat-open="true"] .chat-launcher,
+.chat-widget[data-chat-has-unread="true"] .chat-launcher {
   border-color: rgba(255, 138, 40, .9);
   outline: none;
   transform: translateY(-2px);
@@ -3941,9 +3942,15 @@ a.leaderboard-steam:hover,
 }
 
 .chat-launcher .feature-symbol {
-  width: 38px;
-  height: 38px;
+  width: 42px;
+  height: 42px;
   flex: 0 0 auto;
+}
+
+.chat-launcher .feature-symbol svg {
+  width: 42px;
+  height: 42px;
+  stroke-width: 3.35;
 }
 
 .chat-launcher-copy {
@@ -3975,19 +3982,41 @@ a.leaderboard-steam:hover,
 
 .chat-unread {
   position: absolute;
-  top: -7px;
-  right: -7px;
-  min-width: 22px;
-  height: 22px;
-  padding: 0 6px;
-  display: inline-grid;
-  place-items: center;
-  border: 1px solid rgba(243, 238, 227, .55);
+  top: -14px;
+  right: -12px;
+  z-index: 3;
+  min-width: 34px;
+  height: 28px;
+  padding: 0 9px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 5px;
+  border: 1px solid rgba(255, 230, 188, .74);
   border-radius: 999px;
-  background: var(--red);
-  color: var(--white);
-  font-size: .74rem;
+  background:
+    radial-gradient(circle at 22% 28%, rgba(255, 255, 255, .42), transparent 2px),
+    linear-gradient(180deg, #ffb13f 0%, #ed5c20 48%, #8d170c 100%);
+  color: #fff7e8;
+  font-family: var(--font-display);
+  font-size: .84rem;
+  font-weight: 900;
   line-height: 1;
+  text-shadow: 0 2px 0 rgba(0, 0, 0, .72);
+  box-shadow:
+    0 0 0 2px rgba(0, 0, 0, .82),
+    0 0 18px rgba(255, 90, 12, .42),
+    inset 0 0 0 1px rgba(255, 255, 255, .18);
+  pointer-events: none;
+}
+
+.chat-unread::before {
+  width: 12px;
+  height: 10px;
+  content: "";
+  border: 2px solid currentColor;
+  border-radius: 7px 7px 7px 2px;
+  box-shadow: 0 0 8px rgba(255, 245, 220, .24);
 }
 
 .chat-unread[hidden] {
@@ -3997,9 +4026,9 @@ a.leaderboard-steam:hover,
 .chat-panel {
   position: fixed;
   right: 18px;
-  bottom: 160px;
+  bottom: 96px;
   width: min(420px, calc(100vw - 36px));
-  max-height: min(640px, calc(100vh - 184px));
+  max-height: min(640px, calc(100vh - 120px));
   display: grid;
   grid-template-rows: auto auto minmax(220px, 1fr) auto;
   overflow: hidden;
@@ -4965,7 +4994,7 @@ a.leaderboard-steam:hover,
 
   .feedback-chip {
     right: 12px;
-    bottom: 76px;
+    bottom: 20px;
     width: 50px;
     min-width: 0;
     min-height: 50px;
@@ -4993,7 +5022,7 @@ a.leaderboard-steam:hover,
 
   .chat-widget {
     right: 74px;
-    bottom: 76px;
+    bottom: 20px;
   }
 
   .chat-launcher {
@@ -5008,6 +5037,26 @@ a.leaderboard-steam:hover,
   .chat-launcher .feature-symbol {
     width: 34px;
     height: 34px;
+  }
+
+  .chat-launcher .feature-symbol svg {
+    width: 34px;
+    height: 34px;
+  }
+
+  .chat-unread {
+    top: -11px;
+    right: -9px;
+    min-width: 28px;
+    height: 24px;
+    padding: 0 7px;
+    font-size: .76rem;
+  }
+
+  .chat-unread::before {
+    width: 10px;
+    height: 8px;
+    border-width: 2px;
   }
 
   .chat-launcher-copy {
@@ -5025,9 +5074,9 @@ a.leaderboard-steam:hover,
   .chat-panel {
     position: fixed;
     right: 8px;
-    bottom: 134px;
+    bottom: 86px;
     width: calc(100vw - 16px);
-    max-height: min(600px, calc(100vh - 156px));
+    max-height: min(600px, calc(100vh - 108px));
   }
 
   .chat-auth-callout,
@@ -5048,7 +5097,7 @@ a.leaderboard-steam:hover,
 
   .feedback-chip {
     right: 10px;
-    bottom: 70px;
+    bottom: 18px;
     width: 46px;
     min-height: 46px;
     padding: 6px;
@@ -5061,7 +5110,7 @@ a.leaderboard-steam:hover,
 
   .chat-widget {
     right: 68px;
-    bottom: 70px;
+    bottom: 18px;
   }
 
   .chat-launcher {
@@ -5071,6 +5120,11 @@ a.leaderboard-steam:hover,
   }
 
   .chat-launcher .feature-symbol {
+    width: 31px;
+    height: 31px;
+  }
+
+  .chat-launcher .feature-symbol svg {
     width: 31px;
     height: 31px;
   }
