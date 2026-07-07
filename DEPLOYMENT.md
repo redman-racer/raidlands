@@ -92,6 +92,12 @@ the host or upload it through a private channel.
    - `RAIDLANDS_CLAN_API_RATE_LIMIT_PER_MINUTE`
    - `RAIDLANDS_SERVER_STATUS_SAMPLE_RETENTION_DAYS`
    - `RAIDLANDS_SERVER_STATUS_HOURLY_RETENTION_MONTHS`
+   - `RAIDLANDS_CHAT_ENABLED`
+   - `RAIDLANDS_CHAT_HISTORY_LIMIT`
+   - `RAIDLANDS_CHAT_RETENTION_DAYS`
+   - `RAIDLANDS_CHAT_RETENTION_ROWS`
+   - `RAIDLANDS_CHAT_MESSAGE_MAX_LENGTH`
+   - `RAIDLANDS_CHAT_COOLDOWN_SECONDS`
 
 3. Install PHP dependencies.
 
@@ -137,6 +143,8 @@ the host or upload it through a private channel.
    - `database/migrations/034_vote_rewards_rp_games.sql`
    - `database/migrations/039_more_rp_games.sql`
    - `database/migrations/040_multiplayer_rp_games.sql`
+   - `database/migrations/041_animation_diagnostics.sql`
+   - `database/migrations/042_public_lobby_chat.sql`
    - `database/seeds/001_store_products.sql`
 
    Then configure RP costs and cash amounts in `/admin/?section=store`. After Stripe keys are present, saving the Store editor automatically creates or updates Raidlands-managed Stripe Products and Prices for active cash offers. You can still paste existing matching `price_...` IDs when they should stay external and unmanaged.

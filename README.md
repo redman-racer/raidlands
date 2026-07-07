@@ -101,11 +101,12 @@ The store uses MySQL as the source of truth, Stripe Checkout for cash purchases,
 29. Run `database/migrations/027_ai_feedback_triage.sql`.
 30. Run `database/migrations/028_ai_feedback_split_suggestions.sql`.
 31. Run `database/migrations/029_admin_todo_snapshots.sql`.
-32. Run `database/seeds/001_store_products.sql`.
-33. Copy `.env.example` to `.env`.
-34. Fill in MySQL, Stripe, Steam API, OpenAI AI triage key if enabled, bridge secret, and clan API limit values.
-35. Add at least one owner SteamID64 to `admin_users` and `admin_user_roles`.
-36. Configure product RP costs and cash offer amounts in `/admin/?section=store`; active cash offers automatically sync Stripe Products and Prices on Store save when the Stripe secret key is set.
+32. Run any later numbered migrations in order through `database/migrations/042_public_lobby_chat.sql`.
+33. Run `database/seeds/001_store_products.sql`.
+34. Copy `.env.example` to `.env`.
+35. Fill in MySQL, Stripe, Steam API, OpenAI AI triage key if enabled, bridge secret, clan API limit values, and chat settings.
+36. Add at least one owner SteamID64 to `admin_users` and `admin_user_roles`.
+37. Configure product RP costs and cash offer amounts in `/admin/?section=store`; active cash offers automatically sync Stripe Products and Prices on Store save when the Stripe secret key is set.
 
 Public store flow:
 

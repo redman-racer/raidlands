@@ -32,9 +32,11 @@
 28. Run `database/migrations/034_vote_rewards_rp_games.sql`.
 29. Run `database/migrations/039_more_rp_games.sql`.
 30. Run `database/migrations/040_multiplayer_rp_games.sql`.
-31. Run `database/seeds/001_store_products.sql`.
-32. Copy the root `.env.example` file to `.env`.
-33. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
+31. Run `database/migrations/041_animation_diagnostics.sql`.
+32. Run `database/migrations/042_public_lobby_chat.sql`.
+33. Run `database/seeds/001_store_products.sql`.
+34. Copy the root `.env.example` file to `.env`.
+35. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
 
 The root `.env` file is ignored by Git and protected from direct web access by the root `.htaccess`.
 

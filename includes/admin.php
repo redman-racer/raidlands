@@ -8,6 +8,7 @@ require_once __DIR__ . '/kits.php';
 require_once __DIR__ . '/permissions.php';
 require_once __DIR__ . '/rewards.php';
 require_once __DIR__ . '/animation-diagnostics.php';
+require_once __DIR__ . '/chat.php';
 
 function raidlands_admin_boot(): void
 {
@@ -141,6 +142,8 @@ function raidlands_admin_handle_request(): void
                     ? trim(($updated > 0 ? $feedback_message . ' ' : '') . $conversion_message)
                     : $feedback_message;
                 raidlands_admin_set_flash('success', $message);
+            } elseif ($section === 'chat') {
+                raidlands_admin_set_flash('success', raidlands_chat_admin_handle_action($_POST));
             } else {
                 raidlands_admin_save_content(raidlands_admin_build_content_from_post($_POST, $section));
                 raidlands_admin_set_flash('success', 'Site settings saved.');
@@ -453,7 +456,7 @@ function raidlands_admin_redirect(?string $section = null, array $params = []): 
 
 function raidlands_admin_section_keys(): array
 {
-    return ['identity', 'links', 'wipe', 'todo', 'features', 'pages', 'seo', 'feedback', 'store', 'vote-rewards', 'rp-games', 'kits', 'groups', 'grants', 'sync', 'animations'];
+    return ['identity', 'links', 'wipe', 'todo', 'features', 'pages', 'seo', 'feedback', 'chat', 'store', 'vote-rewards', 'rp-games', 'kits', 'groups', 'grants', 'sync', 'animations'];
 }
 
 function raidlands_admin_allowed_section_keys(): array
@@ -467,6 +470,7 @@ function raidlands_admin_allowed_section_keys(): array
 function raidlands_admin_section_permission(string $section): string
 {
     return match (raidlands_admin_clean_section($section)) {
+        'chat' => 'admin.chat.manage',
         'feedback' => 'admin.feedback.manage',
         'store' => 'admin.store.manage',
         'vote-rewards', 'rp-games' => 'admin.rewards.manage',

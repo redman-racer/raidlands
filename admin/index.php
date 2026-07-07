@@ -40,6 +40,7 @@ $admin_sections_all = [
     'pages' => ['label' => 'Pages', 'kicker' => 'Copy', 'title' => 'Hero Copy', 'summary' => 'The title and intro text shown at the top of each page.'],
     'seo' => ['label' => 'SEO', 'kicker' => 'Search', 'title' => 'SEO Metadata', 'summary' => 'Browser titles, descriptions, and social sharing copy.'],
     'feedback' => ['label' => 'Feedback', 'kicker' => 'Inbox', 'title' => 'Player Feedback', 'summary' => 'Bug reports, suggestions, and feature requests submitted from the support page.'],
+    'chat' => ['label' => 'Chat', 'kicker' => 'Lobby', 'title' => 'Public Chat Moderation', 'summary' => 'Steam-linked public lobby messages, active mutes, and moderation history.'],
     'store' => ['label' => 'Store', 'kicker' => 'Offers', 'title' => 'Products and Prices', 'summary' => 'Kit bundles, individual kits, standalone perks, RP offers, Stripe Price IDs, and managed access groups.'],
     'vote-rewards' => ['label' => 'Vote Rewards', 'kicker' => 'Rewards', 'title' => 'Vote Reward Sites', 'summary' => 'Manage public vote links, cooldowns, rewards, callback tokens, and verification mode.'],
     'rp-games' => ['label' => 'RP Games', 'kicker' => 'Rewards', 'title' => 'RP Games', 'summary' => 'Manage coinflip, dice, jackpot, multiplayer pools, daily limits, and reward-game queue state.'],
@@ -51,7 +52,7 @@ $admin_sections_all = [
 ];
 $admin_nav_groups = [
     'site-setup' => ['label' => 'Site Setup', 'sections' => ['identity', 'links']],
-    'content' => ['label' => 'Content', 'sections' => ['todo', 'features', 'pages', 'seo', 'feedback']],
+    'content' => ['label' => 'Content', 'sections' => ['todo', 'features', 'pages', 'seo', 'feedback', 'chat']],
     'store-access' => ['label' => 'Store & Access', 'sections' => ['store', 'vote-rewards', 'rp-games', 'kits', 'groups', 'grants']],
     'server-ops' => ['label' => 'Server Ops', 'sections' => ['wipe', 'sync', 'animations']],
 ];
@@ -146,6 +147,20 @@ $admin_feedback_ai_summary = [
 $admin_feedback_ai_reviews = [];
 $admin_feedback_features_ready = false;
 $admin_feedback_features_error = '';
+$admin_chat_state = [
+    'ready' => false,
+    'message' => '',
+    'summary' => [
+        'message_count' => 0,
+        'visible_count' => 0,
+        'hidden_count' => 0,
+        'active_mute_count' => 0,
+        'latest_message_at' => null,
+    ],
+    'messages' => [],
+    'mutes' => [],
+    'actions' => [],
+];
 $admin_features_state = [
     'ready' => false,
     'error' => '',
@@ -327,6 +342,10 @@ try {
         } else {
             $admin_feedback_error = raidlands_feedback_readiness_message(true);
         }
+    }
+
+    if ($active_section === 'chat') {
+        $admin_chat_state = raidlands_chat_admin_state();
     }
 
     if ($active_section === 'kits') {
@@ -2578,6 +2597,257 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                       </div>
                     <?php endif; ?>
                   </section>
+                <?php endif; ?>
+
+                <?php if ($active_section === 'chat') : ?>
+                  <?php
+                    $chat_ready = !empty($admin_chat_state['ready']);
+                    $chat_summary = (array) ($admin_chat_state['summary'] ?? []);
+                    $chat_messages = array_values((array) ($admin_chat_state['messages'] ?? []));
+                    $chat_mutes = array_values((array) ($admin_chat_state['mutes'] ?? []));
+                    $chat_actions = array_values((array) ($admin_chat_state['actions'] ?? []));
+                    $chat_active_mute_map = [];
+
+                    foreach ($chat_mutes as $mute_row) {
+                        $chat_active_mute_map[(string) ($mute_row['steam_id64'] ?? '')] = $mute_row;
+                    }
+                  ?>
+                  <?php if (!$chat_ready) : ?>
+                    <section class="admin-section">
+                      <div class="admin-alert warning"><?= e((string) ($admin_chat_state['message'] ?? raidlands_chat_readiness_message(true))) ?></div>
+                    </section>
+                  <?php else : ?>
+                    <section class="admin-section">
+                      <div class="admin-grid four">
+                        <div class="metal-panel admin-feedback-stat">
+                          <p class="section-kicker">Messages</p>
+                          <h3><?= e((string) ($chat_summary['message_count'] ?? 0)) ?></h3>
+                          <p class="store-muted">stored in lobby history</p>
+                        </div>
+                        <div class="metal-panel admin-feedback-stat">
+                          <p class="section-kicker">Visible</p>
+                          <h3><?= e((string) ($chat_summary['visible_count'] ?? 0)) ?></h3>
+                          <p class="store-muted">shown publicly</p>
+                        </div>
+                        <div class="metal-panel admin-feedback-stat">
+                          <p class="section-kicker">Hidden</p>
+                          <h3><?= e((string) ($chat_summary['hidden_count'] ?? 0)) ?></h3>
+                          <p class="store-muted">kept for moderation</p>
+                        </div>
+                        <div class="metal-panel admin-feedback-stat">
+                          <p class="section-kicker">Mutes</p>
+                          <h3><?= e((string) ($chat_summary['active_mute_count'] ?? 0)) ?></h3>
+                          <p class="store-muted">currently active</p>
+                        </div>
+                      </div>
+                    </section>
+
+                    <section class="admin-section">
+                      <div class="admin-subsection-head">
+                        <h3>Lobby moderation</h3>
+                        <p>Search recent chat, hide messages from the public lobby, or mute Steam-linked users without deleting the audit trail.</p>
+                      </div>
+
+                      <?php if ($chat_messages === []) : ?>
+                        <div class="admin-alert warning">No public chat messages have been posted yet.</div>
+                      <?php else : ?>
+                        <div class="admin-chat-workbench" data-admin-chat-workbench>
+                          <div class="admin-feedback-picker-controls admin-chat-controls">
+                            <label class="admin-field">
+                              <?= admin_field_head('Search', 'Search messages, display names, SteamID64s, staff notes, and timestamps.') ?>
+                              <input type="search" placeholder="steam id, display name, message" autocomplete="off" data-admin-chat-search>
+                            </label>
+                            <div class="admin-feedback-filter-grid">
+                              <label class="admin-field">
+                                <?= admin_field_head('Status', 'Filter visible, hidden, or muted-player messages.') ?>
+                                <select data-admin-chat-status>
+                                  <option value="" selected>All messages</option>
+                                  <option value="visible">Visible</option>
+                                  <option value="hidden">Hidden</option>
+                                  <option value="muted">Muted players</option>
+                                </select>
+                              </label>
+                              <button class="btn btn-secondary admin-feedback-filter-reset" type="button" data-admin-chat-reset>Clear</button>
+                            </div>
+                          </div>
+
+                          <div class="admin-alert warning admin-chat-empty" data-admin-chat-empty hidden>No chat messages match the current filters.</div>
+
+                          <div class="admin-chat-list" data-admin-chat-list>
+                            <?php foreach ($chat_messages as $chat_row) : ?>
+                              <?php
+                                $chat_id = (int) ($chat_row['id'] ?? 0);
+                                $chat_status = (string) ($chat_row['status'] ?? 'visible');
+                                $chat_steam = raidlands_store_normalize_steam_id64($chat_row['steam_id64'] ?? '');
+                                $chat_display = trim((string) ($chat_row['display_name'] ?? 'Raidlands Player'));
+                                $chat_created = (string) ($chat_row['created_at'] ?? '');
+                                $chat_message = (string) ($chat_row['message'] ?? '');
+                                $chat_is_muted = isset($chat_active_mute_map[$chat_steam]);
+                                $chat_search = implode(' ', [
+                                    $chat_id,
+                                    $chat_status,
+                                    $chat_steam,
+                                    $chat_display,
+                                    $chat_created,
+                                    $chat_message,
+                                    (string) ($chat_row['hidden_reason'] ?? ''),
+                                ]);
+                              ?>
+                              <article
+                                class="admin-repeat-card admin-feedback-card admin-chat-card is-<?= e($chat_status) ?><?= $chat_is_muted ? ' is-muted' : '' ?>"
+                                data-admin-chat-card
+                                data-chat-status="<?= e($chat_status) ?>"
+                                data-chat-muted="<?= $chat_is_muted ? 'true' : 'false' ?>"
+                                data-chat-search="<?= e($chat_search) ?>">
+                                <div class="admin-repeat-card-head admin-feedback-card-head">
+                                  <div>
+                                    <h3><?= e($chat_display !== '' ? $chat_display : 'Raidlands Player') ?></h3>
+                                    <p class="admin-feedback-subtitle">
+                                      Message #<?= e((string) $chat_id) ?> / <?= e($chat_created !== '' ? $chat_created : 'No timestamp') ?>
+                                      <?= $chat_steam !== '' ? ' / ' . e($chat_steam) : '' ?>
+                                    </p>
+                                  </div>
+                                  <div class="admin-chat-status-stack">
+                                    <?php if (!empty($chat_row['is_staff'])) : ?>
+                                      <span class="status-pill active">Staff</span>
+                                    <?php endif; ?>
+                                    <?php if ($chat_is_muted) : ?>
+                                      <span class="status-pill planned">Muted</span>
+                                    <?php endif; ?>
+                                    <span class="status-pill <?= e($chat_status === 'hidden' ? 'closed' : 'active') ?>"><?= e(ucfirst($chat_status)) ?></span>
+                                  </div>
+                                </div>
+
+                                <div class="admin-feedback-body">
+                                  <div class="admin-feedback-details"><?= nl2br(e($chat_message)) ?></div>
+                                  <?php if ($chat_status === 'hidden') : ?>
+                                    <div class="admin-feedback-feature-linked">
+                                      <span class="tag">
+                                        <span class="tag-label">Hidden by</span>
+                                        <span class="tag-value"><?= e((string) ($chat_row['hidden_by_steam_id64'] ?? '')) ?></span>
+                                      </span>
+                                      <span class="tag">
+                                        <span class="tag-label">Hidden at</span>
+                                        <span class="tag-value"><?= e((string) ($chat_row['hidden_at'] ?? '')) ?></span>
+                                      </span>
+                                      <?php if (trim((string) ($chat_row['hidden_reason'] ?? '')) !== '') : ?>
+                                        <small><?= e((string) $chat_row['hidden_reason']) ?></small>
+                                      <?php endif; ?>
+                                    </div>
+                                  <?php endif; ?>
+
+                                  <details class="admin-details admin-feedback-details-panel" open>
+                                    <summary>Moderation <small>Hide, restore, mute, or unmute</small></summary>
+                                    <div class="admin-grid two">
+                                      <label class="admin-field">
+                                        <?= admin_field_head('Message note', 'Optional reason saved with hide or restore actions.') ?>
+                                        <textarea name="chat_message_reason[<?= e((string) $chat_id) ?>]" rows="2" maxlength="500" placeholder="Reason for hiding or restoring this message"></textarea>
+                                      </label>
+                                      <label class="admin-field">
+                                        <?= admin_field_head('Mute note', 'Optional reason saved if this SteamID64 is muted or unmuted.') ?>
+                                        <textarea name="chat_mute_reason[<?= e($chat_steam) ?>]" rows="2" maxlength="500" placeholder="Reason for mute or unmute"></textarea>
+                                      </label>
+                                    </div>
+                                    <div class="button-row admin-feedback-feature-actions">
+                                      <?php if ($chat_status === 'hidden') : ?>
+                                        <button class="btn btn-secondary" type="submit" name="chat_admin_action" value="restore:<?= e((string) $chat_id) ?>">Restore Message</button>
+                                      <?php else : ?>
+                                        <button class="btn btn-secondary" type="submit" name="chat_admin_action" value="hide:<?= e((string) $chat_id) ?>">Hide Message</button>
+                                      <?php endif; ?>
+                                      <?php if (raidlands_store_validate_steam_id64($chat_steam)) : ?>
+                                        <?php if ($chat_is_muted) : ?>
+                                          <button class="btn btn-primary" type="submit" name="chat_admin_action" value="unmute:<?= e($chat_steam) ?>">Unmute Player</button>
+                                        <?php else : ?>
+                                          <button class="btn btn-primary" type="submit" name="chat_admin_action" value="mute:<?= e($chat_steam) ?>">Mute Player</button>
+                                        <?php endif; ?>
+                                      <?php endif; ?>
+                                    </div>
+                                  </details>
+                                </div>
+                              </article>
+                            <?php endforeach; ?>
+                          </div>
+                        </div>
+                      <?php endif; ?>
+                    </section>
+
+                    <section class="admin-section">
+                      <div class="admin-grid two">
+                        <div class="metal-panel">
+                          <div class="admin-subsection-head">
+                            <h3>Active mutes</h3>
+                            <p>Muted users can still read the lobby but cannot post.</p>
+                          </div>
+                          <?php if ($chat_mutes === []) : ?>
+                            <div class="admin-alert success">No active chat mutes.</div>
+                          <?php else : ?>
+                            <div class="admin-table-wrap">
+                              <table class="admin-table">
+                                <thead>
+                                  <tr>
+                                    <th>SteamID64</th>
+                                    <th>Reason</th>
+                                    <th>Muted</th>
+                                    <th>Action</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  <?php foreach ($chat_mutes as $mute_row) : ?>
+                                    <?php $mute_steam = raidlands_store_normalize_steam_id64($mute_row['steam_id64'] ?? ''); ?>
+                                    <tr>
+                                      <td><code><?= e($mute_steam) ?></code></td>
+                                      <td><?= e((string) ($mute_row['reason'] ?? '')) ?></td>
+                                      <td><?= e((string) ($mute_row['created_at'] ?? '')) ?></td>
+                                      <td><button class="btn btn-secondary" type="submit" name="chat_admin_action" value="unmute:<?= e($mute_steam) ?>">Unmute</button></td>
+                                    </tr>
+                                  <?php endforeach; ?>
+                                </tbody>
+                              </table>
+                            </div>
+                          <?php endif; ?>
+                        </div>
+
+                        <div class="metal-panel">
+                          <div class="admin-subsection-head">
+                            <h3>Moderation history</h3>
+                            <p>Recent actions are kept separately from message visibility.</p>
+                          </div>
+                          <?php if ($chat_actions === []) : ?>
+                            <div class="admin-alert warning">No chat moderation actions yet.</div>
+                          <?php else : ?>
+                            <div class="admin-table-wrap">
+                              <table class="admin-table">
+                                <thead>
+                                  <tr>
+                                    <th>Action</th>
+                                    <th>Target</th>
+                                    <th>Actor</th>
+                                    <th>When</th>
+                                  </tr>
+                                </thead>
+                                <tbody>
+                                  <?php foreach ($chat_actions as $action_row) : ?>
+                                    <?php
+                                      $action_target = trim((string) ($action_row['target_steam_id64'] ?? ''));
+                                      $action_target = $action_target !== ''
+                                          ? $action_target
+                                          : 'Message #' . (string) ($action_row['message_id'] ?? '');
+                                    ?>
+                                    <tr>
+                                      <td><?= e(ucfirst((string) ($action_row['action'] ?? ''))) ?></td>
+                                      <td><?= e($action_target) ?></td>
+                                      <td><?= e((string) ($action_row['actor_steam_id64'] ?? '')) ?></td>
+                                      <td><?= e((string) ($action_row['created_at'] ?? '')) ?></td>
+                                    </tr>
+                                  <?php endforeach; ?>
+                                </tbody>
+                              </table>
+                            </div>
+                          <?php endif; ?>
+                        </div>
+                      </div>
+                    </section>
+                  <?php endif; ?>
                 <?php endif; ?>
 
                 <?php if ($active_section === 'store') : ?>
@@ -5215,6 +5485,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                     $admin_save_allowed = raidlands_admin_can_save_section($active_section);
                     $admin_save_hidden = !$admin_save_allowed
                         || $active_section === 'todo'
+                        || $active_section === 'chat'
                         || $active_section === 'sync'
                         || $active_section === 'animations'
                         || $active_section === 'grants'
@@ -5277,6 +5548,9 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
       <?php endif; ?>
       <?php if ($active_section === 'feedback') : ?>
         <script src="<?= e(asset_url('js/admin-feedback.js')) ?>" defer></script>
+      <?php endif; ?>
+      <?php if ($active_section === 'chat') : ?>
+        <script src="<?= e(asset_url('js/admin-chat.js')) ?>" defer></script>
       <?php endif; ?>
     <?php endif; ?>
   </body>

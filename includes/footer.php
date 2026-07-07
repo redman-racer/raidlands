@@ -59,7 +59,10 @@
             <small>Bug / Idea</small>
           </span>
         </a>
+        <?php require_once __DIR__ . '/chat.php'; ?>
+        <?= render_raidlands_chat_widget(raidlands_linked_player()) ?>
         <div class="toast" role="status" aria-live="polite" data-toast></div>
+        <script src="<?= e(asset_url('js/chat.js')) ?>" defer></script>
       </div>
     </div>
   </body>
