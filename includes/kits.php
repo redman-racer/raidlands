@@ -177,10 +177,6 @@ function raidlands_kits_normalize_condition_item(string $shortname, int $amount,
         $condition = $max_condition;
     }
 
-    if ($amount > 1) {
-        $amount = 1;
-    }
-
     return [
         'amount' => $amount,
         'condition' => $condition,
