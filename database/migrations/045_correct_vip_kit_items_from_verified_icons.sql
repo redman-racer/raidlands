@@ -287,7 +287,7 @@ SELECT
   'pending',
   NULL,
   '',
-  CONCAT('Synced VIP kit items from July 7 screenshots: ', @vip_kit_screenshot_item_count, ' item rows across ', @vip_kit_screenshot_kit_count, ' kits.')
+  CONCAT('Corrected VIP kit items from verified Rust icon comparison: ', @vip_kit_screenshot_item_count, ' item rows across ', @vip_kit_screenshot_kit_count, ' kits.')
 WHERE @vip_kit_screenshot_item_count > 0
    OR @vip_kit_screenshot_kit_count > 0;
 

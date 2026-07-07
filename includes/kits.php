@@ -623,17 +623,7 @@ function raidlands_kits_canonical_image_path(string $kit_name, string $permissio
 
 function raidlands_kits_game_image_path(string $path): string
 {
-    $path = trim($path);
-
-    if (preg_match('~^(https?://[^?#]+/assets/media/kits/.+)\.webp([?#].*)?$~i', $path, $matches)) {
-        return $matches[1] . '.png' . ($matches[2] ?? '');
-    }
-
-    if (preg_match('#^(/?assets/media/kits/.+)\.webp$#i', $path)) {
-        return substr($path, 0, -5) . '.png';
-    }
-
-    return $path;
+    return trim($path);
 }
 
 function raidlands_kits_sync_image_url(string $path): string

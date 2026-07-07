@@ -107,21 +107,21 @@ namespace Oxide.Plugins
             ["pvp_elite"] = "/assets/media/kits/pvp-elite-kit.png",
             ["raidlands_pvp_breach"] = "/assets/media/kits/pvp-breach-kit.png",
             ["pvp_breach"] = "/assets/media/kits/pvp-breach-kit.png",
-            ["vip"] = "/assets/media/kits/vip-kit.png",
-            ["kit_vip"] = "/assets/media/kits/vip-kit.png",
+            ["vip"] = "/assets/media/kits/vip-kit.webp",
+            ["kit_vip"] = "/assets/media/kits/vip-kit.webp",
             ["diamond"] = "/assets/media/kits/vip-diamond-kit.png",
             ["kit_vip_diamond"] = "/assets/media/kits/vip-diamond-kit.png",
-            ["vip_plus"] = "/assets/media/kits/vip-plus-kit.png",
-            ["kit_vip_plus"] = "/assets/media/kits/vip-plus-kit.png",
+            ["vip_plus"] = "/assets/media/kits/vip-plus-kit.webp",
+            ["kit_vip_plus"] = "/assets/media/kits/vip-plus-kit.webp",
             ["kit_vip_plus_diamond"] = "/assets/media/kits/vip-plus-diamond-kit.png",
-            ["mvp"] = "/assets/media/kits/mvp-kit.png",
-            ["kit_mvp"] = "/assets/media/kits/mvp-kit.png",
-            ["golden"] = "/assets/media/kits/golden-vip-kit.png",
-            ["kit_golden_vip"] = "/assets/media/kits/golden-vip-kit.png",
-            ["ultimate"] = "/assets/media/kits/ultimate-vip-kit.png",
-            ["kit_ultimate_vip"] = "/assets/media/kits/ultimate-vip-kit.png",
-            ["titan"] = "/assets/media/kits/titan-vip-kit.png",
-            ["kit_titan_vip"] = "/assets/media/kits/titan-vip-kit.png",
+            ["mvp"] = "/assets/media/kits/mvp-kit.webp",
+            ["kit_mvp"] = "/assets/media/kits/mvp-kit.webp",
+            ["golden"] = "/assets/media/kits/golden-vip-kit.webp",
+            ["kit_golden_vip"] = "/assets/media/kits/golden-vip-kit.webp",
+            ["ultimate"] = "/assets/media/kits/ultimate-vip-kit.webp",
+            ["kit_ultimate_vip"] = "/assets/media/kits/ultimate-vip-kit.webp",
+            ["titan"] = "/assets/media/kits/titan-vip-kit.webp",
+            ["kit_titan_vip"] = "/assets/media/kits/titan-vip-kit.webp",
             ["sentry"] = "/assets/media/kits/sentry-small-pack.png",
             ["pack_sentry_small"] = "/assets/media/kits/sentry-small-pack.png",
             ["sentry_large"] = "/assets/media/kits/sentry-large-pack.png",
@@ -177,14 +177,14 @@ namespace Oxide.Plugins
             ["kits.pvp.heavy"] = "/assets/media/kits/pvp-heavy-kit.png",
             ["kits.pvp.elite"] = "/assets/media/kits/pvp-elite-kit.png",
             ["kits.pvp.breach"] = "/assets/media/kits/pvp-breach-kit.png",
-            ["kits.vip"] = "/assets/media/kits/vip-kit.png",
+            ["kits.vip"] = "/assets/media/kits/vip-kit.webp",
             ["kits.vip.diamond"] = "/assets/media/kits/vip-diamond-kit.png",
-            ["kits.vipplus"] = "/assets/media/kits/vip-plus-kit.png",
+            ["kits.vipplus"] = "/assets/media/kits/vip-plus-kit.webp",
             ["kits.vipplus.diamond"] = "/assets/media/kits/vip-plus-diamond-kit.png",
-            ["kits.mvp"] = "/assets/media/kits/mvp-kit.png",
-            ["kits.goldenvip"] = "/assets/media/kits/golden-vip-kit.png",
-            ["kits.ultimatevip"] = "/assets/media/kits/ultimate-vip-kit.png",
-            ["kits.titanvip"] = "/assets/media/kits/titan-vip-kit.png",
+            ["kits.mvp"] = "/assets/media/kits/mvp-kit.webp",
+            ["kits.goldenvip"] = "/assets/media/kits/golden-vip-kit.webp",
+            ["kits.ultimatevip"] = "/assets/media/kits/ultimate-vip-kit.webp",
+            ["kits.titanvip"] = "/assets/media/kits/titan-vip-kit.webp",
             ["kits.sentry.small"] = "/assets/media/kits/sentry-small-pack.png",
             ["kits.sentry.large"] = "/assets/media/kits/sentry-large-pack.png",
             ["kits.portafort"] = "/assets/media/kits/portafort-token.png",
@@ -3775,21 +3775,7 @@ namespace Oxide.Plugins
 
         private static string RustKitImagePath(string value)
         {
-            var trimmed = (value ?? "").Trim();
-
-            if (trimmed.EndsWith(".webp", StringComparison.OrdinalIgnoreCase)
-                && trimmed.IndexOf("/assets/media/kits/", StringComparison.OrdinalIgnoreCase) >= 0)
-            {
-                return trimmed.Substring(0, trimmed.Length - 5) + ".png";
-            }
-
-            if (trimmed.EndsWith(".webp", StringComparison.OrdinalIgnoreCase)
-                && trimmed.StartsWith("assets/media/kits/", StringComparison.OrdinalIgnoreCase))
-            {
-                return trimmed.Substring(0, trimmed.Length - 5) + ".png";
-            }
-
-            return trimmed;
+            return (value ?? "").Trim();
         }
 
         private JArray NormalizeItemArray(JArray source)
@@ -3805,26 +3791,69 @@ namespace Oxide.Plugins
                     continue;
                 }
 
-                result.Add(new JObject
-                {
-                    ["Shortname"] = KitString(item, "Shortname"),
-                    ["DisplayName"] = NullIfEmpty(KitString(item, "DisplayName")),
-                    ["Skin"] = Math.Max(0L, KitLong(item, "Skin", KitLong(item, "SkinID", 0))),
-                    ["Amount"] = Math.Max(1, KitInt(item, "Amount", 1)),
-                    ["Condition"] = Math.Max(0f, KitFloat(item, "Condition", 0f)),
-                    ["MaxCondition"] = Math.Max(0f, KitFloat(item, "MaxCondition", 0f)),
-                    ["Ammo"] = Math.Max(0, KitInt(item, "Ammo", 0)),
-                    ["Ammotype"] = NullIfEmpty(FirstKitString(item, "Ammotype", "AmmoType")),
-                    ["Position"] = Math.Max(0, KitInt(item, "Position", 0)),
-                    ["Frequency"] = KitInt(item, "Frequency", -1),
-                    ["BlueprintShortname"] = NullIfEmpty(KitString(item, "BlueprintShortname")),
-                    ["Text"] = NullIfEmpty(KitString(item, "Text")),
-                    ["Contents"] = item["Contents"] is JArray contents ? contents : JValue.CreateNull(),
-                    ["Container"] = item["Container"] is JObject container ? container : JValue.CreateNull()
-                });
+                result.Add(NormalizeItemForData(item));
             }
 
             return result;
+        }
+
+        private JObject NormalizeItemForData(JObject item)
+        {
+            var shortname = KitString(item, "Shortname");
+            var displayName = NullIfEmpty(KitString(item, "DisplayName"));
+            var skin = Math.Max(0L, KitLong(item, "Skin", KitLong(item, "SkinID", 0)));
+
+            if (IsSuperSerumShortname(shortname))
+            {
+                shortname = "supertea";
+                displayName = new JValue("Super Serum");
+                skin = 0L;
+            }
+
+            var definition = ItemManager.FindItemDefinition(shortname);
+            var condition = Math.Max(0f, KitFloat(item, "Condition", 0f));
+            var maxCondition = Math.Max(0f, KitFloat(item, "MaxCondition", 0f));
+            var amount = Math.Max(1, KitInt(item, "Amount", 1));
+
+            if (definition != null && definition.condition.enabled)
+            {
+                var defaultMaxCondition = Math.Max(0f, definition.condition.max);
+                var badMaxCondition = maxCondition <= 0f || maxCondition < defaultMaxCondition || maxCondition > defaultMaxCondition;
+
+                if (badMaxCondition)
+                {
+                    maxCondition = defaultMaxCondition;
+                }
+
+                if (condition <= 0f || condition < maxCondition || condition > maxCondition || badMaxCondition)
+                {
+                    condition = maxCondition > 0f ? maxCondition : defaultMaxCondition;
+                }
+            }
+
+            return new JObject
+            {
+                ["Shortname"] = shortname,
+                ["DisplayName"] = displayName,
+                ["Skin"] = skin,
+                ["Amount"] = amount,
+                ["Condition"] = condition,
+                ["MaxCondition"] = maxCondition,
+                ["Ammo"] = Math.Max(0, KitInt(item, "Ammo", 0)),
+                ["Ammotype"] = NullIfEmpty(FirstKitString(item, "Ammotype", "AmmoType")),
+                ["Position"] = Math.Max(0, KitInt(item, "Position", 0)),
+                ["Frequency"] = KitInt(item, "Frequency", -1),
+                ["BlueprintShortname"] = NullIfEmpty(KitString(item, "BlueprintShortname")),
+                ["Text"] = NullIfEmpty(KitString(item, "Text")),
+                ["Contents"] = item["Contents"] is JArray contents ? contents : JValue.CreateNull(),
+                ["Container"] = item["Container"] is JObject container ? container : JValue.CreateNull()
+            };
+        }
+
+        private bool IsSuperSerumShortname(string shortname)
+        {
+            return string.Equals(shortname, "supertea", StringComparison.OrdinalIgnoreCase)
+                || string.Equals(shortname, "maxhealthtea.pure", StringComparison.OrdinalIgnoreCase);
         }
 
         private void ApplyServerRewardsKitRows(KitSyncResponse payload)
