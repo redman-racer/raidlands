@@ -19,8 +19,10 @@
   const form = root.querySelector("[data-chat-form]");
   const input = root.querySelector("[data-chat-input]");
   const submitButton = root.querySelector("[data-chat-submit]");
+  const readReceiptKey = chatReadReceiptKey();
   let isOpen = false;
   let latestId = 0;
+  let lastReadId = readLastReadId();
   let loaded = false;
   let polling = false;
   let pollTimer = 0;
@@ -77,6 +79,22 @@
       });
     }
 
+    if (form && input) {
+      input.addEventListener("keydown", event => {
+        if (event.key !== "Enter" || event.shiftKey || event.isComposing) {
+          return;
+        }
+
+        event.preventDefault();
+
+        if (typeof form.requestSubmit === "function") {
+          form.requestSubmit();
+        } else {
+          submitMessage();
+        }
+      });
+    }
+
     document.addEventListener("visibilitychange", () => {
       window.clearTimeout(pollTimer);
 
@@ -99,8 +117,7 @@
     }
 
     if (isOpen) {
-      unreadCount = 0;
-      updateUnread();
+      markReadThrough(latestId);
       pollHistory(true);
 
       if (input) {
@@ -156,9 +173,10 @@
       if (!incremental || latestId <= 0) {
         renderMessages(messages);
       } else {
-        appendMessages(messages, true);
+        appendMessages(messages);
       }
 
+      syncReadState(messages);
       setChatStatus(config.signedIn ? "Connected as Steam-linked." : "Read-only. Link Steam to post.", "ready");
       loaded = true;
     } catch (error) {
@@ -207,7 +225,8 @@
       input.value = "";
 
       if (payload.message) {
-        appendMessages([payload.message], false);
+        appendMessages([payload.message]);
+        markReadThrough(latestId);
       }
 
       setChatStatus("Message sent.", "ready");
@@ -224,7 +243,7 @@
 
     messagesNode.replaceChildren();
     latestId = 0;
-    appendMessages(messages, false);
+    appendMessages(messages);
 
     if (messages.length === 0) {
       const empty = document.createElement("div");
@@ -234,7 +253,7 @@
     }
   }
 
-  function appendMessages(messages, countUnread) {
+  function appendMessages(messages) {
     if (!messagesNode || !Array.isArray(messages) || messages.length === 0) return;
 
     const hadEmpty = messagesNode.querySelector(".chat-empty");
@@ -260,11 +279,6 @@
     trimMessageDom();
 
     if (appended > 0) {
-      if (!isOpen && loaded && countUnread) {
-        unreadCount += appended;
-        updateUnread();
-      }
-
       if (isOpen) {
         messagesNode.scrollTop = messagesNode.scrollHeight;
       }
@@ -343,8 +357,75 @@
   function updateUnread() {
     if (!unreadNode) return;
 
-    unreadNode.hidden = unreadCount <= 0;
-    unreadNode.textContent = unreadCount > 9 ? "9+" : String(unreadCount);
+    const count = Math.max(0, Number(unreadCount) || 0);
+    unreadNode.hidden = count <= 0;
+    unreadNode.toggleAttribute("hidden", count <= 0);
+    unreadNode.textContent = count > 0 ? String(count) : "";
+    unreadNode.setAttribute("aria-label", count === 1 ? "1 unread chat message" : `${count} unread chat messages`);
+  }
+
+  function syncReadState(messages) {
+    const highestIncomingId = maxMessageId(messages);
+
+    if (!loaded && lastReadId <= 0) {
+      markReadThrough(Math.max(latestId, highestIncomingId));
+      return;
+    }
+
+    if (isOpen) {
+      markReadThrough(Math.max(latestId, highestIncomingId));
+      return;
+    }
+
+    unreadCount = countUnreadMessages();
+    updateUnread();
+  }
+
+  function markReadThrough(id) {
+    const nextReadId = Math.max(lastReadId, Number(id) || 0);
+
+    if (nextReadId > lastReadId) {
+      lastReadId = nextReadId;
+      writeLastReadId(lastReadId);
+    }
+
+    unreadCount = 0;
+    updateUnread();
+  }
+
+  function countUnreadMessages() {
+    if (!messagesNode || lastReadId <= 0) return 0;
+
+    return Array.from(messagesNode.querySelectorAll("[data-chat-message-id]"))
+      .filter(row => (Number(row.dataset.chatMessageId) || 0) > lastReadId)
+      .length;
+  }
+
+  function maxMessageId(messages) {
+    if (!Array.isArray(messages) || messages.length === 0) return 0;
+
+    return messages.reduce((max, message) => Math.max(max, Number(message.id) || 0), 0);
+  }
+
+  function chatReadReceiptKey() {
+    const endpoint = String(config.endpointUrl || "public-lobby").replace(/[^a-z0-9_.:/-]+/gi, "-");
+    return `raidlands.chat.lastReadId.${endpoint}`;
+  }
+
+  function readLastReadId() {
+    try {
+      return Math.max(0, Number(window.localStorage.getItem(readReceiptKey)) || 0);
+    } catch (error) {
+      return 0;
+    }
+  }
+
+  function writeLastReadId(id) {
+    try {
+      window.localStorage.setItem(readReceiptKey, String(Math.max(0, Number(id) || 0)));
+    } catch (error) {
+      // Private browsing or blocked storage should not break public chat.
+    }
   }
 
   function schedulePoll() {

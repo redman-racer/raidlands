@@ -773,7 +773,8 @@ function render_raidlands_chat_widget(?array $player = null): string
         . ($linked
             ? '<form class="chat-form" data-chat-form>'
                 . '<label class="sr-only" for="raidlands-chat-message">Message</label>'
-                . '<textarea id="raidlands-chat-message" name="message" maxlength="' . e((string) $config['message_max_length']) . '" rows="2" placeholder="Message the lobby as ' . e($display_name) . '" data-chat-input></textarea>'
+                . '<span class="sr-only" id="raidlands-chat-message-help">Enter sends the message. Shift plus Enter adds a new line.</span>'
+                . '<textarea id="raidlands-chat-message" name="message" maxlength="' . e((string) $config['message_max_length']) . '" rows="2" placeholder="Message the lobby as ' . e($display_name) . '" aria-describedby="raidlands-chat-message-help" data-chat-input></textarea>'
                 . '<button class="btn btn-primary" type="submit" data-chat-submit>Send</button>'
               . '</form>'
             : '<div class="chat-auth-callout">'
