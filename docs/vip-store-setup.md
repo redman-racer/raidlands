@@ -54,6 +54,7 @@ Cash checkout remains inactive until real Stripe prices are configured.
 - Admin > Store creates, reuses, replaces, or archives Raidlands-managed Stripe Products and Prices automatically on Store save after `RAIDLANDS_STRIPE_SECRET_KEY` is set. Pasted external `price_...` IDs are marked external and protected from automatic updates.
 - Test `price_...` IDs work with test secret keys, and live `price_...` IDs work with live secret keys. Do not mix modes.
 - Set the webhook URL to `/api/stripe-webhook.php`.
+- Subscribe the webhook to `checkout.session.completed`, `invoice.paid`, `invoice.payment_failed`, `customer.subscription.created`, `customer.subscription.updated`, `customer.subscription.deleted`, `charge.refunded`, `refund.created`, and `charge.dispute.created`.
 - Configure `RAIDLANDS_STRIPE_PUBLISHABLE_KEY`, `RAIDLANDS_STRIPE_SECRET_KEY`, and `RAIDLANDS_STRIPE_WEBHOOK_SECRET` in `.env`.
 - Optionally set `RAIDLANDS_STRIPE_BILLING_PORTAL_CONFIGURATION_ID`; leave it blank to use Stripe's default Billing Portal configuration.
 

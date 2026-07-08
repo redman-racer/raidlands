@@ -1,0 +1,102 @@
+{
+    "source": {
+        "metadata": "Raidlands custom kit items",
+        "icons": "assets/media/rust-items/raidlands.vehicle.token.*.webp",
+        "fallback_icons": "https://rustlabs.com/img/items180/%s.png",
+        "imported_at": "2026-07-08T00:00:00+00:00",
+        "item_count": 9,
+        "safe_item_count": 9
+    },
+    "items": [
+        {
+            "display_name": "Minicopter Token",
+            "shortname": "raidlands.vehicle.token.minicopter",
+            "item_id": -395118501,
+            "description": "Drop this token to spawn a Minicopter.",
+            "stack_size": 100,
+            "safe_shortname": true,
+            "icon": "media/rust-items/raidlands.vehicle.token.minicopter.webp",
+            "icon_source": "https://cdn.rusthelp.com/images/thumbnails/minicopter.webp"
+        },
+        {
+            "display_name": "Scrap Transport Helicopter Token",
+            "shortname": "raidlands.vehicle.token.scrap_transport_helicopter",
+            "item_id": -395118502,
+            "description": "Drop this token to spawn a Scrap Transport Helicopter.",
+            "stack_size": 100,
+            "safe_shortname": true,
+            "icon": "media/rust-items/raidlands.vehicle.token.scrap_transport_helicopter.webp",
+            "icon_source": "https://cdn.rusthelp.com/images/thumbnails/scraptransportheli.webp"
+        },
+        {
+            "display_name": "Attack Helicopter Token",
+            "shortname": "raidlands.vehicle.token.attack_helicopter",
+            "item_id": -395118503,
+            "description": "Drop this token to spawn an Attack Helicopter.",
+            "stack_size": 100,
+            "safe_shortname": true,
+            "icon": "media/rust-items/raidlands.vehicle.token.attack_helicopter.webp",
+            "icon_source": "https://cdn.rusthelp.com/images/thumbnails/attackhelicopter.webp"
+        },
+        {
+            "display_name": "RHIB Token",
+            "shortname": "raidlands.vehicle.token.rhib",
+            "item_id": -395118504,
+            "description": "Drop this token to spawn a RHIB.",
+            "stack_size": 100,
+            "safe_shortname": true,
+            "icon": "media/rust-items/raidlands.vehicle.token.rhib.webp",
+            "icon_source": "https://cdn.rusthelp.com/images/thumbnails/rhib.webp"
+        },
+        {
+            "display_name": "Tugboat Token",
+            "shortname": "raidlands.vehicle.token.tugboat",
+            "item_id": -395118505,
+            "description": "Drop this token to spawn a Tugboat.",
+            "stack_size": 100,
+            "safe_shortname": true,
+            "icon": "media/rust-items/raidlands.vehicle.token.tugboat.webp",
+            "icon_source": "https://cdn.rusthelp.com/images/thumbnails/tugboat.webp"
+        },
+        {
+            "display_name": "Solo Submarine Token",
+            "shortname": "raidlands.vehicle.token.solo_submarine",
+            "item_id": -395118506,
+            "description": "Drop this token to spawn a Solo Submarine.",
+            "stack_size": 100,
+            "safe_shortname": true,
+            "icon": "media/rust-items/raidlands.vehicle.token.solo_submarine.webp",
+            "icon_source": "https://cdn.rusthelp.com/images/thumbnails/submarinesolo.webp"
+        },
+        {
+            "display_name": "Duo Submarine Token",
+            "shortname": "raidlands.vehicle.token.duo_submarine",
+            "item_id": -395118507,
+            "description": "Drop this token to spawn a Duo Submarine.",
+            "stack_size": 100,
+            "safe_shortname": true,
+            "icon": "media/rust-items/raidlands.vehicle.token.duo_submarine.webp",
+            "icon_source": "https://cdn.rusthelp.com/images/thumbnails/submarineduo.webp"
+        },
+        {
+            "display_name": "Snowmobile Token",
+            "shortname": "raidlands.vehicle.token.snowmobile",
+            "item_id": -395118508,
+            "description": "Drop this token to spawn a Snowmobile.",
+            "stack_size": 100,
+            "safe_shortname": true,
+            "icon": "media/rust-items/raidlands.vehicle.token.snowmobile.webp",
+            "icon_source": "https://cdn.rusthelp.com/images/thumbnails/snowmobile.webp"
+        },
+        {
+            "display_name": "Hot Air Balloon Token",
+            "shortname": "raidlands.vehicle.token.hot_air_balloon",
+            "item_id": -395118509,
+            "description": "Drop this token to spawn a Hot Air Balloon.",
+            "stack_size": 100,
+            "safe_shortname": true,
+            "icon": "media/rust-items/raidlands.vehicle.token.hot_air_balloon.webp",
+            "icon_source": "https://cdn.rusthelp.com/images/thumbnails/hab.webp"
+        }
+    ]
+}

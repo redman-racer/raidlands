@@ -3738,6 +3738,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                         class="admin-kit-editor-shell"
                         data-admin-kit-editor
                         data-rust-items-url="<?= e(asset_url('data/rust-items.json')) ?>"
+                        data-custom-items-url="<?= e(asset_url('data/raidlands-custom-items.json')) ?>"
                         data-assets-base="<?= e(asset_url('')) ?>">
                         <div class="admin-kit-panels">
                         <?php for ($index = 0; $index < $kit_total; $index += 1) : ?>

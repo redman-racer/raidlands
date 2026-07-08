@@ -881,10 +881,17 @@ function raidlands_kits_item_catalog(bool $safe_only = true): array
     static $catalog = null;
 
     if ($catalog === null) {
-        $catalog = [];
-        $path = dirname(__DIR__) . '/assets/data/rust-items.json';
+        $catalog_by_shortname = [];
+        $paths = [
+            dirname(__DIR__) . '/assets/data/rust-items.json',
+            dirname(__DIR__) . '/assets/data/raidlands-custom-items.json',
+        ];
 
-        if (is_file($path)) {
+        foreach ($paths as $path) {
+            if (!is_file($path)) {
+                continue;
+            }
+
             $json = json_decode((string) file_get_contents($path), true);
             $items = is_array($json) ? (array) ($json['items'] ?? []) : [];
 
@@ -900,9 +907,11 @@ function raidlands_kits_item_catalog(bool $safe_only = true): array
                 }
 
                 $item['shortname'] = $shortname;
-                $catalog[] = $item;
+                $catalog_by_shortname[$shortname] = $item;
             }
         }
+
+        $catalog = array_values($catalog_by_shortname);
     }
 
     if (!$safe_only) {

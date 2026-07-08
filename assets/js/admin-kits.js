@@ -1475,19 +1475,49 @@
     }
   });
 
-  fetch(editor.getAttribute('data-rust-items-url') || '')
-    .then(function (response) {
-      return response.ok ? response.json() : { items: [] };
-    })
-    .then(function (data) {
-      catalog = Array.isArray(data.items)
-        ? data.items.filter(function (item) {
-            return item && item.shortname && item.safe_shortname;
-          }).map(function (item) {
-            item.category_id = categoryForItem(item);
-            return item;
-          })
-        : [];
+  function fetchCatalogUrl(url) {
+    url = String(url || '').trim();
+
+    if (!url) {
+      return Promise.resolve({ items: [] });
+    }
+
+    return fetch(url)
+      .then(function (response) {
+        return response.ok ? response.json() : { items: [] };
+      })
+      .catch(function () {
+        return { items: [] };
+      });
+  }
+
+  Promise.all([
+    fetchCatalogUrl(editor.getAttribute('data-rust-items-url') || ''),
+    fetchCatalogUrl(editor.getAttribute('data-custom-items-url') || '')
+  ])
+    .then(function (responses) {
+      var catalogByShortname = new Map();
+
+      responses.forEach(function (data) {
+        if (!data || !Array.isArray(data.items)) {
+          return;
+        }
+
+        data.items.forEach(function (item) {
+          if (!item || !item.shortname || !item.safe_shortname) {
+            return;
+          }
+
+          catalogByShortname.set(normalizeShortname(item.shortname), item);
+        });
+      });
+
+      catalog = Array.from(catalogByShortname.values()).map(function (item) {
+        item.category_id = categoryForItem(item);
+        return item;
+      });
+
+      itemByShortname.clear();
       catalog.forEach(function (item) {
         if (item && item.shortname) {
           itemByShortname.set(normalizeShortname(item.shortname), item);
@@ -1504,6 +1534,7 @@
     })
     .catch(function () {
       catalog = [];
+      itemByShortname.clear();
     });
 
   activateKit(activeIndex);

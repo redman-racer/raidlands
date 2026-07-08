@@ -1087,6 +1087,32 @@ function raidlands_store_price_checkout_mode(array $price): string
         : 'subscription';
 }
 
+function raidlands_store_price_entitlement_ends_at(int $store_price_id): ?string
+{
+    if ($store_price_id <= 0) {
+        return null;
+    }
+
+    $price = raidlands_db_fetch_one(
+        'SELECT access_duration_seconds
+         FROM store_prices
+         WHERE id = :price_id',
+        ['price_id' => $store_price_id]
+    );
+
+    return $price === null
+        ? null
+        : raidlands_store_access_ends_at((int) ($price['access_duration_seconds'] ?? 0));
+}
+
+function raidlands_store_checkout_session_is_fulfillable(array $session): bool
+{
+    $payment_status = strtolower((string) ($session['payment_status'] ?? ''));
+
+    return $payment_status === ''
+        || in_array($payment_status, ['paid', 'no_payment_required'], true);
+}
+
 function raidlands_store_rp_offer_is_buyable(?array $price): bool
 {
     if ($price === null || (string) ($price['payment_method'] ?? '') !== 'rp') {
@@ -3975,6 +4001,7 @@ function raidlands_store_handle_checkout_completed(array $session): void
     );
 
     if ($mode === 'subscription' && $subscription_id !== '') {
+        $ends_at = raidlands_store_price_entitlement_ends_at($ids['store_price_id']);
         raidlands_db_execute(
             "INSERT INTO subscriptions
                 (player_id, product_id, store_price_id, stripe_subscription_id, stripe_customer_id, status)
@@ -3995,18 +4022,19 @@ function raidlands_store_handle_checkout_completed(array $session): void
                 'customer_id' => $customer_id,
             ]
         );
+        if (raidlands_store_checkout_session_is_fulfillable($session)) {
+            raidlands_store_grant_entitlement(
+                $ids['player_id'],
+                $ids['product_id'],
+                'subscription',
+                $subscription_id,
+                $ends_at
+            );
+        }
         return;
     }
 
-    $price = raidlands_db_fetch_one(
-        'SELECT access_duration_seconds
-         FROM store_prices
-         WHERE id = :price_id',
-        ['price_id' => $ids['store_price_id']]
-    );
-    $ends_at = $price === null
-        ? null
-        : raidlands_store_access_ends_at((int) ($price['access_duration_seconds'] ?? 0));
+    $ends_at = raidlands_store_price_entitlement_ends_at($ids['store_price_id']);
 
     raidlands_store_grant_entitlement($ids['player_id'], $ids['product_id'], 'order', $session_id, $ends_at);
 }
