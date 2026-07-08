@@ -1113,6 +1113,13 @@ function raidlands_store_checkout_session_is_fulfillable(array $session): bool
         || in_array($payment_status, ['paid', 'no_payment_required'], true);
 }
 
+function raidlands_store_checkout_session_is_complete(array $session): bool
+{
+    $status = strtolower((string) ($session['status'] ?? ''));
+
+    return $status === '' || $status === 'complete';
+}
+
 function raidlands_store_rp_offer_is_buyable(?array $price): bool
 {
     if ($price === null || (string) ($price['payment_method'] ?? '') !== 'rp') {
@@ -3889,6 +3896,49 @@ function raidlands_store_stripe_metadata_ids(array $metadata): array
         'product_id' => (int) ($metadata['product_id'] ?? 0),
         'store_price_id' => (int) ($metadata['store_price_id'] ?? 0),
         'steam_id64' => (string) ($metadata['steam_id64'] ?? ''),
+    ];
+}
+
+function raidlands_store_reconcile_checkout_session(string $session_id): array
+{
+    $session_id = trim($session_id);
+
+    if ($session_id === '' || !str_starts_with($session_id, 'cs_')) {
+        return ['ok' => false, 'processed' => false, 'message' => 'Checkout session is missing or invalid.'];
+    }
+
+    $secret_key = raidlands_store_stripe_secret_key();
+
+    if ($secret_key === '') {
+        return ['ok' => false, 'processed' => false, 'message' => 'Stripe secret key is not configured.'];
+    }
+
+    raidlands_store_load_stripe();
+    \Stripe\Stripe::setApiKey($secret_key);
+
+    $session = raidlands_store_stripe_object_array(\Stripe\Checkout\Session::retrieve($session_id));
+
+    if (!raidlands_store_checkout_session_is_complete($session)) {
+        return ['ok' => false, 'processed' => false, 'message' => 'Checkout is not complete yet.'];
+    }
+
+    if (!raidlands_store_checkout_session_is_fulfillable($session)) {
+        return ['ok' => false, 'processed' => false, 'message' => 'Checkout payment is not paid yet.'];
+    }
+
+    $ids = raidlands_store_stripe_metadata_ids(raidlands_store_metadata($session));
+
+    if ($ids['player_id'] <= 0 || $ids['product_id'] <= 0 || $ids['store_price_id'] <= 0) {
+        return ['ok' => false, 'processed' => false, 'message' => 'Checkout is missing Raidlands purchase metadata.'];
+    }
+
+    raidlands_store_handle_checkout_completed($session);
+
+    return [
+        'ok' => true,
+        'processed' => true,
+        'mode' => (string) ($session['mode'] ?? ''),
+        'message' => 'Purchase confirmed. Your access is now attached to your Raidlands profile.',
     ];
 }
 
