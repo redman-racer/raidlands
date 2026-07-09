@@ -295,7 +295,7 @@ try {
     }
 
     if ($active_section === 'animations') {
-        $admin_animation_state = raidlands_animation_diagnostics_admin_state();
+        $admin_animation_state = raidlands_animation_diagnostics_admin_state($_GET);
     }
 
     if ($active_section === 'todo') {
@@ -409,6 +409,43 @@ function admin_action_url(string $section, string $action): string
     return $url . $separator . 'action=' . rawurlencode($action);
 }
 
+function admin_query_url(string $section, array $overrides = []): string
+{
+    $params = $_GET;
+    unset($params['action']);
+    $params['section'] = raidlands_admin_clean_section($section);
+
+    foreach ($overrides as $key => $value) {
+        if ($value === null || $value === '') {
+            unset($params[$key]);
+            continue;
+        }
+
+        $params[$key] = (string) $value;
+    }
+
+    if ($params['section'] === 'identity' && count($params) === 1) {
+        return './';
+    }
+
+    return './?' . http_build_query($params, '', '&', PHP_QUERY_RFC3986);
+}
+
+function admin_hidden_inputs(array $values): string
+{
+    $html = '';
+
+    foreach ($values as $name => $value) {
+        if ($value === null || $value === '') {
+            continue;
+        }
+
+        $html .= '<input type="hidden" name="' . e((string) $name) . '" value="' . e((string) $value) . '">';
+    }
+
+    return $html;
+}
+
 function admin_field_head(string $label, string $help): string
 {
     return '<span class="admin-label-row"><span>' . e($label) . '</span><span class="admin-tooltip" tabindex="0" aria-label="' . e($help) . '">?</span></span>'
@@ -438,6 +475,30 @@ function admin_diag_flag($value, string $yes = 'Yes', string $no = 'No'): string
 function admin_diag_json(array $value): string
 {
     return json_encode($value, JSON_PRETTY_PRINT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?: '{}';
+}
+
+function admin_render_diag_pagination(array $pagination, string $page_key): string
+{
+    $total = (int) ($pagination['total'] ?? 0);
+    $page = (int) ($pagination['page'] ?? 1);
+    $pages = (int) ($pagination['pages'] ?? 1);
+    $per_page = (int) ($pagination['per_page'] ?? 25);
+    $start = $total > 0 ? ((($page - 1) * $per_page) + 1) : 0;
+    $end = $total > 0 ? min($total, $page * $per_page) : 0;
+    $previous_url = $page > 1 ? admin_query_url('animations', [$page_key => $page - 1]) : '';
+    $next_url = $page < $pages ? admin_query_url('animations', [$page_key => $page + 1]) : '';
+
+    $html = '<nav class="admin-diagnostic-pager" aria-label="Diagnostics pagination">';
+    $html .= '<span>' . e((string) $start) . '-' . e((string) $end) . ' of ' . e((string) $total) . '</span>';
+    $html .= $previous_url !== ''
+        ? '<a class="btn btn-secondary" href="' . e($previous_url) . '">Previous</a>'
+        : '<span class="btn btn-secondary is-disabled" aria-disabled="true">Previous</span>';
+    $html .= '<span>Page ' . e((string) $page) . ' of ' . e((string) $pages) . '</span>';
+    $html .= $next_url !== ''
+        ? '<a class="btn btn-secondary" href="' . e($next_url) . '">Next</a>'
+        : '<span class="btn btn-secondary is-disabled" aria-disabled="true">Next</span>';
+
+    return $html . '</nav>';
 }
 
 function admin_permission_status_guide(): string
@@ -5179,14 +5240,121 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                   </section>
 
                   <?php if (!empty($admin_animation_state['ready'])) : ?>
+                    <?php
+                      $animation_filters = (array) ($admin_animation_state['filters'] ?? []);
+                      $animation_player_pagination = (array) ($admin_animation_state['players_pagination'] ?? []);
+                      $animation_event_pagination = (array) ($admin_animation_state['events_pagination'] ?? []);
+                      $animation_player_signal_options = [
+                          '' => 'All signals',
+                          'errors' => 'Has errors',
+                          'loader_skips' => 'Loader skipped',
+                          'effects_started' => 'Effects started',
+                          'no_effects' => 'No effect starts',
+                          'reduced_motion' => 'Reduced motion',
+                          'mobile_performance' => 'Mobile-lite mode',
+                      ];
+                      $animation_player_sort_options = [
+                          'last_seen' => 'Last seen',
+                          'oldest_seen' => 'Oldest seen',
+                          'events' => 'Most events',
+                          'sessions' => 'Most sessions',
+                          'loader_skips' => 'Most loader skips',
+                          'effects_starts' => 'Most effect starts',
+                          'errors' => 'Most errors',
+                          'steam' => 'SteamID64',
+                      ];
+                      $animation_event_signal_options = [
+                          '' => 'All signals',
+                          'errors' => 'Errors',
+                          'loader_skipped' => 'Loader skipped',
+                          'loader_shown' => 'Loader shown',
+                          'loader_hidden' => 'Loader hidden',
+                          'reduced_motion' => 'Reduced motion',
+                          'mobile_performance' => 'Mobile-lite mode',
+                      ];
+                      $animation_event_sort_options = [
+                          'newest' => 'Newest first',
+                          'oldest' => 'Oldest first',
+                          'steam' => 'SteamID64',
+                          'event' => 'Event type',
+                          'page' => 'Page',
+                          'viewport' => 'Largest viewport',
+                      ];
+                      $animation_per_page_options = [
+                          '10' => '10',
+                          '20' => '20',
+                          '25' => '25',
+                          '50' => '50',
+                          '100' => '100',
+                      ];
+                      $animation_event_type_options = [];
+                      foreach ((array) ($admin_animation_state['event_types'] ?? []) as $event_type_row) {
+                          $event_type_value = trim((string) ($event_type_row['event_type'] ?? ''));
+                          if ($event_type_value === '') {
+                              continue;
+                          }
+                          $animation_event_type_options[$event_type_value] = $event_type_value . ' (' . (int) ($event_type_row['event_count'] ?? 0) . ')';
+                      }
+                      $animation_current_event_type = (string) ($animation_filters['event_type'] ?? '');
+                      if ($animation_current_event_type !== '' && !isset($animation_event_type_options[$animation_current_event_type])) {
+                          $animation_event_type_options[$animation_current_event_type] = $animation_current_event_type . ' (current)';
+                      }
+                    ?>
                     <section class="admin-section">
                       <div class="admin-subsection-head">
                         <h3>Player signals</h3>
                         <p>Use this to spot owner-specific patterns like reduced motion, mobile-lite mode, repeated loader skips, or effects never starting.</p>
                       </div>
+                      <form class="admin-diagnostic-filterbar" method="get" action="./">
+                        <?= admin_hidden_inputs([
+                            'section' => 'animations',
+                            'event_search' => $animation_filters['event_search'] ?? '',
+                            'event_type' => $animation_filters['event_type'] ?? '',
+                            'event_signal' => $animation_filters['event_signal'] ?? '',
+                            'event_sort' => $animation_filters['event_sort'] ?? '',
+                            'event_page' => $animation_filters['event_page'] ?? 1,
+                            'event_per_page' => $animation_filters['event_per_page'] ?? 25,
+                            'player_page' => 1,
+                        ]) ?>
+                        <label class="admin-field">
+                          <?= admin_field_head('Search', 'Search SteamID64 values in the player rollup.') ?>
+                          <input type="search" name="player_search" maxlength="80" placeholder="SteamID64" value="<?= e((string) ($animation_filters['player_search'] ?? '')) ?>">
+                        </label>
+                        <div class="admin-diagnostic-filter-grid">
+                          <label class="admin-field">
+                            <?= admin_field_head('Signal', 'Filter players by diagnostic behavior seen in any session.') ?>
+                            <select name="player_signal">
+                              <option value="">All signals</option>
+                              <?= admin_render_keyed_options($animation_player_signal_options, (string) ($animation_filters['player_signal'] ?? '')) ?>
+                            </select>
+                          </label>
+                          <label class="admin-field">
+                            <?= admin_field_head('Sort', 'Reorder the player rollup without changing saved diagnostics.') ?>
+                            <select name="player_sort">
+                              <?= admin_render_keyed_options($animation_player_sort_options, (string) ($animation_filters['player_sort'] ?? 'last_seen')) ?>
+                            </select>
+                          </label>
+                          <label class="admin-field">
+                            <?= admin_field_head('Per page', 'Choose how many player rows to show per page.') ?>
+                            <select name="player_per_page">
+                              <?= admin_render_keyed_options($animation_per_page_options, (string) ($animation_filters['player_per_page'] ?? 20)) ?>
+                            </select>
+                          </label>
+                          <button class="btn btn-primary" type="submit">Apply</button>
+                          <a class="btn btn-secondary" href="<?= e(admin_query_url('animations', [
+                              'player_search' => null,
+                              'player_signal' => null,
+                              'player_sort' => null,
+                              'player_page' => null,
+                              'player_per_page' => null,
+                          ])) ?>">Clear</a>
+                        </div>
+                        <p class="admin-diagnostic-filter-count"><?= e((string) ($animation_player_pagination['total'] ?? 0)) ?> players match</p>
+                      </form>
                       <?php if (empty($admin_animation_state['players'])) : ?>
-                        <div class="admin-alert warning">No logged-in Steam users have posted animation diagnostics yet.</div>
+                        <div class="admin-alert warning">No logged-in Steam users match the current animation diagnostics filters.</div>
                       <?php else : ?>
+                        <?= admin_render_diag_pagination($animation_player_pagination, 'player_page') ?>
                         <div class="store-table-wrap">
                           <table class="store-table">
                             <thead>
@@ -5219,6 +5387,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             </tbody>
                           </table>
                         </div>
+                        <?= admin_render_diag_pagination($animation_player_pagination, 'player_page') ?>
                       <?php endif; ?>
                     </section>
 
@@ -5227,9 +5396,63 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                         <h3>Recent events</h3>
                         <p>Each row is attached to the verified Steam session on the server, not a client-submitted SteamID.</p>
                       </div>
+                      <form class="admin-diagnostic-filterbar" method="get" action="./">
+                        <?= admin_hidden_inputs([
+                            'section' => 'animations',
+                            'player_search' => $animation_filters['player_search'] ?? '',
+                            'player_signal' => $animation_filters['player_signal'] ?? '',
+                            'player_sort' => $animation_filters['player_sort'] ?? '',
+                            'player_page' => $animation_filters['player_page'] ?? 1,
+                            'player_per_page' => $animation_filters['player_per_page'] ?? 20,
+                            'event_page' => 1,
+                        ]) ?>
+                        <label class="admin-field">
+                          <?= admin_field_head('Search', 'Search SteamID64, event type, page, URL, user agent, or details JSON.') ?>
+                          <input type="search" name="event_search" maxlength="120" placeholder="loader_skipped, /store, SteamID64" value="<?= e((string) ($animation_filters['event_search'] ?? '')) ?>">
+                        </label>
+                        <div class="admin-diagnostic-filter-grid">
+                          <label class="admin-field">
+                            <?= admin_field_head('Event type', 'Filter to one exact diagnostic event type.') ?>
+                            <select name="event_type">
+                              <option value="">All event types</option>
+                              <?= admin_render_keyed_options($animation_event_type_options, $animation_current_event_type) ?>
+                            </select>
+                          </label>
+                          <label class="admin-field">
+                            <?= admin_field_head('Signal', 'Filter events by the most common animation diagnostic flags.') ?>
+                            <select name="event_signal">
+                              <option value="">All signals</option>
+                              <?= admin_render_keyed_options($animation_event_signal_options, (string) ($animation_filters['event_signal'] ?? '')) ?>
+                            </select>
+                          </label>
+                          <label class="admin-field">
+                            <?= admin_field_head('Sort', 'Reorder recent events without changing stored diagnostics.') ?>
+                            <select name="event_sort">
+                              <?= admin_render_keyed_options($animation_event_sort_options, (string) ($animation_filters['event_sort'] ?? 'newest')) ?>
+                            </select>
+                          </label>
+                          <label class="admin-field">
+                            <?= admin_field_head('Per page', 'Choose how many event rows to show per page.') ?>
+                            <select name="event_per_page">
+                              <?= admin_render_keyed_options($animation_per_page_options, (string) ($animation_filters['event_per_page'] ?? 25)) ?>
+                            </select>
+                          </label>
+                          <button class="btn btn-primary" type="submit">Apply</button>
+                          <a class="btn btn-secondary" href="<?= e(admin_query_url('animations', [
+                              'event_search' => null,
+                              'event_type' => null,
+                              'event_signal' => null,
+                              'event_sort' => null,
+                              'event_page' => null,
+                              'event_per_page' => null,
+                          ])) ?>">Clear</a>
+                        </div>
+                        <p class="admin-diagnostic-filter-count"><?= e((string) ($animation_event_pagination['total'] ?? 0)) ?> events match</p>
+                      </form>
                       <?php if (empty($admin_animation_state['events'])) : ?>
-                        <div class="admin-alert warning">No animation diagnostic events have been recorded yet.</div>
+                        <div class="admin-alert warning">No animation diagnostic events match the current filters.</div>
                       <?php else : ?>
+                        <?= admin_render_diag_pagination($animation_event_pagination, 'event_page') ?>
                         <div class="store-table-wrap">
                           <table class="store-table">
                             <thead>
@@ -5281,6 +5504,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             </tbody>
                           </table>
                         </div>
+                        <?= admin_render_diag_pagination($animation_event_pagination, 'event_page') ?>
                       <?php endif; ?>
                     </section>
                   <?php endif; ?>

@@ -295,14 +295,24 @@ function raidlands_animation_diagnostics_bool_or_null($value): ?int
     return null;
 }
 
-function raidlands_animation_diagnostics_admin_state(int $limit = 120): array
+function raidlands_animation_diagnostics_admin_state($options = []): array
 {
+    if (is_int($options)) {
+        $options = ['event_per_page' => $options];
+    }
+
+    $filters = raidlands_animation_diagnostics_admin_filters((array) $options);
+
     if (!raidlands_db_is_configured()) {
         return [
             'ready' => false,
             'message' => 'MySQL is not configured yet.',
             'events' => [],
             'players' => [],
+            'filters' => $filters,
+            'event_types' => [],
+            'events_pagination' => raidlands_animation_diagnostics_pagination(0, 1, $filters['event_per_page']),
+            'players_pagination' => raidlands_animation_diagnostics_pagination(0, 1, $filters['player_per_page']),
             'summary' => raidlands_animation_diagnostics_empty_summary(),
         ];
     }
@@ -313,26 +323,84 @@ function raidlands_animation_diagnostics_admin_state(int $limit = 120): array
             'message' => 'Run database/migrations/041_animation_diagnostics.sql to collect animation diagnostics.',
             'events' => [],
             'players' => [],
+            'filters' => $filters,
+            'event_types' => [],
+            'events_pagination' => raidlands_animation_diagnostics_pagination(0, 1, $filters['event_per_page']),
+            'players_pagination' => raidlands_animation_diagnostics_pagination(0, 1, $filters['player_per_page']),
             'summary' => raidlands_animation_diagnostics_empty_summary(),
         ];
     }
 
-    $limit = max(20, min(250, $limit));
-    $events = raidlands_db_fetch_all(
-        'SELECT id, player_id, steam_id64, session_hash, event_type, page_id, page_url, referrer_url,
-                viewport_width, viewport_height, device_pixel_ratio, reduced_motion, mobile_performance,
-                loader_should_show, user_agent, details_json, created_at
-         FROM animation_diagnostics
-         ORDER BY created_at DESC, id DESC
-         LIMIT ' . $limit
-    );
+    $events_state = raidlands_animation_diagnostics_admin_events($filters);
+    $players_state = raidlands_animation_diagnostics_admin_players($filters);
 
     return [
         'ready' => true,
         'message' => '',
-        'events' => array_map('raidlands_animation_diagnostics_admin_event', $events),
-        'players' => raidlands_animation_diagnostics_admin_players(),
+        'events' => $events_state['rows'],
+        'players' => $players_state['rows'],
+        'filters' => $filters,
+        'event_types' => raidlands_animation_diagnostics_admin_event_types(),
+        'events_pagination' => $events_state['pagination'],
+        'players_pagination' => $players_state['pagination'],
         'summary' => raidlands_animation_diagnostics_admin_summary(),
+    ];
+}
+
+function raidlands_animation_diagnostics_admin_filters(array $options): array
+{
+    return [
+        'event_search' => raidlands_animation_diagnostics_admin_clean_text($options['event_search'] ?? '', 120),
+        'event_type' => raidlands_animation_diagnostics_admin_clean_text($options['event_type'] ?? '', 80),
+        'event_signal' => raidlands_animation_diagnostics_admin_choice(
+            $options['event_signal'] ?? '',
+            ['errors', 'loader_skipped', 'loader_shown', 'loader_hidden', 'reduced_motion', 'mobile_performance']
+        ),
+        'event_sort' => raidlands_animation_diagnostics_admin_choice(
+            $options['event_sort'] ?? 'newest',
+            ['newest', 'oldest', 'steam', 'event', 'page', 'viewport'],
+            'newest'
+        ),
+        'event_page' => raidlands_animation_diagnostics_admin_int($options['event_page'] ?? 1, 1, 9999, 1),
+        'event_per_page' => raidlands_animation_diagnostics_admin_per_page($options['event_per_page'] ?? ($options['limit'] ?? 25), 25),
+        'player_search' => raidlands_animation_diagnostics_admin_clean_text($options['player_search'] ?? '', 80),
+        'player_signal' => raidlands_animation_diagnostics_admin_choice(
+            $options['player_signal'] ?? '',
+            ['errors', 'loader_skips', 'effects_started', 'no_effects', 'reduced_motion', 'mobile_performance']
+        ),
+        'player_sort' => raidlands_animation_diagnostics_admin_choice(
+            $options['player_sort'] ?? 'last_seen',
+            ['last_seen', 'oldest_seen', 'events', 'sessions', 'loader_skips', 'effects_starts', 'errors', 'steam'],
+            'last_seen'
+        ),
+        'player_page' => raidlands_animation_diagnostics_admin_int($options['player_page'] ?? 1, 1, 9999, 1),
+        'player_per_page' => raidlands_animation_diagnostics_admin_per_page($options['player_per_page'] ?? 20, 20),
+    ];
+}
+
+function raidlands_animation_diagnostics_admin_events(array $filters): array
+{
+    [$where_sql, $params] = raidlands_animation_diagnostics_admin_event_where($filters);
+    $total_row = raidlands_db_fetch_one('SELECT COUNT(*) AS total FROM animation_diagnostics' . $where_sql, $params);
+    $total = (int) ($total_row['total'] ?? 0);
+    $pagination = raidlands_animation_diagnostics_pagination($total, (int) $filters['event_page'], (int) $filters['event_per_page']);
+    $order_sql = raidlands_animation_diagnostics_admin_event_order((string) $filters['event_sort']);
+    $limit = (int) $pagination['per_page'];
+    $offset = (int) $pagination['offset'];
+    $events = raidlands_db_fetch_all(
+        'SELECT id, player_id, steam_id64, session_hash, event_type, page_id, page_url, referrer_url,
+                viewport_width, viewport_height, device_pixel_ratio, reduced_motion, mobile_performance,
+                loader_should_show, user_agent, details_json, created_at
+         FROM animation_diagnostics'
+        . $where_sql
+        . ' ORDER BY ' . $order_sql
+        . ' LIMIT ' . $limit . ' OFFSET ' . $offset,
+        $params
+    );
+
+    return [
+        'rows' => array_map('raidlands_animation_diagnostics_admin_event', $events),
+        'pagination' => $pagination,
     ];
 }
 
@@ -344,23 +412,197 @@ function raidlands_animation_diagnostics_admin_event(array $row): array
     return $row;
 }
 
-function raidlands_animation_diagnostics_admin_players(): array
+function raidlands_animation_diagnostics_admin_players(array $filters): array
+{
+    [$where_sql, $params] = raidlands_animation_diagnostics_admin_player_where($filters);
+    $having_sql = raidlands_animation_diagnostics_admin_player_having((string) $filters['player_signal']);
+    $aggregate_sql = 'SELECT steam_id64,
+            COUNT(*) AS event_count,
+            COUNT(DISTINCT session_hash) AS session_count,
+            MAX(created_at) AS last_seen_at,
+            SUM(event_type = "loader_skipped") AS loader_skipped_count,
+            SUM(event_type = "effects_start") AS effects_start_count,
+            SUM(event_type = "loader_error" OR event_type = "animation_diagnostic_error") AS error_count,
+            MAX(reduced_motion = 1) AS ever_reduced_motion,
+            MAX(mobile_performance = 1) AS ever_mobile_performance
+        FROM animation_diagnostics'
+        . $where_sql
+        . ' GROUP BY steam_id64'
+        . $having_sql;
+    $total_row = raidlands_db_fetch_one('SELECT COUNT(*) AS total FROM (' . $aggregate_sql . ') player_rows', $params);
+    $total = (int) ($total_row['total'] ?? 0);
+    $pagination = raidlands_animation_diagnostics_pagination($total, (int) $filters['player_page'], (int) $filters['player_per_page']);
+    $order_sql = raidlands_animation_diagnostics_admin_player_order((string) $filters['player_sort']);
+    $limit = (int) $pagination['per_page'];
+    $offset = (int) $pagination['offset'];
+    $rows = raidlands_db_fetch_all(
+        'SELECT * FROM (' . $aggregate_sql . ') player_rows ORDER BY ' . $order_sql . ' LIMIT ' . $limit . ' OFFSET ' . $offset,
+        $params
+    );
+
+    return [
+        'rows' => $rows,
+        'pagination' => $pagination,
+    ];
+}
+
+function raidlands_animation_diagnostics_admin_event_types(): array
 {
     return raidlands_db_fetch_all(
-        'SELECT steam_id64,
-                COUNT(*) AS event_count,
-                COUNT(DISTINCT session_hash) AS session_count,
-                MAX(created_at) AS last_seen_at,
-                SUM(event_type = "loader_skipped") AS loader_skipped_count,
-                SUM(event_type = "effects_start") AS effects_start_count,
-                SUM(event_type = "loader_error" OR event_type = "animation_diagnostic_error") AS error_count,
-                MAX(reduced_motion = 1) AS ever_reduced_motion,
-                MAX(mobile_performance = 1) AS ever_mobile_performance
+        'SELECT event_type, COUNT(*) AS event_count
          FROM animation_diagnostics
-         GROUP BY steam_id64
-         ORDER BY last_seen_at DESC
-         LIMIT 60'
+         GROUP BY event_type
+         ORDER BY event_type ASC'
     );
+}
+
+function raidlands_animation_diagnostics_admin_event_where(array $filters): array
+{
+    $where = [];
+    $params = [];
+    $search = (string) ($filters['event_search'] ?? '');
+
+    if ($search !== '') {
+        $search_columns = ['steam_id64', 'event_type', 'page_id', 'page_url', 'referrer_url', 'user_agent', 'details_json'];
+        $search_parts = [];
+
+        foreach ($search_columns as $index => $column) {
+            $param = 'event_search_' . $index;
+            $params[$param] = '%' . $search . '%';
+            $search_parts[] = $column . ' LIKE :' . $param;
+        }
+
+        $where[] = '(' . implode(' OR ', $search_parts) . ')';
+    }
+
+    if ((string) ($filters['event_type'] ?? '') !== '') {
+        $params['event_type'] = (string) $filters['event_type'];
+        $where[] = 'event_type = :event_type';
+    }
+
+    switch ((string) ($filters['event_signal'] ?? '')) {
+        case 'errors':
+            $where[] = '(event_type = "loader_error" OR event_type = "animation_diagnostic_error")';
+            break;
+        case 'loader_skipped':
+            $where[] = 'event_type = "loader_skipped"';
+            break;
+        case 'loader_shown':
+            $where[] = 'loader_should_show = 1';
+            break;
+        case 'loader_hidden':
+            $where[] = 'loader_should_show = 0';
+            break;
+        case 'reduced_motion':
+            $where[] = 'reduced_motion = 1';
+            break;
+        case 'mobile_performance':
+            $where[] = 'mobile_performance = 1';
+            break;
+    }
+
+    return [$where === [] ? '' : ' WHERE ' . implode(' AND ', $where), $params];
+}
+
+function raidlands_animation_diagnostics_admin_player_where(array $filters): array
+{
+    $search = (string) ($filters['player_search'] ?? '');
+
+    if ($search === '') {
+        return ['', []];
+    }
+
+    return [' WHERE steam_id64 LIKE :player_search', ['player_search' => '%' . $search . '%']];
+}
+
+function raidlands_animation_diagnostics_admin_player_having(string $signal): string
+{
+    return match ($signal) {
+        'errors' => ' HAVING error_count > 0',
+        'loader_skips' => ' HAVING loader_skipped_count > 0',
+        'effects_started' => ' HAVING effects_start_count > 0',
+        'no_effects' => ' HAVING effects_start_count = 0',
+        'reduced_motion' => ' HAVING ever_reduced_motion = 1',
+        'mobile_performance' => ' HAVING ever_mobile_performance = 1',
+        default => '',
+    };
+}
+
+function raidlands_animation_diagnostics_admin_event_order(string $sort): string
+{
+    return match ($sort) {
+        'oldest' => 'created_at ASC, id ASC',
+        'steam' => 'steam_id64 ASC, created_at DESC, id DESC',
+        'event' => 'event_type ASC, created_at DESC, id DESC',
+        'page' => 'page_id ASC, created_at DESC, id DESC',
+        'viewport' => 'viewport_width DESC, viewport_height DESC, created_at DESC, id DESC',
+        default => 'created_at DESC, id DESC',
+    };
+}
+
+function raidlands_animation_diagnostics_admin_player_order(string $sort): string
+{
+    return match ($sort) {
+        'oldest_seen' => 'last_seen_at ASC, steam_id64 ASC',
+        'events' => 'event_count DESC, last_seen_at DESC, steam_id64 ASC',
+        'sessions' => 'session_count DESC, last_seen_at DESC, steam_id64 ASC',
+        'loader_skips' => 'loader_skipped_count DESC, last_seen_at DESC, steam_id64 ASC',
+        'effects_starts' => 'effects_start_count DESC, last_seen_at DESC, steam_id64 ASC',
+        'errors' => 'error_count DESC, last_seen_at DESC, steam_id64 ASC',
+        'steam' => 'steam_id64 ASC',
+        default => 'last_seen_at DESC, steam_id64 ASC',
+    };
+}
+
+function raidlands_animation_diagnostics_pagination(int $total, int $page, int $per_page): array
+{
+    $per_page = raidlands_animation_diagnostics_admin_per_page($per_page, 25);
+    $pages = max(1, (int) ceil(max(0, $total) / $per_page));
+    $page = max(1, min($pages, $page));
+
+    return [
+        'total' => max(0, $total),
+        'page' => $page,
+        'pages' => $pages,
+        'per_page' => $per_page,
+        'offset' => ($page - 1) * $per_page,
+    ];
+}
+
+function raidlands_animation_diagnostics_admin_clean_text($value, int $max_length): string
+{
+    $value = trim((string) $value);
+    $value = preg_replace('/\s+/', ' ', $value) ?? '';
+
+    if ($max_length > 0 && mb_strlen($value) > $max_length) {
+        return mb_substr($value, 0, $max_length);
+    }
+
+    return $value;
+}
+
+function raidlands_animation_diagnostics_admin_choice($value, array $allowed, string $default = ''): string
+{
+    $value = trim((string) $value);
+
+    return in_array($value, $allowed, true) ? $value : $default;
+}
+
+function raidlands_animation_diagnostics_admin_int($value, int $min, int $max, int $default): int
+{
+    if (!is_numeric($value)) {
+        return $default;
+    }
+
+    return max($min, min($max, (int) $value));
+}
+
+function raidlands_animation_diagnostics_admin_per_page($value, int $default): int
+{
+    $value = raidlands_animation_diagnostics_admin_int($value, 1, 250, $default);
+    $allowed = [10, 20, 25, 50, 100, 250];
+
+    return in_array($value, $allowed, true) ? $value : $default;
 }
 
 function raidlands_animation_diagnostics_admin_summary(): array
