@@ -1243,14 +1243,14 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                   <section class="admin-section">
                     <div class="admin-grid two">
                       <label class="admin-field">
-                        <?= admin_field_head('Wipe time', 'The local time used by countdowns and wipe schedule labels.') ?>
+                        <?= admin_field_head('Wipe time', 'The clock time in the selected timezone used by countdowns and wipe schedule labels.') ?>
                         <input type="time" name="site_config[wipe][time]" value="<?= e((string) ($admin_site['wipe']['time'] ?? '19:00')) ?>">
                       </label>
                       <label class="admin-field">
                         <?= admin_field_head('Timezone', 'IANA timezone used when calculating and displaying wipe times.') ?>
-                        <?= admin_render_datalist('admin-timezone-options', admin_timezone_options((string) ($admin_site['wipe']['timezone'] ?? 'America/Chicago'))) ?>
-                        <input type="text" list="admin-timezone-options" name="site_config[wipe][timezone]" maxlength="80" placeholder="America/Chicago" value="<?= e((string) ($admin_site['wipe']['timezone'] ?? 'America/Chicago')) ?>">
-                        <?= admin_hint('Examples: America/Chicago, Europe/London, UTC. The countdown uses this value.') ?>
+                        <?= admin_render_datalist('admin-timezone-options', admin_timezone_options((string) ($admin_site['wipe']['timezone'] ?? 'Europe/London'))) ?>
+                        <input type="text" list="admin-timezone-options" name="site_config[wipe][timezone]" maxlength="80" placeholder="Europe/London" value="<?= e((string) ($admin_site['wipe']['timezone'] ?? 'Europe/London')) ?>">
+                        <?= admin_hint('Examples: Europe/London, America/Chicago, UTC. The countdown uses this value.') ?>
                       </label>
                       <div class="admin-field admin-span-all">
                         <?= admin_field_head('Wipe days', 'Selected days drive countdowns, next wipe labels, and schedule copy generated from config.') ?>

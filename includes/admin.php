@@ -758,7 +758,7 @@ function raidlands_admin_build_content_from_post(array $post, string $section = 
             'days' => $wipe_days,
             'dayNames' => raidlands_admin_wipe_day_names($wipe_days),
             'time' => raidlands_admin_time($wipe_input['time'] ?? '19:00'),
-            'timezone' => raidlands_admin_clean_text($wipe_input['timezone'] ?? 'America/Chicago', 80),
+            'timezone' => raidlands_admin_clean_text($wipe_input['timezone'] ?? 'Europe/London', 80),
         ];
     }
 

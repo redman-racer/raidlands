@@ -372,7 +372,7 @@ function raidlands_features_current_wipe_window(?DateTimeImmutable $now = null):
 {
     global $site_config;
 
-    $timezone_name = (string) ($site_config['wipe']['timezone'] ?? 'America/Chicago');
+    $timezone_name = (string) ($site_config['wipe']['timezone'] ?? 'Europe/London');
 
     try {
         $timezone = new DateTimeZone($timezone_name);

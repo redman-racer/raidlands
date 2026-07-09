@@ -28,6 +28,8 @@
   let serverHistoryResizeTimer = null;
   let animationDiagnosticFlushTimer = null;
   let animationDiagnosticInFlight = false;
+  let resolvedWipeTimeZone = null;
+  const timeZonePartFormatters = new Map();
 
   function getSiteConfig() {
     const basePath = doc.dataset.base || "./";
@@ -46,7 +48,7 @@
         days: [4],
         dayNames: ["Thursday"],
         time: "19:00",
-        timezone: "America/Chicago"
+        timezone: "Europe/London"
       },
       auth: {
         steamUrl: "",
@@ -3056,14 +3058,26 @@
   }
 
   function getNextWipeDate(now = new Date()) {
-    const [hour, minute] = CONFIG.wipe.time.split(":").map(Number);
+    const schedule = getWipeSchedule();
+    const zoneNow = getTimeZoneDateParts(now, schedule.timeZone);
 
     for (let offset = 0; offset < 14; offset += 1) {
-      const candidate = new Date(now);
-      candidate.setDate(now.getDate() + offset);
-      candidate.setHours(hour, minute, 0, 0);
+      const localDate = getPlainDateOffset(zoneNow, offset);
 
-      if (CONFIG.wipe.days.includes(candidate.getDay()) && candidate > now) {
+      if (!schedule.days.has(localDate.weekday)) {
+        continue;
+      }
+
+      const candidate = zonedDateToDate(
+        localDate.year,
+        localDate.month,
+        localDate.day,
+        schedule.hour,
+        schedule.minute,
+        schedule.timeZone
+      );
+
+      if (candidate > now) {
         return candidate;
       }
     }
@@ -3072,14 +3086,26 @@
   }
 
   function getPreviousWipeDate(now = new Date()) {
-    const [hour, minute] = CONFIG.wipe.time.split(":").map(Number);
+    const schedule = getWipeSchedule();
+    const zoneNow = getTimeZoneDateParts(now, schedule.timeZone);
 
     for (let offset = 0; offset < 14; offset += 1) {
-      const candidate = new Date(now);
-      candidate.setDate(now.getDate() - offset);
-      candidate.setHours(hour, minute, 0, 0);
+      const localDate = getPlainDateOffset(zoneNow, -offset);
 
-      if (CONFIG.wipe.days.includes(candidate.getDay()) && candidate < now) {
+      if (!schedule.days.has(localDate.weekday)) {
+        continue;
+      }
+
+      const candidate = zonedDateToDate(
+        localDate.year,
+        localDate.month,
+        localDate.day,
+        schedule.hour,
+        schedule.minute,
+        schedule.timeZone
+      );
+
+      if (candidate < now) {
         return candidate;
       }
     }
@@ -3087,13 +3113,113 @@
     return now;
   }
 
+  function getWipeSchedule() {
+    const [rawHour, rawMinute] = String(CONFIG.wipe.time || "19:00").split(":").map(Number);
+    const days = Array.isArray(CONFIG.wipe.days) ? CONFIG.wipe.days : [4];
+    const daySet = new Set(days
+      .map(day => Number(day))
+      .filter(day => Number.isInteger(day) && day >= 0 && day <= 6));
+
+    if (!daySet.size) {
+      daySet.add(4);
+    }
+
+    return {
+      days: daySet,
+      hour: Number.isFinite(rawHour) ? Math.max(0, Math.min(23, rawHour)) : 19,
+      minute: Number.isFinite(rawMinute) ? Math.max(0, Math.min(59, rawMinute)) : 0,
+      timeZone: getWipeTimeZone()
+    };
+  }
+
+  function getWipeTimeZone() {
+    if (resolvedWipeTimeZone !== null) {
+      return resolvedWipeTimeZone;
+    }
+
+    const configured = String(CONFIG.wipe.timezone || "Europe/London").trim() || "Europe/London";
+
+    try {
+      new Intl.DateTimeFormat("en-US", { timeZone: configured }).format(new Date());
+      resolvedWipeTimeZone = configured;
+    } catch (error) {
+      resolvedWipeTimeZone = "UTC";
+    }
+
+    return resolvedWipeTimeZone;
+  }
+
+  function getPlainDateOffset(parts, offset) {
+    const date = new Date(Date.UTC(parts.year, parts.month - 1, parts.day + offset));
+
+    return {
+      year: date.getUTCFullYear(),
+      month: date.getUTCMonth(),
+      day: date.getUTCDate(),
+      weekday: date.getUTCDay()
+    };
+  }
+
+  function zonedDateToDate(year, month, day, hour, minute, timeZone) {
+    const targetUtc = Date.UTC(year, month, day, hour, minute, 0, 0);
+    let date = new Date(targetUtc);
+
+    for (let attempt = 0; attempt < 2; attempt += 1) {
+      const parts = getTimeZoneDateParts(date, timeZone);
+      const zonedUtc = Date.UTC(parts.year, parts.month - 1, parts.day, parts.hour, parts.minute, parts.second);
+      const offset = zonedUtc - targetUtc;
+
+      date = new Date(date.getTime() - offset);
+    }
+
+    return date;
+  }
+
+  function getTimeZoneDateParts(date, timeZone) {
+    const parts = {};
+
+    getTimeZonePartsFormatter(timeZone).formatToParts(date).forEach(part => {
+      if (part.type !== "literal") {
+        parts[part.type] = Number(part.value);
+      }
+    });
+
+    return {
+      year: parts.year,
+      month: parts.month,
+      day: parts.day,
+      hour: parts.hour,
+      minute: parts.minute,
+      second: parts.second || 0
+    };
+  }
+
+  function getTimeZonePartsFormatter(timeZone) {
+    if (!timeZonePartFormatters.has(timeZone)) {
+      timeZonePartFormatters.set(timeZone, new Intl.DateTimeFormat("en-US", {
+        timeZone,
+        hourCycle: "h23",
+        year: "numeric",
+        month: "2-digit",
+        day: "2-digit",
+        hour: "2-digit",
+        minute: "2-digit",
+        second: "2-digit"
+      }));
+    }
+
+    return timeZonePartFormatters.get(timeZone);
+  }
+
   function formatDate(date) {
     return new Intl.DateTimeFormat(undefined, {
+      timeZone: getWipeTimeZone(),
       weekday: "long",
       month: "short",
       day: "numeric",
       hour: "numeric",
-      minute: "2-digit"
+      minute: "2-digit",
+      timeZoneName: "short"
     }).format(date);
   }
 

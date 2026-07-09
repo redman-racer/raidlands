@@ -67,7 +67,7 @@ $home_has_voteable_features = !empty($home_feature_state['has_voteable']);
       <div class="tag-row wipe-schedule-meta" aria-label="Wipe timing">
         <span class="tag"><span class="tag-label">Last wipe</span><span class="tag-value" data-last-wipe>Loading</span></span>
         <span class="tag"><span class="tag-label">Upcoming</span><span class="tag-value" data-next-wipe>Loading</span></span>
-        <span class="tag"><span class="tag-label">Local time</span><span class="tag-value"><?= e($site_config['wipe']['time']) ?> <?= e($site_config['wipe']['timezone']) ?></span></span>
+        <span class="tag"><span class="tag-label">Wipe time</span><span class="tag-value"><?= e($site_config['wipe']['time']) ?> <?= e($site_config['wipe']['timezone']) ?></span></span>
       </div>
       <?= render_wipe_bar() ?>
       <div class="button-row wipe-schedule-actions">

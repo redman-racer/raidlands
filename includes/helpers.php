@@ -139,7 +139,7 @@ function raidlands_loader_payload(): array
     $store_ready = function_exists('raidlands_db_is_configured') && raidlands_db_is_configured();
     $wipe_days = implode(' and ', (array) ($site_config['wipe']['dayNames'] ?? ['Thursday']));
     $wipe_time = (string) ($site_config['wipe']['time'] ?? '19:00');
-    $wipe_timezone = (string) ($site_config['wipe']['timezone'] ?? 'America/Chicago');
+    $wipe_timezone = (string) ($site_config['wipe']['timezone'] ?? 'Europe/London');
 
     return [
         'brand' => (string) ($site_config['serverName'] ?? 'Raidlands 1000x'),
