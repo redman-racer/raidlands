@@ -1190,11 +1190,16 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                 <p class="admin-section-summary"><?= e($active_meta['summary']) ?></p>
               </div>
 
-              <form class="admin-form" method="post" action="<?= e(admin_section_url($active_section)) ?>" enctype="multipart/form-data">
-                <input type="hidden" name="action" value="save">
-                <input type="hidden" name="section" value="<?= e($active_section) ?>">
-                <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
-                <?php if ($active_section === 'kits') : ?>
+              <?php $admin_workspace_has_save_form = raidlands_admin_can_save_section($active_section); ?>
+              <?php if ($admin_workspace_has_save_form) : ?>
+                <form class="admin-form" method="post" action="<?= e(admin_section_url($active_section)) ?>" enctype="multipart/form-data">
+                  <input type="hidden" name="action" value="save">
+                  <input type="hidden" name="section" value="<?= e($active_section) ?>">
+                  <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
+              <?php else : ?>
+                <div class="admin-form">
+              <?php endif; ?>
+                <?php if ($admin_workspace_has_save_form && $active_section === 'kits') : ?>
                   <?php
                     $admin_kit_expected_items = [];
 
@@ -5743,7 +5748,11 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                   <?php endif; ?>
                   <a class="btn btn-secondary" href="<?= e(route_url()) ?>">View Site</a>
                 </div>
-              </form>
+              <?php if ($admin_workspace_has_save_form) : ?>
+                </form>
+              <?php else : ?>
+                </div>
+              <?php endif; ?>
             </section>
           </div>
         </div>
