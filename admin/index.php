@@ -1276,7 +1276,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                       </label>
                       <label class="admin-field">
                         <?= admin_field_head('Steam connect URL', 'The steam:// link used by Join Server and Launch Rust buttons.') ?>
-                        <input type="text" name="site_config[steamConnectUrl]" maxlength="240" placeholder="steam://connect/raidlands.net:25607" value="<?= e((string) ($admin_site['steamConnectUrl'] ?? '')) ?>">
+                        <input type="text" name="site_config[steamConnectUrl]" maxlength="240" placeholder="steam://run/252490//+connect%20raidlands.net:25607/" value="<?= e((string) ($admin_site['steamConnectUrl'] ?? '')) ?>">
                       </label>
                       <label class="admin-field">
                         <?= admin_field_head('Discord invite URL', 'Every Discord call-to-action points here.') ?>

@@ -35,7 +35,7 @@
     const basePath = doc.dataset.base || "./";
     const defaults = {
       connectCommand: "connect raidlands.net:25607",
-      steamConnectUrl: "steam://connect/raidlands.net:25607",
+      steamConnectUrl: "steam://run/252490//+connect%20raidlands.net:25607/",
       discordInviteUrl: "https://discord.gg/raidlands",
       serverStatusUrl: `${basePath}api/server-status.php`,
       serverStatusHistoryUrl: `${basePath}api/server-status-history.php`,
@@ -356,6 +356,16 @@
 
     app.querySelectorAll("[data-track]").forEach(item => {
       item.addEventListener("click", () => track(item.dataset.track));
+    });
+
+    app.querySelectorAll('[data-track="join_server_clicked"]').forEach(link => {
+      link.addEventListener("click", async () => {
+        const copied = await copyText(CONFIG.connectCommand);
+
+        if (copied) {
+          showToast("Opening Rust. Connect command copied as a fallback.");
+        }
+      });
     });
 
     app.querySelectorAll("[data-auth-provider]").forEach(button => {

@@ -33,7 +33,7 @@ $site_config = [
         'hourlyRetentionMonths' => raidlands_env_int('RAIDLANDS_SERVER_STATUS_HOURLY_RETENTION_MONTHS', 24),
     ],
     'connectCommand' => raidlands_env('RAIDLANDS_CONNECT_COMMAND', 'connect raidlands.net:25607'),
-    'steamConnectUrl' => raidlands_env('RAIDLANDS_STEAM_CONNECT_URL', 'steam://connect/raidlands.net:25607'),
+    'steamConnectUrl' => raidlands_env('RAIDLANDS_STEAM_CONNECT_URL', 'steam://run/252490//+connect%20raidlands.net:25607/'),
     'discordInviteUrl' => raidlands_env('RAIDLANDS_DISCORD_INVITE_URL', 'https://discord.gg/N6wnHzMhWS'),
     'wipe' => [
         'days' => raidlands_env_int_list('RAIDLANDS_WIPE_DAYS', [4]),
@@ -561,6 +561,32 @@ if ($raidlands_content_overrides !== []) {
 }
 
 unset($raidlands_content_overrides);
+
+$site_config['steamConnectUrl'] = raidlands_normalize_steam_connect_url(
+    (string) ($site_config['steamConnectUrl'] ?? ''),
+    (string) ($site_config['connectCommand'] ?? '')
+);
+
+function raidlands_normalize_steam_connect_url(string $configured_url, string $connect_command): string
+{
+    $configured_url = trim($configured_url);
+
+    if ($configured_url !== '' && stripos($configured_url, 'steam://connect/') !== 0) {
+        return $configured_url;
+    }
+
+    $server_address = trim((string) preg_replace('/^(?:client\.)?connect\s+/i', '', trim($connect_command)));
+
+    if ($server_address === '' && stripos($configured_url, 'steam://connect/') === 0) {
+        $server_address = trim(substr($configured_url, strlen('steam://connect/')), '/');
+    }
+
+    if ($server_address === '' || preg_match('/[\s\x00-\x1F]/', $server_address)) {
+        return $configured_url;
+    }
+
+    return 'steam://run/252490//+connect%20' . $server_address . '/';
+}
 
 function raidlands_load_site_content(string $path): array
 {
