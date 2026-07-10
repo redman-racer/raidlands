@@ -99,7 +99,7 @@ $rp_game_tabs = [
         'key' => 'monument-extraction',
         'label' => 'Monument Extraction',
         'meta' => $monument_has_active_run ? 'Run in progress' : 'Tactical extraction',
-        'icon' => 'MAP',
+        'icon' => 'CMD',
         'enabled' => $can_play && $monument_enabled,
         'ready' => $monument_ready,
     ],
@@ -476,7 +476,8 @@ $rp_game_tabs = [
                       <span>
                         <strong><?= e((string) ($loadout['label'] ?? ucwords((string) $loadout_key))) ?></strong>
                         <small><?= e((string) ($loadout['description'] ?? '')) ?></small>
-                        <em><?= e((string) ($loadout['ammo'] ?? 0)) ?> ammo / <?= e((string) ($loadout['syringes'] ?? 0)) ?> meds / <?= e((string) ($loadout['slots'] ?? 0)) ?> slots</em>
+                        <?php $loadout_meds = (int) ($loadout['syringes'] ?? 0); ?>
+                        <em><?= e((string) ($loadout['ammo'] ?? 0)) ?> ammo / <?= e((string) $loadout_meds) ?> med<?= $loadout_meds === 1 ? '' : 's' ?> / <?= e((string) ($loadout['slots'] ?? 0)) ?> slots</em>
                       </span>
                     </label>
                   <?php endforeach; ?>

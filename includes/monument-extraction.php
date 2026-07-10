@@ -193,7 +193,8 @@ function raidlands_monument_run_row(int $run_id, int $player_id, bool $for_updat
     }
 
     return raidlands_db_fetch_one(
-        'SELECT *
+        'SELECT monument_extraction_runs.*,
+                (expires_at IS NOT NULL AND expires_at <= NOW()) AS is_expired
          FROM monument_extraction_runs
          WHERE id = :id AND player_id = :player_id
          LIMIT 1' . ($for_update ? ' FOR UPDATE' : ''),
@@ -208,7 +209,8 @@ function raidlands_monument_active_run_row(int $player_id, bool $for_update = fa
     }
 
     return raidlands_db_fetch_one(
-        'SELECT *
+        'SELECT monument_extraction_runs.*,
+                (expires_at IS NOT NULL AND expires_at <= NOW()) AS is_expired
          FROM monument_extraction_runs
          WHERE active_player_key = :player_id
          LIMIT 1' . ($for_update ? ' FOR UPDATE' : ''),
@@ -220,6 +222,47 @@ function raidlands_monument_expire_row(PDO $pdo, array $row, string $reason = 'R
 {
     if (raidlands_monument_terminal_status((string) ($row['status'] ?? ''))) {
         return $row;
+    }
+
+    if ((string) ($row['status'] ?? '') === 'CREATING' && !empty($row['wager_request_id'])) {
+        $request_statement = $pdo->prepare('SELECT * FROM rp_point_requests WHERE id = :id FOR UPDATE');
+        $request_statement->execute(['id' => (int) $row['wager_request_id']]);
+        $wager_request = $request_statement->fetch(PDO::FETCH_ASSOC);
+
+        if (is_array($wager_request) && (string) $wager_request['status'] === 'confirmed') {
+            $state = raidlands_monument_decode_json($row['state_json'] ?? '', 'run state');
+            $config = raidlands_monument_decode_json($row['frozen_config_json'] ?? '', 'frozen configuration');
+            $ttl = max(5, min(1440, (int) ($config['activeRunTtlMinutes'] ?? 60)));
+            $ready_status = (string) ($state['status'] ?? 'AWAITING_ROOM_SELECTION');
+            $update = $pdo->prepare(
+                'UPDATE monument_extraction_runs
+                 SET status = :status,
+                     expires_at = DATE_ADD(NOW(), INTERVAL ' . $ttl . ' MINUTE),
+                     updated_at = NOW()
+                 WHERE id = :id'
+            );
+            $update->execute(['status' => $ready_status, 'id' => (int) $row['id']]);
+            $row['status'] = $ready_status;
+            $row['is_expired'] = 0;
+            return $row;
+        }
+
+        if (is_array($wager_request) && (string) $wager_request['status'] === 'processing') {
+            $pdo->prepare('UPDATE monument_extraction_runs SET expires_at = DATE_ADD(NOW(), INTERVAL 5 MINUTE), updated_at = NOW() WHERE id = :id')
+                ->execute(['id' => (int) $row['id']]);
+            $row['is_expired'] = 0;
+            return $row;
+        }
+
+        if (is_array($wager_request) && (string) $wager_request['status'] === 'queued') {
+            $pdo->prepare(
+                'UPDATE rp_point_requests
+                 SET status = "canceled", message = "Monument run expired before wager processing.", processed_at = NOW(), updated_at = NOW()
+                 WHERE id = :id AND status = "queued"'
+            )->execute(['id' => (int) $wager_request['id']]);
+        }
+
+        raidlands_rewards_rollback_daily_wager($pdo, (int) $row['player_id'], (int) $row['wager_rp'], (int) $row['wager_rp']);
     }
 
     $state = raidlands_monument_decode_json($row['state_json'] ?? '', 'run state');
@@ -242,12 +285,51 @@ function raidlands_monument_expire_row(PDO $pdo, array $row, string $reason = 'R
         'failure_reason' => $reason,
         'id' => (int) $row['id'],
     ]);
+    raidlands_monument_insert_system_action(
+        $pdo,
+        $row,
+        'expire',
+        ['status' => 'EXPIRED', 'reason' => $reason],
+        'system-expire-' . (int) $row['id'] . '-' . ((int) $row['lock_version'] + 1),
+        (int) $row['lock_version'] + 1,
+        (int) ($state['drawCounter'] ?? 0)
+    );
     $row['status'] = 'EXPIRED';
     $row['active_player_key'] = null;
     $row['state_json'] = raidlands_monument_json($state);
     $row['failure_reason'] = $reason;
 
     return $row;
+}
+
+function raidlands_monument_insert_system_action(
+    PDO $pdo,
+    array $row,
+    string $action_type,
+    array $result,
+    string $client_action_id,
+    int $sequence,
+    int $draw_counter
+): void {
+    $statement = $pdo->prepare(
+        'INSERT INTO monument_extraction_actions
+            (run_id, player_id, client_action_id, sequence_number, action_type,
+             request_payload_json, result_payload_json, random_draw_start, random_draw_end)
+         VALUES
+            (:run_id, :player_id, :client_action_id, :sequence_number, :action_type,
+             NULL, :result_payload_json, :draw_start, :draw_end)
+         ON DUPLICATE KEY UPDATE id = id'
+    );
+    $statement->execute([
+        'run_id' => (int) $row['id'],
+        'player_id' => (int) $row['player_id'],
+        'client_action_id' => substr($client_action_id, 0, 64),
+        'sequence_number' => $sequence,
+        'action_type' => $action_type,
+        'result_payload_json' => raidlands_monument_json($result),
+        'draw_start' => $draw_counter,
+        'draw_end' => $draw_counter,
+    ]);
 }
 
 function raidlands_monument_expire_active_for_player(int $player_id): void
@@ -266,7 +348,7 @@ function raidlands_monument_expire_active_for_player(int $player_id): void
     try {
         $row = raidlands_monument_active_run_row($player_id, true);
 
-        if ($row !== null && !empty($row['expires_at']) && strtotime((string) $row['expires_at']) <= time()) {
+        if ($row !== null && !empty($row['is_expired'])) {
             raidlands_monument_expire_row($pdo, $row);
         }
 
@@ -401,7 +483,7 @@ function raidlands_monument_available_balance(int $player_id): int
     $balance = raidlands_store_current_rp_balance($player_id);
     $reported = max(0, (int) ($balance['reward_points'] ?? 0));
     $pending = raidlands_db_fetch_one(
-        'SELECT COALESCE(SUM(GREATEST(debit_rp - credit_rp, 0)), 0) AS pending_debit
+        'SELECT COALESCE(SUM(CASE WHEN debit_rp > credit_rp THEN debit_rp - credit_rp ELSE 0 END), 0) AS pending_debit
          FROM rp_point_requests
          WHERE player_id = :player_id
            AND status IN ("queued", "processing")',
@@ -490,12 +572,18 @@ function raidlands_monument_start_run(int $wager_rp, string $loadout_key, string
             throw new InvalidArgumentException('Choose a valid Monument Extraction loadout.');
         }
 
-        $recent = $pdo->prepare('SELECT last_action_at FROM monument_extraction_runs WHERE player_id = :player_id ORDER BY id DESC LIMIT 1 FOR UPDATE');
+        $cooldown = max(0, min(3600, (int) ($config['cooldownSeconds'] ?? 0)));
+        $recent = $pdo->prepare(
+            'SELECT (last_action_at > DATE_SUB(NOW(), INTERVAL ' . $cooldown . ' SECOND)) AS cooling_down
+             FROM monument_extraction_runs
+             WHERE player_id = :player_id
+             ORDER BY id DESC
+             LIMIT 1 FOR UPDATE'
+        );
         $recent->execute(['player_id' => $player_id]);
         $recent_row = $recent->fetch(PDO::FETCH_ASSOC);
-        $cooldown = max(0, (int) ($config['cooldownSeconds'] ?? 0));
 
-        if (is_array($recent_row) && $cooldown > 0 && strtotime((string) $recent_row['last_action_at']) > time() - $cooldown) {
+        if (is_array($recent_row) && $cooldown > 0 && !empty($recent_row['cooling_down'])) {
             throw new RuntimeException('Wait a few seconds before starting another Monument Extraction run.');
         }
 
@@ -620,9 +708,20 @@ function raidlands_monument_apply_action(int $run_id, string $client_action_id, 
             return ['run' => $payload['run'] ?? raidlands_monument_public_run($row), 'result' => $payload['result'] ?? [], 'duplicate' => true];
         }
 
-        if (!empty($row['expires_at']) && strtotime((string) $row['expires_at']) <= time()) {
+        if (!empty($row['is_expired'])) {
             $row = raidlands_monument_expire_row($pdo, $row);
-            throw new RuntimeException('That run expired after inactivity.');
+
+            if (raidlands_monument_terminal_status((string) $row['status']) || (string) $row['status'] === 'CREATING') {
+                if ($owns_transaction) {
+                    $pdo->commit();
+                }
+
+                return [
+                    'run' => raidlands_monument_public_run($row),
+                    'result' => ['type' => 'expire', 'terminal' => raidlands_monument_terminal_status((string) $row['status'])],
+                    'duplicate' => false,
+                ];
+            }
         }
 
         if ((string) $row['status'] === 'CREATING') {
@@ -832,8 +931,23 @@ function raidlands_monument_sync_point_result(PDO $pdo, array $request, string $
 
     if ($source_type === 'monument_payout') {
         $payout_status = $status === 'confirmed' ? 'confirmed' : (in_array($status, ['rejected', 'failed', 'expired'], true) ? 'failed' : $status);
-        $update = $pdo->prepare('UPDATE monument_extraction_runs SET payout_status = :payout_status, updated_at = NOW() WHERE id = :id');
+
+        if ((string) $row['payout_status'] === $payout_status) {
+            return true;
+        }
+
+        $update = $pdo->prepare('UPDATE monument_extraction_runs SET payout_status = :payout_status, lock_version = lock_version + 1, updated_at = NOW() WHERE id = :id');
         $update->execute(['payout_status' => $payout_status, 'id' => $run_id]);
+        $state = raidlands_monument_decode_json($row['state_json'] ?? '', 'run state');
+        raidlands_monument_insert_system_action(
+            $pdo,
+            $row,
+            'payout_' . $payout_status,
+            ['payoutStatus' => $payout_status, 'message' => $message, 'failCode' => $fail_code],
+            'bridge-payout-' . (int) $request['id'],
+            (int) $row['lock_version'] + 1,
+            (int) ($state['drawCounter'] ?? 0)
+        );
 
         return true;
     }
@@ -845,10 +959,20 @@ function raidlands_monument_sync_point_result(PDO $pdo, array $request, string $
             'UPDATE monument_extraction_runs
              SET status = :status,
                  last_action_at = NOW(),
+                 lock_version = lock_version + 1,
                  updated_at = NOW()
              WHERE id = :id AND status = "CREATING"'
         );
         $update->execute(['status' => $next_status, 'id' => $run_id]);
+        raidlands_monument_insert_system_action(
+            $pdo,
+            $row,
+            'wager_confirmed',
+            ['status' => $next_status, 'message' => $message],
+            'bridge-wager-' . (int) $request['id'],
+            (int) $row['lock_version'] + 1,
+            (int) ($state['drawCounter'] ?? 0)
+        );
 
         return true;
     }
@@ -865,6 +989,7 @@ function raidlands_monument_sync_point_result(PDO $pdo, array $request, string $
                  state_json = :state_json,
                  failure_reason = :failure_reason,
                  completed_at = NOW(),
+                 lock_version = lock_version + 1,
                  updated_at = NOW()
              WHERE id = :id'
         );
@@ -873,6 +998,15 @@ function raidlands_monument_sync_point_result(PDO $pdo, array $request, string $
             'failure_reason' => 'WAGER_' . strtoupper($status),
             'id' => $run_id,
         ]);
+        raidlands_monument_insert_system_action(
+            $pdo,
+            $row,
+            'wager_' . $status,
+            ['status' => 'FAILED', 'reason' => 'WAGER_' . strtoupper($status), 'message' => $message, 'failCode' => $fail_code],
+            'bridge-wager-' . (int) $request['id'],
+            (int) $row['lock_version'] + 1,
+            (int) ($state['drawCounter'] ?? 0)
+        );
         raidlands_rewards_rollback_daily_wager($pdo, (int) $row['player_id'], (int) $row['wager_rp'], (int) $row['wager_rp']);
     }
 
@@ -1010,6 +1144,53 @@ function raidlands_monument_read_request_body(): array
     return $_POST;
 }
 
+function raidlands_monument_check_rate_limits(array $player, string $action): void
+{
+    if (!raidlands_store_table_exists('api_rate_limits')) {
+        return;
+    }
+
+    $limit = $action === 'start' ? 6 : 90;
+    $window_start = gmdate('Y-m-d H:i:00');
+    $ip = trim((string) ($_SERVER['REMOTE_ADDR'] ?? 'unknown'));
+    $keys = [
+        'player:' . (int) $player['id'],
+        'ip:' . substr(hash('sha256', $ip), 0, 32),
+    ];
+
+    foreach ($keys as $rate_key) {
+        raidlands_db_execute(
+            'INSERT INTO api_rate_limits (rate_key, route_key, window_start, request_count)
+             VALUES (:rate_key, :route_key, :window_start, 1)
+             ON DUPLICATE KEY UPDATE request_count = request_count + 1, updated_at = NOW()',
+            [
+                'rate_key' => $rate_key,
+                'route_key' => 'monument:' . $action,
+                'window_start' => $window_start,
+            ]
+        );
+        $row = raidlands_db_fetch_one(
+            'SELECT request_count
+             FROM api_rate_limits
+             WHERE rate_key = :rate_key AND route_key = :route_key AND window_start = :window_start',
+            [
+                'rate_key' => $rate_key,
+                'route_key' => 'monument:' . $action,
+                'window_start' => $window_start,
+            ]
+        );
+
+        if ((int) ($row['request_count'] ?? 0) > $limit) {
+            header('Retry-After: 60');
+            throw new RuntimeException('Monument Extraction rate limit exceeded. Try again in a minute.');
+        }
+    }
+
+    if (random_int(1, 100) === 1) {
+        raidlands_db_execute('DELETE FROM api_rate_limits WHERE updated_at < DATE_SUB(NOW(), INTERVAL 1 DAY)');
+    }
+}
+
 function raidlands_monument_handle_api_request(): void
 {
     raidlands_store_boot();
@@ -1049,6 +1230,8 @@ function raidlands_monument_handle_api_request(): void
 
             $action = strtolower(trim((string) ($body['action'] ?? '')));
             $client_action_id = (string) ($body['clientActionId'] ?? '');
+            $rate_player = raidlands_rewards_require_player();
+            raidlands_monument_check_rate_limits($rate_player, $action);
 
             if ($action === 'start') {
                 $result = raidlands_monument_start_run((int) ($body['wagerRp'] ?? 0), (string) ($body['loadoutKey'] ?? ''), $client_action_id);
@@ -1085,7 +1268,7 @@ function raidlands_monument_handle_api_request(): void
         http_response_code(422);
         $payload = ['ok' => false, 'message' => $error->getMessage()];
     } catch (Throwable $error) {
-        http_response_code(409);
+        http_response_code(str_contains(strtolower($error->getMessage()), 'rate limit') ? 429 : 409);
         $payload = ['ok' => false, 'message' => $error->getMessage()];
     }
 

@@ -2851,7 +2851,7 @@ function raidlands_rewards_record_point_result(array $payload): array
             throw new RuntimeException('RP point request was not found.');
         }
 
-        if (in_array((string) $request['status'], ['confirmed', 'rejected', 'failed'], true)) {
+        if (in_array((string) $request['status'], ['confirmed', 'rejected', 'failed', 'expired', 'canceled'], true)) {
             if ($owns_transaction) {
                 $pdo->commit();
             }

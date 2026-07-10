@@ -145,6 +145,7 @@ the host or upload it through a private channel.
    - `database/migrations/040_multiplayer_rp_games.sql`
    - `database/migrations/041_animation_diagnostics.sql`
    - `database/migrations/042_public_lobby_chat.sql`
+   - `database/migrations/046_monument_extraction.sql`
    - `database/seeds/001_store_products.sql`
 
    Then configure RP costs and cash amounts in `/admin/?section=store`. After Stripe keys are present, saving the Store editor automatically creates or updates Raidlands-managed Stripe Products and Prices for active cash offers. You can still paste existing matching `price_...` IDs when they should stay external and unmanaged.
@@ -185,6 +186,7 @@ Compress-Archive -Force -DestinationPath .\dist\raidlands-godaddy.zip -Path `
   .\pages, `
   .\assets, `
   .\data\.htaccess, `
+  .\data\monument-extraction-default.json, `
   .\database, `
   .\docs, `
   .\server-plugins, `

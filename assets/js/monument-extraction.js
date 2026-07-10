@@ -595,7 +595,7 @@
 
   function parseJson(value) {
     try {
-      return JSON.parse(value);
+      return JSON.parse(String(value || "").replace(/^\uFEFF/, "").trim());
     } catch (_) {
       return null;
     }

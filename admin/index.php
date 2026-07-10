@@ -3572,6 +3572,11 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                       $recent_game_rounds = (array) ($admin_rewards_state['recent_game_rounds'] ?? []);
                       $recent_jackpots = (array) ($admin_rewards_state['recent_jackpots'] ?? []);
                       $recent_pool_rounds = (array) ($admin_rewards_state['recent_pool_rounds'] ?? []);
+                      $monument_admin = is_array($admin_rewards_state['monument'] ?? null) ? $admin_rewards_state['monument'] : ['ready' => false, 'config' => [], 'metrics' => [], 'runs' => []];
+                      $monument_admin_ready = !empty($monument_admin['ready']);
+                      $monument_admin_config = is_array($monument_admin['config'] ?? null) ? $monument_admin['config'] : raidlands_monument_default_config();
+                      $monument_admin_metrics = is_array($monument_admin['metrics'] ?? null) ? $monument_admin['metrics'] : [];
+                      $monument_admin_runs = is_array($monument_admin['runs'] ?? null) ? $monument_admin['runs'] : [];
                     ?>
                     <section class="admin-section">
                       <div class="admin-grid three">
@@ -3606,6 +3611,10 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                         <label class="admin-check admin-check-field">
                           <input type="checkbox" name="supply_run_enabled" value="1" <?= !empty($game_settings['supply_run_enabled']) ? 'checked' : '' ?> <?= raidlands_rewards_game_backend_ready('supply_run') ? '' : 'disabled' ?>>
                           <?= admin_check_copy('Supply Run enabled', raidlands_rewards_game_backend_ready('supply_run') ? 'Allows players to join the PvE route pool.' : 'Run database/migrations/040_multiplayer_rp_games.sql before enabling Supply Run.') ?>
+                        </label>
+                        <label class="admin-check admin-check-field">
+                          <input type="checkbox" name="monument_extraction_enabled" value="1" <?= !empty($game_settings['monument_extraction_enabled']) ? 'checked' : '' ?> <?= $monument_admin_ready ? '' : 'disabled' ?>>
+                          <?= admin_check_copy('Monument Extraction enabled', $monument_admin_ready ? 'Activates the current versioned Monument Extraction configuration for linked players.' : 'Run database/migrations/046_monument_extraction.sql before enabling Monument Extraction.') ?>
                         </label>
                         <label class="admin-check admin-check-field">
                           <input type="checkbox" name="self_exclusion_enabled" value="1" <?= !empty($game_settings['self_exclusion_enabled']) ? 'checked' : '' ?>>
@@ -3678,6 +3687,81 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                         <?= admin_field_head('Terms copy', 'Public guardrail copy shown on /rp-games/.') ?>
                         <textarea name="terms_copy" rows="4"><?= e((string) ($game_settings['terms_copy'] ?? '')) ?></textarea>
                       </label>
+
+                      <section class="admin-section admin-subsection">
+                        <div class="admin-subsection-head">
+                          <p class="section-kicker">Versioned tactical game</p>
+                          <h3>Monument Extraction</h3>
+                          <p>Runs freeze the active configuration at entry. Saving valid JSON activates a new immutable version for future runs only.</p>
+                        </div>
+
+                        <?php if (!$monument_admin_ready) : ?>
+                          <div class="admin-alert warning"><?= e((string) ($monument_admin['message'] ?? raidlands_monument_readiness_message())) ?></div>
+                        <?php else : ?>
+                          <?php
+                            $monument_runs = (int) ($monument_admin_metrics['runs'] ?? 0);
+                            $monument_wagered = (int) ($monument_admin_metrics['wagered_rp'] ?? 0);
+                            $monument_paid = (int) ($monument_admin_metrics['paid_rp'] ?? 0);
+                            $monument_rtp = $monument_wagered > 0 ? ($monument_paid / $monument_wagered) * 100 : 0;
+                          ?>
+                          <div class="admin-grid four">
+                            <div class="metal-panel"><p class="section-kicker">Runs</p><h3><?= e(number_format($monument_runs)) ?></h3><p class="store-muted"><?= e((string) ($monument_admin_metrics['completed'] ?? 0)) ?> completed / <?= e((string) ($monument_admin_metrics['failed'] ?? 0)) ?> failed</p></div>
+                            <div class="metal-panel"><p class="section-kicker">RP wagered</p><h3><?= e(raidlands_store_rp($monument_wagered)) ?></h3><p class="store-muted">Server-confirmed debit queue</p></div>
+                            <div class="metal-panel"><p class="section-kicker">RP secured</p><h3><?= e(raidlands_store_rp($monument_paid)) ?></h3><p class="store-muted">Queued extraction payouts</p></div>
+                            <div class="metal-panel"><p class="section-kicker">Realized RTP</p><h3><?= e(number_format($monument_rtp, 2)) ?>%</h3><p class="store-muted">Review simulation before enabling</p></div>
+                          </div>
+
+                          <div class="admin-grid four">
+                            <label class="admin-field">
+                              <?= admin_field_head('Minimum wager RP', 'Minimum wager for new Monument Extraction runs.') ?>
+                              <input type="number" min="1" name="monument_min_wager_rp" value="<?= e((string) ($monument_admin_config['minWagerRp'] ?? 100)) ?>">
+                            </label>
+                            <label class="admin-field">
+                              <?= admin_field_head('Maximum wager RP', 'Maximum wager for new Monument Extraction runs.') ?>
+                              <input type="number" min="1" name="monument_max_wager_rp" value="<?= e((string) ($monument_admin_config['maxWagerRp'] ?? 10000)) ?>">
+                            </label>
+                            <label class="admin-field">
+                              <?= admin_field_head('Maximum payout RP', 'Hard cap applied after loot and extraction modifiers.') ?>
+                              <input type="number" min="0" name="monument_max_payout_rp" value="<?= e((string) ($monument_admin_config['maxPayoutRp'] ?? 100000)) ?>">
+                            </label>
+                            <label class="admin-field">
+                              <?= admin_field_head('Run TTL minutes', 'Inactive active runs expire without returning unsecured RP.') ?>
+                              <input type="number" min="5" max="1440" name="monument_ttl_minutes" value="<?= e((string) ($monument_admin_config['activeRunTtlMinutes'] ?? 60)) ?>">
+                            </label>
+                          </div>
+
+                          <label class="admin-field">
+                            <?= admin_field_head('Versioned game configuration JSON', 'Schema-validated loadouts, encounters, room archetypes, items, extraction routes, odds, resource effects, and balance values.') ?>
+                            <textarea name="monument_config_json" rows="24" spellcheck="false"><?= e(admin_diag_json($monument_admin_config)) ?></textarea>
+                          </label>
+
+                          <label class="admin-field">
+                            <?= admin_field_head('Force-expire run ID', 'Optional. Enter one active run ID to expire it without an unearned payout when these settings are saved.') ?>
+                            <input type="number" min="1" name="monument_force_expire_run_id" value="" placeholder="Leave blank">
+                          </label>
+
+                          <?php if ($monument_admin_runs !== []) : ?>
+                            <div class="store-table-wrap">
+                              <table class="store-table">
+                                <thead><tr><th>Run</th><th>Player</th><th>Loadout</th><th>Wager</th><th>Payout</th><th>Status</th><th>Last action</th></tr></thead>
+                                <tbody>
+                                  <?php foreach ($monument_admin_runs as $run_row) : ?>
+                                    <tr>
+                                      <td><code>#<?= e((string) $run_row['id']) ?></code></td>
+                                      <td><code><?= e((string) $run_row['steam_id64']) ?></code></td>
+                                      <td><?= e(ucwords(str_replace('_', ' ', (string) $run_row['loadout_key']))) ?></td>
+                                      <td><?= e(raidlands_store_rp((int) $run_row['wager_rp'])) ?></td>
+                                      <td><?= e(raidlands_store_rp((int) $run_row['payout_rp'])) ?></td>
+                                      <td><span class="status-pill <?= e(strtolower((string) $run_row['status'])) ?>"><?= e((string) $run_row['status']) ?></span></td>
+                                      <td><?= e((string) $run_row['last_action_at']) ?></td>
+                                    </tr>
+                                  <?php endforeach; ?>
+                                </tbody>
+                              </table>
+                            </div>
+                          <?php endif; ?>
+                        <?php endif; ?>
+                      </section>
 
                       <div class="admin-grid two">
                         <div class="metal-panel">
