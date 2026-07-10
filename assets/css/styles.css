@@ -3251,7 +3251,7 @@ h3,
 
 .leaderboard-filterbar {
   display: grid;
-  grid-template-columns: minmax(220px, 1fr) minmax(120px, 160px) auto;
+  grid-template-columns: minmax(180px, 260px) minmax(220px, 1fr) minmax(120px, 160px) auto;
   gap: 12px;
   align-items: end;
   padding: 16px;

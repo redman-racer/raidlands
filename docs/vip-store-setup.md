@@ -77,7 +77,8 @@ Cash checkout remains inactive until real Stripe prices are configured.
 3. Put `server-plugins/WebsiteVipBridge.cs` in the uMod/Oxide plugins folder.
 4. Put `server-plugins/WebsiteClanBridge.cs` in the uMod/Oxide plugins folder if website or public API clan management should be live.
 5. Set `ApiBaseUrl`, `ServerId`, and `SharedSecret` in the generated plugin configs. `ServerId` must match `RAIDLANDS_BRIDGE_SERVER_ID`, and `SharedSecret` must match `RAIDLANDS_BRIDGE_SHARED_SECRET`.
-6. Select the groups each Store product applies in Admin > Store, link kits there only for product-card previews, then manage kit access and perk permissions from Admin > Kits and Admin > Groups. Existing starter groups include:
+6. Keep `WipeKey` blank unless you need a manual season override. Blank lets WebsiteVipBridge derive a new leaderboard season key from the Rust save creation time after each wipe; a fixed key will keep stats in the same season.
+7. Select the groups each Store product applies in Admin > Store, link kits there only for product-card previews, then manage kit access and perk permissions from Admin > Kits and Admin > Groups. Existing starter groups include:
    - `vip_bronze`
    - `vip_gold`
    - `vip_elite`

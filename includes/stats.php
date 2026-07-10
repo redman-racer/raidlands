@@ -551,6 +551,135 @@ function raidlands_stats_active_wipe(): ?array
     );
 }
 
+function raidlands_stats_wipe_id($value): int
+{
+    if (!is_numeric($value)) {
+        return 0;
+    }
+
+    return max(0, (int) $value);
+}
+
+function raidlands_stats_optional_wipe_key($value): string
+{
+    $wipe_key = trim((string) $value);
+    $wipe_key = preg_replace('/[^a-zA-Z0-9_.:-]+/', '-', $wipe_key) ?? '';
+    $wipe_key = trim($wipe_key, '-_.:');
+
+    return substr($wipe_key, 0, 160);
+}
+
+function raidlands_stats_wipe(int $wipe_id = 0, string $wipe_key = ''): ?array
+{
+    if (!raidlands_stats_is_ready()) {
+        return null;
+    }
+
+    $server_id = raidlands_stats_server_id();
+    $wipe_id = raidlands_stats_wipe_id($wipe_id);
+
+    if ($wipe_id > 0) {
+        return raidlands_db_fetch_one(
+            'SELECT * FROM wipe_seasons WHERE server_id = :server_id AND id = :id LIMIT 1',
+            ['server_id' => $server_id, 'id' => $wipe_id]
+        );
+    }
+
+    $wipe_key = raidlands_stats_optional_wipe_key($wipe_key);
+
+    if ($wipe_key === '') {
+        return null;
+    }
+
+    return raidlands_db_fetch_one(
+        'SELECT * FROM wipe_seasons WHERE server_id = :server_id AND wipe_key = :wipe_key LIMIT 1',
+        ['server_id' => $server_id, 'wipe_key' => $wipe_key]
+    );
+}
+
+function raidlands_stats_scope_wipe(string $scope, int $wipe_id = 0, string $wipe_key = ''): ?array
+{
+    return $scope === 'wipe'
+        ? raidlands_stats_wipe($wipe_id, $wipe_key)
+        : raidlands_stats_active_wipe();
+}
+
+function raidlands_stats_recent_wipes(int $limit = 12): array
+{
+    if (!raidlands_stats_is_ready()) {
+        return [];
+    }
+
+    $limit = max(1, min(50, $limit));
+
+    return raidlands_db_fetch_all(
+        "SELECT
+            w.*,
+            (
+                SELECT COUNT(*)
+                FROM player_wipe_stats s
+                WHERE s.wipe_id = w.id
+                  AND s.playtime_seconds > 0
+            ) AS player_count,
+            (
+                SELECT COUNT(*)
+                FROM bot_wipe_stats b
+                WHERE b.wipe_id = w.id
+                  AND (b.kills > 0 OR b.deaths > 0)
+            ) AS bot_count
+         FROM wipe_seasons w
+         WHERE w.server_id = :server_id
+         ORDER BY w.is_active DESC, COALESCE(w.started_at, w.created_at) DESC, w.id DESC
+         LIMIT $limit",
+        ['server_id' => raidlands_stats_server_id()]
+    );
+}
+
+function raidlands_stats_wipe_label(array $wipe): string
+{
+    $started = trim((string) ($wipe['started_at'] ?? ''));
+
+    if ($started === '') {
+        $started = trim((string) ($wipe['created_at'] ?? ''));
+    }
+
+    if ($started !== '') {
+        $timestamp = strtotime($started);
+
+        if ($timestamp !== false) {
+            return gmdate('M j, Y', $timestamp);
+        }
+    }
+
+    $wipe_key = trim((string) ($wipe['wipe_key'] ?? ''));
+
+    return $wipe_key !== '' ? $wipe_key : 'Wipe #' . (string) ($wipe['id'] ?? '');
+}
+
+function raidlands_stats_generic_wipe_key_warning(?array $latest_ingest = null, ?array $active_wipe = null): string
+{
+    $server_id = raidlands_stats_server_id();
+    $wipe_key = trim((string) ($latest_ingest['wipe_key'] ?? $active_wipe['wipe_key'] ?? ''));
+
+    if ($wipe_key === '') {
+        return '';
+    }
+
+    $normalized_key = strtolower($wipe_key);
+    $normalized_server = strtolower($server_id);
+
+    if (
+        $normalized_key === 'current'
+        || $normalized_key === $normalized_server
+        || $normalized_key === $normalized_server . '-current'
+        || str_ends_with($normalized_key, '-current')
+    ) {
+        return 'Latest stats snapshot is using a generic wipe key. Clear WipeKey in WebsiteVipBridge.json so the bridge can generate a new key from the Rust save creation time after each wipe.';
+    }
+
+    return '';
+}
+
 function raidlands_stats_latest_ingest(): ?array
 {
     if (!raidlands_stats_is_ready()) {
@@ -580,7 +709,7 @@ function raidlands_stats_bot_metric(string $metric): string
 
 function raidlands_stats_scope(string $scope): string
 {
-    return $scope === 'all-time' ? 'all-time' : 'current';
+    return in_array($scope, ['current', 'all-time', 'wipe'], true) ? $scope : 'current';
 }
 
 function raidlands_stats_page_size($value, int $default = 25): int
@@ -643,7 +772,9 @@ function raidlands_stats_leaderboard_result(
     string $scope = 'current',
     int $page = 1,
     int $per_page = 25,
-    string $search = ''
+    string $search = '',
+    int $wipe_id = 0,
+    string $wipe_key = ''
 ): array
 {
     if (!raidlands_stats_is_ready()) {
@@ -668,8 +799,8 @@ function raidlands_stats_leaderboard_result(
 
     $order = raidlands_stats_leaderboard_order($metric);
 
-    if ($scope === 'current') {
-        $wipe = raidlands_stats_active_wipe();
+    if ($scope !== 'all-time') {
+        $wipe = raidlands_stats_scope_wipe($scope, $wipe_id, $wipe_key);
 
         if ($wipe === null) {
             return raidlands_stats_page_result([], 0, $page, $per_page);
@@ -782,7 +913,9 @@ function raidlands_stats_bot_leaderboard_result(
     int $page = 1,
     int $per_page = 25,
     string $search = '',
-    string $metric = 'kdr'
+    string $metric = 'kdr',
+    int $wipe_id = 0,
+    string $wipe_key = ''
 ): array
 {
     if (!raidlands_stats_is_ready()) {
@@ -808,8 +941,8 @@ function raidlands_stats_bot_leaderboard_result(
 
     $order = raidlands_stats_bot_leaderboard_order($metric);
 
-    if ($scope === 'current') {
-        $wipe = raidlands_stats_active_wipe();
+    if ($scope !== 'all-time') {
+        $wipe = raidlands_stats_scope_wipe($scope, $wipe_id, $wipe_key);
 
         if ($wipe === null) {
             return raidlands_stats_page_result([], 0, $page, $per_page);
@@ -969,10 +1102,13 @@ function raidlands_stats_admin_summary(): array
             'active_wipe' => null,
             'latest_ingest' => null,
             'current_players' => 0,
+            'recent_wipes' => [],
+            'wipe_key_warning' => '',
         ];
     }
 
     $wipe = raidlands_stats_active_wipe();
+    $latest_ingest = raidlands_stats_latest_ingest();
     $current_players = 0;
 
     if ($wipe !== null) {
@@ -986,8 +1122,10 @@ function raidlands_stats_admin_summary(): array
     return [
         'ready' => true,
         'active_wipe' => $wipe,
-        'latest_ingest' => raidlands_stats_latest_ingest(),
+        'latest_ingest' => $latest_ingest,
         'current_players' => $current_players,
+        'recent_wipes' => raidlands_stats_recent_wipes(8),
+        'wipe_key_warning' => raidlands_stats_generic_wipe_key_warning($latest_ingest, $wipe),
     ];
 }
 

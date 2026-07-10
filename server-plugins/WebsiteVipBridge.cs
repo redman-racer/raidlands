@@ -15,7 +15,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteVipBridge", "Raidlands", "1.5.8")]
+    [Info("WebsiteVipBridge", "Raidlands", "1.5.9")]
     [Description("Syncs website VIP entitlements and player stats between Raidlands.net and the Rust server.")]
     public class WebsiteVipBridge : CovalencePlugin
     {
@@ -2928,7 +2928,7 @@ namespace Oxide.Plugins
                 map_name = GetMapDisplayName(),
                 world_size = Math.Max(0, ConVar.Server.worldsize),
                 seed = Math.Max(0, ConVar.Server.seed),
-                wipe_key = ResolveWipeKey(),
+                wipe_key = ResolveWipeKey(wipeStartedAt),
                 wipe_started_at = wipeStartedAt == DateTime.MinValue ? null : wipeStartedAt.ToString("o"),
                 details = new JObject
                 {
@@ -3063,7 +3063,7 @@ namespace Oxide.Plugins
         private StatsSnapshot BuildStatsSnapshot()
         {
             var playersById = new Dictionary<string, StatsPlayer>();
-            var wipeStartedAt = ResolveSecretValue(config.WipeStartedAt);
+            var wipeStartedAt = GetWipeStartedAt();
 
             AddKdrStats(playersById);
             AddPlaytimeStats(playersById);
@@ -3073,8 +3073,8 @@ namespace Oxide.Plugins
 
             return new StatsSnapshot
             {
-                wipe_key = ResolveWipeKey(),
-                wipe_started_at = string.IsNullOrWhiteSpace(wipeStartedAt) ? null : wipeStartedAt,
+                wipe_key = ResolveWipeKey(wipeStartedAt),
+                wipe_started_at = wipeStartedAt == DateTime.MinValue ? null : wipeStartedAt.ToUniversalTime().ToString("o"),
                 generated_at = DateTime.UtcNow.ToString("o"),
                 players = playersById.Values
                     .OrderByDescending(player => player.kills)
@@ -5388,7 +5388,7 @@ namespace Oxide.Plugins
             return string.IsNullOrWhiteSpace(value) ? JValue.CreateNull() : new JValue(value);
         }
 
-        private string ResolveWipeKey()
+        private string ResolveWipeKey(DateTime wipeStartedAt)
         {
             var wipeKey = ResolveSecretValue(config.WipeKey);
 
@@ -5397,7 +5397,40 @@ namespace Oxide.Plugins
                 return wipeKey.Trim();
             }
 
-            return $"{config.ServerId}-current";
+            var serverId = CleanWipeKeySegment(config.ServerId, "raidlands-main");
+            var startedAt = wipeStartedAt == DateTime.MinValue ? GetWipeStartedAt() : wipeStartedAt.ToUniversalTime();
+
+            if (startedAt != DateTime.MinValue)
+            {
+                return $"{serverId}-{startedAt:yyyyMMdd'T'HHmmss'Z'}";
+            }
+
+            return $"{serverId}-current";
+        }
+
+        private static string CleanWipeKeySegment(string value, string fallback)
+        {
+            var raw = (value ?? "").Trim();
+            var builder = new StringBuilder(raw.Length);
+
+            foreach (var ch in raw)
+            {
+                builder.Append(IsWipeKeyCharacter(ch) ? ch : '-');
+            }
+
+            var cleaned = builder.ToString().Trim('-', '_', '.', ':');
+            return string.IsNullOrWhiteSpace(cleaned) ? fallback : cleaned;
+        }
+
+        private static bool IsWipeKeyCharacter(char ch)
+        {
+            return (ch >= 'a' && ch <= 'z')
+                || (ch >= 'A' && ch <= 'Z')
+                || (ch >= '0' && ch <= '9')
+                || ch == '_'
+                || ch == '-'
+                || ch == '.'
+                || ch == ':';
         }
 
         public string GetRaidlandsBrandAssetUrl(string key)

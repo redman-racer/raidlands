@@ -5,6 +5,13 @@ require_once $site_root . '/includes/stats.php';
 $leaderboard_ready = raidlands_stats_is_ready();
 $leaderboard_board = ((string) ($_GET['board'] ?? 'players')) === 'bots' ? 'bots' : 'players';
 $leaderboard_scope = raidlands_stats_scope((string) ($_GET['scope'] ?? 'current'));
+$leaderboard_wipe_id = raidlands_stats_wipe_id($_GET['wipe_id'] ?? 0);
+$leaderboard_wipe_key = raidlands_stats_optional_wipe_key($_GET['wipe_key'] ?? '');
+
+if ($leaderboard_wipe_id > 0 || $leaderboard_wipe_key !== '') {
+    $leaderboard_scope = 'wipe';
+}
+
 $leaderboard_page = raidlands_stats_page_number($_GET['page'] ?? 1);
 $leaderboard_per_page = raidlands_stats_page_size($_GET['per_page'] ?? 25);
 $leaderboard_search = raidlands_stats_search((string) ($_GET['q'] ?? ''));
@@ -21,7 +28,9 @@ $leaderboard_player_result = $leaderboard_ready
         $leaderboard_scope,
         $leaderboard_board === 'players' ? $leaderboard_page : 1,
         $leaderboard_per_page,
-        $leaderboard_search
+        $leaderboard_search,
+        $leaderboard_wipe_id,
+        $leaderboard_wipe_key
     )
     : raidlands_stats_page_result([], 0, 1, $leaderboard_per_page);
 $leaderboard_bot_result = $leaderboard_ready
@@ -30,10 +39,22 @@ $leaderboard_bot_result = $leaderboard_ready
         $leaderboard_board === 'bots' ? $leaderboard_page : 1,
         $leaderboard_per_page,
         $leaderboard_search,
-        $leaderboard_bot_metric
+        $leaderboard_bot_metric,
+        $leaderboard_wipe_id,
+        $leaderboard_wipe_key
     )
     : raidlands_stats_page_result([], 0, 1, $leaderboard_per_page);
 $leaderboard_wipe = $leaderboard_ready ? raidlands_stats_active_wipe() : null;
+$leaderboard_selected_wipe = $leaderboard_ready && $leaderboard_scope === 'wipe'
+    ? raidlands_stats_wipe($leaderboard_wipe_id, $leaderboard_wipe_key)
+    : null;
+$leaderboard_selected_wipe_id = $leaderboard_selected_wipe !== null
+    ? (int) $leaderboard_selected_wipe['id']
+    : $leaderboard_wipe_id;
+$leaderboard_selected_wipe_key = $leaderboard_selected_wipe !== null
+    ? (string) $leaderboard_selected_wipe['wipe_key']
+    : $leaderboard_wipe_key;
+$leaderboard_wipes = $leaderboard_ready ? raidlands_stats_recent_wipes(30) : [];
 $leaderboard_ingest = $leaderboard_ready ? raidlands_stats_latest_ingest() : null;
 $leaderboard_metrics = [
     'kills' => 'Kills',
@@ -57,16 +78,29 @@ function leaderboard_url(
     string $metric = 'kills',
     int $page = 1,
     int $per_page = 25,
-    string $search = ''
+    string $search = '',
+    int $wipe_id = 0,
+    string $wipe_key = ''
 ): string {
+    $scope = raidlands_stats_scope($scope);
     $query = [
         'board' => $board === 'bots' ? 'bots' : 'players',
-        'scope' => raidlands_stats_scope($scope),
+        'scope' => $scope,
         'metric' => $board === 'bots' ? raidlands_stats_bot_metric($metric) : raidlands_stats_metric($metric),
         'page' => max(1, $page),
         'per_page' => raidlands_stats_page_size($per_page),
     ];
     $search = raidlands_stats_search($search);
+    $wipe_id = raidlands_stats_wipe_id($wipe_id);
+    $wipe_key = raidlands_stats_optional_wipe_key($wipe_key);
+
+    if ($scope === 'wipe') {
+        if ($wipe_id > 0) {
+            $query['wipe_id'] = $wipe_id;
+        } elseif ($wipe_key !== '') {
+            $query['wipe_key'] = $wipe_key;
+        }
+    }
 
     if ($search !== '') {
         $query['q'] = $search;
@@ -94,6 +128,35 @@ function leaderboard_page_summary(array $result): string
 function leaderboard_panel_classes(string $board, string $active_board): string
 {
     return 'leaderboard-board-panel' . ($board === $active_board ? ' is-active' : '');
+}
+
+function leaderboard_wipe_options(array $wipes, int $selected_wipe_id): string
+{
+    $html = '<option value="">Current wipe</option>';
+    $has_previous = false;
+
+    foreach ($wipes as $wipe) {
+        if (!empty($wipe['is_active'])) {
+            continue;
+        }
+
+        $has_previous = true;
+        $wipe_id = (int) ($wipe['id'] ?? 0);
+        $label = raidlands_stats_wipe_label($wipe);
+        $players = (int) ($wipe['player_count'] ?? 0);
+
+        if ($players > 0) {
+            $label .= ' - ' . number_format($players) . ' players';
+        }
+
+        $html .= '<option value="' . e((string) $wipe_id) . '"' . ($selected_wipe_id === $wipe_id ? ' selected' : '') . '>' . e($label) . '</option>';
+    }
+
+    if (!$has_previous) {
+        $html .= '<option value="" disabled>No previous wipes yet</option>';
+    }
+
+    return $html;
 }
 ?>
 <?= render_page_hero('leaderboard',
@@ -133,14 +196,14 @@ function leaderboard_panel_classes(string $board, string $active_board): string
         <div class="leaderboard-board-tabs" role="tablist" aria-label="Leaderboard type">
           <a
             class="<?= $leaderboard_board === 'players' ? 'is-active' : '' ?>"
-            href="<?= e(leaderboard_url('players', $leaderboard_scope, $leaderboard_player_metric, 1, $leaderboard_per_page, $leaderboard_search)) ?>"
+            href="<?= e(leaderboard_url('players', $leaderboard_scope, $leaderboard_player_metric, 1, $leaderboard_per_page, $leaderboard_search, $leaderboard_selected_wipe_id, $leaderboard_selected_wipe_key)) ?>"
             role="tab"
             aria-selected="<?= $leaderboard_board === 'players' ? 'true' : 'false' ?>"
             aria-controls="leaderboard-players"
             data-leaderboard-tab="players">Player Stats</a>
           <a
             class="<?= $leaderboard_board === 'bots' ? 'is-active' : '' ?>"
-            href="<?= e(leaderboard_url('bots', $leaderboard_scope, $leaderboard_bot_metric, 1, $leaderboard_per_page, $leaderboard_search)) ?>"
+            href="<?= e(leaderboard_url('bots', $leaderboard_scope, $leaderboard_bot_metric, 1, $leaderboard_per_page, $leaderboard_search, $leaderboard_selected_wipe_id, $leaderboard_selected_wipe_key)) ?>"
             role="tab"
             aria-selected="<?= $leaderboard_board === 'bots' ? 'true' : 'false' ?>"
             aria-controls="leaderboard-bots"
@@ -154,6 +217,8 @@ function leaderboard_panel_classes(string $board, string $active_board): string
           data-leaderboard-panel
           data-board="players"
           data-scope="<?= e($leaderboard_scope) ?>"
+          data-wipe-id="<?= e($leaderboard_scope === 'wipe' ? (string) $leaderboard_selected_wipe_id : '') ?>"
+          data-wipe-key="<?= e($leaderboard_scope === 'wipe' ? $leaderboard_selected_wipe_key : '') ?>"
           data-metric="<?= e($leaderboard_player_metric) ?>"
           data-page="<?= e((string) ($leaderboard_player_result['page'] ?? 1)) ?>"
           data-per-page="<?= e((string) ($leaderboard_player_result['per_page'] ?? $leaderboard_per_page)) ?>"
@@ -177,7 +242,7 @@ function leaderboard_panel_classes(string $board, string $active_board): string
             </div>
             <div class="leaderboard-tabs" aria-label="Player leaderboard metric">
               <?php foreach ($leaderboard_metrics as $metric_key => $metric_label) : ?>
-                <a class="<?= $leaderboard_player_metric === $metric_key ? 'is-active' : '' ?>" href="<?= e(leaderboard_url('players', $leaderboard_scope, $metric_key, 1, $leaderboard_per_page, $leaderboard_search)) ?>" data-leaderboard-metric="<?= e($metric_key) ?>"><?= e($metric_label) ?></a>
+                <a class="<?= $leaderboard_player_metric === $metric_key ? 'is-active' : '' ?>" href="<?= e(leaderboard_url('players', $leaderboard_scope, $metric_key, 1, $leaderboard_per_page, $leaderboard_search, $leaderboard_selected_wipe_id, $leaderboard_selected_wipe_key)) ?>" data-leaderboard-metric="<?= e($metric_key) ?>"><?= e($metric_label) ?></a>
               <?php endforeach; ?>
             </div>
           </div>
@@ -186,6 +251,13 @@ function leaderboard_panel_classes(string $board, string $active_board): string
             <input type="hidden" name="board" value="players">
             <input type="hidden" name="scope" value="<?= e($leaderboard_scope) ?>" data-leaderboard-field="scope">
             <input type="hidden" name="metric" value="<?= e($leaderboard_player_metric) ?>" data-leaderboard-field="metric">
+            <input type="hidden" name="wipe_key" value="<?= e($leaderboard_scope === 'wipe' ? $leaderboard_selected_wipe_key : '') ?>" data-leaderboard-field="wipe_key">
+            <label>
+              <span>Previous Wipe</span>
+              <select name="wipe_id" data-leaderboard-wipe-select>
+                <?= leaderboard_wipe_options($leaderboard_wipes, $leaderboard_scope === 'wipe' ? $leaderboard_selected_wipe_id : 0) ?>
+              </select>
+            </label>
             <label>
               <span>Search</span>
               <input type="search" name="q" maxlength="80" placeholder="Player name or Steam ID" value="<?= e($leaderboard_search) ?>" data-leaderboard-search>
@@ -258,9 +330,9 @@ function leaderboard_panel_classes(string $board, string $active_board): string
           <div class="form-status warning" data-leaderboard-empty<?= $leaderboard_player_result['rows'] === [] ? '' : ' hidden' ?>>No player stats match this view.</div>
 
           <nav class="leaderboard-pagination" aria-label="Player leaderboard pages" data-leaderboard-pagination>
-            <a class="<?= (int) $leaderboard_player_result['page'] <= 1 ? 'is-disabled' : '' ?>" href="<?= e(leaderboard_url('players', $leaderboard_scope, $leaderboard_player_metric, max(1, (int) $leaderboard_player_result['page'] - 1), $leaderboard_per_page, $leaderboard_search)) ?>" data-leaderboard-page-link="prev">Previous</a>
+            <a class="<?= (int) $leaderboard_player_result['page'] <= 1 ? 'is-disabled' : '' ?>" href="<?= e(leaderboard_url('players', $leaderboard_scope, $leaderboard_player_metric, max(1, (int) $leaderboard_player_result['page'] - 1), $leaderboard_per_page, $leaderboard_search, $leaderboard_selected_wipe_id, $leaderboard_selected_wipe_key)) ?>" data-leaderboard-page-link="prev">Previous</a>
             <span data-leaderboard-page-summary>Page <?= e((string) $leaderboard_player_result['page']) ?> of <?= e((string) $leaderboard_player_result['pages']) ?></span>
-            <a class="<?= (int) $leaderboard_player_result['page'] >= (int) $leaderboard_player_result['pages'] ? 'is-disabled' : '' ?>" href="<?= e(leaderboard_url('players', $leaderboard_scope, $leaderboard_player_metric, min((int) $leaderboard_player_result['pages'], (int) $leaderboard_player_result['page'] + 1), $leaderboard_per_page, $leaderboard_search)) ?>" data-leaderboard-page-link="next">Next</a>
+            <a class="<?= (int) $leaderboard_player_result['page'] >= (int) $leaderboard_player_result['pages'] ? 'is-disabled' : '' ?>" href="<?= e(leaderboard_url('players', $leaderboard_scope, $leaderboard_player_metric, min((int) $leaderboard_player_result['pages'], (int) $leaderboard_player_result['page'] + 1), $leaderboard_per_page, $leaderboard_search, $leaderboard_selected_wipe_id, $leaderboard_selected_wipe_key)) ?>" data-leaderboard-page-link="next">Next</a>
           </nav>
         </section>
 
@@ -271,6 +343,8 @@ function leaderboard_panel_classes(string $board, string $active_board): string
           data-leaderboard-panel
           data-board="bots"
           data-scope="<?= e($leaderboard_scope) ?>"
+          data-wipe-id="<?= e($leaderboard_scope === 'wipe' ? (string) $leaderboard_selected_wipe_id : '') ?>"
+          data-wipe-key="<?= e($leaderboard_scope === 'wipe' ? $leaderboard_selected_wipe_key : '') ?>"
           data-metric="<?= e($leaderboard_bot_metric) ?>"
           data-page="<?= e((string) ($leaderboard_bot_result['page'] ?? 1)) ?>"
           data-per-page="<?= e((string) ($leaderboard_bot_result['per_page'] ?? $leaderboard_per_page)) ?>"
@@ -294,7 +368,7 @@ function leaderboard_panel_classes(string $board, string $active_board): string
             </div>
             <div class="leaderboard-tabs" aria-label="Bot leaderboard metric">
               <?php foreach ($leaderboard_bot_metrics as $metric_key => $metric_label) : ?>
-                <a class="<?= $leaderboard_bot_metric === $metric_key ? 'is-active' : '' ?>" href="<?= e(leaderboard_url('bots', $leaderboard_scope, $metric_key, 1, $leaderboard_per_page, $leaderboard_search)) ?>" data-leaderboard-metric="<?= e($metric_key) ?>"><?= e($metric_label) ?></a>
+                <a class="<?= $leaderboard_bot_metric === $metric_key ? 'is-active' : '' ?>" href="<?= e(leaderboard_url('bots', $leaderboard_scope, $metric_key, 1, $leaderboard_per_page, $leaderboard_search, $leaderboard_selected_wipe_id, $leaderboard_selected_wipe_key)) ?>" data-leaderboard-metric="<?= e($metric_key) ?>"><?= e($metric_label) ?></a>
               <?php endforeach; ?>
             </div>
           </div>
@@ -303,6 +377,13 @@ function leaderboard_panel_classes(string $board, string $active_board): string
             <input type="hidden" name="board" value="bots">
             <input type="hidden" name="scope" value="<?= e($leaderboard_scope) ?>" data-leaderboard-field="scope">
             <input type="hidden" name="metric" value="<?= e($leaderboard_bot_metric) ?>" data-leaderboard-field="metric">
+            <input type="hidden" name="wipe_key" value="<?= e($leaderboard_scope === 'wipe' ? $leaderboard_selected_wipe_key : '') ?>" data-leaderboard-field="wipe_key">
+            <label>
+              <span>Previous Wipe</span>
+              <select name="wipe_id" data-leaderboard-wipe-select>
+                <?= leaderboard_wipe_options($leaderboard_wipes, $leaderboard_scope === 'wipe' ? $leaderboard_selected_wipe_id : 0) ?>
+              </select>
+            </label>
             <label>
               <span>Search</span>
               <input type="search" name="q" maxlength="80" placeholder="Bot, kit, or skill" value="<?= e($leaderboard_search) ?>" data-leaderboard-search>
@@ -357,9 +438,9 @@ function leaderboard_panel_classes(string $board, string $active_board): string
           <div class="form-status warning" data-leaderboard-empty<?= $leaderboard_bot_result['rows'] === [] ? '' : ' hidden' ?>>No bot stats match this view.</div>
 
           <nav class="leaderboard-pagination" aria-label="Bot leaderboard pages" data-leaderboard-pagination>
-            <a class="<?= (int) $leaderboard_bot_result['page'] <= 1 ? 'is-disabled' : '' ?>" href="<?= e(leaderboard_url('bots', $leaderboard_scope, $leaderboard_bot_metric, max(1, (int) $leaderboard_bot_result['page'] - 1), $leaderboard_per_page, $leaderboard_search)) ?>" data-leaderboard-page-link="prev">Previous</a>
+            <a class="<?= (int) $leaderboard_bot_result['page'] <= 1 ? 'is-disabled' : '' ?>" href="<?= e(leaderboard_url('bots', $leaderboard_scope, $leaderboard_bot_metric, max(1, (int) $leaderboard_bot_result['page'] - 1), $leaderboard_per_page, $leaderboard_search, $leaderboard_selected_wipe_id, $leaderboard_selected_wipe_key)) ?>" data-leaderboard-page-link="prev">Previous</a>
             <span data-leaderboard-page-summary>Page <?= e((string) $leaderboard_bot_result['page']) ?> of <?= e((string) $leaderboard_bot_result['pages']) ?></span>
-            <a class="<?= (int) $leaderboard_bot_result['page'] >= (int) $leaderboard_bot_result['pages'] ? 'is-disabled' : '' ?>" href="<?= e(leaderboard_url('bots', $leaderboard_scope, $leaderboard_bot_metric, min((int) $leaderboard_bot_result['pages'], (int) $leaderboard_bot_result['page'] + 1), $leaderboard_per_page, $leaderboard_search)) ?>" data-leaderboard-page-link="next">Next</a>
+            <a class="<?= (int) $leaderboard_bot_result['page'] >= (int) $leaderboard_bot_result['pages'] ? 'is-disabled' : '' ?>" href="<?= e(leaderboard_url('bots', $leaderboard_scope, $leaderboard_bot_metric, min((int) $leaderboard_bot_result['pages'], (int) $leaderboard_bot_result['page'] + 1), $leaderboard_per_page, $leaderboard_search, $leaderboard_selected_wipe_id, $leaderboard_selected_wipe_key)) ?>" data-leaderboard-page-link="next">Next</a>
           </nav>
         </section>
       </div>

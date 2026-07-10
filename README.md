@@ -127,7 +127,7 @@ Game-server flow:
 - Put `server-plugins/WebsiteVipBridge.cs` into the uMod/Oxide plugins folder.
 - Put `server-plugins/WebsiteClanBridge.cs` into the uMod/Oxide plugins folder when clan website/API management is enabled.
 - Configure the plugin with the same `ApiBaseUrl`, `ServerId`, and `SharedSecret` as the website. Use `server-plugins/WebsiteVipBridge.config.example.json` as the shape of the generated plugin config.
-- Configure `WipeKey` after each wipe if you want a clean current-wipe leaderboard boundary; leave it blank only if one continuous current season is acceptable.
+- Leave `WipeKey` blank for automatic leaderboard seasons. WebsiteVipBridge will derive a stable key from `ServerId` and the Rust save creation time after each wipe. Set `WipeKey` only for a deliberate manual override; a static value like `raidlands-main` will keep every wipe in one leaderboard season.
 - The plugin calls `/api/server/vip-player.php` and `/api/server/vip-changes.php`, then adds/removes managed Oxide groups.
 - The plugin posts `/api/server/status-heartbeat.php` for the public status panel and `/server/` page.
 - The plugin posts `/api/server/stats-snapshot.php` with KDRScoreboard kills/deaths, PlaytimeTracker playtime, and ServerRewards RP for `/leaderboard/` and `/profile/`.

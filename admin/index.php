@@ -198,6 +198,8 @@ $admin_stats_summary = [
     'active_wipe' => null,
     'latest_ingest' => null,
     'current_players' => 0,
+    'recent_wipes' => [],
+    'wipe_key_warning' => '',
 ];
 $admin_server_status = null;
 $admin_clan_summary = [
@@ -5593,12 +5595,14 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                       <?php
                         $active_wipe = $admin_stats_summary['active_wipe'];
                         $latest_ingest = $admin_stats_summary['latest_ingest'];
+                        $recent_wipes = (array) ($admin_stats_summary['recent_wipes'] ?? []);
+                        $wipe_key_warning = (string) ($admin_stats_summary['wipe_key_warning'] ?? '');
                       ?>
                       <div class="admin-grid three">
                         <div class="metal-panel">
                           <p class="section-kicker">Active wipe</p>
                           <h3><?= e((string) ($active_wipe['wipe_key'] ?? 'None')) ?></h3>
-                          <p class="store-muted">Snapshots: <?= e((string) ($active_wipe['snapshot_count'] ?? 0)) ?></p>
+                          <p class="store-muted">Started <?= e((string) ($active_wipe['started_at'] ?? 'Not recorded')) ?> / snapshots <?= e((string) ($active_wipe['snapshot_count'] ?? 0)) ?></p>
                         </div>
                         <div class="metal-panel">
                           <p class="section-kicker">Tracked players</p>
@@ -5611,6 +5615,39 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                           <p class="store-muted"><?= e((string) ($latest_ingest['players_accepted'] ?? 0)) ?> accepted / <?= e((string) ($latest_ingest['players_received'] ?? 0)) ?> received</p>
                         </div>
                       </div>
+                      <?php if ($wipe_key_warning !== '') : ?>
+                        <div class="admin-alert warning"><?= e($wipe_key_warning) ?></div>
+                      <?php endif; ?>
+                      <?php if ($recent_wipes !== []) : ?>
+                        <div class="store-table-wrap">
+                          <table class="store-table">
+                            <thead>
+                              <tr>
+                                <th>Wipe</th>
+                                <th>Status</th>
+                                <th>Started</th>
+                                <th>Ended</th>
+                                <th>Players</th>
+                                <th>Snapshots</th>
+                                <th>Last Snapshot</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              <?php foreach ($recent_wipes as $wipe_row) : ?>
+                                <tr>
+                                  <td><code><?= e((string) ($wipe_row['wipe_key'] ?? '')) ?></code></td>
+                                  <td><span class="status-pill <?= !empty($wipe_row['is_active']) ? 'synced' : 'pending' ?>"><?= !empty($wipe_row['is_active']) ? 'Active' : 'Archived' ?></span></td>
+                                  <td><?= e((string) ($wipe_row['started_at'] ?? '')) ?></td>
+                                  <td><?= e((string) ($wipe_row['ended_at'] ?: '')) ?></td>
+                                  <td><?= e(number_format((int) ($wipe_row['player_count'] ?? 0))) ?></td>
+                                  <td><?= e(number_format((int) ($wipe_row['snapshot_count'] ?? 0))) ?></td>
+                                  <td><?= e((string) ($wipe_row['last_snapshot_at'] ?? '')) ?></td>
+                                </tr>
+                              <?php endforeach; ?>
+                            </tbody>
+                          </table>
+                        </div>
+                      <?php endif; ?>
                     <?php endif; ?>
                   </section>
 

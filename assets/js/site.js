@@ -1102,8 +1102,7 @@
 
           if (!panel) return;
 
-          panel.dataset.scope = scope.getAttribute("data-leaderboard-scope") || "current";
-          panel.dataset.page = "1";
+          readLeaderboardLink(panel, scope.href, true);
           syncLeaderboardSharedState(root, panel);
           loadLeaderboardPanel(root, panel, true);
           return;
@@ -1153,6 +1152,7 @@
       panels.forEach(panel => {
         const search = panel.querySelector("[data-leaderboard-search]");
         const pageSize = panel.querySelector("[data-leaderboard-page-size]");
+        const wipeSelect = panel.querySelector("[data-leaderboard-wipe-select]");
 
         if (search) {
           search.addEventListener("input", () => {
@@ -1169,6 +1169,19 @@
         if (pageSize) {
           pageSize.addEventListener("change", () => {
             panel.dataset.perPage = normalizeLeaderboardPageSize(pageSize.value);
+            panel.dataset.page = "1";
+            syncLeaderboardSharedState(root, panel);
+            loadLeaderboardPanel(root, panel, true);
+          });
+        }
+
+        if (wipeSelect) {
+          wipeSelect.addEventListener("change", () => {
+            const wipeId = normalizeLeaderboardWipeId(wipeSelect.value);
+
+            panel.dataset.wipeId = wipeId;
+            panel.dataset.wipeKey = "";
+            panel.dataset.scope = wipeId ? "wipe" : "current";
             panel.dataset.page = "1";
             syncLeaderboardSharedState(root, panel);
             loadLeaderboardPanel(root, panel, true);
@@ -1197,7 +1210,9 @@
     if (!panel) return;
 
     const formData = new FormData(form);
-    panel.dataset.scope = normalizeLeaderboardScope(formData.get("scope"));
+    panel.dataset.wipeId = normalizeLeaderboardWipeId(formData.get("wipe_id"));
+    panel.dataset.wipeKey = normalizeLeaderboardWipeKey(formData.get("wipe_key"));
+    panel.dataset.scope = panel.dataset.wipeId || panel.dataset.wipeKey ? "wipe" : normalizeLeaderboardScope(formData.get("scope"));
     panel.dataset.metric = normalizeLeaderboardMetric(panel.dataset.board, formData.get("metric"));
     panel.dataset.search = String(formData.get("q") || "").trim();
     panel.dataset.perPage = normalizeLeaderboardPageSize(formData.get("per_page"));
@@ -1250,7 +1265,13 @@
   }
 
   function readLeaderboardParams(panel, params, resetPage) {
-    panel.dataset.scope = normalizeLeaderboardScope(params.get("scope"));
+    const wipeId = normalizeLeaderboardWipeId(params.get("wipe_id"));
+    const wipeKey = normalizeLeaderboardWipeKey(params.get("wipe_key"));
+    const requestedScope = normalizeLeaderboardScope(params.get("scope"));
+
+    panel.dataset.scope = (wipeId || wipeKey) ? "wipe" : requestedScope;
+    panel.dataset.wipeId = wipeId;
+    panel.dataset.wipeKey = wipeKey;
     panel.dataset.metric = normalizeLeaderboardMetric(panel.dataset.board, params.get("metric"));
     panel.dataset.search = String(params.get("q") || "");
     panel.dataset.perPage = normalizeLeaderboardPageSize(params.get("per_page"));
@@ -1303,6 +1324,14 @@
     url.searchParams.set("page", normalizeLeaderboardPage(panel.dataset.page));
     url.searchParams.set("per_page", normalizeLeaderboardPageSize(panel.dataset.perPage));
 
+    if (normalizeLeaderboardScope(panel.dataset.scope) === "wipe") {
+      if (normalizeLeaderboardWipeId(panel.dataset.wipeId)) {
+        url.searchParams.set("wipe_id", normalizeLeaderboardWipeId(panel.dataset.wipeId));
+      } else if (normalizeLeaderboardWipeKey(panel.dataset.wipeKey)) {
+        url.searchParams.set("wipe_key", normalizeLeaderboardWipeKey(panel.dataset.wipeKey));
+      }
+    }
+
     if ((panel.dataset.search || "").trim()) {
       url.searchParams.set("q", panel.dataset.search.trim());
     }
@@ -1318,6 +1347,16 @@
     url.searchParams.set("metric", normalizeLeaderboardMetric(panel.dataset.board, panel.dataset.metric));
     url.searchParams.set("page", normalizeLeaderboardPage(panel.dataset.page));
     url.searchParams.set("per_page", normalizeLeaderboardPageSize(panel.dataset.perPage));
+    url.searchParams.delete("wipe_id");
+    url.searchParams.delete("wipe_key");
+
+    if (normalizeLeaderboardScope(panel.dataset.scope) === "wipe") {
+      if (normalizeLeaderboardWipeId(panel.dataset.wipeId)) {
+        url.searchParams.set("wipe_id", normalizeLeaderboardWipeId(panel.dataset.wipeId));
+      } else if (normalizeLeaderboardWipeKey(panel.dataset.wipeKey)) {
+        url.searchParams.set("wipe_key", normalizeLeaderboardWipeKey(panel.dataset.wipeKey));
+      }
+    }
 
     if ((panel.dataset.search || "").trim()) {
       url.searchParams.set("q", panel.dataset.search.trim());
@@ -1348,6 +1387,8 @@
     const rows = Array.isArray(payload.rows) ? payload.rows : [];
 
     panel.dataset.scope = normalizeLeaderboardScope(payload.scope);
+    panel.dataset.wipeId = normalizeLeaderboardWipeId(payload.wipe_id);
+    panel.dataset.wipeKey = normalizeLeaderboardWipeKey(payload.wipe_key);
     panel.dataset.metric = normalizeLeaderboardMetric(panel.dataset.board, payload.metric);
     panel.dataset.search = String(payload.search || "");
     panel.dataset.page = normalizeLeaderboardPage(payload.page);
@@ -1450,6 +1491,8 @@
       if (panel === sourcePanel) return;
 
       panel.dataset.scope = normalizeLeaderboardScope(sourcePanel.dataset.scope);
+      panel.dataset.wipeId = normalizeLeaderboardWipeId(sourcePanel.dataset.wipeId);
+      panel.dataset.wipeKey = normalizeLeaderboardWipeKey(sourcePanel.dataset.wipeKey);
       panel.dataset.search = String(sourcePanel.dataset.search || "");
       panel.dataset.perPage = normalizeLeaderboardPageSize(sourcePanel.dataset.perPage);
       panel.dataset.page = "1";
@@ -1463,6 +1506,8 @@
       const metric = normalizeLeaderboardMetric(board, panel.dataset.metric);
       const page = Number(normalizeLeaderboardPage(panel.dataset.page));
       const perPage = normalizeLeaderboardPageSize(panel.dataset.perPage);
+      const wipeId = normalizeLeaderboardWipeId(panel.dataset.wipeId);
+      const wipeKey = normalizeLeaderboardWipeKey(panel.dataset.wipeKey);
       const total = Math.max(0, Number(panel.dataset.total) || 0);
       const pages = Math.max(1, Number(normalizeLeaderboardPage(panel.dataset.pages)));
 
@@ -1486,6 +1531,14 @@
 
       panel.querySelectorAll("[data-leaderboard-field='metric']").forEach(input => {
         input.value = metric;
+      });
+
+      panel.querySelectorAll("[data-leaderboard-field='wipe_key']").forEach(input => {
+        input.value = scope === "wipe" ? wipeKey : "";
+      });
+
+      panel.querySelectorAll("[data-leaderboard-wipe-select]").forEach(select => {
+        select.value = scope === "wipe" ? wipeId : "";
       });
 
       panel.querySelectorAll("[data-leaderboard-search]").forEach(input => {
@@ -1539,12 +1592,26 @@
     const page = normalizeLeaderboardPage(overrides.page || panel.dataset.page);
     const perPage = normalizeLeaderboardPageSize(overrides.perPage || panel.dataset.perPage);
     const search = overrides.search !== undefined ? String(overrides.search || "") : String(panel.dataset.search || "");
+    const wipeId = scope === "wipe"
+      ? normalizeLeaderboardWipeId(overrides.wipeId !== undefined ? overrides.wipeId : panel.dataset.wipeId)
+      : "";
+    const wipeKey = scope === "wipe" && !wipeId
+      ? normalizeLeaderboardWipeKey(overrides.wipeKey !== undefined ? overrides.wipeKey : panel.dataset.wipeKey)
+      : "";
 
     url.searchParams.set("board", board);
     url.searchParams.set("scope", scope);
     url.searchParams.set("metric", metric);
     url.searchParams.set("page", page);
     url.searchParams.set("per_page", perPage);
+    url.searchParams.delete("wipe_id");
+    url.searchParams.delete("wipe_key");
+
+    if (wipeId) {
+      url.searchParams.set("wipe_id", wipeId);
+    } else if (wipeKey) {
+      url.searchParams.set("wipe_key", wipeKey);
+    }
 
     if (search.trim()) {
       url.searchParams.set("q", search.trim());
@@ -1567,7 +1634,17 @@
   }
 
   function normalizeLeaderboardScope(scope) {
-    return scope === "all-time" ? "all-time" : "current";
+    return ["current", "all-time", "wipe"].includes(String(scope || "")) ? String(scope) : "current";
+  }
+
+  function normalizeLeaderboardWipeId(value) {
+    const wipeId = parseInt(value, 10);
+
+    return String(Number.isFinite(wipeId) && wipeId > 0 ? wipeId : "");
+  }
+
+  function normalizeLeaderboardWipeKey(value) {
+    return String(value || "").trim().replace(/[^a-zA-Z0-9_.:-]+/g, "-").replace(/^[-_.:]+|[-_.:]+$/g, "").slice(0, 160);
   }
 
   function normalizeLeaderboardMetric(board, metric) {
