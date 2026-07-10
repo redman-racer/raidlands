@@ -774,7 +774,8 @@ function raidlands_stats_leaderboard_result(
     int $per_page = 25,
     string $search = '',
     int $wipe_id = 0,
-    string $wipe_key = ''
+    string $wipe_key = '',
+    bool $attach_steam_profiles = true
 ): array
 {
     if (!raidlands_stats_is_ready()) {
@@ -898,7 +899,9 @@ function raidlands_stats_leaderboard_result(
     }
     unset($row);
 
-    $rows = raidlands_store_attach_steam_profiles($rows);
+    if ($attach_steam_profiles) {
+        $rows = raidlands_store_attach_steam_profiles($rows);
+    }
 
     return raidlands_stats_page_result($rows, $total, $page, $per_page);
 }
@@ -1034,6 +1037,55 @@ function raidlands_stats_bot_leaderboard_result(
 function raidlands_stats_bot_leaderboard(string $scope = 'current', int $limit = 25, string $metric = 'kdr'): array
 {
     return raidlands_stats_bot_leaderboard_result($scope, 1, $limit, '', $metric)['rows'];
+}
+
+function raidlands_stats_home_preview_state(): array
+{
+    $fallback = [
+        'ready' => false,
+        'active_wipe' => null,
+        'leaders' => [],
+        'bot_threat' => null,
+    ];
+
+    if (!raidlands_stats_is_ready()) {
+        return $fallback;
+    }
+
+    try {
+        $leaders = [];
+
+        foreach (['kills', 'kdr', 'rp', 'npc_kills'] as $metric) {
+            $result = raidlands_stats_leaderboard_result($metric, 'current', 1, 5, '', 0, '', false);
+            $rows = is_array($result['rows'] ?? null) ? $result['rows'] : [];
+
+            if (isset($rows[0]) && is_array($rows[0])) {
+                $leaders[$metric] = $rows[0];
+            }
+        }
+
+        if ($leaders !== []) {
+            $profiled = raidlands_store_attach_steam_profiles(array_values($leaders));
+
+            foreach (array_keys($leaders) as $index => $metric) {
+                if (isset($profiled[$index]) && is_array($profiled[$index])) {
+                    $leaders[$metric] = $profiled[$index];
+                }
+            }
+        }
+
+        $bot_result = raidlands_stats_bot_leaderboard_result('current', 1, 5, '', 'kills');
+        $bot_rows = is_array($bot_result['rows'] ?? null) ? $bot_result['rows'] : [];
+
+        return [
+            'ready' => true,
+            'active_wipe' => raidlands_stats_active_wipe(),
+            'leaders' => $leaders,
+            'bot_threat' => isset($bot_rows[0]) && is_array($bot_rows[0]) ? $bot_rows[0] : null,
+        ];
+    } catch (Throwable $error) {
+        return $fallback;
+    }
 }
 
 function raidlands_stats_player_summary(int $player_id): array

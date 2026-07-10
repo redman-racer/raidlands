@@ -285,9 +285,11 @@ function raidlands_rewards_ensure_player_for_steam(PDO $pdo, string $steam_id64)
     return $player;
 }
 
-function raidlands_rewards_settings(): array
+function raidlands_rewards_settings(bool $seed_defaults = true): array
 {
-    raidlands_rewards_seed_defaults();
+    if ($seed_defaults) {
+        raidlands_rewards_seed_defaults();
+    }
 
     $row = raidlands_db_fetch_one('SELECT * FROM rp_game_settings WHERE id = 1');
 
@@ -2529,6 +2531,80 @@ function raidlands_rewards_recent_pool_rounds(int $limit = 8): array
          ORDER BY created_at DESC, id DESC
          LIMIT ' . max(1, min(25, $limit))
     );
+}
+
+function raidlands_rewards_home_preview_state(): array
+{
+    $catalog = [
+        'coinflip' => ['label' => 'Coinflip', 'icon' => 'RISK'],
+        'dice' => ['label' => 'Dice', 'icon' => 'STAT'],
+        'jackpot' => ['label' => 'Jackpot', 'icon' => 'SHOP'],
+        'raid_duel' => ['label' => 'Raid Duel', 'icon' => 'RISK'],
+        'supply_run' => ['label' => 'Supply Run', 'icon' => 'EVENT'],
+        'high_low' => ['label' => 'High-Low', 'icon' => 'CMD'],
+        'wheel' => ['label' => 'Wheel', 'icon' => 'EVENT'],
+    ];
+    $fallback_games = [];
+
+    foreach ($catalog as $game_key => $game) {
+        $fallback_games[$game_key] = $game + [
+            'key' => $game_key,
+            'ready' => false,
+            'enabled' => false,
+        ];
+    }
+
+    $fallback = [
+        'ready' => false,
+        'message' => raidlands_rewards_readiness_message(false),
+        'settings' => [
+            'games_enabled' => 0,
+            'min_stake_rp' => 200,
+            'max_stake_rp' => 2000,
+        ],
+        'games' => $fallback_games,
+        'active_jackpot' => null,
+        'pool_rounds' => [],
+        'recent_rounds' => [],
+    ];
+
+    if (!raidlands_rewards_is_ready()) {
+        return $fallback;
+    }
+
+    try {
+        $settings = raidlands_rewards_settings(false);
+        $games_open = !empty($settings['games_enabled']);
+        $games = [];
+
+        foreach ($catalog as $game_key => $game) {
+            $backend_ready = raidlands_rewards_game_backend_ready($game_key);
+            $games[$game_key] = $game + [
+                'key' => $game_key,
+                'ready' => $backend_ready,
+                'enabled' => $games_open && $backend_ready && !empty($settings[$game_key . '_enabled']),
+            ];
+        }
+
+        $pool_rounds = [];
+
+        foreach (array_keys(raidlands_rewards_pool_games()) as $game_type) {
+            $round = raidlands_rewards_active_pool_round($game_type, $settings, false);
+            $pool_rounds[$game_type] = raidlands_rewards_pool_round_state($round, $game_type);
+        }
+
+        return [
+            'ready' => true,
+            'message' => $games_open ? '' : 'RP games are currently paused.',
+            'settings' => $settings,
+            'games' => $games,
+            'active_jackpot' => raidlands_rewards_active_jackpot_round($settings, false),
+            'pool_rounds' => $pool_rounds,
+            'recent_rounds' => raidlands_rewards_recent_game_rounds(0, 4),
+        ];
+    } catch (Throwable $error) {
+        return $fallback;
+    }
 }
 
 function raidlands_rewards_public_games_state(): array
