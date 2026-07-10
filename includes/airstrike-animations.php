@@ -793,9 +793,16 @@ function raidlands_airstrike_animations_runtime_profile_to_source(string $profil
     $first_payload = (float) ($runtime['FirstPayloadDelaySeconds'] ?? 0.0);
 
     if ($release_mode === 'generated') {
+        // Rust treats template Time <= 0 as unset and falls back to FirstPayloadDelaySeconds.
+        $release_template_time = isset($release_template['Time']) && is_numeric($release_template['Time'])
+            ? (float) $release_template['Time']
+            : 0.0;
+        $release_start_time = $release_template_time > 0.0 ? $release_template_time : $first_payload;
+        $release_template['Time'] = $release_start_time;
+
         $release_source = [
             'Mode' => 'repeated',
-            'StartTime' => (float) ($release_template['Time'] ?? $first_payload),
+            'StartTime' => $release_start_time,
             'IntervalSeconds' => (float) ($runtime['PayloadReleaseIntervalSeconds'] ?? 0.5),
             'UnitsPerRelease' => max(1, (int) ($release_template['Count'] ?? 1)),
             'MaximumUnits' => max(1, (int) ($runtime['MaxPayloadCount'] ?? 1)),
