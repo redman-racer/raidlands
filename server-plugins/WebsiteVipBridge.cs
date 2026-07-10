@@ -15,7 +15,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteVipBridge", "Raidlands", "1.5.9")]
+    [Info("WebsiteVipBridge", "Raidlands", "1.6.0")]
     [Description("Syncs website VIP entitlements and player stats between Raidlands.net and the Rust server.")]
     public class WebsiteVipBridge : CovalencePlugin
     {
@@ -31,6 +31,10 @@ namespace Oxide.Plugins
         private Timer pendingPermissionSnapshotTimer;
         private Timer rpPurchaseTimer;
         private Timer rpPointTimer;
+        private DateTime rpPurchasePollStartedAt = DateTime.MinValue;
+        private DateTime rpPointPollStartedAt = DateTime.MinValue;
+        private int rpPurchasePollGeneration;
+        private int rpPointPollGeneration;
         private long cursor;
         private long kitRevision;
         private long permissionRevision;
@@ -854,6 +858,10 @@ namespace Oxide.Plugins
             pendingPermissionSnapshotTimer?.Destroy();
             rpPurchaseTimer?.Destroy();
             rpPointTimer?.Destroy();
+            rpPurchasePollGeneration++;
+            rpPointPollGeneration++;
+            rpPurchasePollInFlight = false;
+            rpPointPollInFlight = false;
             SaveRpPurchaseData();
             SaveRpPointData();
             SaveDeletedGroupState();
@@ -1748,8 +1756,17 @@ namespace Oxide.Plugins
 
             if (rpPurchasePollInFlight)
             {
-                Puts("RP purchase sync skipped because a previous poll is still in flight.");
-                return;
+                var staleAfter = Math.Max(10f, WebRequestTimeoutSeconds() + 5f);
+
+                if ((DateTime.UtcNow - rpPurchasePollStartedAt).TotalSeconds <= staleAfter)
+                {
+                    Puts("RP purchase sync skipped because a previous poll is still in flight.");
+                    return;
+                }
+
+                PrintWarning($"RP purchase poll exceeded {staleAfter:0} seconds; releasing the stale in-flight guard.");
+                rpPurchasePollInFlight = false;
+                rpPurchasePollGeneration++;
             }
 
             LoadRpPurchaseData();
@@ -1757,6 +1774,8 @@ namespace Oxide.Plugins
             PostPendingRpPurchaseResults();
 
             rpPurchasePollInFlight = true;
+            rpPurchasePollStartedAt = DateTime.UtcNow;
+            var pollGeneration = ++rpPurchasePollGeneration;
             var limit = Math.Max(1, config.RpPurchasePollLimit);
             var url = $"{TrimSlash(config.ApiBaseUrl)}/api/server/rp-purchases.php?limit={limit}";
 
@@ -1806,7 +1825,10 @@ namespace Oxide.Plugins
                 }
                 finally
                 {
-                    rpPurchasePollInFlight = false;
+                    if (pollGeneration == rpPurchasePollGeneration)
+                    {
+                        rpPurchasePollInFlight = false;
+                    }
                 }
             });
         }
@@ -2391,8 +2413,17 @@ namespace Oxide.Plugins
 
             if (rpPointPollInFlight)
             {
-                Puts("RP point request sync skipped because a previous poll is still in flight.");
-                return;
+                var staleAfter = Math.Max(10f, WebRequestTimeoutSeconds() + 5f);
+
+                if ((DateTime.UtcNow - rpPointPollStartedAt).TotalSeconds <= staleAfter)
+                {
+                    Puts("RP point request sync skipped because a previous poll is still in flight.");
+                    return;
+                }
+
+                PrintWarning($"RP point request poll exceeded {staleAfter:0} seconds; releasing the stale in-flight guard.");
+                rpPointPollInFlight = false;
+                rpPointPollGeneration++;
             }
 
             LoadRpPointData();
@@ -2400,6 +2431,8 @@ namespace Oxide.Plugins
             PostPendingRpPointResults();
 
             rpPointPollInFlight = true;
+            rpPointPollStartedAt = DateTime.UtcNow;
+            var pollGeneration = ++rpPointPollGeneration;
             var limit = Math.Max(1, config.RpPointRequestPollLimit);
             var url = $"{TrimSlash(config.ApiBaseUrl)}/api/server/rp-point-requests.php?limit={limit}";
 
@@ -2449,7 +2482,10 @@ namespace Oxide.Plugins
                 }
                 finally
                 {
-                    rpPointPollInFlight = false;
+                    if (pollGeneration == rpPointPollGeneration)
+                    {
+                        rpPointPollInFlight = false;
+                    }
                 }
             });
         }
@@ -5821,19 +5857,19 @@ namespace Oxide.Plugins
         private void SendGet(string url, Action<int, string> callback)
         {
             var headers = BuildHeaders("GET", url, "");
-            webrequest.Enqueue(url, null, (code, response) => RunWebCallback($"GET {url}", callback, code, response), this, RequestMethod.GET, headers, WebRequestTimeoutMilliseconds());
+            webrequest.Enqueue(url, null, (code, response) => RunWebCallback($"GET {url}", callback, code, response), this, RequestMethod.GET, headers, WebRequestTimeoutSeconds());
         }
 
         private void SendPost(string url, string body, Action<int, string> callback)
         {
             var headers = BuildHeaders("POST", url, body);
             headers["Content-Type"] = "application/json";
-            webrequest.Enqueue(url, body, (code, response) => RunWebCallback($"POST {url}", callback, code, response), this, RequestMethod.POST, headers, WebRequestTimeoutMilliseconds());
+            webrequest.Enqueue(url, body, (code, response) => RunWebCallback($"POST {url}", callback, code, response), this, RequestMethod.POST, headers, WebRequestTimeoutSeconds());
         }
 
-        private float WebRequestTimeoutMilliseconds()
+        private float WebRequestTimeoutSeconds()
         {
-            return (float)Math.Max(5000, config.WebRequestTimeoutMilliseconds);
+            return Math.Max(5000, config.WebRequestTimeoutMilliseconds) / 1000f;
         }
 
         private void RunWebCallback(string context, Action<int, string> callback, int code, string response)

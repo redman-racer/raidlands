@@ -46,3 +46,22 @@ node --check assets/js/monument-extraction.js
 ```
 
 The integration test creates its player, wipe, wallet snapshot, runs, actions, and point requests inside one transaction and rolls the transaction back.
+
+## Stuck wager troubleshooting
+
+If a run remains in `CREATING` / **Confirming debit**, inspect the associated `rp_point_requests` row before changing the run:
+
+- `queued` with `bridge_attempts = 0` means the Rust bridge has not claimed the request.
+- Repeated `RP point request sync skipped because a previous poll is still in flight.` messages mean the bridge's in-memory poll guard is wedged.
+- `processing` means the server claimed the request but has not posted its result yet.
+- `rejected` or `failed` should terminate the run and release its active slot automatically.
+
+WebsiteVipBridge v1.6.0 converts the configured millisecond timeout to the seconds expected by Oxide WebRequests and releases stale RP poll guards safely. After uploading it, run:
+
+```text
+oxide.reload WebsiteVipBridge
+websitevip.rp.points.status
+websitevip.rp.points.sync
+```
+
+The shared **Recent RP game activity** table includes Monument wager/run rows and displays queued, processing, active, payout, and terminal states.

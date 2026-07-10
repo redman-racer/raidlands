@@ -2489,6 +2489,29 @@ function raidlands_rewards_recent_game_rounds(int $player_id = 0, int $limit = 1
     );
 }
 
+function raidlands_rewards_recent_game_activity(int $player_id = 0, int $limit = 12): array
+{
+    $rounds = raidlands_rewards_recent_game_rounds($player_id, $limit);
+
+    foreach ($rounds as &$round) {
+        $round['activity_key'] = 'round-' . (int) ($round['id'] ?? 0);
+    }
+    unset($round);
+
+    $activity = array_merge($rounds, raidlands_monument_recent_activity($player_id, $limit));
+    usort($activity, static function (array $left, array $right): int {
+        $date_compare = strcmp((string) ($right['created_at'] ?? ''), (string) ($left['created_at'] ?? ''));
+
+        if ($date_compare !== 0) {
+            return $date_compare;
+        }
+
+        return strcmp((string) ($right['activity_key'] ?? ''), (string) ($left['activity_key'] ?? ''));
+    });
+
+    return array_slice($activity, 0, max(1, min(50, $limit)));
+}
+
 function raidlands_rewards_recent_jackpot_entries(int $player_id = 0, int $limit = 12): array
 {
     if (!raidlands_rewards_is_ready()) {
@@ -2659,7 +2682,7 @@ function raidlands_rewards_public_games_state(): array
         'daily' => $player_id > 0 ? raidlands_rewards_daily_limit_row($player_id) : [],
         'active_jackpot' => $active_jackpot,
         'pool_rounds' => raidlands_rewards_pool_rounds_state($settings),
-        'game_rounds' => $player_id > 0 ? raidlands_rewards_recent_game_rounds($player_id, 10) : raidlands_rewards_recent_game_rounds(0, 6),
+        'game_rounds' => $player_id > 0 ? raidlands_rewards_recent_game_activity($player_id, 10) : raidlands_rewards_recent_game_activity(0, 6),
         'jackpot_entries' => $player_id > 0 ? raidlands_rewards_recent_jackpot_entries($player_id, 10) : [],
         'jackpot_rounds' => raidlands_rewards_recent_jackpot_rounds(6),
         'game_backend' => [

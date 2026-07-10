@@ -53,6 +53,7 @@ $game_names = [
     'wheel' => 'Wheel',
     'raid_duel' => 'Raid Duel',
     'supply_run' => 'Supply Run',
+    'monument_extraction' => 'Monument Extraction',
 ];
 $rp_game_tabs = [
     [
@@ -674,7 +675,7 @@ $rp_game_tabs = [
         <tbody data-rp-rounds-body>
           <?php foreach ($game_rounds as $round) : ?>
             <?php $game_type = (string) ($round['game_type'] ?? 'game'); ?>
-            <tr>
+            <tr data-rp-activity-key="<?= e((string) ($round['activity_key'] ?? ('round-' . (int) ($round['id'] ?? 0)))) ?>">
               <td><?= e($game_names[$game_type] ?? ucwords(str_replace('_', ' ', $game_type))) ?></td>
               <td><?= e(raidlands_store_rp((int) ($round['stake_rp'] ?? 0))) ?></td>
               <td><?= e((string) ($round['roll_result'] ?? '')) ?></td>

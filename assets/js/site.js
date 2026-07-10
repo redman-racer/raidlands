@@ -998,7 +998,7 @@
       const gameType = String(round.game_type || "game");
 
       return `
-        <tr>
+        <tr data-rp-activity-key="${escapeAttr(round.activity_key || `round-${round.id || 0}`)}">
           <td>${escapeHtml(rpGameLabel(gameType))}</td>
           <td>${escapeHtml(formatRp(round.stake_rp))}</td>
           <td>${escapeHtml(round.roll_result || "")}</td>
@@ -1055,7 +1055,8 @@
       high_low: "High-Low",
       wheel: "Wheel",
       raid_duel: "Raid Duel",
-      supply_run: "Supply Run"
+      supply_run: "Supply Run",
+      monument_extraction: "Monument Extraction"
     };
 
     if (labels[gameType]) {

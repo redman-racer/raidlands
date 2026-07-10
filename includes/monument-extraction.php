@@ -368,6 +368,14 @@ function raidlands_monument_public_run(array $row): array
     $state = raidlands_monument_decode_json($row['state_json'] ?? '', 'run state');
     $config = raidlands_monument_decode_json($row['frozen_config_json'] ?? '', 'frozen configuration');
     $status = (string) ($row['status'] ?? $state['status'] ?? 'CREATING');
+    $wager_request = !empty($row['wager_request_id'])
+        ? raidlands_db_fetch_one(
+            'SELECT status, message FROM rp_point_requests WHERE id = :id LIMIT 1',
+            ['id' => (int) $row['wager_request_id']]
+        )
+        : null;
+    $wager_status = is_array($wager_request) ? (string) ($wager_request['status'] ?? '') : '';
+    $wager_message = is_array($wager_request) ? (string) ($wager_request['message'] ?? '') : '';
 
     if ($status === 'CREATING') {
         return [
@@ -376,7 +384,10 @@ function raidlands_monument_public_run(array $row): array
             'wagerRp' => (int) $row['wager_rp'],
             'loadoutKey' => (string) $row['loadout_key'],
             'seedCommitment' => (string) $row['seed_commitment'],
+            'wagerStatus' => $wager_status !== '' ? $wager_status : 'queued',
+            'wagerMessage' => $wager_message,
             'payoutStatus' => (string) $row['payout_status'],
+            'createdAt' => (string) ($row['created_at'] ?? ''),
             'message' => 'Waiting for the Rust server to confirm the one-time wager debit.',
             'terminal' => false,
         ];
@@ -387,10 +398,13 @@ function raidlands_monument_public_run(array $row): array
     $seed = $terminal ? raidlands_monument_decrypt_seed((string) $row['server_seed_encrypted']) : '';
     $public = raidlands_monument_public_state($state, $config, $terminal, $seed);
     $public['seedCommitment'] = (string) $row['seed_commitment'];
+    $public['wagerStatus'] = $wager_status;
+    $public['wagerMessage'] = $wager_message;
     $public['payoutStatus'] = (string) $row['payout_status'];
     $public['failureReason'] = (string) ($row['failure_reason'] ?? $state['failureReason'] ?? '');
     $public['configVersionId'] = (int) $row['config_version_id'];
     $public['startedAt'] = (string) $row['started_at'];
+    $public['createdAt'] = (string) ($row['created_at'] ?? '');
     $public['expiresAt'] = (string) ($row['expires_at'] ?? '');
     $public['completedAt'] = (string) ($row['completed_at'] ?? '');
 
@@ -881,6 +895,66 @@ function raidlands_monument_history(int $player_id, int $limit = 12): array
         'completedAt' => (string) ($row['completed_at'] ?? ''),
         'auditAvailable' => raidlands_monument_terminal_status((string) $row['status']),
     ], $rows);
+}
+
+function raidlands_monument_recent_activity(int $player_id = 0, int $limit = 12): array
+{
+    if (!raidlands_monument_is_ready()) {
+        return [];
+    }
+
+    $params = [];
+    $where = '';
+
+    if ($player_id > 0) {
+        $where = 'WHERE m.player_id = :player_id';
+        $params['player_id'] = $player_id;
+    }
+
+    $rows = raidlands_db_fetch_all(
+        'SELECT m.id, m.status AS run_status, m.wager_rp, m.payout_rp, m.loadout_key,
+                m.payout_status, m.created_at,
+                wager.status AS wager_request_status,
+                payout.status AS payout_request_status
+         FROM monument_extraction_runs m
+         LEFT JOIN rp_point_requests wager ON wager.id = m.wager_request_id
+         LEFT JOIN rp_point_requests payout ON payout.id = m.payout_request_id
+         ' . $where . '
+         ORDER BY m.created_at DESC, m.id DESC
+         LIMIT ' . max(1, min(50, $limit)),
+        $params
+    );
+
+    return array_map(static function (array $row): array {
+        $run_status = strtoupper((string) ($row['run_status'] ?? 'CREATING'));
+        $wager_status = strtolower((string) ($row['wager_request_status'] ?? 'queued'));
+        $payout_status = strtolower((string) ($row['payout_request_status'] ?? $row['payout_status'] ?? ''));
+
+        if ($run_status === 'CREATING') {
+            $activity_status = $wager_status !== '' ? $wager_status : 'queued';
+        } elseif (!raidlands_monument_terminal_status($run_status)) {
+            $activity_status = 'active';
+        } elseif ((int) ($row['payout_rp'] ?? 0) > 0) {
+            $activity_status = $payout_status !== '' && $payout_status !== 'none' ? $payout_status : 'queued';
+        } elseif ($run_status === 'FAILED') {
+            $activity_status = 'failed';
+        } elseif ($run_status === 'COMPLETED') {
+            $activity_status = 'succeeded';
+        } else {
+            $activity_status = strtolower($run_status);
+        }
+
+        return [
+            'id' => 'monument-' . (int) $row['id'],
+            'activity_key' => 'monument-' . (int) $row['id'],
+            'game_type' => 'monument_extraction',
+            'stake_rp' => (int) $row['wager_rp'],
+            'roll_result' => ucwords(str_replace('_', ' ', (string) $row['loadout_key'])) . ' / Run #' . (int) $row['id'],
+            'payout_rp' => (int) $row['payout_rp'],
+            'status' => $activity_status,
+            'created_at' => (string) $row['created_at'],
+        ];
+    }, $rows);
 }
 
 function raidlands_monument_audit(int $run_id): array

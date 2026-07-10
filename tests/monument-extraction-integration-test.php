@@ -93,9 +93,17 @@ try {
     $started = raidlands_monument_start_run(1000, 'scout', $start_id);
     $run_id = (int) $started['run']['id'];
     monument_integration_test($started['run']['status'] === 'CREATING', 'new run waits for Rust wager confirmation');
+    monument_integration_test($started['run']['wagerStatus'] === 'queued', 'new run exposes its queued wager status');
     monument_integration_test(!empty($started['run']['seedCommitment']), 'new run publishes seed commitment');
     $wager_count = (int) $pdo->query("SELECT COUNT(*) FROM rp_point_requests WHERE source_type = 'monument_wager' AND source_id = '{$run_id}'")->fetchColumn();
     monument_integration_test($wager_count === 1, 'start creates exactly one wager debit request');
+    $activity = raidlands_rewards_recent_game_activity($player_id, 10);
+    monument_integration_test(
+        ($activity[0]['game_type'] ?? '') === 'monument_extraction'
+            && ($activity[0]['status'] ?? '') === 'queued'
+            && ($activity[0]['activity_key'] ?? '') === 'monument-' . $run_id,
+        'shared RP activity includes the queued Monument wager'
+    );
 
     $duplicate_start = raidlands_monument_start_run(1000, 'scout', $start_id);
     monument_integration_test(!empty($duplicate_start['duplicate']) && (int) $duplicate_start['run']['id'] === $run_id, 'duplicate start returns original run');

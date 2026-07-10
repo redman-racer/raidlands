@@ -221,6 +221,52 @@
 
     if (active) renderRun();
     renderHistory();
+    syncSharedActivity();
+  }
+
+  function syncSharedActivity() {
+    if (!run?.id) return;
+
+    const body = document.querySelector("[data-rp-rounds-body]");
+    const table = document.querySelector("[data-rp-rounds-table]");
+
+    if (!body || !table) return;
+
+    const key = `monument-${number(run.id)}`;
+    let row = Array.from(body.querySelectorAll("[data-rp-activity-key]")).find(item => item.dataset.rpActivityKey === key);
+
+    if (!row) {
+      row = document.createElement("tr");
+      row.dataset.rpActivityKey = key;
+      body.prepend(row);
+    }
+
+    const status = sharedActivityStatus(run);
+    row.innerHTML = `<td>Monument Extraction</td>
+      <td>${esc(formatRp(run.wagerRp))}</td>
+      <td>${esc(`${title(run.loadoutKey)} / Run #${run.id}`)}</td>
+      <td>${esc(formatRp(run.payoutRp))}</td>
+      <td><span class="status-pill ${esc(status)}">${esc(status)}</span></td>
+      <td>${esc(run.createdAt || run.startedAt || "Just now")}</td>`;
+    table.hidden = false;
+
+    const emptyHistory = document.querySelector("[data-rp-history-empty]");
+    if (emptyHistory) emptyHistory.hidden = true;
+  }
+
+  function sharedActivityStatus(item) {
+    const status = String(item?.status || "CREATING").toUpperCase();
+
+    if (status === "CREATING") return String(item?.wagerStatus || "queued").toLowerCase();
+    if (!item?.terminal) return "active";
+    if (status === "COMPLETED" && number(item?.payoutRp) > 0) {
+      const payoutStatus = String(item?.payoutStatus || "queued").toLowerCase();
+      return payoutStatus === "none" ? "queued" : payoutStatus;
+    }
+    if (status === "COMPLETED") return "succeeded";
+    if (status === "FAILED") return "failed";
+
+    return status.toLowerCase();
   }
 
   function renderRun() {
