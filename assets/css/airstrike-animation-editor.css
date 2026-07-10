@@ -1,0 +1,232 @@
+:root {
+  color-scheme: dark;
+}
+
+.airstrike-editor-body {
+  margin: 0;
+  min-width: 1180px;
+  min-height: 100vh;
+  overflow: hidden;
+  background: #07090a;
+  color: #edf3f4;
+}
+
+.airstrike-editor {
+  display: grid;
+  grid-template-columns: 250px minmax(540px, 1fr) 300px;
+  grid-template-rows: 76px minmax(400px, 1fr) 210px;
+  grid-template-areas:
+    "toolbar toolbar toolbar"
+    "left center right"
+    "left bottom right";
+  width: 100vw;
+  height: 100vh;
+  background:
+    radial-gradient(circle at 50% 35%, rgba(31, 104, 121, 0.16), transparent 38%),
+    #07090a;
+}
+
+.airstrike-editor-toolbar {
+  grid-area: toolbar;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 20px;
+  padding: 10px 18px;
+  border-bottom: 1px solid rgba(137, 192, 204, 0.22);
+  background: rgba(8, 12, 14, 0.98);
+}
+
+.airstrike-editor-brand,
+.airstrike-editor-toolbar-actions,
+.airstrike-editor-panel-head,
+.airstrike-editor-stage-head {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.airstrike-editor-brand > a {
+  display: grid;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  border: 1px solid rgba(137, 192, 204, 0.28);
+  border-radius: 7px;
+  color: #d9f6ff;
+  text-decoration: none;
+}
+
+.airstrike-editor-brand h1,
+.airstrike-editor-stage-head h2,
+.airstrike-editor-brand p,
+.airstrike-editor-stage-head p {
+  margin: 0;
+}
+
+.airstrike-editor-brand h1 {
+  font-size: 20px;
+}
+
+.airstrike-editor-toolbar-actions {
+  justify-content: flex-end;
+  flex-wrap: wrap;
+}
+
+.airstrike-editor-state {
+  max-width: 270px;
+  color: #91a4a8;
+  font-size: 12px;
+  text-align: right;
+}
+
+.airstrike-editor-left,
+.airstrike-editor-right {
+  min-height: 0;
+  overflow: auto;
+  padding: 16px;
+  background: rgba(9, 13, 15, 0.96);
+}
+
+.airstrike-editor-left {
+  grid-area: left;
+  border-right: 1px solid rgba(137, 192, 204, 0.18);
+}
+
+.airstrike-editor-right {
+  grid-area: right;
+  border-left: 1px solid rgba(137, 192, 204, 0.18);
+}
+
+.airstrike-editor-panel-head,
+.airstrike-editor-stage-head {
+  justify-content: space-between;
+}
+
+.airstrike-editor-left input[type="search"],
+.airstrike-editor-right input,
+.airstrike-editor-right select {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.airstrike-editor-profile-list {
+  display: grid;
+  gap: 8px;
+  margin-top: 14px;
+}
+
+.airstrike-editor-profile {
+  width: 100%;
+  padding: 10px;
+  border: 1px solid rgba(137, 192, 204, 0.18);
+  border-radius: 6px;
+  background: rgba(21, 29, 32, 0.82);
+  color: #e8f2f4;
+  text-align: left;
+  cursor: pointer;
+}
+
+.airstrike-editor-profile:hover,
+.airstrike-editor-profile.is-active {
+  border-color: rgba(54, 197, 230, 0.68);
+  background: rgba(20, 54, 62, 0.86);
+}
+
+.airstrike-editor-profile small {
+  display: block;
+  margin-top: 4px;
+  color: #91a4a8;
+}
+
+.airstrike-editor-center {
+  grid-area: center;
+  display: grid;
+  min-width: 0;
+  min-height: 0;
+  grid-template-rows: auto auto minmax(260px, 1fr);
+  gap: 10px;
+  padding: 16px;
+}
+
+.airstrike-editor-notice {
+  padding: 9px 11px;
+  border: 1px solid rgba(222, 169, 59, 0.35);
+  border-radius: 6px;
+  background: rgba(90, 60, 14, 0.2);
+  color: #e9d59d;
+  font-size: 12px;
+}
+
+.airstrike-editor-source {
+  width: 100%;
+  height: 100%;
+  min-height: 0;
+  resize: none;
+  box-sizing: border-box;
+  padding: 14px;
+  border: 1px solid rgba(137, 192, 204, 0.24);
+  border-radius: 7px;
+  outline: none;
+  background: rgba(2, 5, 6, 0.9);
+  color: #d8f2f6;
+  font: 12px/1.55 "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  tab-size: 2;
+}
+
+.airstrike-editor-source:focus {
+  border-color: rgba(54, 197, 230, 0.72);
+  box-shadow: 0 0 0 2px rgba(54, 197, 230, 0.1);
+}
+
+.airstrike-editor-validation {
+  margin-top: 18px;
+  padding: 12px;
+  border: 1px solid rgba(137, 192, 204, 0.2);
+  border-radius: 6px;
+  background: rgba(18, 25, 28, 0.78);
+  color: #aebfc3;
+  white-space: pre-wrap;
+}
+
+.airstrike-editor-validation.is-error {
+  border-color: rgba(219, 75, 75, 0.45);
+  color: #ffc5c5;
+}
+
+.airstrike-editor-validation.is-success {
+  border-color: rgba(72, 190, 128, 0.45);
+  color: #b9f5d4;
+}
+
+.airstrike-editor-bottom {
+  grid-area: bottom;
+  display: grid;
+  grid-template-columns: 220px minmax(0, 1fr);
+  gap: 16px;
+  min-width: 0;
+  min-height: 0;
+  padding: 14px 16px;
+  border-top: 1px solid rgba(137, 192, 204, 0.18);
+  background: rgba(8, 12, 14, 0.96);
+}
+
+.airstrike-editor-bottom pre {
+  min-width: 0;
+  min-height: 0;
+  margin: 0;
+  overflow: auto;
+  color: #b8c9cd;
+  font: 11px/1.45 "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  white-space: pre-wrap;
+}
+
+@media (max-width: 1280px) {
+  .airstrike-editor {
+    grid-template-columns: 220px minmax(520px, 1fr) 260px;
+  }
+
+  .airstrike-editor-toolbar .btn {
+    padding-inline: 10px;
+  }
+}

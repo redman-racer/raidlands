@@ -1,0 +1,65 @@
+{
+  "schemaVersion": 1,
+  "vehicles": {
+    "a10": {
+      "vehicle": "a10",
+      "modelUrl": "/assets/airstrike-animation-editor/models/a10.glb",
+      "scale": 1,
+      "positionCorrection": { "x": 0, "y": 0, "z": 0 },
+      "rotationCorrection": { "x": 0, "y": 0, "z": 0 },
+      "bounds": { "x": 17.5, "y": 4.5, "z": 16.3 },
+      "hardpoints": [
+        { "id": "left_gun", "x": -0.75, "y": -0.45, "z": 4.6 },
+        { "id": "right_gun", "x": 0.75, "y": -0.45, "z": 4.6 }
+      ]
+    },
+    "attack_heli": {
+      "vehicle": "attack_heli",
+      "modelUrl": "/assets/airstrike-animation-editor/models/attack_heli.glb",
+      "scale": 1,
+      "positionCorrection": { "x": 0, "y": 0, "z": 0 },
+      "rotationCorrection": { "x": 0, "y": 0, "z": 0 },
+      "bounds": { "x": 14, "y": 5, "z": 17 },
+      "hardpoints": [
+        { "id": "left_rocket", "x": -2.2, "y": -0.6, "z": 1.1 },
+        { "id": "right_rocket", "x": 2.2, "y": -0.6, "z": 1.1 }
+      ]
+    },
+    "cargo_plane": {
+      "vehicle": "cargo_plane",
+      "modelUrl": "/assets/airstrike-animation-editor/models/cargo_plane.glb",
+      "scale": 1,
+      "positionCorrection": { "x": 0, "y": 0, "z": 0 },
+      "rotationCorrection": { "x": 0, "y": 0, "z": 0 },
+      "bounds": { "x": 40, "y": 12, "z": 45 },
+      "hardpoints": [
+        { "id": "left_bay", "x": -2.5, "y": -2, "z": -1 },
+        { "id": "right_bay", "x": 2.5, "y": -2, "z": -1 }
+      ]
+    },
+    "drone": {
+      "vehicle": "drone",
+      "modelUrl": "/assets/airstrike-animation-editor/models/drone.glb",
+      "scale": 1,
+      "positionCorrection": { "x": 0, "y": 0, "z": 0 },
+      "rotationCorrection": { "x": 0, "y": 0, "z": 0 },
+      "bounds": { "x": 1.2, "y": 0.5, "z": 1.2 },
+      "hardpoints": [
+        { "id": "left_drop", "x": -0.35, "y": -0.2, "z": 0 },
+        { "id": "right_drop", "x": 0.35, "y": -0.2, "z": 0 }
+      ]
+    },
+    "f15": {
+      "vehicle": "f15",
+      "modelUrl": "/assets/airstrike-animation-editor/models/f15.glb",
+      "scale": 1,
+      "positionCorrection": { "x": 0, "y": 0, "z": 0 },
+      "rotationCorrection": { "x": 0, "y": 0, "z": 0 },
+      "bounds": { "x": 13, "y": 5.5, "z": 19.5 },
+      "hardpoints": [
+        { "id": "left_rocket", "x": -3.1, "y": -0.7, "z": 0.8 },
+        { "id": "right_rocket", "x": 3.1, "y": -0.7, "z": 0.8 }
+      ]
+    }
+  }
+}

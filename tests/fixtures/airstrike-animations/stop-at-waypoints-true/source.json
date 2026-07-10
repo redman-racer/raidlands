@@ -1,0 +1,26 @@
+{
+  "EditorSourceSchemaVersion": 1,
+  "AllowDangerousPayloadPreview": false,
+  "Profiles": {
+    "stop_at_waypoints_true": {
+      "EditorSourceSchemaVersion": 1,
+      "ProfileKey": "stop_at_waypoints_true",
+      "DisplayName": "Stop At Waypoints True",
+      "Vehicle": "drone",
+      "DurationSeconds": 4,
+      "FirstPayloadDelaySeconds": 2,
+      "RotationSmoothTimeSeconds": 0.12,
+      "StopAtWaypoints": true,
+      "MinimumTerrainClearance": 12,
+      "PositionInterpolation": "time_hermite",
+      "RotationMode": "follow_path_plus_offset",
+      "Waypoints": [
+        { "Id": "wp_1", "Time": 0, "X": 0, "Y": 25, "Z": -60, "RotationX": 0, "RotationY": 0, "RotationZ": 0 },
+        { "Id": "wp_2", "Time": 2, "X": 35, "Y": 35, "Z": 0, "RotationX": 0, "RotationY": 0, "RotationZ": 25 },
+        { "Id": "wp_3", "Time": 4, "X": 0, "Y": 25, "Z": 60, "RotationX": 0, "RotationY": 0, "RotationZ": 0 }
+      ],
+      "ReleaseSource": { "Mode": "manual", "Events": [], "LegacyDynamic": true },
+      "EditorMetadata": { "Notes": "Zero tangent at every waypoint", "Tags": ["stop"], "VehiclePreviewOverrides": {} }
+    }
+  }
+}

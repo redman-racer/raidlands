@@ -1,0 +1,146 @@
+{
+  "ProfileKey": "straight_constant_speed",
+  "Target": {
+    "x": 0,
+    "y": 0,
+    "z": 0
+  },
+  "Approach": {
+    "x": 0,
+    "y": 0,
+    "z": 1
+  },
+  "Samples": [
+    {
+      "Time": 0,
+      "Local": {
+        "Qw": 1,
+        "Qx": 0,
+        "Qy": 0,
+        "Qz": 0,
+        "Time": 0,
+        "X": 0,
+        "Y": 50,
+        "Z": -100
+      },
+      "World": {
+        "Position": {
+          "x": 0,
+          "y": 50,
+          "z": -100
+        },
+        "Rotation": {
+          "w": 1,
+          "x": 0,
+          "y": 0,
+          "z": 0
+        }
+      }
+    },
+    {
+      "Time": 1,
+      "Local": {
+        "Qw": 1,
+        "Qx": 0,
+        "Qy": 0,
+        "Qz": 0,
+        "Time": 1,
+        "X": 0,
+        "Y": 50,
+        "Z": -50
+      },
+      "World": {
+        "Position": {
+          "x": 0,
+          "y": 50,
+          "z": -50
+        },
+        "Rotation": {
+          "w": 1,
+          "x": 0,
+          "y": 0,
+          "z": 0
+        }
+      }
+    },
+    {
+      "Time": 2,
+      "Local": {
+        "Qw": 1,
+        "Qx": 0,
+        "Qy": 0,
+        "Qz": 0,
+        "Time": 2,
+        "X": 0,
+        "Y": 50,
+        "Z": 0
+      },
+      "World": {
+        "Position": {
+          "x": 0,
+          "y": 50,
+          "z": 0
+        },
+        "Rotation": {
+          "w": 1,
+          "x": 0,
+          "y": 0,
+          "z": 0
+        }
+      }
+    },
+    {
+      "Time": 3,
+      "Local": {
+        "Qw": 1,
+        "Qx": 0,
+        "Qy": 0,
+        "Qz": 0,
+        "Time": 3,
+        "X": 0,
+        "Y": 50,
+        "Z": 50
+      },
+      "World": {
+        "Position": {
+          "x": 0,
+          "y": 50,
+          "z": 50
+        },
+        "Rotation": {
+          "w": 1,
+          "x": 0,
+          "y": 0,
+          "z": 0
+        }
+      }
+    },
+    {
+      "Time": 4,
+      "Local": {
+        "Qw": 1,
+        "Qx": 0,
+        "Qy": 0,
+        "Qz": 0,
+        "Time": 4,
+        "X": 0,
+        "Y": 50,
+        "Z": 100
+      },
+      "World": {
+        "Position": {
+          "x": 0,
+          "y": 50,
+          "z": 100
+        },
+        "Rotation": {
+          "w": 1,
+          "x": 0,
+          "y": 0,
+          "z": 0
+        }
+      }
+    }
+  ],
+  "CompiledReleaseEvents": null
+}

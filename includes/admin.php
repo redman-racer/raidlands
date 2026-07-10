@@ -456,7 +456,7 @@ function raidlands_admin_redirect(?string $section = null, array $params = []): 
 
 function raidlands_admin_section_keys(): array
 {
-    return ['identity', 'links', 'wipe', 'todo', 'features', 'pages', 'seo', 'feedback', 'chat', 'store', 'vote-rewards', 'rp-games', 'kits', 'groups', 'grants', 'sync', 'animations'];
+    return ['identity', 'links', 'wipe', 'todo', 'features', 'pages', 'seo', 'feedback', 'chat', 'store', 'vote-rewards', 'rp-games', 'kits', 'groups', 'grants', 'sync', 'airstrike-animations', 'animations'];
 }
 
 function raidlands_admin_allowed_section_keys(): array
@@ -477,6 +477,7 @@ function raidlands_admin_section_permission(string $section): string
         'kits' => 'admin.kits.manage',
         'groups' => 'admin.permissions.manage',
         'grants' => 'admin.grants.manage',
+        'airstrike-animations' => 'admin.airstrike_animations.manage',
         'sync', 'animations' => 'admin.sync.view',
         default => 'admin.content.manage',
     };
@@ -495,7 +496,7 @@ function raidlands_admin_can_save_section(string $section): bool
 {
     $section = raidlands_admin_clean_section($section);
 
-    if ($section === 'sync' || $section === 'animations') {
+    if ($section === 'sync' || $section === 'animations' || $section === 'airstrike-animations') {
         return false;
     }
 

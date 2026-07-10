@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raidlands.net/schemas/airstrike-animation-editor/vehicle-preview.schema.json",
+  "title": "Raidlands Airstrike Vehicle Preview Metadata",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["schemaVersion", "vehicles"],
+  "properties": {
+    "schemaVersion": { "const": 1 },
+    "vehicles": {
+      "type": "object",
+      "additionalProperties": { "$ref": "#/$defs/vehicle" }
+    }
+  },
+  "$defs": {
+    "vector": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["x", "y", "z"],
+      "properties": {
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number" }
+      }
+    },
+    "hardpoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "x", "y", "z"],
+      "properties": {
+        "id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$" },
+        "x": { "type": "number" },
+        "y": { "type": "number" },
+        "z": { "type": "number" }
+      }
+    },
+    "vehicle": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "vehicle",
+        "modelUrl",
+        "scale",
+        "positionCorrection",
+        "rotationCorrection",
+        "bounds",
+        "hardpoints"
+      ],
+      "properties": {
+        "vehicle": { "type": "string" },
+        "modelUrl": { "type": "string" },
+        "scale": { "type": "number", "exclusiveMinimum": 0 },
+        "positionCorrection": { "$ref": "#/$defs/vector" },
+        "rotationCorrection": { "$ref": "#/$defs/vector" },
+        "bounds": { "$ref": "#/$defs/vector" },
+        "hardpoints": { "type": "array", "items": { "$ref": "#/$defs/hardpoint" } }
+      }
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "EditorSourceSchemaVersion": 1,
+  "AllowDangerousPayloadPreview": false,
+  "Profiles": {
+    "curved_pass": {
+      "EditorSourceSchemaVersion": 1,
+      "ProfileKey": "curved_pass",
+      "DisplayName": "Curved Pass",
+      "Vehicle": "f15",
+      "DurationSeconds": 6,
+      "FirstPayloadDelaySeconds": 3,
+      "RotationSmoothTimeSeconds": 0.12,
+      "StopAtWaypoints": false,
+      "MinimumTerrainClearance": 55,
+      "PositionInterpolation": "time_hermite",
+      "RotationMode": "follow_path_plus_offset",
+      "Waypoints": [
+        { "Id": "wp_1", "Time": 0, "X": -40, "Y": 80, "Z": -180, "RotationX": 0, "RotationY": 0, "RotationZ": 0 },
+        { "Id": "wp_2", "Time": 1.5, "X": 20, "Y": 65, "Z": -70, "RotationX": -5, "RotationY": 0, "RotationZ": 10 },
+        { "Id": "wp_3", "Time": 4.25, "X": -15, "Y": 55, "Z": 70, "RotationX": 5, "RotationY": 0, "RotationZ": -15 },
+        { "Id": "wp_4", "Time": 6, "X": 35, "Y": 85, "Z": 190, "RotationX": 0, "RotationY": 0, "RotationZ": 0 }
+      ],
+      "ReleaseSource": { "Mode": "manual", "Events": [], "LegacyDynamic": true },
+      "EditorMetadata": { "Notes": "Nonuniform Catmull-Rom tangent fixture", "Tags": ["curve"], "VehiclePreviewOverrides": {} }
+    }
+  }
+}

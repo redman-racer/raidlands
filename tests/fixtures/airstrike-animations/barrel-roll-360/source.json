@@ -1,0 +1,26 @@
+{
+  "EditorSourceSchemaVersion": 1,
+  "AllowDangerousPayloadPreview": false,
+  "Profiles": {
+    "barrel_roll_360": {
+      "EditorSourceSchemaVersion": 1,
+      "ProfileKey": "barrel_roll_360",
+      "DisplayName": "360 Degree Barrel Roll",
+      "Vehicle": "attack_heli",
+      "DurationSeconds": 4,
+      "FirstPayloadDelaySeconds": 2,
+      "RotationSmoothTimeSeconds": 0.02,
+      "StopAtWaypoints": false,
+      "MinimumTerrainClearance": 55,
+      "PositionInterpolation": "time_hermite",
+      "RotationMode": "follow_path_plus_offset",
+      "Waypoints": [
+        { "Id": "wp_0", "Time": 0, "X": 0, "Y": 80, "Z": -120, "RotationX": 0, "RotationY": 0, "RotationZ": 0 },
+        { "Id": "wp_180", "Time": 2, "X": 0, "Y": 70, "Z": 0, "RotationX": 0, "RotationY": 0, "RotationZ": 180 },
+        { "Id": "wp_360", "Time": 4, "X": 0, "Y": 80, "Z": 120, "RotationX": 0, "RotationY": 0, "RotationZ": 360 }
+      ],
+      "ReleaseSource": { "Mode": "manual", "Events": [], "LegacyDynamic": true },
+      "EditorMetadata": { "Notes": "Continuous 360 degree roll", "Tags": ["rotation"], "VehiclePreviewOverrides": {} }
+    }
+  }
+}

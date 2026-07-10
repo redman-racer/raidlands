@@ -1,0 +1,191 @@
+{
+  "ProfileKey": "manual_release_schedule",
+  "Target": {
+    "x": 0,
+    "y": 0,
+    "z": 0
+  },
+  "Approach": {
+    "x": 0,
+    "y": 0,
+    "z": 1
+  },
+  "Samples": [
+    {
+      "Time": 0,
+      "Local": {
+        "Qw": 1,
+        "Qx": 0,
+        "Qy": 0,
+        "Qz": 0,
+        "Time": 0,
+        "X": 0,
+        "Y": 80,
+        "Z": -120
+      },
+      "World": {
+        "Position": {
+          "x": 0,
+          "y": 80,
+          "z": -120
+        },
+        "Rotation": {
+          "w": 1,
+          "x": 0,
+          "y": 0,
+          "z": 0
+        }
+      }
+    },
+    {
+      "Time": 1,
+      "Local": {
+        "Qw": 1,
+        "Qx": 0,
+        "Qy": 0,
+        "Qz": 0,
+        "Time": 1,
+        "X": 0,
+        "Y": 80,
+        "Z": -60
+      },
+      "World": {
+        "Position": {
+          "x": 0,
+          "y": 80,
+          "z": -60
+        },
+        "Rotation": {
+          "w": 1,
+          "x": 0,
+          "y": 0,
+          "z": 0
+        }
+      }
+    },
+    {
+      "Time": 2.5,
+      "Local": {
+        "Qw": 1,
+        "Qx": 0,
+        "Qy": 0,
+        "Qz": 0,
+        "Time": 2.5,
+        "X": 0,
+        "Y": 80,
+        "Z": 30
+      },
+      "World": {
+        "Position": {
+          "x": 0,
+          "y": 80,
+          "z": 30
+        },
+        "Rotation": {
+          "w": 1,
+          "x": 0,
+          "y": 0,
+          "z": 0
+        }
+      }
+    },
+    {
+      "Time": 4,
+      "Local": {
+        "Qw": 1,
+        "Qx": 0,
+        "Qy": 0,
+        "Qz": 0,
+        "Time": 4,
+        "X": 0,
+        "Y": 80,
+        "Z": 120
+      },
+      "World": {
+        "Position": {
+          "x": 0,
+          "y": 80,
+          "z": 120
+        },
+        "Rotation": {
+          "w": 1,
+          "x": 0,
+          "y": 0,
+          "z": 0
+        }
+      }
+    }
+  ],
+  "CompiledReleaseEvents": [
+    {
+      "Time": 1,
+      "Payload": "hv_rocket",
+      "Index": 1,
+      "Count": 1,
+      "CarrierOffsetX": 0,
+      "CarrierOffsetY": -0.5,
+      "CarrierOffsetZ": 1,
+      "TargetOffsetX": 0,
+      "TargetOffsetY": 0,
+      "TargetOffsetZ": 0,
+      "SpreadRadius": 0,
+      "LaunchSpeed": 85,
+      "FuseSeconds": 0,
+      "DamageScale": 1,
+      "VehicleDamageScale": 1,
+      "SplashRadius": 0,
+      "ImpactRadius": 0,
+      "MaxTrackingSeconds": -1,
+      "MaxTrackingDistance": -1,
+      "DamageScales": {
+        "Vehicles": 1.2
+      }
+    },
+    {
+      "Time": 1,
+      "Payload": "hv_rocket",
+      "Index": 2,
+      "Count": 1,
+      "CarrierOffsetX": 0,
+      "CarrierOffsetY": -0.5,
+      "CarrierOffsetZ": 1,
+      "TargetOffsetX": 0,
+      "TargetOffsetY": 0,
+      "TargetOffsetZ": 0,
+      "SpreadRadius": 0,
+      "LaunchSpeed": 85,
+      "FuseSeconds": 0,
+      "DamageScale": 1,
+      "VehicleDamageScale": 1,
+      "SplashRadius": 0,
+      "ImpactRadius": 0,
+      "MaxTrackingSeconds": -1,
+      "MaxTrackingDistance": -1,
+      "DamageScales": {
+        "Vehicles": 1.2
+      }
+    },
+    {
+      "Time": 2.5,
+      "Payload": "smoke",
+      "Index": 3,
+      "Count": 1,
+      "CarrierOffsetX": 0,
+      "CarrierOffsetY": -0.4,
+      "CarrierOffsetZ": 0,
+      "TargetOffsetX": 5,
+      "TargetOffsetY": 0,
+      "TargetOffsetZ": 0,
+      "SpreadRadius": 3,
+      "LaunchSpeed": -1,
+      "FuseSeconds": 1,
+      "DamageScale": 1,
+      "VehicleDamageScale": -1,
+      "SplashRadius": -1,
+      "ImpactRadius": -1,
+      "MaxTrackingSeconds": -1,
+      "MaxTrackingDistance": -1,
+      "DamageScales": {}
+    }
+  ]
+}

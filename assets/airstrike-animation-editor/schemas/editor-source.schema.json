@@ -1,0 +1,151 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raidlands.net/schemas/airstrike-animation-editor/editor-source.schema.json",
+  "title": "Raidlands Airstrike Animation Editor Source Bundle",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["EditorSourceSchemaVersion", "AllowDangerousPayloadPreview", "Profiles"],
+  "properties": {
+    "EditorSourceSchemaVersion": { "const": 1 },
+    "AllowDangerousPayloadPreview": { "type": "boolean" },
+    "Profiles": {
+      "type": "object",
+      "maxProperties": 500,
+      "propertyNames": { "pattern": "^[a-z0-9][a-z0-9._-]{0,99}$" },
+      "additionalProperties": { "$ref": "#/$defs/profile" }
+    }
+  },
+  "$defs": {
+    "damageScales": {
+      "type": "object",
+      "propertyNames": { "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$" },
+      "additionalProperties": { "type": "number", "minimum": 0, "maximum": 10 }
+    },
+    "payloadFields": {
+      "type": "object",
+      "required": [
+        "Payload", "Count", "CarrierOffsetX", "CarrierOffsetY", "CarrierOffsetZ",
+        "TargetOffsetX", "TargetOffsetY", "TargetOffsetZ", "SpreadRadius", "LaunchSpeed",
+        "FuseSeconds", "DamageScale", "VehicleDamageScale", "SplashRadius", "ImpactRadius",
+        "MaxTrackingSeconds", "MaxTrackingDistance", "DamageScales"
+      ],
+      "properties": {
+        "Payload": { "type": "string" },
+        "Count": { "type": "integer", "minimum": 1, "maximum": 200 },
+        "CarrierOffsetX": { "type": "number" }, "CarrierOffsetY": { "type": "number" }, "CarrierOffsetZ": { "type": "number" },
+        "TargetOffsetX": { "type": "number" }, "TargetOffsetY": { "type": "number" }, "TargetOffsetZ": { "type": "number" },
+        "SpreadRadius": { "type": "number" }, "LaunchSpeed": { "type": "number" }, "FuseSeconds": { "type": "number" },
+        "DamageScale": { "type": "number" }, "VehicleDamageScale": { "type": "number" },
+        "SplashRadius": { "type": "number" }, "ImpactRadius": { "type": "number" },
+        "MaxTrackingSeconds": { "type": "number" }, "MaxTrackingDistance": { "type": "number" },
+        "DamageScales": { "$ref": "#/$defs/damageScales" }
+      }
+    },
+    "manualEvent": {
+      "allOf": [
+        { "$ref": "#/$defs/payloadFields" },
+        {
+          "type": "object",
+          "required": ["Id", "Time"],
+          "properties": {
+            "Id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$" },
+            "Time": { "type": "number", "minimum": 0 }
+          }
+        }
+      ]
+    },
+    "manualRelease": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Mode", "Events"],
+      "properties": {
+        "Mode": { "const": "manual" },
+        "Events": { "type": "array", "maxItems": 80, "items": { "$ref": "#/$defs/manualEvent" } },
+        "LegacyDynamic": { "type": "boolean" },
+        "MaximumUnits": { "type": "integer", "minimum": 0, "maximum": 200 },
+        "FallbackIntervalSeconds": { "type": "number", "minimum": 0.01, "maximum": 30 },
+        "Template": { "$ref": "#/$defs/payloadFields" }
+      }
+    },
+    "repeatedRelease": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Mode", "StartTime", "IntervalSeconds", "UnitsPerRelease", "MaximumUnits", "Template", "HardpointSequence"],
+      "properties": {
+        "Mode": { "const": "repeated" },
+        "StartTime": { "type": "number", "minimum": 0 },
+        "IntervalSeconds": { "type": "number", "exclusiveMinimum": 0 },
+        "UnitsPerRelease": { "type": "integer", "minimum": 1, "maximum": 200 },
+        "MaximumUnits": { "type": "integer", "minimum": 0, "maximum": 200 },
+        "Template": { "$ref": "#/$defs/payloadFields" },
+        "HardpointSequence": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$" }
+        },
+        "LegacyDynamic": { "type": "boolean" }
+      }
+    },
+    "waypoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Id", "Time", "X", "Y", "Z", "RotationX", "RotationY", "RotationZ"],
+      "properties": {
+        "Id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$" },
+        "Time": { "type": "number", "minimum": 0 },
+        "X": { "type": "number" }, "Y": { "type": "number" }, "Z": { "type": "number" },
+        "RotationX": { "type": "number" }, "RotationY": { "type": "number" }, "RotationZ": { "type": "number" }
+      }
+    },
+    "hardpointOverride": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Id", "X", "Y", "Z"],
+      "properties": {
+        "Id": { "type": "string" }, "X": { "type": "number" }, "Y": { "type": "number" }, "Z": { "type": "number" }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "EditorSourceSchemaVersion", "ProfileKey", "DisplayName", "Vehicle", "DurationSeconds",
+        "FirstPayloadDelaySeconds", "RotationSmoothTimeSeconds", "StopAtWaypoints", "MinimumTerrainClearance",
+        "PositionInterpolation", "RotationMode", "Waypoints", "ReleaseSource", "EditorMetadata"
+      ],
+      "properties": {
+        "EditorSourceSchemaVersion": { "const": 1 },
+        "ProfileKey": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,99}$" },
+        "DisplayName": { "type": "string", "minLength": 1, "maxLength": 160 },
+        "Vehicle": { "enum": ["drone", "cargo_plane", "f15", "a10", "attack_heli"] },
+        "DurationSeconds": { "type": "number", "minimum": 0.5, "maximum": 120 },
+        "FirstPayloadDelaySeconds": { "type": "number", "minimum": 0, "maximum": 120 },
+        "RotationSmoothTimeSeconds": { "type": "number", "minimum": 0.02, "maximum": 2 },
+        "StopAtWaypoints": { "type": "boolean" },
+        "MinimumTerrainClearance": { "type": "number", "minimum": 0, "maximum": 250 },
+        "PositionInterpolation": { "const": "time_hermite" },
+        "RotationMode": { "const": "follow_path_plus_offset" },
+        "Waypoints": { "type": "array", "minItems": 2, "maxItems": 256, "items": { "$ref": "#/$defs/waypoint" } },
+        "ReleaseSource": { "oneOf": [{ "$ref": "#/$defs/manualRelease" }, { "$ref": "#/$defs/repeatedRelease" }] },
+        "EditorMetadata": {
+          "type": "object",
+          "additionalProperties": false,
+          "required": ["Notes", "Tags", "VehiclePreviewOverrides"],
+          "properties": {
+            "Notes": { "type": "string" },
+            "Tags": { "type": "array", "items": { "type": "string" } },
+            "VehiclePreviewOverrides": {
+              "type": "object",
+              "additionalProperties": false,
+              "properties": {
+                "Scale": { "type": "number", "exclusiveMinimum": 0 },
+                "PositionCorrection": { "type": "object" },
+                "RotationCorrection": { "type": "object" },
+                "Hardpoints": { "type": "array", "items": { "$ref": "#/$defs/hardpointOverride" } }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

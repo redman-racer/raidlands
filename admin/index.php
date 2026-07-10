@@ -8,6 +8,7 @@ require $site_root . '/includes/admin.php';
 require_once $site_root . '/includes/server-status.php';
 require_once $site_root . '/includes/stats.php';
 require_once $site_root . '/includes/clans.php';
+require_once $site_root . '/includes/airstrike-animations.php';
 
 raidlands_admin_handle_request();
 
@@ -48,13 +49,14 @@ $admin_sections_all = [
     'groups' => ['label' => 'Groups', 'kicker' => 'Permissions', 'title' => 'Oxide Groups', 'summary' => 'Website-owned group permissions, live snapshots, and bridge-published revisions.'],
     'grants' => ['label' => 'Player Access', 'kicker' => 'Access', 'title' => 'Player Access', 'summary' => 'Load a SteamID64, grant products, add standalone shop groups, and remove website-owned manual access.'],
     'sync' => ['label' => 'Sync', 'kicker' => 'Bridge', 'title' => 'WebsiteVipBridge State', 'summary' => 'Entitlement sync, stats ingest status, and server API endpoints.'],
+    'airstrike-animations' => ['label' => 'Airstrike Animations', 'kicker' => 'Authoring', 'title' => 'Portable Airstrikes Animation Profiles', 'summary' => 'Draft, validate, publish, and synchronize target-relative vehicle routes and payload timing.'],
     'animations' => ['label' => 'Animations', 'kicker' => 'Diagnostics', 'title' => 'Animation Diagnostics', 'summary' => 'Steam-linked browser diagnostics for loader, motion, and visual-effect startup issues.'],
 ];
 $admin_nav_groups = [
     'site-setup' => ['label' => 'Site Setup', 'sections' => ['identity', 'links']],
     'content' => ['label' => 'Content', 'sections' => ['todo', 'features', 'pages', 'seo', 'feedback', 'chat']],
     'store-access' => ['label' => 'Store & Access', 'sections' => ['store', 'vote-rewards', 'rp-games', 'kits', 'groups', 'grants']],
-    'server-ops' => ['label' => 'Server Ops', 'sections' => ['wipe', 'sync', 'animations']],
+    'server-ops' => ['label' => 'Server Ops', 'sections' => ['wipe', 'sync', 'airstrike-animations', 'animations']],
 ];
 $admin_sections = $admin_sections_all;
 
@@ -240,6 +242,14 @@ $admin_animation_state = [
         'mobile_performance_count' => 0,
     ],
 ];
+$admin_airstrike_animation_state = [
+    'ready' => false,
+    'message' => '',
+    'profiles' => [],
+    'publishedBundle' => null,
+    'server' => null,
+    'snapshots' => [],
+];
 
 try {
     $admin_store_ready = raidlands_db_is_configured() && raidlands_db() instanceof PDO;
@@ -298,6 +308,10 @@ try {
 
     if ($active_section === 'animations') {
         $admin_animation_state = raidlands_animation_diagnostics_admin_state($_GET);
+    }
+
+    if ($active_section === 'airstrike-animations') {
+        $admin_airstrike_animation_state = raidlands_airstrike_animations_admin_state();
     }
 
     if ($active_section === 'todo') {
@@ -389,6 +403,8 @@ try {
     $admin_rewards_error = $error->getMessage();
     $admin_animation_state['ready'] = false;
     $admin_animation_state['message'] = $error->getMessage();
+    $admin_airstrike_animation_state['ready'] = false;
+    $admin_airstrike_animation_state['message'] = $error->getMessage();
 }
 
 function admin_page_label(string $key): string
@@ -5304,6 +5320,155 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                   </section>
                 <?php endif; ?>
 
+                <?php if ($active_section === 'airstrike-animations') : ?>
+                  <div
+                    data-airstrike-animation-admin
+                    data-csrf="<?= e($csrf) ?>"
+                    data-api-base="<?= e($base_path . 'api/admin/airstrike-animations') ?>"
+                  >
+                    <?php if (empty($admin_airstrike_animation_state['ready'])) : ?>
+                      <section class="admin-section">
+                        <div class="admin-alert warning"><?= e((string) ($admin_airstrike_animation_state['message'] ?: 'Airstrike animation storage is not ready yet.')) ?></div>
+                        <p class="store-muted">The migration is additive. Existing <code>VisualProfiles.json</code> data remains active until the bridge bootstrap imports it.</p>
+                      </section>
+                    <?php else : ?>
+                      <?php
+                        $airstrike_bundle = is_array($admin_airstrike_animation_state['publishedBundle'] ?? null)
+                            ? (array) $admin_airstrike_animation_state['publishedBundle']
+                            : [];
+                        $airstrike_server = is_array($admin_airstrike_animation_state['server'] ?? null)
+                            ? (array) $admin_airstrike_animation_state['server']
+                            : [];
+                        $airstrike_profiles = (array) ($admin_airstrike_animation_state['profiles'] ?? []);
+                        $airstrike_snapshots = (array) ($admin_airstrike_animation_state['snapshots'] ?? []);
+                      ?>
+                      <section class="admin-section">
+                        <div class="admin-subsection-head">
+                          <div>
+                            <p class="section-kicker">Publication</p>
+                            <h3>Compiled profile bundle</h3>
+                            <p>Drafts stay on the website. Publishing creates an immutable schema-2 bundle; server installation remains a separate, receipt-backed action.</p>
+                          </div>
+                          <div class="admin-inline-actions">
+                            <a class="btn btn-secondary" href="./airstrike-animation-editor.php">Create Profile</a>
+                            <button class="btn btn-secondary" type="button" data-airstrike-publish="publish">Publish</button>
+                            <button class="btn btn-primary" type="button" data-airstrike-publish="sync">Publish &amp; Sync</button>
+                          </div>
+                        </div>
+                        <div class="admin-alert" data-airstrike-feedback hidden></div>
+                        <div class="admin-grid three">
+                          <div class="metal-panel">
+                            <p class="section-kicker">Published revision</p>
+                            <h3><?= $airstrike_bundle === [] ? 'None' : e((string) ($airstrike_bundle['revision'] ?? 'None')) ?></h3>
+                            <p class="store-muted"><code><?= $airstrike_bundle === [] ? 'No immutable bundle yet' : e(substr((string) ($airstrike_bundle['sha256'] ?? ''), 0, 16) . '...') ?></code></p>
+                          </div>
+                          <div class="metal-panel">
+                            <p class="section-kicker">raidlands-main</p>
+                            <h3><?= e(ucwords(str_replace('_', ' ', (string) ($airstrike_server['status'] ?? 'Never contacted')))) ?></h3>
+                            <p class="store-muted">Installed revision <?= e((string) (($airstrike_server['installed_revision'] ?? '') ?: 'none')) ?></p>
+                          </div>
+                          <div class="metal-panel">
+                            <p class="section-kicker">Local file</p>
+                            <h3><?= !empty($airstrike_server['local_dirty']) ? 'Changes pending' : 'Clean / unknown' ?></h3>
+                            <p class="store-muted"><?= e((string) (($airstrike_server['last_seen_at'] ?? '') ?: 'Bridge has not checked in')) ?></p>
+                          </div>
+                        </div>
+                      </section>
+
+                      <section class="admin-section">
+                        <div class="admin-subsection-head">
+                          <div>
+                            <p class="section-kicker">Profiles</p>
+                            <h3>Draft workbench</h3>
+                            <p>Validation runs against the same source contract used by publication. Archived profiles are retained but excluded from new bundles.</p>
+                          </div>
+                        </div>
+                        <?php if ($airstrike_profiles === []) : ?>
+                          <div class="admin-alert warning">No profile drafts exist yet. The first bridge bootstrap can import the current Rust file automatically, or you can create one in the browser editor.</div>
+                        <?php else : ?>
+                          <div class="store-table-wrap">
+                            <table class="store-table">
+                              <thead>
+                                <tr>
+                                  <th>Profile</th>
+                                  <th>Vehicle</th>
+                                  <th>Draft</th>
+                                  <th>Published</th>
+                                  <th>Validation</th>
+                                  <th>Modified</th>
+                                  <th>Actions</th>
+                                </tr>
+                              </thead>
+                              <tbody>
+                                <?php foreach ($airstrike_profiles as $profile) : ?>
+                                  <?php $profile_validation = (array) ($profile['validation'] ?? []); ?>
+                                  <tr<?= !empty($profile['archived']) ? ' class="is-muted"' : '' ?>>
+                                    <td>
+                                      <strong><?= e((string) ($profile['displayName'] ?? $profile['profileKey'] ?? 'Profile')) ?></strong><br>
+                                      <code><?= e((string) ($profile['profileKey'] ?? '')) ?></code>
+                                      <?= !empty($profile['archived']) ? '<span class="status-pill">Archived</span>' : '' ?>
+                                    </td>
+                                    <td><?= e((string) ($profile['vehicle'] ?? '')) ?></td>
+                                    <td>v<?= e((string) ($profile['draftVersion'] ?? 0)) ?></td>
+                                    <td><?= e((string) (($profile['lastPublishedProfileRevision'] ?? '') ?: 'Not published')) ?></td>
+                                    <td><span class="status-pill <?= !empty($profile_validation['ok']) ? 'active' : 'failed' ?>"><?= !empty($profile_validation['ok']) ? 'Valid' : e((string) count((array) ($profile_validation['errors'] ?? []))) . ' errors' ?></span></td>
+                                    <td><?= e((string) ($profile['updatedAt'] ?? '')) ?></td>
+                                    <td>
+                                      <div class="admin-inline-actions">
+                                        <a class="btn btn-secondary btn-small" href="./airstrike-animation-editor.php?profile=<?= rawurlencode((string) ($profile['profileKey'] ?? '')) ?>">Edit</a>
+                                        <button class="btn btn-secondary btn-small" type="button" data-airstrike-revisions="<?= e((string) ($profile['profileKey'] ?? '')) ?>">Revisions</button>
+                                        <button class="btn btn-secondary btn-small" type="button" data-airstrike-archive="<?= e((string) ($profile['profileKey'] ?? '')) ?>" data-archived="<?= !empty($profile['archived']) ? '1' : '0' ?>"><?= !empty($profile['archived']) ? 'Unarchive' : 'Archive' ?></button>
+                                      </div>
+                                    </td>
+                                  </tr>
+                                <?php endforeach; ?>
+                              </tbody>
+                            </table>
+                          </div>
+                        <?php endif; ?>
+                      </section>
+
+                      <section class="admin-section">
+                        <div class="admin-subsection-head">
+                          <div>
+                            <p class="section-kicker">Server snapshots</p>
+                            <h3>Calibration and conflict inbox</h3>
+                            <p>Rust saves create drafts or pending snapshots only. Nothing from the server is published without admin review.</p>
+                          </div>
+                        </div>
+                        <?php if ($airstrike_snapshots === []) : ?>
+                          <div class="admin-alert">No server snapshots have been received.</div>
+                        <?php else : ?>
+                          <div class="store-table-wrap">
+                            <table class="store-table">
+                              <thead><tr><th>Received</th><th>Reason</th><th>Based on</th><th>Status</th><th>Message</th><th>Actions</th></tr></thead>
+                              <tbody>
+                                <?php foreach ($airstrike_snapshots as $snapshot) : ?>
+                                  <tr>
+                                    <td><?= e((string) ($snapshot['received_at'] ?? '')) ?></td>
+                                    <td><?= e(ucwords(str_replace('_', ' ', (string) ($snapshot['reason'] ?? '')))) ?></td>
+                                    <td><?= e((string) (($snapshot['based_on_revision'] ?? '') ?: 'Unpublished')) ?></td>
+                                    <td><span class="status-pill <?= e((string) ($snapshot['status'] ?? 'pending')) ?>"><?= e((string) ($snapshot['status'] ?? 'pending')) ?></span></td>
+                                    <td><?= e((string) (($snapshot['conflict_message'] ?? '') ?: substr((string) ($snapshot['sha256'] ?? ''), 0, 16) . '...')) ?></td>
+                                    <td>
+                                      <?php if (!in_array((string) ($snapshot['status'] ?? ''), ['imported', 'discarded'], true)) : ?>
+                                        <div class="admin-inline-actions">
+                                          <button class="btn btn-secondary btn-small" type="button" data-airstrike-import-snapshot="<?= e((string) ($snapshot['id'] ?? '')) ?>">Import</button>
+                                          <button class="btn btn-secondary btn-small" type="button" data-airstrike-discard-snapshot="<?= e((string) ($snapshot['id'] ?? '')) ?>">Discard</button>
+                                        </div>
+                                      <?php endif; ?>
+                                    </td>
+                                  </tr>
+                                <?php endforeach; ?>
+                              </tbody>
+                            </table>
+                          </div>
+                        <?php endif; ?>
+                      </section>
+                    <?php endif; ?>
+                  </div>
+                <?php endif; ?>
+
                 <?php if ($active_section === 'animations') : ?>
                   <section class="admin-section">
                     <?php if (empty($admin_animation_state['ready'])) : ?>
@@ -5906,6 +6071,9 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
       <?php endif; ?>
       <?php if ($active_section === 'chat') : ?>
         <script src="<?= e(asset_url('js/admin-chat.js')) ?>" defer></script>
+      <?php endif; ?>
+      <?php if ($active_section === 'airstrike-animations') : ?>
+        <script src="<?= e(asset_url('js/admin-airstrike-animations.js')) ?>" defer></script>
       <?php endif; ?>
     <?php endif; ?>
   </body>

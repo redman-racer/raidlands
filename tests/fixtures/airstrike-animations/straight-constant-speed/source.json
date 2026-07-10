@@ -1,0 +1,25 @@
+{
+  "EditorSourceSchemaVersion": 1,
+  "AllowDangerousPayloadPreview": false,
+  "Profiles": {
+    "straight_constant_speed": {
+      "EditorSourceSchemaVersion": 1,
+      "ProfileKey": "straight_constant_speed",
+      "DisplayName": "Straight Constant Speed",
+      "Vehicle": "f15",
+      "DurationSeconds": 4,
+      "FirstPayloadDelaySeconds": 2,
+      "RotationSmoothTimeSeconds": 0.12,
+      "StopAtWaypoints": false,
+      "MinimumTerrainClearance": 55,
+      "PositionInterpolation": "time_hermite",
+      "RotationMode": "follow_path_plus_offset",
+      "Waypoints": [
+        { "Id": "wp_start", "Time": 0, "X": 0, "Y": 50, "Z": -100, "RotationX": 0, "RotationY": 0, "RotationZ": 0 },
+        { "Id": "wp_end", "Time": 4, "X": 0, "Y": 50, "Z": 100, "RotationX": 0, "RotationY": 0, "RotationZ": 0 }
+      ],
+      "ReleaseSource": { "Mode": "manual", "Events": [], "LegacyDynamic": true },
+      "EditorMetadata": { "Notes": "Golden fixture", "Tags": ["straight"], "VehiclePreviewOverrides": {} }
+    }
+  }
+}

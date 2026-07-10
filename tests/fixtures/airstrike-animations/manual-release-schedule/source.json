@@ -1,0 +1,47 @@
+{
+  "EditorSourceSchemaVersion": 1,
+  "AllowDangerousPayloadPreview": false,
+  "Profiles": {
+    "manual_release_schedule": {
+      "EditorSourceSchemaVersion": 1,
+      "ProfileKey": "manual_release_schedule",
+      "DisplayName": "Manual Release Schedule",
+      "Vehicle": "f15",
+      "DurationSeconds": 4,
+      "FirstPayloadDelaySeconds": 1,
+      "RotationSmoothTimeSeconds": 0.12,
+      "StopAtWaypoints": false,
+      "MinimumTerrainClearance": 55,
+      "PositionInterpolation": "time_hermite",
+      "RotationMode": "follow_path_plus_offset",
+      "Waypoints": [
+        { "Id": "wp_start", "Time": 0, "X": 0, "Y": 80, "Z": -120, "RotationX": 0, "RotationY": 0, "RotationZ": 0 },
+        { "Id": "wp_end", "Time": 4, "X": 0, "Y": 80, "Z": 120, "RotationX": 0, "RotationY": 0, "RotationZ": 0 }
+      ],
+      "ReleaseSource": {
+        "Mode": "manual",
+        "MaximumUnits": 3,
+        "FallbackIntervalSeconds": 0.5,
+        "Events": [
+          {
+            "Id": "release_rockets", "Time": 1, "Payload": "hv_rocket", "Count": 2,
+            "CarrierOffsetX": 0, "CarrierOffsetY": -0.5, "CarrierOffsetZ": 1,
+            "TargetOffsetX": 0, "TargetOffsetY": 0, "TargetOffsetZ": 0,
+            "SpreadRadius": 0, "LaunchSpeed": 85, "FuseSeconds": 0,
+            "DamageScale": 1, "VehicleDamageScale": 1, "SplashRadius": 0, "ImpactRadius": 0,
+            "MaxTrackingSeconds": -1, "MaxTrackingDistance": -1, "DamageScales": { "Vehicles": 1.2 }
+          },
+          {
+            "Id": "release_smoke", "Time": 2.5, "Payload": "smoke", "Count": 1,
+            "CarrierOffsetX": 0, "CarrierOffsetY": -0.4, "CarrierOffsetZ": 0,
+            "TargetOffsetX": 5, "TargetOffsetY": 0, "TargetOffsetZ": 0,
+            "SpreadRadius": 3, "LaunchSpeed": -1, "FuseSeconds": 1,
+            "DamageScale": 1, "VehicleDamageScale": -1, "SplashRadius": -1, "ImpactRadius": -1,
+            "MaxTrackingSeconds": -1, "MaxTrackingDistance": -1, "DamageScales": {}
+          }
+        ]
+      },
+      "EditorMetadata": { "Notes": "Explicit grouped releases", "Tags": ["release", "manual"], "VehiclePreviewOverrides": {} }
+    }
+  }
+}

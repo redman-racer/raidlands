@@ -1,0 +1,36 @@
+{
+  "EditorSourceSchemaVersion": 1,
+  "AllowDangerousPayloadPreview": false,
+  "Profiles": {
+    "non_even_repeated_total": {
+      "EditorSourceSchemaVersion": 1,
+      "ProfileKey": "non_even_repeated_total",
+      "DisplayName": "Non-even Repeated Total",
+      "Vehicle": "cargo_plane",
+      "DurationSeconds": 5,
+      "FirstPayloadDelaySeconds": 1,
+      "RotationSmoothTimeSeconds": 0.12,
+      "StopAtWaypoints": true,
+      "MinimumTerrainClearance": 55,
+      "PositionInterpolation": "time_hermite",
+      "RotationMode": "follow_path_plus_offset",
+      "Waypoints": [
+        { "Id": "wp_start", "Time": 0, "X": 0, "Y": 120, "Z": -220, "RotationX": 0, "RotationY": 0, "RotationZ": 0 },
+        { "Id": "wp_end", "Time": 5, "X": 0, "Y": 120, "Z": 220, "RotationX": 0, "RotationY": 0, "RotationZ": 0 }
+      ],
+      "ReleaseSource": {
+        "Mode": "repeated", "StartTime": 1, "IntervalSeconds": 0.5, "UnitsPerRelease": 3, "MaximumUnits": 10,
+        "HardpointSequence": [],
+        "Template": {
+          "Payload": "propane_bomb", "Count": 3,
+          "CarrierOffsetX": 0, "CarrierOffsetY": -2, "CarrierOffsetZ": -1,
+          "TargetOffsetX": 0, "TargetOffsetY": 0, "TargetOffsetZ": 0,
+          "SpreadRadius": 6, "LaunchSpeed": -1, "FuseSeconds": 2,
+          "DamageScale": 1, "VehicleDamageScale": 1, "SplashRadius": -1, "ImpactRadius": -1,
+          "MaxTrackingSeconds": -1, "MaxTrackingDistance": -1, "DamageScales": {}
+        }
+      },
+      "EditorMetadata": { "Notes": "Groups 3,3,3,1", "Tags": ["release", "remainder"], "VehiclePreviewOverrides": {} }
+    }
+  }
+}

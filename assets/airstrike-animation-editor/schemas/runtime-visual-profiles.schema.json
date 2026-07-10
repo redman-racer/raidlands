@@ -1,0 +1,99 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://raidlands.net/schemas/airstrike-animation-editor/runtime-visual-profiles.schema.json",
+  "title": "PortableAirstrikes VisualProfiles Schema 2",
+  "type": "object",
+  "additionalProperties": true,
+  "required": ["SchemaVersion", "CompilerVersion", "PublishedRevision", "AllowDangerousPayloadPreview", "Profiles"],
+  "properties": {
+    "SchemaVersion": { "const": 2 },
+    "CompilerVersion": { "type": "string", "minLength": 1 },
+    "PublishedRevision": { "type": "integer", "minimum": 1 },
+    "AllowDangerousPayloadPreview": { "type": "boolean" },
+    "Profiles": {
+      "type": "object",
+      "maxProperties": 500,
+      "propertyNames": { "pattern": "^[a-z0-9][a-z0-9._-]{0,99}$" },
+      "additionalProperties": { "$ref": "#/$defs/profile" }
+    }
+  },
+  "$defs": {
+    "waypoint": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Time", "X", "Y", "Z", "RotationX", "RotationY", "RotationZ"],
+      "properties": {
+        "Time": { "type": "number" }, "X": { "type": "number" }, "Y": { "type": "number" }, "Z": { "type": "number" },
+        "RotationX": { "type": "number" }, "RotationY": { "type": "number" }, "RotationZ": { "type": "number" }
+      }
+    },
+    "payloadEvent": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "Time", "Payload", "Index", "Count", "CarrierOffsetX", "CarrierOffsetY", "CarrierOffsetZ",
+        "TargetOffsetX", "TargetOffsetY", "TargetOffsetZ", "SpreadRadius", "LaunchSpeed", "FuseSeconds",
+        "DamageScale", "VehicleDamageScale", "SplashRadius", "ImpactRadius", "MaxTrackingSeconds",
+        "MaxTrackingDistance", "DamageScales"
+      ],
+      "properties": {
+        "Time": { "type": "number" }, "Payload": { "type": "string" }, "Index": { "type": "integer", "minimum": 0 },
+        "Count": { "type": "integer", "minimum": 1, "maximum": 200 },
+        "CarrierOffsetX": { "type": "number" }, "CarrierOffsetY": { "type": "number" }, "CarrierOffsetZ": { "type": "number" },
+        "TargetOffsetX": { "type": "number" }, "TargetOffsetY": { "type": "number" }, "TargetOffsetZ": { "type": "number" },
+        "SpreadRadius": { "type": "number" }, "LaunchSpeed": { "type": "number" }, "FuseSeconds": { "type": "number" },
+        "DamageScale": { "type": "number" }, "VehicleDamageScale": { "type": "number" }, "SplashRadius": { "type": "number" },
+        "ImpactRadius": { "type": "number" }, "MaxTrackingSeconds": { "type": "number" }, "MaxTrackingDistance": { "type": "number" },
+        "DamageScales": { "type": "object", "additionalProperties": { "type": "number" } }
+      }
+    },
+    "frame": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Time", "X", "Y", "Z", "Qx", "Qy", "Qz", "Qw"],
+      "properties": {
+        "Time": { "type": "number" }, "X": { "type": "number" }, "Y": { "type": "number" }, "Z": { "type": "number" },
+        "Qx": { "type": "number" }, "Qy": { "type": "number" }, "Qz": { "type": "number" }, "Qw": { "type": "number" }
+      }
+    },
+    "compiledTrack": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["CompilerVersion", "SourceHash", "CoordinateSystem", "SampleRateHz", "SampleIntervalSeconds", "DurationSeconds", "Frames"],
+      "properties": {
+        "CompilerVersion": { "type": "string" },
+        "SourceHash": { "type": "string", "pattern": "^[a-f0-9]{64}$" },
+        "CoordinateSystem": { "const": "unity-target-relative-local-v1" },
+        "SampleRateHz": { "type": "number", "exclusiveMinimum": 0, "maximum": 120 },
+        "SampleIntervalSeconds": { "type": "number", "exclusiveMinimum": 0 },
+        "DurationSeconds": { "type": "number", "minimum": 0.5, "maximum": 120 },
+        "Frames": { "type": "array", "minItems": 2, "maxItems": 6000, "items": { "$ref": "#/$defs/frame" } }
+      }
+    },
+    "profile": {
+      "type": "object",
+      "additionalProperties": true,
+      "required": [
+        "Vehicle", "DurationSeconds", "FirstPayloadDelaySeconds", "PayloadReleaseMode", "MaxPayloadCount",
+        "PayloadReleaseIntervalSeconds", "ReleaseTemplate", "RotationSmoothTimeSeconds", "StopAtWaypoints",
+        "MinimumTerrainClearance", "Waypoints", "PayloadEvents", "CompiledTrack"
+      ],
+      "properties": {
+        "Vehicle": { "enum": ["drone", "cargo_plane", "f15", "a10", "attack_heli"] },
+        "DurationSeconds": { "type": "number", "minimum": 0.5, "maximum": 120 },
+        "FirstPayloadDelaySeconds": { "type": "number", "minimum": 0, "maximum": 120 },
+        "PayloadReleaseMode": { "enum": ["manual", "generated"] },
+        "MaxPayloadCount": { "type": "integer", "minimum": 0, "maximum": 200 },
+        "PayloadReleaseIntervalSeconds": { "type": "number", "minimum": 0.01, "maximum": 30 },
+        "ReleaseTemplate": { "$ref": "#/$defs/payloadEvent" },
+        "RotationSmoothTimeSeconds": { "type": "number" },
+        "StopAtWaypoints": { "type": "boolean" },
+        "MinimumTerrainClearance": { "type": "number" },
+        "Waypoints": { "type": "array", "minItems": 2, "maxItems": 256, "items": { "$ref": "#/$defs/waypoint" } },
+        "PayloadEvents": { "type": "array", "maxItems": 80, "items": { "$ref": "#/$defs/payloadEvent" } },
+        "CompiledTrack": { "$ref": "#/$defs/compiledTrack" },
+        "CompiledReleaseEvents": { "type": "array", "maxItems": 200, "items": { "$ref": "#/$defs/payloadEvent" } }
+      }
+    }
+  }
+}
