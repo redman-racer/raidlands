@@ -168,7 +168,7 @@ function raidlands_rewards_is_ready(): bool
 function raidlands_rewards_readiness_message(bool $include_detail = false): string
 {
     if (!raidlands_db_is_configured()) {
-        return 'MySQL is not configured. Add database credentials to the root .env file.';
+        return 'Reward tools are waiting on server setup.';
     }
 
     $missing = array_values(array_filter(

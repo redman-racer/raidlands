@@ -296,8 +296,8 @@ $feature_groups = [
         'items' => ['Clans', 'Team play', 'Discord account', 'Events', 'Staff support', 'Wipe alerts'],
     ],
     [
-        'title' => 'Website Systems',
-        'copy' => 'The website layer keeps Steam linking, profiles, stats, and live server visibility tied to the right player.',
+        'title' => 'Player Tools',
+        'copy' => 'Steam-linked tools help players check their stats, rewards, access, and server status without guessing what is attached to their account.',
         'items' => ['Steam account linking', 'Player profiles', 'Leaderboards', 'Wipe stats', 'Server status', 'Store access'],
     ],
     [
@@ -313,13 +313,13 @@ $feature_groups = [
 ];
 
 $roadmap_cards = [
-    ['Leaderboards', 'Player rankings for kills, K/D, playtime, and RP sync from the game server.', 'Live'],
-    ['Player Profiles', 'Connected Steam profiles show store access, wipe stats, RP, and entitlement history.', 'Live'],
-    ['Account Linking', 'Native Steam sign-in ties stats, store purchases, and perks to the right Rust player.', 'Live'],
-    ['Store Kits', 'Kit bundles, individual kits, and standalone perks are tied to Steam and synced into the game.', 'Live'],
-    ['Clans', 'Clan play and rivalries are active in game, with richer website pages able to build on top.', 'Live in game'],
+    ['Leaderboards', 'Player rankings for kills, K/D, playtime, and RP pulled from the game server.', 'Live'],
+    ['Player Profiles', 'Steam-linked profiles show active access, wipe stats, RP, and account history.', 'Live'],
+    ['Account Linking', 'Steam sign-in keeps stats, purchases, rewards, and perks attached to the right Rust player.', 'Live'],
+    ['Store Kits', 'Kit bundles, individual kits, and standalone perks are tied to Steam and delivered in game.', 'Live'],
+    ['Clans', 'Clan play and rivalries are active in game, with roster tools for linked players.', 'Live in game'],
     ['Wipe Events', 'Wipe fights, clan clashes, staff battles, and community chaos are part of the live cadence.', 'Live in game'],
-    ['Vote Rewards', 'Voting loops can plug into the connected account layer as the web hub expands.', 'Next web step'],
+    ['Vote Rewards', 'Vote for Raidlands, then claim linked-account RP after server confirmation.', 'Live'],
     ['Appeals and Support', 'Discord remains the active path for tickets, reports, and ban appeals.', 'Live via Discord'],
 ];
 
@@ -334,7 +334,7 @@ $page_copy = [
     ],
     'features' => [
         'title' => 'Server Features',
-        'lede' => 'Fast progression, constant raiding, predictable wipes, account-linked perks, and synced stats are live parts of the Raidlands stack.',
+        'lede' => 'Fast progression, constant raiding, predictable wipes, account-linked perks, and synced stats are active parts of Raidlands.',
     ],
     'server' => [
         'title' => 'Server Status',
@@ -350,11 +350,11 @@ $page_copy = [
     ],
     'link' => [
         'title' => 'Link Account',
-        'lede' => 'Connect once and keep wipe stats, rewards, roles, and store access with your Raidlands profile.',
+        'lede' => 'Connect Steam once so wipe stats, rewards, roles, and store access follow the right Rust player.',
     ],
     'support' => [
         'title' => 'Support',
-        'lede' => 'Connection help, ticket routing, bug reports, staff contact, and appeal direction for launch.',
+        'lede' => 'Connection help, bug reports, staff contact, and appeal direction for Raidlands players.',
     ],
     'privacy' => [
         'title' => 'Privacy Policy',
@@ -378,7 +378,7 @@ $page_copy = [
     ],
     'clans' => [
         'title' => 'Clans',
-        'lede' => 'Manage your synced clan roster, invites, and public API access from your linked Steam account.',
+        'lede' => 'View your synced clan roster, queue invites or roster changes, and manage API keys from your linked Steam account.',
     ],
     'api-docs' => [
         'title' => 'Clan API Docs',
@@ -386,7 +386,7 @@ $page_copy = [
     ],
     'vote' => [
         'title' => 'Vote Rewards',
-        'lede' => 'Vote for Raidlands, claim linked-account RP rewards, and keep server discovery tied to your Steam profile.',
+        'lede' => 'Vote for Raidlands, claim linked-account RP rewards, and help more Rust players find the server.',
     ],
     'rp-games' => [
         'title' => 'RP Games',
@@ -398,7 +398,7 @@ $page_copy = [
     ],
     'profile' => [
         'title' => 'Player Profile',
-        'lede' => 'View your connected Steam account, active kits, perks, subscriptions, and expirations.',
+        'lede' => 'View your connected Steam account, active kits, perks, RP, subscriptions, stats, and access history.',
     ],
 ];
 
@@ -417,7 +417,7 @@ $seo_pages = [
     ],
     'features' => [
         'title' => 'Raidlands Features | 1000x Rust Battlefield',
-        'description' => 'See the Raidlands 1000x Rust feature set: kits, teleporting, homes, clans, skinbox, backpacks, fast raids, events, and active staff.',
+        'description' => 'See the Raidlands 1000x Rust feature set: kits, teleporting, homes, clans, skinning, backpacks, fast raids, events, and active staff.',
         'ogTitle' => 'Raidlands Features',
         'ogDescription' => 'High-speed Rust warfare with the slow parts removed.',
     ],
@@ -441,15 +441,15 @@ $seo_pages = [
     ],
     'link' => [
         'title' => 'Link Raidlands Account | Steam and Discord',
-        'description' => 'Connect Steam for Raidlands leaderboards, rewards, roles, store ownership, and player profiles.',
+        'description' => 'Connect Steam for Raidlands leaderboards, rewards, roles, store access, and player profiles.',
         'ogTitle' => 'Link Raidlands Account',
-        'ogDescription' => 'Connect Steam once for Raidlands profiles, rewards, store ownership, and wipe systems.',
+        'ogDescription' => 'Connect Steam once for Raidlands profiles, rewards, store access, and wipe stats.',
     ],
     'support' => [
         'title' => 'Raidlands Support | Tickets, Bugs, Connection Help',
         'description' => 'Get help with Raidlands connection issues, support tickets, bug reports, and Discord staff contact.',
         'ogTitle' => 'Raidlands Support',
-        'ogDescription' => 'Connection troubleshooting, bug reports, tickets, and staff contact for Raidlands.',
+        'ogDescription' => 'Connection troubleshooting, bug reports, appeals, and staff contact for Raidlands.',
     ],
     'privacy' => [
         'title' => 'Raidlands Privacy Policy',
@@ -483,9 +483,9 @@ $seo_pages = [
     ],
     'clans' => [
         'title' => 'Raidlands Clans | Team Play and Rivalries',
-        'description' => 'Manage Raidlands clans from the website or public clan API with Steam-linked API keys.',
+        'description' => 'Manage Raidlands clan rosters, invites, and public clan API keys with a linked Steam account.',
         'ogTitle' => 'Raidlands Clans',
-        'ogDescription' => 'Steam-linked clan management and public API access for Raidlands.',
+        'ogDescription' => 'Steam-linked clan roster tools and public API access for Raidlands.',
     ],
     'api-docs' => [
         'title' => 'Raidlands Clan API Documentation',
@@ -513,9 +513,9 @@ $seo_pages = [
     ],
     'profile' => [
         'title' => 'Raidlands Profile | Store Access and Steam Account',
-        'description' => 'View your connected Raidlands Steam account, active kits, perks, subscriptions, and expirations.',
+        'description' => 'View your connected Raidlands Steam account, active kits, perks, RP, stats, subscriptions, and expirations.',
         'ogTitle' => 'Raidlands Profile',
-        'ogDescription' => 'Check active Raidlands kits and perks for your Steam account.',
+        'ogDescription' => 'Check active Raidlands kits, perks, RP, and stats for your Steam account.',
     ],
 ];
 
@@ -531,14 +531,14 @@ $future_pages = [
         ['Community Votes', 'Active players can steer event formats through Discord.'],
     ],
     'clans' => [
-        ['Recruitment', 'In-game clans can organize rosters and member discovery through the community hub.'],
-        ['Rivalries', 'Wipe-long conflicts and archived wins can build from live clan play.'],
-        ['Rankings', 'Team stats can plug into the website once public clan pages are expanded.'],
+        ['Recruitment', 'In-game clans can organize rosters, invites, and member discovery through Raidlands.'],
+        ['Rivalries', 'Wipe-long conflicts and archived wins grow from live clan play.'],
+        ['Rankings', 'Team stats can support public clan standings as seasons develop.'],
     ],
     'vote' => [
-        ['Vote Rewards', 'Rewards can connect server discovery loops to linked player accounts.'],
-        ['Connected Accounts', 'Steam and Discord connections keep rewards clean.'],
-        ['Growth', 'Voting can help keep wipe nights populated.'],
+        ['Vote Rewards', 'Voting for Raidlands can earn linked-account RP after server confirmation.'],
+        ['Connected Accounts', 'Steam linking keeps rewards attached to the right Rust player.'],
+        ['Growth', 'Voting helps more players find active wipe nights.'],
     ],
     'profile' => [
         ['Steam Account', 'Store and reward ownership.'],

@@ -306,7 +306,7 @@ function raidlands_animation_diagnostics_admin_state($options = []): array
     if (!raidlands_db_is_configured()) {
         return [
             'ready' => false,
-            'message' => 'MySQL is not configured yet.',
+            'message' => 'Database credentials are not configured yet.',
             'events' => [],
             'players' => [],
             'filters' => $filters,

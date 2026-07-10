@@ -107,7 +107,7 @@ function raidlands_clans_is_ready(): bool
 function raidlands_clans_readiness_message(): string
 {
     if (!raidlands_db_is_configured()) {
-        return 'MySQL is not configured. Add database credentials before clan data can sync.';
+        return 'Clan tools are waiting on server setup before clan data can sync.';
     }
 
     try {

@@ -10,7 +10,7 @@ $future_cards = $future_pages[$page_id] ?? [];
 <section class="section">
   <div class="section-inner">
     <div class="section-header">
-      <p class="section-kicker">Website hub</p>
+      <p class="section-kicker">Raidlands hub</p>
       <h2><?= e($page_copy[$page_id]['title']) ?> on the live server</h2>
       <p class="section-lede"><?= e($page_copy[$page_id]['lede']) ?></p>
     </div>

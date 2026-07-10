@@ -68,7 +68,7 @@ Authorization: Bearer rcl_your_key_here</code></pre>
     <div class="section-header">
       <p class="section-kicker">Queue actions</p>
       <h2>Manage clan changes</h2>
-      <p class="section-lede">Write calls use the same validation as the website UI. The game server bridge claims queued actions, applies them in Rust, and posts the result back.</p>
+      <p class="section-lede">Write calls use the same clan rules players see on Raidlands. The game server claims queued actions, applies them in Rust, and posts the result back.</p>
     </div>
     <div class="grid two">
       <article class="metal-panel api-doc-card">

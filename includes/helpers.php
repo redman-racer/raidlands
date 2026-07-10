@@ -498,14 +498,14 @@ function render_auth_summary_card(string $provider): string
     $icon = $provider === 'steam' ? 'STM' : 'DSC';
     $copy = $linked_player !== null
         ? ($provider === 'steam'
-            ? 'Your Steam account is connected. Use your account page for profile, stats, and store access.'
+            ? 'Your Steam account is connected. Open your profile for stats, rewards, and active access.'
             : 'Your Raidlands account is ready. Discord connection can be added later.')
         : ($provider === 'steam'
-            ? 'Connect Steam for profiles, leaderboards, rewards, and store ownership.'
+            ? 'Connect Steam for profiles, leaderboards, rewards, and store access.'
             : 'Prepare for wipe alerts, support, and community roles.');
     $button_class = $provider === 'steam' ? 'btn-steam' : 'btn-discord';
     $title = $linked_player !== null
-        ? ($provider === 'steam' ? 'Steam Linked' : 'Discord Coming Soon')
+        ? ($provider === 'steam' ? 'Steam Linked' : 'Discord Optional')
         : 'Link ' . $label;
 
     if ($linked_player !== null) {

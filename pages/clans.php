@@ -145,7 +145,7 @@ function raidlands_clans_page_action_item(array $action_row): string
             <p class="section-lede"><?= e((string) $clan_context['readiness_message']) ?></p>
           <?php elseif ($clan_snapshot === null) : ?>
             <h2>No clan synced yet</h2>
-            <p class="section-lede">Join or create a clan in game, then wait for WebsiteClanBridge to post the next snapshot.</p>
+            <p class="section-lede">Join or create a clan in game, then wait for the next server sync.</p>
           <?php else : ?>
             <h2><?= e($clan_is_stale ? 'Snapshot is stale' : 'Clan data is current') ?></h2>
             <p class="section-lede">Last sync: <?= e((string) ($clan_snapshot['updated_at'] ?? 'Pending')) ?>. Actions are disabled when snapshots are older than ten minutes.</p>
@@ -171,7 +171,7 @@ function raidlands_clans_page_action_item(array $action_row): string
             <?= raidlands_clans_page_action_item($action_row) ?>
           <?php endforeach; ?>
         </div>
-        <p class="section-lede clan-queue-empty" data-clan-queue-empty<?= $clan_active_actions !== [] ? ' hidden' : '' ?>>No website clan actions are waiting on the server.</p>
+        <p class="section-lede clan-queue-empty" data-clan-queue-empty<?= $clan_active_actions !== [] ? ' hidden' : '' ?>>No clan actions are waiting on the server.</p>
       </div>
       <script type="application/json" id="clan-action-state"><?= $clan_action_state_json ?: '{}' ?></script>
     <?php endif; ?>
@@ -185,7 +185,7 @@ function raidlands_clans_page_action_item(array $action_row): string
         <div class="section-header">
           <p class="section-kicker">Clan roster</p>
           <h2><?= e($clan_tag) ?> command table</h2>
-          <p class="section-lede">Roster data comes from the game server. Website actions queue for the bridge and finish after the server processes them.</p>
+          <p class="section-lede">Roster data comes from the game server. Changes queue here and finish after the server processes them.</p>
         </div>
 
         <?php if ($clan_is_stale) : ?>

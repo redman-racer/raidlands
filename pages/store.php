@@ -299,7 +299,7 @@ function render_store_product_card(array $product, ?array $player, string $csrf,
         $actions .= render_store_offer_group('Cash subscriptions', $cash_subscriptions, $csrf, 'cash', $cash_ready);
 
         if ($actions === '') {
-            $actions = '<button class="btn btn-ghost" type="button" disabled>Pricing Coming Soon</button>';
+            $actions = '<button class="btn btn-ghost" type="button" disabled>Offers Unavailable</button>';
         }
     }
 
@@ -313,7 +313,7 @@ function render_store_product_card(array $product, ?array $player, string $csrf,
         . '</div>'
         . '<h3>' . e((string) $product['name']) . '</h3>'
         . '<p class="card-copy">' . e((string) $product['short_description']) . '</p>'
-        . '<div class="store-price"><strong>' . e($active_offer_count > 0 ? 'Offers available' : 'Pricing coming soon') . '</strong><span>' . e((string) $active_offer_count) . ' option' . ($active_offer_count === 1 ? '' : 's') . '</span></div>'
+        . '<div class="store-price"><strong>' . e($active_offer_count > 0 ? 'Offers available' : 'Offers unavailable') . '</strong><span>' . e((string) $active_offer_count) . ' option' . ($active_offer_count === 1 ? '' : 's') . '</span></div>'
         . $kit_html
         . $perk_html
         . '<ul class="store-mini-list">'

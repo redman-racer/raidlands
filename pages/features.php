@@ -171,7 +171,7 @@
       <div class="section-header">
         <p class="section-kicker">Active systems</p>
         <h2>Live on Raidlands</h2>
-        <p class="section-lede">These are the systems players can already use on the server or through the connected website.</p>
+        <p class="section-lede">These are the systems players can already use on the server or through linked player tools.</p>
       </div>
       <?php if ($active_features === []) : ?>
         <div class="form-status warning">No active features match this view.</div>

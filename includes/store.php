@@ -749,7 +749,7 @@ function raidlands_store_attach_steam_profiles(array $players): array
 function raidlands_store_money(int $amount_cents, string $currency = 'usd'): string
 {
     if ($amount_cents <= 0) {
-        return 'Price coming soon';
+        return 'Price unavailable';
     }
 
     return '$' . number_format($amount_cents / 100, 2) . ' ' . strtoupper($currency);

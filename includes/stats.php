@@ -674,7 +674,7 @@ function raidlands_stats_generic_wipe_key_warning(?array $latest_ingest = null, 
         || $normalized_key === $normalized_server . '-current'
         || str_ends_with($normalized_key, '-current')
     ) {
-        return 'Latest stats snapshot is using a generic wipe key. Clear WipeKey in WebsiteVipBridge.json so the bridge can generate a new key from the Rust save creation time after each wipe.';
+        return 'Latest stats snapshot is using a generic wipe key. Update the server stats sync settings so each wipe gets a unique key.';
     }
 
     return '';

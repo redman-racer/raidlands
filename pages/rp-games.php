@@ -508,9 +508,9 @@ $rp_game_tabs = [
     </article>
 
     <article class="metal-panel">
-      <p class="section-kicker">How it feels live</p>
-      <h2>No page bounce</h2>
-      <p class="section-lede">Switch games, submit wagers, and watch the recent activity queue update in place. Full page posts still work when JavaScript is unavailable.</p>
+      <p class="section-kicker">Round flow</p>
+      <h2>Fast picks, clear results</h2>
+      <p class="section-lede">Switch games, submit wagers, and watch recent activity update while server-confirmed RP changes finish in the background.</p>
       <div class="tag-row">
         <span class="tag">Server-confirmed</span>
         <span class="tag">Daily limits</span>

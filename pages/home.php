@@ -96,7 +96,7 @@ $home_has_voteable_features = !empty($home_feature_state['has_voteable']);
     <div class="metal-panel">
       <p class="section-kicker">Account linking</p>
       <h2>Keep your profile across wipes</h2>
-      <p class="section-lede"><?= e(raidlands_has_linked_account() ? 'Your Steam account is connected. Use your account page to check profile status, stats, and store access.' : 'Connect Steam so leaderboards, rewards, roles, store purchases, and profile stats follow the right player.') ?></p>
+      <p class="section-lede"><?= e(raidlands_has_linked_account() ? 'Your Steam account is connected. Open your profile to check stats, rewards, and active access.' : 'Connect Steam so leaderboards, rewards, roles, store access, and profile stats follow the right player.') ?></p>
       <div class="grid two">
         <?= render_auth_summary_card('steam') ?>
         <?= render_auth_summary_card('discord') ?>
@@ -132,9 +132,9 @@ $home_has_voteable_features = !empty($home_feature_state['has_voteable']);
 <section class="section alt">
   <div class="section-inner">
     <div class="section-header">
-      <p class="section-kicker">Live server systems</p>
-      <h2>Profiles, rewards, and votes stay connected</h2>
-      <p class="section-lede">Account links, rankings, store access, clan tools, support, and feature voting stay tied to the players using them in game.</p>
+      <p class="section-kicker">Player tools</p>
+      <h2>Stats, rewards, and access stay with you</h2>
+      <p class="section-lede">Steam-linked profiles, rankings, store access, clan tools, support, and voting stay tied to the player using them in game.</p>
     </div>
     <div class="grid four">
       <?php foreach ($home_system_cards as $card) : ?>

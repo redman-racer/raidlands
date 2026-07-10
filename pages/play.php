@@ -40,7 +40,7 @@
           ['Rust did not launch', 'Copy the console command, open Rust manually, press F1, paste it, and press Enter.'],
           ['Server does not appear', 'Use the modded browser, search Raidlands, refresh the list, or direct connect through the console.'],
           ['Connection timeout', 'Restart Rust, verify EAC is running, check your network, then ask Discord support if it persists.'],
-          ['Wrong server selected', 'Use the exact command from this site to avoid lookalike names.'],
+          ['Wrong server selected', 'Use the exact command above to avoid lookalike names.'],
           ['EAC issue', 'Restart Steam and Rust, then verify game files if EAC keeps failing.'],
           ['Still stuck', 'Join Discord and open a support ticket with your Steam name and the error text.'],
       ] as [$title, $copy]) : ?>
