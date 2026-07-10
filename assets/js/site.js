@@ -402,6 +402,7 @@
 
     if (!tabs.length || !panels.length) return;
 
+    initRpSyncGuide(root);
     activateRpGame(root, normalizeRpGameKey(root, window.location.hash) || tabs[0].dataset.rpGameTab || "coinflip", false);
 
     tabs.forEach(tab => {
@@ -488,7 +489,7 @@
 
     if (submitter) {
       submitter.dataset.originalText = submitter.textContent || "";
-      submitter.textContent = "Syncing...";
+      submitter.textContent = "Saving game...";
     }
 
     try {
@@ -514,7 +515,7 @@
       }
 
       if (submitter) {
-        submitter.textContent = "Revealing...";
+        submitter.textContent = "Showing result...";
       }
 
       await settleRpGameMotion(panel, gameKey, payload.result || {}, timing);
@@ -794,10 +795,10 @@
     if (normalized === "jackpot") {
       return {
         type: "neutral",
-        eyebrow: "Server sync queued",
-        title: "Entry Queued",
+        eyebrow: "Game saved",
+        title: "Entry Saved",
         amount: formatSignedRp(-cost),
-        detail: `${tickets || 1} jackpot ticket${tickets === 1 ? "" : "s"} waiting for RP debit confirmation.`
+        detail: `${tickets || 1} jackpot ticket${tickets === 1 ? "" : "s"} saved. The server is now updating your RP.`
       };
     }
 
@@ -807,27 +808,27 @@
 
       return {
         type: "neutral",
-        eyebrow: "Server sync queued",
-        title: "Entry Queued",
+        eyebrow: "Game saved",
+        title: "Entry Saved",
         amount: formatSignedRp(-stake),
-        detail: `${label} entry on ${choice} is waiting for RP debit confirmation.`
+        detail: `${label} entry on ${choice} is saved. The server is now updating your RP.`
       };
     }
 
     if (push) {
       return {
         type: "push",
-        eyebrow: "Server sync queued",
+        eyebrow: "Game saved",
         title: "Push",
         amount: formatSignedRp(0),
-        detail: result.roll ? `Rolled ${result.roll}. Your stake return is queued for confirmation.` : fallbackMessage
+        detail: result.roll ? `Rolled ${result.roll}. Your stake return is saved and waiting for the server.` : fallbackMessage
       };
     }
 
     if (won) {
       return {
         type: "win",
-        eyebrow: "Server sync queued",
+        eyebrow: "Game saved",
         title: "You Won",
         amount: formatSignedRp(net > 0 ? net : payout),
         detail: outcomeDetail(normalized, result, fallbackMessage)
@@ -836,7 +837,7 @@
 
     return {
       type: "loss",
-      eyebrow: "Server sync queued",
+      eyebrow: "Game saved",
       title: "You Lost",
       amount: formatSignedRp(-stake),
       detail: outcomeDetail(normalized, result, fallbackMessage)
@@ -903,6 +904,174 @@
     flash.textContent = message;
   }
 
+  function initRpSyncGuide(root) {
+    const guide = root.querySelector("[data-rp-sync-guide]");
+
+    if (!guide) return;
+
+    guide.querySelector("[data-rp-sync-check]")?.addEventListener("click", () => {
+      checkRpSyncStatus(root, true);
+    });
+
+    if (Number(guide.dataset.pendingCount || 0) > 0) {
+      startRpSyncCountdown(root);
+    }
+  }
+
+  function startRpSyncCountdown(root) {
+    const guide = root.querySelector("[data-rp-sync-guide]");
+
+    if (!guide || Number(guide.dataset.pendingCount || 0) <= 0) return;
+
+    stopRpSyncCountdown(guide);
+    const seconds = Math.max(10, Number(guide.dataset.pollSeconds || 30));
+    guide.dataset.rpSyncDeadline = String(Date.now() + seconds * 1000);
+    updateRpSyncCountdown(guide);
+    guide.dataset.rpSyncTimer = String(window.setInterval(() => updateRpSyncCountdown(guide, root), 250));
+  }
+
+  function stopRpSyncCountdown(guide) {
+    const timer = Number(guide?.dataset.rpSyncTimer || 0);
+
+    if (timer) {
+      window.clearInterval(timer);
+    }
+
+    if (guide) {
+      delete guide.dataset.rpSyncTimer;
+      delete guide.dataset.rpSyncDeadline;
+    }
+  }
+
+  function updateRpSyncCountdown(guide, root) {
+    const countdown = guide.querySelector("[data-rp-sync-countdown]");
+    const deadline = Number(guide.dataset.rpSyncDeadline || Date.now());
+    const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
+
+    if (countdown) {
+      countdown.textContent = `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")}`;
+    }
+
+    if (remaining <= 0 && root) {
+      stopRpSyncCountdown(guide);
+      checkRpSyncStatus(root, false);
+    }
+  }
+
+  async function checkRpSyncStatus(root, requestedByPlayer) {
+    const guide = root.querySelector("[data-rp-sync-guide]");
+    const button = guide?.querySelector("[data-rp-sync-check]");
+
+    if (!guide || guide.dataset.rpSyncChecking === "1" || !window.fetch) return;
+
+    guide.dataset.rpSyncChecking = "1";
+    guide.classList.add("is-checking");
+    if (button) {
+      button.disabled = true;
+      button.textContent = "Checking...";
+    }
+
+    try {
+      const response = await fetch(guide.dataset.stateUrl || window.location.href, {
+        credentials: "same-origin",
+        cache: "no-store",
+        headers: {
+          Accept: "application/json",
+          "X-Requested-With": "fetch"
+        }
+      });
+      const payload = await readJsonResponse(response);
+
+      if (!response.ok || !payload.ok) {
+        throw new Error(payload.message || "The status check did not finish.");
+      }
+
+      applyRpGamesState(payload.state || {});
+      if (requestedByPlayer && Number(guide.dataset.pendingCount || 0) <= 0) {
+        showToast("Your RP status is up to date.");
+      }
+    } catch (error) {
+      const message = guide.querySelector("[data-rp-sync-message]");
+      guide.classList.add("is-waiting");
+      guide.classList.remove("is-ready", "is-complete", "is-error");
+      if (message) {
+        message.textContent = "Your game is still saved. We could not check the server just now, so we will try again automatically.";
+      }
+      if (Number(guide.dataset.pendingCount || 0) > 0) {
+        startRpSyncCountdown(root);
+      }
+    } finally {
+      delete guide.dataset.rpSyncChecking;
+      guide.classList.remove("is-checking");
+      if (button) {
+        button.disabled = false;
+        button.textContent = "Check now";
+      }
+    }
+  }
+
+  function applyRpSyncState(sync) {
+    const root = app.querySelector("[data-rp-games]");
+    const guide = root?.querySelector("[data-rp-sync-guide]");
+
+    if (!root || !guide || !sync || typeof sync !== "object") return;
+
+    const previousPending = Number(guide.dataset.pendingCount || 0);
+    const pending = Math.max(0, Number(sync.pending_count || 0));
+    const latestStatus = String(sync.latest_status || "").toLowerCase();
+    const title = guide.querySelector("[data-rp-sync-title]");
+    const message = guide.querySelector("[data-rp-sync-message]");
+    const countdownWrap = guide.querySelector("[data-rp-sync-countdown-wrap]");
+    const savedStep = guide.querySelector('[data-rp-sync-step="saved"]');
+    const serverStep = guide.querySelector('[data-rp-sync-step="server"]');
+    const balanceStep = guide.querySelector('[data-rp-sync-step="balance"]');
+    const failed = ["rejected", "failed", "expired", "canceled"].includes(latestStatus);
+
+    guide.dataset.pendingCount = String(pending);
+    guide.dataset.pollSeconds = String(Math.max(10, Number(sync.poll_seconds || guide.dataset.pollSeconds || 30)));
+    guide.classList.remove("is-ready", "is-waiting", "is-complete", "is-error");
+    [savedStep, serverStep, balanceStep].forEach(step => step?.classList.remove("is-active", "is-complete", "is-error"));
+
+    if (pending > 0) {
+      guide.classList.add("is-waiting");
+      savedStep?.classList.add("is-complete");
+      serverStep?.classList.add("is-active");
+      if (title) title.textContent = latestStatus === "processing" ? "The server is updating your RP" : "Your game is saved";
+      if (message) message.textContent = `Nothing failed. The game server is applying ${pending} RP change${pending === 1 ? "" : "s"}, and this page will update itself.`;
+      if (countdownWrap) countdownWrap.hidden = false;
+      startRpSyncCountdown(root);
+      return;
+    }
+
+    stopRpSyncCountdown(guide);
+    if (countdownWrap) countdownWrap.hidden = true;
+
+    if (previousPending > 0 && failed) {
+      guide.classList.add("is-error");
+      savedStep?.classList.add("is-complete");
+      serverStep?.classList.add("is-error");
+      if (title) title.textContent = "Your RP was not changed";
+      if (message) message.textContent = sync.latest_message || "The server could not complete this RP change. Your activity history shows the final status.";
+      showRpGamesFlash(root, "error", "The server did not complete the RP change. Your activity history has the details.");
+      return;
+    }
+
+    if (previousPending > 0) {
+      guide.classList.add("is-complete");
+      savedStep?.classList.add("is-complete");
+      serverStep?.classList.add("is-complete");
+      balanceStep?.classList.add("is-complete");
+      if (title) title.textContent = "Your RP is updated";
+      if (message) message.textContent = "The game server finished the RP change, and your balance and activity are now up to date.";
+      showRpGamesFlash(root, "success", "RP update complete. Your synced balance is current.");
+      return;
+    }
+
+    guide.classList.add("is-ready");
+    if (title) title.textContent = "Ready for your next game";
+    if (message) message.textContent = "No RP changes are waiting. After you play, your result is saved first, then the game server updates your RP during its next sync cycle.";
+  }
+
   function applyRpGamesState(state) {
     if (!state || typeof state !== "object") return;
 
@@ -916,6 +1085,7 @@
     renderRpGameRounds(Array.isArray(state.game_rounds) ? state.game_rounds : []);
     renderRpJackpotEntries(Array.isArray(state.jackpot_entries) ? state.jackpot_entries : []);
     updateRpHistoryEmpty(state);
+    applyRpSyncState(state.sync || {});
   }
 
   function applyRpJackpotState(jackpot) {
@@ -1003,7 +1173,7 @@
           <td>${escapeHtml(formatRp(round.stake_rp))}</td>
           <td>${escapeHtml(round.roll_result || "")}</td>
           <td>${escapeHtml(formatRp(round.payout_rp))}</td>
-          <td><span class="status-pill ${escapeAttr(status)}">${escapeHtml(status)}</span></td>
+          <td><span class="status-pill ${escapeAttr(status)}">${escapeHtml(rpStatusLabel(status))}</span></td>
           <td>${escapeHtml(round.created_at || "")}</td>
         </tr>
       `;
@@ -1025,7 +1195,7 @@
           <td>${escapeHtml(entry.round_key || "Jackpot")}</td>
           <td>${escapeHtml(String(Number(entry.ticket_count) || 0))}</td>
           <td>${escapeHtml(formatRp(entry.cost_rp))}</td>
-          <td><span class="status-pill ${escapeAttr(status)}">${escapeHtml(status)}</span></td>
+          <td><span class="status-pill ${escapeAttr(status)}">${escapeHtml(rpStatusLabel(status))}</span></td>
           <td>${escapeHtml(entry.created_at || "")}</td>
         </tr>
       `;
@@ -1064,6 +1234,23 @@
     }
 
     return String(gameType || "Game").replace(/_/g, " ").replace(/\b\w/g, letter => letter.toUpperCase());
+  }
+
+  function rpStatusLabel(status) {
+    const labels = {
+      queued: "Waiting on server",
+      processing: "Server updating RP",
+      confirmed: "Complete",
+      paid: "Complete",
+      lost: "Complete",
+      payout_queued: "Payout waiting",
+      rejected: "Not completed",
+      failed: "Needs attention",
+      expired: "Timed out",
+      canceled: "Canceled"
+    };
+
+    return labels[status] || String(status || "Status").replace(/_/g, " ").replace(/\b\w/g, letter => letter.toUpperCase());
   }
 
   function formatRp(value) {

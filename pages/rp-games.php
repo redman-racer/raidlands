@@ -15,6 +15,10 @@ $supply_run_round = is_array($supply_run_state['round'] ?? null) ? $supply_run_s
 $game_rounds = (array) ($rp_games_state['game_rounds'] ?? []);
 $jackpot_entries = (array) ($rp_games_state['jackpot_entries'] ?? []);
 $jackpot_rounds = (array) ($rp_games_state['jackpot_rounds'] ?? []);
+$sync_state = is_array($rp_games_state['sync'] ?? null) ? $rp_games_state['sync'] : [];
+$sync_pending_count = max(0, (int) ($sync_state['pending_count'] ?? 0));
+$sync_poll_seconds = max(10, (int) ($sync_state['poll_seconds'] ?? 30));
+$sync_countdown_label = (string) floor($sync_poll_seconds / 60) . ':' . str_pad((string) ($sync_poll_seconds % 60), 2, '0', STR_PAD_LEFT);
 $can_play = $games_ready && $games_player !== null && !empty($games_player['id']) && !empty($settings['games_enabled']);
 $min_stake = (int) ($settings['min_stake_rp'] ?? 200);
 $max_stake = (int) ($settings['max_stake_rp'] ?? 2000);
@@ -54,6 +58,18 @@ $game_names = [
     'raid_duel' => 'Raid Duel',
     'supply_run' => 'Supply Run',
     'monument_extraction' => 'Monument Extraction',
+];
+$rp_status_labels = [
+    'queued' => 'Waiting on server',
+    'processing' => 'Server updating RP',
+    'confirmed' => 'Complete',
+    'paid' => 'Complete',
+    'lost' => 'Complete',
+    'payout_queued' => 'Payout waiting',
+    'rejected' => 'Not completed',
+    'failed' => 'Needs attention',
+    'expired' => 'Timed out',
+    'canceled' => 'Canceled',
 ];
 $rp_game_tabs = [
     [
@@ -163,6 +179,49 @@ $rp_game_tabs = [
         <strong><?= e(raidlands_store_rp($min_stake)) ?>-<?= e(raidlands_store_rp($max_stake)) ?></strong>
       </article>
     </div>
+
+    <aside
+      class="rp-sync-guide <?= $sync_pending_count > 0 ? 'is-waiting' : 'is-ready' ?>"
+      data-rp-sync-guide
+      data-state-url="<?= e(route_url('rp-games') . '?action=state') ?>"
+      data-poll-seconds="<?= e((string) $sync_poll_seconds) ?>"
+      data-pending-count="<?= e((string) $sync_pending_count) ?>"
+      aria-live="polite">
+      <div class="rp-sync-guide-main">
+        <span class="rp-sync-signal" aria-hidden="true"><i></i></span>
+        <div>
+          <p class="section-kicker">RP transaction status</p>
+          <h2 data-rp-sync-title><?= $sync_pending_count > 0 ? 'Your game is saved' : 'Ready for your next game' ?></h2>
+          <p data-rp-sync-message>
+            <?php if ($sync_pending_count > 0) : ?>
+              Nothing failed. The game server is applying <?= e((string) $sync_pending_count) ?> RP change<?= $sync_pending_count === 1 ? '' : 's' ?>, and this page will update itself.
+            <?php else : ?>
+              No RP changes are waiting. After you play, your result is saved first, then the game server updates your RP during its next sync cycle.
+            <?php endif; ?>
+          </p>
+        </div>
+      </div>
+
+      <div class="rp-sync-countdown" data-rp-sync-countdown-wrap <?= $sync_pending_count > 0 ? '' : 'hidden' ?>>
+        <span>Next automatic check</span>
+        <strong data-rp-sync-countdown><?= e($sync_countdown_label) ?></strong>
+        <small>Keep this page open. You do not need to play again or refresh.</small>
+      </div>
+
+      <ol class="rp-sync-steps" aria-label="RP update steps">
+        <li data-rp-sync-step="saved" class="<?= $sync_pending_count > 0 ? 'is-complete' : '' ?>">
+          <span>1</span><div><strong>Game saved</strong><small>Your result is safely recorded on the website.</small></div>
+        </li>
+        <li data-rp-sync-step="server" class="<?= $sync_pending_count > 0 ? 'is-active' : '' ?>">
+          <span>2</span><div><strong>Server updates RP</strong><small>This normally finishes within about a minute.</small></div>
+        </li>
+        <li data-rp-sync-step="balance">
+          <span>3</span><div><strong>Balance refreshes</strong><small>The Synced RP number and activity status update automatically.</small></div>
+        </li>
+      </ol>
+
+      <button class="btn btn-secondary btn-small rp-sync-check" type="button" data-rp-sync-check>Check now</button>
+    </aside>
 
     <div class="rp-games-workspace">
       <nav class="rp-game-nav" aria-label="RP game navigation" role="tablist">
@@ -657,7 +716,7 @@ $rp_game_tabs = [
     <div class="section-header">
       <p class="section-kicker">History</p>
       <h2>Recent RP game activity</h2>
-      <p class="section-lede">Pending rows are waiting for the Rust server to confirm live RP balance changes.</p>
+      <p class="section-lede">“Waiting on server” means your game is saved and the RP change is still being applied. This page checks again automatically.</p>
     </div>
 
     <div class="store-table-wrap" data-rp-rounds-table <?= $game_rounds !== [] ? '' : 'hidden' ?>>
@@ -680,7 +739,8 @@ $rp_game_tabs = [
               <td><?= e(raidlands_store_rp((int) ($round['stake_rp'] ?? 0))) ?></td>
               <td><?= e((string) ($round['roll_result'] ?? '')) ?></td>
               <td><?= e(raidlands_store_rp((int) ($round['payout_rp'] ?? 0))) ?></td>
-              <td><span class="status-pill <?= e((string) ($round['status'] ?? 'queued')) ?>"><?= e((string) ($round['status'] ?? 'queued')) ?></span></td>
+              <?php $round_status = (string) ($round['status'] ?? 'queued'); ?>
+              <td><span class="status-pill <?= e($round_status) ?>"><?= e($rp_status_labels[$round_status] ?? ucwords(str_replace('_', ' ', $round_status))) ?></span></td>
               <td><?= e((string) ($round['created_at'] ?? '')) ?></td>
             </tr>
           <?php endforeach; ?>
@@ -705,7 +765,8 @@ $rp_game_tabs = [
               <td><?= e((string) ($entry['round_key'] ?? 'Jackpot')) ?></td>
               <td><?= e((string) ($entry['ticket_count'] ?? 0)) ?></td>
               <td><?= e(raidlands_store_rp((int) ($entry['cost_rp'] ?? 0))) ?></td>
-              <td><span class="status-pill <?= e((string) ($entry['status'] ?? 'queued')) ?>"><?= e((string) ($entry['status'] ?? 'queued')) ?></span></td>
+              <?php $entry_status = (string) ($entry['status'] ?? 'queued'); ?>
+              <td><span class="status-pill <?= e($entry_status) ?>"><?= e($rp_status_labels[$entry_status] ?? ucwords(str_replace('_', ' ', $entry_status))) ?></span></td>
               <td><?= e((string) ($entry['created_at'] ?? '')) ?></td>
             </tr>
           <?php endforeach; ?>

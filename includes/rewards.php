@@ -2640,6 +2640,63 @@ function raidlands_rewards_home_preview_state(): array
     }
 }
 
+function raidlands_rewards_sync_poll_seconds(): int
+{
+    return max(10, min(120, raidlands_env_int('RAIDLANDS_RP_GAMES_STATUS_POLL_SECONDS', 30)));
+}
+
+function raidlands_rewards_player_sync_state(int $player_id): array
+{
+    $poll_seconds = raidlands_rewards_sync_poll_seconds();
+    $empty = [
+        'pending_count' => 0,
+        'has_pending' => false,
+        'latest_status' => '',
+        'latest_message' => '',
+        'latest_created_at' => '',
+        'latest_updated_at' => '',
+        'poll_seconds' => $poll_seconds,
+        'checked_at' => gmdate(DATE_ATOM),
+    ];
+
+    if ($player_id <= 0 || !raidlands_rewards_is_ready()) {
+        return $empty;
+    }
+
+    $game_sources = "'coinflip', 'dice', 'high_low', 'wheel', 'jackpot_entry', 'jackpot_payout',
+        'raid_duel_entry', 'raid_duel_payout', 'supply_run_entry', 'supply_run_payout',
+        'monument_wager', 'monument_payout'";
+    $pending = raidlands_db_fetch_one(
+        "SELECT COUNT(*) AS pending_count
+         FROM rp_point_requests
+         WHERE player_id = :player_id
+           AND source_type IN ({$game_sources})
+           AND status IN ('queued', 'processing')",
+        ['player_id' => $player_id]
+    );
+    $latest = raidlands_db_fetch_one(
+        "SELECT status, message, created_at, updated_at
+         FROM rp_point_requests
+         WHERE player_id = :player_id
+           AND source_type IN ({$game_sources})
+         ORDER BY created_at DESC, id DESC
+         LIMIT 1",
+        ['player_id' => $player_id]
+    );
+    $pending_count = max(0, (int) ($pending['pending_count'] ?? 0));
+
+    return [
+        'pending_count' => $pending_count,
+        'has_pending' => $pending_count > 0,
+        'latest_status' => (string) ($latest['status'] ?? ''),
+        'latest_message' => (string) ($latest['message'] ?? ''),
+        'latest_created_at' => (string) ($latest['created_at'] ?? ''),
+        'latest_updated_at' => (string) ($latest['updated_at'] ?? ''),
+        'poll_seconds' => $poll_seconds,
+        'checked_at' => gmdate(DATE_ATOM),
+    ];
+}
+
 function raidlands_rewards_public_games_state(): array
 {
     $ready = raidlands_rewards_is_ready();
@@ -2658,6 +2715,7 @@ function raidlands_rewards_public_games_state(): array
             'game_rounds' => [],
             'jackpot_entries' => [],
             'jackpot_rounds' => [],
+            'sync' => raidlands_rewards_player_sync_state(0),
             'game_backend' => [
                 'high_low' => false,
                 'wheel' => false,
@@ -2685,6 +2743,7 @@ function raidlands_rewards_public_games_state(): array
         'game_rounds' => $player_id > 0 ? raidlands_rewards_recent_game_activity($player_id, 10) : raidlands_rewards_recent_game_activity(0, 6),
         'jackpot_entries' => $player_id > 0 ? raidlands_rewards_recent_jackpot_entries($player_id, 10) : [],
         'jackpot_rounds' => raidlands_rewards_recent_jackpot_rounds(6),
+        'sync' => raidlands_rewards_player_sync_state($player_id),
         'game_backend' => [
             'high_low' => raidlands_rewards_game_backend_ready('high_low'),
             'wheel' => raidlands_rewards_game_backend_ready('wheel'),
@@ -2707,6 +2766,7 @@ function raidlands_rewards_games_wants_json(): bool
 function raidlands_rewards_games_json_response(bool $ok, string $type, string $message, array $result = []): void
 {
     header('Content-Type: application/json; charset=utf-8');
+    header('Cache-Control: no-store, no-cache, must-revalidate, max-age=0');
     http_response_code($ok ? 200 : 422);
     echo json_encode([
         'ok' => $ok,
@@ -2722,7 +2782,13 @@ function raidlands_rewards_handle_games_request(): void
 {
     raidlands_store_boot();
 
-    if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    $method = strtoupper((string) ($_SERVER['REQUEST_METHOD'] ?? 'GET'));
+
+    if ($method === 'GET' && (string) ($_GET['action'] ?? '') === 'state' && raidlands_rewards_games_wants_json()) {
+        raidlands_rewards_games_json_response(true, 'success', 'RP status checked.');
+    }
+
+    if ($method !== 'POST') {
         return;
     }
 
@@ -2745,37 +2811,38 @@ function raidlands_rewards_handle_games_request(): void
         if ($action === 'play_coinflip') {
             $result = raidlands_rewards_play_coinflip((string) ($_POST['choice'] ?? ''), (int) ($_POST['stake_rp'] ?? 0));
             $message = $result['won']
-                ? 'Coinflip hit ' . $result['roll'] . '. ' . raidlands_store_rp((int) $result['payout_rp']) . ' payout queued for server confirmation.'
-                : 'Coinflip hit ' . $result['roll'] . '. Loss queued for server confirmation.';
+                ? 'Coinflip hit ' . $result['roll'] . '. Your game is saved; the server is now adding the ' . raidlands_store_rp((int) $result['payout_rp']) . ' payout.'
+                : 'Coinflip hit ' . $result['roll'] . '. Your game is saved; the server is now updating your RP.';
         } elseif ($action === 'play_dice') {
             $result = raidlands_rewards_play_dice((int) ($_POST['stake_rp'] ?? 0));
             $message = $result['won']
-                ? 'Dice landed on ' . $result['roll'] . '. ' . raidlands_store_rp((int) $result['payout_rp']) . ' payout queued for server confirmation.'
-                : 'Dice landed on ' . $result['roll'] . '. Loss queued for server confirmation.';
+                ? 'Dice landed on ' . $result['roll'] . '. Your game is saved; the server is now adding the ' . raidlands_store_rp((int) $result['payout_rp']) . ' payout.'
+                : 'Dice landed on ' . $result['roll'] . '. Your game is saved; the server is now updating your RP.';
         } elseif ($action === 'play_high_low') {
             $result = raidlands_rewards_play_high_low((string) ($_POST['choice'] ?? ''), (int) ($_POST['stake_rp'] ?? 0));
             if (!empty($result['push'])) {
-                $message = 'High-Low rolled ' . $result['roll'] . '. Push queued to return ' . raidlands_store_rp((int) $result['payout_rp']) . '.';
+                $message = 'High-Low rolled ' . $result['roll'] . '. Your game is saved; the server is now returning ' . raidlands_store_rp((int) $result['payout_rp']) . '.';
             } else {
                 $message = $result['won']
-                    ? 'High-Low rolled ' . $result['roll'] . '. ' . raidlands_store_rp((int) $result['payout_rp']) . ' payout queued for server confirmation.'
-                    : 'High-Low rolled ' . $result['roll'] . '. Loss queued for server confirmation.';
+                    ? 'High-Low rolled ' . $result['roll'] . '. Your game is saved; the server is now adding the ' . raidlands_store_rp((int) $result['payout_rp']) . ' payout.'
+                    : 'High-Low rolled ' . $result['roll'] . '. Your game is saved; the server is now updating your RP.';
             }
         } elseif ($action === 'play_wheel') {
             $result = raidlands_rewards_play_wheel((string) ($_POST['choice'] ?? ''), (int) ($_POST['stake_rp'] ?? 0));
             $outcome = ucwords(str_replace('_', ' ', (string) ($result['outcome'] ?? 'segment')));
             $message = $result['won']
-                ? 'Wheel landed on ' . $outcome . '. ' . raidlands_store_rp((int) $result['payout_rp']) . ' payout queued for server confirmation.'
-                : 'Wheel landed on ' . $outcome . '. Loss queued for server confirmation.';
+                ? 'Wheel landed on ' . $outcome . '. Your game is saved; the server is now adding the ' . raidlands_store_rp((int) $result['payout_rp']) . ' payout.'
+                : 'Wheel landed on ' . $outcome . '. Your game is saved; the server is now updating your RP.';
         } elseif ($action === 'enter_raid_duel') {
             $result = raidlands_rewards_enter_pool_game('raid_duel', (string) ($_POST['choice'] ?? ''), (int) ($_POST['stake_rp'] ?? 0));
-            $message = 'Raid Duel entry queued on ' . (string) $result['choice_label'] . ' for ' . raidlands_store_rp((int) $result['stake_rp']) . '.';
+            $message = 'Your Raid Duel pick on ' . (string) $result['choice_label'] . ' is saved. The server is now confirming the ' . raidlands_store_rp((int) $result['stake_rp']) . ' entry.';
         } elseif ($action === 'enter_supply_run') {
             $result = raidlands_rewards_enter_pool_game('supply_run', (string) ($_POST['choice'] ?? ''), (int) ($_POST['stake_rp'] ?? 0));
-            $message = 'Supply Run entry queued on ' . (string) $result['choice_label'] . ' for ' . raidlands_store_rp((int) $result['stake_rp']) . '.';
+            $message = 'Your Supply Run pick on ' . (string) $result['choice_label'] . ' is saved. The server is now confirming the ' . raidlands_store_rp((int) $result['stake_rp']) . ' entry.';
         } else {
             $result = raidlands_rewards_enter_jackpot((int) ($_POST['tickets'] ?? 1));
-            $message = (string) $result['tickets'] . ' jackpot ticket' . ((int) $result['tickets'] === 1 ? '' : 's') . ' queued for ' . raidlands_store_rp((int) $result['cost_rp']) . '.';
+            $ticket_count = (int) $result['tickets'];
+            $message = 'Your ' . (string) $ticket_count . ' jackpot ticket' . ($ticket_count === 1 ? ' is' : 's are') . ' saved. The server is now confirming the ' . raidlands_store_rp((int) $result['cost_rp']) . ' entry.';
         }
 
         if ($wants_json) {
