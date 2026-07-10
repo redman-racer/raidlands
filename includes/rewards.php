@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/store.php';
+require_once __DIR__ . '/monument-extraction.php';
 
 function raidlands_rewards_tables(): array
 {
@@ -65,6 +66,10 @@ function raidlands_rewards_game_backend_ready(string $game_key): bool
 {
     if (in_array($game_key, ['coinflip', 'dice', 'jackpot'], true)) {
         return true;
+    }
+
+    if ($game_key === 'monument_extraction') {
+        return raidlands_monument_is_ready();
     }
 
     if (in_array($game_key, ['raid_duel', 'supply_run'], true)) {
@@ -300,6 +305,7 @@ function raidlands_rewards_settings(bool $seed_defaults = true): array
             'coinflip_enabled' => 1,
             'dice_enabled' => 1,
             'jackpot_enabled' => 1,
+            'monument_extraction_enabled' => 0,
             'high_low_enabled' => raidlands_rewards_game_backend_ready('high_low') ? 1 : 0,
             'wheel_enabled' => raidlands_rewards_game_backend_ready('wheel') ? 1 : 0,
             'raid_duel_enabled' => raidlands_rewards_game_backend_ready('raid_duel') ? 1 : 0,
@@ -327,6 +333,7 @@ function raidlands_rewards_settings(bool $seed_defaults = true): array
         'wheel_enabled' => raidlands_rewards_game_backend_ready('wheel') ? 1 : 0,
         'raid_duel_enabled' => raidlands_rewards_game_backend_ready('raid_duel') ? 1 : 0,
         'supply_run_enabled' => raidlands_rewards_game_backend_ready('supply_run') ? 1 : 0,
+        'monument_extraction_enabled' => 0,
         'pool_round_minutes' => 20,
         'pool_house_edge_percent' => 8,
     ];
@@ -340,6 +347,7 @@ function raidlands_rewards_settings(bool $seed_defaults = true): array
         'wheel_enabled',
         'raid_duel_enabled',
         'supply_run_enabled',
+        'monument_extraction_enabled',
         'min_stake_rp',
         'max_stake_rp',
         'coinflip_payout_multiplier_basis',
@@ -588,6 +596,8 @@ function raidlands_rewards_queue_point_request(
         'raid_duel_payout',
         'supply_run_entry',
         'supply_run_payout',
+        'monument_wager',
+        'monument_payout',
         'admin_adjustment',
     ], true)) {
         throw new InvalidArgumentException('Unsupported RP point request source.');
@@ -2914,6 +2924,10 @@ function raidlands_rewards_sync_source_from_point_result(PDO $pdo, array $reques
         return;
     }
 
+    if (raidlands_monument_sync_point_result($pdo, $request, $status, $message, $fail_code)) {
+        return;
+    }
+
     if ($source_type === 'vote_reward') {
         $update = $pdo->prepare(
             'UPDATE vote_reward_claims
@@ -3261,6 +3275,11 @@ function raidlands_rewards_admin_save_game_settings(array $post): void
         $params['supply_run_enabled'] = raidlands_rewards_bool($post['supply_run_enabled'] ?? null);
     }
 
+    if (raidlands_store_table_has_columns('rp_game_settings', ['monument_extraction_enabled'])) {
+        $set[] = 'monument_extraction_enabled = :monument_extraction_enabled';
+        $params['monument_extraction_enabled'] = raidlands_rewards_bool($post['monument_extraction_enabled'] ?? null);
+    }
+
     if (!raidlands_store_table_has_columns('rp_game_settings', ['pool_round_minutes'])) {
         $set = array_values(array_filter($set, static fn (string $item): bool => $item !== 'pool_round_minutes = :pool_round_minutes'));
         unset($params['pool_round_minutes']);
@@ -3294,6 +3313,7 @@ function raidlands_rewards_admin_state(): array
             'recent_game_rounds' => [],
             'recent_jackpots' => [],
             'recent_pool_rounds' => [],
+            'monument' => ['ready' => false, 'message' => raidlands_monument_readiness_message()],
         ];
     }
 
@@ -3310,6 +3330,7 @@ function raidlands_rewards_admin_state(): array
         'recent_game_rounds' => raidlands_rewards_recent_game_rounds(0, 12),
         'recent_jackpots' => raidlands_rewards_recent_jackpot_rounds(10),
         'recent_pool_rounds' => raidlands_rewards_recent_pool_rounds(10),
+        'monument' => raidlands_monument_admin_state(),
     ];
 }
 
@@ -3336,7 +3357,10 @@ function raidlands_rewards_admin_handle_save(string $section, array $post): stri
 
     if ($section === 'rp-games') {
         raidlands_rewards_admin_save_game_settings($post);
-        return 'RP game settings saved.';
+        $monument_message = raidlands_monument_is_ready()
+            ? raidlands_monument_admin_save($post)
+            : raidlands_monument_readiness_message();
+        return 'RP game settings saved. ' . $monument_message;
     }
 
     throw new InvalidArgumentException('Unknown rewards admin section.');

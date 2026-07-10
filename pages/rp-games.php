@@ -30,6 +30,11 @@ $high_low_enabled = $high_low_backend && !empty($settings['high_low_enabled']);
 $wheel_enabled = $wheel_backend && !empty($settings['wheel_enabled']);
 $raid_duel_enabled = $raid_duel_backend && !empty($settings['raid_duel_enabled']);
 $supply_run_enabled = $supply_run_backend && !empty($settings['supply_run_enabled']);
+$monument_ready = !empty($monument_state['ready']);
+$monument_enabled = $monument_ready && !empty($monument_state['enabled']);
+$monument_config = is_array($monument_state['config'] ?? null) ? $monument_state['config'] : raidlands_monument_public_config(raidlands_monument_default_config());
+$monument_loadouts = is_array($monument_config['loadouts'] ?? null) ? $monument_config['loadouts'] : [];
+$monument_has_active_run = is_array($monument_state['activeRun'] ?? null);
 $wheel_segments = function_exists('raidlands_rewards_wheel_segments') ? raidlands_rewards_wheel_segments() : [];
 $pool_options = static function (array $pool_state): array {
     $round = is_array($pool_state['round'] ?? null) ? $pool_state['round'] : [];
@@ -89,6 +94,14 @@ $rp_game_tabs = [
         'icon' => 'EVENT',
         'enabled' => $can_play && $supply_run_enabled && $supply_run_round !== null,
         'ready' => $supply_run_backend,
+    ],
+    [
+        'key' => 'monument-extraction',
+        'label' => 'Monument Extraction',
+        'meta' => $monument_has_active_run ? 'Run in progress' : 'Tactical extraction',
+        'icon' => 'MAP',
+        'enabled' => $can_play && $monument_enabled,
+        'ready' => $monument_ready,
     ],
     [
         'key' => 'high-low',
@@ -413,6 +426,120 @@ $rp_game_tabs = [
           </div>
         </article>
 
+        <article class="metal-panel rp-game-panel monument-extraction-panel" id="rp-panel-monument-extraction" role="tabpanel" aria-labelledby="rp-tab-monument-extraction" data-rp-game-panel="monument-extraction" hidden>
+          <div
+            class="monument-extraction-app"
+            data-monument-extraction
+            data-api-url="<?= e($monument_api_url) ?>"
+            data-csrf="<?= e($rp_games_csrf) ?>"
+            data-enabled="<?= $can_play && $monument_enabled ? '1' : '0' ?>">
+            <script type="application/json" data-monument-bootstrap><?= json_encode($monument_state, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE) ?></script>
+
+            <div class="monument-extraction-hero">
+              <picture aria-hidden="true">
+                <source srcset="<?= e(asset_url('media/rp-games/monument-extraction-hero.webp')) ?>" type="image/webp">
+                <img src="<?= e(asset_url('media/rp-games/monument-extraction-hero.png')) ?>" alt="" loading="lazy" decoding="async">
+              </picture>
+              <div class="monument-extraction-hero-copy">
+                <p class="section-kicker">Tactical RP run</p>
+                <h2>Monument Extraction</h2>
+                <p>Choose a loadout, push through a branching monument, secure wager-relative loot, and survive the route out to bank it.</p>
+                <div class="tag-row">
+                  <span class="tag">Server-authoritative</span>
+                  <span class="tag">3-7 minutes</span>
+                  <span class="tag">Provably reproducible</span>
+                </div>
+              </div>
+            </div>
+
+            <div class="form-status warning" data-monument-status <?= $monument_ready && $monument_enabled ? 'hidden' : '' ?>>
+              <?php if (!$monument_ready) : ?>
+                <?= e((string) ($monument_state['message'] ?? raidlands_monument_readiness_message())) ?>
+              <?php elseif (!$monument_enabled) : ?>
+                Monument Extraction is installed but disabled until admins review simulation results and enable it.
+              <?php endif; ?>
+            </div>
+
+            <section class="monument-landing" data-monument-landing>
+              <div class="monument-landing-copy">
+                <p class="section-kicker">Plan the raid</p>
+                <h3>Wager once. Extract to get paid.</h3>
+                <p class="store-muted">Your wager debit must be confirmed by the Rust server before the run opens. Loot is unsecured until an extraction succeeds; death, abandonment, and expiry return nothing.</p>
+              </div>
+
+              <form class="monument-start-form" data-monument-start-form>
+                <fieldset class="monument-loadouts">
+                  <legend>Choose a loadout</legend>
+                  <?php foreach ($monument_loadouts as $loadout_key => $loadout) : ?>
+                    <label class="monument-loadout-card">
+                      <input type="radio" name="loadout_key" value="<?= e((string) $loadout_key) ?>" <?= $loadout_key === 'scout' ? 'checked' : '' ?> <?= $can_play && $monument_enabled ? '' : 'disabled' ?>>
+                      <span>
+                        <strong><?= e((string) ($loadout['label'] ?? ucwords((string) $loadout_key))) ?></strong>
+                        <small><?= e((string) ($loadout['description'] ?? '')) ?></small>
+                        <em><?= e((string) ($loadout['ammo'] ?? 0)) ?> ammo / <?= e((string) ($loadout['syringes'] ?? 0)) ?> meds / <?= e((string) ($loadout['slots'] ?? 0)) ?> slots</em>
+                      </span>
+                    </label>
+                  <?php endforeach; ?>
+                </fieldset>
+
+                <div class="monument-start-controls">
+                  <label class="store-field">
+                    <span>Wager RP</span>
+                    <input type="number" name="wager_rp" min="<?= e((string) ($monument_config['minWagerRp'] ?? 100)) ?>" max="<?= e((string) ($monument_config['maxWagerRp'] ?? 10000)) ?>" step="1" value="<?= e((string) ($monument_config['minWagerRp'] ?? 100)) ?>" <?= $can_play && $monument_enabled ? '' : 'disabled' ?>>
+                  </label>
+                  <button class="btn btn-primary" type="submit" <?= $can_play && $monument_enabled ? '' : 'disabled' ?>>Enter Monument</button>
+                </div>
+              </form>
+            </section>
+
+            <section class="monument-run" data-monument-run hidden aria-live="polite">
+              <div class="monument-resource-strip" data-monument-resources></div>
+              <div class="monument-run-grid">
+                <aside class="monument-run-sidebar">
+                  <div class="monument-sidebar-card" data-monument-readiness></div>
+                  <div class="monument-sidebar-card">
+                    <div class="monument-card-head"><strong>Carried inventory</strong><span data-monument-slots></span></div>
+                    <div class="monument-inventory" data-monument-inventory></div>
+                  </div>
+                </aside>
+
+                <div class="monument-run-main">
+                  <div class="monument-map" data-monument-map aria-label="Branching monument map"></div>
+                  <div class="monument-decision" data-monument-decision></div>
+                </div>
+
+                <aside class="monument-run-log">
+                  <div class="monument-sidebar-card">
+                    <div class="monument-card-head"><strong>Run log</strong><span data-monument-turn></span></div>
+                    <ol data-monument-log></ol>
+                  </div>
+                </aside>
+              </div>
+            </section>
+
+            <section class="monument-history-block">
+              <div class="monument-card-head">
+                <div>
+                  <p class="section-kicker">Recovery and audit</p>
+                  <h3>Recent extraction runs</h3>
+                </div>
+                <button class="btn btn-secondary btn-small" type="button" data-monument-refresh>Refresh</button>
+              </div>
+              <div class="monument-history" data-monument-history></div>
+            </section>
+
+            <details class="monument-rules">
+              <summary>How Monument Extraction works</summary>
+              <div class="monument-rules-grid">
+                <p><strong>Route.</strong> Enter only connected rooms. You see danger and possible reward, never the hidden encounter roll.</p>
+                <p><strong>Fight.</strong> Sneak, assault, rush, or retreat. Every success chance and resource cost comes from the server.</p>
+                <p><strong>Pack.</strong> Utility and payout loot share slots. Replace carried items when a better find will not fit.</p>
+                <p><strong>Extract.</strong> Main Gate, Sewer, and Rooftop have different prerequisites, odds, fees, and bonuses.</p>
+              </div>
+            </details>
+          </div>
+        </article>
+
         <article class="metal-panel rp-game-panel" id="rp-panel-high-low" role="tabpanel" aria-labelledby="rp-tab-high-low" data-rp-game-panel="high-low" hidden>
           <div class="rp-game-panel-grid">
             <div>
@@ -493,6 +620,8 @@ $rp_game_tabs = [
     </div>
   </div>
 </section>
+
+<script src="<?= e(asset_url('js/monument-extraction.js')) ?>" defer></script>
 
 <section class="section alt">
   <div class="section-inner split-panel rp-games-info-grid">

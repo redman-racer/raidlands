@@ -18,7 +18,7 @@ deployment:
 
     # Protect private runtime data while preserving host-created JSON/secrets.
     - '/bin/mkdir -p "$DEPLOYPATH/data"'
-    - '/bin/cp data/.htaccess data/raidlands-secrets.example.php "$DEPLOYPATH/data/"'
+    - '/bin/cp data/.htaccess data/raidlands-secrets.example.php data/monument-extraction-default.json "$DEPLOYPATH/data/"'
 
     # vendor/ is ignored in Git. Copy it if present, otherwise install it on-host.
     - 'if [ -d vendor ]; then /bin/cp -R vendor "$DEPLOYPATH"; fi'

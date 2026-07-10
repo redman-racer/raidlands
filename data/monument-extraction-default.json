@@ -1,0 +1,82 @@
+{
+  "schemaVersion": 1,
+  "enabled": false,
+  "minWagerRp": 100,
+  "maxWagerRp": 10000,
+  "maxPayoutRp": 100000,
+  "activeRunTtlMinutes": 60,
+  "dailyWagerLimitRp": 50000,
+  "cooldownSeconds": 5,
+  "targetOptimalRtp": 0.92,
+  "minChanceBps": 500,
+  "maxChanceBps": 9500,
+  "lowHealthThreshold": 30,
+  "lowHealthPenaltyBps": 800,
+  "armorReduction": 18,
+  "syringeHealing": 35,
+  "ammoBoxAmmo": 4,
+  "maxAmmo": 20,
+  "maxHealth": 100,
+  "maxAlert": 10,
+  "loadouts": {
+    "scout": {"label": "Scout", "health": 100, "ammo": 4, "syringes": 2, "armor": 0, "slots": 5, "description": "Extra route intelligence on every layer."},
+    "enforcer": {"label": "Enforcer", "health": 100, "ammo": 8, "syringes": 1, "armor": 1, "slots": 4, "description": "+5% Controlled Assault chance."},
+    "scavenger": {"label": "Scavenger", "health": 100, "ammo": 5, "syringes": 1, "armor": 0, "slots": 6, "description": "+10% common and uncommon loot value."}
+  },
+  "approaches": {
+    "sneak": {"label": "Sneak", "chanceBps": 1000, "ammoCost": 0, "successAlert": 0, "failureAlert": 1, "lootValueBps": 7500, "damageScaleBps": 8500},
+    "controlled_assault": {"label": "Controlled Assault", "chanceBps": 600, "ammoCost": 2, "successAlert": 1, "failureAlert": 1, "lootValueBps": 10000, "damageScaleBps": 10000},
+    "rush": {"label": "Rush", "chanceBps": 0, "ammoCost": 1, "successAlert": 2, "failureAlert": 3, "lootValueBps": 12000, "damageScaleBps": 12500},
+    "retreat": {"label": "Retreat", "chanceBps": 9000, "ammoCost": 0, "successAlert": 0, "failureAlert": 0, "lootValueBps": 0, "damageScaleBps": 4000}
+  },
+  "roomArchetypes": {
+    "storage": {"label": "Storage", "danger": "Low", "rewardHint": "Common loot / utility", "encounters": ["storage_scientists", "shotgun_corridor"]},
+    "medical": {"label": "Medical Wing", "danger": "Low", "rewardHint": "Recovery / medical", "encounters": ["wounded_scientist", "quarantine_lock"]},
+    "security": {"label": "Security Office", "danger": "Medium", "rewardHint": "Intel / access", "encounters": ["security_cameras", "locked_courtyard"]},
+    "generator": {"label": "Generator Room", "danger": "Medium", "rewardHint": "Power / extraction", "encounters": ["damaged_generator", "maintenance_swarm"]},
+    "armory": {"label": "Armory", "danger": "High", "rewardHint": "Ammo / military loot", "encounters": ["alarmed_armory", "heavy_patrol"]},
+    "research": {"label": "Research Lab", "danger": "High", "rewardHint": "Intel / rare loot", "encounters": ["radiation_terminal", "heavy_patrol"]},
+    "vault": {"label": "Elite Vault", "danger": "Extreme", "rewardHint": "Epic / legendary loot", "encounters": ["elite_lockdown", "locked_courtyard"]},
+    "rooftop": {"label": "Rooftop", "danger": "Extreme", "rewardHint": "Beacon / extraction", "encounters": ["rooftop_sniper", "helicopter_sweep"]}
+  },
+  "encounters": {
+    "storage_scientists": {"name": "Crate Guard", "description": "Two scientists watch a line of sealed storage crates.", "baseChanceBps": 7200, "damage": [10, 24], "loot": ["scrap_bundle", "components_crate", "fuse"]},
+    "shotgun_corridor": {"name": "Trap Corridor", "description": "A shotgun trap covers the shortest route through storage.", "baseChanceBps": 7600, "damage": [12, 28], "loot": ["components_crate", "ammo_box"]},
+    "security_cameras": {"name": "Live Camera Grid", "description": "Cameras sweep a locked desk and security console.", "baseChanceBps": 6600, "damage": [12, 26], "loot": ["blue_keycard", "intel_fragment", "weapon_parts"]},
+    "damaged_generator": {"name": "Exposed Generator", "description": "Live wiring spits sparks across the power controls.", "baseChanceBps": 7000, "damage": [10, 25], "loot": ["fuse", "components_crate", "armor_plate"]},
+    "wounded_scientist": {"name": "Occupied Ward", "description": "A wounded scientist blocks the only stocked cabinet.", "baseChanceBps": 7600, "damage": [8, 22], "loot": ["medical_supplies", "medical_syringe", "scrap_bundle"]},
+    "alarmed_armory": {"name": "Alarmed Keypad", "description": "The armory door is tied to a screaming local alarm.", "baseChanceBps": 6000, "damage": [18, 36], "loot": ["military_crate", "weapon_parts", "ammo_box", "armor_plate"]},
+    "radiation_terminal": {"name": "Radiation Terminal", "description": "A research terminal sits inside a leaking hot zone.", "baseChanceBps": 5700, "damage": [20, 38], "loot": ["research_cache", "intel_fragment", "medical_supplies"]},
+    "heavy_patrol": {"name": "Heavy Patrol", "description": "A heavy scientist patrol controls the central crossing.", "baseChanceBps": 5200, "damage": [24, 44], "loot": ["military_crate", "research_cache", "armor_plate"]},
+    "locked_courtyard": {"name": "Open Courtyard", "description": "A locked military crate is exposed on every side.", "baseChanceBps": 5800, "damage": [18, 40], "loot": ["military_crate", "blue_keycard", "weapon_parts"]},
+    "rooftop_sniper": {"name": "Sniper Position", "description": "A rooftop marksman holds the signal platform.", "baseChanceBps": 5000, "damage": [24, 46], "loot": ["signal_beacon", "research_cache", "military_crate"]},
+    "helicopter_sweep": {"name": "Search Sweep", "description": "A patrol helicopter sweeps the rooftop approaches.", "baseChanceBps": 4500, "damage": [30, 55], "loot": ["signal_beacon", "elite_crate"]},
+    "elite_lockdown": {"name": "Elite Vault Lockdown", "description": "Lockdown shutters close around the monument's richest cache.", "baseChanceBps": 4000, "damage": [32, 62], "loot": ["elite_crate", "prototype_case", "research_cache"]},
+    "quarantine_lock": {"name": "Quarantine Lock", "description": "A sealed ward cycles between purge and open states.", "baseChanceBps": 6900, "damage": [10, 28], "loot": ["medical_syringe", "medical_supplies", "intel_fragment"]},
+    "maintenance_swarm": {"name": "Maintenance Ambush", "description": "Automated defenses wake as the backup grid starts.", "baseChanceBps": 6400, "damage": [14, 32], "loot": ["fuse", "ammo_box", "components_crate"]}
+  },
+  "items": {
+    "scrap_bundle": {"label": "Scrap Bundle", "category": "PAYOUT_LOOT", "rarity": "common", "slots": 1, "valueBps": 1800},
+    "components_crate": {"label": "Components Crate", "category": "PAYOUT_LOOT", "rarity": "common", "slots": 1, "valueBps": 2800},
+    "medical_supplies": {"label": "Medical Supplies", "category": "PAYOUT_LOOT", "rarity": "uncommon", "slots": 1, "valueBps": 3800},
+    "weapon_parts": {"label": "Weapon Parts", "category": "PAYOUT_LOOT", "rarity": "uncommon", "slots": 1, "valueBps": 5200},
+    "military_crate": {"label": "Military Crate", "category": "PAYOUT_LOOT", "rarity": "rare", "slots": 2, "valueBps": 9000},
+    "research_cache": {"label": "Research Cache", "category": "PAYOUT_LOOT", "rarity": "rare", "slots": 2, "valueBps": 11500},
+    "elite_crate": {"label": "Elite Crate", "category": "PAYOUT_LOOT", "rarity": "epic", "slots": 3, "valueBps": 19000},
+    "prototype_case": {"label": "Locked Prototype Case", "category": "PAYOUT_LOOT", "rarity": "legendary", "slots": 3, "valueBps": 27500},
+    "fuse": {"label": "Fuse", "category": "EXTRACTION_KEY", "rarity": "uncommon", "slots": 1, "valueBps": 0},
+    "blue_keycard": {"label": "Blue Keycard", "category": "EQUIPMENT", "rarity": "uncommon", "slots": 1, "valueBps": 0},
+    "signal_beacon": {"label": "Signal Beacon", "category": "EXTRACTION_KEY", "rarity": "rare", "slots": 1, "valueBps": 0},
+    "armor_plate": {"label": "Armor Plate", "category": "CONSUMABLE", "rarity": "uncommon", "slots": 1, "valueBps": 0},
+    "ammo_box": {"label": "Ammo Box", "category": "CONSUMABLE", "rarity": "common", "slots": 1, "valueBps": 0},
+    "medical_syringe": {"label": "Medical Syringe", "category": "CONSUMABLE", "rarity": "common", "slots": 1, "valueBps": 0},
+    "intel_fragment": {"label": "Intel Fragment", "category": "INTEL", "rarity": "uncommon", "slots": 0, "valueBps": 0}
+  },
+  "extractions": {
+    "main_gate": {"label": "Main Gate", "chanceBps": 7600, "modifierBps": 10000, "minDepth": 3, "description": "Dependable fallback; danger rises with alert."},
+    "sewer": {"label": "Sewer Exit", "chanceBps": 8600, "modifierBps": 9000, "minDepth": 2, "description": "Requires a fuse or restored power; 10% payout fee."},
+    "rooftop": {"label": "Rooftop Extraction", "chanceBps": 6200, "modifierBps": 11500, "minDepth": 5, "description": "Requires the rooftop and a signal beacon; 15% payout bonus."}
+  },
+  "mapGeneration": {"layerCounts": [1, 2, 3, 3, 2, 1]},
+  "uiText": {"title": "Monument Extraction", "shortRules": "Wager RP, choose routes and tactics, secure loot, then survive an extraction to bank it."}
+}
