@@ -957,12 +957,18 @@
 }
 
 .airstrike-editor-playback .admin-field {
+  display: grid;
+  grid-template-columns: max-content minmax(128px, 1fr);
+  align-items: center;
   min-width: 0;
-  gap: 3px;
+  min-height: 24px;
+  gap: 6px;
 }
 
 .airstrike-editor-playback .admin-field span {
   font-size: 10px;
+  line-height: 1;
+  white-space: nowrap;
 }
 
 .airstrike-editor-playback select {
@@ -970,6 +976,7 @@
   min-height: 0;
   padding: 0 22px 0 7px;
   font-size: 11px;
+  line-height: 1;
 }
 
 .airstrike-editor-timeline label,
