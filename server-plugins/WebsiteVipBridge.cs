@@ -58,6 +58,8 @@ namespace Oxide.Plugins
         private readonly Dictionary<string, HeatmapBucket> heatmapBuckets = new Dictionary<string, HeatmapBucket>(StringComparer.OrdinalIgnoreCase);
         private DateTime heatmapWindowStartedAt = DateTime.UtcNow;
         private DateTime lastHeatmapSyncAt = DateTime.MinValue;
+        private bool heatmapEndpointMissing;
+        private bool isUnloading;
 
         [PluginReference]
         private Plugin ServerRewards;
@@ -913,6 +915,7 @@ namespace Oxide.Plugins
 
         private void Unload()
         {
+            isUnloading = true;
             syncTimer?.Destroy();
             statsTimer?.Destroy();
             pendingStatsTimer?.Destroy();
@@ -1265,6 +1268,7 @@ namespace Oxide.Plugins
                 return;
             }
 
+            heatmapEndpointMissing = false;
             SyncHeatmapSnapshot();
             ReplyBridge(player, "Requested heatmap aggregate sync.");
         }
@@ -1281,7 +1285,7 @@ namespace Oxide.Plugins
             var last = lastHeatmapSyncAt == DateTime.MinValue
                 ? "never"
                 : lastHeatmapSyncAt.ToString("yyyy-MM-dd HH:mm:ss 'UTC'");
-            var message = $"Heatmap enabled={config.HeatmapEnabled}, interval={interval}s, bucket_size={Math.Max(1, config.HeatmapBucketSize)}m, retention={Math.Max(1, config.HeatmapRetentionHours)}h, include_online_positions={config.HeatmapIncludeOnlinePositions}, pending_buckets={heatmapBuckets.Count}, last_success={last}.";
+            var message = $"Heatmap enabled={config.HeatmapEnabled}, endpoint_missing={heatmapEndpointMissing}, interval={interval}s, bucket_size={Math.Max(1, config.HeatmapBucketSize)}m, retention={Math.Max(1, config.HeatmapRetentionHours)}h, include_online_positions={config.HeatmapIncludeOnlinePositions}, pending_buckets={heatmapBuckets.Count}, last_success={last}.";
 
             ReplyBridge(player, message);
         }
@@ -3566,7 +3570,7 @@ namespace Oxide.Plugins
 
         private void SyncHeatmapSnapshot()
         {
-            if (!IsHeatmapEnabled() || !CanRequest())
+            if (!IsHeatmapEnabled() || !CanRequest() || heatmapEndpointMissing)
             {
                 return;
             }
@@ -3605,6 +3609,13 @@ namespace Oxide.Plugins
             {
                 if (!IsSuccess(code, response, out var error))
                 {
+                    if (code == 404)
+                    {
+                        heatmapEndpointMissing = true;
+                        PrintWarning("Heatmap snapshot endpoint returned 404. Heatmap posting is paused until WebsiteVipBridge is reloaded or websitevip.heatmap.sync is run after the website endpoint is deployed.");
+                        return;
+                    }
+
                     PrintWarning($"Heatmap snapshot sync failed: {error}");
                     return;
                 }
@@ -6179,12 +6190,22 @@ namespace Oxide.Plugins
 
         private void SendGet(string url, Action<int, string> callback)
         {
+            if (isUnloading)
+            {
+                return;
+            }
+
             var headers = BuildHeaders("GET", url, "");
             webrequest.Enqueue(url, null, (code, response) => RunWebCallback($"GET {url}", callback, code, response), this, RequestMethod.GET, headers, WebRequestTimeoutSeconds());
         }
 
         private void SendPost(string url, string body, Action<int, string> callback)
         {
+            if (isUnloading)
+            {
+                return;
+            }
+
             var headers = BuildHeaders("POST", url, body);
             headers["Content-Type"] = "application/json";
             webrequest.Enqueue(url, body, (code, response) => RunWebCallback($"POST {url}", callback, code, response), this, RequestMethod.POST, headers, WebRequestTimeoutSeconds());
@@ -6197,6 +6218,11 @@ namespace Oxide.Plugins
 
         private void RunWebCallback(string context, Action<int, string> callback, int code, string response)
         {
+            if (isUnloading)
+            {
+                return;
+            }
+
             try
             {
                 callback?.Invoke(code, response ?? "");

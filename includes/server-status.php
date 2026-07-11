@@ -771,9 +771,61 @@ function raidlands_server_heatmap_clean_metric($value): string
 {
     $metric = strtolower(trim((string) $value));
     $metric = preg_replace('/[^a-z0-9_-]+/', '_', $metric) ?? '';
+    $aliases = [
+        'player_deaths' => 'deaths',
+        'death' => 'deaths',
+        'pvp_kills' => 'kills',
+        'player_kills' => 'kills',
+        'npc_deaths' => 'npc_fights',
+        'deaths_by_npc' => 'npc_fights',
+        'npc_kills' => 'npc_fights',
+        'roambots_activity' => 'roambots',
+        'online_positions' => 'loot_pvp',
+        'activity' => 'loot_pvp',
+    ];
+
+    if (isset($aliases[$metric])) {
+        return $aliases[$metric];
+    }
+
     $allowed = ['deaths', 'kills', 'npc_fights', 'loot_pvp', 'roambots'];
 
     return in_array($metric, $allowed, true) ? $metric : 'deaths';
+}
+
+function raidlands_server_heatmap_bucket_metric_values(array $bucket, array $payload): array
+{
+    if (array_key_exists('value', $bucket)) {
+        return [
+            raidlands_server_heatmap_clean_metric($bucket['metric'] ?? $payload['metric'] ?? 'deaths') => max(0, round((float) ($bucket['value'] ?? 0), 4)),
+        ];
+    }
+
+    $values = [];
+    $metric_fields = [
+        'player_deaths',
+        'pvp_kills',
+        'npc_deaths',
+        'deaths_by_npc',
+        'roambots_activity',
+        'online_positions',
+        'deaths',
+        'kills',
+        'npc_fights',
+        'loot_pvp',
+        'roambots',
+    ];
+
+    foreach ($metric_fields as $field) {
+        if (!array_key_exists($field, $bucket) || !is_numeric($bucket[$field])) {
+            continue;
+        }
+
+        $metric = raidlands_server_heatmap_clean_metric($field);
+        $values[$metric] = ($values[$metric] ?? 0) + max(0, round((float) $bucket[$field], 4));
+    }
+
+    return $values;
 }
 
 function raidlands_server_heatmap_range(string $range): array
@@ -899,27 +951,32 @@ function raidlands_server_heatmap_ingest_snapshot(array $payload, string $header
             }
         }
 
-        $metric = raidlands_server_heatmap_clean_metric($bucket['metric'] ?? $payload['metric'] ?? 'deaths');
-        $x = (int) round((float) ($bucket['x'] ?? 0));
-        $z = (int) round((float) ($bucket['z'] ?? 0));
-        $value = max(0, round((float) ($bucket['value'] ?? 0), 4));
+        $x = (int) round((float) ($bucket['x'] ?? $bucket['center_x'] ?? $bucket['bucket_x'] ?? 0));
+        $z = (int) round((float) ($bucket['z'] ?? $bucket['center_z'] ?? $bucket['bucket_z'] ?? 0));
         $sample_count = max(0, min(1000000, (int) ($bucket['sample_count'] ?? $bucket['sampleCount'] ?? 0)));
         $window_start = raidlands_server_heatmap_timestamp($bucket['window_start'] ?? $bucket['windowStart'] ?? $payload['window_start'] ?? '', '-1 hour');
         $window_end = raidlands_server_heatmap_timestamp($bucket['window_end'] ?? $bucket['windowEnd'] ?? $payload['window_end'] ?? '', 'now');
+        $metric_values = raidlands_server_heatmap_bucket_metric_values($bucket, $payload);
 
-        $statement->execute([
-            'server_id' => $server_id,
-            'wipe_key' => $wipe_key,
-            'bucket_size' => $bucket_size,
-            'x' => $x,
-            'z' => $z,
-            'metric' => $metric,
-            'value' => $value,
-            'sample_count' => $sample_count,
-            'window_start' => $window_start,
-            'window_end' => $window_end,
-        ]);
-        $count += 1;
+        foreach ($metric_values as $metric => $value) {
+            if ($value <= 0) {
+                continue;
+            }
+
+            $statement->execute([
+                'server_id' => $server_id,
+                'wipe_key' => $wipe_key,
+                'bucket_size' => $bucket_size,
+                'x' => $x,
+                'z' => $z,
+                'metric' => $metric,
+                'value' => $value,
+                'sample_count' => $sample_count,
+                'window_start' => $window_start,
+                'window_end' => $window_end,
+            ]);
+            $count += 1;
+        }
     }
 
     return [
