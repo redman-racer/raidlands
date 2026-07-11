@@ -343,6 +343,7 @@ $editor_config = [
               <button class="btn btn-secondary btn-small" type="button" data-editor-step-forward aria-label="Step forward">+0.1s</button>
               <label class="airstrike-editor-checkbox"><input type="checkbox" data-editor-loop> Loop</label>
               <label class="airstrike-editor-checkbox"><input type="checkbox" data-editor-follow-vehicle> Follow vehicle</label>
+              <label class="airstrike-editor-checkbox"><input type="checkbox" data-editor-ride-vehicle> Ride vehicle</label>
               <label class="admin-field">
                 <span>Ordnance rays</span>
                 <select data-editor-release-visibility>

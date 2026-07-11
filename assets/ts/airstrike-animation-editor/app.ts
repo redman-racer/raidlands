@@ -94,6 +94,7 @@ interface EditorElements {
   stepForward: HTMLButtonElement;
   loop: HTMLInputElement;
   followVehicle: HTMLInputElement;
+  rideVehicle: HTMLInputElement;
   releaseVisibility: HTMLSelectElement;
   addRelease: HTMLButtonElement;
   duplicateRelease: HTMLButtonElement;
@@ -327,7 +328,18 @@ class AirstrikeEditorApp {
     this.elements.stepBack.addEventListener("click", () => this.stepPlayback(-0.1));
     this.elements.stepForward.addEventListener("click", () => this.stepPlayback(0.1));
     this.elements.followVehicle.addEventListener("change", () => {
+      if (this.elements.followVehicle.checked) {
+        this.elements.rideVehicle.checked = false;
+        this.viewport.setVehicleRideEnabled(false);
+      }
       this.viewport.setVehicleFollowEnabled(this.elements.followVehicle.checked);
+    });
+    this.elements.rideVehicle.addEventListener("change", () => {
+      if (this.elements.rideVehicle.checked) {
+        this.elements.followVehicle.checked = false;
+        this.viewport.setVehicleFollowEnabled(false);
+      }
+      this.viewport.setVehicleRideEnabled(this.elements.rideVehicle.checked);
     });
     this.elements.releaseVisibility.addEventListener("change", () => this.handleReleaseVisibilityChange());
     this.elements.globalSpeed.addEventListener("input", () => this.handleGlobalSpeedInput());
@@ -1708,6 +1720,7 @@ function collectElements(root: HTMLElement): EditorElements {
     stepForward: query(root, "[data-editor-step-forward]"),
     loop: query(root, "[data-editor-loop]"),
     followVehicle: query(root, "[data-editor-follow-vehicle]"),
+    rideVehicle: query(root, "[data-editor-ride-vehicle]"),
     releaseVisibility: query(root, "[data-editor-release-visibility]"),
     addRelease: query(root, "[data-editor-release-add]"),
     duplicateRelease: query(root, "[data-editor-release-duplicate]"),

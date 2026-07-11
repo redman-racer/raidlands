@@ -10,6 +10,7 @@ import {
   GridHelper,
   Line,
   LineBasicMaterial,
+  MathUtils,
   Mesh,
   MeshBasicMaterial,
   MeshStandardMaterial,
@@ -100,8 +101,17 @@ export class AirstrikeViewport {
   private currentVehicle = "";
   private currentOrientationKey = "";
   private followVehicle = false;
+  private rideVehicle = false;
+  private rideYawDegrees = 0;
+  private ridePitchDegrees = 0;
+  private ridePointerId = -1;
+  private readonly ridePointerStart = new Vector2();
+  private ridePointerStartYaw = 0;
+  private ridePointerStartPitch = 0;
   private readonly onResize = () => this.resize();
   private readonly onPointerDown = (event: PointerEvent) => this.handlePointerDown(event);
+  private readonly onRidePointerMove = (event: PointerEvent) => this.handleRidePointerMove(event);
+  private readonly onRidePointerEnd = (event: PointerEvent) => this.handleRidePointerEnd(event);
 
   public constructor(container: HTMLElement, options: AirstrikeViewportOptions) {
     this.container = container;
@@ -124,7 +134,7 @@ export class AirstrikeViewport {
     this.transform.setMode("translate");
     this.transform.setSpace("world");
     this.transform.addEventListener("dragging-changed", (event) => {
-      this.orbit.enabled = !Boolean(event.value);
+      this.syncInteractiveControls(Boolean(event.value));
     });
     this.transform.addEventListener("objectChange", () => this.handleTransformObjectChange());
 
@@ -205,8 +215,25 @@ export class AirstrikeViewport {
   public setVehicleFollowEnabled(enabled: boolean): void {
     this.followVehicle = enabled;
     if (enabled) {
+      this.rideVehicle = false;
+    }
+    this.syncInteractiveControls();
+    if (enabled) {
       this.followVehicleCamera(true);
     }
+  }
+
+  public setVehicleRideEnabled(enabled: boolean): void {
+    this.rideVehicle = enabled;
+    if (enabled) {
+      this.followVehicle = false;
+      this.rideYawDegrees = 0;
+      this.ridePitchDegrees = 0;
+      this.rideVehicleCamera();
+    } else {
+      this.endRidePointerDrag();
+    }
+    this.syncInteractiveControls();
   }
 
   public frameTarget(): void {
@@ -230,6 +257,9 @@ export class AirstrikeViewport {
   public dispose(): void {
     window.cancelAnimationFrame(this.animationFrame);
     window.removeEventListener("resize", this.onResize);
+    window.removeEventListener("pointermove", this.onRidePointerMove);
+    window.removeEventListener("pointerup", this.onRidePointerEnd);
+    window.removeEventListener("pointercancel", this.onRidePointerEnd);
     this.container.removeEventListener("pointerdown", this.onPointerDown);
     this.orbit.dispose();
     this.transform.dispose();
@@ -274,6 +304,10 @@ export class AirstrikeViewport {
 
   private handlePointerDown(event: PointerEvent): void {
     if (event.button !== 0 || !this.profile) {
+      return;
+    }
+    if (this.rideVehicle) {
+      this.startRidePointerDrag(event);
       return;
     }
     const bounds = this.renderer.domElement.getBoundingClientRect();
@@ -524,6 +558,57 @@ export class AirstrikeViewport {
     this.applyDynamicControls(bounds);
   }
 
+  private syncInteractiveControls(transformDragging = false): void {
+    this.orbit.enabled = !transformDragging && !this.rideVehicle;
+    this.transform.enabled = !this.rideVehicle;
+    if (this.rideVehicle) {
+      this.transform.detach();
+    } else {
+      this.selectWaypoint(this.selectedWaypointId, false);
+    }
+  }
+
+  private startRidePointerDrag(event: PointerEvent): void {
+    event.preventDefault();
+    this.ridePointerId = event.pointerId;
+    this.ridePointerStart.set(event.clientX, event.clientY);
+    this.ridePointerStartYaw = this.rideYawDegrees;
+    this.ridePointerStartPitch = this.ridePitchDegrees;
+    this.renderer.domElement.setPointerCapture(event.pointerId);
+    window.addEventListener("pointermove", this.onRidePointerMove);
+    window.addEventListener("pointerup", this.onRidePointerEnd);
+    window.addEventListener("pointercancel", this.onRidePointerEnd);
+  }
+
+  private handleRidePointerMove(event: PointerEvent): void {
+    if (event.pointerId !== this.ridePointerId) {
+      return;
+    }
+    const deltaX = event.clientX - this.ridePointerStart.x;
+    const deltaY = event.clientY - this.ridePointerStart.y;
+    this.rideYawDegrees = this.ridePointerStartYaw - deltaX * 0.16;
+    this.ridePitchDegrees = MathUtils.clamp(this.ridePointerStartPitch + deltaY * 0.16, -78, 78);
+    this.rideVehicleCamera();
+  }
+
+  private handleRidePointerEnd(event: PointerEvent): void {
+    if (event.pointerId === this.ridePointerId) {
+      this.endRidePointerDrag();
+    }
+  }
+
+  private endRidePointerDrag(): void {
+    if (this.ridePointerId >= 0) {
+      if (this.renderer.domElement.hasPointerCapture(this.ridePointerId)) {
+        this.renderer.domElement.releasePointerCapture(this.ridePointerId);
+      }
+    }
+    this.ridePointerId = -1;
+    window.removeEventListener("pointermove", this.onRidePointerMove);
+    window.removeEventListener("pointerup", this.onRidePointerEnd);
+    window.removeEventListener("pointercancel", this.onRidePointerEnd);
+  }
+
   private snapCameraToDirection(direction: Vector3, orientation: ViewOrientation): void {
     const target = this.orbit.target.clone();
     const distance = Math.max(this.camera.position.distanceTo(target), 80);
@@ -624,7 +709,9 @@ export class AirstrikeViewport {
     const pose = evaluateSourcePose(this.profile, time);
     this.vehicleRoot.position.copy(unityPositionToThreeVector(pose.position));
     this.vehicleRoot.quaternion.copy(unityQuaternionValueToThreeQuaternion(pose.rotation));
-    if (this.followVehicle) {
+    if (this.rideVehicle) {
+      this.rideVehicleCamera();
+    } else if (this.followVehicle) {
       this.followVehicleCamera();
     }
   }
@@ -648,5 +735,34 @@ export class AirstrikeViewport {
     this.camera.position.copy(nextTarget.clone().add(offset));
     this.camera.lookAt(nextTarget);
     this.applyDynamicControls(bounds);
+  }
+
+  private rideVehicleCamera(): void {
+    if (this.vehicleRoot.children.length === 0) {
+      return;
+    }
+    const bounds = new Box3().setFromObject(this.vehicleRoot);
+    if (bounds.isEmpty()) {
+      return;
+    }
+    const vehicleCenter = new Vector3();
+    bounds.getCenter(vehicleCenter);
+    const vehicleRotation = this.vehicleRoot.quaternion;
+    const ridePosition = new Vector3(0, 8, -28).applyQuaternion(vehicleRotation).add(vehicleCenter);
+    const yaw = MathUtils.degToRad(this.rideYawDegrees);
+    const pitch = MathUtils.degToRad(this.ridePitchDegrees);
+    const localLookDirection = new Vector3(
+      Math.sin(yaw) * Math.cos(pitch),
+      Math.sin(pitch),
+      Math.cos(yaw) * Math.cos(pitch),
+    ).normalize();
+    const lookDirection = localLookDirection.applyQuaternion(vehicleRotation).normalize();
+    const lookTarget = ridePosition.clone().add(lookDirection.multiplyScalar(90));
+    this.camera.up.copy(new Vector3(0, 1, 0).applyQuaternion(vehicleRotation).normalize());
+    this.camera.position.copy(ridePosition);
+    this.camera.lookAt(lookTarget);
+    this.orbit.target.copy(lookTarget);
+    this.applyDynamicControls(bounds);
+    this.emitViewOrientation(true);
   }
 }

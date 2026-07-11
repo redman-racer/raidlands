@@ -942,7 +942,7 @@
 
 .airstrike-editor-playback {
   display: grid;
-  grid-template-columns: auto auto auto auto auto minmax(160px, 240px);
+  grid-template-columns: auto auto auto auto auto auto minmax(160px, 240px);
   align-items: end;
   gap: 8px;
 }
@@ -1284,7 +1284,7 @@
   }
 
   .airstrike-editor-playback {
-    grid-template-columns: auto auto auto auto auto minmax(140px, 1fr);
+    grid-template-columns: auto auto auto auto auto auto minmax(140px, 1fr);
   }
 
   .airstrike-editor-bottom-grid {
