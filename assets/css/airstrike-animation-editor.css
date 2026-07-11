@@ -508,7 +508,7 @@
 }
 
 .airstrike-editor.is-right-collapsed .airstrike-editor-orientation {
-  right: 18px;
+  right: 58px;
 }
 
 .airstrike-editor-orientation-face,
@@ -589,14 +589,14 @@
 
 .airstrike-editor-orientation-cube::before {
   content: attr(data-current-label);
-  top: -20px;
-  min-width: 58px;
-  padding: 4px 6px;
+  top: 3px;
+  min-width: 44px;
+  padding: 2px 5px;
   border: 1px solid rgba(129, 167, 174, .22);
   border-radius: 5px;
   background: rgba(3, 7, 8, .84);
   color: #e7f8fb;
-  font: 900 10px/1 var(--font-body, Arial, sans-serif);
+  font: 900 8px/1 var(--font-body, Arial, sans-serif);
   text-transform: uppercase;
   box-shadow: 0 8px 18px rgba(0, 0, 0, .24);
 }
@@ -615,7 +615,7 @@
   left: 50%;
   width: 32px;
   height: 32px;
-  transform: translate(-50%, -57%) rotateX(calc(-1 * var(--orientation-pitch))) rotateY(var(--orientation-yaw));
+  transform: translate(-50%, -24%) rotateX(calc(-1 * var(--orientation-pitch))) rotateY(var(--orientation-yaw));
   transform-style: preserve-3d;
   transition: transform .08s linear;
 }
