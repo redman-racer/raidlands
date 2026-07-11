@@ -803,6 +803,12 @@ class TerrainViewer {
     const worldSize = this.terrain.worldSize || 4500;
     const oceanSize = worldSize * 8;
     const waterLevel = Number.isFinite(this.terrain.waterLevel) ? this.terrain.waterLevel || 0 : 0;
+    const sampledMinHeight = Number.isFinite(this.terrain.minHeight)
+      ? this.terrain.minHeight || 0
+      : Math.min(...this.terrain.heights.filter((height) => Number.isFinite(height)));
+    const oceanFloorHeight = Number.isFinite(sampledMinHeight)
+      ? Math.min(sampledMinHeight - 6, waterLevel - 80)
+      : waterLevel - 120;
     const geometry = new PlaneGeometry(oceanSize, oceanSize, 1, 1);
     const material = new MeshStandardMaterial({
       color: 0x06393a,
@@ -815,7 +821,7 @@ class TerrainViewer {
     const mesh = new Mesh(geometry, material);
     mesh.name = "raidlands-extended-ocean-floor";
     mesh.rotation.x = -Math.PI / 2;
-    mesh.position.y = waterLevel - 4;
+    mesh.position.y = oceanFloorHeight;
     mesh.renderOrder = -10;
     return mesh;
   }
@@ -932,6 +938,12 @@ class TerrainViewer {
 
     const elapsed = now - this.tourStartedAt;
     if (elapsed >= this.tourDuration) {
+      if (this.tourStyle === "orbit") {
+        this.tourStartedAt += this.tourDuration * Math.floor(elapsed / this.tourDuration);
+        this.activePose = null;
+        return;
+      }
+
       this.startNextTour(now, true);
       return;
     }
