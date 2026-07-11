@@ -566,7 +566,9 @@ class TerrainViewer {
         // height and fallback colour from the reflected source column.
         const index = row * resolution + (resolution - 1 - col);
         positions.push(x, this.terrain.heights[index] || 0, z);
-        uvs.push(u, 1 - v);
+        // The Rust map image reaches WebGL with its horizontal axis reversed.
+        // Mirror the texture coordinates to align its coastline with the terrain grid.
+        uvs.push(1 - u, 1 - v);
         pushColor(colors, this.terrain.colors?.[index], this.terrain.heights[index] || 0, this.terrain);
       }
     }
