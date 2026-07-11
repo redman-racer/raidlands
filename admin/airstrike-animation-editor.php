@@ -288,30 +288,30 @@ $editor_config = [
             </div>
           </section>
 
-          <section class="airstrike-editor-palette-group" aria-label="Ground palettes">
+          <section class="airstrike-editor-palette-group" aria-label="Viewport reference palettes">
             <div class="airstrike-editor-palette-group-head">
-              <span>Ground</span>
-              <small>Viewport</small>
+              <span>Viewport Reference</span>
+              <small>Layers</small>
             </div>
             <div class="airstrike-editor-palette-zone" data-editor-palette-zone="ground">
               <details class="airstrike-editor-palette" data-editor-palette="ground-reference" open>
                 <summary class="airstrike-editor-palette-summary">
                   <span class="airstrike-editor-palette-grip" data-editor-palette-drag title="Move panel">||</span>
-                  <span class="airstrike-editor-palette-title"><small>Map</small><strong>Ground</strong></span>
-                  <button class="airstrike-editor-palette-collapse" type="button" data-editor-palette-collapse aria-label="Minimize ground" title="Minimize ground"></button>
+                  <span class="airstrike-editor-palette-title"><small>Viewport</small><strong>Reference Layers</strong></span>
+                  <button class="airstrike-editor-palette-collapse" type="button" data-editor-palette-collapse aria-label="Minimize reference layers" title="Minimize reference layers"></button>
                 </summary>
-                <div class="airstrike-editor-palette-body">
+                <div class="airstrike-editor-palette-body airstrike-editor-reference-toggles">
                   <label class="airstrike-editor-checkbox" title="Show the current Rust map heightmap in the viewport">
                     <input type="checkbox" data-editor-terrain-reference checked>
-                    <span>Map heightmap</span>
+                    <span><strong>Map heightmap</strong><small>Rust terrain surface</small></span>
                   </label>
                   <label class="airstrike-editor-checkbox" title="Show the meter grid on the ground plane">
                     <input type="checkbox" data-editor-ground-grid checked>
-                    <span>Meter grid</span>
+                    <span><strong>Meter grid</strong><small>Flat scale grid</small></span>
                   </label>
                   <label class="airstrike-editor-checkbox" title="Show terrain dressing, scale references, and placeholder scene objects">
                     <input type="checkbox" data-editor-scene-extras checked>
-                    <span>Scene extras</span>
+                    <span><strong>Scene extras</strong><small>Players, crates, and scale props</small></span>
                   </label>
                 </div>
               </details>
