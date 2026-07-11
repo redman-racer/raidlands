@@ -104,9 +104,11 @@ $editor_config = [
         <div class="airstrike-editor-commandbar">
           <div class="airstrike-editor-brand">
             <a href="./?section=airstrike-animations" aria-label="Back to animation profiles">&larr;</a>
-            <div>
-              <p class="section-kicker">Portable Airstrikes</p>
-              <h1>Animation editor</h1>
+            <div class="airstrike-editor-title-block">
+              <div class="airstrike-editor-title-row">
+                <p class="section-kicker">Portable Airstrikes</p>
+                <h1>Animation editor</h1>
+              </div>
               <p class="airstrike-editor-current-profile"><span data-editor-title>New profile</span> <span class="status-pill" data-editor-dirty>Clean</span></p>
             </div>
           </div>
