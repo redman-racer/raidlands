@@ -136,6 +136,8 @@ export class AirstrikeViewport {
   private grid: GridHelper | null = null;
   private ground: Mesh | null = null;
   private routeLine: Line | null = null;
+  private targetMarker: Mesh | null = null;
+  private approachMarker: Mesh | null = null;
   private profile: EditorSourceProfile | null = null;
   private selectedWaypointId = "";
   private selectedReleaseId = "";
@@ -225,6 +227,7 @@ export class AirstrikeViewport {
       terrain: reference.terrain || this.worldReference.terrain,
     };
     this.syncSceneFloor();
+    this.syncSceneChromeMarkers();
     this.createScaleReferenceEntities();
   }
 
@@ -242,6 +245,7 @@ export class AirstrikeViewport {
     }
     this.terrainReferenceEnabled = enabled;
     this.syncSceneFloor();
+    this.syncSceneChromeMarkers();
     this.createScaleReferenceEntities();
   }
 
@@ -376,16 +380,31 @@ export class AirstrikeViewport {
 
     const target = new Mesh(new ConeGeometry(6, 18, 24), targetMaterial);
     target.name = "target-marker";
-    target.position.y = 9;
+    this.targetMarker = target;
     this.scene.add(target);
 
     const approach = new Mesh(new ConeGeometry(5, 18, 20), new MeshBasicMaterial({ color: 0x89f7fe }));
     approach.name = "approach-direction";
     approach.rotation.x = -Math.PI / 2;
-    approach.position.set(0, 10, 90);
+    this.approachMarker = approach;
     this.scene.add(approach);
+    this.syncSceneChromeMarkers();
 
     this.createScaleReferenceEntities();
+  }
+
+  private syncSceneChromeMarkers(): void {
+    this.placeSceneMarkerOnGround(this.targetMarker, 0, 0, 9);
+    this.placeSceneMarkerOnGround(this.approachMarker, 0, 90, 10);
+  }
+
+  private placeSceneMarkerOnGround(marker: Mesh | null, worldX: number, worldZ: number, verticalOffset: number): void {
+    if (!marker) {
+      return;
+    }
+    const groundHeight =
+      this.worldReference.terrain && this.terrainReferenceEnabled ? this.currentGroundHeightAt(worldX, worldZ) : 0;
+    marker.position.set(worldX, groundHeight + verticalOffset, worldZ);
   }
 
   private createScaleReferenceEntities(): void {
