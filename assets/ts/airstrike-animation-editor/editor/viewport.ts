@@ -38,7 +38,7 @@ type ViewportStatus = {
   modelState: string;
 };
 
-export type ReleaseVisibilityMode = "all" | "near" | "selected";
+export type ReleaseVisibilityMode = "all" | "near" | "current" | "selected";
 
 export interface AirstrikeViewportOptions {
   assetBase: string;
@@ -367,15 +367,47 @@ export class AirstrikeViewport {
   }
 
   private updateReleaseVisibility(): void {
-    const vicinitySeconds = 0.35;
+    const vicinitySeconds = 0.075;
+    const currentReleaseTimes = this.currentReleaseSlotTimes();
     for (const child of this.releaseGroup.children) {
       const releaseId = typeof child.userData.releaseId === "string" ? child.userData.releaseId : "";
       const releaseTime = typeof child.userData.releaseTime === "number" ? child.userData.releaseTime : Number.NaN;
       child.visible =
         this.releaseVisibilityMode === "all" ||
         (this.releaseVisibilityMode === "selected" && releaseId === this.selectedReleaseId) ||
+        (this.releaseVisibilityMode === "current" && currentReleaseTimes.has(this.releaseTimeKey(releaseTime))) ||
         (this.releaseVisibilityMode === "near" && Math.abs(releaseTime - this.scrubTime) <= vicinitySeconds);
     }
+  }
+
+  private currentReleaseSlotTimes(): Set<string> {
+    if (this.releaseVisibilityMode !== "current") {
+      return new Set();
+    }
+    const times = [...new Set([...this.releaseMarkers.values()].map((marker) => Number(marker.userData.releaseTime)))]
+      .filter((time) => Number.isFinite(time))
+      .sort((left, right) => left - right);
+    if (times.length === 0) {
+      return new Set();
+    }
+    let closestIndex = 0;
+    let closestDistance = Math.abs(times[0]! - this.scrubTime);
+    for (let index = 1; index < times.length; index += 1) {
+      const distance = Math.abs(times[index]! - this.scrubTime);
+      if (distance < closestDistance) {
+        closestIndex = index;
+        closestDistance = distance;
+      }
+    }
+    const previousGap = closestIndex > 0 ? times[closestIndex]! - times[closestIndex - 1]! : Number.POSITIVE_INFINITY;
+    const nextGap = closestIndex < times.length - 1 ? times[closestIndex + 1]! - times[closestIndex]! : Number.POSITIVE_INFINITY;
+    const closestGap = Math.min(previousGap, nextGap);
+    const slotWindow = Number.isFinite(closestGap) ? Math.min(0.12, Math.max(0.025, closestGap * 0.5)) : 0.075;
+    return closestDistance <= slotWindow ? new Set([this.releaseTimeKey(times[closestIndex]!)]) : new Set();
+  }
+
+  private releaseTimeKey(time: number): string {
+    return Number.isFinite(time) ? time.toFixed(3) : "";
   }
 
   private releasePoints(release: ReleasePreviewEvent): { origin: Vector3; target: Vector3 } {

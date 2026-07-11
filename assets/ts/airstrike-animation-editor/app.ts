@@ -1031,7 +1031,9 @@ class AirstrikeEditorApp {
 
   private handleReleaseVisibilityChange(): void {
     const mode = this.elements.releaseVisibility.value;
-    this.viewport.updateReleaseVisibilityMode(mode === "all" || mode === "selected" ? mode : "near");
+    this.viewport.updateReleaseVisibilityMode(
+      mode === "all" || mode === "selected" || mode === "current" ? mode : "near",
+    );
   }
 
   private handleGlobalSpeedInput(): void {

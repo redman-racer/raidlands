@@ -216,6 +216,7 @@ $editor_config = [
               <span>Ordnance rays</span>
               <select data-editor-release-visibility>
                 <option value="near">Near playhead</option>
+                <option value="current">Current release</option>
                 <option value="all">Always on</option>
                 <option value="selected">Selected only</option>
               </select>
