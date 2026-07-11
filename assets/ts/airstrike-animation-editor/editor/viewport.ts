@@ -73,6 +73,11 @@ const scaleReferenceMaterials = {
   crate: new MeshStandardMaterial({ color: 0x8b5a2b, metalness: 0.08, roughness: 0.82 }),
   barricade: new MeshStandardMaterial({ color: 0xa75b3d, metalness: 0.18, roughness: 0.72 }),
   tower: new MeshStandardMaterial({ color: 0x58666c, metalness: 0.22, roughness: 0.62 }),
+  dirt: new MeshStandardMaterial({ color: 0x5b4633, metalness: 0.02, roughness: 0.92 }),
+  grass: new MeshStandardMaterial({ color: 0x24432f, metalness: 0.01, roughness: 0.95 }),
+  pine: new MeshStandardMaterial({ color: 0x1f5a3d, metalness: 0.01, roughness: 0.86 }),
+  trunk: new MeshStandardMaterial({ color: 0x5f3f2b, metalness: 0.02, roughness: 0.84 }),
+  rock: new MeshStandardMaterial({ color: 0x5e6a68, metalness: 0.06, roughness: 0.78 }),
 };
 const minimumFloorSize = 800;
 const maximumFloorDivisions = 120;
@@ -303,6 +308,8 @@ export class AirstrikeViewport {
     this.scaleReferenceGroup.name = "scale-reference-placeholders";
     this.scaleReferenceGroup.clear();
 
+    this.scaleReferenceGroup.add(this.createTerrainReferenceGroup());
+
     const standingPlayer = this.createPlayerPlaceholder("scale-player-standing", scaleReferenceMaterials.player);
     standingPlayer.position.set(-26, 0, 18);
     standingPlayer.rotation.y = MathUtils.degToRad(18);
@@ -347,6 +354,114 @@ export class AirstrikeViewport {
     tower.position.set(68, 0, 42);
     tower.rotation.y = MathUtils.degToRad(-28);
     this.scaleReferenceGroup.add(tower);
+  }
+
+  private createTerrainReferenceGroup(): Group {
+    const terrain = new Group();
+    terrain.name = "scale-terrain-placeholders";
+
+    const dirtGeometry = new BoxGeometry(34, 0.18, 104);
+    const dirtSegments = [
+      { position: new Vector3(-88, 0.08, -28), yaw: 18 },
+      { position: new Vector3(-54, 0.1, -6), yaw: 28 },
+      { position: new Vector3(-18, 0.12, 12), yaw: 20 },
+      { position: new Vector3(22, 0.1, 24), yaw: 10 },
+      { position: new Vector3(62, 0.08, 32), yaw: -4 },
+    ];
+    for (const segment of dirtSegments) {
+      const path = new Mesh(dirtGeometry, scaleReferenceMaterials.dirt);
+      path.name = "scale-dirt-track";
+      path.position.copy(segment.position);
+      path.rotation.y = MathUtils.degToRad(segment.yaw);
+      terrain.add(path);
+    }
+
+    const moundGeometry = new ConeGeometry(1, 1, 18);
+    const mounds = [
+      { position: new Vector3(-82, 2, 52), scale: new Vector3(34, 4, 26), yaw: -12 },
+      { position: new Vector3(86, 2.5, -58), scale: new Vector3(46, 5, 32), yaw: 28 },
+      { position: new Vector3(6, 1.35, -78), scale: new Vector3(28, 2.7, 22), yaw: 4 },
+    ];
+    for (const mound of mounds) {
+      const mesh = new Mesh(moundGeometry, scaleReferenceMaterials.grass);
+      mesh.name = "scale-terrain-mound";
+      mesh.position.copy(mound.position);
+      mesh.scale.copy(mound.scale);
+      mesh.rotation.y = MathUtils.degToRad(mound.yaw);
+      terrain.add(mesh);
+    }
+
+    const treePlacements = [
+      { position: new Vector3(-102, 0, 38), scale: 1.15 },
+      { position: new Vector3(-120, 0, 62), scale: 0.85 },
+      { position: new Vector3(-76, 0, 74), scale: 1 },
+      { position: new Vector3(82, 0, -82), scale: 1.2 },
+      { position: new Vector3(110, 0, -54), scale: 0.92 },
+      { position: new Vector3(122, 0, -86), scale: 0.78 },
+      { position: new Vector3(38, 0, 86), scale: 0.95 },
+      { position: new Vector3(62, 0, 100), scale: 0.72 },
+    ];
+    for (const [index, placement] of treePlacements.entries()) {
+      const tree = this.createTreePlaceholder(`scale-tree-${index + 1}`, placement.scale);
+      tree.position.copy(placement.position);
+      tree.rotation.y = MathUtils.degToRad(index * 31);
+      terrain.add(tree);
+    }
+
+    const rockGeometry = new BoxGeometry(6, 3, 4);
+    const rocks = [
+      { position: new Vector3(-44, 1.5, 64), scale: new Vector3(1.4, 0.8, 1.1), yaw: 22 },
+      { position: new Vector3(-38, 1.1, 72), scale: new Vector3(0.8, 0.6, 0.7), yaw: -18 },
+      { position: new Vector3(76, 1.4, 72), scale: new Vector3(1.2, 0.7, 1.7), yaw: 44 },
+      { position: new Vector3(104, 1.25, 18), scale: new Vector3(0.9, 0.75, 1.1), yaw: 8 },
+    ];
+    for (const rock of rocks) {
+      const mesh = new Mesh(rockGeometry, scaleReferenceMaterials.rock);
+      mesh.name = "scale-rock";
+      mesh.position.copy(rock.position);
+      mesh.scale.copy(rock.scale);
+      mesh.rotation.set(MathUtils.degToRad(5), MathUtils.degToRad(rock.yaw), MathUtils.degToRad(-7));
+      terrain.add(mesh);
+    }
+
+    const scrubGeometry = new ConeGeometry(4.5, 4, 8);
+    const scrubPlacements = [
+      new Vector3(-16, 2, -48),
+      new Vector3(-2, 2, -54),
+      new Vector3(22, 2, -52),
+      new Vector3(54, 2, -14),
+      new Vector3(54, 2, 0),
+      new Vector3(-64, 2, 8),
+    ];
+    for (const [index, position] of scrubPlacements.entries()) {
+      const scrub = new Mesh(scrubGeometry, scaleReferenceMaterials.grass);
+      scrub.name = "scale-scrub";
+      scrub.position.copy(position);
+      scrub.rotation.y = MathUtils.degToRad(index * 27);
+      terrain.add(scrub);
+    }
+
+    return terrain;
+  }
+
+  private createTreePlaceholder(name: string, scale: number): Group {
+    const tree = new Group();
+    tree.name = name;
+    tree.scale.setScalar(scale);
+
+    const trunk = new Mesh(new CylinderGeometry(0.9, 1.15, 9, 8), scaleReferenceMaterials.trunk);
+    trunk.position.y = 4.5;
+    tree.add(trunk);
+
+    const lowerCanopy = new Mesh(new ConeGeometry(6.2, 11, 10), scaleReferenceMaterials.pine);
+    lowerCanopy.position.y = 12;
+    tree.add(lowerCanopy);
+
+    const upperCanopy = new Mesh(new ConeGeometry(4.6, 9, 10), scaleReferenceMaterials.pine);
+    upperCanopy.position.y = 17.5;
+    tree.add(upperCanopy);
+
+    return tree;
   }
 
   private createPlayerPlaceholder(name: string, material: MeshStandardMaterial): Group {

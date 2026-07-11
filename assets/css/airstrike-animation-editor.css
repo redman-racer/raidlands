@@ -1135,6 +1135,53 @@
   box-sizing: border-box;
 }
 
+.airstrike-number-control {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) 28px 28px;
+  gap: 5px;
+  align-items: center;
+  min-width: 0;
+}
+
+.airstrike-number-control input[type="number"] {
+  grid-column: 1 / -1;
+}
+
+.airstrike-number-control-slider {
+  min-width: 0;
+  height: 18px;
+  accent-color: #36c5e6;
+  cursor: pointer;
+}
+
+.airstrike-number-step {
+  appearance: none;
+  width: 28px;
+  height: 24px;
+  min-width: 0;
+  padding: 0;
+  border: 1px solid rgba(129, 167, 174, .24);
+  border-radius: 6px;
+  background: rgba(18, 29, 32, .92);
+  color: #d8f2f6;
+  font: 900 14px/1 var(--font-body, Arial, sans-serif);
+  cursor: pointer;
+}
+
+.airstrike-number-step:hover,
+.airstrike-number-step:focus-visible {
+  outline: none;
+  border-color: rgba(54, 197, 230, .7);
+  background: rgba(19, 56, 64, .94);
+  color: #fff;
+}
+
+.airstrike-number-step:disabled,
+.airstrike-number-control-slider:disabled {
+  cursor: not-allowed;
+  opacity: .45;
+}
+
 .airstrike-waypoint-list {
   display: grid;
   gap: 7px;

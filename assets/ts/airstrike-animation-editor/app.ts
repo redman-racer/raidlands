@@ -119,6 +119,11 @@ interface EditorState {
 
 type PanelName = "left" | "right" | "bottom";
 
+interface NumericControlRange {
+  minimum: number;
+  maximum: number;
+}
+
 interface PaletteLayout {
   collapsed?: Record<string, boolean>;
   zones?: Record<string, string[]>;
@@ -292,6 +297,7 @@ class AirstrikeEditorApp {
     this.bindMenus();
     this.restorePanelState();
     this.initializePaletteDock();
+    this.enhanceNumericControls();
   }
 
   public async initialize(): Promise<void> {
@@ -384,6 +390,147 @@ class AirstrikeEditorApp {
         void this.saveDraft();
       }
     });
+  }
+
+  private enhanceNumericControls(root: ParentNode = this.elements.root): void {
+    root.querySelectorAll<HTMLInputElement>(".airstrike-editor-right input[type='number']").forEach((input) => {
+      if (input.dataset.editorSliderEnhanced === "1") {
+        this.syncNumericControl(input);
+        return;
+      }
+      const parent = input.parentNode;
+      if (!parent) {
+        return;
+      }
+      const wrapper = document.createElement("div");
+      const range = document.createElement("input");
+      const stepDown = document.createElement("button");
+      const stepUp = document.createElement("button");
+
+      wrapper.className = "airstrike-number-control";
+      range.type = "range";
+      range.className = "airstrike-number-control-slider";
+      stepDown.type = "button";
+      stepDown.className = "airstrike-number-step airstrike-number-step-down";
+      stepDown.textContent = "-";
+      stepDown.title = "Decrease";
+      stepDown.setAttribute("aria-label", "Decrease value");
+      stepUp.type = "button";
+      stepUp.className = "airstrike-number-step airstrike-number-step-up";
+      stepUp.textContent = "+";
+      stepUp.title = "Increase";
+      stepUp.setAttribute("aria-label", "Increase value");
+
+      parent.insertBefore(wrapper, input);
+      wrapper.append(input, range, stepDown, stepUp);
+      input.dataset.editorSliderEnhanced = "1";
+
+      input.addEventListener("input", () => this.syncNumericControl(input));
+      range.addEventListener("input", () => {
+        input.value = range.value;
+        input.dispatchEvent(new Event("input", { bubbles: true }));
+      });
+      stepDown.addEventListener("click", () => this.stepNumericInput(input, -1));
+      stepUp.addEventListener("click", () => this.stepNumericInput(input, 1));
+      this.syncNumericControl(input);
+    });
+  }
+
+  private syncNumericControl(input: HTMLInputElement): void {
+    const wrapper = input.closest<HTMLElement>(".airstrike-number-control");
+    const range = wrapper?.querySelector<HTMLInputElement>(".airstrike-number-control-slider");
+    const rangeBounds = this.numericRangeForInput(input);
+    if (!range) {
+      return;
+    }
+    const step = this.numericStep(input);
+    range.min = String(rangeBounds.minimum);
+    range.max = String(rangeBounds.maximum);
+    range.step = String(step);
+    range.disabled = input.disabled;
+    const value = Number(input.value);
+    if (Number.isFinite(value)) {
+      range.value = String(clamp(value, rangeBounds.minimum, rangeBounds.maximum));
+    }
+    wrapper?.querySelectorAll<HTMLButtonElement>(".airstrike-number-step").forEach((button) => {
+      button.disabled = input.disabled;
+    });
+  }
+
+  private stepNumericInput(input: HTMLInputElement, direction: -1 | 1): void {
+    if (input.disabled) {
+      return;
+    }
+    const step = this.numericStep(input);
+    const range = this.numericRangeForInput(input);
+    const current = Number(input.value);
+    const baseline = Number.isFinite(current) ? current : 0;
+    const next = clamp(this.roundForStep(baseline + direction * step, step), range.minimum, range.maximum);
+    input.value = String(next);
+    input.dispatchEvent(new Event("input", { bubbles: true }));
+    input.focus();
+  }
+
+  private numericStep(input: HTMLInputElement): number {
+    const step = Number(input.step);
+    return Number.isFinite(step) && step > 0 ? step : 0.1;
+  }
+
+  private roundForStep(value: number, step: number): number {
+    const decimals = Math.max(0, String(step).split(".")[1]?.length ?? 0);
+    return Number(value.toFixed(Math.min(6, decimals + 1)));
+  }
+
+  private numericRangeForInput(input: HTMLInputElement): NumericControlRange {
+    const explicitMinimum = Number(input.min);
+    const explicitMaximum = Number(input.max);
+    if (Number.isFinite(explicitMinimum) && Number.isFinite(explicitMaximum) && explicitMinimum < explicitMaximum) {
+      return { minimum: explicitMinimum, maximum: explicitMaximum };
+    }
+    const waypointField = input.dataset.editorWaypointField;
+    const current = Number(input.value);
+    const duration = Math.max(0.01, Number(this.state.profile?.DurationSeconds ?? 30));
+    const waypointRanges: Record<string, NumericControlRange> = {
+      Time: { minimum: 0, maximum: Math.max(duration, Number.isFinite(current) ? current : 0) },
+      X: { minimum: -500, maximum: 500 },
+      Y: { minimum: 0, maximum: 500 },
+      Z: { minimum: -500, maximum: 500 },
+      RotationX: { minimum: -180, maximum: 180 },
+      RotationY: { minimum: -180, maximum: 180 },
+      RotationZ: { minimum: -180, maximum: 180 },
+    };
+    if (waypointField && waypointRanges[waypointField]) {
+      return waypointRanges[waypointField];
+    }
+    const labelText = input.closest("label")?.querySelector("span")?.textContent?.trim() ?? "";
+    const releaseRanges: Record<string, NumericControlRange> = {
+      Time: { minimum: 0, maximum: duration },
+      StartTime: { minimum: 0, maximum: duration },
+      IntervalSeconds: { minimum: 0.01, maximum: 30 },
+      UnitsPerRelease: { minimum: 1, maximum: 40 },
+      MaximumUnits: { minimum: 1, maximum: 120 },
+      Count: { minimum: 1, maximum: 40 },
+      CarrierOffsetX: { minimum: -250, maximum: 250 },
+      CarrierOffsetY: { minimum: -250, maximum: 250 },
+      CarrierOffsetZ: { minimum: -250, maximum: 250 },
+      TargetOffsetX: { minimum: -500, maximum: 500 },
+      TargetOffsetY: { minimum: -500, maximum: 500 },
+      TargetOffsetZ: { minimum: -500, maximum: 500 },
+      SpreadRadius: { minimum: -1, maximum: 250 },
+      LaunchSpeed: { minimum: -1, maximum: 350 },
+      FuseSeconds: { minimum: -1, maximum: 120 },
+      DamageScale: { minimum: 0, maximum: 10 },
+      VehicleDamageScale: { minimum: -1, maximum: 10 },
+      SplashRadius: { minimum: -1, maximum: 100 },
+      ImpactRadius: { minimum: -1, maximum: 100 },
+      MaxTrackingSeconds: { minimum: -1, maximum: 120 },
+      MaxTrackingDistance: { minimum: -1, maximum: 2500 },
+    };
+    if (releaseRanges[labelText]) {
+      return releaseRanges[labelText];
+    }
+    const fallback = Number.isFinite(current) ? current : 0;
+    return { minimum: Math.min(-100, fallback - 100), maximum: Math.max(100, fallback + 100) };
   }
 
   private bindMenus(): void {
@@ -666,6 +813,7 @@ class AirstrikeEditorApp {
       input.disabled = !waypoint || !field;
       input.value = waypoint && field ? String(waypoint[field]) : "";
     });
+    this.enhanceNumericControls(this.elements.root.querySelector(".airstrike-waypoint-inspector") ?? this.elements.root);
   }
 
   private renderSpeedControls(): void {
@@ -680,6 +828,7 @@ class AirstrikeEditorApp {
     this.elements.waypointSpeed.disabled = !waypoint;
     this.elements.waypointSpeed.value = waypoint ? String(waypointSpeed) : "";
     this.elements.waypointSpeedMph.textContent = waypoint ? `${formatMilesPerHour(waypointSpeed)} mph` : "";
+    this.enhanceNumericControls(this.elements.root);
   }
 
   private ensureSelectedRelease(profile: EditorSourceProfile): void {
@@ -715,6 +864,7 @@ class AirstrikeEditorApp {
     } else {
       this.renderRepeatedReleaseEditor(profile);
     }
+    this.enhanceNumericControls(this.elements.root);
   }
 
   private renderManualReleaseList(profile: EditorSourceProfile): void {
