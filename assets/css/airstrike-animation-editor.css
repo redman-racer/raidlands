@@ -672,32 +672,20 @@
 
 .airstrike-editor-viewport-meta {
   position: absolute;
-  left: calc(var(--editor-left-width) + 42px);
-  right: calc(var(--editor-right-width) + 42px);
-  bottom: calc(var(--editor-bottom-height) + 32px);
+  left: 0;
+  right: 0;
+  bottom: 0;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
   padding: 7px 9px;
-  border: 1px solid rgba(129, 167, 174, .18);
-  border-radius: 6px;
+  border: 0;
+  border-top: 1px solid rgba(129, 167, 174, .18);
+  border-radius: 0;
   background: rgba(5, 9, 11, .76);
   color: #bdd2d7;
   font-size: 12px;
-  transition: left .18s ease, right .18s ease, bottom .18s ease;
-}
-
-.airstrike-editor.is-left-collapsed .airstrike-editor-viewport-meta {
-  left: 18px;
-}
-
-.airstrike-editor.is-right-collapsed .airstrike-editor-viewport-meta {
-  right: 18px;
-}
-
-.airstrike-editor.is-bottom-collapsed .airstrike-editor-viewport-meta {
-  bottom: 18px;
 }
 
 .airstrike-editor-viewport-meta span {
@@ -765,12 +753,8 @@
 }
 
 .airstrike-editor-restore-bottom {
-  right: calc(var(--editor-right-width) + 44px);
-  bottom: 10px;
-}
-
-.airstrike-editor.is-right-collapsed .airstrike-editor-restore-bottom {
-  right: 28px;
+  left: 18px;
+  bottom: 42px;
 }
 
 .airstrike-editor-restore-bottom::before {
