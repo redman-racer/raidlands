@@ -1250,6 +1250,7 @@ class AirstrikeEditorApp {
     this.playbackRunId += 1;
     const runId = this.playbackRunId;
     this.state.playing = true;
+    this.viewport.setPlaybackActive(true);
     this.playbackStartedAt = performance.now();
     this.playbackStartedTime = this.state.scrubTime;
     this.renderTimeControls();
@@ -1282,6 +1283,7 @@ class AirstrikeEditorApp {
   private stopPlayback(): void {
     this.playbackRunId += 1;
     this.state.playing = false;
+    this.viewport.setPlaybackActive(false);
     if (this.playbackFrame) {
       window.cancelAnimationFrame(this.playbackFrame);
       this.playbackFrame = 0;

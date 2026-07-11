@@ -149,6 +149,7 @@ export class AirstrikeViewport {
   private selectedReleaseId = "";
   private releaseVisibilityMode: ReleaseVisibilityMode = "near";
   private scrubTime = 0;
+  private playbackActive = false;
   private animationFrame = 0;
   private vehicleToken = 0;
   private currentVehicle = "";
@@ -295,6 +296,10 @@ export class AirstrikeViewport {
     this.scrubTime = time;
     this.refreshVehiclePose();
     this.updateReleaseVisibility();
+  }
+
+  public setPlaybackActive(active: boolean): void {
+    this.playbackActive = active;
   }
 
   public updateReleaseVisibilityMode(mode: ReleaseVisibilityMode): void {
@@ -1352,9 +1357,9 @@ export class AirstrikeViewport {
     const pose = evaluateSourcePose(this.profile, time);
     this.vehicleRoot.position.copy(unityPositionToThreeVector(pose.position));
     this.vehicleRoot.quaternion.copy(unityQuaternionValueToThreeQuaternion(pose.rotation));
-    if (this.rideVehicle) {
+    if (this.rideVehicle && this.playbackActive) {
       this.rideVehicleCamera();
-    } else if (this.followVehicle) {
+    } else if (this.followVehicle && this.playbackActive) {
       this.followVehicleCamera();
     }
   }
