@@ -278,6 +278,7 @@ class TerrainViewer {
   private transitionTo: CameraPose | null = null;
   private transitionStartedAt = 0;
   private transitionDuration = 1400;
+  private selfLocation: PlayerLocation | null = null;
 
   public constructor(
     root: HTMLElement,
@@ -420,6 +421,7 @@ class TerrainViewer {
   public setPlayerLocations(payload: PlayerLocationPayload): void {
     this.playerLocationLayer.clear();
     const players = Array.isArray(payload.players) ? payload.players : [];
+    this.selfLocation = players.find((player) => player.isSelf === true) || null;
 
     players.slice(0, 80).forEach((player) => {
       const x = Number(player.x);
@@ -445,6 +447,39 @@ class TerrainViewer {
       sprite.renderOrder = isSelf ? 42 : 40;
       this.playerLocationLayer.add(sprite);
     });
+  }
+
+  public hasSelfLocation(): boolean {
+    return this.selfLocation !== null;
+  }
+
+  public frameSelfLocation(): boolean {
+    const player = this.selfLocation;
+
+    if (!player) {
+      return false;
+    }
+
+    const x = Number(player.x);
+    const z = Number(player.z);
+
+    if (!Number.isFinite(x) || !Number.isFinite(z)) {
+      return false;
+    }
+
+    this.setPlayerLocationsVisible(true);
+    const worldSize = this.terrain.worldSize || 4500;
+    const ground = Math.max(Number(player.y) || 0, sampleTerrainHeight(this.terrain, x, z));
+    const target = new Vector3(x, ground + 42, z);
+    const cameraOffset = MathUtils.clamp(worldSize * 0.085, 280, 560);
+
+    this.focusCamera({
+      position: new Vector3(x - cameraOffset * 0.62, ground + cameraOffset * 0.72, z + cameraOffset * 0.78),
+      target,
+      up: new Vector3(0, 1, 0),
+    });
+
+    return true;
   }
 
   public addAirstrikePreview(profiles: RuntimeVisualProfile[]): void {
@@ -481,7 +516,7 @@ class TerrainViewer {
     this.focusCamera({
       position: new Vector3(0, size * 0.86, 0.001),
       target: new Vector3(0, 0, 0),
-      up: new Vector3(0, 0, -1),
+      up: new Vector3(0, 0, 1),
     });
   }
 
@@ -1603,6 +1638,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): void {
   const heatmapFrame = panel?.querySelector<HTMLInputElement>("[data-map-viewer-heatmap-frame]");
   const heatmapFrameLabel = panel?.querySelector<HTMLOutputElement>("[data-map-viewer-heatmap-frame-label]");
   const players = panel?.querySelector<HTMLInputElement>("[data-map-viewer-players]");
+  const myLocation = panel?.querySelector<HTMLButtonElement>("[data-map-viewer-my-location]");
   const metric = panel?.querySelector<HTMLSelectElement>("[data-map-viewer-heatmap-metric]");
   const range = panel?.querySelector<HTMLSelectElement>("[data-map-viewer-heatmap-range]");
   let heatmapHistory: HeatmapHistoryFrame[] = [];
@@ -1745,17 +1781,38 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): void {
       return;
     }
 
-    void loadPlayerLocations(root, viewer);
+    void loadPlayerLocations(root, viewer, myLocation);
     if (playerPollTimer === 0) {
       playerPollTimer = window.setInterval(() => {
         if (players.checked) {
-          void loadPlayerLocations(root, viewer);
+          void loadPlayerLocations(root, viewer, myLocation);
         }
       }, 15000);
     }
   };
 
   players?.addEventListener("change", reloadPlayers);
+
+  myLocation?.addEventListener("click", () => {
+    if (players && !players.checked) {
+      players.checked = true;
+    }
+
+    if (viewer.frameSelfLocation()) {
+      if (playerPollTimer === 0) {
+        reloadPlayers();
+      }
+      return;
+    }
+
+    void loadPlayerLocations(root, viewer, myLocation).then(() => {
+      if (viewer.frameSelfLocation() && players) {
+        players.checked = true;
+      }
+    });
+  });
+
+  void loadPlayerLocations(root, viewer, myLocation, players?.checked ?? false);
 }
 
 async function loadHeatmap(root: HTMLElement, viewer: TerrainViewer, metric: string, range: string): Promise<void> {
@@ -1824,11 +1881,14 @@ async function loadHeatmapHistory(root: HTMLElement, metric: string, range: stri
   }
 }
 
-async function loadPlayerLocations(root: HTMLElement, viewer: TerrainViewer): Promise<void> {
+async function loadPlayerLocations(root: HTMLElement, viewer: TerrainViewer, myLocation?: HTMLButtonElement | null, showLayer = true): Promise<void> {
   const baseUrl = root.dataset.playerLocationsUrl || "";
 
   if (!baseUrl) {
     viewer.setPlayerLocationsVisible(false);
+    if (myLocation) {
+      myLocation.disabled = true;
+    }
     return;
   }
 
@@ -1844,10 +1904,17 @@ async function loadPlayerLocations(root: HTMLElement, viewer: TerrainViewer): Pr
 
     const payload = (await response.json()) as PlayerLocationPayload;
     viewer.setPlayerLocations(payload);
-    viewer.setPlayerLocationsVisible((payload.players || []).length > 0);
+    viewer.setPlayerLocationsVisible(showLayer && (payload.players || []).length > 0);
+    if (myLocation) {
+      myLocation.disabled = !viewer.hasSelfLocation();
+      myLocation.title = viewer.hasSelfLocation() ? "Move camera to your latest server location" : "Log in and join the server to show your location";
+    }
   } catch (error) {
     console.info("Raidlands player locations could not be loaded.", error);
     viewer.setPlayerLocationsVisible(false);
+    if (myLocation) {
+      myLocation.disabled = true;
+    }
   }
 }
 

@@ -177,9 +177,10 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
             <input type="range" min="0" max="15" value="15" data-map-viewer-heatmap-frame>
           </label>
           <label class="server-terrain-toggle">
-            <input type="checkbox" data-map-viewer-players>
+            <input type="checkbox" checked data-map-viewer-players>
             <span>Clan locations</span>
           </label>
+          <button type="button" data-map-viewer-my-location disabled>My location</button>
           <label class="server-terrain-field">
             <span>Metric</span>
             <select data-map-viewer-heatmap-metric>
