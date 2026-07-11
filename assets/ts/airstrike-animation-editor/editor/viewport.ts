@@ -63,6 +63,10 @@ const releaseMaterial = new MeshStandardMaterial({ color: 0xf97316, emissive: 0x
 const selectedReleaseMaterial = new MeshStandardMaterial({ color: 0xffd166, emissive: 0x322000, roughness: 0.28 });
 const releaseTargetMaterial = new MeshBasicMaterial({ color: 0xf43f5e, transparent: true, opacity: 0.75 });
 const releaseLineMaterial = new LineBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.68 });
+const groundMaterial = new MeshBasicMaterial({ color: 0x0c1518, side: DoubleSide, transparent: true, opacity: 0.22 });
+const minimumFloorSize = 800;
+const maximumFloorDivisions = 120;
+const preferredGridCellSize = 20;
 
 export class AirstrikeViewport {
   private readonly container: HTMLElement;
@@ -83,6 +87,8 @@ export class AirstrikeViewport {
   private readonly releaseTargetGeometry = new ConeGeometry(2.8, 7, 18);
   private readonly handles = new Map<string, Mesh>();
   private readonly releaseMarkers = new Map<string, Mesh>();
+  private grid: GridHelper | null = null;
+  private ground: Mesh | null = null;
   private routeLine: Line | null = null;
   private profile: EditorSourceProfile | null = null;
   private selectedWaypointId = "";
@@ -145,6 +151,7 @@ export class AirstrikeViewport {
     this.selectedWaypointId = selectedWaypointId;
     this.scrubTime = Math.min(profile.DurationSeconds, Math.max(0, scrubTime));
     this.refreshRoute();
+    this.syncSceneFloor();
     this.refreshWaypointHandles();
     this.refreshReleaseMarkers();
     this.selectWaypoint(selectedWaypointId, false);
@@ -235,17 +242,7 @@ export class AirstrikeViewport {
     key.position.set(90, 180, 120);
     this.scene.add(ambient, key);
 
-    const grid = new GridHelper(800, 40, 0x23434a, 0x142a30);
-    grid.name = "meter-grid";
-    this.scene.add(grid);
-
-    const ground = new Mesh(
-      new PlaneGeometry(800, 800),
-      new MeshBasicMaterial({ color: 0x0c1518, side: DoubleSide, transparent: true, opacity: 0.22 }),
-    );
-    ground.rotation.x = -Math.PI / 2;
-    ground.name = "ground-plane";
-    this.scene.add(ground);
+    this.syncSceneFloor();
 
     const target = new Mesh(new ConeGeometry(6, 18, 24), targetMaterial);
     target.name = "target-marker";
@@ -311,6 +308,7 @@ export class AirstrikeViewport {
     if (nextProfile) {
       this.profile = nextProfile;
       this.refreshRoute();
+      this.syncSceneFloor();
       this.refreshReleaseMarkers();
       this.refreshVehiclePose();
     }
@@ -482,6 +480,39 @@ export class AirstrikeViewport {
     this.routeLine = new Line(geometry, this.routeMaterial);
     this.routeLine.name = "route-preview";
     this.scene.add(this.routeLine);
+  }
+
+  private syncSceneFloor(): void {
+    const bounds = this.currentFocusBounds();
+    const size = new Vector3();
+    const center = new Vector3();
+    bounds.getSize(size);
+    bounds.getCenter(center);
+
+    const footprint = Math.max(size.x, size.z, minimumFloorSize);
+    const floorSize = Math.ceil((footprint * 1.35) / preferredGridCellSize) * preferredGridCellSize;
+    const divisions = Math.max(4, Math.min(maximumFloorDivisions, Math.round(floorSize / preferredGridCellSize)));
+    const floorCenterX = Number.isFinite(center.x) ? center.x : 0;
+    const floorCenterZ = Number.isFinite(center.z) ? center.z : 0;
+
+    if (this.grid) {
+      this.scene.remove(this.grid);
+      this.grid.geometry.dispose();
+    }
+    this.grid = new GridHelper(floorSize, divisions, 0x23434a, 0x142a30);
+    this.grid.name = "meter-grid";
+    this.grid.position.set(floorCenterX, 0, floorCenterZ);
+    this.scene.add(this.grid);
+
+    if (this.ground) {
+      this.scene.remove(this.ground);
+      this.ground.geometry.dispose();
+    }
+    this.ground = new Mesh(new PlaneGeometry(floorSize, floorSize), groundMaterial);
+    this.ground.rotation.x = -Math.PI / 2;
+    this.ground.position.set(floorCenterX, 0, floorCenterZ);
+    this.ground.name = "ground-plane";
+    this.scene.add(this.ground);
   }
 
   private frameBox(bounds: Box3): void {
