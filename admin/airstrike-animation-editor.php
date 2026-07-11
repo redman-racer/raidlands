@@ -338,12 +338,12 @@ $editor_config = [
               <strong data-editor-time-readout>0.00s / 0.00s</strong>
             </div>
             <div class="airstrike-editor-playback">
-              <button class="btn btn-secondary btn-small" type="button" data-editor-play>Play</button>
-              <button class="btn btn-secondary btn-small" type="button" data-editor-step-back aria-label="Step backward">-0.1s</button>
-              <button class="btn btn-secondary btn-small" type="button" data-editor-step-forward aria-label="Step forward">+0.1s</button>
-              <label class="airstrike-editor-checkbox"><input type="checkbox" data-editor-loop> Loop</label>
-              <label class="airstrike-editor-checkbox"><input type="checkbox" data-editor-follow-vehicle> Follow vehicle</label>
-              <label class="airstrike-editor-checkbox"><input type="checkbox" data-editor-ride-vehicle> Ride vehicle</label>
+              <button class="airstrike-editor-icon-button" type="button" data-editor-play data-icon="▶" aria-label="Play" title="Play">Play</button>
+              <button class="airstrike-editor-icon-button" type="button" data-editor-step-back data-icon="↶" aria-label="Step backward 0.1 seconds" title="Step backward 0.1s">-0.1s</button>
+              <button class="airstrike-editor-icon-button" type="button" data-editor-step-forward data-icon="↷" aria-label="Step forward 0.1 seconds" title="Step forward 0.1s">+0.1s</button>
+              <label class="airstrike-editor-checkbox" title="Loop playback"><input type="checkbox" data-editor-loop> <span>Loop</span></label>
+              <label class="airstrike-editor-checkbox" title="Follow vehicle"><input type="checkbox" data-editor-follow-vehicle> <span>Follow</span></label>
+              <label class="airstrike-editor-checkbox" title="Ride vehicle camera"><input type="checkbox" data-editor-ride-vehicle> <span>Ride</span></label>
               <label class="admin-field">
                 <span>Ordnance rays</span>
                 <select data-editor-release-visibility>

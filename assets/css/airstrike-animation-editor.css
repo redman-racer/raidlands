@@ -15,7 +15,7 @@
   --editor-toolbar-height: 84px;
   --editor-left-width: 292px;
   --editor-right-width: 420px;
-  --editor-bottom-height: 232px;
+  --editor-bottom-height: 146px;
   --editor-dock-gap: 16px;
   --editor-panel-edge: 16px;
   --editor-bottom-bar-height: 30px;
@@ -281,6 +281,12 @@
   background: rgba(1, 4, 5, .34);
 }
 
+.airstrike-editor-bottom-head {
+  align-items: center;
+  min-height: 30px;
+  padding: 5px 10px;
+}
+
 .airstrike-editor-dock-head > div,
 .airstrike-editor-bottom-head > div {
   min-width: 0;
@@ -297,6 +303,10 @@
   text-overflow: ellipsis;
   text-transform: uppercase;
   white-space: nowrap;
+}
+
+.airstrike-editor-bottom-head strong {
+  font-size: 11px;
 }
 
 .airstrike-editor-panel-actions {
@@ -917,47 +927,87 @@
 
 .airstrike-editor-timeline {
   display: grid;
-  grid-template-columns: auto minmax(180px, 1fr) 88px 116px;
+  grid-template-columns: auto minmax(180px, 1fr) 72px 104px;
   align-items: center;
-  gap: 10px;
-  padding: 9px 11px;
+  gap: 8px;
+  padding: 5px 8px;
   border: 1px solid rgba(129, 167, 174, .2);
-  border-radius: 6px;
+  border-radius: 5px;
   background: rgba(8, 12, 14, .9);
 }
 
 .airstrike-editor-playback {
   display: grid;
-  grid-template-columns: auto auto auto auto auto auto minmax(160px, 240px);
-  align-items: end;
-  gap: 8px;
+  grid-template-columns: repeat(3, 32px) repeat(3, max-content) minmax(150px, 220px);
+  align-items: center;
+  gap: 6px;
 }
 
 .airstrike-editor-checkbox {
   display: inline-flex;
   align-items: center;
-  gap: 6px;
-  min-height: 34px;
+  gap: 5px;
+  min-height: 28px;
   color: #bdd2d7;
-  font-size: 12px;
+  font-size: 11px;
+  white-space: nowrap;
 }
 
 .airstrike-editor-playback .admin-field {
   min-width: 0;
+  gap: 3px;
 }
 
 .airstrike-editor-playback .admin-field span {
-  font-size: 11px;
+  font-size: 10px;
 }
 
 .airstrike-editor-timeline label,
 .airstrike-editor-timeline strong {
   color: #b8c9cd;
-  font-size: 12px;
+  font-size: 11px;
 }
 
 .airstrike-editor-timeline input[type="number"] {
   min-width: 0;
+  height: 26px;
+  padding: 0 6px;
+  font-size: 11px;
+}
+
+.airstrike-editor-icon-button {
+  position: relative;
+  width: 32px;
+  height: 28px;
+  padding: 0;
+  border: 1px solid rgba(129, 167, 174, .26);
+  border-radius: 5px;
+  overflow: hidden;
+  color: transparent;
+  background:
+    linear-gradient(180deg, rgba(31, 43, 47, .94), rgba(11, 16, 18, .96)),
+    #0a0e10;
+  box-shadow: inset 0 -1px 0 rgba(249, 115, 22, .22);
+  cursor: pointer;
+}
+
+.airstrike-editor-icon-button::before {
+  content: attr(data-icon);
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  color: #e8f7fa;
+  font: 900 15px/1 var(--font-body, Arial, sans-serif);
+}
+
+.airstrike-editor-icon-button:hover,
+.airstrike-editor-icon-button:focus-visible {
+  border-color: rgba(54, 197, 230, .58);
+  outline: none;
+  box-shadow:
+    inset 0 -1px 0 rgba(249, 115, 22, .38),
+    0 0 0 2px rgba(54, 197, 230, .14);
 }
 
 .airstrike-release-timeline {
@@ -966,9 +1016,9 @@
 
 .airstrike-release-track {
   position: relative;
-  height: 28px;
+  height: 20px;
   border: 1px solid rgba(129, 167, 174, .2);
-  border-radius: 6px;
+  border-radius: 5px;
   background:
     linear-gradient(90deg, rgba(54, 197, 230, .18), rgba(249, 115, 22, .16)),
     rgba(4, 8, 9, .86);
@@ -987,8 +1037,8 @@
 .airstrike-release-marker {
   position: absolute;
   top: 50%;
-  width: 14px;
-  height: 18px;
+  width: 12px;
+  height: 14px;
   padding: 0;
   border: 1px solid rgba(255, 209, 102, .62);
   border-radius: 4px;
@@ -1231,10 +1281,10 @@
 .airstrike-editor-bottom-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
-  gap: 12px;
+  gap: 10px;
   min-width: 0;
   min-height: 0;
-  padding: 12px;
+  padding: 8px 10px 10px;
 }
 
 .airstrike-editor-drawer-main,
@@ -1242,7 +1292,7 @@
   display: grid;
   min-width: 0;
   min-height: 0;
-  gap: 10px;
+  gap: 7px;
 }
 
 .airstrike-editor-output-panel {
@@ -1255,7 +1305,7 @@
   margin: 0;
   overflow: auto;
   color: #b8c9cd;
-  font: 11px/1.45 "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  font: 10px/1.35 "Cascadia Code", "SFMono-Regular", Consolas, monospace;
   white-space: pre-wrap;
 }
 

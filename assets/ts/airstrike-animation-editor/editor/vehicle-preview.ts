@@ -96,6 +96,17 @@ function centerLoadedScene(scene: Object3D): void {
   scene.position.sub(center);
 }
 
+function alignVisualOrigin(group: Group, originY = 0.5): void {
+  group.updateMatrixWorld(true);
+  const box = new Box3().setFromObject(group);
+  if (box.isEmpty()) {
+    return;
+  }
+  const ratio = Math.min(1, Math.max(0, Number.isFinite(originY) ? originY : 0.5));
+  const anchorY = box.min.y + (box.max.y - box.min.y) * ratio;
+  group.position.y -= anchorY;
+}
+
 function addPlaneProxy(group: Group, metadata: VehiclePreviewMetadata): void {
   const width = metadata.bounds.x;
   const height = metadata.bounds.y;
@@ -179,13 +190,14 @@ export async function loadVehiclePreview(
     centerLoadedScene(gltf.scene);
     group.add(gltf.scene);
     group.scale.setScalar(metadata.scale || 1);
-    const correction = unityPositionToThreeVector(metadata.positionCorrection);
-    group.position.copy(correction);
     group.rotation.set(
       (metadata.rotationCorrection.x * Math.PI) / 180,
       (metadata.rotationCorrection.y * Math.PI) / 180,
       (metadata.rotationCorrection.z * Math.PI) / 180,
     );
+    alignVisualOrigin(group, metadata.visualOriginY);
+    const correction = unityPositionToThreeVector(metadata.positionCorrection);
+    group.position.add(correction);
     return { object: group, usedFallback: false, resolvedUrl };
   } catch {
     return { object: createVehicleProxy(metadata), usedFallback: true, resolvedUrl };

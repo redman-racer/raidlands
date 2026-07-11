@@ -951,6 +951,9 @@ class AirstrikeEditorApp {
     this.elements.timeNumber.value = this.state.scrubTime.toFixed(2);
     this.elements.timeReadout.textContent = `${this.state.scrubTime.toFixed(2)}s / ${duration.toFixed(2)}s`;
     this.elements.play.textContent = this.state.playing ? "Pause" : "Play";
+    this.elements.play.dataset.icon = this.state.playing ? "Ⅱ" : "▶";
+    this.elements.play.ariaLabel = this.state.playing ? "Pause" : "Play";
+    this.elements.play.title = this.state.playing ? "Pause" : "Play";
     this.renderReleaseTimeline();
   }
 

@@ -54,6 +54,7 @@
         "positionCorrection": { "$ref": "#/$defs/vector" },
         "rotationCorrection": { "$ref": "#/$defs/vector" },
         "bounds": { "$ref": "#/$defs/vector" },
+        "visualOriginY": { "type": "number", "minimum": 0, "maximum": 1 },
         "proxy": { "enum": ["drone", "plane", "helicopter"] },
         "hardpoints": { "type": "array", "items": { "$ref": "#/$defs/hardpoint" } }
       }

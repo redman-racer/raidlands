@@ -8,6 +8,7 @@
       "scale": 0.0000017,
       "positionCorrection": { "x": 0, "y": 0, "z": 0 },
       "rotationCorrection": { "x": 0, "y": 0, "z": 180 },
+      "visualOriginY": 0.32,
       "bounds": { "x": 17.5, "y": 4.5, "z": 16.3 },
       "proxy": "plane",
       "hardpoints": [
@@ -22,6 +23,7 @@
       "scale": 6.5,
       "positionCorrection": { "x": 0, "y": 0, "z": 0 },
       "rotationCorrection": { "x": 0, "y": 90, "z": 0 },
+      "visualOriginY": 0.38,
       "bounds": { "x": 14, "y": 5, "z": 17 },
       "proxy": "helicopter",
       "hardpoints": [
@@ -36,6 +38,7 @@
       "scale": 0.217,
       "positionCorrection": { "x": 0, "y": 0, "z": 0 },
       "rotationCorrection": { "x": 0, "y": 180, "z": 0 },
+      "visualOriginY": 0.24,
       "bounds": { "x": 51.8, "y": 16.8, "z": 53  },
       "proxy": "plane",
       "hardpoints": [
@@ -50,6 +53,7 @@
       "scale": 0.216,
       "positionCorrection": { "x": 0, "y": 0, "z": 0 },
       "rotationCorrection": { "x": 0, "y": 0, "z": 0 },
+      "visualOriginY": 0.5,
       "bounds": { "x": 1.2, "y": 0.5, "z": 1.2 },
       "proxy": "drone",
       "hardpoints": [
@@ -64,6 +68,7 @@
       "scale": 0.00000185,
       "positionCorrection": { "x": 0, "y": 0, "z": 0 },
       "rotationCorrection": { "x": 0, "y": 0, "z": 180 },
+      "visualOriginY": 0.32,
       "bounds": { "x": 13, "y": 5.5, "z": 19.5 },
       "proxy": "plane",
       "hardpoints": [

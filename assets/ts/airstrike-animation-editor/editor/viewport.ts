@@ -1,6 +1,7 @@
 import {
   AmbientLight,
   Box3,
+  BoxGeometry,
   BufferGeometry,
   Color,
   ConeGeometry,
@@ -20,6 +21,7 @@ import {
   Raycaster,
   Scene,
   SphereGeometry,
+  CylinderGeometry,
   Vector2,
   Vector3,
   WebGLRenderer,
@@ -65,6 +67,13 @@ const selectedReleaseMaterial = new MeshStandardMaterial({ color: 0xffd166, emis
 const releaseTargetMaterial = new MeshBasicMaterial({ color: 0xf43f5e, transparent: true, opacity: 0.75 });
 const releaseLineMaterial = new LineBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.68 });
 const groundMaterial = new MeshBasicMaterial({ color: 0x0c1518, side: DoubleSide, transparent: true, opacity: 0.22 });
+const scaleReferenceMaterials = {
+  player: new MeshStandardMaterial({ color: 0x8fd3ff, metalness: 0.02, roughness: 0.68 }),
+  playerAccent: new MeshStandardMaterial({ color: 0xffd166, metalness: 0.02, roughness: 0.55 }),
+  crate: new MeshStandardMaterial({ color: 0x8b5a2b, metalness: 0.08, roughness: 0.82 }),
+  barricade: new MeshStandardMaterial({ color: 0xa75b3d, metalness: 0.18, roughness: 0.72 }),
+  tower: new MeshStandardMaterial({ color: 0x58666c, metalness: 0.22, roughness: 0.62 }),
+};
 const minimumFloorSize = 800;
 const maximumFloorDivisions = 120;
 const preferredGridCellSize = 20;
@@ -82,6 +91,7 @@ export class AirstrikeViewport {
   private readonly waypointGroup = new Group();
   private readonly releaseGroup = new Group();
   private readonly vehicleRoot = new Group();
+  private readonly scaleReferenceGroup = new Group();
   private readonly routeMaterial = new LineBasicMaterial({ color: 0x55d6ff, linewidth: 2 });
   private readonly handleGeometry = new SphereGeometry(3.2, 20, 12);
   private readonly releaseGeometry = new SphereGeometry(2.5, 18, 10);
@@ -141,6 +151,7 @@ export class AirstrikeViewport {
     this.scene.add(this.waypointGroup);
     this.scene.add(this.releaseGroup);
     this.scene.add(this.vehicleRoot);
+    this.scene.add(this.scaleReferenceGroup);
     this.scene.add(this.transform);
     this.setupSceneChrome();
     this.container.addEventListener("pointerdown", this.onPointerDown);
@@ -284,6 +295,106 @@ export class AirstrikeViewport {
     approach.rotation.x = -Math.PI / 2;
     approach.position.set(0, 10, 90);
     this.scene.add(approach);
+
+    this.createScaleReferenceEntities();
+  }
+
+  private createScaleReferenceEntities(): void {
+    this.scaleReferenceGroup.name = "scale-reference-placeholders";
+    this.scaleReferenceGroup.clear();
+
+    const standingPlayer = this.createPlayerPlaceholder("scale-player-standing", scaleReferenceMaterials.player);
+    standingPlayer.position.set(-26, 0, 18);
+    standingPlayer.rotation.y = MathUtils.degToRad(18);
+    this.scaleReferenceGroup.add(standingPlayer);
+
+    const secondPlayer = this.createPlayerPlaceholder("scale-player-near-crates", scaleReferenceMaterials.playerAccent);
+    secondPlayer.position.set(40, 0, -34);
+    secondPlayer.rotation.y = MathUtils.degToRad(-32);
+    this.scaleReferenceGroup.add(secondPlayer);
+
+    const crateStack = new Group();
+    crateStack.name = "scale-crate-stack";
+    const crateGeometry = new BoxGeometry(7, 7, 7);
+    const crateOffsets = [
+      new Vector3(0, 3.5, 0),
+      new Vector3(7.4, 3.5, 0),
+      new Vector3(3.7, 10.7, 0),
+    ];
+    for (const offset of crateOffsets) {
+      const crate = new Mesh(crateGeometry, scaleReferenceMaterials.crate);
+      crate.position.copy(offset);
+      crateStack.add(crate);
+    }
+    crateStack.position.set(18, 0, 38);
+    crateStack.rotation.y = MathUtils.degToRad(-16);
+    this.scaleReferenceGroup.add(crateStack);
+
+    const barricade = new Group();
+    barricade.name = "scale-barricade-line";
+    const barricadeGeometry = new BoxGeometry(22, 5, 3);
+    for (let index = 0; index < 3; index += 1) {
+      const block = new Mesh(barricadeGeometry, scaleReferenceMaterials.barricade);
+      block.position.set(index * 23, 2.5, Math.sin(index) * 2);
+      block.rotation.y = MathUtils.degToRad(index === 1 ? 8 : -5);
+      barricade.add(block);
+    }
+    barricade.position.set(-58, 0, -40);
+    barricade.rotation.y = MathUtils.degToRad(24);
+    this.scaleReferenceGroup.add(barricade);
+
+    const tower = this.createTowerPlaceholder();
+    tower.position.set(68, 0, 42);
+    tower.rotation.y = MathUtils.degToRad(-28);
+    this.scaleReferenceGroup.add(tower);
+  }
+
+  private createPlayerPlaceholder(name: string, material: MeshStandardMaterial): Group {
+    const player = new Group();
+    player.name = name;
+
+    const body = new Mesh(new CylinderGeometry(1.4, 1.8, 5.2, 12), material);
+    body.position.y = 4.4;
+    player.add(body);
+
+    const head = new Mesh(new SphereGeometry(1.25, 14, 10), material);
+    head.position.y = 7.8;
+    player.add(head);
+
+    const legs = new Mesh(new BoxGeometry(2.8, 2.8, 1.2), material);
+    legs.position.y = 1.4;
+    player.add(legs);
+
+    const sightLine = new Mesh(new BoxGeometry(0.32, 0.32, 8), scaleReferenceMaterials.tower);
+    sightLine.position.set(0, 5.2, -4.6);
+    player.add(sightLine);
+
+    return player;
+  }
+
+  private createTowerPlaceholder(): Group {
+    const tower = new Group();
+    tower.name = "scale-watchtower-placeholder";
+
+    const deck = new Mesh(new BoxGeometry(14, 2, 14), scaleReferenceMaterials.tower);
+    deck.position.y = 13;
+    tower.add(deck);
+
+    const legGeometry = new CylinderGeometry(0.45, 0.45, 13, 8);
+    for (const x of [-5.2, 5.2]) {
+      for (const z of [-5.2, 5.2]) {
+        const leg = new Mesh(legGeometry, scaleReferenceMaterials.tower);
+        leg.position.set(x, 6.5, z);
+        tower.add(leg);
+      }
+    }
+
+    const roof = new Mesh(new ConeGeometry(10.5, 5, 4), scaleReferenceMaterials.barricade);
+    roof.position.y = 17.2;
+    roof.rotation.y = MathUtils.degToRad(45);
+    tower.add(roof);
+
+    return tower;
   }
 
   private resize(): void {
