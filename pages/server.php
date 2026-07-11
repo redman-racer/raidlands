@@ -157,9 +157,9 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
         <div class="server-terrain-controls" data-map-viewer-controls>
           <button type="button" data-map-view="iso" aria-pressed="true">ISO</button>
           <button type="button" data-map-view="top" aria-pressed="false">TOP</button>
-          <label>
-            <span>Relief</span>
-            <input type="range" min="0.35" max="2.5" step="0.05" value="1" data-map-viewer-relief>
+          <label class="server-terrain-toggle">
+            <input type="checkbox" checked data-map-viewer-grid>
+            <span>Grid coordinates</span>
           </label>
         </div>
       </div>
@@ -168,6 +168,7 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
         data-server-map-viewer
         data-terrain-url="<?= e($server_terrain_url) ?>"
         data-texture-url="<?= e($server_texture_url) ?>"
+        data-grid-overlay="true"
         data-world-size="<?= e((string) ($server_map_image['worldSize'] ?? $server_status['worldSize'] ?? 0)) ?>"
         data-min-height="<?= e((string) ($server_map_image['terrainMinHeight'] ?? 0)) ?>"
         data-max-height="<?= e((string) ($server_map_image['terrainMaxHeight'] ?? 0)) ?>"

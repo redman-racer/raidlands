@@ -10,6 +10,8 @@ import {
   Float32BufferAttribute,
   Group,
   CanvasTexture,
+  LineBasicMaterial,
+  LineSegments,
   MathUtils,
   Mesh,
   MeshStandardMaterial,
@@ -194,6 +196,7 @@ class TerrainViewer {
   private readonly controls: OrbitControls;
   private readonly terrainMesh: Mesh;
   private readonly terrainMaterial: MeshStandardMaterial;
+  private readonly gridLayer = new Group();
   private readonly airstrikeLayer = new Group();
   private readonly onResize = () => this.resize();
   private animationFrame = 0;
@@ -220,6 +223,10 @@ class TerrainViewer {
     this.terrainMaterial = this.createTerrainMaterial();
     this.terrainMesh = this.createTerrainMesh();
     this.scene.add(this.terrainMesh);
+    this.gridLayer.name = "raidlands-rust-map-grid";
+    this.gridLayer.add(createRustMapGridOverlay(this.terrain));
+    this.gridLayer.visible = this.root.dataset.gridOverlay === "true";
+    this.scene.add(this.gridLayer);
     this.airstrikeLayer.name = "raidlands-airstrike-preview-layer";
     this.scene.add(this.airstrikeLayer);
     this.addMonuments();
@@ -243,8 +250,8 @@ class TerrainViewer {
     this.loadTexture();
   }
 
-  public setRelief(value: number): void {
-    this.terrainMesh.scale.y = MathUtils.clamp(value, 0.35, 2.5);
+  public setGridVisible(visible: boolean): void {
+    this.gridLayer.visible = visible;
   }
 
   public addAirstrikePreview(profiles: RuntimeVisualProfile[]): void {
@@ -850,6 +857,109 @@ function createMonumentTitleSprite(title: string, size: number): Sprite {
   return sprite;
 }
 
+function createRustMapGridOverlay(terrain: TerrainPayload): Group {
+  const group = new Group();
+  const worldSize = terrain.worldSize || 4500;
+  const half = worldSize / 2;
+  const cellSize = rustGridCellSize(worldSize);
+  const cells = Math.max(1, Math.ceil(worldSize / cellSize));
+  const lineEnd = -half + cells * cellSize;
+  const yOffset = Math.max(8, worldSize * 0.002);
+  const positions: number[] = [];
+
+  for (let index = 0; index <= cells; index += 1) {
+    const coord = -half + index * cellSize;
+    positions.push(coord, yOffset, half, coord, yOffset, lineEnd);
+    positions.push(-half, yOffset, coord, lineEnd, yOffset, coord);
+  }
+
+  const geometry = new BufferGeometry();
+  geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+  const material = new LineBasicMaterial({
+    color: 0xffd166,
+    transparent: true,
+    opacity: 0.42,
+    depthTest: false,
+    depthWrite: false,
+  });
+  const lines = new LineSegments(geometry, material);
+  lines.name = "rust-grid-lines";
+  lines.renderOrder = 30;
+  group.add(lines);
+
+  const labelSize = MathUtils.clamp(cellSize * 0.22, 42, 82);
+  for (let index = 0; index < cells; index += 1) {
+    const center = -half + index * cellSize + cellSize / 2;
+    const columnLabel = rustGridColumnLabel(index);
+    const rowLabel = String(index);
+    group.add(createGridLabelSprite(columnLabel, labelSize, center, half - cellSize * 0.22, yOffset + 24));
+    group.add(createGridLabelSprite(rowLabel, labelSize, -half + cellSize * 0.22, half - index * cellSize - cellSize / 2, yOffset + 24));
+  }
+
+  return group;
+}
+
+function rustGridCellSize(worldSize: number): number {
+  if (worldSize <= 2000) {
+    return 100;
+  }
+
+  return 150;
+}
+
+function rustGridColumnLabel(index: number): string {
+  let value = index;
+  let label = "";
+
+  do {
+    label = String.fromCharCode(65 + (value % 26)) + label;
+    value = Math.floor(value / 26) - 1;
+  } while (value >= 0);
+
+  return label;
+}
+
+function createGridLabelSprite(label: string, size: number, x: number, z: number, y: number): Sprite {
+  const fontSize = 34;
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    return new Sprite(new SpriteMaterial({ color: 0xffd166 }));
+  }
+
+  canvas.width = 128;
+  canvas.height = 128;
+  context.font = `900 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillStyle = "rgba(5, 6, 7, 0.68)";
+  roundRect(context, 20, 32, 88, 64, 10);
+  context.fill();
+  context.strokeStyle = "rgba(255, 209, 102, 0.82)";
+  context.lineWidth = 3;
+  context.stroke();
+  context.fillStyle = "#ffe7a3";
+  context.shadowColor = "rgba(0, 0, 0, 0.72)";
+  context.shadowBlur = 5;
+  context.fillText(label, 64, 65);
+
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  const material = new SpriteMaterial({
+    map: texture,
+    transparent: true,
+    depthTest: false,
+    depthWrite: false,
+  });
+  const sprite = new Sprite(material);
+  sprite.name = `rust-grid-label-${label}`;
+  sprite.position.set(x, y, z);
+  sprite.scale.set(size, size, 1);
+  sprite.renderOrder = 31;
+  return sprite;
+}
+
 function nextPowerOfTwo(value: number): number {
   return 2 ** Math.ceil(Math.log2(value));
 }
@@ -923,7 +1033,7 @@ function addSphere(group: Group, radius: number, color: number, x: number, y: nu
 function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): void {
   const panel = root.closest<HTMLElement>(".server-terrain-panel");
   const buttons = Array.from(panel?.querySelectorAll<HTMLButtonElement>("[data-map-view]") || []);
-  const relief = panel?.querySelector<HTMLInputElement>("[data-map-viewer-relief]");
+  const grid = panel?.querySelector<HTMLInputElement>("[data-map-viewer-grid]");
 
   buttons.forEach((button) => {
     button.addEventListener("click", () => {
@@ -936,8 +1046,8 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): void {
     });
   });
 
-  relief?.addEventListener("input", () => {
-    viewer.setRelief(Number(relief.value) || 1);
+  grid?.addEventListener("change", () => {
+    viewer.setGridVisible(grid.checked);
   });
 }
 

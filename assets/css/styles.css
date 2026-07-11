@@ -1594,7 +1594,7 @@ h3,
 
 .server-terrain-controls label {
   display: inline-grid;
-  grid-template-columns: auto minmax(120px, 180px);
+  grid-template-columns: auto auto;
   align-items: center;
   gap: 10px;
   min-height: 38px;
@@ -1605,6 +1605,10 @@ h3,
   font-size: .8rem;
   font-weight: 900;
   text-transform: uppercase;
+}
+
+.server-terrain-controls .server-terrain-toggle {
+  cursor: pointer;
 }
 
 .server-terrain-controls input {
