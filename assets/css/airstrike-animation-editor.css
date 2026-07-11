@@ -309,16 +309,42 @@
 .airstrike-editor-panel-collapse,
 .airstrike-editor-palette-collapse {
   appearance: none;
-  min-width: 38px;
-  min-height: 28px;
-  padding: 5px 7px;
-  border: 1px solid rgba(129, 167, 174, .28);
-  border-radius: 4px;
-  background: rgba(0, 0, 0, .22);
-  color: #c9dce0;
-  font: 800 10px/1 var(--font-body, Arial, sans-serif);
-  text-transform: uppercase;
+  display: grid;
+  place-items: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 1px solid rgba(129, 167, 174, .32);
+  border-radius: 6px;
+  background: rgba(7, 11, 13, .76);
+  color: #d9f6ff;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .03);
   cursor: pointer;
+  transition: border-color .16s ease, background .16s ease, color .16s ease, transform .18s ease, box-shadow .18s ease;
+}
+
+.airstrike-editor-panel-collapse::before,
+.airstrike-editor-palette-collapse::before,
+.airstrike-editor-panel-collapse::after {
+  content: "";
+  grid-area: 1 / 1;
+  transition: transform .18s ease, opacity .18s ease;
+}
+
+.airstrike-editor-panel-collapse::before,
+.airstrike-editor-palette-collapse::before {
+  width: 10px;
+  height: 10px;
+  border-top: 2px solid currentColor;
+  border-right: 2px solid currentColor;
+}
+
+.airstrike-editor-panel-collapse::after {
+  width: 14px;
+  height: 2px;
+  border-radius: 99px;
+  background: currentColor;
+  opacity: .44;
 }
 
 .airstrike-editor-panel-collapse:hover,
@@ -326,8 +352,64 @@
 .airstrike-editor-palette-collapse:hover,
 .airstrike-editor-palette-collapse:focus-visible {
   outline: none;
-  border-color: rgba(54, 197, 230, .54);
+  border-color: rgba(54, 197, 230, .68);
+  background: rgba(18, 45, 52, .9);
   color: #fff;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .26);
+}
+
+.airstrike-editor-panel-collapse-left::before {
+  transform: translateX(2px) rotate(225deg);
+}
+
+.airstrike-editor-panel-collapse-left:hover::before,
+.airstrike-editor-panel-collapse-left:focus-visible::before {
+  transform: translateX(-2px) rotate(225deg);
+}
+
+.airstrike-editor-panel-collapse-right::before {
+  transform: translateX(-2px) rotate(45deg);
+}
+
+.airstrike-editor-panel-collapse-right:hover::before,
+.airstrike-editor-panel-collapse-right:focus-visible::before {
+  transform: translateX(2px) rotate(45deg);
+}
+
+.airstrike-editor-panel-collapse-bottom::before {
+  transform: translateY(-2px) rotate(135deg);
+}
+
+.airstrike-editor-panel-collapse-bottom:hover::before,
+.airstrike-editor-panel-collapse-bottom:focus-visible::before {
+  transform: translateY(2px) rotate(135deg);
+}
+
+.airstrike-editor-panel-collapse-left::after {
+  transform: translateX(5px) rotate(90deg);
+}
+
+.airstrike-editor-panel-collapse-right::after {
+  transform: translateX(-5px) rotate(90deg);
+}
+
+.airstrike-editor-panel-collapse-bottom::after {
+  transform: translateY(-5px);
+}
+
+.airstrike-editor-palette-collapse {
+  width: 30px;
+  height: 30px;
+}
+
+.airstrike-editor-palette-collapse::before {
+  width: 9px;
+  height: 9px;
+  transform: translateY(2px) rotate(315deg);
+}
+
+.airstrike-editor-palette-collapse[aria-expanded="false"]::before {
+  transform: translateY(-2px) rotate(135deg);
 }
 
 .airstrike-editor-panel-head {

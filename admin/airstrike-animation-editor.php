@@ -126,7 +126,7 @@ $editor_config = [
           </div>
           <div class="airstrike-editor-panel-actions">
             <button class="btn btn-secondary btn-small" type="button" data-editor-new>New</button>
-            <button class="airstrike-editor-panel-collapse" type="button" data-editor-toggle-panel="left" aria-label="Minimize profiles">Min</button>
+            <button class="airstrike-editor-panel-collapse airstrike-editor-panel-collapse-left" type="button" data-editor-toggle-panel="left" aria-label="Minimize profiles" title="Minimize profiles"></button>
           </div>
         </div>
         <input type="search" placeholder="Search profiles" data-editor-search aria-label="Search profiles">
@@ -134,8 +134,21 @@ $editor_config = [
       </aside>
 
       <section class="airstrike-editor-center">
-        <div class="airstrike-editor-viewport-shell">
-          <div class="airstrike-editor-viewport" data-editor-viewport aria-label="Airstrike waypoint viewport"></div>
+          <div class="airstrike-editor-viewport-shell">
+            <div class="airstrike-editor-viewport" data-editor-viewport aria-label="Airstrike waypoint viewport"></div>
+          <div class="airstrike-editor-orientation" aria-label="View orientation">
+            <button class="airstrike-editor-orientation-face airstrike-editor-orientation-face-top" type="button" data-editor-orientation="top" aria-label="Top view" title="Top view">Top</button>
+            <button class="airstrike-editor-orientation-face airstrike-editor-orientation-face-left" type="button" data-editor-orientation="left" aria-label="Left view" title="Left view">Left</button>
+            <button class="airstrike-editor-orientation-cube" type="button" data-editor-orientation="iso" aria-label="Isometric view" title="Isometric view">
+              <span class="airstrike-editor-orientation-cube-top"></span>
+              <span class="airstrike-editor-orientation-cube-left"></span>
+              <span class="airstrike-editor-orientation-cube-right"></span>
+            </button>
+            <button class="airstrike-editor-orientation-face airstrike-editor-orientation-face-right" type="button" data-editor-orientation="right" aria-label="Right view" title="Right view">Right</button>
+            <button class="airstrike-editor-orientation-face airstrike-editor-orientation-face-front" type="button" data-editor-orientation="front" aria-label="Front view" title="Front view">Front</button>
+            <button class="airstrike-editor-orientation-face airstrike-editor-orientation-face-bottom" type="button" data-editor-orientation="bottom" aria-label="Bottom view" title="Bottom view">Bottom</button>
+            <button class="airstrike-editor-orientation-face airstrike-editor-orientation-face-back" type="button" data-editor-orientation="back" aria-label="Back view" title="Back view">Back</button>
+          </div>
           <div class="airstrike-editor-panel-restore" aria-label="Hidden editor panels">
             <button class="airstrike-editor-restore-button airstrike-editor-restore-left" type="button" data-editor-toggle-panel="left" aria-label="Show profiles" title="Show profiles"></button>
             <button class="airstrike-editor-restore-button airstrike-editor-restore-right" type="button" data-editor-toggle-panel="right" aria-label="Show inspector" title="Show inspector"></button>
@@ -154,7 +167,7 @@ $editor_config = [
             <p class="section-kicker">Inspector</p>
             <strong>Palettes</strong>
           </div>
-          <button class="airstrike-editor-panel-collapse" type="button" data-editor-toggle-panel="right" aria-label="Minimize inspector">Min</button>
+          <button class="airstrike-editor-panel-collapse airstrike-editor-panel-collapse-right" type="button" data-editor-toggle-panel="right" aria-label="Minimize inspector" title="Minimize inspector"></button>
         </div>
         <div class="airstrike-editor-palette-groups">
           <section class="airstrike-editor-palette-group" aria-label="Edit palettes">
@@ -167,7 +180,7 @@ $editor_config = [
                 <summary class="airstrike-editor-palette-summary">
                   <span class="airstrike-editor-palette-grip" data-editor-palette-drag title="Move panel">||</span>
                   <span class="airstrike-editor-palette-title"><small>Profile</small><strong>Identity</strong></span>
-                  <button class="airstrike-editor-palette-collapse" type="button" data-editor-palette-collapse aria-label="Minimize profile identity">Min</button>
+                  <button class="airstrike-editor-palette-collapse" type="button" data-editor-palette-collapse aria-label="Minimize profile identity" title="Minimize profile identity"></button>
                 </summary>
                 <div class="airstrike-editor-palette-body">
                   <p class="airstrike-editor-muted">Draft ID and preview vehicle.</p>
@@ -196,7 +209,7 @@ $editor_config = [
                 <summary class="airstrike-editor-palette-summary">
                   <span class="airstrike-editor-palette-grip" data-editor-palette-drag title="Move panel">||</span>
                   <span class="airstrike-editor-palette-title"><small>Route</small><strong data-editor-waypoint-title>No waypoint selected</strong></span>
-                  <button class="airstrike-editor-palette-collapse" type="button" data-editor-palette-collapse aria-label="Minimize waypoint">Min</button>
+                  <button class="airstrike-editor-palette-collapse" type="button" data-editor-palette-collapse aria-label="Minimize waypoint" title="Minimize waypoint"></button>
                 </summary>
                 <div class="airstrike-editor-palette-body">
                   <div class="airstrike-editor-inline-actions">
@@ -227,7 +240,7 @@ $editor_config = [
                 <summary class="airstrike-editor-palette-summary">
                   <span class="airstrike-editor-palette-grip" data-editor-palette-drag title="Move panel">||</span>
                   <span class="airstrike-editor-palette-title"><small>Route</small><strong>Timing</strong></span>
-                  <button class="airstrike-editor-palette-collapse" type="button" data-editor-palette-collapse aria-label="Minimize route timing">Min</button>
+                  <button class="airstrike-editor-palette-collapse" type="button" data-editor-palette-collapse aria-label="Minimize route timing" title="Minimize route timing"></button>
                 </summary>
                 <div class="airstrike-editor-palette-body">
                   <label class="admin-field">
@@ -246,7 +259,7 @@ $editor_config = [
                 <summary class="airstrike-editor-palette-summary">
                   <span class="airstrike-editor-palette-grip" data-editor-palette-drag title="Move panel">||</span>
                   <span class="airstrike-editor-palette-title"><small>Payload</small><strong>Ordnance</strong></span>
-                  <button class="airstrike-editor-palette-collapse" type="button" data-editor-palette-collapse aria-label="Minimize ordnance">Min</button>
+                  <button class="airstrike-editor-palette-collapse" type="button" data-editor-palette-collapse aria-label="Minimize ordnance" title="Minimize ordnance"></button>
                 </summary>
                 <div class="airstrike-editor-palette-body">
                   <label class="admin-field">
@@ -279,7 +292,7 @@ $editor_config = [
                 <summary class="airstrike-editor-palette-summary">
                   <span class="airstrike-editor-palette-grip" data-editor-palette-drag title="Move panel">||</span>
                   <span class="airstrike-editor-palette-title"><small>Route</small><strong>Waypoints</strong></span>
-                  <button class="airstrike-editor-palette-collapse" type="button" data-editor-palette-collapse aria-label="Minimize route waypoints">Min</button>
+                  <button class="airstrike-editor-palette-collapse" type="button" data-editor-palette-collapse aria-label="Minimize route waypoints" title="Minimize route waypoints"></button>
                 </summary>
                 <div class="airstrike-editor-palette-body">
                   <div class="airstrike-waypoint-list" data-editor-waypoints></div>
@@ -290,7 +303,7 @@ $editor_config = [
                 <summary class="airstrike-editor-palette-summary">
                   <span class="airstrike-editor-palette-grip" data-editor-palette-drag title="Move panel">||</span>
                   <span class="airstrike-editor-palette-title"><small>Output</small><strong>Validation</strong></span>
-                  <button class="airstrike-editor-palette-collapse" type="button" data-editor-palette-collapse aria-label="Minimize validation">Min</button>
+                  <button class="airstrike-editor-palette-collapse" type="button" data-editor-palette-collapse aria-label="Minimize validation" title="Minimize validation"></button>
                 </summary>
                 <div class="airstrike-editor-palette-body">
                   <div class="airstrike-editor-validation" data-editor-feedback>
@@ -309,7 +322,7 @@ $editor_config = [
             <p class="section-kicker">Timeline</p>
             <strong>Playback</strong>
           </div>
-          <button class="airstrike-editor-panel-collapse" type="button" data-editor-toggle-panel="bottom" aria-label="Minimize timeline">Min</button>
+          <button class="airstrike-editor-panel-collapse airstrike-editor-panel-collapse-bottom" type="button" data-editor-toggle-panel="bottom" aria-label="Minimize timeline" title="Minimize timeline"></button>
         </div>
         <div class="airstrike-editor-bottom-grid">
           <div class="airstrike-editor-drawer-main">

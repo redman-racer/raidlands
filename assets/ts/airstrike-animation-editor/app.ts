@@ -1334,8 +1334,8 @@ class AirstrikeEditorApp {
     if (!button) {
       return;
     }
-    button.textContent = palette.open ? "Min" : "Open";
     button.setAttribute("aria-expanded", palette.open ? "true" : "false");
+    button.setAttribute("title", palette.open ? "Minimize panel" : "Open panel");
   }
 
   private handlePaletteDragStart(event: DragEvent, palette: HTMLDetailsElement): void {
