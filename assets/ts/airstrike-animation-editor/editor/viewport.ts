@@ -1357,9 +1357,9 @@ export class AirstrikeViewport {
     const pose = evaluateSourcePose(this.profile, time);
     this.vehicleRoot.position.copy(unityPositionToThreeVector(pose.position));
     this.vehicleRoot.quaternion.copy(unityQuaternionValueToThreeQuaternion(pose.rotation));
-    if (this.rideVehicle && this.playbackActive) {
+    if (this.rideVehicle) {
       this.rideVehicleCamera();
-    } else if (this.followVehicle && this.playbackActive) {
+    } else if (this.followVehicle) {
       this.followVehicleCamera();
     }
   }
