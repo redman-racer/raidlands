@@ -12,6 +12,7 @@ import {
   CanvasTexture,
   LineBasicMaterial,
   LineSegments,
+  Material,
   MathUtils,
   Mesh,
   MeshStandardMaterial,
@@ -263,6 +264,7 @@ class TerrainViewer {
 
   public setGridVisible(visible: boolean): void {
     this.gridLayer.visible = visible;
+    this.updateGridOpacity();
   }
 
   public addAirstrikePreview(profiles: RuntimeVisualProfile[]): void {
@@ -389,6 +391,8 @@ class TerrainViewer {
       (texture) => {
         texture.colorSpace = SRGBColorSpace;
         this.terrainMaterial.map = texture;
+        this.terrainMaterial.color.set(0xf2f0e7);
+        this.terrainMaterial.roughness = 0.82;
         this.terrainMaterial.vertexColors = false;
         this.terrainMaterial.needsUpdate = true;
       },
@@ -438,8 +442,32 @@ class TerrainViewer {
   private animate(): void {
     this.animationFrame = window.requestAnimationFrame(() => this.animate());
     this.controls.update();
+    this.updateGridOpacity();
     this.airstrikeLayer.userData.tick?.((performance.now() - this.clockStart) / 1000);
     this.renderer.render(this.scene, this.camera);
+  }
+
+  private updateGridOpacity(): void {
+    if (!this.gridLayer.visible) {
+      return;
+    }
+
+    const cameraDirection = this.camera.position.clone().sub(this.controls.target).normalize();
+    const topDownAmount = MathUtils.clamp(cameraDirection.dot(new Vector3(0, 1, 0)), 0, 1);
+    const fade = MathUtils.smoothstep(topDownAmount, 0.62, 0.96);
+    const lineOpacity = MathUtils.lerp(0.16, 0.7, fade);
+    const labelOpacity = MathUtils.lerp(0.18, 0.86, fade);
+
+    this.gridLayer.traverse((object) => {
+      if (object instanceof LineSegments) {
+        setMaterialOpacity(object.material, lineOpacity);
+        return;
+      }
+
+      if (object instanceof Sprite) {
+        setMaterialOpacity(object.material, labelOpacity);
+      }
+    });
   }
 }
 
@@ -995,6 +1023,16 @@ function createGridLabelSprite(label: string, size: number, x: number, z: number
   sprite.scale.set(size, size, 1);
   sprite.renderOrder = 31;
   return sprite;
+}
+
+function setMaterialOpacity(material: Material | Material[], opacity: number): void {
+  if (Array.isArray(material)) {
+    material.forEach((entry) => setMaterialOpacity(entry, opacity));
+    return;
+  }
+
+  material.opacity = opacity;
+  material.transparent = true;
 }
 
 function nextPowerOfTwo(value: number): number {
