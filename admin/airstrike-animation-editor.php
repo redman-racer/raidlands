@@ -135,9 +135,9 @@ $editor_config = [
         <div class="airstrike-editor-viewport-shell">
           <div class="airstrike-editor-viewport" data-editor-viewport aria-label="Airstrike waypoint viewport"></div>
           <div class="airstrike-editor-panel-restore" aria-label="Hidden editor panels">
-            <button class="btn btn-secondary btn-small airstrike-editor-restore-left" type="button" data-editor-toggle-panel="left">Profiles</button>
-            <button class="btn btn-secondary btn-small airstrike-editor-restore-right" type="button" data-editor-toggle-panel="right">Inspector</button>
-            <button class="btn btn-secondary btn-small airstrike-editor-restore-bottom" type="button" data-editor-toggle-panel="bottom">Timeline</button>
+            <button class="airstrike-editor-restore-button airstrike-editor-restore-left" type="button" data-editor-toggle-panel="left" aria-label="Show profiles" title="Show profiles"></button>
+            <button class="airstrike-editor-restore-button airstrike-editor-restore-right" type="button" data-editor-toggle-panel="right" aria-label="Show inspector" title="Show inspector"></button>
+            <button class="airstrike-editor-restore-button airstrike-editor-restore-bottom" type="button" data-editor-toggle-panel="bottom" aria-label="Show timeline" title="Show timeline"></button>
           </div>
           <div class="airstrike-editor-viewport-meta">
             <span data-editor-vehicle-meta>Proxy preview</span>

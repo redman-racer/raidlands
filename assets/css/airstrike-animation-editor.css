@@ -421,26 +421,76 @@
 .airstrike-editor-panel-restore {
   position: absolute;
   z-index: 8;
-  top: 14px;
-  left: 16px;
-  right: 16px;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  gap: 8px;
   pointer-events: none;
 }
 
-.airstrike-editor-panel-restore button {
+.airstrike-editor-restore-button {
+  appearance: none;
+  position: fixed;
   display: none;
+  width: 38px;
+  height: 38px;
+  place-items: center;
+  padding: 0;
+  border: 1px solid rgba(129, 167, 174, .32);
+  border-radius: 6px;
+  background: rgba(7, 11, 13, .86);
+  color: #d9f6ff;
   pointer-events: auto;
   box-shadow: 0 10px 28px rgba(0, 0, 0, .32);
+  cursor: pointer;
+}
+
+.airstrike-editor-restore-button::before {
+  content: "";
+  width: 11px;
+  height: 11px;
+  border-top: 2px solid currentColor;
+  border-right: 2px solid currentColor;
+}
+
+.airstrike-editor-restore-button:hover,
+.airstrike-editor-restore-button:focus-visible {
+  outline: none;
+  border-color: rgba(54, 197, 230, .68);
+  background: rgba(18, 45, 52, .92);
+  color: #fff;
+}
+
+.airstrike-editor-restore-left {
+  left: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.airstrike-editor-restore-left::before {
+  transform: rotate(45deg);
+}
+
+.airstrike-editor-restore-right {
+  right: 10px;
+  top: 50%;
+  transform: translateY(-50%);
+}
+
+.airstrike-editor-restore-right::before {
+  transform: rotate(225deg);
+}
+
+.airstrike-editor-restore-bottom {
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+}
+
+.airstrike-editor-restore-bottom::before {
+  transform: rotate(315deg);
 }
 
 .airstrike-editor.is-left-collapsed .airstrike-editor-restore-left,
 .airstrike-editor.is-right-collapsed .airstrike-editor-restore-right,
 .airstrike-editor.is-bottom-collapsed .airstrike-editor-restore-bottom {
-  display: inline-flex;
+  display: grid;
 }
 
 .airstrike-editor-palette-groups {
