@@ -2472,6 +2472,14 @@ function raidlands_store_admin_stripe_sync_error_text($error, int $max_length = 
     return substr($message, 0, $max_length);
 }
 
+function raidlands_store_admin_stripe_missing_object($error, string $kind): bool
+{
+    $message = raidlands_store_admin_stripe_sync_error_text($error);
+    $kind = strtolower($kind);
+
+    return stripos($message, 'No such ' . $kind . ':') !== false;
+}
+
 function raidlands_store_admin_stripe_price_lookup_key(int $store_price_id): string
 {
     return 'raidlands_store_price_' . max(0, $store_price_id);
@@ -2809,6 +2817,12 @@ function raidlands_store_admin_archive_stripe_price_if_managed(
         raidlands_store_admin_record_price_stripe_sync($pdo, $price_id, 'auto', 'archived', '', '', false, $lookup_key, 1);
         raidlands_store_admin_stripe_sync_increment($result, 'prices', 'archived');
     } catch (Throwable $error) {
+        if (raidlands_store_admin_stripe_missing_object($error, 'price')) {
+            raidlands_store_admin_record_price_stripe_sync($pdo, $price_id, 'auto', 'skipped', 'Stale Stripe Price ID was cleared because Stripe no longer has it.', '', true, $lookup_key, 0);
+            raidlands_store_admin_stripe_sync_increment($result, 'prices', 'skipped');
+            return;
+        }
+
         $message = 'Could not archive Stripe Price ' . $stripe_price_id . ': ' . raidlands_store_admin_stripe_sync_error_text($error);
         raidlands_store_admin_record_price_stripe_sync($pdo, $price_id, 'auto', 'error', $message, '', false, $lookup_key, !empty($price['stripe_managed']) ? 1 : 0);
         raidlands_store_admin_stripe_sync_add_error($result, $message);
@@ -2854,7 +2868,19 @@ function raidlands_store_admin_sync_stripe_price(
 
     try {
         if (str_starts_with($existing_price_id, 'price_')) {
-            $existing = raidlands_store_admin_retrieve_stripe_price($existing_price_id);
+            try {
+                $existing = raidlands_store_admin_retrieve_stripe_price($existing_price_id);
+            } catch (Throwable $error) {
+                if (!raidlands_store_admin_stripe_missing_object($error, 'price')) {
+                    throw $error;
+                }
+
+                raidlands_store_admin_record_price_stripe_sync($pdo, $price_id, 'auto', 'pending', 'Stale Stripe Price ID was cleared because Stripe no longer has it.', '', true, $lookup_key, 0);
+                $existing_price_id = '';
+                $existing = null;
+                $existing_managed = false;
+            }
+
             $existing_managed = $existing_managed || (
                 $existing !== null
                 && raidlands_store_admin_stripe_object_managed(
@@ -2899,8 +2925,14 @@ function raidlands_store_admin_sync_stripe_price(
         $was_replacement = $existing !== null && $existing_managed && !raidlands_store_admin_stripe_price_matches_row($existing, $price);
 
         if ($was_replacement && $existing_price_id !== '' && $existing_price_id !== $created_id) {
-            \Stripe\Price::update($existing_price_id, ['active' => false]);
-            raidlands_store_admin_stripe_sync_increment($result, 'prices', 'archived');
+            try {
+                \Stripe\Price::update($existing_price_id, ['active' => false]);
+                raidlands_store_admin_stripe_sync_increment($result, 'prices', 'archived');
+            } catch (Throwable $error) {
+                if (!raidlands_store_admin_stripe_missing_object($error, 'price')) {
+                    throw $error;
+                }
+            }
         }
 
         raidlands_store_admin_record_price_stripe_sync($pdo, $price_id, 'auto', 'synced', '', $created_id, true, $lookup_key, 1);
@@ -2953,19 +2985,28 @@ function raidlands_store_admin_sync_stripe_product(PDO $pdo, array $product, boo
 
     try {
         if (str_starts_with($stripe_product_id, 'prod_')) {
-            $existing = raidlands_store_admin_retrieve_stripe_product($stripe_product_id);
+            try {
+                $existing = raidlands_store_admin_retrieve_stripe_product($stripe_product_id);
 
-            if ($existing !== null && !raidlands_store_admin_stripe_object_managed($existing, ['product_id' => (string) $product_id])) {
-                raidlands_store_admin_record_product_stripe_sync($pdo, $product_id, 'external', 'external', 'External Stripe Product is not managed by Raidlands.');
-                raidlands_store_admin_stripe_sync_increment($result, 'products', 'external');
-                return null;
+                if ($existing !== null && !raidlands_store_admin_stripe_object_managed($existing, ['product_id' => (string) $product_id])) {
+                    raidlands_store_admin_record_product_stripe_sync($pdo, $product_id, 'external', 'external', 'External Stripe Product is not managed by Raidlands.');
+                    raidlands_store_admin_stripe_sync_increment($result, 'products', 'external');
+                    return null;
+                }
+
+                \Stripe\Product::update($stripe_product_id, $params);
+                raidlands_store_admin_record_product_stripe_sync($pdo, $product_id, 'auto', $active ? 'synced' : 'archived', '', $stripe_product_id, true);
+                raidlands_store_admin_stripe_sync_increment($result, 'products', $active ? 'updated' : 'archived');
+
+                return $stripe_product_id;
+            } catch (Throwable $error) {
+                if (!raidlands_store_admin_stripe_missing_object($error, 'product')) {
+                    throw $error;
+                }
+
+                raidlands_store_admin_record_product_stripe_sync($pdo, $product_id, 'auto', 'pending', 'Stale Stripe Product ID was cleared because Stripe no longer has it.', '', true);
+                $stripe_product_id = '';
             }
-
-            \Stripe\Product::update($stripe_product_id, $params);
-            raidlands_store_admin_record_product_stripe_sync($pdo, $product_id, 'auto', $active ? 'synced' : 'archived', '', $stripe_product_id, true);
-            raidlands_store_admin_stripe_sync_increment($result, 'products', $active ? 'updated' : 'archived');
-
-            return $stripe_product_id;
         }
 
         if (!$active) {
