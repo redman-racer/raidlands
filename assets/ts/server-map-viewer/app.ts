@@ -9,6 +9,7 @@ import {
   DoubleSide,
   Float32BufferAttribute,
   Group,
+  CanvasTexture,
   MathUtils,
   Mesh,
   MeshStandardMaterial,
@@ -17,6 +18,8 @@ import {
   Scene,
   SRGBColorSpace,
   SphereGeometry,
+  Sprite,
+  SpriteMaterial,
   TextureLoader,
   Uint32BufferAttribute,
   Vector3,
@@ -693,12 +696,16 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
   const size = MathUtils.clamp(monument.radius, 24, 180);
 
   group.name = `monument-${key}`;
+  const addTitle = () => {
+    group.add(createMonumentTitleSprite(monument.name, size));
+    return group;
+  };
 
   if (key.includes("airfield")) {
     addBox(group, size * 2.1, 5, size * 0.22, 0x2c3030, 0, 1, 0);
     addBox(group, size * 0.44, 22, size * 0.34, 0x6e7470, -size * 0.55, 13, -size * 0.32);
     addBox(group, size * 0.34, 16, size * 0.28, 0x7f6b45, size * 0.48, 10, size * 0.26);
-    return group;
+    return addTitle();
   }
 
   if (key.includes("launch")) {
@@ -706,13 +713,13 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
     addCylinder(group, size * 0.12, size * 1.05, 0x9fafa8, -size * 0.15, size * 0.55, 0);
     addCone(group, size * 0.2, size * 0.34, 0xb86f3f, -size * 0.15, size * 1.24, 0);
     addBox(group, size * 0.2, size * 0.78, size * 0.2, 0x6f5f48, size * 0.28, size * 0.42, 0);
-    return group;
+    return addTitle();
   }
 
   if (key.includes("sphere") || key.includes("dome")) {
     addSphere(group, size * 0.42, 0x9baaa0, 0, size * 0.42, 0);
     addCylinder(group, size * 0.08, size * 0.55, 0x7f6b45, size * 0.48, size * 0.28, -size * 0.12);
-    return group;
+    return addTitle();
   }
 
   if (key.includes("satellite")) {
@@ -720,14 +727,14 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
     const dish = addCone(group, size * 0.42, size * 0.18, 0x9aa29c, 0, size * 0.58, 0);
     dish.rotation.x = MathUtils.degToRad(58);
     addBox(group, size * 0.86, 4, size * 0.16, 0x3f4543, 0, 2, -size * 0.24);
-    return group;
+    return addTitle();
   }
 
   if (key.includes("lighthouse")) {
     addCylinder(group, size * 0.14, size * 1.1, 0xd9d2bd, 0, size * 0.55, 0);
     addCylinder(group, size * 0.2, size * 0.16, 0x9b3e2e, 0, size * 1.18, 0);
     addCone(group, size * 0.24, size * 0.18, 0x342f2b, 0, size * 1.35, 0);
-    return group;
+    return addTitle();
   }
 
   if (key.includes("oilrig") || key.includes("oil_rig")) {
@@ -735,14 +742,14 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
     addBox(group, size * 0.18, size * 0.8, size * 0.18, 0x808783, -size * 0.36, size * 0.45, -size * 0.22);
     addBox(group, size * 0.18, size * 0.65, size * 0.18, 0x808783, size * 0.34, size * 0.38, size * 0.2);
     addCylinder(group, size * 0.05, size * 0.88, 0xe0b35f, 0, size * 0.5, 0);
-    return group;
+    return addTitle();
   }
 
   if (key.includes("harbor")) {
     addBox(group, size * 1.4, 7, size * 0.28, 0x3e484a, 0, 4, 0);
     addBox(group, size * 0.24, size * 0.58, size * 0.24, 0x8b7044, -size * 0.42, size * 0.32, -size * 0.08);
     addBox(group, size * 0.18, size * 0.46, size * 0.18, 0x8b7044, size * 0.36, size * 0.26, size * 0.12);
-    return group;
+    return addTitle();
   }
 
   if (key.includes("powerplant") || key.includes("power_plant")) {
@@ -750,7 +757,7 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
     addCylinder(group, size * 0.09, size * 0.92, 0x9a9a90, -size * 0.24, size * 0.55, 0);
     addCylinder(group, size * 0.09, size * 0.72, 0x9a9a90, 0, size * 0.45, 0);
     addCylinder(group, size * 0.09, size * 0.82, 0x9a9a90, size * 0.24, size * 0.5, 0);
-    return group;
+    return addTitle();
   }
 
   if (key.includes("excavator")) {
@@ -759,7 +766,7 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
     arm.rotation.z = MathUtils.degToRad(-24);
     addCylinder(group, size * 0.18, size * 0.28, 0x2f3332, -size * 0.36, size * 0.15, -size * 0.18);
     addCylinder(group, size * 0.18, size * 0.28, 0x2f3332, -size * 0.36, size * 0.15, size * 0.18);
-    return group;
+    return addTitle();
   }
 
   if (key.includes("trainyard") || key.includes("train_yard")) {
@@ -767,30 +774,99 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
     addBox(group, size * 1.3, 4, size * 0.08, 0x252928, 0, 2, size * 0.22);
     addBox(group, size * 0.72, size * 0.32, size * 0.34, 0x6f5f48, -size * 0.18, size * 0.18, 0);
     addBox(group, size * 0.34, size * 0.42, size * 0.28, 0x7f6b45, size * 0.38, size * 0.24, 0);
-    return group;
+    return addTitle();
   }
 
   if (key.includes("military") || key.includes("tunnel") || key.includes("bunker")) {
     addBox(group, size * 0.94, size * 0.26, size * 0.62, 0x59645b, 0, size * 0.13, 0);
     addBox(group, size * 0.24, size * 0.32, size * 0.28, 0x303635, -size * 0.38, size * 0.16, 0);
-    return group;
+    return addTitle();
   }
 
   if (key.includes("gas") || key.includes("supermarket") || key.includes("warehouse")) {
     addBox(group, size * 0.74, size * 0.26, size * 0.56, 0x7d7359, 0, size * 0.13, 0);
     addBox(group, size * 0.82, size * 0.08, size * 0.22, 0xb76d3a, 0, size * 0.34, -size * 0.18);
-    return group;
+    return addTitle();
   }
 
   if (key.includes("quarry") || key.includes("mining")) {
     addCone(group, size * 0.42, size * 0.24, 0x6d624c, 0, size * 0.12, 0);
     addCylinder(group, size * 0.08, size * 0.48, 0x6f5f48, size * 0.26, size * 0.24, 0);
-    return group;
+    return addTitle();
   }
 
   addBox(group, size * 0.68, size * 0.24, size * 0.5, 0x6a705e, 0, size * 0.12, 0);
   addCylinder(group, size * 0.08, size * 0.46, 0x8b7044, size * 0.28, size * 0.23, -size * 0.12);
-  return group;
+  return addTitle();
+}
+
+function createMonumentTitleSprite(title: string, size: number): Sprite {
+  const label = title.trim() || "Monument";
+  const fontSize = 34;
+  const paddingX = 22;
+  const paddingY = 14;
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    return new Sprite(new SpriteMaterial({ color: 0xf8f0dc }));
+  }
+
+  context.font = `700 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+  const metrics = context.measureText(label);
+  const width = Math.ceil(metrics.width + paddingX * 2);
+  const height = fontSize + paddingY * 2;
+  canvas.width = nextPowerOfTwo(Math.max(128, width));
+  canvas.height = nextPowerOfTwo(Math.max(64, height));
+
+  context.font = `700 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillStyle = "rgba(18, 20, 18, 0.74)";
+  roundRect(context, (canvas.width - width) / 2, (canvas.height - height) / 2, width, height, 16);
+  context.fill();
+  context.strokeStyle = "rgba(248, 231, 172, 0.82)";
+  context.lineWidth = 3;
+  context.stroke();
+  context.fillStyle = "#fff5d7";
+  context.shadowColor = "rgba(0, 0, 0, 0.65)";
+  context.shadowBlur = 5;
+  context.fillText(label, canvas.width / 2, canvas.height / 2 + 1);
+
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  const material = new SpriteMaterial({
+    map: texture,
+    transparent: true,
+    depthTest: false,
+    depthWrite: false,
+  });
+  const sprite = new Sprite(material);
+  const worldWidth = MathUtils.clamp(size * 1.35, 80, 230);
+  sprite.name = "monument-title";
+  sprite.position.set(0, Math.max(size * 1.48, 64), 0);
+  sprite.scale.set(worldWidth, worldWidth * (canvas.height / canvas.width), 1);
+  sprite.renderOrder = 20;
+  return sprite;
+}
+
+function nextPowerOfTwo(value: number): number {
+  return 2 ** Math.ceil(Math.log2(value));
+}
+
+function roundRect(context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number): void {
+  const r = Math.min(radius, width / 2, height / 2);
+  context.beginPath();
+  context.moveTo(x + r, y);
+  context.lineTo(x + width - r, y);
+  context.quadraticCurveTo(x + width, y, x + width, y + r);
+  context.lineTo(x + width, y + height - r);
+  context.quadraticCurveTo(x + width, y + height, x + width - r, y + height);
+  context.lineTo(x + r, y + height);
+  context.quadraticCurveTo(x, y + height, x, y + height - r);
+  context.lineTo(x, y + r);
+  context.quadraticCurveTo(x, y, x + r, y);
+  context.closePath();
 }
 
 function monumentKey(monument: MonumentPayload): string {
