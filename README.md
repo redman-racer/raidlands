@@ -101,7 +101,7 @@ The store uses MySQL as the source of truth, Stripe Checkout for cash purchases,
 29. Run `database/migrations/027_ai_feedback_triage.sql`.
 30. Run `database/migrations/028_ai_feedback_split_suggestions.sql`.
 31. Run `database/migrations/029_admin_todo_snapshots.sql`.
-32. Run any later numbered migrations in order through `database/migrations/049_rust_servers_vote_rewards.sql`.
+32. Run any later numbered migrations in order through `database/migrations/050_server_map_terrain.sql`.
 33. Run `database/seeds/001_store_products.sql`.
 34. Copy `.env.example` to `.env`.
 35. Fill in MySQL, Stripe, Steam API, OpenAI AI triage key if enabled, bridge secret, clan API limit values, and chat settings.

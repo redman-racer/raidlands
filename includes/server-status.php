@@ -89,6 +89,20 @@ function raidlands_server_map_images_is_ready(): bool
     }
 }
 
+function raidlands_server_map_terrain_columns_are_ready(): bool
+{
+    if (!raidlands_server_map_images_is_ready()) {
+        return false;
+    }
+
+    try {
+        raidlands_db_fetch_one('SELECT terrain_public_url, terrain_resolution FROM server_map_images LIMIT 1');
+        return true;
+    } catch (Throwable $error) {
+        return false;
+    }
+}
+
 function raidlands_server_status_clean_text($value, int $max_length = 120): string
 {
     $text = trim(str_replace("\0", '', (string) $value));
@@ -153,6 +167,11 @@ function raidlands_server_map_relative_path(string $server_id, string $extension
     return 'assets/media/maps/' . raidlands_server_map_slug($server_id) . '/current.' . $extension;
 }
 
+function raidlands_server_map_terrain_relative_path(string $server_id): string
+{
+    return 'assets/media/maps/' . raidlands_server_map_slug($server_id) . '/current-terrain.json';
+}
+
 function raidlands_server_map_public_url(string $relative_path): string
 {
     $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
@@ -213,6 +232,91 @@ function raidlands_server_map_validate_image(string $base64): array
     ];
 }
 
+function raidlands_server_map_validate_terrain($terrain): ?array
+{
+    if (!is_array($terrain)) {
+        return null;
+    }
+
+    $resolution = raidlands_server_status_int($terrain['resolution'] ?? 0, 0, 257);
+    $heights = $terrain['heights'] ?? [];
+
+    if ($resolution < 2 || !is_array($heights)) {
+        throw new InvalidArgumentException('Terrain export must include a resolution and height samples.');
+    }
+
+    $expected_count = $resolution * $resolution;
+
+    if (count($heights) !== $expected_count) {
+        throw new InvalidArgumentException('Terrain height sample count does not match the resolution.');
+    }
+
+    $normalized_heights = [];
+    $min_height = null;
+    $max_height = null;
+
+    foreach ($heights as $height) {
+        if (!is_numeric($height)) {
+            throw new InvalidArgumentException('Terrain height samples must be numeric.');
+        }
+
+        $value = round((float) $height, 3);
+        $normalized_heights[] = $value;
+        $min_height = $min_height === null ? $value : min($min_height, $value);
+        $max_height = $max_height === null ? $value : max($max_height, $value);
+    }
+
+    $colors = $terrain['colors'] ?? [];
+    $normalized_colors = [];
+
+    if (is_array($colors) && count($colors) === $expected_count) {
+        foreach ($colors as $color) {
+            $value = strtolower(trim((string) $color));
+            $normalized_colors[] = preg_match('/^#[0-9a-f]{6}$/', $value) === 1 ? $value : '#5b6d49';
+        }
+    }
+
+    $payload = [
+        'version' => 1,
+        'serverId' => raidlands_server_status_clean_text($terrain['serverId'] ?? $terrain['server_id'] ?? '', 120),
+        'wipeKey' => raidlands_server_status_clean_text($terrain['wipeKey'] ?? $terrain['wipe_key'] ?? '', 160),
+        'mapName' => raidlands_server_status_clean_text($terrain['mapName'] ?? $terrain['map_name'] ?? '', 120),
+        'resolution' => $resolution,
+        'worldSize' => raidlands_server_status_int($terrain['worldSize'] ?? $terrain['world_size'] ?? 0, 0),
+        'seed' => raidlands_server_status_int($terrain['seed'] ?? 0, 0),
+        'waterLevel' => round((float) ($terrain['waterLevel'] ?? $terrain['water_level'] ?? 0), 3),
+        'minHeight' => $min_height ?? 0,
+        'maxHeight' => $max_height ?? 0,
+        'generatedAt' => raidlands_server_status_iso($terrain['generatedAt'] ?? $terrain['generated_at'] ?? '') ?: gmdate('c'),
+        'heights' => $normalized_heights,
+    ];
+
+    if ($normalized_colors !== []) {
+        $payload['colors'] = $normalized_colors;
+    }
+
+    $json = json_encode($payload, JSON_UNESCAPED_SLASHES);
+
+    if ($json === false) {
+        throw new InvalidArgumentException('Terrain export could not be encoded.');
+    }
+
+    if (strlen($json) > 5 * 1024 * 1024) {
+        throw new InvalidArgumentException('Terrain export is larger than the 5MB limit.');
+    }
+
+    return [
+        'json' => $json,
+        'payload' => $payload,
+        'hash' => hash('sha256', $json),
+        'size' => strlen($json),
+        'resolution' => $resolution,
+        'min_height' => (float) ($payload['minHeight'] ?? 0),
+        'max_height' => (float) ($payload['maxHeight'] ?? 0),
+        'water_level' => (float) ($payload['waterLevel'] ?? 0),
+    ];
+}
+
 function raidlands_server_map_write_image(string $server_id, string $extension, string $image): array
 {
     $root = raidlands_server_map_upload_root();
@@ -254,6 +358,35 @@ function raidlands_server_map_write_image(string $server_id, string $extension, 
     ];
 }
 
+function raidlands_server_map_write_terrain(string $server_id, string $terrain_json): array
+{
+    $root = raidlands_server_map_upload_root();
+    $server_dir = $root . '/' . raidlands_server_map_slug($server_id);
+
+    if (!is_dir($server_dir) && !mkdir($server_dir, 0775, true) && !is_dir($server_dir)) {
+        throw new RuntimeException('Could not create map upload directory.');
+    }
+
+    $relative_path = raidlands_server_map_terrain_relative_path($server_id);
+    $path = dirname(__DIR__) . '/' . $relative_path;
+    $temp_path = $path . '.tmp';
+
+    if (file_put_contents($temp_path, $terrain_json, LOCK_EX) === false) {
+        throw new RuntimeException('Could not write terrain export.');
+    }
+
+    if (!rename($temp_path, $path)) {
+        @unlink($temp_path);
+        throw new RuntimeException('Could not publish terrain export.');
+    }
+
+    return [
+        'path' => $path,
+        'relative_path' => $relative_path,
+        'public_url' => raidlands_server_map_public_url($relative_path),
+    ];
+}
+
 function raidlands_server_map_ingest_upload(array $payload, string $header_server_id): array
 {
     if (!raidlands_server_map_images_is_ready()) {
@@ -274,6 +407,13 @@ function raidlands_server_map_ingest_upload(array $payload, string $header_serve
     $image_base64 = (string) ($payload['image_base64'] ?? $payload['image'] ?? '');
     $image = raidlands_server_map_validate_image($image_base64);
     $written = raidlands_server_map_write_image($server_id, (string) $image['extension'], (string) $image['bytes']);
+    $terrain = raidlands_server_map_validate_terrain($payload['terrain'] ?? null);
+    $terrain_written = null;
+
+    if ($terrain !== null) {
+        $terrain_written = raidlands_server_map_write_terrain($server_id, (string) $terrain['json']);
+    }
+
     $wipe_key = raidlands_server_status_clean_text($payload['wipe_key'] ?? '', 160);
 
     if ($wipe_key === '') {
@@ -300,34 +440,117 @@ function raidlands_server_map_ingest_upload(array $payload, string $header_serve
         'generated_at' => raidlands_server_status_timestamp($payload['generated_at'] ?? null),
     ];
 
-    raidlands_db_execute(
-        'INSERT INTO server_map_images
-            (server_id, wipe_key, map_name, render_name, public_url, relative_path, image_hash, image_mime, image_extension,
-             image_bytes, image_width, image_height, resolution, world_size, seed, protocol_network, generated_at, published_at)
-         VALUES
-            (:server_id, :wipe_key, :map_name, :render_name, :public_url, :relative_path, :image_hash, :image_mime, :image_extension,
-             :image_bytes, :image_width, :image_height, :resolution, :world_size, :seed, :protocol_network, :generated_at, NOW())
-         ON DUPLICATE KEY UPDATE
-            wipe_key = VALUES(wipe_key),
-            map_name = VALUES(map_name),
-            render_name = VALUES(render_name),
-            public_url = VALUES(public_url),
-            relative_path = VALUES(relative_path),
-            image_hash = VALUES(image_hash),
-            image_mime = VALUES(image_mime),
-            image_extension = VALUES(image_extension),
-            image_bytes = VALUES(image_bytes),
-            image_width = VALUES(image_width),
-            image_height = VALUES(image_height),
-            resolution = VALUES(resolution),
-            world_size = VALUES(world_size),
-            seed = VALUES(seed),
-            protocol_network = VALUES(protocol_network),
-            generated_at = VALUES(generated_at),
-            published_at = VALUES(published_at),
-            updated_at = NOW()',
-        $values
-    );
+    if ($terrain !== null && $terrain_written !== null) {
+        $values = array_merge($values, [
+            'terrain_public_url' => (string) $terrain_written['public_url'],
+            'terrain_relative_path' => (string) $terrain_written['relative_path'],
+            'terrain_hash' => (string) $terrain['hash'],
+            'terrain_bytes' => (int) $terrain['size'],
+            'terrain_resolution' => (int) $terrain['resolution'],
+            'terrain_min_height' => (float) $terrain['min_height'],
+            'terrain_max_height' => (float) $terrain['max_height'],
+            'terrain_water_level' => (float) $terrain['water_level'],
+        ]);
+    }
+
+    if (raidlands_server_map_terrain_columns_are_ready()) {
+        raidlands_db_execute(
+            'INSERT INTO server_map_images
+                (server_id, wipe_key, map_name, render_name, public_url, relative_path, terrain_public_url, terrain_relative_path,
+                 terrain_hash, terrain_bytes, terrain_resolution, terrain_min_height, terrain_max_height, terrain_water_level,
+                 image_hash, image_mime, image_extension, image_bytes, image_width, image_height, resolution, world_size,
+                 seed, protocol_network, generated_at, published_at)
+             VALUES
+                (:server_id, :wipe_key, :map_name, :render_name, :public_url, :relative_path, :terrain_public_url, :terrain_relative_path,
+                 :terrain_hash, :terrain_bytes, :terrain_resolution, :terrain_min_height, :terrain_max_height, :terrain_water_level,
+                 :image_hash, :image_mime, :image_extension, :image_bytes, :image_width, :image_height, :resolution, :world_size,
+                 :seed, :protocol_network, :generated_at, NOW())
+             ON DUPLICATE KEY UPDATE
+                wipe_key = VALUES(wipe_key),
+                map_name = VALUES(map_name),
+                render_name = VALUES(render_name),
+                public_url = VALUES(public_url),
+                relative_path = VALUES(relative_path),
+                terrain_public_url = VALUES(terrain_public_url),
+                terrain_relative_path = VALUES(terrain_relative_path),
+                terrain_hash = VALUES(terrain_hash),
+                terrain_bytes = VALUES(terrain_bytes),
+                terrain_resolution = VALUES(terrain_resolution),
+                terrain_min_height = VALUES(terrain_min_height),
+                terrain_max_height = VALUES(terrain_max_height),
+                terrain_water_level = VALUES(terrain_water_level),
+                image_hash = VALUES(image_hash),
+                image_mime = VALUES(image_mime),
+                image_extension = VALUES(image_extension),
+                image_bytes = VALUES(image_bytes),
+                image_width = VALUES(image_width),
+                image_height = VALUES(image_height),
+                resolution = VALUES(resolution),
+                world_size = VALUES(world_size),
+                seed = VALUES(seed),
+                protocol_network = VALUES(protocol_network),
+                generated_at = VALUES(generated_at),
+                published_at = VALUES(published_at),
+                updated_at = NOW()',
+            array_merge([
+                'terrain_public_url' => '',
+                'terrain_relative_path' => '',
+                'terrain_hash' => '',
+                'terrain_bytes' => 0,
+                'terrain_resolution' => 0,
+                'terrain_min_height' => 0,
+                'terrain_max_height' => 0,
+                'terrain_water_level' => 0,
+            ], $values)
+        );
+    } else {
+        raidlands_db_execute(
+            'INSERT INTO server_map_images
+                (server_id, wipe_key, map_name, render_name, public_url, relative_path, image_hash, image_mime, image_extension,
+                 image_bytes, image_width, image_height, resolution, world_size, seed, protocol_network, generated_at, published_at)
+             VALUES
+                (:server_id, :wipe_key, :map_name, :render_name, :public_url, :relative_path, :image_hash, :image_mime, :image_extension,
+                 :image_bytes, :image_width, :image_height, :resolution, :world_size, :seed, :protocol_network, :generated_at, NOW())
+             ON DUPLICATE KEY UPDATE
+                wipe_key = VALUES(wipe_key),
+                map_name = VALUES(map_name),
+                render_name = VALUES(render_name),
+                public_url = VALUES(public_url),
+                relative_path = VALUES(relative_path),
+                image_hash = VALUES(image_hash),
+                image_mime = VALUES(image_mime),
+                image_extension = VALUES(image_extension),
+                image_bytes = VALUES(image_bytes),
+                image_width = VALUES(image_width),
+                image_height = VALUES(image_height),
+                resolution = VALUES(resolution),
+                world_size = VALUES(world_size),
+                seed = VALUES(seed),
+                protocol_network = VALUES(protocol_network),
+                generated_at = VALUES(generated_at),
+                published_at = VALUES(published_at),
+                updated_at = NOW()',
+            array_intersect_key($values, array_flip([
+                'server_id',
+                'wipe_key',
+                'map_name',
+                'render_name',
+                'public_url',
+                'relative_path',
+                'image_hash',
+                'image_mime',
+                'image_extension',
+                'image_bytes',
+                'image_width',
+                'image_height',
+                'resolution',
+                'world_size',
+                'seed',
+                'protocol_network',
+                'generated_at',
+            ]))
+        );
+    }
 
     $row = raidlands_server_map_latest($server_id, $wipe_key) ?? array_merge($values, [
         'published_at' => gmdate('Y-m-d H:i:s'),
@@ -375,10 +598,26 @@ function raidlands_server_map_row_public(?array $row): ?array
         $public_url = raidlands_server_map_public_url($relative_path);
     }
 
+    $terrain_public_url = (string) ($row['terrain_public_url'] ?? '');
+    $terrain_relative_path = (string) ($row['terrain_relative_path'] ?? '');
+
+    if ($terrain_public_url === '' && $terrain_relative_path !== '') {
+        $terrain_public_url = raidlands_server_map_public_url($terrain_relative_path);
+    }
+
     return [
         'url' => $public_url,
         'publicUrl' => $public_url,
         'relativePath' => $relative_path,
+        'terrainUrl' => $terrain_public_url,
+        'terrainPublicUrl' => $terrain_public_url,
+        'terrainRelativePath' => $terrain_relative_path,
+        'terrainHash' => (string) ($row['terrain_hash'] ?? ''),
+        'terrainBytes' => (int) ($row['terrain_bytes'] ?? 0),
+        'terrainResolution' => (int) ($row['terrain_resolution'] ?? 0),
+        'terrainMinHeight' => (float) ($row['terrain_min_height'] ?? 0),
+        'terrainMaxHeight' => (float) ($row['terrain_max_height'] ?? 0),
+        'terrainWaterLevel' => (float) ($row['terrain_water_level'] ?? 0),
         'serverId' => (string) ($row['server_id'] ?? ''),
         'wipeKey' => (string) ($row['wipe_key'] ?? ''),
         'mapName' => (string) ($row['map_name'] ?? ''),

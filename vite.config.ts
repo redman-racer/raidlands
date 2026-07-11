@@ -11,6 +11,7 @@ export default defineConfig({
       input: {
         "airstrike-animation-compiler": resolve(__dirname, "assets/ts/airstrike-animation-editor/index.ts"),
         "airstrike-animation-editor": resolve(__dirname, "assets/ts/airstrike-animation-editor/app.ts"),
+        "server-map-viewer": resolve(__dirname, "assets/ts/server-map-viewer/app.ts"),
       },
       output: {
         entryFileNames: "[name].js",

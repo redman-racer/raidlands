@@ -17,6 +17,7 @@ $server_age_label = $server_age === null
 $server_health_label = raidlands_server_page_health_label($server_status);
 $server_map_image = is_array($server_status['mapImage'] ?? null) ? $server_status['mapImage'] : null;
 $server_map_url = (string) ($server_status['mapImageUrl'] ?? ($server_map_image['url'] ?? ''));
+$server_terrain_url = (string) ($server_map_image['terrainUrl'] ?? '');
 
 function raidlands_server_page_value($value, string $fallback = 'Pending'): string
 {
@@ -140,6 +141,42 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
     </div>
   </div>
 </section>
+<?php endif; ?>
+
+<?php if ($server_terrain_url !== ''): ?>
+<section class="section alt">
+  <div class="section-inner">
+    <div class="metal-panel server-terrain-panel">
+      <div class="server-terrain-head">
+        <div>
+          <p class="section-kicker">Current wipe terrain</p>
+          <h2>3D map viewer</h2>
+          <p class="section-lede">Height, water, and surface color sampled from the live Raidlands map publish.</p>
+        </div>
+        <div class="server-terrain-controls" data-map-viewer-controls>
+          <button type="button" data-map-view="iso" aria-pressed="true">ISO</button>
+          <button type="button" data-map-view="top" aria-pressed="false">TOP</button>
+          <label>
+            <span>Relief</span>
+            <input type="range" min="0.35" max="2.5" step="0.05" value="1" data-map-viewer-relief>
+          </label>
+        </div>
+      </div>
+      <div
+        class="server-terrain-viewer"
+        data-server-map-viewer
+        data-terrain-url="<?= e($server_terrain_url) ?>"
+        data-texture-url="<?= e($server_map_url) ?>"
+        data-world-size="<?= e((string) ($server_map_image['worldSize'] ?? $server_status['worldSize'] ?? 0)) ?>"
+        data-min-height="<?= e((string) ($server_map_image['terrainMinHeight'] ?? 0)) ?>"
+        data-max-height="<?= e((string) ($server_map_image['terrainMaxHeight'] ?? 0)) ?>"
+        aria-label="Current Raidlands wipe 3D terrain viewer">
+        <p class="server-terrain-status" data-map-viewer-status>Loading terrain.</p>
+      </div>
+    </div>
+  </div>
+</section>
+<script type="module" src="<?= e(asset_url('build/airstrike-animation-editor/server-map-viewer.js')) ?>"></script>
 <?php endif; ?>
 
 <section class="section alt">
