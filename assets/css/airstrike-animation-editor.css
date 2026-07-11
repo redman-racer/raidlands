@@ -487,6 +487,8 @@
 }
 
 .airstrike-editor-orientation {
+  --orientation-yaw: 34deg;
+  --orientation-pitch: 26deg;
   position: absolute;
   top: 18px;
   right: calc(var(--editor-right-width) + 42px);
@@ -570,44 +572,102 @@
 .airstrike-editor-orientation-cube {
   position: relative;
   grid-area: 2 / 2;
-  display: grid;
-  place-items: center;
   padding: 0;
-  overflow: hidden;
+  overflow: visible;
+  perspective: 220px;
   background: radial-gradient(circle at 50% 24%, rgba(54, 197, 230, .2), rgba(6, 12, 14, .86) 72%);
 }
 
-.airstrike-editor-orientation-cube span {
+.airstrike-editor-orientation-cube::before,
+.airstrike-editor-orientation-cube::after {
   position: absolute;
-  display: block;
-  border: 1px solid rgba(211, 241, 247, .24);
-  background: rgba(54, 197, 230, .18);
+  left: 50%;
+  z-index: 3;
+  transform: translateX(-50%);
+  pointer-events: none;
 }
 
-.airstrike-editor-orientation-cube-top {
-  top: 14px;
-  left: 18px;
-  width: 28px;
-  height: 16px;
-  transform: skewX(-38deg);
-  background: rgba(255, 209, 102, .24);
+.airstrike-editor-orientation-cube::before {
+  content: attr(data-current-label);
+  top: -20px;
+  min-width: 58px;
+  padding: 4px 6px;
+  border: 1px solid rgba(129, 167, 174, .22);
+  border-radius: 5px;
+  background: rgba(3, 7, 8, .84);
+  color: #e7f8fb;
+  font: 900 10px/1 var(--font-body, Arial, sans-serif);
+  text-transform: uppercase;
+  box-shadow: 0 8px 18px rgba(0, 0, 0, .24);
 }
 
-.airstrike-editor-orientation-cube-left {
-  top: 30px;
-  left: 12px;
-  width: 28px;
-  height: 22px;
-  transform: skewY(28deg);
+.airstrike-editor-orientation-cube::after {
+  content: "Home";
+  bottom: 4px;
+  color: rgba(231, 248, 251, .68);
+  font: 900 8px/1 var(--font-body, Arial, sans-serif);
+  text-transform: uppercase;
 }
 
-.airstrike-editor-orientation-cube-right {
-  top: 30px;
-  right: 12px;
-  width: 28px;
-  height: 22px;
-  transform: skewY(-28deg);
-  background: rgba(115, 214, 239, .26);
+.airstrike-editor-orientation-cube-stage {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 32px;
+  height: 32px;
+  transform: translate(-50%, -57%) rotateX(calc(-1 * var(--orientation-pitch))) rotateY(var(--orientation-yaw));
+  transform-style: preserve-3d;
+  transition: transform .08s linear;
+}
+
+.airstrike-editor-orientation-cube-face {
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(211, 241, 247, .3);
+  background: rgba(26, 55, 62, .82);
+  color: #ecfbfd;
+  font: 900 11px/1 var(--font-body, Arial, sans-serif);
+  text-transform: uppercase;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .08);
+  backface-visibility: visible;
+}
+
+.airstrike-editor-orientation-cube-face-front {
+  transform: translateZ(16px);
+  background: rgba(54, 197, 230, .38);
+}
+
+.airstrike-editor-orientation-cube-face-back {
+  transform: rotateY(180deg) translateZ(16px);
+}
+
+.airstrike-editor-orientation-cube-face-right {
+  transform: rotateY(90deg) translateZ(16px);
+}
+
+.airstrike-editor-orientation-cube-face-left {
+  transform: rotateY(-90deg) translateZ(16px);
+}
+
+.airstrike-editor-orientation-cube-face-top {
+  transform: rotateX(90deg) translateZ(16px);
+  background: rgba(255, 209, 102, .34);
+}
+
+.airstrike-editor-orientation-cube-face-bottom {
+  transform: rotateX(-90deg) translateZ(16px);
+}
+
+.airstrike-editor-orientation[data-current-orientation="front"] .airstrike-editor-orientation-face-front,
+.airstrike-editor-orientation[data-current-orientation="back"] .airstrike-editor-orientation-face-front,
+.airstrike-editor-orientation[data-current-orientation="left"] .airstrike-editor-orientation-face-front,
+.airstrike-editor-orientation[data-current-orientation="right"] .airstrike-editor-orientation-face-front,
+.airstrike-editor-orientation[data-current-orientation="top"] .airstrike-editor-orientation-face-front,
+.airstrike-editor-orientation[data-current-orientation="bottom"] .airstrike-editor-orientation-face-front {
+  border-color: rgba(255, 209, 102, .72);
+  color: #fff5d0;
 }
 
 .airstrike-editor-viewport-meta {
@@ -882,7 +942,7 @@
 
 .airstrike-editor-playback {
   display: grid;
-  grid-template-columns: auto auto auto auto minmax(160px, 240px);
+  grid-template-columns: auto auto auto auto auto minmax(160px, 240px);
   align-items: end;
   gap: 8px;
 }
@@ -1224,7 +1284,7 @@
   }
 
   .airstrike-editor-playback {
-    grid-template-columns: auto auto auto auto minmax(140px, 1fr);
+    grid-template-columns: auto auto auto auto auto minmax(140px, 1fr);
   }
 
   .airstrike-editor-bottom-grid {

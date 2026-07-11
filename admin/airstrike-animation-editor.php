@@ -139,10 +139,15 @@ $editor_config = [
           <div class="airstrike-editor-orientation" aria-label="View orientation">
             <button class="airstrike-editor-orientation-face airstrike-editor-orientation-face-top" type="button" data-editor-orientation="top" aria-label="Top view" title="Top view">Top</button>
             <button class="airstrike-editor-orientation-face airstrike-editor-orientation-face-left" type="button" data-editor-orientation="left" aria-label="Left view" title="Left view">Left</button>
-            <button class="airstrike-editor-orientation-cube" type="button" data-editor-orientation="iso" aria-label="Isometric view" title="Isometric view">
-              <span class="airstrike-editor-orientation-cube-top"></span>
-              <span class="airstrike-editor-orientation-cube-left"></span>
-              <span class="airstrike-editor-orientation-cube-right"></span>
+            <button class="airstrike-editor-orientation-cube" type="button" data-editor-orientation="iso" aria-label="Home view" title="Home view">
+              <span class="airstrike-editor-orientation-cube-stage" aria-hidden="true">
+                <span class="airstrike-editor-orientation-cube-face airstrike-editor-orientation-cube-face-front">F</span>
+                <span class="airstrike-editor-orientation-cube-face airstrike-editor-orientation-cube-face-back">B</span>
+                <span class="airstrike-editor-orientation-cube-face airstrike-editor-orientation-cube-face-right">R</span>
+                <span class="airstrike-editor-orientation-cube-face airstrike-editor-orientation-cube-face-left">L</span>
+                <span class="airstrike-editor-orientation-cube-face airstrike-editor-orientation-cube-face-top">T</span>
+                <span class="airstrike-editor-orientation-cube-face airstrike-editor-orientation-cube-face-bottom">D</span>
+              </span>
             </button>
             <button class="airstrike-editor-orientation-face airstrike-editor-orientation-face-right" type="button" data-editor-orientation="right" aria-label="Right view" title="Right view">Right</button>
             <button class="airstrike-editor-orientation-face airstrike-editor-orientation-face-front" type="button" data-editor-orientation="front" aria-label="Front view" title="Front view">Front</button>
@@ -337,6 +342,7 @@ $editor_config = [
               <button class="btn btn-secondary btn-small" type="button" data-editor-step-back aria-label="Step backward">-0.1s</button>
               <button class="btn btn-secondary btn-small" type="button" data-editor-step-forward aria-label="Step forward">+0.1s</button>
               <label class="airstrike-editor-checkbox"><input type="checkbox" data-editor-loop> Loop</label>
+              <label class="airstrike-editor-checkbox"><input type="checkbox" data-editor-follow-vehicle> Follow vehicle</label>
               <label class="admin-field">
                 <span>Ordnance rays</span>
                 <select data-editor-release-visibility>

@@ -1,5 +1,5 @@
 import { Vector3 } from "three";
-import { AirstrikeViewport, type ViewOrientation } from "./editor/viewport";
+import { AirstrikeViewport, type ViewOrientation, type ViewOrientationState } from "./editor/viewport";
 import {
   addManualRelease,
   availableHardpoints,
@@ -93,6 +93,7 @@ interface EditorElements {
   stepBack: HTMLButtonElement;
   stepForward: HTMLButtonElement;
   loop: HTMLInputElement;
+  followVehicle: HTMLInputElement;
   releaseVisibility: HTMLSelectElement;
   addRelease: HTMLButtonElement;
   duplicateRelease: HTMLButtonElement;
@@ -284,6 +285,7 @@ class AirstrikeEditorApp {
         }
         this.elements.vehicleMeta.textContent = pieces.join(" | ");
       },
+      onViewOrientation: (orientation) => this.updateOrientationWidget(orientation),
     });
     this.bindEvents();
     this.bindMenus();
@@ -324,6 +326,9 @@ class AirstrikeEditorApp {
     this.elements.play.addEventListener("click", () => this.togglePlayback());
     this.elements.stepBack.addEventListener("click", () => this.stepPlayback(-0.1));
     this.elements.stepForward.addEventListener("click", () => this.stepPlayback(0.1));
+    this.elements.followVehicle.addEventListener("change", () => {
+      this.viewport.setVehicleFollowEnabled(this.elements.followVehicle.checked);
+    });
     this.elements.releaseVisibility.addEventListener("change", () => this.handleReleaseVisibilityChange());
     this.elements.globalSpeed.addEventListener("input", () => this.handleGlobalSpeedInput());
     this.elements.waypointSpeed.addEventListener("input", () => this.handleWaypointSpeedInput());
@@ -1109,6 +1114,53 @@ class AirstrikeEditorApp {
     }
   }
 
+  private updateOrientationWidget(orientation: ViewOrientationState): void {
+    const widget = this.elements.root.querySelector<HTMLElement>(".airstrike-editor-orientation");
+    if (!widget) {
+      return;
+    }
+    const labels: Record<ViewOrientation, string> = {
+      iso: "Home",
+      top: "Top",
+      bottom: "Bottom",
+      front: "Front",
+      back: "Back",
+      left: "Left",
+      right: "Right",
+    };
+    const sideTargets = this.orientationSideTargets(orientation.current);
+    widget.style.setProperty("--orientation-yaw", `${orientation.yawDegrees.toFixed(1)}deg`);
+    widget.style.setProperty("--orientation-pitch", `${orientation.pitchDegrees.toFixed(1)}deg`);
+    widget.dataset.currentOrientation = orientation.current;
+    widget.dataset.currentLabel = labels[orientation.current];
+    const cube = widget.querySelector<HTMLButtonElement>(".airstrike-editor-orientation-cube");
+    if (cube) {
+      cube.dataset.currentLabel = labels[orientation.current];
+    }
+    for (const [position, target] of Object.entries(sideTargets)) {
+      const button = widget.querySelector<HTMLButtonElement>(`.airstrike-editor-orientation-face-${position}`);
+      if (!button) {
+        continue;
+      }
+      button.dataset.editorOrientation = target;
+      button.textContent = labels[target];
+      button.setAttribute("aria-label", `${labels[target]} view`);
+      button.setAttribute("title", `${labels[target]} view`);
+    }
+  }
+
+  private orientationSideTargets(current: Exclude<ViewOrientation, "iso">): Record<string, Exclude<ViewOrientation, "iso">> {
+    const targets: Record<Exclude<ViewOrientation, "iso">, Record<string, Exclude<ViewOrientation, "iso">>> = {
+      front: { top: "top", left: "left", right: "right", front: "front", bottom: "bottom", back: "back" },
+      back: { top: "top", left: "right", right: "left", front: "back", bottom: "bottom", back: "front" },
+      right: { top: "top", left: "front", right: "back", front: "right", bottom: "bottom", back: "left" },
+      left: { top: "top", left: "back", right: "front", front: "left", bottom: "bottom", back: "right" },
+      top: { top: "back", left: "left", right: "right", front: "top", bottom: "front", back: "bottom" },
+      bottom: { top: "front", left: "left", right: "right", front: "bottom", bottom: "back", back: "top" },
+    };
+    return targets[current];
+  }
+
   private handleGlobalSpeedInput(): void {
     if (!this.state.profile) {
       return;
@@ -1655,6 +1707,7 @@ function collectElements(root: HTMLElement): EditorElements {
     stepBack: query(root, "[data-editor-step-back]"),
     stepForward: query(root, "[data-editor-step-forward]"),
     loop: query(root, "[data-editor-loop]"),
+    followVehicle: query(root, "[data-editor-follow-vehicle]"),
     releaseVisibility: query(root, "[data-editor-release-visibility]"),
     addRelease: query(root, "[data-editor-release-add]"),
     duplicateRelease: query(root, "[data-editor-release-duplicate]"),

@@ -40,6 +40,11 @@ type ViewportStatus = {
 
 export type ReleaseVisibilityMode = "all" | "near" | "current" | "selected";
 export type ViewOrientation = "iso" | "top" | "bottom" | "front" | "back" | "left" | "right";
+export interface ViewOrientationState {
+  current: Exclude<ViewOrientation, "iso">;
+  yawDegrees: number;
+  pitchDegrees: number;
+}
 
 export interface AirstrikeViewportOptions {
   assetBase: string;
@@ -48,6 +53,7 @@ export interface AirstrikeViewportOptions {
   onWaypointMoved: (waypointId: string, position: Vector3) => EditorSourceProfile | null;
   onSelectRelease?: (releaseId: string) => void;
   onVehicleStatus?: (status: ViewportStatus) => void;
+  onViewOrientation?: (state: ViewOrientationState) => void;
 }
 
 const handleMaterial = new MeshStandardMaterial({ color: 0x36c5e6, metalness: 0.1, roughness: 0.45 });
@@ -86,6 +92,8 @@ export class AirstrikeViewport {
   private animationFrame = 0;
   private vehicleToken = 0;
   private currentVehicle = "";
+  private currentOrientationKey = "";
+  private followVehicle = false;
   private readonly onResize = () => this.resize();
   private readonly onPointerDown = (event: PointerEvent) => this.handlePointerDown(event);
 
@@ -187,6 +195,13 @@ export class AirstrikeViewport {
     this.frameBox(bounds);
   }
 
+  public setVehicleFollowEnabled(enabled: boolean): void {
+    this.followVehicle = enabled;
+    if (enabled) {
+      this.followVehicleCamera(true);
+    }
+  }
+
   public frameTarget(): void {
     const targetBounds = new Box3().setFromCenterAndSize(new Vector3(0, 20, 0), new Vector3(80, 80, 80));
     this.frameBox(targetBounds);
@@ -194,7 +209,7 @@ export class AirstrikeViewport {
 
   public setOrientation(orientation: ViewOrientation): void {
     const directions: Record<ViewOrientation, Vector3> = {
-      iso: new Vector3(0.72, 0.46, 0.52),
+      iso: new Vector3(0.52, 0.46, 0.72),
       top: new Vector3(0, 1, 0.001),
       bottom: new Vector3(0, -1, 0.001),
       front: new Vector3(0, 0.12, 1),
@@ -256,6 +271,7 @@ export class AirstrikeViewport {
     this.animationFrame = window.requestAnimationFrame(() => this.animate());
     this.applyDynamicControls();
     this.orbit.update();
+    this.emitViewOrientation();
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -488,6 +504,35 @@ export class AirstrikeViewport {
     this.camera.lookAt(this.orbit.target);
     this.orbit.update();
     this.applyDynamicControls();
+    this.emitViewOrientation(true);
+  }
+
+  private emitViewOrientation(force = false): void {
+    if (!this.options.onViewOrientation) {
+      return;
+    }
+    const direction = this.camera.position.clone().sub(this.orbit.target).normalize();
+    const absolute = {
+      x: Math.abs(direction.x),
+      y: Math.abs(direction.y),
+      z: Math.abs(direction.z),
+    };
+    let current: ViewOrientationState["current"];
+    if (absolute.y >= absolute.x && absolute.y >= absolute.z) {
+      current = direction.y >= 0 ? "top" : "bottom";
+    } else if (absolute.x >= absolute.z) {
+      current = direction.x >= 0 ? "right" : "left";
+    } else {
+      current = direction.z >= 0 ? "front" : "back";
+    }
+    const yawDegrees = (Math.atan2(direction.x, direction.z) * 180) / Math.PI;
+    const pitchDegrees = (Math.asin(Math.max(-1, Math.min(1, direction.y))) * 180) / Math.PI;
+    const key = `${current}:${yawDegrees.toFixed(1)}:${pitchDegrees.toFixed(1)}`;
+    if (!force && key === this.currentOrientationKey) {
+      return;
+    }
+    this.currentOrientationKey = key;
+    this.options.onViewOrientation({ current, yawDegrees, pitchDegrees });
   }
 
   private applyDynamicControls(bounds = this.currentFocusBounds()): void {
@@ -548,5 +593,29 @@ export class AirstrikeViewport {
     const pose = evaluateSourcePose(this.profile, time);
     this.vehicleRoot.position.copy(unityPositionToThreeVector(pose.position));
     this.vehicleRoot.quaternion.copy(unityQuaternionValueToThreeQuaternion(pose.rotation));
+    if (this.followVehicle) {
+      this.followVehicleCamera();
+    }
+  }
+
+  private followVehicleCamera(frameIfNeeded = false): void {
+    if (this.vehicleRoot.children.length === 0) {
+      return;
+    }
+    const bounds = new Box3().setFromObject(this.vehicleRoot);
+    if (bounds.isEmpty()) {
+      return;
+    }
+    const nextTarget = new Vector3();
+    bounds.getCenter(nextTarget);
+    if (frameIfNeeded) {
+      this.frameBox(bounds);
+      return;
+    }
+    const offset = this.camera.position.clone().sub(this.orbit.target);
+    this.orbit.target.copy(nextTarget);
+    this.camera.position.copy(nextTarget.clone().add(offset));
+    this.camera.lookAt(nextTarget);
+    this.applyDynamicControls(bounds);
   }
 }
