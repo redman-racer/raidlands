@@ -106,6 +106,7 @@ class TerrainViewer {
   private readonly renderer = new WebGLRenderer({ antialias: true, alpha: false });
   private readonly controls: OrbitControls;
   private readonly terrainMesh: Mesh;
+  private readonly terrainMaterial: MeshStandardMaterial;
   private readonly onResize = () => this.resize();
   private animationFrame = 0;
 
@@ -122,6 +123,7 @@ class TerrainViewer {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.outputColorSpace = SRGBColorSpace;
     this.renderer.domElement.dataset.serverMapViewerCanvas = "true";
+    this.terrainMaterial = this.createTerrainMaterial();
     this.terrainMesh = this.createTerrainMesh();
     this.scene.add(this.terrainMesh);
     this.addWaterPlane();
@@ -208,17 +210,19 @@ class TerrainViewer {
     geometry.setIndex(new Uint32BufferAttribute(indices, 1));
     geometry.computeVertexNormals();
 
-    const material = new MeshStandardMaterial({
+    const mesh = new Mesh(geometry, this.terrainMaterial);
+    mesh.name = "raidlands-current-wipe-terrain";
+    return mesh;
+  }
+
+  private createTerrainMaterial(): MeshStandardMaterial {
+    return new MeshStandardMaterial({
       color: 0xffffff,
-      roughness: 0.92,
-      metalness: 0.02,
+      roughness: 0.94,
+      metalness: 0,
       vertexColors: true,
       side: DoubleSide,
     });
-
-    const mesh = new Mesh(geometry, material);
-    mesh.name = "raidlands-current-wipe-terrain";
-    return mesh;
   }
 
   private loadTexture(): void {
@@ -231,9 +235,8 @@ class TerrainViewer {
       this.textureUrl,
       (texture) => {
         texture.colorSpace = SRGBColorSpace;
-        const material = this.terrainMesh.material as MeshStandardMaterial;
-        material.map = texture;
-        material.needsUpdate = true;
+        this.terrainMaterial.map = texture;
+        this.terrainMaterial.needsUpdate = true;
       },
       undefined,
       () => setStatus(this.status, ""),
@@ -244,12 +247,13 @@ class TerrainViewer {
     const worldSize = this.terrain.worldSize || 4500;
     const geometry = new PlaneGeometry(worldSize * 1.04, worldSize * 1.04, 1, 1);
     const material = new MeshStandardMaterial({
-      color: 0x1d5c72,
+      color: 0x2a5d62,
       transparent: true,
-      opacity: 0.32,
-      roughness: 0.62,
-      metalness: 0.02,
+      opacity: 0.16,
+      roughness: 0.82,
+      metalness: 0,
       side: DoubleSide,
+      depthWrite: false,
     });
     const water = new Mesh(geometry, material);
     water.name = "terrain-water-plane";
@@ -259,10 +263,10 @@ class TerrainViewer {
   }
 
   private addLights(): void {
-    const ambient = new AmbientLight(0xffffff, 0.7);
-    const sun = new DirectionalLight(0xffffff, 1.85);
+    const ambient = new AmbientLight(0xfff4df, 0.82);
+    const sun = new DirectionalLight(0xfff1cf, 1.95);
     sun.position.set(900, 1400, 650);
-    const fill = new DirectionalLight(0x8fd3ff, 0.42);
+    const fill = new DirectionalLight(0xffd8a8, 0.18);
     fill.position.set(-500, 500, -800);
     this.scene.add(ambient, sun, fill);
   }
