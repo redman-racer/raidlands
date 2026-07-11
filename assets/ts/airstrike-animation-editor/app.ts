@@ -1,6 +1,31 @@
 import { Vector3 } from "three";
 import { AirstrikeViewport } from "./editor/viewport";
 import {
+  addManualRelease,
+  availableHardpoints,
+  deleteManualRelease,
+  duplicateManualRelease,
+  getReleasePreviewEvents,
+  payloadOptions,
+  PAYLOAD_ADVANCED_FIELDS,
+  PAYLOAD_COMMON_FIELDS,
+  updateManualPayloadField,
+  updateManualReleaseHardpoint,
+  updateManualReleaseTime,
+  updateReleaseMode,
+  updateRepeatedField,
+  updateRepeatedHardpointSequence,
+  updateRepeatedTemplateField,
+  type PayloadField,
+} from "./editor/release-source";
+import {
+  DEFAULT_TARGET_SPEED_METERS_PER_SECOND,
+  formatMilesPerHour,
+  normalizeWaypointTimes,
+  setGlobalTargetSpeed,
+  setWaypointTargetSpeed,
+} from "./editor/speed-normalization";
+import {
   firstWaypointId,
   findWaypoint,
   updateWaypointField,
@@ -8,7 +33,7 @@ import {
   WAYPOINT_FIELDS,
   type EditableWaypointField,
 } from "./editor/waypoint-source";
-import type { EditorSourceProfile, VehiclePreviewMetadataFile } from "./types";
+import type { EditorSourceProfile, PayloadEventFields, SourcePayloadEvent, VehiclePreviewMetadataFile } from "./types";
 
 interface EditorConfig {
   profileKey?: string;
@@ -45,7 +70,23 @@ interface EditorElements {
   timeReadout: HTMLElement;
   waypointList: HTMLElement;
   waypointTitle: HTMLElement;
+  waypointSpeed: HTMLInputElement;
+  waypointSpeedMph: HTMLElement;
+  globalSpeed: HTMLInputElement;
+  globalSpeedMph: HTMLElement;
+  releaseMode: HTMLSelectElement;
+  manualReleaseList: HTMLElement;
+  manualReleaseEditor: HTMLElement;
+  repeatedReleaseEditor: HTMLElement;
+  releaseTimeline: HTMLElement;
   vehicleMeta: HTMLElement;
+  normalizeTimes: HTMLButtonElement;
+  addRelease: HTMLButtonElement;
+  duplicateRelease: HTMLButtonElement;
+  deleteRelease: HTMLButtonElement;
+  frameRoute: HTMLButtonElement;
+  frameVehicle: HTMLButtonElement;
+  frameTarget: HTMLButtonElement;
 }
 
 interface EditorState {
@@ -56,6 +97,7 @@ interface EditorState {
   dirty: boolean;
   loading: boolean;
   selectedWaypointId: string;
+  selectedReleaseId: string;
   scrubTime: number;
 }
 
@@ -73,9 +115,39 @@ function starterSource(): EditorSourceProfile {
     PositionInterpolation: "time_hermite",
     RotationMode: "follow_path_plus_offset",
     Waypoints: [
-      { Id: "wp_001", Time: 0, X: 0, Y: 90, Z: -300, RotationX: 0, RotationY: 0, RotationZ: 0 },
-      { Id: "wp_002", Time: 3.5, X: 0, Y: 60, Z: 0, RotationX: -15, RotationY: 0, RotationZ: 0 },
-      { Id: "wp_003", Time: 8, X: 0, Y: 90, Z: 300, RotationX: 0, RotationY: 0, RotationZ: 0 },
+      {
+        Id: "wp_001",
+        Time: 0,
+        X: 0,
+        Y: 90,
+        Z: -300,
+        RotationX: 0,
+        RotationY: 0,
+        RotationZ: 0,
+        TargetSpeedMetersPerSecond: DEFAULT_TARGET_SPEED_METERS_PER_SECOND,
+      },
+      {
+        Id: "wp_002",
+        Time: 3.5,
+        X: 0,
+        Y: 60,
+        Z: 0,
+        RotationX: -15,
+        RotationY: 0,
+        RotationZ: 0,
+        TargetSpeedMetersPerSecond: DEFAULT_TARGET_SPEED_METERS_PER_SECOND,
+      },
+      {
+        Id: "wp_003",
+        Time: 8,
+        X: 0,
+        Y: 90,
+        Z: 300,
+        RotationX: 0,
+        RotationY: 0,
+        RotationZ: 0,
+        TargetSpeedMetersPerSecond: DEFAULT_TARGET_SPEED_METERS_PER_SECOND,
+      },
     ],
     ReleaseSource: {
       Mode: "manual",
@@ -107,6 +179,7 @@ function starterSource(): EditorSourceProfile {
       Notes: "",
       Tags: [],
       VehiclePreviewOverrides: {},
+      GlobalTargetSpeedMetersPerSecond: DEFAULT_TARGET_SPEED_METERS_PER_SECOND,
     },
   };
 }
@@ -163,6 +236,7 @@ class AirstrikeEditorApp {
     dirty: false,
     loading: false,
     selectedWaypointId: "",
+    selectedReleaseId: "",
     scrubTime: 0,
   };
   private readonly viewport: AirstrikeViewport;
@@ -176,6 +250,7 @@ class AirstrikeEditorApp {
       metadata: null,
       onSelectWaypoint: (waypointId) => this.selectWaypoint(waypointId),
       onWaypointMoved: (waypointId, position) => this.handleWaypointMoved(waypointId, position),
+      onSelectRelease: (releaseId) => this.selectRelease(releaseId),
       onVehicleStatus: (status) => {
         const pieces = [status.modelState];
         if (status.prefabLabel) {
@@ -212,6 +287,19 @@ class AirstrikeEditorApp {
     this.elements.search.addEventListener("input", () => this.renderProfiles());
     this.elements.timeRange.addEventListener("input", () => this.setScrubTime(Number(this.elements.timeRange.value)));
     this.elements.timeNumber.addEventListener("input", () => this.setScrubTime(Number(this.elements.timeNumber.value)));
+    this.elements.normalizeTimes.addEventListener("click", () => this.handleNormalizeTimes());
+    this.elements.globalSpeed.addEventListener("input", () => this.handleGlobalSpeedInput());
+    this.elements.waypointSpeed.addEventListener("input", () => this.handleWaypointSpeedInput());
+    this.elements.releaseMode.addEventListener("change", () => this.handleReleaseModeChange());
+    this.elements.addRelease.addEventListener("click", () => this.handleAddRelease());
+    this.elements.duplicateRelease.addEventListener("click", () => this.handleDuplicateRelease());
+    this.elements.deleteRelease.addEventListener("click", () => this.handleDeleteRelease());
+    this.elements.frameRoute.addEventListener("click", () => this.viewport.frameRoute());
+    this.elements.frameVehicle.addEventListener("click", () => this.viewport.frameVehicle());
+    this.elements.frameTarget.addEventListener("click", () => this.viewport.frameTarget());
+    this.elements.root.querySelectorAll<HTMLButtonElement>("[data-editor-toggle-panel]").forEach((button) => {
+      button.addEventListener("click", () => this.togglePanel(String(button.dataset.editorTogglePanel || "")));
+    });
     this.elements.root.querySelector("[data-editor-new]")?.addEventListener("click", () => this.createNewProfile());
     this.elements.root.querySelector("[data-editor-save]")?.addEventListener("click", () => void this.saveDraft());
     this.elements.root.querySelector("[data-editor-validate]")?.addEventListener("click", () => void this.validateSource());
@@ -318,13 +406,17 @@ class AirstrikeEditorApp {
     this.state.profileKey = profileKey || "";
     this.state.baseVersion = Number(version || 0);
     this.state.selectedWaypointId = findWaypoint(source, this.state.selectedWaypointId)?.Id || firstWaypointId(source);
+    this.ensureSelectedRelease(source);
     this.state.scrubTime = clamp(this.state.scrubTime, 0, Number(source.DurationSeconds || 0));
     this.writeSource(source);
     this.syncControlsFromSource(source);
     this.renderWaypoints();
     this.renderWaypointInspector();
+    this.renderSpeedControls();
+    this.renderReleaseControls();
     this.renderTimeControls();
     this.viewport.updateProfile(source, this.state.selectedWaypointId, this.state.scrubTime);
+    this.viewport.updateSelectedRelease(this.state.selectedReleaseId);
     this.elements.output.textContent = "";
     this.elements.compileSummary.textContent = "No compiled track yet";
     this.showFeedback("Load or edit waypoints, then validate before publishing.", "");
@@ -336,14 +428,18 @@ class AirstrikeEditorApp {
   private applyProfile(source: EditorSourceProfile, dirty: boolean, refreshViewport = true): void {
     this.state.profile = source;
     this.state.selectedWaypointId = findWaypoint(source, this.state.selectedWaypointId)?.Id || firstWaypointId(source);
+    this.ensureSelectedRelease(source);
     this.state.scrubTime = clamp(this.state.scrubTime, 0, Number(source.DurationSeconds || 0));
     this.writeSource(source);
     this.syncControlsFromSource(source);
     this.renderWaypoints();
     this.renderWaypointInspector();
+    this.renderSpeedControls();
+    this.renderReleaseControls();
     this.renderTimeControls();
     if (refreshViewport) {
       this.viewport.updateProfile(source, this.state.selectedWaypointId, this.state.scrubTime);
+      this.viewport.updateSelectedRelease(this.state.selectedReleaseId);
     }
     if (dirty) {
       this.markEdited();
@@ -386,11 +482,15 @@ class AirstrikeEditorApp {
       const source = parseProfileSource(this.elements.source.value);
       this.state.profile = source;
       this.state.selectedWaypointId = findWaypoint(source, this.state.selectedWaypointId)?.Id || firstWaypointId(source);
+      this.ensureSelectedRelease(source);
       this.syncControlsFromSource(source);
       this.renderWaypoints();
       this.renderWaypointInspector();
+      this.renderSpeedControls();
+      this.renderReleaseControls();
       this.renderTimeControls();
       this.viewport.updateProfile(source, this.state.selectedWaypointId, this.state.scrubTime);
+      this.viewport.updateSelectedRelease(this.state.selectedReleaseId);
     } catch (error) {
       this.setStatus("JSON edits pending");
       this.showFeedback(error instanceof Error ? error.message : String(error), "error");
@@ -454,6 +554,280 @@ class AirstrikeEditorApp {
     });
   }
 
+  private renderSpeedControls(): void {
+    const profile = this.state.profile;
+    const globalSpeed =
+      profile?.EditorMetadata.GlobalTargetSpeedMetersPerSecond ?? DEFAULT_TARGET_SPEED_METERS_PER_SECOND;
+    this.elements.globalSpeed.value = profile ? String(globalSpeed) : "";
+    this.elements.globalSpeedMph.textContent = profile ? `${formatMilesPerHour(globalSpeed)} mph` : "";
+
+    const waypoint = profile ? findWaypoint(profile, this.state.selectedWaypointId) : undefined;
+    const waypointSpeed = waypoint?.TargetSpeedMetersPerSecond ?? globalSpeed;
+    this.elements.waypointSpeed.disabled = !waypoint;
+    this.elements.waypointSpeed.value = waypoint ? String(waypointSpeed) : "";
+    this.elements.waypointSpeedMph.textContent = waypoint ? `${formatMilesPerHour(waypointSpeed)} mph` : "";
+  }
+
+  private ensureSelectedRelease(profile: EditorSourceProfile): void {
+    const releases = getReleasePreviewEvents(profile, this.metadata);
+    if (!releases.some((release) => release.id === this.state.selectedReleaseId)) {
+      this.state.selectedReleaseId = releases[0]?.id ?? "";
+    }
+  }
+
+  private selectedManualRelease(): SourcePayloadEvent | undefined {
+    const profile = this.state.profile;
+    if (!profile || profile.ReleaseSource.Mode !== "manual") {
+      return undefined;
+    }
+    return profile.ReleaseSource.Events.find((event) => event.Id === this.state.selectedReleaseId);
+  }
+
+  private renderReleaseControls(): void {
+    const profile = this.state.profile;
+    this.elements.releaseMode.value = profile?.ReleaseSource.Mode ?? "manual";
+    this.elements.manualReleaseList.textContent = "";
+    this.elements.manualReleaseEditor.textContent = "";
+    this.elements.repeatedReleaseEditor.textContent = "";
+    this.elements.addRelease.disabled = !profile;
+    this.elements.duplicateRelease.disabled = !this.selectedManualRelease();
+    this.elements.deleteRelease.disabled = !this.selectedManualRelease();
+    if (!profile) {
+      return;
+    }
+    if (profile.ReleaseSource.Mode === "manual") {
+      this.renderManualReleaseList(profile);
+      this.renderManualReleaseEditor(profile);
+    } else {
+      this.renderRepeatedReleaseEditor(profile);
+    }
+  }
+
+  private renderManualReleaseList(profile: EditorSourceProfile): void {
+    if (profile.ReleaseSource.Mode !== "manual") {
+      return;
+    }
+    if (profile.ReleaseSource.Events.length === 0) {
+      const empty = document.createElement("p");
+      empty.className = "airstrike-editor-muted";
+      empty.textContent = "Legacy dynamic release path";
+      this.elements.manualReleaseList.appendChild(empty);
+      return;
+    }
+    for (const event of profile.ReleaseSource.Events) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `airstrike-release-row${event.Id === this.state.selectedReleaseId ? " is-active" : ""}`;
+      button.textContent = `${event.Id}  ${event.Time.toFixed(2)}s  ${event.Payload || "payload"} x${event.Count}`;
+      button.addEventListener("click", () => this.selectRelease(event.Id));
+      this.elements.manualReleaseList.appendChild(button);
+    }
+  }
+
+  private renderManualReleaseEditor(profile: EditorSourceProfile): void {
+    const event = this.selectedManualRelease();
+    if (!event) {
+      return;
+    }
+    const title = document.createElement("h3");
+    title.textContent = event.Id;
+    this.elements.manualReleaseEditor.appendChild(title);
+
+    const timeInput = this.createNumberInput(event.Time, 0.01, (value) => {
+      const next = updateManualReleaseTime(profile, event.Id, value);
+      this.applyProfile(next, true);
+      this.selectRelease(event.Id);
+    });
+    this.elements.manualReleaseEditor.appendChild(this.fieldWrapper("Time", timeInput));
+
+    const hardpointSelect = document.createElement("select");
+    hardpointSelect.appendChild(new Option("Raw carrier offset", ""));
+    for (const hardpoint of availableHardpoints(profile, this.metadata)) {
+      hardpointSelect.appendChild(new Option(hardpoint.id, hardpoint.id));
+    }
+    hardpointSelect.value = event.HardpointId ?? "";
+    hardpointSelect.addEventListener("change", () => {
+      const next = updateManualReleaseHardpoint(profile, event.Id, hardpointSelect.value);
+      this.applyProfile(next, true);
+      this.selectRelease(event.Id);
+    });
+    this.elements.manualReleaseEditor.appendChild(this.fieldWrapper("Hardpoint", hardpointSelect));
+
+    this.renderPayloadFieldGroup(this.elements.manualReleaseEditor, event, PAYLOAD_COMMON_FIELDS, (field, value) => {
+      const next = updateManualPayloadField(profile, event.Id, field, value);
+      this.applyProfile(next, true);
+      this.selectRelease(event.Id);
+    });
+
+    const advanced = document.createElement("details");
+    advanced.className = "airstrike-editor-advanced";
+    const summary = document.createElement("summary");
+    summary.textContent = "Advanced payload fields";
+    advanced.appendChild(summary);
+    this.renderPayloadFieldGroup(advanced, event, PAYLOAD_ADVANCED_FIELDS, (field, value) => {
+      const next = updateManualPayloadField(profile, event.Id, field, value);
+      this.applyProfile(next, true);
+      this.selectRelease(event.Id);
+    });
+    this.elements.manualReleaseEditor.appendChild(advanced);
+  }
+
+  private renderRepeatedReleaseEditor(profile: EditorSourceProfile): void {
+    if (profile.ReleaseSource.Mode !== "repeated") {
+      return;
+    }
+    const release = profile.ReleaseSource;
+    for (const [field, step] of [
+      ["StartTime", 0.01],
+      ["IntervalSeconds", 0.01],
+      ["UnitsPerRelease", 1],
+      ["MaximumUnits", 1],
+    ] as const) {
+      const input = this.createNumberInput(release[field], step, (value) => {
+        this.applyProfile(updateRepeatedField(profile, field, value), true);
+      });
+      this.elements.repeatedReleaseEditor.appendChild(this.fieldWrapper(field, input));
+    }
+
+    const sequence = document.createElement("input");
+    sequence.type = "text";
+    sequence.value = release.HardpointSequence.join(", ");
+    sequence.placeholder = availableHardpoints(profile, this.metadata).map((hardpoint) => hardpoint.id).join(", ");
+    sequence.addEventListener("change", () => {
+      this.applyProfile(
+        updateRepeatedHardpointSequence(
+          profile,
+          sequence.value.split(",").map((entry) => entry.trim()).filter(Boolean),
+        ),
+        true,
+      );
+    });
+    this.elements.repeatedReleaseEditor.appendChild(this.fieldWrapper("Hardpoint sequence", sequence));
+
+    this.renderPayloadFieldGroup(this.elements.repeatedReleaseEditor, release.Template, PAYLOAD_COMMON_FIELDS, (field, value) => {
+      this.applyProfile(updateRepeatedTemplateField(profile, field, value), true);
+    });
+
+    const advanced = document.createElement("details");
+    advanced.className = "airstrike-editor-advanced";
+    const summary = document.createElement("summary");
+    summary.textContent = "Advanced payload fields";
+    advanced.appendChild(summary);
+    this.renderPayloadFieldGroup(advanced, release.Template, PAYLOAD_ADVANCED_FIELDS, (field, value) => {
+      this.applyProfile(updateRepeatedTemplateField(profile, field, value), true);
+    });
+    this.elements.repeatedReleaseEditor.appendChild(advanced);
+  }
+
+  private renderPayloadFieldGroup(
+    parent: HTMLElement,
+    fields: PayloadEventFields,
+    fieldNames: readonly PayloadField[],
+    onChange: (field: PayloadField, value: string | number | Record<string, number>) => void,
+  ): void {
+    const grid = document.createElement("div");
+    grid.className = "airstrike-payload-field-grid";
+    for (const field of fieldNames) {
+      if (field === "Payload") {
+        const select = document.createElement("select");
+        for (const payload of payloadOptions()) {
+          select.appendChild(new Option(payload, payload));
+        }
+        select.value = fields.Payload;
+        select.addEventListener("change", () => onChange(field, select.value));
+        grid.appendChild(this.fieldWrapper(field, select));
+      } else if (field === "DamageScales") {
+        const input = document.createElement("textarea");
+        input.rows = 3;
+        input.spellcheck = false;
+        input.value = JSON.stringify(fields.DamageScales ?? {});
+        input.addEventListener("change", () => {
+          try {
+            const parsed = JSON.parse(input.value || "{}") as Record<string, number>;
+            onChange(field, parsed);
+          } catch {
+            this.showFeedback("DamageScales must be valid JSON.", "error");
+          }
+        });
+        grid.appendChild(this.fieldWrapper(field, input));
+      } else {
+        const input = this.createNumberInput(Number(fields[field]), field === "Count" ? 1 : 0.1, (value) => {
+          onChange(field, value);
+        });
+        grid.appendChild(this.fieldWrapper(field, input));
+      }
+    }
+    parent.appendChild(grid);
+  }
+
+  private createNumberInput(value: number, step: number, onInput: (value: number) => void): HTMLInputElement {
+    const input = document.createElement("input");
+    input.type = "number";
+    input.step = String(step);
+    input.value = String(value);
+    input.addEventListener("input", () => {
+      const next = Number(input.value);
+      if (Number.isFinite(next)) {
+        onInput(next);
+      }
+    });
+    return input;
+  }
+
+  private fieldWrapper(labelText: string, control: HTMLElement): HTMLLabelElement {
+    const label = document.createElement("label");
+    label.className = "admin-field";
+    const text = document.createElement("span");
+    text.textContent = labelText;
+    label.append(text, control);
+    return label;
+  }
+
+  private renderReleaseTimeline(): void {
+    const profile = this.state.profile;
+    this.elements.releaseTimeline.textContent = "";
+    if (!profile) {
+      return;
+    }
+    const track = document.createElement("div");
+    track.className = "airstrike-release-track";
+    const cursor = document.createElement("span");
+    cursor.className = "airstrike-release-cursor";
+    cursor.style.left = `${(this.state.scrubTime / Math.max(0.01, profile.DurationSeconds)) * 100}%`;
+    track.appendChild(cursor);
+    for (const release of getReleasePreviewEvents(profile, this.metadata)) {
+      const marker = document.createElement("button");
+      marker.type = "button";
+      marker.className = `airstrike-release-marker${release.id === this.state.selectedReleaseId ? " is-active" : ""}`;
+      marker.style.left = `${(release.time / Math.max(0.01, profile.DurationSeconds)) * 100}%`;
+      marker.title = `${release.id} ${release.time.toFixed(2)}s`;
+      marker.addEventListener("click", () => this.selectRelease(release.id));
+      if (release.editable && release.sourceId) {
+        marker.addEventListener("pointerdown", (event) => {
+          event.preventDefault();
+          const move = (moveEvent: PointerEvent): void => {
+            const source = this.state.profile ?? profile;
+            const bounds = track.getBoundingClientRect();
+            const progress = clamp((moveEvent.clientX - bounds.left) / Math.max(1, bounds.width), 0, 1);
+            const next = updateManualReleaseTime(source, release.sourceId!, progress * source.DurationSeconds);
+            this.applyProfile(next, true);
+            this.selectRelease(release.sourceId!);
+          };
+          const stop = (): void => {
+            window.removeEventListener("pointermove", move);
+            window.removeEventListener("pointerup", stop);
+            window.removeEventListener("pointercancel", stop);
+          };
+          window.addEventListener("pointermove", move);
+          window.addEventListener("pointerup", stop);
+          window.addEventListener("pointercancel", stop);
+        });
+      }
+      track.appendChild(marker);
+    }
+    this.elements.releaseTimeline.appendChild(track);
+  }
+
   private renderTimeControls(): void {
     const duration = Math.max(0.01, Number(this.state.profile?.DurationSeconds || 0.01));
     this.state.scrubTime = clamp(this.state.scrubTime, 0, duration);
@@ -462,6 +836,7 @@ class AirstrikeEditorApp {
     this.elements.timeNumber.max = String(duration);
     this.elements.timeNumber.value = this.state.scrubTime.toFixed(2);
     this.elements.timeReadout.textContent = `${this.state.scrubTime.toFixed(2)}s / ${duration.toFixed(2)}s`;
+    this.renderReleaseTimeline();
   }
 
   private setScrubTime(time: number): void {
@@ -475,7 +850,15 @@ class AirstrikeEditorApp {
     this.state.selectedWaypointId = waypointId;
     this.renderWaypoints();
     this.renderWaypointInspector();
+    this.renderSpeedControls();
     this.viewport.updateSelectedWaypoint(waypointId);
+  }
+
+  private selectRelease(releaseId: string): void {
+    this.state.selectedReleaseId = releaseId;
+    this.renderReleaseControls();
+    this.renderReleaseTimeline();
+    this.viewport.updateSelectedRelease(releaseId);
   }
 
   private handleWaypointMoved(waypointId: string, position: Vector3): EditorSourceProfile | null {
@@ -508,6 +891,75 @@ class AirstrikeEditorApp {
     if (field === "Time") {
       this.setScrubTime(value);
     }
+  }
+
+  private handleNormalizeTimes(): void {
+    if (!this.state.profile) {
+      return;
+    }
+    this.applyProfile(normalizeWaypointTimes(this.state.profile), true);
+  }
+
+  private handleGlobalSpeedInput(): void {
+    if (!this.state.profile) {
+      return;
+    }
+    const value = Number(this.elements.globalSpeed.value);
+    if (!Number.isFinite(value) || value <= 0) {
+      return;
+    }
+    this.applyProfile(setGlobalTargetSpeed(this.state.profile, value), true);
+  }
+
+  private handleWaypointSpeedInput(): void {
+    if (!this.state.profile || !this.state.selectedWaypointId) {
+      return;
+    }
+    const value = Number(this.elements.waypointSpeed.value);
+    if (!Number.isFinite(value) || value <= 0) {
+      return;
+    }
+    this.applyProfile(setWaypointTargetSpeed(this.state.profile, this.state.selectedWaypointId, value), true);
+  }
+
+  private handleReleaseModeChange(): void {
+    if (!this.state.profile) {
+      return;
+    }
+    const mode = this.elements.releaseMode.value === "repeated" ? "repeated" : "manual";
+    this.applyProfile(updateReleaseMode(this.state.profile, mode), true);
+  }
+
+  private handleAddRelease(): void {
+    if (!this.state.profile) {
+      return;
+    }
+    const result = addManualRelease(this.state.profile, this.state.scrubTime);
+    this.applyProfile(result.profile, true);
+    this.selectRelease(result.releaseId);
+  }
+
+  private handleDuplicateRelease(): void {
+    if (!this.state.profile || !this.state.selectedReleaseId) {
+      return;
+    }
+    const result = duplicateManualRelease(this.state.profile, this.state.selectedReleaseId);
+    this.applyProfile(result.profile, true);
+    this.selectRelease(result.releaseId);
+  }
+
+  private handleDeleteRelease(): void {
+    if (!this.state.profile || !this.state.selectedReleaseId) {
+      return;
+    }
+    this.applyProfile(deleteManualRelease(this.state.profile, this.state.selectedReleaseId), true);
+  }
+
+  private togglePanel(panel: string): void {
+    if (!["left", "right", "bottom"].includes(panel)) {
+      return;
+    }
+    this.elements.root.classList.toggle(`is-${panel}-collapsed`);
   }
 
   private async loadList(): Promise<void> {
@@ -682,7 +1134,23 @@ function collectElements(root: HTMLElement): EditorElements {
     timeReadout: query(root, "[data-editor-time-readout]"),
     waypointList: query(root, "[data-editor-waypoints]"),
     waypointTitle: query(root, "[data-editor-waypoint-title]"),
+    waypointSpeed: query(root, "[data-editor-waypoint-speed]"),
+    waypointSpeedMph: query(root, "[data-editor-waypoint-speed-mph]"),
+    globalSpeed: query(root, "[data-editor-global-speed]"),
+    globalSpeedMph: query(root, "[data-editor-global-speed-mph]"),
+    releaseMode: query(root, "[data-editor-release-mode]"),
+    manualReleaseList: query(root, "[data-editor-manual-releases]"),
+    manualReleaseEditor: query(root, "[data-editor-manual-editor]"),
+    repeatedReleaseEditor: query(root, "[data-editor-repeated-editor]"),
+    releaseTimeline: query(root, "[data-editor-release-timeline]"),
     vehicleMeta: query(root, "[data-editor-vehicle-meta]"),
+    normalizeTimes: query(root, "[data-editor-normalize-times]"),
+    addRelease: query(root, "[data-editor-release-add]"),
+    duplicateRelease: query(root, "[data-editor-release-duplicate]"),
+    deleteRelease: query(root, "[data-editor-release-delete]"),
+    frameRoute: query(root, "[data-editor-frame-route]"),
+    frameVehicle: query(root, "[data-editor-frame-vehicle]"),
+    frameTarget: query(root, "[data-editor-frame-target]"),
   };
 }
 

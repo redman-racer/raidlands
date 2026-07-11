@@ -4,6 +4,7 @@ import {
   type EditorSourceProfile,
   type PayloadEventFields,
   type RuntimePayloadEvent,
+  type SourcePayloadEvent,
   type VehicleHardpointMetadata,
   type VehiclePreviewMetadataFile,
 } from "./types";
@@ -60,6 +61,39 @@ function resolveHardpoints(
   return resolved;
 }
 
+function hardpointProjection(hardpoints: Map<string, VehicleHardpointMetadata>, ids: Iterable<string>): Record<string, { X: number; Y: number; Z: number }> {
+  const projected: Record<string, { X: number; Y: number; Z: number }> = {};
+  for (const id of ids) {
+    const hardpoint = hardpoints.get(id);
+    if (hardpoint) {
+      projected[id] = { X: hardpoint.x, Y: hardpoint.y, Z: hardpoint.z };
+    }
+  }
+  return projected;
+}
+
+function applyHardpoint<T extends PayloadEventFields>(
+  fields: T,
+  hardpoints: Map<string, VehicleHardpointMetadata>,
+  hardpointId?: string,
+): T {
+  const hardpoint = hardpointId ? hardpoints.get(hardpointId) : undefined;
+  if (!hardpoint) {
+    return { ...fields, DamageScales: { ...fields.DamageScales } };
+  }
+  return {
+    ...fields,
+    CarrierOffsetX: fields.CarrierOffsetX + hardpoint.x,
+    CarrierOffsetY: fields.CarrierOffsetY + hardpoint.y,
+    CarrierOffsetZ: fields.CarrierOffsetZ + hardpoint.z,
+    DamageScales: { ...fields.DamageScales },
+  };
+}
+
+function manualHardpointId(event: SourcePayloadEvent): string | undefined {
+  return typeof event.HardpointId === "string" && event.HardpointId.trim() !== "" ? event.HardpointId.trim() : undefined;
+}
+
 export interface ReleaseCompilationResult {
   legacyMode: "manual" | "generated";
   legacyMaximumUnits: number;
@@ -77,8 +111,15 @@ export function compileReleaseSchedule(
   const release = profile.ReleaseSource;
   if (release.Mode === "manual") {
     const ordered = orderedManualEvents(profile);
+    const hardpoints = resolveHardpoints(profile, metadata);
+    const resolvedHardpointOffsets = hardpointProjection(
+      hardpoints,
+      ordered.map(({ event }) => manualHardpointId(event)).filter((id): id is string => Boolean(id)),
+    );
     const legacyTemplateFields = clonePayloadFields(release.Template ?? DEFAULT_PAYLOAD_EVENT);
-    const legacyEvents = ordered.map(({ event }, index) => runtimeEvent(event, event.Time, index + 1));
+    const legacyEvents = ordered.map(({ event }, index) =>
+      runtimeEvent(applyHardpoint(event, hardpoints, manualHardpointId(event)), event.Time, index + 1),
+    );
     if (release.LegacyDynamic === true && release.Events.length === 0) {
       return {
         legacyMode: "manual",
@@ -86,7 +127,7 @@ export function compileReleaseSchedule(
         legacyIntervalSeconds: release.FallbackIntervalSeconds ?? 0.5,
         legacyTemplate: runtimeEvent(legacyTemplateFields, 0, 0),
         legacyEvents,
-        resolvedHardpointOffsets: {},
+        resolvedHardpointOffsets,
       };
     }
 
@@ -95,7 +136,9 @@ export function compileReleaseSchedule(
     let sequence = 1;
     for (const { event } of ordered) {
       for (let unit = 0; unit < event.Count && compiledEvents.length < cap; unit += 1) {
-        compiledEvents.push(runtimeEvent({ ...event, Count: 1 }, event.Time, sequence));
+        compiledEvents.push(
+          runtimeEvent({ ...applyHardpoint(event, hardpoints, manualHardpointId(event)), Count: 1 }, event.Time, sequence),
+        );
         sequence += 1;
       }
     }
@@ -106,20 +149,14 @@ export function compileReleaseSchedule(
       legacyTemplate: runtimeEvent(legacyTemplateFields, 0, 0),
       legacyEvents,
       compiledEvents,
-      resolvedHardpointOffsets: {},
+      resolvedHardpointOffsets,
     };
   }
 
   const template = clonePayloadFields(release.Template);
   template.Count = release.UnitsPerRelease;
   const hardpoints = resolveHardpoints(profile, metadata);
-  const resolvedHardpointOffsets: Record<string, { X: number; Y: number; Z: number }> = {};
-  for (const id of release.HardpointSequence) {
-    const hardpoint = hardpoints.get(id);
-    if (hardpoint) {
-      resolvedHardpointOffsets[id] = { X: hardpoint.x, Y: hardpoint.y, Z: hardpoint.z };
-    }
-  }
+  const resolvedHardpointOffsets = hardpointProjection(hardpoints, release.HardpointSequence);
   if (release.LegacyDynamic === true && release.MaximumUnits === 0) {
     return {
       legacyMode: "generated",

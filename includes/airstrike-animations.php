@@ -134,7 +134,11 @@ function raidlands_airstrike_animations_assert_source(array $source, ?string $ex
     }
 
     $source['ProfileKey'] = $profile_key;
-    $validation = raidlands_airstrike_animation_validate_profile($source, 'Profiles.' . $profile_key);
+    $validation = raidlands_airstrike_animation_validate_profile(
+        $source,
+        'Profiles.' . $profile_key,
+        raidlands_airstrike_animations_vehicle_metadata()
+    );
 
     if (empty($validation['ok'])) {
         $errors = [];
@@ -161,7 +165,8 @@ function raidlands_airstrike_animations_profile_row(array $row, bool $include_so
     $source = raidlands_airstrike_animations_decode_json((string) ($row['draft_source_json'] ?? ''), 'Draft source');
     $validation = raidlands_airstrike_animation_validate_profile(
         $source,
-        'Profiles.' . (string) ($row['profile_key'] ?? '')
+        'Profiles.' . (string) ($row['profile_key'] ?? ''),
+        raidlands_airstrike_animations_vehicle_metadata()
     );
     $result = [
         'id' => (int) ($row['id'] ?? 0),

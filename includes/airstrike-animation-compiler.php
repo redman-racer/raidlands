@@ -565,6 +565,16 @@ function raidlands_airstrike_animation_validate_profile(
                 (float) $limits['max_rotation_abs']
             );
         }
+
+        if (array_key_exists('TargetSpeedMetersPerSecond', $waypoint)) {
+            raidlands_airstrike_animation_validate_number(
+                $errors,
+                $waypoint['TargetSpeedMetersPerSecond'],
+                $waypoint_path . '.TargetSpeedMetersPerSecond',
+                0.1,
+                500.0
+            );
+        }
     }
 
     $release = raidlands_airstrike_animation_release_source($source);
@@ -586,6 +596,7 @@ function raidlands_airstrike_animation_validate_profile(
         $release_ids = [];
         $release_units = 0;
         $previous_release_time = null;
+        $available_hardpoints = raidlands_airstrike_animation_hardpoints($source, $vehicle_metadata);
         foreach ($release['events'] as $index => $event) {
             if (!is_array($event)) {
                 raidlands_airstrike_animation_validation_error(
@@ -620,6 +631,26 @@ function raidlands_airstrike_animation_validate_profile(
 
             if (is_int($event['Count'] ?? null) || is_float($event['Count'] ?? null)) {
                 $release_units += (int) $event['Count'];
+            }
+
+            if (array_key_exists('HardpointId', $event) || array_key_exists('Hardpoint', $event)) {
+                $hardpoint_id = trim((string) ($event['HardpointId'] ?? $event['Hardpoint'] ?? ''));
+
+                if ($hardpoint_id !== '' && !preg_match('/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/', $hardpoint_id)) {
+                    raidlands_airstrike_animation_validation_error(
+                        $errors,
+                        $event_path . '.HardpointId',
+                        'stable_id',
+                        'Must be a safe hardpoint ID.'
+                    );
+                } elseif ($hardpoint_id !== '' && !isset($available_hardpoints[$hardpoint_id])) {
+                    raidlands_airstrike_animation_validation_error(
+                        $errors,
+                        $event_path . '.HardpointId',
+                        'unknown_hardpoint',
+                        "Unknown hardpoint '" . $hardpoint_id . "'."
+                    );
+                }
             }
 
             raidlands_airstrike_animation_validate_event(
@@ -757,6 +788,18 @@ function raidlands_airstrike_animation_validate_profile(
                 );
             }
         }
+    }
+
+    $editor_metadata = is_array($source['EditorMetadata'] ?? null) ? $source['EditorMetadata'] : [];
+
+    if (array_key_exists('GlobalTargetSpeedMetersPerSecond', $editor_metadata)) {
+        raidlands_airstrike_animation_validate_number(
+            $errors,
+            $editor_metadata['GlobalTargetSpeedMetersPerSecond'],
+            $path . '.EditorMetadata.GlobalTargetSpeedMetersPerSecond',
+            0.1,
+            500.0
+        );
     }
 
     return [
@@ -1334,6 +1377,10 @@ function raidlands_airstrike_animation_source_hash_projection(
                 : null,
             'Events' => $events,
         ];
+
+        if ($resolved_hardpoint_offsets !== []) {
+            $release_projection['ResolvedHardpointOffsets'] = $resolved_hardpoint_offsets;
+        }
     } else {
         $release_projection = [
             'Mode' => 'repeated',
@@ -1350,7 +1397,7 @@ function raidlands_airstrike_animation_source_hash_projection(
         ];
     }
 
-    return [
+    $projection = [
         'ProfileKey' => raidlands_airstrike_animation_profile_key($source),
         'Vehicle' => (string) ($source['Vehicle'] ?? ''),
         'DurationSeconds' => raidlands_airstrike_animation_number($source['DurationSeconds'] ?? 0.0),
@@ -1363,6 +1410,16 @@ function raidlands_airstrike_animation_source_hash_projection(
         'Waypoints' => $waypoints,
         'ReleaseSource' => $release_projection,
     ];
+
+    $editor_metadata = is_array($source['EditorMetadata'] ?? null) ? $source['EditorMetadata'] : [];
+
+    if (array_key_exists('GlobalTargetSpeedMetersPerSecond', $editor_metadata)) {
+        $projection['GlobalTargetSpeedMetersPerSecond'] = raidlands_airstrike_animation_number(
+            $editor_metadata['GlobalTargetSpeedMetersPerSecond'] ?? 0.0
+        );
+    }
+
+    return $projection;
 }
 
 function raidlands_airstrike_animation_ordered_manual_events(array $events): array
@@ -1395,12 +1452,26 @@ function raidlands_airstrike_animation_compile_release_schedule(
 
     if ($release['mode'] === 'manual') {
         $ordered = raidlands_airstrike_animation_ordered_manual_events($release['events']);
+        $hardpoints = raidlands_airstrike_animation_hardpoints($source, $vehicle_metadata);
+        $resolved_hardpoint_offsets = [];
+
+        foreach ($ordered as $entry) {
+            $event = $entry['event'];
+            $hardpoint_id = trim((string) ($event['HardpointId'] ?? $event['Hardpoint'] ?? ''));
+
+            if ($hardpoint_id !== '' && isset($hardpoints[$hardpoint_id])) {
+                $resolved_hardpoint_offsets[$hardpoint_id] = $hardpoints[$hardpoint_id];
+            }
+        }
+
         $legacy_events = [];
 
         foreach ($ordered as $index => $entry) {
             $event = $entry['event'];
+            $hardpoint_id = trim((string) ($event['HardpointId'] ?? $event['Hardpoint'] ?? ''));
+            $materialized = raidlands_airstrike_animation_apply_hardpoint($event, $hardpoint_id, $hardpoints);
             $legacy_events[] = raidlands_airstrike_animation_runtime_event(
-                $event,
+                $materialized,
                 raidlands_airstrike_animation_number($event['Time'] ?? 0.0),
                 $index + 1,
                 max(1, raidlands_airstrike_animation_int($event['Count'] ?? 1, 1))
@@ -1421,7 +1492,7 @@ function raidlands_airstrike_animation_compile_release_schedule(
                 : 0.5,
             'legacy_template' => $legacy_template,
             'legacy_events' => $legacy_events,
-            'resolved_hardpoint_offsets' => [],
+            'resolved_hardpoint_offsets' => $resolved_hardpoint_offsets,
         ];
 
         if ($release['legacy_dynamic'] && $release['events'] === []) {
@@ -1436,11 +1507,13 @@ function raidlands_airstrike_animation_compile_release_schedule(
 
         foreach ($ordered as $entry) {
             $event = $entry['event'];
+            $hardpoint_id = trim((string) ($event['HardpointId'] ?? $event['Hardpoint'] ?? ''));
+            $materialized = raidlands_airstrike_animation_apply_hardpoint($event, $hardpoint_id, $hardpoints);
             $count = max(1, raidlands_airstrike_animation_int($event['Count'] ?? 1, 1));
 
             for ($unit = 0; $unit < $count && count($compiled) < $cap; $unit += 1) {
                 $compiled[] = raidlands_airstrike_animation_runtime_event(
-                    $event,
+                    $materialized,
                     raidlands_airstrike_animation_number($event['Time'] ?? 0.0),
                     $sequence,
                     1

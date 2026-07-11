@@ -1,5 +1,6 @@
 import {
   AmbientLight,
+  Box3,
   BufferGeometry,
   Color,
   ConeGeometry,
@@ -27,7 +28,9 @@ import { TransformControls } from "three/examples/jsm/controls/TransformControls
 import { evaluateSourcePose } from "../math";
 import type { EditorSourceProfile, VehiclePreviewMetadataFile } from "../types";
 import { unityPositionToThreeVector, unityQuaternionValueToThreeQuaternion } from "./coordinates";
+import { getReleasePreviewEvents, type ReleasePreviewEvent } from "./release-source";
 import { createVehicleProxy, loadVehiclePreview, metadataForVehicle } from "./vehicle-preview";
+import { dynamicControlScale, frameBounds, routeBounds } from "./viewport-framing";
 
 type ViewportStatus = {
   vehicle: string;
@@ -40,12 +43,17 @@ export interface AirstrikeViewportOptions {
   metadata: VehiclePreviewMetadataFile | null;
   onSelectWaypoint: (waypointId: string) => void;
   onWaypointMoved: (waypointId: string, position: Vector3) => EditorSourceProfile | null;
+  onSelectRelease?: (releaseId: string) => void;
   onVehicleStatus?: (status: ViewportStatus) => void;
 }
 
 const handleMaterial = new MeshStandardMaterial({ color: 0x36c5e6, metalness: 0.1, roughness: 0.45 });
 const selectedHandleMaterial = new MeshStandardMaterial({ color: 0xffd166, metalness: 0.05, roughness: 0.35 });
 const targetMaterial = new MeshBasicMaterial({ color: 0xff5f57, side: DoubleSide, transparent: true, opacity: 0.72 });
+const releaseMaterial = new MeshStandardMaterial({ color: 0xf97316, emissive: 0x2b1203, roughness: 0.38 });
+const selectedReleaseMaterial = new MeshStandardMaterial({ color: 0xffd166, emissive: 0x322000, roughness: 0.28 });
+const releaseTargetMaterial = new MeshBasicMaterial({ color: 0xf43f5e, transparent: true, opacity: 0.75 });
+const releaseLineMaterial = new LineBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.68 });
 
 export class AirstrikeViewport {
   private readonly container: HTMLElement;
@@ -58,13 +66,18 @@ export class AirstrikeViewport {
   private readonly raycaster = new Raycaster();
   private readonly pointer = new Vector2();
   private readonly waypointGroup = new Group();
+  private readonly releaseGroup = new Group();
   private readonly vehicleRoot = new Group();
   private readonly routeMaterial = new LineBasicMaterial({ color: 0x55d6ff, linewidth: 2 });
   private readonly handleGeometry = new SphereGeometry(3.2, 20, 12);
+  private readonly releaseGeometry = new SphereGeometry(2.5, 18, 10);
+  private readonly releaseTargetGeometry = new ConeGeometry(2.8, 7, 18);
   private readonly handles = new Map<string, Mesh>();
+  private readonly releaseMarkers = new Map<string, Mesh>();
   private routeLine: Line | null = null;
   private profile: EditorSourceProfile | null = null;
   private selectedWaypointId = "";
+  private selectedReleaseId = "";
   private scrubTime = 0;
   private animationFrame = 0;
   private vehicleToken = 0;
@@ -87,6 +100,7 @@ export class AirstrikeViewport {
     this.orbit.target.set(0, 55, 0);
     this.orbit.enableDamping = true;
     this.orbit.dampingFactor = 0.08;
+    (this.orbit as OrbitControls & { zoomToCursor?: boolean }).zoomToCursor = true;
 
     this.transform = new TransformControls(this.camera, this.renderer.domElement);
     this.transform.setMode("translate");
@@ -97,6 +111,7 @@ export class AirstrikeViewport {
     this.transform.addEventListener("objectChange", () => this.handleTransformObjectChange());
 
     this.scene.add(this.waypointGroup);
+    this.scene.add(this.releaseGroup);
     this.scene.add(this.vehicleRoot);
     this.scene.add(this.transform);
     this.setupSceneChrome();
@@ -119,9 +134,11 @@ export class AirstrikeViewport {
     this.scrubTime = Math.min(profile.DurationSeconds, Math.max(0, scrubTime));
     this.refreshRoute();
     this.refreshWaypointHandles();
+    this.refreshReleaseMarkers();
     this.selectWaypoint(selectedWaypointId, false);
     this.loadVehicleForProfile(profile);
     this.refreshVehiclePose();
+    this.applyDynamicControls();
   }
 
   public updateSelectedWaypoint(waypointId: string): void {
@@ -129,9 +146,39 @@ export class AirstrikeViewport {
     this.selectWaypoint(waypointId, false);
   }
 
+  public updateSelectedRelease(releaseId: string): void {
+    this.selectedReleaseId = releaseId;
+    this.selectRelease(releaseId, false);
+  }
+
   public updateTime(time: number): void {
     this.scrubTime = time;
     this.refreshVehiclePose();
+  }
+
+  public frameRoute(): void {
+    if (!this.profile) {
+      return;
+    }
+    this.frameBox(routeBounds(this.profile));
+  }
+
+  public frameVehicle(): void {
+    if (this.vehicleRoot.children.length === 0) {
+      this.frameRoute();
+      return;
+    }
+    const bounds = new Box3().setFromObject(this.vehicleRoot);
+    if (bounds.isEmpty()) {
+      this.frameRoute();
+      return;
+    }
+    this.frameBox(bounds);
+  }
+
+  public frameTarget(): void {
+    const targetBounds = new Box3().setFromCenterAndSize(new Vector3(0, 20, 0), new Vector3(80, 80, 80));
+    this.frameBox(targetBounds);
   }
 
   public dispose(): void {
@@ -183,6 +230,7 @@ export class AirstrikeViewport {
 
   private animate(): void {
     this.animationFrame = window.requestAnimationFrame(() => this.animate());
+    this.applyDynamicControls();
     this.orbit.update();
     this.renderer.render(this.scene, this.camera);
   }
@@ -200,6 +248,13 @@ export class AirstrikeViewport {
     const waypointId = typeof hit?.userData?.waypointId === "string" ? hit.userData.waypointId : "";
     if (waypointId) {
       this.selectWaypoint(waypointId, true);
+      return;
+    }
+    const releaseIntersections = this.raycaster.intersectObjects([...this.releaseMarkers.values()], false);
+    const releaseHit = releaseIntersections[0]?.object as Mesh | undefined;
+    const releaseId = typeof releaseHit?.userData?.releaseId === "string" ? releaseHit.userData.releaseId : "";
+    if (releaseId) {
+      this.selectRelease(releaseId, true);
     }
   }
 
@@ -216,6 +271,7 @@ export class AirstrikeViewport {
     if (nextProfile) {
       this.profile = nextProfile;
       this.refreshRoute();
+      this.refreshReleaseMarkers();
       this.refreshVehiclePose();
     }
   }
@@ -236,6 +292,16 @@ export class AirstrikeViewport {
     }
   }
 
+  private selectRelease(releaseId: string, notify: boolean): void {
+    this.selectedReleaseId = releaseId;
+    for (const [id, mesh] of this.releaseMarkers) {
+      mesh.material = id === releaseId ? selectedReleaseMaterial : releaseMaterial;
+    }
+    if (notify) {
+      this.options.onSelectRelease?.(releaseId);
+    }
+  }
+
   private refreshWaypointHandles(): void {
     this.transform.detach();
     this.waypointGroup.clear();
@@ -251,6 +317,59 @@ export class AirstrikeViewport {
       this.waypointGroup.add(mesh);
       this.handles.set(waypoint.Id, mesh);
     }
+  }
+
+  private refreshReleaseMarkers(): void {
+    this.releaseGroup.clear();
+    this.releaseMarkers.clear();
+    if (!this.profile || this.profile.Waypoints.length < 2) {
+      return;
+    }
+    const releases = getReleasePreviewEvents(this.profile, this.options.metadata);
+    for (const release of releases) {
+      const points = this.releasePoints(release);
+      const marker = new Mesh(
+        this.releaseGeometry,
+        release.id === this.selectedReleaseId ? selectedReleaseMaterial : releaseMaterial,
+      );
+      marker.name = `release:${release.id}`;
+      marker.userData.releaseId = release.id;
+      marker.position.copy(points.origin);
+      this.releaseGroup.add(marker);
+      this.releaseMarkers.set(release.id, marker);
+
+      const target = new Mesh(this.releaseTargetGeometry, releaseTargetMaterial);
+      target.name = `release-target:${release.id}`;
+      target.position.copy(points.target);
+      target.rotation.x = Math.PI;
+      this.releaseGroup.add(target);
+
+      const line = new Line(new BufferGeometry().setFromPoints([points.origin, points.target]), releaseLineMaterial);
+      line.name = `release-line:${release.id}`;
+      this.releaseGroup.add(line);
+    }
+  }
+
+  private releasePoints(release: ReleasePreviewEvent): { origin: Vector3; target: Vector3 } {
+    if (!this.profile) {
+      return { origin: new Vector3(), target: new Vector3() };
+    }
+    const pose = evaluateSourcePose(this.profile, release.time);
+    const origin = unityPositionToThreeVector(pose.position);
+    const vehicleRotation = unityQuaternionValueToThreeQuaternion(pose.rotation);
+    const carrierOffset = unityPositionToThreeVector({
+      x: release.fields.CarrierOffsetX,
+      y: release.fields.CarrierOffsetY,
+      z: release.fields.CarrierOffsetZ,
+    });
+    carrierOffset.applyQuaternion(vehicleRotation);
+    origin.add(carrierOffset);
+    const target = unityPositionToThreeVector({
+      x: release.fields.TargetOffsetX,
+      y: release.fields.TargetOffsetY,
+      z: release.fields.TargetOffsetZ,
+    });
+    return { origin, target };
   }
 
   private refreshRoute(): void {
@@ -273,6 +392,33 @@ export class AirstrikeViewport {
     this.routeLine = new Line(geometry, this.routeMaterial);
     this.routeLine.name = "route-preview";
     this.scene.add(this.routeLine);
+  }
+
+  private frameBox(bounds: Box3): void {
+    const target = new Vector3();
+    bounds.getCenter(target);
+    this.orbit.target.copy(target);
+    this.camera.position.copy(frameBounds(this.camera, target, bounds));
+    this.camera.lookAt(target);
+    this.applyDynamicControls(bounds);
+  }
+
+  private applyDynamicControls(bounds = this.currentFocusBounds()): void {
+    const scale = dynamicControlScale(this.camera, this.orbit.target, bounds);
+    this.orbit.panSpeed = scale.panSpeed;
+    this.orbit.zoomSpeed = scale.zoomSpeed;
+    this.orbit.minDistance = scale.minDistance;
+    this.orbit.maxDistance = scale.maxDistance;
+    this.camera.near = scale.near;
+    this.camera.far = scale.far;
+    this.camera.updateProjectionMatrix();
+  }
+
+  private currentFocusBounds(): Box3 {
+    if (this.profile) {
+      return routeBounds(this.profile);
+    }
+    return new Box3().setFromCenterAndSize(new Vector3(0, 55, 0), new Vector3(400, 180, 400));
   }
 
   private loadVehicleForProfile(profile: EditorSourceProfile): void {

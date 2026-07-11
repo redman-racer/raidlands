@@ -35,6 +35,9 @@ function sourceHashProjection(
           FallbackIntervalSeconds: release.FallbackIntervalSeconds ?? null,
           Template: release.Template ?? null,
           Events: release.Events.map(({ Id: _id, ...event }) => event),
+          ...(Object.keys(resolvedHardpointOffsets).length > 0
+            ? { ResolvedHardpointOffsets: resolvedHardpointOffsets }
+            : {}),
         }
       : {
           Mode: release.Mode,
@@ -59,6 +62,9 @@ function sourceHashProjection(
     RotationMode: profile.RotationMode,
     Waypoints: profile.Waypoints.map(({ Id: _id, ...waypoint }) => waypoint),
     ReleaseSource: releaseProjection,
+    ...(profile.EditorMetadata.GlobalTargetSpeedMetersPerSecond !== undefined
+      ? { GlobalTargetSpeedMetersPerSecond: profile.EditorMetadata.GlobalTargetSpeedMetersPerSecond }
+      : {}),
   };
 }
 

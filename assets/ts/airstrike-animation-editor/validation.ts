@@ -181,6 +181,9 @@ function validateProfile(
       validateFinite(waypoint.RotationX, `${waypointPath}.RotationX`, issues, -100_000, 100_000);
       validateFinite(waypoint.RotationY, `${waypointPath}.RotationY`, issues, -100_000, 100_000);
       validateFinite(waypoint.RotationZ, `${waypointPath}.RotationZ`, issues, -100_000, 100_000);
+      if (waypoint.TargetSpeedMetersPerSecond !== undefined) {
+        validateFinite(waypoint.TargetSpeedMetersPerSecond, `${waypointPath}.TargetSpeedMetersPerSecond`, issues, 0.1, 500);
+      }
     }
   }
 
@@ -202,6 +205,7 @@ function validateProfile(
       let totalUnits = 0;
       let previousTime = -Infinity;
       const ids = new Set<string>();
+      const availableHardpoints = getAvailableHardpoints(profile as unknown as EditorSourceProfile, metadata);
       for (const [index, event] of release.Events.entries()) {
         const eventPath = `${path}.ReleaseSource.Events[${index}]`;
         validatePayloadFields(event, eventPath, issues, false);
@@ -220,6 +224,13 @@ function validateProfile(
             addIssue(issues, `${eventPath}.Time`, "sorted_time", "Manual release events must be sorted by time.");
           }
           previousTime = event.Time;
+        }
+        if (event.HardpointId !== undefined) {
+          if (typeof event.HardpointId !== "string" || !STABLE_ID_PATTERN.test(event.HardpointId)) {
+            addIssue(issues, `${eventPath}.HardpointId`, "stable_id", "Must be a safe hardpoint ID.");
+          } else if (!availableHardpoints.has(event.HardpointId)) {
+            addIssue(issues, `${eventPath}.HardpointId`, "unknown_hardpoint", `Unknown hardpoint '${event.HardpointId}'.`);
+          }
         }
         if (typeof event.Count === "number" && Number.isFinite(event.Count)) {
           totalUnits += event.Count;
@@ -273,6 +284,12 @@ function validateProfile(
     }
   } else {
     addIssue(issues, `${path}.ReleaseSource.Mode`, "release_mode", "Must be manual or repeated.");
+  }
+
+  const editorMetadata = isRecord(profile.EditorMetadata) ? profile.EditorMetadata : {};
+  const globalSpeed = editorMetadata.GlobalTargetSpeedMetersPerSecond;
+  if (globalSpeed !== undefined) {
+    validateFinite(globalSpeed, `${path}.EditorMetadata.GlobalTargetSpeedMetersPerSecond`, issues, 0.1, 500);
   }
 }
 

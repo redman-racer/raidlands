@@ -59,6 +59,7 @@ export interface SourceWaypoint {
   RotationX: number;
   RotationY: number;
   RotationZ: number;
+  TargetSpeedMetersPerSecond?: number;
 }
 
 export interface PayloadEventFields {
@@ -85,6 +86,7 @@ export interface PayloadEventFields {
 export interface SourcePayloadEvent extends PayloadEventFields {
   Id: string;
   Time: number;
+  HardpointId?: string;
 }
 
 export interface ManualReleaseSource {
@@ -132,6 +134,7 @@ export interface EditorMetadata {
   Notes: string;
   Tags: string[];
   VehiclePreviewOverrides: VehiclePreviewOverrides;
+  GlobalTargetSpeedMetersPerSecond?: number;
 }
 
 export interface EditorSourceProfile {

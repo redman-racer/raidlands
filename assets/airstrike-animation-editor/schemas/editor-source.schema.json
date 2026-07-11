@@ -49,7 +49,8 @@
           "required": ["Id", "Time"],
           "properties": {
             "Id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$" },
-            "Time": { "type": "number", "minimum": 0 }
+            "Time": { "type": "number", "minimum": 0 },
+            "HardpointId": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$" }
           }
         }
       ]
@@ -93,7 +94,8 @@
         "Id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$" },
         "Time": { "type": "number", "minimum": 0 },
         "X": { "type": "number" }, "Y": { "type": "number" }, "Z": { "type": "number" },
-        "RotationX": { "type": "number" }, "RotationY": { "type": "number" }, "RotationZ": { "type": "number" }
+        "RotationX": { "type": "number" }, "RotationY": { "type": "number" }, "RotationZ": { "type": "number" },
+        "TargetSpeedMetersPerSecond": { "type": "number", "minimum": 0.1, "maximum": 500 }
       }
     },
     "hardpointOverride": {
@@ -133,6 +135,7 @@
           "properties": {
             "Notes": { "type": "string" },
             "Tags": { "type": "array", "items": { "type": "string" } },
+            "GlobalTargetSpeedMetersPerSecond": { "type": "number", "minimum": 0.1, "maximum": 500 },
             "VehiclePreviewOverrides": {
               "type": "object",
               "additionalProperties": false,

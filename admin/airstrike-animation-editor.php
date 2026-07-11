@@ -70,6 +70,12 @@ $editor_config = [
           </div>
         </div>
         <div class="airstrike-editor-toolbar-actions">
+          <button class="btn btn-secondary btn-small" type="button" data-editor-toggle-panel="left">Profiles</button>
+          <button class="btn btn-secondary btn-small" type="button" data-editor-toggle-panel="right">Author</button>
+          <button class="btn btn-secondary btn-small" type="button" data-editor-toggle-panel="bottom">Timeline</button>
+          <button class="btn btn-secondary btn-small" type="button" data-editor-frame-route>Frame Route</button>
+          <button class="btn btn-secondary btn-small" type="button" data-editor-frame-vehicle>Frame Vehicle</button>
+          <button class="btn btn-secondary btn-small" type="button" data-editor-frame-target>Frame Target</button>
           <span class="airstrike-editor-state" data-editor-state>Loading profiles…</span>
           <button class="btn btn-secondary" type="button" data-editor-validate>Validate</button>
           <button class="btn btn-secondary" type="button" data-editor-compile>Compile Preview</button>
@@ -91,7 +97,7 @@ $editor_config = [
       <section class="airstrike-editor-center">
         <div class="airstrike-editor-stage-head">
           <div>
-            <p class="section-kicker">3D waypoint editor</p>
+            <p class="section-kicker">3D ordnance editor</p>
             <h2 data-editor-title>New profile</h2>
           </div>
           <span class="status-pill" data-editor-dirty>Clean</span>
@@ -103,21 +109,6 @@ $editor_config = [
             <span>Target-relative Unity source, Three.js render conversion</span>
           </div>
         </div>
-        <div class="airstrike-editor-timeline">
-          <label for="airstrike-editor-time">Time</label>
-          <input id="airstrike-editor-time" type="range" min="0" max="8" step="0.01" data-editor-time-range>
-          <input type="number" min="0" max="8" step="0.01" data-editor-time-number aria-label="Current preview time">
-          <strong data-editor-time-readout>0.00s / 0.00s</strong>
-        </div>
-        <details class="airstrike-editor-source-fallback" data-editor-source-details>
-          <summary>JSON recovery/debug source</summary>
-          <textarea
-            class="airstrike-editor-source"
-            data-editor-source
-            spellcheck="false"
-            aria-label="Animation source JSON"
-          ></textarea>
-        </details>
       </section>
 
       <aside class="airstrike-editor-right">
@@ -154,6 +145,38 @@ $editor_config = [
             <label><span>Rot Y</span><input type="number" step="0.1" data-editor-waypoint-field="RotationY"></label>
             <label><span>Rot Z</span><input type="number" step="0.1" data-editor-waypoint-field="RotationZ"></label>
           </div>
+          <label class="admin-field">
+            <span>Target speed (m/s)</span>
+            <input type="number" min="0.1" max="500" step="0.1" data-editor-waypoint-speed>
+          </label>
+          <p class="airstrike-editor-muted" data-editor-waypoint-speed-mph></p>
+        </section>
+        <section class="airstrike-editor-side-section">
+          <p class="section-kicker">Speed normalization</p>
+          <label class="admin-field">
+            <span>Global target speed (m/s)</span>
+            <input type="number" min="0.1" max="500" step="0.1" data-editor-global-speed>
+          </label>
+          <p class="airstrike-editor-muted" data-editor-global-speed-mph></p>
+          <button class="btn btn-secondary btn-small" type="button" data-editor-normalize-times>Normalize Times</button>
+        </section>
+        <section class="airstrike-editor-side-section">
+          <p class="section-kicker">Ordnance</p>
+          <label class="admin-field">
+            <span>Release source</span>
+            <select data-editor-release-mode>
+              <option value="manual">Manual events</option>
+              <option value="repeated">Repeated sequence</option>
+            </select>
+          </label>
+          <div class="airstrike-editor-inline-actions">
+            <button class="btn btn-secondary btn-small" type="button" data-editor-release-add>Add</button>
+            <button class="btn btn-secondary btn-small" type="button" data-editor-release-duplicate>Duplicate</button>
+            <button class="btn btn-secondary btn-small" type="button" data-editor-release-delete>Delete</button>
+          </div>
+          <div class="airstrike-release-list" data-editor-manual-releases></div>
+          <div class="airstrike-release-editor" data-editor-manual-editor></div>
+          <div class="airstrike-release-editor" data-editor-repeated-editor></div>
         </section>
         <section class="airstrike-editor-side-section">
           <p class="section-kicker">Route waypoints</p>
@@ -165,11 +188,29 @@ $editor_config = [
       </aside>
 
       <section class="airstrike-editor-bottom">
-        <div>
+        <div class="airstrike-editor-drawer-main">
+          <div class="airstrike-editor-timeline">
+            <label for="airstrike-editor-time">Time</label>
+            <input id="airstrike-editor-time" type="range" min="0" max="8" step="0.01" data-editor-time-range>
+            <input type="number" min="0" max="8" step="0.01" data-editor-time-number aria-label="Current preview time">
+            <strong data-editor-time-readout>0.00s / 0.00s</strong>
+          </div>
+          <div class="airstrike-release-timeline" data-editor-release-timeline></div>
+          <details class="airstrike-editor-source-fallback" data-editor-source-details>
+            <summary>JSON recovery/debug source</summary>
+            <textarea
+              class="airstrike-editor-source"
+              data-editor-source
+              spellcheck="false"
+              aria-label="Animation source JSON"
+            ></textarea>
+          </details>
+        </div>
+        <div class="airstrike-editor-output-panel">
           <p class="section-kicker">Compiled preview</p>
           <strong data-editor-compile-summary>No compiled track yet</strong>
+          <pre data-editor-output aria-live="polite"></pre>
         </div>
-        <pre data-editor-output aria-live="polite"></pre>
       </section>
     </main>
     <script type="application/json" id="airstrike-animation-editor-config"><?= json_encode($editor_config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES) ?></script>

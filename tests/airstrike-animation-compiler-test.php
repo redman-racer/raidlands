@@ -231,6 +231,44 @@ airstrike_compiler_test(array_column($releases, 'Time') === [0.2, 0.2, 0.5], 're
 airstrike_compiler_test(array_column($releases, 'CarrierOffsetX') === [-1.75, 2.25, -1.75], 'alternating hardpoints are materialized into carrier offsets');
 airstrike_compiler_test(array_column($releases, 'Index') === [1, 2, 3], 'compiled release indexes are stable and sequential');
 
+$manual_hardpoint_source = airstrike_compiler_source([
+    'ProfileKey' => 'manual_hardpoint',
+    'FirstPayloadDelaySeconds' => 0.2,
+    'Hardpoints' => [
+        ['Id' => 'left', 'X' => -2.0, 'Y' => -0.5, 'Z' => 1.0],
+    ],
+    'ReleaseSource' => [
+        'Mode' => 'manual',
+        'LegacyDynamic' => false,
+        'Events' => [
+            array_merge(
+                airstrike_compiler_payload(['Count' => 2, 'CarrierOffsetX' => 0.25]),
+                ['Id' => 'release_001', 'Time' => 0.2, 'HardpointId' => 'left']
+            ),
+        ],
+        'Template' => airstrike_compiler_payload(),
+    ],
+]);
+$manual_hardpoint = raidlands_airstrike_animation_compile_profile($manual_hardpoint_source);
+airstrike_compiler_test(count($manual_hardpoint['CompiledReleaseEvents']) === 2, 'manual hardpoint event materializes per-unit releases');
+airstrike_compiler_test(array_column($manual_hardpoint['CompiledReleaseEvents'], 'CarrierOffsetX') === [-1.75, -1.75], 'manual hardpoint offsets are materialized into compiled events');
+airstrike_compiler_close((float) $manual_hardpoint['PayloadEvents'][0]['CarrierOffsetY'], -0.5, 0.000001, 'manual hardpoint offsets are materialized into legacy payload events');
+airstrike_compiler_test(!array_key_exists('HardpointId', $manual_hardpoint['CompiledReleaseEvents'][0]), 'runtime release output omits authoring-only HardpointId');
+
+$manual_hardpoint_shifted = airstrike_compiler_source([
+    'ProfileKey' => 'manual_hardpoint',
+    'FirstPayloadDelaySeconds' => 0.2,
+    'Hardpoints' => [
+        ['Id' => 'left', 'X' => -4.0, 'Y' => -0.5, 'Z' => 1.0],
+    ],
+    'ReleaseSource' => $manual_hardpoint_source['ReleaseSource'],
+]);
+$manual_hardpoint_shifted_runtime = raidlands_airstrike_animation_compile_profile($manual_hardpoint_shifted);
+airstrike_compiler_test(
+    $manual_hardpoint['CompiledTrack']['SourceHash'] !== $manual_hardpoint_shifted_runtime['CompiledTrack']['SourceHash'],
+    'manual hardpoint source hash changes when resolved hardpoint offsets change'
+);
+
 $bundle_result = raidlands_airstrike_animation_compile_bundle([$straight_source, $repeated_source], 17, false);
 airstrike_compiler_test($bundle_result['bundle']['SchemaVersion'] === 2, 'compiled bundle uses schema version 2');
 airstrike_compiler_test($bundle_result['bundle']['PublishedRevision'] === 17, 'compiled bundle carries published revision');
