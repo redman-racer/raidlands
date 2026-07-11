@@ -1601,6 +1601,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): void {
   const heatmapPlayback = panel?.querySelector<HTMLInputElement>("[data-map-viewer-heatmap-playback]");
   const heatmapPlay = panel?.querySelector<HTMLButtonElement>("[data-map-viewer-heatmap-play]");
   const heatmapFrame = panel?.querySelector<HTMLInputElement>("[data-map-viewer-heatmap-frame]");
+  const heatmapFrameLabel = panel?.querySelector<HTMLOutputElement>("[data-map-viewer-heatmap-frame-label]");
   const players = panel?.querySelector<HTMLInputElement>("[data-map-viewer-players]");
   const metric = panel?.querySelector<HTMLSelectElement>("[data-map-viewer-heatmap-metric]");
   const range = panel?.querySelector<HTMLSelectElement>("[data-map-viewer-heatmap-range]");
@@ -1627,15 +1628,26 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): void {
     }
   };
 
+  const setTimelineLabel = (frame: HeatmapHistoryFrame | null, fallback = "Latest") => {
+    if (!heatmapFrameLabel) {
+      return;
+    }
+
+    heatmapFrameLabel.value = frame?.label || fallback;
+    heatmapFrameLabel.textContent = frame?.label || fallback;
+  };
+
   const showHeatmapFrame = (index: number) => {
     const frame = heatmapHistory[index];
 
     if (!frame) {
+      setTimelineLabel(null, heatmapHistory.length === 0 ? "No frames" : "Latest");
       return;
     }
 
     viewer.setHeatmap(frame);
     viewer.setHeatmapVisible(true);
+    setTimelineLabel(frame);
   };
 
   const reloadHeatmap = () => {
@@ -1648,12 +1660,13 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): void {
     if (heatmapPlayback?.checked) {
       void loadHeatmapHistory(root, metric?.value || "deaths", range?.value || "24h").then((payload) => {
         heatmapHistory = Array.isArray(payload.frames) ? payload.frames : [];
+        const latestFrame = Math.max(0, heatmapHistory.length - 1);
         if (heatmapFrame) {
-          heatmapFrame.max = String(Math.max(0, heatmapHistory.length - 1));
-          heatmapFrame.value = "0";
+          heatmapFrame.max = String(latestFrame);
+          heatmapFrame.value = String(latestFrame);
           heatmapFrame.disabled = heatmapHistory.length === 0;
         }
-        showHeatmapFrame(0);
+        showHeatmapFrame(latestFrame);
       });
       return;
     }
@@ -1663,14 +1676,38 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): void {
   };
 
   heatmap?.addEventListener("change", reloadHeatmap);
-  heatmapPlayback?.addEventListener("change", reloadHeatmap);
+  heatmapPlayback?.addEventListener("change", () => {
+    if (heatmapPlayback.checked && heatmap && !heatmap.checked) {
+      heatmap.checked = true;
+    }
+    reloadHeatmap();
+  });
   metric?.addEventListener("change", reloadHeatmap);
   range?.addEventListener("change", reloadHeatmap);
   heatmapFrame?.addEventListener("input", () => {
+    if (heatmapPlayback && !heatmapPlayback.checked) {
+      heatmapPlayback.checked = true;
+    }
+    if (heatmap && !heatmap.checked) {
+      heatmap.checked = true;
+    }
     stopHeatmapPlayback();
+    if (heatmapHistory.length === 0) {
+      reloadHeatmap();
+      return;
+    }
     showHeatmapFrame(Number(heatmapFrame.value) || 0);
   });
   heatmapPlay?.addEventListener("click", () => {
+    if (heatmap && !heatmap.checked) {
+      heatmap.checked = true;
+    }
+    if (heatmapPlayback && !heatmapPlayback.checked) {
+      heatmapPlayback.checked = true;
+      reloadHeatmap();
+      return;
+    }
+
     if (!heatmap?.checked || !heatmapPlayback?.checked || heatmapHistory.length === 0 || !heatmapFrame) {
       return;
     }

@@ -796,13 +796,16 @@ function raidlands_server_heatmap_clean_metric($value): string
         'roambots_activity' => 'roambots',
         'online_positions' => 'loot_pvp',
         'activity' => 'loot_pvp',
+        'all_activity' => 'all',
+        'combined' => 'all',
+        'everything' => 'all',
     ];
 
     if (isset($aliases[$metric])) {
         return $aliases[$metric];
     }
 
-    $allowed = ['deaths', 'kills', 'npc_fights', 'loot_pvp', 'roambots'];
+    $allowed = ['all', 'deaths', 'kills', 'npc_fights', 'loot_pvp', 'roambots'];
 
     return in_array($metric, $allowed, true) ? $metric : 'deaths';
 }
@@ -1052,10 +1055,14 @@ function raidlands_server_heatmap_public(string $metric, string $range): array
     $params = [
         'server_id' => $server_id,
         'wipe_key' => $wipe_key,
-        'metric' => $metric,
         'window_end' => gmdate('Y-m-d H:i:s', $window_end_time),
     ];
-    $where = 'server_id = :server_id AND wipe_key = :wipe_key AND metric = :metric AND window_end <= :window_end';
+    $where = 'server_id = :server_id AND wipe_key = :wipe_key AND window_end <= :window_end';
+
+    if ($metric !== 'all') {
+        $where .= ' AND metric = :metric';
+        $params['metric'] = $metric;
+    }
 
     if ($window_start_time > 0) {
         $where .= ' AND window_end >= :window_start';
@@ -1160,29 +1167,35 @@ function raidlands_server_heatmap_history_public(string $metric, string $range, 
         ];
     }
 
+    $params = [
+        'start_unix' => $start_aligned,
+        'frame_seconds' => $frame_seconds,
+        'server_id' => $server_id,
+        'wipe_key' => $wipe_key,
+        'window_start' => gmdate('Y-m-d H:i:s', $start_aligned),
+        'window_end' => gmdate('Y-m-d H:i:s', $window_end_time),
+        'frames' => $frames,
+    ];
+    $where = 'server_id = :server_id
+           AND wipe_key = :wipe_key
+           AND window_end >= :window_start
+           AND window_end <= :window_end';
+
+    if ($metric !== 'all') {
+        $where .= ' AND metric = :metric';
+        $params['metric'] = $metric;
+    }
+
     $rows = raidlands_db_fetch_all(
         'SELECT FLOOR((UNIX_TIMESTAMP(window_end) - :start_unix) / :frame_seconds) AS frame_index,
                 bucket_size, x, z, SUM(value) AS value, SUM(sample_count) AS sample_count,
                 MIN(window_start) AS window_start, MAX(window_end) AS window_end
          FROM server_heatmap_buckets
-         WHERE server_id = :server_id
-           AND wipe_key = :wipe_key
-           AND metric = :metric
-           AND window_end >= :window_start
-           AND window_end <= :window_end
+         WHERE ' . $where . '
          GROUP BY frame_index, bucket_size, x, z
          HAVING frame_index >= 0 AND frame_index < :frames
          ORDER BY frame_index ASC, value DESC',
-        [
-            'start_unix' => $start_aligned,
-            'frame_seconds' => $frame_seconds,
-            'server_id' => $server_id,
-            'wipe_key' => $wipe_key,
-            'metric' => $metric,
-            'window_start' => gmdate('Y-m-d H:i:s', $start_aligned),
-            'window_end' => gmdate('Y-m-d H:i:s', $window_end_time),
-            'frames' => $frames,
-        ]
+        $params
     );
 
     $per_frame_count = array_fill(0, $frames, 0);

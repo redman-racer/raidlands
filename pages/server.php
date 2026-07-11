@@ -173,8 +173,8 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
           </label>
           <button type="button" data-map-viewer-heatmap-play aria-pressed="false">Play</button>
           <label class="server-terrain-field server-terrain-playback-field">
-            <span>Frame</span>
-            <input type="range" min="0" max="0" value="0" data-map-viewer-heatmap-frame>
+            <span>Timeline <output data-map-viewer-heatmap-frame-label>Latest</output></span>
+            <input type="range" min="0" max="15" value="15" data-map-viewer-heatmap-frame>
           </label>
           <label class="server-terrain-toggle">
             <input type="checkbox" data-map-viewer-players>
@@ -183,6 +183,7 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
           <label class="server-terrain-field">
             <span>Metric</span>
             <select data-map-viewer-heatmap-metric>
+              <option value="all">All activity</option>
               <option value="deaths">Deaths</option>
               <option value="kills">Kills</option>
               <option value="npc_fights">NPC fights</option>

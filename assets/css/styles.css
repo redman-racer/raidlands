@@ -1658,12 +1658,25 @@ h3,
 }
 
 .server-terrain-controls input[type="range"] {
-  width: 150px;
-  min-width: 130px;
+  width: clamp(180px, 22vw, 320px);
+  min-width: 180px;
 }
 
 .server-terrain-controls .server-terrain-playback-field {
-  min-width: 180px;
+  min-width: min(100%, 340px);
+}
+
+.server-terrain-controls .server-terrain-playback-field > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.server-terrain-controls output {
+  color: var(--yellow);
+  font-size: .72rem;
+  text-transform: none;
 }
 
 .server-terrain-viewer {
