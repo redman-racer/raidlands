@@ -1657,6 +1657,15 @@ h3,
   accent-color: var(--orange);
 }
 
+.server-terrain-controls input[type="range"] {
+  width: 150px;
+  min-width: 130px;
+}
+
+.server-terrain-controls .server-terrain-playback-field {
+  min-width: 180px;
+}
+
 .server-terrain-viewer {
   position: relative;
   z-index: 90;

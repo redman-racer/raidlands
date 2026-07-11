@@ -109,6 +109,35 @@ type HeatmapPayload = {
   buckets?: HeatmapBucket[];
 };
 
+type HeatmapHistoryFrame = HeatmapPayload & {
+  index?: number;
+  label?: string;
+  windowStart?: string;
+  windowEnd?: string;
+};
+
+type HeatmapHistoryPayload = HeatmapPayload & {
+  frames?: HeatmapHistoryFrame[];
+  frameSeconds?: number;
+};
+
+type PlayerLocation = {
+  steamId64?: string;
+  displayName?: string;
+  clanTag?: string;
+  x: number;
+  y?: number;
+  z: number;
+  isSelf?: boolean;
+  sampledAt?: string;
+};
+
+type PlayerLocationPayload = {
+  ok?: boolean;
+  authenticated?: boolean;
+  players?: PlayerLocation[];
+};
+
 const isoViewDirections = [
   new Vector3(0.48, 0.34, 0.58),
   new Vector3(-0.48, 0.34, 0.58),
@@ -231,6 +260,7 @@ class TerrainViewer {
   private readonly terrainMaterial: MeshStandardMaterial;
   private readonly gridLayer = new Group();
   private readonly heatmapLayer = new Group();
+  private readonly playerLocationLayer = new Group();
   private readonly airstrikeLayer = new Group();
   private readonly onResize = () => this.resize();
   private animationFrame = 0;
@@ -279,6 +309,9 @@ class TerrainViewer {
     this.heatmapLayer.name = "raidlands-heatmap-cloud-volume-layer";
     this.heatmapLayer.visible = false;
     this.scene.add(this.heatmapLayer);
+    this.playerLocationLayer.name = "raidlands-player-location-layer";
+    this.playerLocationLayer.visible = false;
+    this.scene.add(this.playerLocationLayer);
     this.airstrikeLayer.name = "raidlands-airstrike-preview-layer";
     this.scene.add(this.airstrikeLayer);
     this.addMonuments();
@@ -336,6 +369,10 @@ class TerrainViewer {
     this.heatmapLayer.visible = visible;
   }
 
+  public setPlayerLocationsVisible(visible: boolean): void {
+    this.playerLocationLayer.visible = visible;
+  }
+
   public setHeatmap(payload: HeatmapPayload): void {
     this.heatmapLayer.clear();
     const buckets = Array.isArray(payload.buckets) ? payload.buckets : [];
@@ -377,6 +414,36 @@ class TerrainViewer {
         sprite.renderOrder = 12 + layer;
         this.heatmapLayer.add(sprite);
       }
+    });
+  }
+
+  public setPlayerLocations(payload: PlayerLocationPayload): void {
+    this.playerLocationLayer.clear();
+    const players = Array.isArray(payload.players) ? payload.players : [];
+
+    players.slice(0, 80).forEach((player) => {
+      const x = Number(player.x);
+      const z = Number(player.z);
+
+      if (!Number.isFinite(x) || !Number.isFinite(z)) {
+        return;
+      }
+
+      const isSelf = player.isSelf === true;
+      const y = Math.max(Number(player.y) || 0, sampleTerrainHeight(this.terrain, x, z)) + (isSelf ? 72 : 58);
+      const sprite = new Sprite(new SpriteMaterial({
+        map: createPlayerLocationTexture(player, isSelf),
+        transparent: true,
+        depthWrite: false,
+        depthTest: true,
+      }));
+      const size = isSelf ? 135 : 112;
+      sprite.name = isSelf ? "raidlands-player-location-self" : "raidlands-player-location-clan";
+      sprite.position.set(x, y, z);
+      sprite.scale.set(size, size, 1);
+      sprite.userData.baseScale = size;
+      sprite.renderOrder = isSelf ? 42 : 40;
+      this.playerLocationLayer.add(sprite);
     });
   }
 
@@ -562,6 +629,11 @@ class TerrainViewer {
     this.controls.update();
     this.updateGridOpacity();
     this.airstrikeLayer.userData.tick?.((performance.now() - this.clockStart) / 1000);
+    this.playerLocationLayer.children.forEach((child, index) => {
+      const pulse = 1 + Math.sin((performance.now() - this.clockStart) / 520 + index) * 0.045;
+      const size = (child.userData.baseScale || child.scale.x) * pulse;
+      child.scale.set(size, size, 1);
+    });
     this.renderer.render(this.scene, this.camera);
   }
 
@@ -1356,6 +1428,67 @@ function createHeatmapCloudTexture(): CanvasTexture {
   return texture;
 }
 
+function createPlayerLocationTexture(player: PlayerLocation, isSelf: boolean): CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 192;
+  canvas.height = 192;
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    return new CanvasTexture(canvas);
+  }
+
+  const clan = String(player.clanTag || "").slice(0, 6).toUpperCase();
+  const name = String(player.displayName || (isSelf ? "You" : "Clan")).trim();
+  const label = isSelf ? "YOU" : (clan || initialsForPlayer(name));
+  const fill = isSelf ? "#ffb23f" : "#39d98a";
+  const stroke = isSelf ? "#fff7d6" : "#d7ffe7";
+
+  context.clearRect(0, 0, canvas.width, canvas.height);
+  context.shadowColor = "rgba(0, 0, 0, 0.55)";
+  context.shadowBlur = 18;
+  context.fillStyle = "rgba(5, 6, 7, 0.78)";
+  context.beginPath();
+  context.arc(96, 82, 58, 0, Math.PI * 2);
+  context.fill();
+  context.shadowBlur = 0;
+  context.lineWidth = 8;
+  context.strokeStyle = fill;
+  context.stroke();
+
+  context.fillStyle = fill;
+  context.beginPath();
+  context.moveTo(96, 176);
+  context.lineTo(68, 128);
+  context.lineTo(124, 128);
+  context.closePath();
+  context.fill();
+
+  context.fillStyle = stroke;
+  context.font = `900 ${label.length > 3 ? 28 : 36}px Arial, sans-serif`;
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillText(label, 96, 78, 92);
+
+  context.fillStyle = "rgba(255, 255, 255, 0.82)";
+  context.font = "800 18px Arial, sans-serif";
+  context.fillText(name || label, 96, 118, 124);
+
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  return texture;
+}
+
+function initialsForPlayer(name: string): string {
+  const words = name.split(/\s+/).filter(Boolean);
+
+  if (words.length === 0) {
+    return "CL";
+  }
+
+  return words.slice(0, 2).map((word) => word.charAt(0).toUpperCase()).join("");
+}
+
 function heatmapRampColor(value: number): Color {
   const t = MathUtils.clamp(value, 0, 1);
   const low = new Color(0x2f80ff);
@@ -1465,8 +1598,15 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): void {
   const grid = panel?.querySelector<HTMLInputElement>("[data-map-viewer-grid]");
   const tour = panel?.querySelector<HTMLInputElement>("[data-map-viewer-tour]");
   const heatmap = panel?.querySelector<HTMLInputElement>("[data-map-viewer-heatmap]");
+  const heatmapPlayback = panel?.querySelector<HTMLInputElement>("[data-map-viewer-heatmap-playback]");
+  const heatmapPlay = panel?.querySelector<HTMLButtonElement>("[data-map-viewer-heatmap-play]");
+  const heatmapFrame = panel?.querySelector<HTMLInputElement>("[data-map-viewer-heatmap-frame]");
+  const players = panel?.querySelector<HTMLInputElement>("[data-map-viewer-players]");
   const metric = panel?.querySelector<HTMLSelectElement>("[data-map-viewer-heatmap-metric]");
   const range = panel?.querySelector<HTMLSelectElement>("[data-map-viewer-heatmap-range]");
+  let heatmapHistory: HeatmapHistoryFrame[] = [];
+  let playbackTimer = 0;
+  let playerPollTimer = 0;
 
   bindMapViewButtons(buttons, viewer);
 
@@ -1478,18 +1618,96 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): void {
     viewer.setTourEnabled(tour.checked);
   });
 
+  const stopHeatmapPlayback = () => {
+    window.clearInterval(playbackTimer);
+    playbackTimer = 0;
+    heatmapPlay?.setAttribute("aria-pressed", "false");
+    if (heatmapPlay) {
+      heatmapPlay.textContent = "Play";
+    }
+  };
+
+  const showHeatmapFrame = (index: number) => {
+    const frame = heatmapHistory[index];
+
+    if (!frame) {
+      return;
+    }
+
+    viewer.setHeatmap(frame);
+    viewer.setHeatmapVisible(true);
+  };
+
   const reloadHeatmap = () => {
     if (!heatmap?.checked) {
+      stopHeatmapPlayback();
       viewer.setHeatmapVisible(false);
       return;
     }
 
+    if (heatmapPlayback?.checked) {
+      void loadHeatmapHistory(root, metric?.value || "deaths", range?.value || "24h").then((payload) => {
+        heatmapHistory = Array.isArray(payload.frames) ? payload.frames : [];
+        if (heatmapFrame) {
+          heatmapFrame.max = String(Math.max(0, heatmapHistory.length - 1));
+          heatmapFrame.value = "0";
+          heatmapFrame.disabled = heatmapHistory.length === 0;
+        }
+        showHeatmapFrame(0);
+      });
+      return;
+    }
+
+    stopHeatmapPlayback();
     void loadHeatmap(root, viewer, metric?.value || "deaths", range?.value || "24h");
   };
 
   heatmap?.addEventListener("change", reloadHeatmap);
+  heatmapPlayback?.addEventListener("change", reloadHeatmap);
   metric?.addEventListener("change", reloadHeatmap);
   range?.addEventListener("change", reloadHeatmap);
+  heatmapFrame?.addEventListener("input", () => {
+    stopHeatmapPlayback();
+    showHeatmapFrame(Number(heatmapFrame.value) || 0);
+  });
+  heatmapPlay?.addEventListener("click", () => {
+    if (!heatmap?.checked || !heatmapPlayback?.checked || heatmapHistory.length === 0 || !heatmapFrame) {
+      return;
+    }
+
+    if (playbackTimer > 0) {
+      stopHeatmapPlayback();
+      return;
+    }
+
+    heatmapPlay.setAttribute("aria-pressed", "true");
+    heatmapPlay.textContent = "Pause";
+    playbackTimer = window.setInterval(() => {
+      const next = ((Number(heatmapFrame.value) || 0) + 1) % heatmapHistory.length;
+      heatmapFrame.value = String(next);
+      showHeatmapFrame(next);
+    }, 900);
+  });
+
+  const reloadPlayers = () => {
+    if (!players?.checked) {
+      window.clearInterval(playerPollTimer);
+      playerPollTimer = 0;
+      viewer.setPlayerLocationsVisible(false);
+      return;
+    }
+
+    void loadPlayerLocations(root, viewer);
+    if (playerPollTimer === 0) {
+      playerPollTimer = window.setInterval(() => {
+        if (players.checked) {
+          void loadPlayerLocations(root, viewer);
+        }
+      }, 15000);
+    }
+  };
+
+  players?.addEventListener("change", reloadPlayers);
 }
 
 async function loadHeatmap(root: HTMLElement, viewer: TerrainViewer, metric: string, range: string): Promise<void> {
@@ -1519,6 +1737,63 @@ async function loadHeatmap(root: HTMLElement, viewer: TerrainViewer, metric: str
   } catch (error) {
     console.info("Raidlands heat map could not be loaded.", error);
     viewer.setHeatmapVisible(false);
+  }
+}
+
+async function loadHeatmapHistory(root: HTMLElement, metric: string, range: string): Promise<HeatmapHistoryPayload> {
+  const baseUrl = root.dataset.heatmapUrl || "";
+
+  if (!baseUrl) {
+    return { frames: [] };
+  }
+
+  const url = new URL(baseUrl, window.location.href);
+  url.searchParams.set("metric", metric);
+  url.searchParams.set("range", range);
+  url.searchParams.set("playback", "1");
+  url.searchParams.set("frames", "16");
+
+  try {
+    const response = await fetch(url.toString(), {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Heat map history request failed with HTTP ${response.status}.`);
+    }
+
+    return (await response.json()) as HeatmapHistoryPayload;
+  } catch (error) {
+    console.info("Raidlands heat map history could not be loaded.", error);
+    return { frames: [] };
+  }
+}
+
+async function loadPlayerLocations(root: HTMLElement, viewer: TerrainViewer): Promise<void> {
+  const baseUrl = root.dataset.playerLocationsUrl || "";
+
+  if (!baseUrl) {
+    viewer.setPlayerLocationsVisible(false);
+    return;
+  }
+
+  try {
+    const response = await fetch(new URL(baseUrl, window.location.href).toString(), {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Player location request failed with HTTP ${response.status}.`);
+    }
+
+    const payload = (await response.json()) as PlayerLocationPayload;
+    viewer.setPlayerLocations(payload);
+    viewer.setPlayerLocationsVisible((payload.players || []).length > 0);
+  } catch (error) {
+    console.info("Raidlands player locations could not be loaded.", error);
+    viewer.setPlayerLocationsVisible(false);
   }
 }
 

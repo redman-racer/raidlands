@@ -167,6 +167,19 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
             <input type="checkbox" data-map-viewer-heatmap>
             <span>Heat map</span>
           </label>
+          <label class="server-terrain-toggle">
+            <input type="checkbox" data-map-viewer-heatmap-playback>
+            <span>Playback</span>
+          </label>
+          <button type="button" data-map-viewer-heatmap-play aria-pressed="false">Play</button>
+          <label class="server-terrain-field server-terrain-playback-field">
+            <span>Frame</span>
+            <input type="range" min="0" max="0" value="0" data-map-viewer-heatmap-frame>
+          </label>
+          <label class="server-terrain-toggle">
+            <input type="checkbox" data-map-viewer-players>
+            <span>Clan locations</span>
+          </label>
           <label class="server-terrain-field">
             <span>Metric</span>
             <select data-map-viewer-heatmap-metric>
@@ -194,6 +207,7 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
         data-terrain-url="<?= e($server_terrain_url) ?>"
         data-texture-url="<?= e($server_texture_url) ?>"
         data-heatmap-url="<?= e(route_url('api/server/heatmap.php')) ?>"
+        data-player-locations-url="<?= e(route_url('api/server/player-locations.php')) ?>"
         data-camera-tour="false"
         data-camera-locked="false"
         data-grid-overlay="true"
