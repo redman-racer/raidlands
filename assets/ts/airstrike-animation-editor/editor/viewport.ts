@@ -409,11 +409,11 @@ export class AirstrikeViewport {
 
     const crateStack = new Group();
     crateStack.name = "scale-crate-stack";
-    const crateGeometry = new BoxGeometry(7, 7, 7);
+    const crateGeometry = new BoxGeometry(1.6, 1.6, 1.6);
     const crateOffsets = [
-      new Vector3(0, 3.5, 0),
-      new Vector3(7.4, 3.5, 0),
-      new Vector3(3.7, 10.7, 0),
+      new Vector3(0, 0.8, 0),
+      new Vector3(1.75, 0.8, 0),
+      new Vector3(0.88, 2.45, 0),
     ];
     for (const offset of crateOffsets) {
       const crate = new Mesh(crateGeometry, scaleReferenceMaterials.crate);
@@ -426,10 +426,10 @@ export class AirstrikeViewport {
 
     const barricade = new Group();
     barricade.name = "scale-barricade-line";
-    const barricadeGeometry = new BoxGeometry(22, 5, 3);
+    const barricadeGeometry = new BoxGeometry(3.4, 1.15, 0.55);
     for (let index = 0; index < 3; index += 1) {
       const block = new Mesh(barricadeGeometry, scaleReferenceMaterials.barricade);
-      block.position.set(index * 23, 2.5, Math.sin(index) * 2);
+      block.position.set(index * 3.6, 0.58, Math.sin(index) * 0.35);
       block.rotation.y = MathUtils.degToRad(index === 1 ? 8 : -5);
       barricade.add(block);
     }
@@ -840,21 +840,21 @@ export class AirstrikeViewport {
     const tower = new Group();
     tower.name = "scale-watchtower-placeholder";
 
-    const deck = new Mesh(new BoxGeometry(14, 2, 14), scaleReferenceMaterials.tower);
-    deck.position.y = 13;
+    const deck = new Mesh(new BoxGeometry(4.2, 0.45, 4.2), scaleReferenceMaterials.tower);
+    deck.position.y = 5.4;
     tower.add(deck);
 
-    const legGeometry = new CylinderGeometry(0.45, 0.45, 13, 8);
-    for (const x of [-5.2, 5.2]) {
-      for (const z of [-5.2, 5.2]) {
+    const legGeometry = new CylinderGeometry(0.13, 0.16, 5.4, 8);
+    for (const x of [-1.65, 1.65]) {
+      for (const z of [-1.65, 1.65]) {
         const leg = new Mesh(legGeometry, scaleReferenceMaterials.tower);
-        leg.position.set(x, 6.5, z);
+        leg.position.set(x, 2.7, z);
         tower.add(leg);
       }
     }
 
-    const roof = new Mesh(new ConeGeometry(10.5, 5, 4), scaleReferenceMaterials.barricade);
-    roof.position.y = 17.2;
+    const roof = new Mesh(new ConeGeometry(3.15, 1.45, 4), scaleReferenceMaterials.barricade);
+    roof.position.y = 6.55;
     roof.rotation.y = MathUtils.degToRad(45);
     tower.add(roof);
 
