@@ -1714,7 +1714,7 @@ class AirstrikeEditorApp {
         worldSize?: unknown;
         mapName?: unknown;
         mapImageUrl?: unknown;
-        mapImage?: { url?: unknown; publicUrl?: unknown; terrainUrl?: unknown; heightmapUrl?: unknown };
+        mapImage?: { url?: unknown; publicUrl?: unknown; textureUrl?: unknown; terrainUrl?: unknown; heightmapUrl?: unknown };
       };
       const terrainUrl =
         typeof payload.mapImage?.terrainUrl === "string"
@@ -1727,7 +1727,9 @@ class AirstrikeEditorApp {
         worldSize: Number(payload.worldSize || 0),
         mapName: typeof payload.mapName === "string" ? payload.mapName : "",
         mapImageUrl:
-          typeof payload.mapImageUrl === "string"
+          typeof payload.mapImage?.textureUrl === "string"
+            ? payload.mapImage.textureUrl
+            : typeof payload.mapImageUrl === "string"
             ? payload.mapImageUrl
             : typeof payload.mapImage?.url === "string"
               ? payload.mapImage.url

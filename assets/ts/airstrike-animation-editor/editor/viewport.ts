@@ -635,6 +635,7 @@ export class AirstrikeViewport {
         }
         texture.colorSpace = SRGBColorSpace;
         material.map = texture;
+        material.vertexColors = false;
         material.needsUpdate = true;
       },
       undefined,
@@ -645,19 +646,45 @@ export class AirstrikeViewport {
   }
 
   private pushTerrainColor(target: number[], color: string | undefined, height: number, terrainPayload: TerrainReferencePayload): void {
+    const min = Number.isFinite(terrainPayload.minHeight) ? terrainPayload.minHeight || 0 : 0;
+    const max = Number.isFinite(terrainPayload.maxHeight) ? terrainPayload.maxHeight || 1 : 1;
+    const t = MathUtils.clamp((height - min) / Math.max(1, max - min), 0, 1);
+
     if (color && /^#[0-9a-f]{6}$/i.test(color)) {
-      const parsed = new Color(color);
+      const parsed = this.balanceTerrainColor(new Color(color), t);
       target.push(parsed.r, parsed.g, parsed.b);
       return;
     }
 
-    const min = Number.isFinite(terrainPayload.minHeight) ? terrainPayload.minHeight || 0 : 0;
-    const max = Number.isFinite(terrainPayload.maxHeight) ? terrainPayload.maxHeight || 1 : 1;
-    const t = MathUtils.clamp((height - min) / Math.max(1, max - min), 0, 1);
-    const low = new Color(0x44623f);
-    const high = new Color(0xd2d7cf);
-    const mixed = low.lerp(high, Math.pow(t, 1.6));
+    const low = new Color(0x3f5537);
+    const mid = new Color(0x776d4e);
+    const high = new Color(0xdce0da);
+    const mixed = t < 0.58
+      ? low.lerp(mid, MathUtils.smoothstep(t / 0.58, 0, 1))
+      : mid.lerp(high, MathUtils.smoothstep((t - 0.58) / 0.42, 0, 1));
     target.push(mixed.r, mixed.g, mixed.b);
+  }
+
+  private balanceTerrainColor(color: Color, heightT: number): Color {
+    const balanced = color.clone();
+    const greenBias = Math.max(0, balanced.g - Math.max(balanced.r, balanced.b));
+
+    if (greenBias > 0.04) {
+      const correction = MathUtils.clamp(greenBias * 0.45, 0, 0.12);
+      balanced.g = Math.max(0, balanced.g - correction);
+      balanced.r = Math.min(1, balanced.r + correction * 0.55);
+      balanced.b = Math.min(1, balanced.b + correction * 0.28);
+    }
+
+    if (heightT > 0.68) {
+      const snow = new Color(0xe6e8e2);
+      balanced.lerp(snow, MathUtils.smoothstep(heightT, 0.68, 0.92) * 0.72);
+    } else if (heightT > 0.5) {
+      const rock = new Color(0x8b8572);
+      balanced.lerp(rock, MathUtils.smoothstep(heightT, 0.5, 0.72) * 0.28);
+    }
+
+    return balanced;
   }
 
   private createProceduralRoad(seed: number, terrainSize: number): Group {
