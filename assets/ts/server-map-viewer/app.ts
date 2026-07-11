@@ -561,7 +561,10 @@ class TerrainViewer {
       for (let col = 0; col < resolution; col += 1) {
         const u = col / (resolution - 1);
         const x = -half + u * worldSize;
-        const index = row * resolution + col;
+        // RustMapApi's terrain grid is mirrored on its X axis relative to its map render.
+        // Keep the texture and world coordinates north-up/east-right, but read the matching
+        // height and fallback colour from the reflected source column.
+        const index = row * resolution + (resolution - 1 - col);
         positions.push(x, this.terrain.heights[index] || 0, z);
         uvs.push(u, 1 - v);
         pushColor(colors, this.terrain.colors?.[index], this.terrain.heights[index] || 0, this.terrain);
@@ -1587,7 +1590,7 @@ function sampleTerrainHeight(terrain: TerrainPayload, x: number, z: number): num
   const half = worldSize / 2;
   const u = MathUtils.clamp((x + half) / worldSize, 0, 1);
   const v = MathUtils.clamp((half - z) / worldSize, 0, 1);
-  const col = Math.round(u * (resolution - 1));
+  const col = resolution - 1 - Math.round(u * (resolution - 1));
   const row = Math.round(v * (resolution - 1));
   return terrain.heights[row * resolution + col] || 0;
 }
