@@ -284,6 +284,7 @@ class AirstrikeEditorApp {
   private playbackStartedAt = 0;
   private playbackStartedTime = 0;
   private playbackRunId = 0;
+  private suppressNextPlayClick = false;
   private paletteDragId = "";
 
   public constructor(config: EditorConfig, elements: EditorElements) {
@@ -342,7 +343,14 @@ class AirstrikeEditorApp {
     this.elements.deleteWaypoint.addEventListener("click", () => this.handleDeleteWaypoint());
     this.elements.normalizeTimes.addEventListener("click", () => this.handleNormalizeTimes());
     this.elements.inferSpeeds.addEventListener("click", () => this.handleInferSpeeds());
-    this.elements.play.addEventListener("click", () => this.togglePlayback());
+    this.elements.play.addEventListener("pointerdown", (event) => this.handlePlaybackPointerDown(event));
+    this.elements.play.addEventListener("click", () => {
+      if (this.suppressNextPlayClick) {
+        this.suppressNextPlayClick = false;
+        return;
+      }
+      this.togglePlayback();
+    });
     this.elements.stepBack.addEventListener("click", () => this.stepPlayback(-0.1));
     this.elements.stepForward.addEventListener("click", () => this.stepPlayback(0.1));
     this.elements.followVehicle.addEventListener("change", () => {
@@ -1241,6 +1249,16 @@ class AirstrikeEditorApp {
       return;
     }
     this.startPlayback();
+  }
+
+  private handlePlaybackPointerDown(event: PointerEvent): void {
+    if (event.button !== 0) {
+      return;
+    }
+    event.preventDefault();
+    event.stopPropagation();
+    this.suppressNextPlayClick = true;
+    this.togglePlayback();
   }
 
   private startPlayback(): void {
