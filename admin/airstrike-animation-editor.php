@@ -71,7 +71,7 @@ $editor_config = [
         </div>
         <div class="airstrike-editor-toolbar-actions">
           <button class="btn btn-secondary btn-small" type="button" data-editor-toggle-panel="left">Profiles</button>
-          <button class="btn btn-secondary btn-small" type="button" data-editor-toggle-panel="right">Author</button>
+          <button class="btn btn-secondary btn-small" type="button" data-editor-toggle-panel="right">Inspector</button>
           <button class="btn btn-secondary btn-small" type="button" data-editor-toggle-panel="bottom">Timeline</button>
           <button class="btn btn-secondary btn-small" type="button" data-editor-frame-route>Frame Route</button>
           <button class="btn btn-secondary btn-small" type="button" data-editor-frame-vehicle>Frame Vehicle</button>
@@ -114,6 +114,7 @@ $editor_config = [
       <aside class="airstrike-editor-right">
         <section class="airstrike-editor-side-section">
           <p class="section-kicker">Profile identity</p>
+          <p class="airstrike-editor-muted">Names the draft and chooses the preview/runtime vehicle.</p>
           <label class="admin-field">
             <span>Profile key</span>
             <input type="text" maxlength="100" data-editor-key pattern="[a-z0-9][a-z0-9._-]{0,99}">
@@ -136,6 +137,7 @@ $editor_config = [
         <section class="airstrike-editor-side-section">
           <p class="section-kicker">Waypoint</p>
           <h3 data-editor-waypoint-title>No waypoint selected</h3>
+          <p class="airstrike-editor-muted">Moves the selected route point. Time controls when the vehicle reaches it.</p>
           <div class="airstrike-waypoint-inspector">
             <label><span>Time</span><input type="number" step="0.01" data-editor-waypoint-field="Time"></label>
             <label><span>X</span><input type="number" step="0.1" data-editor-waypoint-field="X"></label>
@@ -152,16 +154,19 @@ $editor_config = [
           <p class="airstrike-editor-muted" data-editor-waypoint-speed-mph></p>
         </section>
         <section class="airstrike-editor-side-section">
-          <p class="section-kicker">Speed normalization</p>
+          <p class="section-kicker">Route timing</p>
+          <p class="airstrike-editor-muted">Imported saves infer this from waypoint distance and time. Changing it rewrites waypoint times.</p>
           <label class="admin-field">
             <span>Global target speed (m/s)</span>
             <input type="number" min="0.1" max="500" step="0.1" data-editor-global-speed>
           </label>
           <p class="airstrike-editor-muted" data-editor-global-speed-mph></p>
           <button class="btn btn-secondary btn-small" type="button" data-editor-normalize-times>Normalize Times</button>
+          <button class="btn btn-secondary btn-small" type="button" data-editor-infer-speeds>Infer From Current Times</button>
         </section>
         <section class="airstrike-editor-side-section">
           <p class="section-kicker">Ordnance</p>
+          <p class="airstrike-editor-muted">Schedules payload release points and their target rays.</p>
           <label class="admin-field">
             <span>Release source</span>
             <select data-editor-release-mode>
@@ -194,6 +199,20 @@ $editor_config = [
             <input id="airstrike-editor-time" type="range" min="0" max="8" step="0.01" data-editor-time-range>
             <input type="number" min="0" max="8" step="0.01" data-editor-time-number aria-label="Current preview time">
             <strong data-editor-time-readout>0.00s / 0.00s</strong>
+          </div>
+          <div class="airstrike-editor-playback">
+            <button class="btn btn-secondary btn-small" type="button" data-editor-play>Play</button>
+            <button class="btn btn-secondary btn-small" type="button" data-editor-step-back aria-label="Step backward">-0.1s</button>
+            <button class="btn btn-secondary btn-small" type="button" data-editor-step-forward aria-label="Step forward">+0.1s</button>
+            <label class="airstrike-editor-checkbox"><input type="checkbox" data-editor-loop> Loop</label>
+            <label class="admin-field">
+              <span>Ordnance rays</span>
+              <select data-editor-release-visibility>
+                <option value="near">Near playhead</option>
+                <option value="all">Always on</option>
+                <option value="selected">Selected only</option>
+              </select>
+            </label>
           </div>
           <div class="airstrike-release-timeline" data-editor-release-timeline></div>
           <details class="airstrike-editor-source-fallback" data-editor-source-details>

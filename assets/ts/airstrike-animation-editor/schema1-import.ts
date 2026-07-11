@@ -8,6 +8,7 @@ import {
   type RuntimePayloadEvent,
   type SourcePayloadEvent,
 } from "./types";
+import { inferWaypointSpeeds } from "./editor/speed-normalization";
 import { PROFILE_KEY_PATTERN } from "./validation";
 
 function finiteOr(value: unknown, fallback: number): number {
@@ -70,7 +71,7 @@ function importProfile(key: string, legacy: Partial<EditorSourceProfile & { Payl
   const maximumUnits = Math.max(0, integerOr(legacy.MaxPayloadCount, 0));
   const template = payloadFields(legacy.ReleaseTemplate);
   const generated = String(legacy.PayloadReleaseMode ?? "manual").toLowerCase() === "generated";
-  return {
+  return inferWaypointSpeeds({
     EditorSourceSchemaVersion: EDITOR_SOURCE_SCHEMA_VERSION,
     ProfileKey: key,
     DisplayName: displayNameFromKey(key),
@@ -123,7 +124,7 @@ function importProfile(key: string, legacy: Partial<EditorSourceProfile & { Payl
       Tags: ["server-import"],
       VehiclePreviewOverrides: {},
     },
-  };
+  });
 }
 
 export function importSchema1Runtime(value: LegacyVisualProfileFile): EditorSourceBundle {

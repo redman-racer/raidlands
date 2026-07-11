@@ -259,6 +259,30 @@
   background: rgba(8, 12, 14, 0.9);
 }
 
+.airstrike-editor-playback {
+  display: grid;
+  grid-template-columns: auto auto auto auto minmax(160px, 240px);
+  align-items: end;
+  gap: 8px;
+}
+
+.airstrike-editor-checkbox {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 34px;
+  color: #bdd2d7;
+  font-size: 12px;
+}
+
+.airstrike-editor-playback .admin-field {
+  min-width: 0;
+}
+
+.airstrike-editor-playback .admin-field span {
+  font-size: 11px;
+}
+
 .airstrike-editor-timeline label,
 .airstrike-editor-timeline strong {
   color: #b8c9cd;
@@ -358,6 +382,7 @@
   margin: 0;
   color: #91a4a8;
   font-size: 12px;
+  line-height: 1.35;
 }
 
 .airstrike-editor-inline-actions {

@@ -38,6 +38,8 @@ type ViewportStatus = {
   modelState: string;
 };
 
+export type ReleaseVisibilityMode = "all" | "near" | "selected";
+
 export interface AirstrikeViewportOptions {
   assetBase: string;
   metadata: VehiclePreviewMetadataFile | null;
@@ -78,6 +80,7 @@ export class AirstrikeViewport {
   private profile: EditorSourceProfile | null = null;
   private selectedWaypointId = "";
   private selectedReleaseId = "";
+  private releaseVisibilityMode: ReleaseVisibilityMode = "near";
   private scrubTime = 0;
   private animationFrame = 0;
   private vehicleToken = 0;
@@ -149,11 +152,18 @@ export class AirstrikeViewport {
   public updateSelectedRelease(releaseId: string): void {
     this.selectedReleaseId = releaseId;
     this.selectRelease(releaseId, false);
+    this.updateReleaseVisibility();
   }
 
   public updateTime(time: number): void {
     this.scrubTime = time;
     this.refreshVehiclePose();
+    this.updateReleaseVisibility();
+  }
+
+  public updateReleaseVisibilityMode(mode: ReleaseVisibilityMode): void {
+    this.releaseVisibilityMode = mode;
+    this.updateReleaseVisibility();
   }
 
   public frameRoute(): void {
@@ -334,19 +344,37 @@ export class AirstrikeViewport {
       );
       marker.name = `release:${release.id}`;
       marker.userData.releaseId = release.id;
+      marker.userData.releaseTime = release.time;
       marker.position.copy(points.origin);
       this.releaseGroup.add(marker);
       this.releaseMarkers.set(release.id, marker);
 
       const target = new Mesh(this.releaseTargetGeometry, releaseTargetMaterial);
       target.name = `release-target:${release.id}`;
+      target.userData.releaseId = release.id;
+      target.userData.releaseTime = release.time;
       target.position.copy(points.target);
       target.rotation.x = Math.PI;
       this.releaseGroup.add(target);
 
       const line = new Line(new BufferGeometry().setFromPoints([points.origin, points.target]), releaseLineMaterial);
       line.name = `release-line:${release.id}`;
+      line.userData.releaseId = release.id;
+      line.userData.releaseTime = release.time;
       this.releaseGroup.add(line);
+    }
+    this.updateReleaseVisibility();
+  }
+
+  private updateReleaseVisibility(): void {
+    const vicinitySeconds = 0.35;
+    for (const child of this.releaseGroup.children) {
+      const releaseId = typeof child.userData.releaseId === "string" ? child.userData.releaseId : "";
+      const releaseTime = typeof child.userData.releaseTime === "number" ? child.userData.releaseTime : Number.NaN;
+      child.visible =
+        this.releaseVisibilityMode === "all" ||
+        (this.releaseVisibilityMode === "selected" && releaseId === this.selectedReleaseId) ||
+        (this.releaseVisibilityMode === "near" && Math.abs(releaseTime - this.scrubTime) <= vicinitySeconds);
     }
   }
 

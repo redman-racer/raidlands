@@ -21,6 +21,7 @@ import {
 import {
   DEFAULT_TARGET_SPEED_METERS_PER_SECOND,
   formatMilesPerHour,
+  inferWaypointSpeeds,
   normalizeWaypointTimes,
   setGlobalTargetSpeed,
   setWaypointTargetSpeed,
@@ -81,6 +82,12 @@ interface EditorElements {
   releaseTimeline: HTMLElement;
   vehicleMeta: HTMLElement;
   normalizeTimes: HTMLButtonElement;
+  inferSpeeds: HTMLButtonElement;
+  play: HTMLButtonElement;
+  stepBack: HTMLButtonElement;
+  stepForward: HTMLButtonElement;
+  loop: HTMLInputElement;
+  releaseVisibility: HTMLSelectElement;
   addRelease: HTMLButtonElement;
   duplicateRelease: HTMLButtonElement;
   deleteRelease: HTMLButtonElement;
@@ -99,6 +106,7 @@ interface EditorState {
   selectedWaypointId: string;
   selectedReleaseId: string;
   scrubTime: number;
+  playing: boolean;
 }
 
 function starterSource(): EditorSourceProfile {
@@ -238,9 +246,13 @@ class AirstrikeEditorApp {
     selectedWaypointId: "",
     selectedReleaseId: "",
     scrubTime: 0,
+    playing: false,
   };
   private readonly viewport: AirstrikeViewport;
   private metadata: VehiclePreviewMetadataFile | null = null;
+  private playbackFrame = 0;
+  private playbackStartedAt = 0;
+  private playbackStartedTime = 0;
 
   public constructor(config: EditorConfig, elements: EditorElements) {
     this.config = config;
@@ -288,6 +300,11 @@ class AirstrikeEditorApp {
     this.elements.timeRange.addEventListener("input", () => this.setScrubTime(Number(this.elements.timeRange.value)));
     this.elements.timeNumber.addEventListener("input", () => this.setScrubTime(Number(this.elements.timeNumber.value)));
     this.elements.normalizeTimes.addEventListener("click", () => this.handleNormalizeTimes());
+    this.elements.inferSpeeds.addEventListener("click", () => this.handleInferSpeeds());
+    this.elements.play.addEventListener("click", () => this.togglePlayback());
+    this.elements.stepBack.addEventListener("click", () => this.stepPlayback(-0.1));
+    this.elements.stepForward.addEventListener("click", () => this.stepPlayback(0.1));
+    this.elements.releaseVisibility.addEventListener("change", () => this.handleReleaseVisibilityChange());
     this.elements.globalSpeed.addEventListener("input", () => this.handleGlobalSpeedInput());
     this.elements.waypointSpeed.addEventListener("input", () => this.handleWaypointSpeedInput());
     this.elements.releaseMode.addEventListener("change", () => this.handleReleaseModeChange());
@@ -416,6 +433,7 @@ class AirstrikeEditorApp {
     this.renderReleaseControls();
     this.renderTimeControls();
     this.viewport.updateProfile(source, this.state.selectedWaypointId, this.state.scrubTime);
+    this.handleReleaseVisibilityChange();
     this.viewport.updateSelectedRelease(this.state.selectedReleaseId);
     this.elements.output.textContent = "";
     this.elements.compileSummary.textContent = "No compiled track yet";
@@ -480,16 +498,18 @@ class AirstrikeEditorApp {
     this.markEdited();
     try {
       const source = parseProfileSource(this.elements.source.value);
-      this.state.profile = source;
+      const normalizedSource = inferWaypointSpeeds(source, false);
+      this.state.profile = normalizedSource;
       this.state.selectedWaypointId = findWaypoint(source, this.state.selectedWaypointId)?.Id || firstWaypointId(source);
-      this.ensureSelectedRelease(source);
-      this.syncControlsFromSource(source);
+      this.ensureSelectedRelease(normalizedSource);
+      this.writeSource(normalizedSource);
+      this.syncControlsFromSource(normalizedSource);
       this.renderWaypoints();
       this.renderWaypointInspector();
       this.renderSpeedControls();
       this.renderReleaseControls();
       this.renderTimeControls();
-      this.viewport.updateProfile(source, this.state.selectedWaypointId, this.state.scrubTime);
+      this.viewport.updateProfile(normalizedSource, this.state.selectedWaypointId, this.state.scrubTime);
       this.viewport.updateSelectedRelease(this.state.selectedReleaseId);
     } catch (error) {
       this.setStatus("JSON edits pending");
@@ -836,6 +856,7 @@ class AirstrikeEditorApp {
     this.elements.timeNumber.max = String(duration);
     this.elements.timeNumber.value = this.state.scrubTime.toFixed(2);
     this.elements.timeReadout.textContent = `${this.state.scrubTime.toFixed(2)}s / ${duration.toFixed(2)}s`;
+    this.elements.play.textContent = this.state.playing ? "Pause" : "Play";
     this.renderReleaseTimeline();
   }
 
@@ -898,6 +919,70 @@ class AirstrikeEditorApp {
       return;
     }
     this.applyProfile(normalizeWaypointTimes(this.state.profile), true);
+  }
+
+  private handleInferSpeeds(): void {
+    if (!this.state.profile) {
+      return;
+    }
+    this.applyProfile(inferWaypointSpeeds(this.state.profile), true);
+    this.showFeedback("Waypoint speeds were inferred from current route times.", "success");
+  }
+
+  private togglePlayback(): void {
+    if (this.state.playing) {
+      this.stopPlayback();
+      return;
+    }
+    this.startPlayback();
+  }
+
+  private startPlayback(): void {
+    if (!this.state.profile) {
+      return;
+    }
+    this.state.playing = true;
+    this.playbackStartedAt = performance.now();
+    this.playbackStartedTime = this.state.scrubTime;
+    this.renderTimeControls();
+    const tick = (now: number): void => {
+      if (!this.state.playing || !this.state.profile) {
+        return;
+      }
+      const duration = Math.max(0.01, this.state.profile.DurationSeconds);
+      let next = this.playbackStartedTime + (now - this.playbackStartedAt) / 1000;
+      if (next >= duration) {
+        if (this.elements.loop.checked) {
+          next %= duration;
+          this.playbackStartedAt = now;
+          this.playbackStartedTime = next;
+        } else {
+          next = duration;
+          this.setScrubTime(next);
+          this.stopPlayback();
+          return;
+        }
+      }
+      this.setScrubTime(next);
+      this.playbackFrame = window.requestAnimationFrame(tick);
+    };
+    this.playbackFrame = window.requestAnimationFrame(tick);
+  }
+
+  private stopPlayback(): void {
+    this.state.playing = false;
+    window.cancelAnimationFrame(this.playbackFrame);
+    this.renderTimeControls();
+  }
+
+  private stepPlayback(deltaSeconds: number): void {
+    this.stopPlayback();
+    this.setScrubTime(this.state.scrubTime + deltaSeconds);
+  }
+
+  private handleReleaseVisibilityChange(): void {
+    const mode = this.elements.releaseVisibility.value;
+    this.viewport.updateReleaseVisibilityMode(mode === "all" || mode === "selected" ? mode : "near");
   }
 
   private handleGlobalSpeedInput(): void {
@@ -1145,6 +1230,12 @@ function collectElements(root: HTMLElement): EditorElements {
     releaseTimeline: query(root, "[data-editor-release-timeline]"),
     vehicleMeta: query(root, "[data-editor-vehicle-meta]"),
     normalizeTimes: query(root, "[data-editor-normalize-times]"),
+    inferSpeeds: query(root, "[data-editor-infer-speeds]"),
+    play: query(root, "[data-editor-play]"),
+    stepBack: query(root, "[data-editor-step-back]"),
+    stepForward: query(root, "[data-editor-step-forward]"),
+    loop: query(root, "[data-editor-loop]"),
+    releaseVisibility: query(root, "[data-editor-release-visibility]"),
     addRelease: query(root, "[data-editor-release-add]"),
     duplicateRelease: query(root, "[data-editor-release-duplicate]"),
     deleteRelease: query(root, "[data-editor-release-delete]"),
