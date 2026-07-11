@@ -639,7 +639,19 @@ export class AirstrikeViewport {
   }
 
   private terrainReferenceBaseHeight(terrainPayload: TerrainReferencePayload): number {
-    return this.sampleTerrainHeight(terrainPayload, 0, 0);
+    const patch = this.currentTerrainPatch(terrainPayload.worldSize || this.worldReference.worldSize);
+    const samplesPerAxis = 17;
+    let baseHeight = Number.POSITIVE_INFINITY;
+
+    for (let row = 0; row < samplesPerAxis; row += 1) {
+      const z = patch.center.z - patch.size * 0.5 + (patch.size * row) / (samplesPerAxis - 1);
+      for (let col = 0; col < samplesPerAxis; col += 1) {
+        const x = patch.center.x - patch.size * 0.5 + (patch.size * col) / (samplesPerAxis - 1);
+        baseHeight = Math.min(baseHeight, this.sampleTerrainHeight(terrainPayload, x, z));
+      }
+    }
+
+    return Number.isFinite(baseHeight) ? baseHeight : 0;
   }
 
   private placeOnGround(object: Object3D, worldX: number, worldZ: number, verticalOffset = 0): void {
