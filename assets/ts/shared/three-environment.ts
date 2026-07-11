@@ -64,9 +64,9 @@ function createRaidlandsSkyTexture(preset: RaidlandsEnvironmentPreset): Texture 
         sun: new Color(0xffd39a),
       }
     : {
-        zenith: new Color(0x0e1a20),
-        horizon: new Color(0x7f9288),
-        ground: new Color(0x312a1f),
+        zenith: new Color(0x0b151b),
+        horizon: new Color(0x42515a),
+        ground: new Color(0x1f2426),
         sun: new Color(0xffc47c),
       };
 
