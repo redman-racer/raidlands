@@ -49,10 +49,12 @@
       "properties": {
         "vehicle": { "type": "string" },
         "modelUrl": { "type": "string" },
+        "prefabLabel": { "type": "string" },
         "scale": { "type": "number", "exclusiveMinimum": 0 },
         "positionCorrection": { "$ref": "#/$defs/vector" },
         "rotationCorrection": { "$ref": "#/$defs/vector" },
         "bounds": { "$ref": "#/$defs/vector" },
+        "proxy": { "enum": ["drone", "plane", "helicopter"] },
         "hardpoints": { "type": "array", "items": { "$ref": "#/$defs/hardpoint" } }
       }
     }

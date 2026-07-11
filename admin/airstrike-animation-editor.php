@@ -29,6 +29,7 @@ $editor_config = [
     'profileKey' => $profile_key,
     'csrf' => raidlands_admin_csrf_token(),
     'apiBase' => $base_path . 'api/admin/airstrike-animations',
+    'assetBase' => $base_path . 'assets/',
     'managementUrl' => './?section=airstrike-animations',
     'admin' => [
         'id' => is_array($admin_user) ? (int) ($admin_user['id'] ?? 0) : 0,
@@ -40,8 +41,8 @@ $editor_config = [
         'maximumBundleBytes' => 20971520,
     ],
     'featureFlags' => [
-        'sourceWorkbench' => true,
-        'threeViewport' => false,
+        'sourceWorkbench' => false,
+        'threeViewport' => true,
         'rconPublishNotification' => false,
     ],
 ];
@@ -59,7 +60,7 @@ $editor_config = [
     <link rel="stylesheet" href="<?= e(asset_url('css/airstrike-animation-editor.css')) ?>">
   </head>
   <body class="airstrike-editor-body">
-    <main class="airstrike-editor" data-airstrike-source-editor>
+    <main class="airstrike-editor" data-airstrike-editor>
       <header class="airstrike-editor-toolbar">
         <div class="airstrike-editor-brand">
           <a href="./?section=airstrike-animations" aria-label="Back to animation profiles">←</a>
@@ -90,42 +91,74 @@ $editor_config = [
       <section class="airstrike-editor-center">
         <div class="airstrike-editor-stage-head">
           <div>
-            <p class="section-kicker">Compiler-ready source</p>
+            <p class="section-kicker">3D waypoint editor</p>
             <h2 data-editor-title>New profile</h2>
           </div>
           <span class="status-pill" data-editor-dirty>Clean</span>
         </div>
-        <div class="airstrike-editor-notice">
-          This first implementation milestone exposes the exact source and compiled-track contract. The Three.js gizmo viewport and timeline will replace this source workbench after cross-language golden parity is locked.
+        <div class="airstrike-editor-viewport-shell">
+          <div class="airstrike-editor-viewport" data-editor-viewport aria-label="Airstrike waypoint viewport"></div>
+          <div class="airstrike-editor-viewport-meta">
+            <span data-editor-vehicle-meta>Proxy preview</span>
+            <span>Target-relative Unity source, Three.js render conversion</span>
+          </div>
         </div>
-        <textarea
-          class="airstrike-editor-source"
-          data-editor-source
-          spellcheck="false"
-          aria-label="Animation source JSON"
-        ></textarea>
+        <div class="airstrike-editor-timeline">
+          <label for="airstrike-editor-time">Time</label>
+          <input id="airstrike-editor-time" type="range" min="0" max="8" step="0.01" data-editor-time-range>
+          <input type="number" min="0" max="8" step="0.01" data-editor-time-number aria-label="Current preview time">
+          <strong data-editor-time-readout>0.00s / 0.00s</strong>
+        </div>
+        <details class="airstrike-editor-source-fallback" data-editor-source-details>
+          <summary>JSON recovery/debug source</summary>
+          <textarea
+            class="airstrike-editor-source"
+            data-editor-source
+            spellcheck="false"
+            aria-label="Animation source JSON"
+          ></textarea>
+        </details>
       </section>
 
       <aside class="airstrike-editor-right">
-        <p class="section-kicker">Profile identity</p>
-        <label class="admin-field">
-          <span>Profile key</span>
-          <input type="text" maxlength="100" data-editor-key pattern="[a-z0-9][a-z0-9._-]{0,99}">
-        </label>
-        <label class="admin-field">
-          <span>Display name</span>
-          <input type="text" maxlength="160" data-editor-name>
-        </label>
-        <label class="admin-field">
-          <span>Vehicle</span>
-          <select data-editor-vehicle>
-            <option value="drone">Drone</option>
-            <option value="cargo_plane">Cargo plane</option>
-            <option value="f15">F-15</option>
-            <option value="a10">A-10</option>
-            <option value="attack_heli">Attack helicopter</option>
-          </select>
-        </label>
+        <section class="airstrike-editor-side-section">
+          <p class="section-kicker">Profile identity</p>
+          <label class="admin-field">
+            <span>Profile key</span>
+            <input type="text" maxlength="100" data-editor-key pattern="[a-z0-9][a-z0-9._-]{0,99}">
+          </label>
+          <label class="admin-field">
+            <span>Display name</span>
+            <input type="text" maxlength="160" data-editor-name>
+          </label>
+          <label class="admin-field">
+            <span>Vehicle</span>
+            <select data-editor-vehicle>
+              <option value="drone">Drone</option>
+              <option value="cargo_plane">Cargo plane</option>
+              <option value="f15">F-15</option>
+              <option value="a10">A-10</option>
+              <option value="attack_heli">Attack helicopter</option>
+            </select>
+          </label>
+        </section>
+        <section class="airstrike-editor-side-section">
+          <p class="section-kicker">Waypoint</p>
+          <h3 data-editor-waypoint-title>No waypoint selected</h3>
+          <div class="airstrike-waypoint-inspector">
+            <label><span>Time</span><input type="number" step="0.01" data-editor-waypoint-field="Time"></label>
+            <label><span>X</span><input type="number" step="0.1" data-editor-waypoint-field="X"></label>
+            <label><span>Y</span><input type="number" step="0.1" data-editor-waypoint-field="Y"></label>
+            <label><span>Z</span><input type="number" step="0.1" data-editor-waypoint-field="Z"></label>
+            <label><span>Rot X</span><input type="number" step="0.1" data-editor-waypoint-field="RotationX"></label>
+            <label><span>Rot Y</span><input type="number" step="0.1" data-editor-waypoint-field="RotationY"></label>
+            <label><span>Rot Z</span><input type="number" step="0.1" data-editor-waypoint-field="RotationZ"></label>
+          </div>
+        </section>
+        <section class="airstrike-editor-side-section">
+          <p class="section-kicker">Route waypoints</p>
+          <div class="airstrike-waypoint-list" data-editor-waypoints></div>
+        </section>
         <div class="airstrike-editor-validation" data-editor-feedback>
           Load or create a profile, then validate before publishing.
         </div>
@@ -140,6 +173,6 @@ $editor_config = [
       </section>
     </main>
     <script type="application/json" id="airstrike-animation-editor-config"><?= json_encode($editor_config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES) ?></script>
-    <script src="<?= e(asset_url('js/airstrike-animation-editor-shell.js')) ?>" defer></script>
+    <script type="module" src="<?= e(asset_url('build/airstrike-animation-editor/airstrike-animation-editor.js')) ?>"></script>
   </body>
 </html>

@@ -144,29 +144,103 @@
   display: grid;
   min-width: 0;
   min-height: 0;
-  grid-template-rows: auto auto minmax(260px, 1fr);
+  grid-template-rows: auto minmax(280px, 1fr) auto auto;
   gap: 10px;
   padding: 16px;
 }
 
-.airstrike-editor-notice {
-  padding: 9px 11px;
-  border: 1px solid rgba(222, 169, 59, 0.35);
+.airstrike-editor-viewport-shell {
+  position: relative;
+  min-width: 0;
+  min-height: 0;
   border-radius: 6px;
-  background: rgba(90, 60, 14, 0.2);
-  color: #e9d59d;
+  border: 1px solid rgba(137, 192, 204, 0.22);
+  overflow: hidden;
+  background: #071013;
+}
+
+.airstrike-editor-viewport {
+  width: 100%;
+  height: 100%;
+  min-height: 280px;
+}
+
+.airstrike-editor-viewport canvas {
+  display: block;
+  width: 100%;
+  height: 100%;
+}
+
+.airstrike-editor-viewport-meta {
+  position: absolute;
+  left: 12px;
+  right: 12px;
+  bottom: 10px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 7px 9px;
+  border: 1px solid rgba(137, 192, 204, 0.18);
+  border-radius: 6px;
+  background: rgba(5, 9, 11, 0.76);
+  color: #bdd2d7;
   font-size: 12px;
+}
+
+.airstrike-editor-viewport-meta span {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.airstrike-editor-timeline {
+  display: grid;
+  grid-template-columns: auto minmax(180px, 1fr) 88px 116px;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 11px;
+  border: 1px solid rgba(137, 192, 204, 0.2);
+  border-radius: 6px;
+  background: rgba(8, 12, 14, 0.9);
+}
+
+.airstrike-editor-timeline label,
+.airstrike-editor-timeline strong {
+  color: #b8c9cd;
+  font-size: 12px;
+}
+
+.airstrike-editor-timeline input[type="number"] {
+  min-width: 0;
+}
+
+.airstrike-editor-source-fallback {
+  min-height: 0;
+  border: 1px solid rgba(137, 192, 204, 0.2);
+  border-radius: 6px;
+  background: rgba(7, 11, 13, 0.88);
+}
+
+.airstrike-editor-source-fallback summary {
+  padding: 10px 12px;
+  cursor: pointer;
+  color: #d9f6ff;
+  font-size: 12px;
+  font-weight: 700;
 }
 
 .airstrike-editor-source {
   width: 100%;
-  height: 100%;
-  min-height: 0;
+  height: 280px;
+  min-height: 220px;
   resize: none;
   box-sizing: border-box;
   padding: 14px;
-  border: 1px solid rgba(137, 192, 204, 0.24);
-  border-radius: 7px;
+  border: 0;
+  border-top: 1px solid rgba(137, 192, 204, 0.16);
+  border-radius: 0 0 6px 6px;
   outline: none;
   background: rgba(2, 5, 6, 0.9);
   color: #d8f2f6;
@@ -175,8 +249,67 @@
 }
 
 .airstrike-editor-source:focus {
-  border-color: rgba(54, 197, 230, 0.72);
-  box-shadow: 0 0 0 2px rgba(54, 197, 230, 0.1);
+  box-shadow: inset 0 0 0 2px rgba(54, 197, 230, 0.14);
+}
+
+.airstrike-editor-side-section {
+  display: grid;
+  gap: 10px;
+  margin-bottom: 18px;
+}
+
+.airstrike-editor-side-section h3 {
+  margin: 0;
+  color: #edf3f4;
+  font-size: 15px;
+}
+
+.airstrike-waypoint-inspector {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 9px;
+}
+
+.airstrike-waypoint-inspector label {
+  display: grid;
+  gap: 4px;
+  min-width: 0;
+  color: #9eb0b5;
+  font-size: 11px;
+}
+
+.airstrike-waypoint-inspector label:first-child {
+  grid-column: 1 / -1;
+}
+
+.airstrike-waypoint-inspector input {
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+}
+
+.airstrike-waypoint-list {
+  display: grid;
+  gap: 7px;
+}
+
+.airstrike-waypoint-row {
+  width: 100%;
+  min-height: 36px;
+  padding: 8px 9px;
+  border: 1px solid rgba(137, 192, 204, 0.16);
+  border-radius: 6px;
+  background: rgba(17, 25, 28, 0.78);
+  color: #d9e8eb;
+  font: 11px/1.35 "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  text-align: left;
+  cursor: pointer;
+}
+
+.airstrike-waypoint-row:hover,
+.airstrike-waypoint-row.is-active {
+  border-color: rgba(255, 209, 102, 0.72);
+  background: rgba(64, 48, 18, 0.58);
 }
 
 .airstrike-editor-validation {

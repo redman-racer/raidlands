@@ -234,10 +234,12 @@ export interface VehicleHardpointMetadata {
 export interface VehiclePreviewMetadata {
   vehicle: string;
   modelUrl: string;
+  prefabLabel?: string;
   scale: number;
   positionCorrection: Vector3Value;
   rotationCorrection: Vector3Value;
   bounds: Vector3Value;
+  proxy?: "drone" | "plane" | "helicopter";
   hardpoints: VehicleHardpointMetadata[];
 }
 

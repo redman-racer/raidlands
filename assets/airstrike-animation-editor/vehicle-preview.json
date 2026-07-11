@@ -4,10 +4,12 @@
     "a10": {
       "vehicle": "a10",
       "modelUrl": "/assets/airstrike-animation-editor/models/a10.glb",
+      "prefabLabel": "assets/scripts/entity/misc/f15/f15e.prefab (current Rust A-10 visual carrier)",
       "scale": 1,
       "positionCorrection": { "x": 0, "y": 0, "z": 0 },
       "rotationCorrection": { "x": 0, "y": 0, "z": 0 },
       "bounds": { "x": 17.5, "y": 4.5, "z": 16.3 },
+      "proxy": "plane",
       "hardpoints": [
         { "id": "left_gun", "x": -0.75, "y": -0.45, "z": 4.6 },
         { "id": "right_gun", "x": 0.75, "y": -0.45, "z": 4.6 }
@@ -16,10 +18,12 @@
     "attack_heli": {
       "vehicle": "attack_heli",
       "modelUrl": "/assets/airstrike-animation-editor/models/attack_heli.glb",
+      "prefabLabel": "assets/prefabs/npc/patrol helicopter/patrolhelicopter.prefab",
       "scale": 1,
       "positionCorrection": { "x": 0, "y": 0, "z": 0 },
       "rotationCorrection": { "x": 0, "y": 0, "z": 0 },
       "bounds": { "x": 14, "y": 5, "z": 17 },
+      "proxy": "helicopter",
       "hardpoints": [
         { "id": "left_rocket", "x": -2.2, "y": -0.6, "z": 1.1 },
         { "id": "right_rocket", "x": 2.2, "y": -0.6, "z": 1.1 }
@@ -28,10 +32,12 @@
     "cargo_plane": {
       "vehicle": "cargo_plane",
       "modelUrl": "/assets/airstrike-animation-editor/models/cargo_plane.glb",
+      "prefabLabel": "assets/prefabs/npc/cargo plane/cargo_plane.prefab",
       "scale": 1,
       "positionCorrection": { "x": 0, "y": 0, "z": 0 },
       "rotationCorrection": { "x": 0, "y": 0, "z": 0 },
       "bounds": { "x": 40, "y": 12, "z": 45 },
+      "proxy": "plane",
       "hardpoints": [
         { "id": "left_bay", "x": -2.5, "y": -2, "z": -1 },
         { "id": "right_bay", "x": 2.5, "y": -2, "z": -1 }
@@ -40,10 +46,12 @@
     "drone": {
       "vehicle": "drone",
       "modelUrl": "/assets/airstrike-animation-editor/models/drone.glb",
+      "prefabLabel": "assets/prefabs/deployable/drone/drone.deployed.prefab",
       "scale": 1,
       "positionCorrection": { "x": 0, "y": 0, "z": 0 },
       "rotationCorrection": { "x": 0, "y": 0, "z": 0 },
       "bounds": { "x": 1.2, "y": 0.5, "z": 1.2 },
+      "proxy": "drone",
       "hardpoints": [
         { "id": "left_drop", "x": -0.35, "y": -0.2, "z": 0 },
         { "id": "right_drop", "x": 0.35, "y": -0.2, "z": 0 }
@@ -52,10 +60,12 @@
     "f15": {
       "vehicle": "f15",
       "modelUrl": "/assets/airstrike-animation-editor/models/f15.glb",
+      "prefabLabel": "assets/scripts/entity/misc/f15/f15e.prefab",
       "scale": 1,
       "positionCorrection": { "x": 0, "y": 0, "z": 0 },
       "rotationCorrection": { "x": 0, "y": 0, "z": 0 },
       "bounds": { "x": 13, "y": 5.5, "z": 19.5 },
+      "proxy": "plane",
       "hardpoints": [
         { "id": "left_rocket", "x": -3.1, "y": -0.7, "z": 0.8 },
         { "id": "right_rocket", "x": 3.1, "y": -0.7, "z": 0.8 }
