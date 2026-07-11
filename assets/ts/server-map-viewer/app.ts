@@ -139,6 +139,7 @@ type PlayerLocationPayload = {
 };
 
 const isoViewDirections = [
+  new Vector3(0, 0.56, 0.74),
   new Vector3(0.48, 0.34, 0.58),
   new Vector3(-0.48, 0.34, 0.58),
   new Vector3(-0.48, 0.34, -0.58),
@@ -516,7 +517,7 @@ class TerrainViewer {
     this.focusCamera({
       position: new Vector3(0, size * 0.86, 0.001),
       target: new Vector3(0, 0, 0),
-      up: new Vector3(0, 0, 1),
+      up: new Vector3(0, 0, -1),
     });
   }
 
