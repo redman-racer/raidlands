@@ -186,7 +186,6 @@ export async function loadVehiclePreview(
       (metadata.rotationCorrection.y * Math.PI) / 180,
       (metadata.rotationCorrection.z * Math.PI) / 180,
     );
-    addHardpointMarkers(group, metadata);
     return { object: group, usedFallback: false, resolvedUrl };
   } catch {
     return { object: createVehicleProxy(metadata), usedFallback: true, resolvedUrl };
