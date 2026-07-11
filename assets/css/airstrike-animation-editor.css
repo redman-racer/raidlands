@@ -498,17 +498,17 @@
   grid-template-rows: 26px 62px 26px 26px;
   gap: 5px;
   width: 164px;
-  padding: 8px;
-  border: 1px solid rgba(129, 167, 174, .22);
-  border-radius: 8px;
-  background: rgba(5, 9, 11, .72);
-  box-shadow: 0 14px 34px rgba(0, 0, 0, .34);
+  padding: 0;
+  border: 0;
+  border-radius: 0;
+  background: transparent;
+  box-shadow: none;
   transition: right .18s ease, opacity .18s ease;
   user-select: none;
 }
 
 .airstrike-editor.is-right-collapsed .airstrike-editor-orientation {
-  right: 58px;
+  right: 72px;
 }
 
 .airstrike-editor-orientation-face,
@@ -753,8 +753,12 @@
 }
 
 .airstrike-editor-restore-bottom {
-  left: 18px;
+  left: calc(var(--editor-left-width) + 32px);
   bottom: 42px;
+}
+
+.airstrike-editor.is-left-collapsed .airstrike-editor-restore-bottom {
+  left: 18px;
 }
 
 .airstrike-editor-restore-bottom::before {
