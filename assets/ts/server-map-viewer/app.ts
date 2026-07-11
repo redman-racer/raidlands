@@ -171,6 +171,13 @@ type ViewerBinding = {
   dispose: () => void;
 };
 
+type OverlayLayerTransition = {
+  incoming: Group;
+  outgoing: Group | null;
+  startedAt: number;
+  durationMs: number;
+};
+
 type TerrainViewerInstance = {
   viewer: TerrainViewer;
   binding: ViewerBinding;
@@ -437,6 +444,7 @@ class TerrainViewer {
   private readonly gridLayer = new Group();
   private readonly heatmapLayer = new Group();
   private readonly playerLocationLayer = new Group();
+  private readonly overlayLayerTransitions: OverlayLayerTransition[] = [];
   private readonly airstrikeLayer = new Group();
   private readonly onResize = () => this.resize();
   private animationFrame = 0;
@@ -473,9 +481,9 @@ class TerrainViewer {
     this.renderer.outputColorSpace = SRGBColorSpace;
     applyRaidlandsEnvironment(this.scene, this.renderer, {
       preset: "terrain",
-      exposure: 1.05,
-      backgroundIntensity: 0.95,
-      environmentIntensity: 0.92,
+      exposure: 1.08,
+      backgroundIntensity: 0.9,
+      environmentIntensity: 0.76,
     });
     this.renderer.domElement.dataset.serverMapViewerCanvas = "true";
     this.terrainMaterial = this.createTerrainMaterial();
@@ -568,10 +576,12 @@ class TerrainViewer {
   }
 
   public setHeatmap(payload: HeatmapPayload): void {
-    this.heatmapLayer.clear();
+    const nextLayer = new Group();
+    nextLayer.name = "heatmap-playback-frame";
     const buckets = Array.isArray(payload.buckets) ? payload.buckets : [];
 
     if (buckets.length === 0) {
+      this.replaceOverlayLayer(this.heatmapLayer, nextLayer);
       return;
     }
 
@@ -607,13 +617,15 @@ class TerrainViewer {
         sprite.position.set(bucketPosition.x, baseY + height * (0.24 + layer * 0.23), bucketPosition.z);
         sprite.scale.set(bucketSize * spread, height * (0.82 - layer * 0.12), 1);
         sprite.renderOrder = 12 + layer;
-        this.heatmapLayer.add(sprite);
+        nextLayer.add(sprite);
       }
     });
+    this.replaceOverlayLayer(this.heatmapLayer, nextLayer);
   }
 
   public setPlayerLocations(payload: PlayerLocationPayload): void {
-    this.playerLocationLayer.clear();
+    const nextLayer = new Group();
+    nextLayer.name = "player-location-playback-frame";
     const players = Array.isArray(payload.players) ? payload.players : [];
     this.selfLocation = players.find((player) => player.isSelf === true) || null;
 
@@ -640,8 +652,9 @@ class TerrainViewer {
       sprite.scale.set(size, size, 1);
       sprite.userData.baseScale = size;
       sprite.renderOrder = isSelf ? 42 : 40;
-      this.playerLocationLayer.add(sprite);
+      nextLayer.add(sprite);
     });
+    this.replaceOverlayLayer(this.playerLocationLayer, nextLayer);
   }
 
   public hasSelfLocation(): boolean {
@@ -812,11 +825,11 @@ class TerrainViewer {
       : waterLevel - 120;
     const geometry = new PlaneGeometry(oceanSize, oceanSize, 1, 1);
     const material = new MeshStandardMaterial({
-      color: 0x06393a,
+      color: 0x082b32,
       roughness: 0.96,
       metalness: 0,
       transparent: true,
-      opacity: 0.86,
+      opacity: 0.78,
       side: DoubleSide,
     });
     const mesh = new Mesh(geometry, material);
@@ -871,10 +884,10 @@ class TerrainViewer {
   }
 
   private addLights(): void {
-    const ambient = new AmbientLight(0xfff4df, 0.46);
-    const sun = new DirectionalLight(0xfff1cf, 1.68);
+    const ambient = new AmbientLight(0xffead2, 0.38);
+    const sun = new DirectionalLight(0xffc47a, 1.78);
     sun.position.set(900, 1400, 650);
-    const fill = new DirectionalLight(0xd5e8ff, 0.24);
+    const fill = new DirectionalLight(0x9fc7dd, 0.18);
     fill.position.set(-500, 500, -800);
     this.scene.add(ambient, sun, fill);
   }
@@ -889,16 +902,52 @@ class TerrainViewer {
 
   private animate(): void {
     this.animationFrame = window.requestAnimationFrame(() => this.animate());
-    this.updateCameraTour(performance.now());
+    const now = performance.now();
+    this.updateCameraTour(now);
     this.controls.update();
+    this.updateOverlayLayerTransitions(now);
     this.updateGridOpacity();
-    this.airstrikeLayer.userData.tick?.((performance.now() - this.clockStart) / 1000);
+    this.airstrikeLayer.userData.tick?.((now - this.clockStart) / 1000);
     this.playerLocationLayer.children.forEach((child, index) => {
-      const pulse = 1 + Math.sin((performance.now() - this.clockStart) / 520 + index) * 0.045;
+      const pulse = 1 + Math.sin((now - this.clockStart) / 520 + index) * 0.045;
       const size = (child.userData.baseScale || child.scale.x) * pulse;
       child.scale.set(size, size, 1);
     });
     this.renderer.render(this.scene, this.camera);
+  }
+
+  private replaceOverlayLayer(parent: Group, incoming: Group, durationMs = 360): void {
+    const outgoing = parent.children.find((child): child is Group => child instanceof Group) || null;
+    setObjectOpacity(incoming, 0);
+    parent.add(incoming);
+    this.overlayLayerTransitions.push({
+      incoming,
+      outgoing,
+      startedAt: performance.now(),
+      durationMs,
+    });
+  }
+
+  private updateOverlayLayerTransitions(now: number): void {
+    for (let index = this.overlayLayerTransitions.length - 1; index >= 0; index -= 1) {
+      const transition = this.overlayLayerTransitions[index]!;
+      const progress = MathUtils.clamp((now - transition.startedAt) / Math.max(1, transition.durationMs), 0, 1);
+      const eased = MathUtils.smoothstep(progress, 0, 1);
+      setObjectOpacity(transition.incoming, eased);
+
+      if (transition.outgoing) {
+        setObjectOpacity(transition.outgoing, 1 - eased);
+      }
+
+      if (progress >= 1) {
+        if (transition.outgoing && transition.outgoing.parent) {
+          transition.outgoing.parent.remove(transition.outgoing);
+          disposeObjectTree(transition.outgoing);
+        }
+        setObjectOpacity(transition.incoming, 1);
+        this.overlayLayerTransitions.splice(index, 1);
+      }
+    }
   }
 
   private focusCamera(pose: CameraPose): void {
@@ -1816,6 +1865,22 @@ function setMaterialOpacity(material: Material | Material[], opacity: number): v
   material.transparent = true;
 }
 
+function setObjectOpacity(object: Group | Mesh | Sprite | LineSegments, opacity: number): void {
+  object.traverse((child) => {
+    if (child instanceof Mesh || child instanceof Sprite || child instanceof LineSegments) {
+      setMaterialOpacity(child.material, opacity);
+    }
+  });
+}
+
+function disposeObjectTree(object: Group | Mesh | Sprite | LineSegments): void {
+  object.traverse((child) => {
+    if (child instanceof Mesh || child instanceof Sprite || child instanceof LineSegments) {
+      disposeGeometryMaterial(child);
+    }
+  });
+}
+
 function disposeGeometryMaterial(object: Mesh | Sprite | LineSegments): void {
   if ("geometry" in object) {
     object.geometry.dispose();
@@ -1924,7 +1989,10 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   const metric = panel?.querySelector<HTMLSelectElement>("[data-map-viewer-heatmap-metric]");
   const range = panel?.querySelector<HTMLSelectElement>("[data-map-viewer-heatmap-range]");
   let heatmapHistory: HeatmapHistoryFrame[] = [];
-  let playbackTimer = 0;
+  let playbackAnimationFrame = 0;
+  let playbackVirtualFrame = 0;
+  let playbackLastTick = 0;
+  let playbackShownFrame = -1;
   let playbackSpeedIndex = 2;
   let playerPollTimer = 0;
   const playbackSpeeds = [0.25, 0.5, 1, 2, 4, 8];
@@ -1953,8 +2021,14 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   });
 
   const stopHeatmapPlayback = () => {
-    window.clearInterval(playbackTimer);
-    playbackTimer = 0;
+    window.cancelAnimationFrame(playbackAnimationFrame);
+    playbackAnimationFrame = 0;
+    playbackLastTick = 0;
+    playbackVirtualFrame = Math.round(playbackVirtualFrame);
+    if (heatmapFrame) {
+      heatmapFrame.step = "1";
+      heatmapFrame.value = String(MathUtils.clamp(playbackVirtualFrame, 0, Math.max(0, heatmapHistory.length - 1)));
+    }
     heatmapPlay?.setAttribute("aria-pressed", "false");
     if (heatmapPlay) {
       heatmapPlay.textContent = "Play";
@@ -1964,6 +2038,14 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   const playbackSpeed = (): number => playbackSpeeds[playbackSpeedIndex] || 1;
 
   const playbackIntervalMs = (): number => Math.max(80, Math.round(900 / playbackSpeed()));
+
+  const updateTimelineValue = (value: number) => {
+    if (!heatmapFrame) {
+      return;
+    }
+
+    heatmapFrame.value = String(MathUtils.clamp(value, 0, Math.max(0, heatmapHistory.length - 1)));
+  };
 
   const updatePlaybackSpeedControls = () => {
     const speed = playbackSpeed();
@@ -1984,27 +2066,47 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       return;
     }
 
-    window.clearInterval(playbackTimer);
+    window.cancelAnimationFrame(playbackAnimationFrame);
+    playbackAnimationFrame = 0;
+    playbackVirtualFrame = MathUtils.clamp(Number(heatmapFrame.value) || 0, 0, Math.max(0, heatmapHistory.length - 1));
+    playbackShownFrame = Math.floor(playbackVirtualFrame);
+    playbackLastTick = performance.now();
+    heatmapFrame.step = "any";
     heatmapPlay?.setAttribute("aria-pressed", "true");
     if (heatmapPlay) {
       heatmapPlay.textContent = "Pause";
     }
 
-    playbackTimer = window.setInterval(() => {
-      const current = Number(heatmapFrame.value) || 0;
-      let next = current + 1;
-      if (next >= heatmapHistory.length) {
+    const tick = (now: number) => {
+      if (heatmapHistory.length === 0 || !heatmapFrame || !heatmapPlayback?.checked || !(heatmap?.checked || players?.checked)) {
+        stopHeatmapPlayback();
+        return;
+      }
+
+      const deltaMs = Math.max(0, now - playbackLastTick);
+      playbackLastTick = now;
+      playbackVirtualFrame += deltaMs / playbackIntervalMs();
+
+      if (playbackVirtualFrame >= heatmapHistory.length - 1) {
         if (!heatmapLoop?.checked) {
-          heatmapFrame.value = String(heatmapHistory.length - 1);
+          playbackVirtualFrame = heatmapHistory.length - 1;
+          updateTimelineValue(playbackVirtualFrame);
           showPlaybackFrame(heatmapHistory.length - 1);
           stopHeatmapPlayback();
           return;
         }
-        next = 0;
+        playbackVirtualFrame %= heatmapHistory.length;
       }
-      heatmapFrame.value = String(next);
-      showPlaybackFrame(next);
-    }, playbackIntervalMs());
+
+      updateTimelineValue(playbackVirtualFrame);
+      const nextFrame = Math.floor(playbackVirtualFrame);
+      if (nextFrame !== playbackShownFrame) {
+        showPlaybackFrame(nextFrame);
+      }
+      playbackAnimationFrame = window.requestAnimationFrame(tick);
+    };
+
+    playbackAnimationFrame = window.requestAnimationFrame(tick);
   };
 
   const setTimelineLabel = (frame: HeatmapHistoryFrame | null, fallback = "Latest") => {
@@ -2032,7 +2134,9 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   };
 
   const showPlaybackFrame = (index: number) => {
-    const frame = heatmapHistory[index];
+    const clampedIndex = MathUtils.clamp(Math.round(index), 0, Math.max(0, heatmapHistory.length - 1));
+    const frame = heatmapHistory[clampedIndex];
+    playbackShownFrame = clampedIndex;
 
     if (!frame) {
       setTimelineLabel(null, heatmapHistory.length === 0 ? "No frames" : "Latest");
@@ -2088,9 +2192,11 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
         const latestFrame = latestVisibleHeatmapFrame();
         if (heatmapFrame) {
           heatmapFrame.max = String(Math.max(0, heatmapHistory.length - 1));
+          heatmapFrame.step = "1";
           heatmapFrame.value = String(latestFrame);
           heatmapFrame.disabled = heatmapHistory.length === 0;
         }
+        playbackVirtualFrame = latestFrame;
         showPlaybackFrame(latestFrame);
       });
       return;
@@ -2135,19 +2241,25 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       reloadPlayback();
       return;
     }
-    showPlaybackFrame(Number(heatmapFrame?.value) || 0);
+    const selectedFrame = Math.round(Number(heatmapFrame?.value) || 0);
+    playbackVirtualFrame = selectedFrame;
+    if (heatmapFrame) {
+      heatmapFrame.step = "1";
+      heatmapFrame.value = String(selectedFrame);
+    }
+    showPlaybackFrame(selectedFrame);
   });
   bind(heatmapSpeedDown, "click", () => {
     playbackSpeedIndex = Math.max(0, playbackSpeedIndex - 1);
     updatePlaybackSpeedControls();
-    if (playbackTimer > 0) {
+    if (playbackAnimationFrame > 0) {
       startHeatmapPlayback();
     }
   });
   bind(heatmapSpeedUp, "click", () => {
     playbackSpeedIndex = Math.min(playbackSpeeds.length - 1, playbackSpeedIndex + 1);
     updatePlaybackSpeedControls();
-    if (playbackTimer > 0) {
+    if (playbackAnimationFrame > 0) {
       startHeatmapPlayback();
     }
   });
@@ -2165,7 +2277,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       return;
     }
 
-    if (playbackTimer > 0) {
+    if (playbackAnimationFrame > 0) {
       stopHeatmapPlayback();
       return;
     }
@@ -2224,7 +2336,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
 
   return {
     dispose: () => {
-      window.clearInterval(playbackTimer);
+      window.cancelAnimationFrame(playbackAnimationFrame);
       window.clearInterval(playerPollTimer);
       disposers.forEach((dispose) => dispose());
     },
@@ -2417,8 +2529,8 @@ function pushColor(target: number[], color: string | undefined, height: number, 
     return;
   }
 
-  const low = new Color(0x3f5537);
-  const mid = new Color(0x776d4e);
+  const low = new Color(0x5a593d);
+  const mid = new Color(0x87765b);
   const high = new Color(0xdce0da);
   const mixed = t < 0.58
     ? low.lerp(mid, MathUtils.smoothstep(t / 0.58, 0, 1))

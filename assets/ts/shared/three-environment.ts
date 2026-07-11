@@ -58,16 +58,16 @@ function createRaidlandsSkyTexture(preset: RaidlandsEnvironmentPreset): Texture 
 
   const palette = preset === "editor"
     ? {
-        zenith: new Color(0x101b20),
-        horizon: new Color(0x46636b),
-        ground: new Color(0x201a14),
-        sun: new Color(0xffd39a),
+        zenith: new Color(0x111820),
+        horizon: new Color(0x5d6b70),
+        ground: new Color(0x211813),
+        sun: new Color(0xffc27a),
       }
     : {
-        zenith: new Color(0x0b151b),
-        horizon: new Color(0x42515a),
-        ground: new Color(0x1f2426),
-        sun: new Color(0xffc47c),
+        zenith: new Color(0x0a1017),
+        horizon: new Color(0x59646a),
+        ground: new Color(0x1a1510),
+        sun: new Color(0xff8a28),
       };
 
   const image = context.createImageData(canvas.width, canvas.height);
@@ -80,12 +80,14 @@ function createRaidlandsSkyTexture(preset: RaidlandsEnvironmentPreset): Texture 
 
     for (let x = 0; x < canvas.width; x += 1) {
       const u = x / (canvas.width - 1);
-      const sunDistance = Math.hypot((u - 0.68) * 1.65, (v - 0.42) * 2.2);
-      const sunGlow = Math.max(0, 1 - sunDistance) ** 3.2;
-      const haze = Math.max(0, elevation) ** 1.85 * 0.11;
+      const sunDistance = Math.hypot((u - 0.72) * 1.55, (v - 0.46) * 2.05);
+      const emberDistance = Math.hypot((u - 0.74) * 2.8, (v - 0.58) * 4.2);
+      const sunGlow = Math.max(0, 1 - sunDistance) ** 2.85;
+      const emberGlow = Math.max(0, 1 - emberDistance) ** 2.4;
+      const haze = Math.max(0, elevation) ** 1.72 * 0.085;
       const color = base.clone()
-        .lerp(palette.sun, sunGlow * 0.62)
-        .offsetHSL(0, 0, haze);
+        .lerp(palette.sun, sunGlow * 0.58 + emberGlow * 0.18)
+        .offsetHSL(-0.012, -0.025, haze);
       const offset = (y * canvas.width + x) * 4;
       image.data[offset] = Math.round(color.r * 255);
       image.data[offset + 1] = Math.round(color.g * 255);
