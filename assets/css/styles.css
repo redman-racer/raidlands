@@ -8254,6 +8254,229 @@ button.admin-permission-chip:focus-visible {
   line-height: 1;
 }
 
+.airstrike-file-browser {
+  display: grid;
+  gap: 16px;
+}
+
+.airstrike-file-browser-top,
+.airstrike-file-browser-toolbar,
+.airstrike-profile-file-head {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.airstrike-file-browser-top > div:first-child,
+.airstrike-file-browser-toolbar > div,
+.airstrike-profile-file-head {
+  min-width: 0;
+}
+
+.airstrike-file-browser-top h3 {
+  margin: 0;
+  color: var(--white);
+  text-transform: uppercase;
+}
+
+.airstrike-file-browser-top p:not(.section-kicker) {
+  max-width: 760px;
+  margin: 6px 0 0;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: .88rem;
+  line-height: 1.45;
+}
+
+.airstrike-file-browser-shell {
+  display: grid;
+  grid-template-columns: minmax(210px, 260px) minmax(0, 1fr);
+  gap: 14px;
+  align-items: start;
+}
+
+.airstrike-file-browser-sidebar,
+.airstrike-file-browser-main {
+  min-width: 0;
+}
+
+.airstrike-file-browser-sidebar {
+  display: grid;
+  gap: 10px;
+}
+
+.airstrike-file-status-card {
+  min-width: 0;
+  display: grid;
+  gap: 5px;
+  padding: 12px;
+  border: 1px solid rgba(181, 170, 160, .20);
+  border-radius: 7px;
+  background:
+    var(--console-scan) center / 220px repeat,
+    rgba(0, 0, 0, .26);
+}
+
+.airstrike-file-status-card span,
+.airstrike-file-status-card small,
+.airstrike-profile-file-meta small {
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: .72rem;
+  font-weight: 850;
+  line-height: 1.25;
+  text-transform: uppercase;
+}
+
+.airstrike-file-status-card strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--white);
+  font-size: 1rem;
+  line-height: 1.08;
+  text-overflow: ellipsis;
+}
+
+.airstrike-file-status-card code {
+  color: var(--yellow);
+  font-family: Consolas, "Liberation Mono", monospace;
+}
+
+.airstrike-file-browser-main {
+  display: grid;
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(181, 170, 160, .18);
+  border-radius: 8px;
+  background:
+    linear-gradient(180deg, rgba(255, 138, 40, .06), transparent 120px),
+    rgba(0, 0, 0, .18);
+}
+
+.airstrike-file-browser-toolbar {
+  align-items: center;
+  padding-bottom: 10px;
+  border-bottom: 1px solid rgba(181, 170, 160, .16);
+}
+
+.airstrike-file-browser-toolbar strong {
+  display: block;
+  color: var(--white);
+  font-size: 1rem;
+  text-transform: uppercase;
+}
+
+.airstrike-profile-file-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(270px, 1fr));
+  gap: 12px;
+}
+
+.airstrike-profile-file-card {
+  min-width: 0;
+  display: grid;
+  grid-template-columns: 78px minmax(0, 1fr);
+  gap: 12px;
+  padding: 12px;
+  border: 1px solid rgba(181, 170, 160, .20);
+  border-radius: 8px;
+  background:
+    linear-gradient(135deg, rgba(54, 197, 230, .10), transparent 42%),
+    var(--metal-texture) center / 260px repeat,
+    rgba(0, 0, 0, .26);
+  box-shadow: inset 0 1px 0 rgba(243, 238, 227, .04);
+}
+
+.airstrike-profile-file-card:hover,
+.airstrike-profile-file-card:focus-within {
+  border-color: rgba(255, 138, 40, .48);
+  background:
+    linear-gradient(135deg, rgba(54, 197, 230, .16), transparent 42%),
+    linear-gradient(180deg, rgba(255, 138, 40, .08), rgba(0, 0, 0, .08)),
+    var(--metal-texture) center / 260px repeat,
+    rgba(0, 0, 0, .30);
+}
+
+.airstrike-profile-file-card.is-archived {
+  opacity: .72;
+}
+
+.airstrike-profile-file-thumb {
+  aspect-ratio: 1;
+  display: grid;
+  place-items: center;
+  border: 1px solid rgba(255, 138, 40, .28);
+  border-radius: 7px;
+  background:
+    radial-gradient(circle at 50% 38%, rgba(255, 209, 102, .18), transparent 56%),
+    linear-gradient(180deg, rgba(20, 25, 27, .94), rgba(5, 8, 9, .96));
+}
+
+.airstrike-profile-file-thumb span {
+  color: var(--white);
+  font-family: var(--font-display);
+  font-size: 1.1rem;
+  font-weight: 900;
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.airstrike-profile-file-body {
+  min-width: 0;
+  display: grid;
+  gap: 8px;
+}
+
+.airstrike-profile-file-head {
+  align-items: flex-start;
+}
+
+.airstrike-profile-file-head strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--white);
+  font-size: 1rem;
+  line-height: 1.12;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+}
+
+.airstrike-profile-file-body code {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--yellow);
+  font-family: Consolas, "Liberation Mono", monospace;
+  font-size: .78rem;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.airstrike-profile-file-meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 7px;
+}
+
+.airstrike-profile-file-meta span {
+  min-width: 0;
+  display: grid;
+  gap: 2px;
+  color: var(--white);
+  font-family: var(--font-body);
+  font-size: .8rem;
+  font-weight: 800;
+  line-height: 1.15;
+}
+
+.airstrike-profile-file-meta small {
+  display: block;
+}
+
+.airstrike-profile-file-card .admin-inline-actions {
+  margin-top: 2px;
+}
+
 .admin-todo-list {
   gap: 12px;
 }
@@ -10978,6 +11201,14 @@ button.admin-permission-chip:focus-visible {
     grid-template-columns: 1fr;
   }
 
+  .airstrike-file-browser-shell {
+    grid-template-columns: 1fr;
+  }
+
+  .airstrike-file-browser-sidebar {
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+  }
+
   .admin-body .admin-feature-picker,
   .admin-body .admin-kit-picker,
   .admin-body .admin-group-picker,
@@ -11078,6 +11309,21 @@ button.admin-permission-chip:focus-visible {
   .admin-body .admin-kit-picker-list,
   .admin-body .admin-store-picker-list {
     grid-template-columns: 1fr;
+  }
+
+  .airstrike-file-browser-top,
+  .airstrike-file-browser-toolbar,
+  .airstrike-profile-file-head {
+    display: grid;
+  }
+
+  .airstrike-file-browser-sidebar,
+  .airstrike-profile-file-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .airstrike-profile-file-card {
+    grid-template-columns: 64px minmax(0, 1fr);
   }
 
   .admin-body .rust-slot-grid-main,

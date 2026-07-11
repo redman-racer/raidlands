@@ -115,6 +115,13 @@ interface EditorState {
   playing: boolean;
 }
 
+type PanelName = "left" | "right" | "bottom";
+
+interface PaletteLayout {
+  collapsed?: Record<string, boolean>;
+  zones?: Record<string, string[]>;
+}
+
 function starterSource(): EditorSourceProfile {
   return {
     EditorSourceSchemaVersion: 1,
@@ -259,6 +266,7 @@ class AirstrikeEditorApp {
   private playbackFrame = 0;
   private playbackStartedAt = 0;
   private playbackStartedTime = 0;
+  private paletteDragId = "";
 
   public constructor(config: EditorConfig, elements: EditorElements) {
     this.config = config;
@@ -278,6 +286,8 @@ class AirstrikeEditorApp {
       },
     });
     this.bindEvents();
+    this.restorePanelState();
+    this.initializePaletteDock();
   }
 
   public async initialize(): Promise<void> {
@@ -326,12 +336,23 @@ class AirstrikeEditorApp {
     this.elements.root.querySelectorAll<HTMLButtonElement>("[data-editor-toggle-panel]").forEach((button) => {
       button.addEventListener("click", () => this.togglePanel(String(button.dataset.editorTogglePanel || "")));
     });
-    this.elements.root.querySelector("[data-editor-new]")?.addEventListener("click", () => this.createNewProfile());
-    this.elements.root.querySelector("[data-editor-save]")?.addEventListener("click", () => void this.saveDraft());
-    this.elements.root.querySelector("[data-editor-validate]")?.addEventListener("click", () => void this.validateSource());
-    this.elements.root.querySelector("[data-editor-compile]")?.addEventListener("click", () => void this.compilePreview());
+    this.elements.root.querySelectorAll("[data-editor-new]").forEach((button) => {
+      button.addEventListener("click", () => this.createNewProfile());
+    });
+    this.elements.root.querySelectorAll("[data-editor-save]").forEach((button) => {
+      button.addEventListener("click", () => void this.saveDraft());
+    });
+    this.elements.root.querySelectorAll("[data-editor-validate]").forEach((button) => {
+      button.addEventListener("click", () => void this.validateSource());
+    });
+    this.elements.root.querySelectorAll("[data-editor-compile]").forEach((button) => {
+      button.addEventListener("click", () => void this.compilePreview());
+    });
     this.elements.root.querySelectorAll<HTMLButtonElement>("[data-editor-publish]").forEach((button) => {
       button.addEventListener("click", () => void this.publish(button.dataset.editorPublish === "sync"));
+    });
+    this.elements.root.querySelectorAll<HTMLButtonElement>("[data-editor-focus-palette]").forEach((button) => {
+      button.addEventListener("click", () => this.focusPalette(String(button.dataset.editorFocusPalette || "")));
     });
     this.elements.root.querySelectorAll<HTMLInputElement>("[data-editor-waypoint-field]").forEach((input) => {
       input.addEventListener("input", () => this.handleWaypointFieldInput(input));
@@ -1092,10 +1113,303 @@ class AirstrikeEditorApp {
   }
 
   private togglePanel(panel: string): void {
-    if (!["left", "right", "bottom"].includes(panel)) {
+    if (!this.isPanelName(panel)) {
       return;
     }
-    this.elements.root.classList.toggle(`is-${panel}-collapsed`);
+    this.setPanelCollapsed(panel, !this.elements.root.classList.contains(`is-${panel}-collapsed`));
+    this.savePanelState();
+  }
+
+  private isPanelName(panel: string): panel is PanelName {
+    return panel === "left" || panel === "right" || panel === "bottom";
+  }
+
+  private panelStateStorageKey(): string {
+    return "raidlands.airstrike-animation-editor.panels";
+  }
+
+  private paletteLayoutStorageKey(): string {
+    return "raidlands.airstrike-animation-editor.palette-layout";
+  }
+
+  private restorePanelState(): void {
+    try {
+      const parsed = JSON.parse(window.localStorage.getItem(this.panelStateStorageKey()) || "{}") as Record<string, unknown>;
+      for (const panel of ["left", "right", "bottom"] as const) {
+        this.setPanelCollapsed(panel, parsed[panel] === true, false);
+      }
+    } catch {
+      for (const panel of ["left", "right", "bottom"] as const) {
+        this.updatePanelToggleButtons(panel);
+      }
+    }
+  }
+
+  private savePanelState(): void {
+    try {
+      window.localStorage.setItem(
+        this.panelStateStorageKey(),
+        JSON.stringify({
+          left: this.elements.root.classList.contains("is-left-collapsed"),
+          right: this.elements.root.classList.contains("is-right-collapsed"),
+          bottom: this.elements.root.classList.contains("is-bottom-collapsed"),
+        }),
+      );
+    } catch {
+      // Panel preferences are helpful but not required for editing.
+    }
+  }
+
+  private setPanelCollapsed(panel: PanelName, collapsed: boolean, resize = true): void {
+    this.elements.root.classList.toggle(`is-${panel}-collapsed`, collapsed);
+    this.updatePanelToggleButtons(panel);
+    if (resize) {
+      window.setTimeout(() => window.dispatchEvent(new Event("resize")), 210);
+    }
+  }
+
+  private updatePanelToggleButtons(panel: PanelName): void {
+    const collapsed = this.elements.root.classList.contains(`is-${panel}-collapsed`);
+    this.elements.root.querySelectorAll<HTMLButtonElement>(`[data-editor-toggle-panel="${panel}"]`).forEach((button) => {
+      button.setAttribute("aria-pressed", collapsed ? "true" : "false");
+      button.classList.toggle("is-active", !collapsed);
+    });
+  }
+
+  private initializePaletteDock(): void {
+    this.applyStoredPaletteLayout();
+    const palettes = this.paletteElements();
+    const zones = this.paletteZones();
+
+    palettes.forEach((palette) => {
+      palette.draggable = false;
+      palette.addEventListener("dragstart", (event) => this.handlePaletteDragStart(event, palette));
+      palette.addEventListener("dragend", () => this.handlePaletteDragEnd(palette));
+      palette.querySelector<HTMLElement>("[data-editor-palette-drag]")?.addEventListener("pointerdown", (event) => {
+        this.handlePalettePointerDown(event, palette);
+      });
+      palette.addEventListener("toggle", () => {
+        this.updatePaletteCollapseButton(palette);
+        this.savePaletteLayout();
+      });
+      palette.querySelector<HTMLButtonElement>("[data-editor-palette-collapse]")?.addEventListener("click", (event) => {
+        event.preventDefault();
+        event.stopPropagation();
+        palette.open = !palette.open;
+      });
+      this.updatePaletteCollapseButton(palette);
+    });
+
+    zones.forEach((zone) => {
+      zone.addEventListener("dragover", (event) => this.handlePaletteDragOver(event, zone));
+      zone.addEventListener("dragleave", () => zone.classList.remove("is-palette-over"));
+      zone.addEventListener("drop", (event) => {
+        event.preventDefault();
+        zone.classList.remove("is-palette-over");
+        this.savePaletteLayout();
+      });
+    });
+  }
+
+  private paletteElements(): HTMLDetailsElement[] {
+    return Array.from(this.elements.root.querySelectorAll<HTMLDetailsElement>("[data-editor-palette]"));
+  }
+
+  private paletteZones(): HTMLElement[] {
+    return Array.from(this.elements.root.querySelectorAll<HTMLElement>("[data-editor-palette-zone]"));
+  }
+
+  private paletteId(palette: HTMLElement): string {
+    return String(palette.dataset.editorPalette || "");
+  }
+
+  private applyStoredPaletteLayout(): void {
+    const layout = this.readStoredPaletteLayout();
+    const paletteById = new Map(this.paletteElements().map((palette) => [this.paletteId(palette), palette]));
+    const zoneById = new Map(this.paletteZones().map((zone) => [String(zone.dataset.editorPaletteZone || ""), zone]));
+
+    for (const [zoneId, paletteIds] of Object.entries(layout.zones || {})) {
+      const zone = zoneById.get(zoneId);
+      if (!zone || !Array.isArray(paletteIds)) {
+        continue;
+      }
+      for (const paletteId of paletteIds) {
+        const palette = paletteById.get(String(paletteId));
+        if (palette) {
+          zone.appendChild(palette);
+        }
+      }
+    }
+
+    for (const palette of this.paletteElements()) {
+      const id = this.paletteId(palette);
+      if (id && layout.collapsed && Object.prototype.hasOwnProperty.call(layout.collapsed, id)) {
+        palette.open = layout.collapsed[id] !== true;
+      }
+    }
+  }
+
+  private readStoredPaletteLayout(): PaletteLayout {
+    try {
+      const parsed = JSON.parse(window.localStorage.getItem(this.paletteLayoutStorageKey()) || "{}") as PaletteLayout;
+      return parsed && typeof parsed === "object" ? parsed : {};
+    } catch {
+      return {};
+    }
+  }
+
+  private savePaletteLayout(): void {
+    const collapsed: Record<string, boolean> = {};
+    const zones: Record<string, string[]> = {};
+
+    for (const palette of this.paletteElements()) {
+      const id = this.paletteId(palette);
+      if (id) {
+        collapsed[id] = !palette.open;
+      }
+    }
+
+    for (const zone of this.paletteZones()) {
+      const zoneId = String(zone.dataset.editorPaletteZone || "");
+      if (!zoneId) {
+        continue;
+      }
+      zones[zoneId] = Array.from(zone.children)
+        .filter((child): child is HTMLElement => child instanceof HTMLElement && child.matches("[data-editor-palette]"))
+        .map((child) => this.paletteId(child))
+        .filter(Boolean);
+    }
+
+    try {
+      window.localStorage.setItem(this.paletteLayoutStorageKey(), JSON.stringify({ collapsed, zones }));
+    } catch {
+      // Palette layout persistence is optional.
+    }
+  }
+
+  private updatePaletteCollapseButton(palette: HTMLDetailsElement): void {
+    const button = palette.querySelector<HTMLButtonElement>("[data-editor-palette-collapse]");
+    if (!button) {
+      return;
+    }
+    button.textContent = palette.open ? "Min" : "Open";
+    button.setAttribute("aria-expanded", palette.open ? "true" : "false");
+  }
+
+  private handlePaletteDragStart(event: DragEvent, palette: HTMLDetailsElement): void {
+    const id = this.paletteId(palette);
+    if (!id) {
+      event.preventDefault();
+      return;
+    }
+    this.paletteDragId = id;
+    palette.classList.add("is-dragging");
+    event.dataTransfer?.setData("text/plain", id);
+    if (event.dataTransfer) {
+      event.dataTransfer.effectAllowed = "move";
+    }
+  }
+
+  private handlePaletteDragEnd(palette: HTMLDetailsElement): void {
+    palette.classList.remove("is-dragging");
+    this.paletteDragId = "";
+    this.paletteZones().forEach((zone) => zone.classList.remove("is-palette-over"));
+    this.savePaletteLayout();
+  }
+
+  private handlePaletteDragOver(event: DragEvent, zone: HTMLElement): void {
+    const dragged = this.elements.root.querySelector<HTMLDetailsElement>(
+      `[data-editor-palette="${CSS.escape(this.paletteDragId)}"]`,
+    );
+    if (!dragged) {
+      return;
+    }
+    event.preventDefault();
+    zone.classList.add("is-palette-over");
+    const after = this.paletteAfterPointer(zone, event.clientY);
+    if (after) {
+      zone.insertBefore(dragged, after);
+    } else {
+      zone.appendChild(dragged);
+    }
+  }
+
+  private handlePalettePointerDown(event: PointerEvent, palette: HTMLDetailsElement): void {
+    const id = this.paletteId(palette);
+    if (!id || event.button !== 0) {
+      return;
+    }
+    event.preventDefault();
+    this.paletteDragId = id;
+    palette.classList.add("is-dragging");
+
+    const move = (moveEvent: PointerEvent): void => {
+      moveEvent.preventDefault();
+      const zone = this.paletteZoneAtPointer(moveEvent.clientX, moveEvent.clientY);
+      this.paletteZones().forEach((candidate) => candidate.classList.toggle("is-palette-over", candidate === zone));
+      if (!zone) {
+        return;
+      }
+      const after = this.paletteAfterPointer(zone, moveEvent.clientY);
+      if (after) {
+        zone.insertBefore(palette, after);
+      } else {
+        zone.appendChild(palette);
+      }
+    };
+
+    const stop = (): void => {
+      window.removeEventListener("pointermove", move);
+      window.removeEventListener("pointerup", stop);
+      window.removeEventListener("pointercancel", stop);
+      palette.classList.remove("is-dragging");
+      this.paletteDragId = "";
+      this.paletteZones().forEach((zone) => zone.classList.remove("is-palette-over"));
+      this.savePaletteLayout();
+    };
+
+    window.addEventListener("pointermove", move);
+    window.addEventListener("pointerup", stop);
+    window.addEventListener("pointercancel", stop);
+  }
+
+  private paletteZoneAtPointer(clientX: number, clientY: number): HTMLElement | null {
+    return (
+      this.paletteZones().find((zone) => {
+        const box = zone.getBoundingClientRect();
+        return clientX >= box.left && clientX <= box.right && clientY >= box.top && clientY <= box.bottom;
+      }) || null
+    );
+  }
+
+  private paletteAfterPointer(zone: HTMLElement, clientY: number): HTMLElement | null {
+    const palettes = Array.from(zone.children).filter((child): child is HTMLElement => {
+      return child instanceof HTMLElement && child.matches("[data-editor-palette]:not(.is-dragging)");
+    });
+    let closest: { offset: number; element: HTMLElement | null } = { offset: Number.NEGATIVE_INFINITY, element: null };
+    for (const palette of palettes) {
+      const box = palette.getBoundingClientRect();
+      const offset = clientY - box.top - box.height / 2;
+      if (offset < 0 && offset > closest.offset) {
+        closest = { offset, element: palette };
+      }
+    }
+    return closest.element;
+  }
+
+  private focusPalette(paletteId: string): void {
+    if (!paletteId) {
+      return;
+    }
+    this.setPanelCollapsed("right", false);
+    const palette = this.elements.root.querySelector<HTMLDetailsElement>(`[data-editor-palette="${CSS.escape(paletteId)}"]`);
+    if (!palette) {
+      return;
+    }
+    palette.open = true;
+    palette.scrollIntoView({ behavior: "smooth", block: "nearest" });
+    palette.classList.add("is-focused");
+    window.setTimeout(() => palette.classList.remove("is-focused"), 900);
   }
 
   private async loadList(): Promise<void> {

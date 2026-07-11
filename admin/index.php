@@ -5341,12 +5341,23 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             : [];
                         $airstrike_profiles = (array) ($admin_airstrike_animation_state['profiles'] ?? []);
                         $airstrike_snapshots = (array) ($admin_airstrike_animation_state['snapshots'] ?? []);
+                        $airstrike_active_profile_count = 0;
+                        $airstrike_valid_profile_count = 0;
+                        foreach ($airstrike_profiles as $profile_count_row) {
+                            $profile_count_validation = (array) ($profile_count_row['validation'] ?? []);
+                            if (empty($profile_count_row['archived'])) {
+                                $airstrike_active_profile_count++;
+                            }
+                            if (!empty($profile_count_validation['ok'])) {
+                                $airstrike_valid_profile_count++;
+                            }
+                        }
                       ?>
-                      <section class="admin-section">
-                        <div class="admin-subsection-head">
+                      <section class="admin-section airstrike-file-browser">
+                        <div class="airstrike-file-browser-top">
                           <div>
-                            <p class="section-kicker">Publication</p>
-                            <h3>Compiled profile bundle</h3>
+                            <p class="section-kicker">Profile browser</p>
+                            <h3>Airstrike animation files</h3>
                             <p>Drafts stay on the website. Publishing creates an immutable schema-2 bundle; server installation remains a separate, receipt-backed action.</p>
                           </div>
                           <div class="admin-inline-actions">
@@ -5356,76 +5367,72 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                           </div>
                         </div>
                         <div class="admin-alert" data-airstrike-feedback hidden></div>
-                        <div class="admin-grid three">
-                          <div class="metal-panel">
-                            <p class="section-kicker">Published revision</p>
-                            <h3><?= $airstrike_bundle === [] ? 'None' : e((string) ($airstrike_bundle['revision'] ?? 'None')) ?></h3>
-                            <p class="store-muted"><code><?= $airstrike_bundle === [] ? 'No immutable bundle yet' : e(substr((string) ($airstrike_bundle['sha256'] ?? ''), 0, 16) . '...') ?></code></p>
-                          </div>
-                          <div class="metal-panel">
-                            <p class="section-kicker">raidlands-main</p>
-                            <h3><?= e(ucwords(str_replace('_', ' ', (string) ($airstrike_server['status'] ?? 'Never contacted')))) ?></h3>
-                            <p class="store-muted">Installed revision <?= e((string) (($airstrike_server['installed_revision'] ?? '') ?: 'none')) ?></p>
-                          </div>
-                          <div class="metal-panel">
-                            <p class="section-kicker">Local file</p>
-                            <h3><?= !empty($airstrike_server['local_dirty']) ? 'Changes pending' : 'Clean / unknown' ?></h3>
-                            <p class="store-muted"><?= e((string) (($airstrike_server['last_seen_at'] ?? '') ?: 'Bridge has not checked in')) ?></p>
-                          </div>
-                        </div>
-                      </section>
-
-                      <section class="admin-section">
-                        <div class="admin-subsection-head">
-                          <div>
-                            <p class="section-kicker">Profiles</p>
-                            <h3>Draft workbench</h3>
-                            <p>Validation runs against the same source contract used by publication. Archived profiles are retained but excluded from new bundles.</p>
-                          </div>
-                        </div>
-                        <?php if ($airstrike_profiles === []) : ?>
-                          <div class="admin-alert warning">No profile drafts exist yet. The first bridge bootstrap can import the current Rust file automatically, or you can create one in the browser editor.</div>
-                        <?php else : ?>
-                          <div class="store-table-wrap">
-                            <table class="store-table">
-                              <thead>
-                                <tr>
-                                  <th>Profile</th>
-                                  <th>Vehicle</th>
-                                  <th>Draft</th>
-                                  <th>Published</th>
-                                  <th>Validation</th>
-                                  <th>Modified</th>
-                                  <th>Actions</th>
-                                </tr>
-                              </thead>
-                              <tbody>
+                        <div class="airstrike-file-browser-shell">
+                          <aside class="airstrike-file-browser-sidebar">
+                            <div class="airstrike-file-status-card">
+                              <span>Published</span>
+                              <strong><?= $airstrike_bundle === [] ? 'None' : e((string) ($airstrike_bundle['revision'] ?? 'None')) ?></strong>
+                              <small><code><?= $airstrike_bundle === [] ? 'No immutable bundle yet' : e(substr((string) ($airstrike_bundle['sha256'] ?? ''), 0, 16) . '...') ?></code></small>
+                            </div>
+                            <div class="airstrike-file-status-card">
+                              <span>raidlands-main</span>
+                              <strong><?= e(ucwords(str_replace('_', ' ', (string) ($airstrike_server['status'] ?? 'Never contacted')))) ?></strong>
+                              <small>Installed revision <?= e((string) (($airstrike_server['installed_revision'] ?? '') ?: 'none')) ?></small>
+                            </div>
+                            <div class="airstrike-file-status-card">
+                              <span>Local file</span>
+                              <strong><?= !empty($airstrike_server['local_dirty']) ? 'Changes pending' : 'Clean / unknown' ?></strong>
+                              <small><?= e((string) (($airstrike_server['last_seen_at'] ?? '') ?: 'Bridge has not checked in')) ?></small>
+                            </div>
+                          </aside>
+                          <div class="airstrike-file-browser-main">
+                            <div class="airstrike-file-browser-toolbar">
+                              <div>
+                                <p class="section-kicker">Recent files</p>
+                                <strong><?= e((string) $airstrike_active_profile_count) ?> active / <?= e((string) count($airstrike_profiles)) ?> total</strong>
+                              </div>
+                              <span class="status-pill"><?= e((string) $airstrike_valid_profile_count) ?> valid</span>
+                            </div>
+                            <?php if ($airstrike_profiles === []) : ?>
+                              <div class="admin-alert warning">No profile drafts exist yet. The first bridge bootstrap can import the current Rust file automatically, or you can create one in the browser editor.</div>
+                            <?php else : ?>
+                              <div class="airstrike-profile-file-grid">
                                 <?php foreach ($airstrike_profiles as $profile) : ?>
-                                  <?php $profile_validation = (array) ($profile['validation'] ?? []); ?>
-                                  <tr<?= !empty($profile['archived']) ? ' class="is-muted"' : '' ?>>
-                                    <td>
-                                      <strong><?= e((string) ($profile['displayName'] ?? $profile['profileKey'] ?? 'Profile')) ?></strong><br>
-                                      <code><?= e((string) ($profile['profileKey'] ?? '')) ?></code>
-                                      <?= !empty($profile['archived']) ? '<span class="status-pill">Archived</span>' : '' ?>
-                                    </td>
-                                    <td><?= e((string) ($profile['vehicle'] ?? '')) ?></td>
-                                    <td>v<?= e((string) ($profile['draftVersion'] ?? 0)) ?></td>
-                                    <td><?= e((string) (($profile['lastPublishedProfileRevision'] ?? '') ?: 'Not published')) ?></td>
-                                    <td><span class="status-pill <?= !empty($profile_validation['ok']) ? 'active' : 'failed' ?>"><?= !empty($profile_validation['ok']) ? 'Valid' : e((string) count((array) ($profile_validation['errors'] ?? []))) . ' errors' ?></span></td>
-                                    <td><?= e((string) ($profile['updatedAt'] ?? '')) ?></td>
-                                    <td>
-                                      <div class="admin-inline-actions">
-                                        <a class="btn btn-secondary btn-small" href="./airstrike-animation-editor.php?profile=<?= rawurlencode((string) ($profile['profileKey'] ?? '')) ?>">Edit</a>
-                                        <button class="btn btn-secondary btn-small" type="button" data-airstrike-revisions="<?= e((string) ($profile['profileKey'] ?? '')) ?>">Revisions</button>
-                                        <button class="btn btn-secondary btn-small" type="button" data-airstrike-archive="<?= e((string) ($profile['profileKey'] ?? '')) ?>" data-archived="<?= !empty($profile['archived']) ? '1' : '0' ?>"><?= !empty($profile['archived']) ? 'Unarchive' : 'Archive' ?></button>
+                                  <?php
+                                    $profile_validation = (array) ($profile['validation'] ?? []);
+                                    $profile_vehicle = (string) ($profile['vehicle'] ?? '');
+                                    $profile_key_value = (string) ($profile['profileKey'] ?? '');
+                                    $profile_is_archived = !empty($profile['archived']);
+                                  ?>
+                                  <article class="airstrike-profile-file-card<?= $profile_is_archived ? ' is-archived' : '' ?>">
+                                    <div class="airstrike-profile-file-thumb">
+                                      <span><?= e(strtoupper(substr($profile_vehicle ?: 'AIR', 0, 3))) ?></span>
+                                    </div>
+                                    <div class="airstrike-profile-file-body">
+                                      <div class="airstrike-profile-file-head">
+                                        <strong><?= e((string) ($profile['displayName'] ?? $profile_key_value ?: 'Profile')) ?></strong>
+                                        <span class="status-pill <?= !empty($profile_validation['ok']) ? 'active' : 'failed' ?>"><?= !empty($profile_validation['ok']) ? 'Valid' : e((string) count((array) ($profile_validation['errors'] ?? []))) . ' errors' ?></span>
                                       </div>
-                                    </td>
-                                  </tr>
+                                      <code><?= e($profile_key_value) ?></code>
+                                      <div class="airstrike-profile-file-meta">
+                                        <span><small>Vehicle</small><?= e($profile_vehicle) ?></span>
+                                        <span><small>Draft</small>v<?= e((string) ($profile['draftVersion'] ?? 0)) ?></span>
+                                        <span><small>Published</small><?= e((string) (($profile['lastPublishedProfileRevision'] ?? '') ?: 'None')) ?></span>
+                                        <span><small>Modified</small><?= e((string) ($profile['updatedAt'] ?? '')) ?></span>
+                                      </div>
+                                      <?= $profile_is_archived ? '<span class="status-pill">Archived</span>' : '' ?>
+                                      <div class="admin-inline-actions">
+                                        <a class="btn btn-secondary btn-small" href="./airstrike-animation-editor.php?profile=<?= rawurlencode($profile_key_value) ?>">Edit</a>
+                                        <button class="btn btn-secondary btn-small" type="button" data-airstrike-revisions="<?= e($profile_key_value) ?>">Revisions</button>
+                                        <button class="btn btn-secondary btn-small" type="button" data-airstrike-archive="<?= e($profile_key_value) ?>" data-archived="<?= $profile_is_archived ? '1' : '0' ?>"><?= $profile_is_archived ? 'Unarchive' : 'Archive' ?></button>
+                                      </div>
+                                    </div>
+                                  </article>
                                 <?php endforeach; ?>
-                              </tbody>
-                            </table>
+                              </div>
+                            <?php endif; ?>
                           </div>
-                        <?php endif; ?>
+                        </div>
                       </section>
 
                       <section class="admin-section">
