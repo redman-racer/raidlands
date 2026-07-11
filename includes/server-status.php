@@ -1168,13 +1168,10 @@ function raidlands_server_heatmap_history_public(string $metric, string $range, 
     }
 
     $params = [
-        'start_unix' => $start_aligned,
-        'frame_seconds' => $frame_seconds,
         'server_id' => $server_id,
         'wipe_key' => $wipe_key,
         'window_start' => gmdate('Y-m-d H:i:s', $start_aligned),
         'window_end' => gmdate('Y-m-d H:i:s', $window_end_time),
-        'frames' => $frames,
     ];
     $where = 'server_id = :server_id
            AND wipe_key = :wipe_key
@@ -1187,21 +1184,22 @@ function raidlands_server_heatmap_history_public(string $metric, string $range, 
     }
 
     $rows = raidlands_db_fetch_all(
-        'SELECT FLOOR((UNIX_TIMESTAMP(window_end) - :start_unix) / :frame_seconds) AS frame_index,
-                bucket_size, x, z, SUM(value) AS value, SUM(sample_count) AS sample_count,
+        'SELECT bucket_size, x, z, SUM(value) AS value, SUM(sample_count) AS sample_count,
                 MIN(window_start) AS window_start, MAX(window_end) AS window_end
          FROM server_heatmap_buckets
          WHERE ' . $where . '
-         GROUP BY frame_index, bucket_size, x, z
-         HAVING frame_index >= 0 AND frame_index < :frames
-         ORDER BY frame_index ASC, value DESC',
+         GROUP BY bucket_size, x, z, FLOOR((UNIX_TIMESTAMP(window_end) - UNIX_TIMESTAMP(:window_start)) / ' . $frame_seconds . ')
+         ORDER BY MAX(window_end) ASC, value DESC',
         $params
     );
 
     $per_frame_count = array_fill(0, $frames, 0);
 
     foreach ($rows as $row) {
-        $frame_index = (int) ($row['frame_index'] ?? -1);
+        $row_window_end_time = strtotime((string) ($row['window_end'] ?? '') . ' UTC');
+        $frame_index = $row_window_end_time === false
+            ? -1
+            : (int) floor(($row_window_end_time - $start_aligned) / $frame_seconds);
 
         if ($frame_index < 0 || $frame_index >= $frames || $per_frame_count[$frame_index] >= 600) {
             continue;
