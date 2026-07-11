@@ -107,8 +107,9 @@ const scaleReferenceMaterials = {
 const minimumFloorSize = 800;
 const maximumFloorDivisions = 120;
 const preferredGridCellSize = 20;
-const terrainPreviewSize = 380;
-const terrainHeightScale = 0.08;
+const terrainMinimumPatchSize = 800;
+const terrainMaximumPatchSize = 1800;
+const terrainPatchPadding = 1.45;
 
 export class AirstrikeViewport {
   private readonly container: HTMLElement;
@@ -216,6 +217,7 @@ export class AirstrikeViewport {
       heightmapUrl: reference.heightmapUrl || this.worldReference.heightmapUrl,
       terrain: reference.terrain || this.worldReference.terrain,
     };
+    this.syncSceneFloor();
     this.createScaleReferenceEntities();
   }
 
@@ -238,6 +240,7 @@ export class AirstrikeViewport {
     this.selectWaypoint(selectedWaypointId, false);
     this.loadVehicleForProfile(profile);
     this.refreshVehiclePose();
+    this.createScaleReferenceEntities();
     this.applyDynamicControls();
   }
 
@@ -430,15 +433,15 @@ export class AirstrikeViewport {
     terrain.name = "procedural-terrain-reference";
 
     const seed = this.worldReference.seed || 1337;
-    const worldScale = MathUtils.clamp((this.worldReference.worldSize || 4500) / 4500, 0.65, 1.45);
-    const terrainSize = terrainPreviewSize * worldScale;
+    const patch = this.currentTerrainPatch();
+    const terrainSize = patch.size;
     const terrainSegments = 48;
     const terrainGeometry = new PlaneGeometry(terrainSize, terrainSize, terrainSegments, terrainSegments);
     const positions = terrainGeometry.getAttribute("position") as Float32BufferAttribute;
 
     for (let index = 0; index < positions.count; index += 1) {
-      const x = positions.getX(index);
-      const z = positions.getY(index);
+      const x = positions.getX(index) + patch.center.x;
+      const z = positions.getY(index) + patch.center.z;
       positions.setZ(index, this.proceduralTerrainHeight(x, z, seed));
     }
     positions.needsUpdate = true;
@@ -447,6 +450,7 @@ export class AirstrikeViewport {
     const terrainMesh = new Mesh(terrainGeometry, scaleReferenceMaterials.grass);
     terrainMesh.name = "procedural-terrain-preview";
     terrainMesh.rotation.x = -Math.PI / 2;
+    terrainMesh.position.set(patch.center.x, 0, patch.center.z);
     terrain.add(terrainMesh);
 
     const road = this.createProceduralRoad(seed, terrainSize);
@@ -455,8 +459,8 @@ export class AirstrikeViewport {
     const random = this.seededRandom(seed ^ 0xa517);
     for (let index = 0; index < 34; index += 1) {
       const side = index % 2 === 0 ? -1 : 1;
-      const x = (random() - 0.5) * terrainSize * 0.85;
-      const z = side * (terrainSize * (0.26 + random() * 0.2));
+      const x = patch.center.x + (random() - 0.5) * terrainSize * 0.85;
+      const z = patch.center.z + side * (terrainSize * (0.26 + random() * 0.2));
       const height = this.proceduralTerrainHeight(x, z, seed);
       const tree = this.createTreePlaceholder(`scale-tree-${index + 1}`, 0.55 + random() * 0.85);
       tree.position.set(x, height, z);
@@ -466,8 +470,8 @@ export class AirstrikeViewport {
 
     const moundGeometry = new ConeGeometry(1, 1, 18);
     for (let index = 0; index < 5; index += 1) {
-      const x = (random() - 0.5) * terrainSize * 0.72;
-      const z = (random() - 0.5) * terrainSize * 0.72;
+      const x = patch.center.x + (random() - 0.5) * terrainSize * 0.72;
+      const z = patch.center.z + (random() - 0.5) * terrainSize * 0.72;
       const mesh = new Mesh(moundGeometry, scaleReferenceMaterials.grass);
       mesh.name = "scale-terrain-mound";
       mesh.position.set(x, this.proceduralTerrainHeight(x, z, seed) + 1.4, z);
@@ -478,8 +482,8 @@ export class AirstrikeViewport {
 
     const rockGeometry = new BoxGeometry(6, 3, 4);
     for (let index = 0; index < 12; index += 1) {
-      const x = (random() - 0.5) * terrainSize * 0.8;
-      const z = (random() - 0.5) * terrainSize * 0.8;
+      const x = patch.center.x + (random() - 0.5) * terrainSize * 0.8;
+      const z = patch.center.z + (random() - 0.5) * terrainSize * 0.8;
       const mesh = new Mesh(rockGeometry, scaleReferenceMaterials.rock);
       mesh.name = "scale-rock";
       mesh.position.set(x, this.proceduralTerrainHeight(x, z, seed) + 1.2, z);
@@ -490,8 +494,8 @@ export class AirstrikeViewport {
 
     const scrubGeometry = new ConeGeometry(4.5, 4, 8);
     for (let index = 0; index < 18; index += 1) {
-      const x = (random() - 0.5) * terrainSize * 0.72;
-      const z = (random() - 0.5) * terrainSize * 0.72;
+      const x = patch.center.x + (random() - 0.5) * terrainSize * 0.72;
+      const z = patch.center.z + (random() - 0.5) * terrainSize * 0.72;
       const scrub = new Mesh(scrubGeometry, scaleReferenceMaterials.grass);
       scrub.name = "scale-scrub";
       scrub.position.set(x, this.proceduralTerrainHeight(x, z, seed) + 1.8, z);
@@ -518,10 +522,11 @@ export class AirstrikeViewport {
   }
 
   private createHeightmapTerrainMesh(terrainPayload: TerrainReferencePayload): Mesh {
-    const resolution = terrainPayload.resolution;
+    const resolution = Math.max(2, Math.min(terrainPayload.resolution, 129));
     const worldSize = Math.max(100, terrainPayload.worldSize || this.worldReference.worldSize || 4500);
-    const previewScale = terrainPreviewSize / worldSize;
     const half = worldSize / 2;
+    const patch = this.currentTerrainPatch(worldSize);
+    const baseHeight = this.sampleTerrainHeight(terrainPayload, patch.center.x, patch.center.z);
     const positions: number[] = [];
     const uvs: number[] = [];
     const colors: number[] = [];
@@ -529,15 +534,16 @@ export class AirstrikeViewport {
 
     for (let row = 0; row < resolution; row += 1) {
       const v = row / (resolution - 1);
-      const worldZ = half - v * worldSize;
+      const localZ = patch.center.z + patch.size * 0.5 - v * patch.size;
       for (let col = 0; col < resolution; col += 1) {
         const u = col / (resolution - 1);
-        const worldX = -half + u * worldSize;
-        const index = row * resolution + col;
-        const height = terrainPayload.heights[index] || 0;
-        positions.push(worldX * previewScale, height * terrainHeightScale, worldZ * previewScale);
+        const localX = patch.center.x - patch.size * 0.5 + u * patch.size;
+        const worldX = MathUtils.clamp(localX, -half, half);
+        const worldZ = MathUtils.clamp(localZ, -half, half);
+        const height = this.sampleTerrainHeight(terrainPayload, worldX, worldZ);
+        positions.push(localX, height - baseHeight, localZ);
         uvs.push(u, 1 - v);
-        this.pushTerrainColor(colors, terrainPayload.colors?.[index], height, terrainPayload);
+        this.pushTerrainColor(colors, this.sampleTerrainColor(terrainPayload, worldX, worldZ), height, terrainPayload);
       }
     }
 
@@ -569,6 +575,52 @@ export class AirstrikeViewport {
     const mesh = new Mesh(geometry, this.terrainMaterial);
     mesh.name = "current-rust-map-heightmap-ground";
     return mesh;
+  }
+
+  private currentTerrainPatch(worldSize = this.worldReference.worldSize || 4500): { center: Vector3; size: number } {
+    const bounds = this.currentFocusBounds();
+    const size = new Vector3();
+    const center = new Vector3();
+    bounds.getSize(size);
+    bounds.getCenter(center);
+    const routeFootprint = Math.max(size.x, size.z, terrainMinimumPatchSize);
+    const patchSize = MathUtils.clamp(routeFootprint * terrainPatchPadding, terrainMinimumPatchSize, Math.min(terrainMaximumPatchSize, worldSize));
+    const halfRange = Math.max(0, worldSize * 0.5 - patchSize * 0.5);
+    center.x = MathUtils.clamp(Number.isFinite(center.x) ? center.x : 0, -halfRange, halfRange);
+    center.y = 0;
+    center.z = MathUtils.clamp(Number.isFinite(center.z) ? center.z : 0, -halfRange, halfRange);
+    return { center, size: patchSize };
+  }
+
+  private sampleTerrainHeight(terrainPayload: TerrainReferencePayload, worldX: number, worldZ: number): number {
+    const resolution = terrainPayload.resolution;
+    const worldSize = Math.max(100, terrainPayload.worldSize || this.worldReference.worldSize || 4500);
+    const half = worldSize / 2;
+    const u = MathUtils.clamp((worldX + half) / worldSize, 0, 1) * (resolution - 1);
+    const v = MathUtils.clamp((half - worldZ) / worldSize, 0, 1) * (resolution - 1);
+    const x0 = Math.floor(u);
+    const z0 = Math.floor(v);
+    const x1 = Math.min(resolution - 1, x0 + 1);
+    const z1 = Math.min(resolution - 1, z0 + 1);
+    const tx = u - x0;
+    const tz = v - z0;
+    const a = terrainPayload.heights[z0 * resolution + x0] || 0;
+    const b = terrainPayload.heights[z0 * resolution + x1] || a;
+    const c = terrainPayload.heights[z1 * resolution + x0] || a;
+    const d = terrainPayload.heights[z1 * resolution + x1] || c;
+    return MathUtils.lerp(MathUtils.lerp(a, b, tx), MathUtils.lerp(c, d, tx), tz);
+  }
+
+  private sampleTerrainColor(terrainPayload: TerrainReferencePayload, worldX: number, worldZ: number): string | undefined {
+    if (!terrainPayload.colors || terrainPayload.colors.length !== terrainPayload.resolution * terrainPayload.resolution) {
+      return undefined;
+    }
+    const resolution = terrainPayload.resolution;
+    const worldSize = Math.max(100, terrainPayload.worldSize || this.worldReference.worldSize || 4500);
+    const half = worldSize / 2;
+    const col = Math.round(MathUtils.clamp((worldX + half) / worldSize, 0, 1) * (resolution - 1));
+    const row = Math.round(MathUtils.clamp((half - worldZ) / worldSize, 0, 1) * (resolution - 1));
+    return terrainPayload.colors[row * resolution + col];
   }
 
   private loadTerrainTexture(url: string): void {
@@ -617,10 +669,11 @@ export class AirstrikeViewport {
     const segmentCount = 7;
     const segmentDepth = terrainSize / segmentCount;
     const roadGeometry = new BoxGeometry(24, 0.22, segmentDepth * 1.12);
-    let x = (random() - 0.5) * terrainSize * 0.28;
+    const patch = this.currentTerrainPatch();
+    let x = patch.center.x + (random() - 0.5) * terrainSize * 0.28;
 
     for (let index = 0; index < segmentCount; index += 1) {
-      const z = -terrainSize * 0.5 + segmentDepth * (index + 0.5);
+      const z = patch.center.z - terrainSize * 0.5 + segmentDepth * (index + 0.5);
       x += (random() - 0.5) * 18;
       const y = this.proceduralTerrainHeight(x, z, seed) + 0.16;
       const segment = new Mesh(roadGeometry, scaleReferenceMaterials.dirt);
@@ -990,6 +1043,15 @@ export class AirstrikeViewport {
     this.grid.name = "meter-grid";
     this.grid.position.set(floorCenterX, 0, floorCenterZ);
     this.scene.add(this.grid);
+
+    if (this.worldReference.terrain) {
+      if (this.ground) {
+        this.scene.remove(this.ground);
+        this.ground.geometry.dispose();
+        this.ground = null;
+      }
+      return;
+    }
 
     if (this.ground) {
       this.scene.remove(this.ground);
