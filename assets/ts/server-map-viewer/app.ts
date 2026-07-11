@@ -1650,6 +1650,17 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): void {
     setTimelineLabel(frame);
   };
 
+  const latestVisibleHeatmapFrame = (): number => {
+    for (let index = heatmapHistory.length - 1; index >= 0; index -= 1) {
+      const frame = heatmapHistory[index];
+      if (Array.isArray(frame?.buckets) && frame.buckets.length > 0) {
+        return index;
+      }
+    }
+
+    return Math.max(0, heatmapHistory.length - 1);
+  };
+
   const reloadHeatmap = () => {
     if (!heatmap?.checked) {
       stopHeatmapPlayback();
@@ -1660,9 +1671,9 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): void {
     if (heatmapPlayback?.checked) {
       void loadHeatmapHistory(root, metric?.value || "deaths", range?.value || "24h").then((payload) => {
         heatmapHistory = Array.isArray(payload.frames) ? payload.frames : [];
-        const latestFrame = Math.max(0, heatmapHistory.length - 1);
+        const latestFrame = latestVisibleHeatmapFrame();
         if (heatmapFrame) {
-          heatmapFrame.max = String(latestFrame);
+          heatmapFrame.max = String(Math.max(0, heatmapHistory.length - 1));
           heatmapFrame.value = String(latestFrame);
           heatmapFrame.disabled = heatmapHistory.length === 0;
         }
@@ -1769,7 +1780,13 @@ async function loadHeatmap(root: HTMLElement, viewer: TerrainViewer, metric: str
       throw new Error(`Heat map request failed with HTTP ${response.status}.`);
     }
 
-    viewer.setHeatmap((await response.json()) as HeatmapPayload);
+    const payload = (await response.json()) as HeatmapPayload;
+
+    if (payload.ok === false) {
+      throw new Error("Heat map response did not include available bucket data.");
+    }
+
+    viewer.setHeatmap(payload);
     viewer.setHeatmapVisible(true);
   } catch (error) {
     console.info("Raidlands heat map could not be loaded.", error);
