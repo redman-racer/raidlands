@@ -129,6 +129,11 @@ interface EditorState {
 
 type PanelName = "left" | "right" | "bottom";
 
+interface RecoveryDraft {
+  savedAt: string;
+  source: string;
+}
+
 interface NumericControlRange {
   minimum: number;
   maximum: number;
@@ -323,8 +328,10 @@ class AirstrikeEditorApp {
       } else {
         this.loadSource(starterSource(), "", 0);
       }
+      this.offerRecoveryDraft();
     } catch (error) {
       this.loadSource(starterSource(), "", 0);
+      this.offerRecoveryDraft();
       this.showFeedback(error instanceof Error ? error.message : String(error), "error");
       this.setStatus("Editor started without server profile list");
     }
@@ -634,7 +641,10 @@ class AirstrikeEditorApp {
     });
     const payload = (await response.json().catch(() => ({
       ok: false,
-      error: "The server returned an unreadable response.",
+      error:
+        response.status === 401 || response.status === 403
+          ? "Your admin session expired or no longer has access. The browser kept a local recovery copy; sign back in before saving again."
+          : "The server returned an unreadable response.",
     }))) as Record<string, unknown>;
     if (!response.ok || payload.ok !== true) {
       throw new Error(String(payload.error || "The request failed."));
@@ -662,23 +672,62 @@ class AirstrikeEditorApp {
     return `raidlands.airstrike-animation-recovery.${this.state.profileKey || this.elements.key.value || "new"}`;
   }
 
+  private readRecoveryDraft(key = this.recoveryKey()): RecoveryDraft | null {
+    try {
+      const parsed = JSON.parse(window.localStorage.getItem(key) || "null") as Partial<RecoveryDraft> | null;
+      if (!parsed || typeof parsed.source !== "string" || parsed.source.trim() === "") {
+        return null;
+      }
+      return {
+        savedAt: typeof parsed.savedAt === "string" ? parsed.savedAt : "",
+        source: parsed.source,
+      };
+    } catch {
+      return null;
+    }
+  }
+
+  private offerRecoveryDraft(): void {
+    const draft = this.readRecoveryDraft();
+    if (!draft || draft.source === this.elements.source.value) {
+      return;
+    }
+    const savedAt = draft.savedAt ? new Date(draft.savedAt).toLocaleString() : "an earlier local edit";
+    const shouldRestore = window.confirm(
+      `A local recovery draft from ${savedAt} exists for this profile. Restore it now?\n\nChoose Cancel to keep the server copy loaded; the recovery draft will remain in this browser.`,
+    );
+    if (!shouldRestore) {
+      this.showFeedback(`Local recovery draft from ${savedAt} is still stored in this browser.`, "error");
+      this.setStatus("Recovery draft available");
+      return;
+    }
+    this.elements.source.value = draft.source;
+    this.handleSourceInput();
+    this.showFeedback(`Restored local recovery draft from ${savedAt}. Save after signing in to make it server-side.`, "success");
+    this.setStatus("Recovered local draft");
+  }
+
+  private persistRecoveryDraft(sourceText: string): void {
+    try {
+      window.localStorage.setItem(
+        this.recoveryKey(),
+        JSON.stringify({
+          savedAt: new Date().toISOString(),
+          source: sourceText,
+        }),
+      );
+    } catch {
+      // Local recovery is best-effort; server saves remain authoritative.
+    }
+  }
+
   private markEdited(): void {
     if (this.state.loading) {
       return;
     }
     this.setDirty(true);
     this.setStatus("Draft has local changes");
-    try {
-      window.localStorage.setItem(
-        this.recoveryKey(),
-        JSON.stringify({
-          savedAt: new Date().toISOString(),
-          source: this.elements.source.value,
-        }),
-      );
-    } catch {
-      // Local recovery is best-effort; server saves remain authoritative.
-    }
+    this.persistRecoveryDraft(this.elements.source.value);
   }
 
   private writeSource(profile: EditorSourceProfile): void {
@@ -1863,6 +1912,7 @@ class AirstrikeEditorApp {
     }
 
     this.setStatus("Saving draft...");
+    this.persistRecoveryDraft(JSON.stringify(source, null, 2));
     try {
       const path = this.state.baseVersion > 0 ? "save.php" : "create.php";
       const body =
@@ -1885,7 +1935,8 @@ class AirstrikeEditorApp {
       );
       this.showFeedback(`Draft v${profile.draftVersion} saved.`, "success");
     } catch (error) {
-      this.showFeedback(error instanceof Error ? error.message : String(error), "error");
+      const message = error instanceof Error ? error.message : String(error);
+      this.showFeedback(`${message}\n\nA local recovery copy was kept in this browser. Sign back in, reload this editor, and restore the recovery draft if prompted.`, "error");
       this.setStatus("Save failed");
     }
   }

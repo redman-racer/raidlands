@@ -37,6 +37,7 @@
 33. Run `database/migrations/046_monument_extraction.sql`.
 34. Run `database/migrations/049_rust_servers_vote_rewards.sql`.
 35. Run `database/migrations/050_server_map_terrain.sql`.
+36. Run `database/migrations/051_server_map_heatmap.sql`.
 35. Run `database/seeds/001_store_products.sql`.
 36. Copy the root `.env.example` file to `.env`.
 37. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.

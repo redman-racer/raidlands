@@ -103,6 +103,20 @@ function raidlands_server_map_terrain_columns_are_ready(): bool
     }
 }
 
+function raidlands_server_heatmap_is_ready(): bool
+{
+    if (!raidlands_db_is_configured()) {
+        return false;
+    }
+
+    try {
+        raidlands_db_fetch_one('SELECT id FROM server_heatmap_buckets LIMIT 1');
+        return true;
+    } catch (Throwable $error) {
+        return false;
+    }
+}
+
 function raidlands_server_status_clean_text($value, int $max_length = 120): string
 {
     $text = trim(str_replace("\0", '', (string) $value));
@@ -750,6 +764,278 @@ function raidlands_server_map_row_public(?array $row): ?array
         'generatedAt' => raidlands_server_status_iso($row['generated_at'] ?? ''),
         'publishedAt' => raidlands_server_status_iso($row['published_at'] ?? ''),
         'updatedAt' => raidlands_server_status_iso($row['updated_at'] ?? ''),
+    ];
+}
+
+function raidlands_server_heatmap_clean_metric($value): string
+{
+    $metric = strtolower(trim((string) $value));
+    $metric = preg_replace('/[^a-z0-9_-]+/', '_', $metric) ?? '';
+    $allowed = ['deaths', 'kills', 'npc_fights', 'loot_pvp', 'roambots'];
+
+    return in_array($metric, $allowed, true) ? $metric : 'deaths';
+}
+
+function raidlands_server_heatmap_range(string $range): array
+{
+    $range = strtolower(trim($range));
+
+    return match ($range) {
+        '1h', 'hour' => ['range' => '1h', 'label' => '1 hour', 'minutes' => 60],
+        '6h' => ['range' => '6h', 'label' => '6 hours', 'minutes' => 360],
+        'wipe', 'all' => ['range' => 'wipe', 'label' => 'Current wipe', 'minutes' => 60 * 24 * 31],
+        default => ['range' => '24h', 'label' => '24 hours', 'minutes' => 1440],
+    };
+}
+
+function raidlands_server_heatmap_delay_policy(): array
+{
+    return [
+        'public' => ['label' => 'Public', 'delay_seconds' => 6 * 60 * 60, 'groups' => []],
+        'vip_1' => ['label' => 'VIP', 'delay_seconds' => 3 * 60 * 60, 'groups' => ['vip', 'bronze', 'rank_bronze']],
+        'vip_2' => ['label' => 'VIP+', 'delay_seconds' => 60 * 60, 'groups' => ['silver', 'gold', 'elite', 'rank_elite']],
+        'vip_3' => ['label' => 'Premium VIP', 'delay_seconds' => 30 * 60, 'groups' => ['ultimate', 'rank_ultimate_vip']],
+        'vip_4' => ['label' => 'Titan VIP', 'delay_seconds' => 15 * 60, 'groups' => ['titan', 'titan_vip', 'rank_titan_vip']],
+    ];
+}
+
+function raidlands_server_heatmap_viewer_delay(): array
+{
+    if (!function_exists('raidlands_store_current_player')) {
+        return raidlands_server_heatmap_delay_policy()['public'];
+    }
+
+    $player = raidlands_store_current_player();
+
+    if ($player === null || empty($player['steam_id64']) || !raidlands_db_is_configured()) {
+        return raidlands_server_heatmap_delay_policy()['public'];
+    }
+
+    try {
+        $state = raidlands_store_active_groups_for_steam((string) $player['steam_id64']);
+    } catch (Throwable $error) {
+        return raidlands_server_heatmap_delay_policy()['public'];
+    }
+
+    $groups = array_map('strtolower', array_map('strval', $state['groups'] ?? []));
+    $best = raidlands_server_heatmap_delay_policy()['public'];
+
+    foreach (raidlands_server_heatmap_delay_policy() as $entry) {
+        foreach ($groups as $group) {
+            foreach ($entry['groups'] as $needle) {
+                if ($group === $needle || str_contains($group, $needle)) {
+                    if ((int) $entry['delay_seconds'] < (int) $best['delay_seconds']) {
+                        $best = $entry;
+                    }
+                }
+            }
+        }
+    }
+
+    return $best;
+}
+
+function raidlands_server_heatmap_timestamp($value, string $fallback = ''): string
+{
+    $timestamp = strtotime((string) $value);
+
+    if ($timestamp === false && $fallback !== '') {
+        $timestamp = strtotime($fallback);
+    }
+
+    if ($timestamp === false) {
+        throw new InvalidArgumentException('Heat map bucket window timestamps are required.');
+    }
+
+    return gmdate('Y-m-d H:i:s', $timestamp);
+}
+
+function raidlands_server_heatmap_ingest_snapshot(array $payload, string $header_server_id): array
+{
+    if (!raidlands_server_heatmap_is_ready()) {
+        throw new RuntimeException('Server heat map table is not installed. Run database/migrations/051_server_map_heatmap.sql.');
+    }
+
+    $header_server_id = raidlands_server_status_clean_text($header_server_id !== '' ? $header_server_id : raidlands_server_status_server_id(), 120);
+    $server_id = raidlands_server_status_clean_text($payload['server_id'] ?? $header_server_id, 120);
+
+    if ($server_id === '' || ($header_server_id !== '' && !hash_equals($header_server_id, $server_id))) {
+        throw new InvalidArgumentException('Heat map server_id does not match the authenticated server.');
+    }
+
+    $wipe_key = raidlands_server_status_clean_text($payload['wipe_key'] ?? '', 160);
+    $bucket_size = max(25, min(1000, raidlands_server_status_int($payload['bucket_size'] ?? 100, 100, 1000)));
+    $buckets = $payload['buckets'] ?? [];
+
+    if ($wipe_key === '') {
+        $wipe_key = $server_id . '-current';
+    }
+
+    if (!is_array($buckets) || count($buckets) < 1 || count($buckets) > 5000) {
+        throw new InvalidArgumentException('Heat map snapshot must include 1 to 5000 aggregated buckets.');
+    }
+
+    $pdo = raidlands_db_required();
+    $statement = $pdo->prepare(
+        'INSERT INTO server_heatmap_buckets
+            (server_id, wipe_key, bucket_size, x, z, metric, value, sample_count, window_start, window_end)
+         VALUES
+            (:server_id, :wipe_key, :bucket_size, :x, :z, :metric, :value, :sample_count, :window_start, :window_end)
+         ON DUPLICATE KEY UPDATE
+            value = VALUES(value),
+            sample_count = VALUES(sample_count),
+            updated_at = NOW()'
+    );
+    $count = 0;
+
+    foreach ($buckets as $bucket) {
+        if (!is_array($bucket)) {
+            continue;
+        }
+
+        foreach (['steam_id', 'steamId', 'steam_id64', 'name', 'player', 'players', 'events', 'trail', 'positions'] as $forbidden_key) {
+            if (array_key_exists($forbidden_key, $bucket)) {
+                throw new InvalidArgumentException('Heat map snapshots must contain aggregated buckets only.');
+            }
+        }
+
+        $metric = raidlands_server_heatmap_clean_metric($bucket['metric'] ?? $payload['metric'] ?? 'deaths');
+        $x = (int) round((float) ($bucket['x'] ?? 0));
+        $z = (int) round((float) ($bucket['z'] ?? 0));
+        $value = max(0, round((float) ($bucket['value'] ?? 0), 4));
+        $sample_count = max(0, min(1000000, (int) ($bucket['sample_count'] ?? $bucket['sampleCount'] ?? 0)));
+        $window_start = raidlands_server_heatmap_timestamp($bucket['window_start'] ?? $bucket['windowStart'] ?? $payload['window_start'] ?? '', '-1 hour');
+        $window_end = raidlands_server_heatmap_timestamp($bucket['window_end'] ?? $bucket['windowEnd'] ?? $payload['window_end'] ?? '', 'now');
+
+        $statement->execute([
+            'server_id' => $server_id,
+            'wipe_key' => $wipe_key,
+            'bucket_size' => $bucket_size,
+            'x' => $x,
+            'z' => $z,
+            'metric' => $metric,
+            'value' => $value,
+            'sample_count' => $sample_count,
+            'window_start' => $window_start,
+            'window_end' => $window_end,
+        ]);
+        $count += 1;
+    }
+
+    return [
+        'serverId' => $server_id,
+        'wipeKey' => $wipe_key,
+        'bucketSize' => $bucket_size,
+        'acceptedBuckets' => $count,
+    ];
+}
+
+function raidlands_server_heatmap_palette(): array
+{
+    return [
+        'name' => 'raidlands-cloud-volume',
+        'stops' => [
+            ['at' => 0.0, 'color' => '#2f80ff'],
+            ['at' => 0.35, 'color' => '#39d98a'],
+            ['at' => 0.62, 'color' => '#ffb23f'],
+            ['at' => 0.86, 'color' => '#ff3b30'],
+            ['at' => 1.0, 'color' => '#fff7d6'],
+        ],
+    ];
+}
+
+function raidlands_server_heatmap_public(string $metric, string $range): array
+{
+    $metric = raidlands_server_heatmap_clean_metric($metric);
+    $range_info = raidlands_server_heatmap_range($range);
+    $delay = raidlands_server_heatmap_viewer_delay();
+    $status = raidlands_server_status_latest();
+    $server_id = (string) ($status['server_id'] ?? raidlands_server_status_server_id());
+    $wipe_key = (string) ($status['wipe_key'] ?? ($server_id . '-current'));
+    $world_size = (int) ($status['world_size'] ?? 0);
+    $max_value = 0.0;
+    $buckets = [];
+    $window_end_time = time() - (int) $delay['delay_seconds'];
+    $window_start_time = $range_info['range'] === 'wipe'
+        ? 0
+        : $window_end_time - ((int) $range_info['minutes'] * 60);
+
+    if (!raidlands_server_heatmap_is_ready()) {
+        return [
+            'ok' => false,
+            'error' => 'Heat map data is not available yet.',
+            'metric' => $metric,
+            'range' => $range_info['range'],
+            'buckets' => [],
+            'maxValue' => 0,
+            'worldSize' => $world_size,
+            'wipeKey' => $wipe_key,
+            'palette' => raidlands_server_heatmap_palette(),
+            'delay' => [
+                'label' => (string) $delay['label'],
+                'delaySeconds' => (int) $delay['delay_seconds'],
+            ],
+        ];
+    }
+
+    $params = [
+        'server_id' => $server_id,
+        'wipe_key' => $wipe_key,
+        'metric' => $metric,
+        'window_end' => gmdate('Y-m-d H:i:s', $window_end_time),
+    ];
+    $where = 'server_id = :server_id AND wipe_key = :wipe_key AND metric = :metric AND window_end <= :window_end';
+
+    if ($window_start_time > 0) {
+        $where .= ' AND window_end >= :window_start';
+        $params['window_start'] = gmdate('Y-m-d H:i:s', $window_start_time);
+    }
+
+    $rows = raidlands_db_fetch_all(
+        'SELECT bucket_size, x, z, SUM(value) AS value, SUM(sample_count) AS sample_count,
+                MIN(window_start) AS window_start, MAX(window_end) AS window_end
+         FROM server_heatmap_buckets
+         WHERE ' . $where . '
+         GROUP BY bucket_size, x, z
+         ORDER BY value DESC
+         LIMIT 1200',
+        $params
+    );
+
+    foreach ($rows as $row) {
+        $value = (float) ($row['value'] ?? 0);
+        $max_value = max($max_value, $value);
+        $buckets[] = [
+            'bucketSize' => (int) ($row['bucket_size'] ?? 100),
+            'x' => (int) ($row['x'] ?? 0),
+            'z' => (int) ($row['z'] ?? 0),
+            'value' => round($value, 4),
+            'sampleCount' => (int) ($row['sample_count'] ?? 0),
+            'windowStart' => raidlands_server_status_iso($row['window_start'] ?? ''),
+            'windowEnd' => raidlands_server_status_iso($row['window_end'] ?? ''),
+        ];
+    }
+
+    foreach ($buckets as &$bucket) {
+        $bucket['normalized'] = $max_value > 0 ? round(((float) $bucket['value']) / $max_value, 4) : 0;
+    }
+    unset($bucket);
+
+    return [
+        'ok' => true,
+        'metric' => $metric,
+        'range' => $range_info['range'],
+        'rangeLabel' => $range_info['label'],
+        'windowEnd' => gmdate('c', $window_end_time),
+        'maxValue' => round($max_value, 4),
+        'worldSize' => $world_size,
+        'wipeKey' => $wipe_key,
+        'palette' => raidlands_server_heatmap_palette(),
+        'delay' => [
+            'label' => (string) $delay['label'],
+            'delaySeconds' => (int) $delay['delay_seconds'],
+        ],
+        'buckets' => $buckets,
     ];
 }
 

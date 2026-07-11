@@ -1,5 +1,6 @@
 import {
   AmbientLight,
+  AdditiveBlending,
   BoxGeometry,
   BufferGeometry,
   Color,
@@ -93,6 +94,20 @@ type CameraPose = {
 };
 
 type CameraTourKind = "coastal-sweep" | "ridge-crossing" | "monument-orbit" | "map-run";
+
+type HeatmapBucket = {
+  bucketSize: number;
+  x: number;
+  z: number;
+  value: number;
+  normalized: number;
+};
+
+type HeatmapPayload = {
+  ok?: boolean;
+  maxValue?: number;
+  buckets?: HeatmapBucket[];
+};
 
 const isoViewDirections = [
   new Vector3(0.48, 0.34, 0.58),
@@ -215,6 +230,7 @@ class TerrainViewer {
   private readonly terrainMesh: Mesh;
   private readonly terrainMaterial: MeshStandardMaterial;
   private readonly gridLayer = new Group();
+  private readonly heatmapLayer = new Group();
   private readonly airstrikeLayer = new Group();
   private readonly onResize = () => this.resize();
   private animationFrame = 0;
@@ -260,6 +276,9 @@ class TerrainViewer {
     this.gridLayer.add(createRustMapGridOverlay(this.terrain));
     this.gridLayer.visible = this.root.dataset.gridOverlay === "true";
     this.scene.add(this.gridLayer);
+    this.heatmapLayer.name = "raidlands-heatmap-cloud-volume-layer";
+    this.heatmapLayer.visible = false;
+    this.scene.add(this.heatmapLayer);
     this.airstrikeLayer.name = "raidlands-airstrike-preview-layer";
     this.scene.add(this.airstrikeLayer);
     this.addMonuments();
@@ -311,6 +330,54 @@ class TerrainViewer {
 
     this.transitionFrom = null;
     this.transitionTo = null;
+  }
+
+  public setHeatmapVisible(visible: boolean): void {
+    this.heatmapLayer.visible = visible;
+  }
+
+  public setHeatmap(payload: HeatmapPayload): void {
+    this.heatmapLayer.clear();
+    const buckets = Array.isArray(payload.buckets) ? payload.buckets : [];
+
+    if (buckets.length === 0) {
+      return;
+    }
+
+    const texture = createHeatmapCloudTexture();
+    const maxValue = Math.max(0.0001, Number(payload.maxValue) || Math.max(...buckets.map((bucket) => Number(bucket.value) || 0), 0.0001));
+
+    buckets.slice(0, 900).forEach((bucket) => {
+      const normalized = MathUtils.clamp(Number(bucket.normalized) || ((Number(bucket.value) || 0) / maxValue), 0, 1);
+
+      if (normalized <= 0) {
+        return;
+      }
+
+      const bucketSize = MathUtils.clamp(Number(bucket.bucketSize) || 100, 25, 1000);
+      const height = MathUtils.lerp(44, Math.max(120, bucketSize * 1.7), Math.sqrt(normalized));
+      const baseY = sampleTerrainHeight(this.terrain, bucket.x, bucket.z) + 18;
+      const color = heatmapRampColor(normalized);
+      const material = new SpriteMaterial({
+        map: texture,
+        color,
+        transparent: true,
+        opacity: MathUtils.lerp(0.18, 0.64, normalized),
+        depthWrite: false,
+        depthTest: true,
+        blending: AdditiveBlending,
+      });
+
+      for (let layer = 0; layer < 3; layer += 1) {
+        const sprite = new Sprite(material.clone());
+        const spread = 1 + layer * 0.26;
+        sprite.name = "heatmap-cloud-column";
+        sprite.position.set(bucket.x, baseY + height * (0.24 + layer * 0.23), bucket.z);
+        sprite.scale.set(bucketSize * spread, height * (0.82 - layer * 0.12), 1);
+        sprite.renderOrder = 12 + layer;
+        this.heatmapLayer.add(sprite);
+      }
+    });
   }
 
   public addAirstrikePreview(profiles: RuntimeVisualProfile[]): void {
@@ -1267,6 +1334,51 @@ function createGridLabelSprite(label: string, size: number, x: number, z: number
   return sprite;
 }
 
+function createHeatmapCloudTexture(): CanvasTexture {
+  const canvas = document.createElement("canvas");
+  const size = 128;
+  canvas.width = size;
+  canvas.height = size;
+  const context = canvas.getContext("2d");
+
+  if (context) {
+    const gradient = context.createRadialGradient(size / 2, size / 2, 2, size / 2, size / 2, size / 2);
+    gradient.addColorStop(0, "rgba(255,255,255,0.86)");
+    gradient.addColorStop(0.34, "rgba(255,255,255,0.42)");
+    gradient.addColorStop(0.68, "rgba(255,255,255,0.16)");
+    gradient.addColorStop(1, "rgba(255,255,255,0)");
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, size, size);
+  }
+
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  return texture;
+}
+
+function heatmapRampColor(value: number): Color {
+  const t = MathUtils.clamp(value, 0, 1);
+  const low = new Color(0x2f80ff);
+  const green = new Color(0x39d98a);
+  const amber = new Color(0xffb23f);
+  const hot = new Color(0xff3b30);
+  const white = new Color(0xfff7d6);
+
+  if (t < 0.35) {
+    return low.lerp(green, MathUtils.smoothstep(t / 0.35, 0, 1));
+  }
+
+  if (t < 0.62) {
+    return green.lerp(amber, MathUtils.smoothstep((t - 0.35) / 0.27, 0, 1));
+  }
+
+  if (t < 0.86) {
+    return amber.lerp(hot, MathUtils.smoothstep((t - 0.62) / 0.24, 0, 1));
+  }
+
+  return hot.lerp(white, MathUtils.smoothstep((t - 0.86) / 0.14, 0, 1));
+}
+
 function setMaterialOpacity(material: Material | Material[], opacity: number): void {
   if (Array.isArray(material)) {
     material.forEach((entry) => setMaterialOpacity(entry, opacity));
@@ -1352,6 +1464,9 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): void {
   const buttons = Array.from(panel?.querySelectorAll<HTMLButtonElement>("[data-map-view]") || []);
   const grid = panel?.querySelector<HTMLInputElement>("[data-map-viewer-grid]");
   const tour = panel?.querySelector<HTMLInputElement>("[data-map-viewer-tour]");
+  const heatmap = panel?.querySelector<HTMLInputElement>("[data-map-viewer-heatmap]");
+  const metric = panel?.querySelector<HTMLSelectElement>("[data-map-viewer-heatmap-metric]");
+  const range = panel?.querySelector<HTMLSelectElement>("[data-map-viewer-heatmap-range]");
 
   bindMapViewButtons(buttons, viewer);
 
@@ -1362,6 +1477,49 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): void {
   tour?.addEventListener("change", () => {
     viewer.setTourEnabled(tour.checked);
   });
+
+  const reloadHeatmap = () => {
+    if (!heatmap?.checked) {
+      viewer.setHeatmapVisible(false);
+      return;
+    }
+
+    void loadHeatmap(root, viewer, metric?.value || "deaths", range?.value || "24h");
+  };
+
+  heatmap?.addEventListener("change", reloadHeatmap);
+  metric?.addEventListener("change", reloadHeatmap);
+  range?.addEventListener("change", reloadHeatmap);
+}
+
+async function loadHeatmap(root: HTMLElement, viewer: TerrainViewer, metric: string, range: string): Promise<void> {
+  const baseUrl = root.dataset.heatmapUrl || "";
+
+  if (!baseUrl) {
+    viewer.setHeatmapVisible(false);
+    return;
+  }
+
+  const url = new URL(baseUrl, window.location.href);
+  url.searchParams.set("metric", metric);
+  url.searchParams.set("range", range);
+
+  try {
+    const response = await fetch(url.toString(), {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Heat map request failed with HTTP ${response.status}.`);
+    }
+
+    viewer.setHeatmap((await response.json()) as HeatmapPayload);
+    viewer.setHeatmapVisible(true);
+  } catch (error) {
+    console.info("Raidlands heat map could not be loaded.", error);
+    viewer.setHeatmapVisible(false);
+  }
 }
 
 function bindMapViewButtons(buttons: HTMLButtonElement[], viewer: TerrainViewer): void {

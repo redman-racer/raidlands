@@ -163,6 +163,29 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
             <input type="checkbox" data-map-viewer-tour>
             <span>Camera flyover</span>
           </label>
+          <label class="server-terrain-toggle">
+            <input type="checkbox" data-map-viewer-heatmap>
+            <span>Heat map</span>
+          </label>
+          <label class="server-terrain-field">
+            <span>Metric</span>
+            <select data-map-viewer-heatmap-metric>
+              <option value="deaths">Deaths</option>
+              <option value="kills">Kills</option>
+              <option value="npc_fights">NPC fights</option>
+              <option value="loot_pvp">Loot/PvP activity</option>
+              <option value="roambots">RoamBots</option>
+            </select>
+          </label>
+          <label class="server-terrain-field">
+            <span>Range</span>
+            <select data-map-viewer-heatmap-range>
+              <option value="1h">1H</option>
+              <option value="6h">6H</option>
+              <option value="24h" selected>24H</option>
+              <option value="wipe">Wipe</option>
+            </select>
+          </label>
         </div>
       </div>
       <div
@@ -170,6 +193,7 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
         data-server-map-viewer
         data-terrain-url="<?= e($server_terrain_url) ?>"
         data-texture-url="<?= e($server_texture_url) ?>"
+        data-heatmap-url="<?= e(route_url('api/server/heatmap.php')) ?>"
         data-camera-tour="false"
         data-camera-locked="false"
         data-grid-overlay="true"
