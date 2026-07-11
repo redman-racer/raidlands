@@ -34,6 +34,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { TransformControls } from "three/examples/jsm/controls/TransformControls.js";
 import { evaluateSourcePose } from "../math";
 import type { EditorSourceProfile, VehiclePreviewMetadataFile } from "../types";
+import { applyRaidlandsEnvironment } from "../../shared/three-environment";
 import { threeVectorToUnityPosition, unityPositionToThreeVector, unityQuaternionValueToThreeQuaternion } from "./coordinates";
 import { getReleasePreviewEvents, type ReleasePreviewEvent } from "./release-source";
 import { createVehicleProxy, loadVehiclePreview, metadataForVehicle } from "./vehicle-preview";
@@ -165,11 +166,16 @@ export class AirstrikeViewport {
   public constructor(container: HTMLElement, options: AirstrikeViewportOptions) {
     this.container = container;
     this.options = options;
-    this.scene.background = new Color(0x071013);
     this.camera.position.set(180, 120, 250);
     this.camera.lookAt(0, 55, 0);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.outputColorSpace = SRGBColorSpace;
+    applyRaidlandsEnvironment(this.scene, this.renderer, {
+      preset: "editor",
+      exposure: 1.1,
+      backgroundIntensity: 0.78,
+      environmentIntensity: 0.78,
+    });
     this.renderer.domElement.dataset.airstrikeViewportCanvas = "true";
     this.container.appendChild(this.renderer.domElement);
 
@@ -359,10 +365,12 @@ export class AirstrikeViewport {
   }
 
   private setupSceneChrome(): void {
-    const ambient = new AmbientLight(0xffffff, 0.58);
-    const key = new DirectionalLight(0xffffff, 1.55);
+    const ambient = new AmbientLight(0xfff4df, 0.36);
+    const key = new DirectionalLight(0xfff1d6, 1.34);
     key.position.set(90, 180, 120);
-    this.scene.add(ambient, key);
+    const rim = new DirectionalLight(0x9fd8ff, 0.42);
+    rim.position.set(-120, 90, -160);
+    this.scene.add(ambient, key, rim);
 
     this.syncSceneFloor();
 

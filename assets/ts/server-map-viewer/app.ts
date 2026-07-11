@@ -23,6 +23,7 @@ import {
   WebGLRenderer,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { applyRaidlandsEnvironment } from "../shared/three-environment";
 
 type TerrainPayload = {
   version?: number;
@@ -204,9 +205,14 @@ class TerrainViewer {
     this.terrain = terrain;
     this.textureUrl = options.textureUrl;
     this.status = options.status;
-    this.scene.background = new Color(0x071013);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.outputColorSpace = SRGBColorSpace;
+    applyRaidlandsEnvironment(this.scene, this.renderer, {
+      preset: "terrain",
+      exposure: 1.05,
+      backgroundIntensity: 0.95,
+      environmentIntensity: 0.92,
+    });
     this.renderer.domElement.dataset.serverMapViewerCanvas = "true";
     this.terrainMaterial = this.createTerrainMaterial();
     this.terrainMesh = this.createTerrainMesh();
@@ -362,10 +368,10 @@ class TerrainViewer {
   }
 
   private addLights(): void {
-    const ambient = new AmbientLight(0xfff4df, 0.82);
-    const sun = new DirectionalLight(0xfff1cf, 1.95);
+    const ambient = new AmbientLight(0xfff4df, 0.46);
+    const sun = new DirectionalLight(0xfff1cf, 1.68);
     sun.position.set(900, 1400, 650);
-    const fill = new DirectionalLight(0xffd8a8, 0.18);
+    const fill = new DirectionalLight(0xd5e8ff, 0.24);
     fill.position.set(-500, 500, -800);
     this.scene.add(ambient, sun, fill);
   }
