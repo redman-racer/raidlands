@@ -173,10 +173,10 @@ export class AirstrikeViewport {
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.outputColorSpace = SRGBColorSpace;
     applyRaidlandsEnvironment(this.scene, this.renderer, {
-      preset: "editor",
-      exposure: 1.1,
-      backgroundIntensity: 0.78,
-      environmentIntensity: 0.78,
+      preset: "terrain",
+      exposure: 1.05,
+      backgroundIntensity: 0.95,
+      environmentIntensity: 0.92,
     });
     this.renderer.domElement.dataset.airstrikeViewportCanvas = "true";
     this.container.appendChild(this.renderer.domElement);
@@ -269,6 +269,7 @@ export class AirstrikeViewport {
     this.loadVehicleForProfile(profile);
     this.refreshVehiclePose();
     this.createScaleReferenceEntities();
+    this.syncSceneChromeMarkers();
     this.applyDynamicControls();
   }
 
