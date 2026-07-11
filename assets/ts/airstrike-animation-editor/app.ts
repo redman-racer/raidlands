@@ -283,6 +283,7 @@ class AirstrikeEditorApp {
   private playbackFrame = 0;
   private playbackStartedAt = 0;
   private playbackStartedTime = 0;
+  private playbackRunId = 0;
   private paletteDragId = "";
 
   public constructor(config: EditorConfig, elements: EditorElements) {
@@ -1246,12 +1247,14 @@ class AirstrikeEditorApp {
     if (!this.state.profile) {
       return;
     }
+    this.playbackRunId += 1;
+    const runId = this.playbackRunId;
     this.state.playing = true;
     this.playbackStartedAt = performance.now();
     this.playbackStartedTime = this.state.scrubTime;
     this.renderTimeControls();
     const tick = (now: number): void => {
-      if (!this.state.playing || !this.state.profile) {
+      if (!this.state.playing || runId !== this.playbackRunId || !this.state.profile) {
         return;
       }
       const duration = Math.max(0.01, this.state.profile.DurationSeconds);
@@ -1269,14 +1272,20 @@ class AirstrikeEditorApp {
         }
       }
       this.setScrubTime(next);
-      this.playbackFrame = window.requestAnimationFrame(tick);
+      if (this.state.playing && runId === this.playbackRunId) {
+        this.playbackFrame = window.requestAnimationFrame(tick);
+      }
     };
     this.playbackFrame = window.requestAnimationFrame(tick);
   }
 
   private stopPlayback(): void {
+    this.playbackRunId += 1;
     this.state.playing = false;
-    window.cancelAnimationFrame(this.playbackFrame);
+    if (this.playbackFrame) {
+      window.cancelAnimationFrame(this.playbackFrame);
+      this.playbackFrame = 0;
+    }
     this.renderTimeControls();
   }
 
