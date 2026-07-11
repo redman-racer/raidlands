@@ -3504,6 +3504,9 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 'description' => '',
                                 'vote_url_template' => '',
                                 'verification_mode' => 'hybrid',
+                                'api_provider' => 'none',
+                                'api_key' => '',
+                                'api_server_id' => '',
                                 'callback_token' => '',
                                 'reward_rp' => 200,
                                 'cooldown_hours' => 24,
@@ -3546,7 +3549,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 <input type="number" min="1" max="8760" name="vote_sites[<?= e((string) $index) ?>][cooldown_hours]" value="<?= e((string) ($site_row['cooldown_hours'] ?? 24)) ?>">
                               </label>
                               <label class="admin-field">
-                                <?= admin_field_head('Verification', 'Hybrid allows manual claim plus callback. Strict waits for callback. Manual never requires callback.') ?>
+                                <?= admin_field_head('Verification', 'With an API provider, Hybrid and Strict verify before queueing RP. Without a provider, Strict waits for callback and Manual bypasses external verification.') ?>
                                 <select name="vote_sites[<?= e((string) $index) ?>][verification_mode]">
                                   <?= admin_render_keyed_options(['hybrid' => 'Hybrid', 'strict' => 'Strict callback', 'manual' => 'Manual claim'], (string) ($site_row['verification_mode'] ?? 'hybrid')) ?>
                                 </select>
@@ -3554,6 +3557,22 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               <label class="admin-field">
                                 <?= admin_field_head('Sort', 'Lower numbers appear first.') ?>
                                 <input type="number" name="vote_sites[<?= e((string) $index) ?>][sort_order]" value="<?= e((string) ($site_row['sort_order'] ?? 100)) ?>">
+                              </label>
+                            </div>
+                            <div class="admin-grid three">
+                              <label class="admin-field">
+                                <?= admin_field_head('API provider', 'Choose a supported vote API for direct claim verification. Rust-Servers.net checks and marks SteamID votes as claimed.') ?>
+                                <select name="vote_sites[<?= e((string) $index) ?>][api_provider]">
+                                  <?= admin_render_keyed_options(['none' => 'None', 'rust_servers' => 'Rust-Servers.net'], (string) ($site_row['api_provider'] ?? 'none')) ?>
+                                </select>
+                              </label>
+                              <label class="admin-field">
+                                <?= admin_field_head('API key', 'Private server API key from the vote provider. Required for Rust-Servers.net verification.') ?>
+                                <input type="password" name="vote_sites[<?= e((string) $index) ?>][api_key]" maxlength="160" value="<?= e((string) ($site_row['api_key'] ?? '')) ?>" autocomplete="off">
+                              </label>
+                              <label class="admin-field">
+                                <?= admin_field_head('Provider server ID', 'Optional external server/listing ID for admin reference.') ?>
+                                <input type="text" name="vote_sites[<?= e((string) $index) ?>][api_server_id]" maxlength="80" value="<?= e((string) ($site_row['api_server_id'] ?? '')) ?>" placeholder="178053">
                               </label>
                             </div>
                             <div class="admin-grid two">

@@ -146,9 +146,12 @@ the host or upload it through a private channel.
    - `database/migrations/041_animation_diagnostics.sql`
    - `database/migrations/042_public_lobby_chat.sql`
    - `database/migrations/046_monument_extraction.sql`
+   - `database/migrations/049_rust_servers_vote_rewards.sql`
    - `database/seeds/001_store_products.sql`
 
    Then configure RP costs and cash amounts in `/admin/?section=store`. After Stripe keys are present, saving the Store editor automatically creates or updates Raidlands-managed Stripe Products and Prices for active cash offers. You can still paste existing matching `price_...` IDs when they should stay external and unmanaged.
+
+   For Rust-Servers.net vote rewards, open `/admin/?section=vote-rewards`, paste the server API key into the Rust-Servers.net row, and enable the site. The public vote URL is `https://rust-servers.net/server/178053/vote/`; reward claims use the Rust-Servers.net SteamID API before queuing RP.
 
 5. Click through the local site.
 

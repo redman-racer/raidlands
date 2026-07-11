@@ -51,6 +51,10 @@ $vote_balance = is_array($vote_state['balance'] ?? null) ? $vote_state['balance'
             $can_claim = !empty($eligibility['can_claim']);
             $vote_url = trim((string) ($site['vote_url'] ?? ''));
             $mode = (string) ($site['verification_mode'] ?? 'hybrid');
+            $provider = (string) ($site['api_provider'] ?? 'none');
+            $verify_label = $provider === 'rust_servers' && $mode !== 'manual'
+                ? 'Steam API'
+                : ucfirst($mode);
           ?>
           <article class="metal-card reward-site-card">
             <span class="status-tag voting"><?= e(raidlands_store_rp((int) ($site['reward_rp'] ?? 0))) ?></span>
@@ -58,7 +62,7 @@ $vote_balance = is_array($vote_state['balance'] ?? null) ? $vote_state['balance'
             <p class="card-copy"><?= e((string) ($site['description'] ?: 'Vote for Raidlands, then return here to claim your RP.')) ?></p>
             <div class="feature-score-grid">
               <span><strong><?= e((string) ($site['cooldown_hours'] ?? 24)) ?>h</strong> Cooldown</span>
-              <span><strong><?= e(ucfirst($mode)) ?></strong> Verify</span>
+              <span><strong><?= e($verify_label) ?></strong> Verify</span>
               <span><strong><?= e((string) ($eligibility['label'] ?? 'Ready')) ?></strong> Status</span>
             </div>
             <?php if (!empty($eligibility['next_available_at'])) : ?>
@@ -94,6 +98,7 @@ $vote_balance = is_array($vote_state['balance'] ?? null) ? $vote_state['balance'
       <ul class="list-clean">
         <li>Vote rewards use in-game Raidlands RP only.</li>
         <li>Rewards have no cash value and cannot be cashed out.</li>
+        <li>Rust-Servers.net claims are checked against their SteamID vote API.</li>
         <li>Queued claims become final only after the Rust server credits ServerRewards RP.</li>
         <li>Strict vote sites wait for their callback before RP is queued.</li>
       </ul>

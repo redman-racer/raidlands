@@ -34,9 +34,11 @@
 30. Run `database/migrations/040_multiplayer_rp_games.sql`.
 31. Run `database/migrations/041_animation_diagnostics.sql`.
 32. Run `database/migrations/042_public_lobby_chat.sql`.
-33. Run `database/seeds/001_store_products.sql`.
-34. Copy the root `.env.example` file to `.env`.
-35. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
+33. Run `database/migrations/046_monument_extraction.sql`.
+34. Run `database/migrations/049_rust_servers_vote_rewards.sql`.
+35. Run `database/seeds/001_store_products.sql`.
+36. Copy the root `.env.example` file to `.env`.
+37. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
 
 The root `.env` file is ignored by Git and protected from direct web access by the root `.htaccess`.
 
@@ -45,6 +47,7 @@ The root `.env` file is ignored by Git and protected from direct web access by t
 - After `007_admin_auth.sql` is installed, `/admin/` uses Steam sign-in instead of the setup username and password.
 - Add approved Steam IDs to `admin_users`, then attach roles through `admin_user_roles`.
 - Use the commented owner bootstrap query at the bottom of `database/migrations/007_admin_auth.sql` for the first admin account.
+- For Rust-Servers.net vote rewards, set the Rust-Servers.net row API key in `/admin/?section=vote-rewards` before enabling it publicly.
 
 ## Stripe
 

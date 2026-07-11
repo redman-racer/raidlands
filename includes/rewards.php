@@ -167,7 +167,7 @@ function raidlands_rewards_is_ready(): bool
         }
     }
 
-    return true;
+    return raidlands_rewards_vote_site_provider_columns_ready();
 }
 
 function raidlands_rewards_readiness_message(bool $include_detail = false): string
@@ -182,6 +182,12 @@ function raidlands_rewards_readiness_message(bool $include_detail = false): stri
     ));
 
     if ($missing === []) {
+        if (!raidlands_rewards_vote_site_provider_columns_ready()) {
+            return $include_detail
+                ? 'Rewards tables need the Rust-Servers vote integration update. Run database/migrations/049_rust_servers_vote_rewards.sql.'
+                : 'Rewards tables need the latest vote rewards migration.';
+        }
+
         return 'Rewards tables are installed.';
     }
 
@@ -223,6 +229,24 @@ function raidlands_rewards_clean_mode(string $value): string
     $value = strtolower(trim($value));
 
     return in_array($value, ['hybrid', 'strict', 'manual'], true) ? $value : 'hybrid';
+}
+
+function raidlands_rewards_clean_provider(string $value): string
+{
+    $value = strtolower(trim($value));
+    $value = str_replace(['-', ' '], '_', $value);
+
+    return in_array($value, ['none', 'rust_servers'], true) ? $value : 'none';
+}
+
+function raidlands_rewards_vote_site_provider_columns_ready(): bool
+{
+    return raidlands_rewards_table_exists('vote_reward_sites')
+        && raidlands_store_table_has_columns('vote_reward_sites', [
+            'api_provider',
+            'api_key',
+            'api_server_id',
+        ]);
 }
 
 function raidlands_rewards_clean_status(string $value): string
@@ -431,6 +455,82 @@ function raidlands_rewards_vote_url(array $site, string $steam_id64): string
         rawurlencode($steam_id64),
         $url
     );
+}
+
+function raidlands_rewards_rust_servers_vote_url(): string
+{
+    return 'https://rust-servers.net/server/178053/vote/';
+}
+
+function raidlands_rewards_rust_servers_claim_check(array $site, string $steam_id64): array
+{
+    $api_key = trim((string) ($site['api_key'] ?? ''));
+
+    if ($api_key === '') {
+        throw new RuntimeException('Rust-Servers.net verification needs this vote site API key.');
+    }
+
+    if (!raidlands_store_validate_steam_id64($steam_id64)) {
+        throw new InvalidArgumentException('Rust-Servers.net verification needs a linked SteamID64.');
+    }
+
+    $url = 'https://rust-servers.net/api/?' . http_build_query([
+        'object' => 'plugin',
+        'element' => 'reward',
+        'key' => $api_key,
+        'steamid' => $steam_id64,
+    ], '', '&', PHP_QUERY_RFC3986);
+
+    $response = raidlands_store_http_get($url, 8);
+
+    if ($response === null) {
+        throw new RuntimeException('Rust-Servers.net did not return a vote verification response. Try again in a minute.');
+    }
+
+    $raw = trim(strip_tags($response));
+    $decoded = json_decode($raw, true);
+
+    if (is_array($decoded)) {
+        $raw = trim((string) ($decoded['response'] ?? $decoded['status'] ?? $decoded['result'] ?? ''));
+    }
+
+    if (!in_array($raw, ['0', '1', '2'], true)) {
+        throw new RuntimeException('Rust-Servers.net returned an unexpected vote verification response.');
+    }
+
+    if ($raw === '1') {
+        return [
+            'verified' => true,
+            'claimed_external' => true,
+            'external_vote_id' => 'rust-servers-' . $steam_id64 . '-' . gmdate('YmdH'),
+            'message' => 'Rust-Servers.net verified and claimed the vote.',
+        ];
+    }
+
+    return [
+        'verified' => false,
+        'claimed_external' => $raw === '2',
+        'external_vote_id' => '',
+        'message' => $raw === '2'
+            ? 'Rust-Servers.net says this vote was already claimed.'
+            : 'Rust-Servers.net has not seen an unclaimed vote from your Steam account in the last 24 hours.',
+    ];
+}
+
+function raidlands_rewards_external_vote_check(array $site, string $steam_id64): array
+{
+    $provider = raidlands_rewards_clean_provider((string) ($site['api_provider'] ?? 'none'));
+
+    if ($provider === 'rust_servers') {
+        return raidlands_rewards_rust_servers_claim_check($site, $steam_id64);
+    }
+
+    return [
+        'verified' => true,
+        'claimed_external' => false,
+        'external_vote_id' => '',
+        'message' => 'Manual claim accepted.',
+    ];
 }
 
 function raidlands_rewards_blocking_vote_claim(int $player_id, int $site_id): ?array
@@ -656,6 +756,31 @@ function raidlands_rewards_claim_vote_reward(int $site_id): array
         throw new RuntimeException('That vote reward is not ready yet: ' . (string) ($eligibility['label'] ?? 'pending') . '.');
     }
 
+    $mode = raidlands_rewards_clean_mode((string) ($site['verification_mode'] ?? 'hybrid'));
+    $provider = raidlands_rewards_clean_provider((string) ($site['api_provider'] ?? 'none'));
+    $reward_rp = max(1, (int) ($site['reward_rp'] ?? 200));
+    $external_check = [
+        'verified' => true,
+        'claimed_external' => false,
+        'external_vote_id' => '',
+        'message' => 'Manual claim accepted.',
+    ];
+
+    if ($provider !== 'none' && $mode !== 'manual') {
+        $external_check = raidlands_rewards_external_vote_check($site, (string) $player['steam_id64']);
+
+        if (empty($external_check['verified'])) {
+            throw new RuntimeException((string) ($external_check['message'] ?? 'The vote site did not verify an unclaimed vote.'));
+        }
+    }
+
+    $status = ($mode === 'strict' && $provider === 'none') ? 'pending_callback' : 'queued';
+    $message = $status === 'pending_callback'
+        ? 'Waiting for the vote site callback before RP is queued.'
+        : (string) ($external_check['message'] ?? 'Queued for server RP confirmation.');
+    $external_vote_id = trim((string) ($external_check['external_vote_id'] ?? ''));
+    $claim_source = $provider !== 'none' && $mode !== 'manual' ? 'callback' : 'manual';
+
     $pdo = raidlands_db_required();
     $owns_transaction = !$pdo->inTransaction();
 
@@ -664,32 +789,28 @@ function raidlands_rewards_claim_vote_reward(int $site_id): array
     }
 
     try {
-        $mode = raidlands_rewards_clean_mode((string) ($site['verification_mode'] ?? 'hybrid'));
-        $reward_rp = max(1, (int) ($site['reward_rp'] ?? 200));
-        $status = $mode === 'strict' ? 'pending_callback' : 'queued';
-        $message = $mode === 'strict'
-            ? 'Waiting for the vote site callback before RP is queued.'
-            : 'Queued for server RP confirmation.';
-
         $insert = $pdo->prepare(
             'INSERT INTO vote_reward_claims
-                (site_id, player_id, steam_id64, claim_source, status, reward_rp, message)
+                (site_id, player_id, steam_id64, external_vote_id, claim_source, status, reward_rp, callback_received, message)
              VALUES
-                (:site_id, :player_id, :steam_id64, "manual", :status, :reward_rp, :message)'
+                (:site_id, :player_id, :steam_id64, :external_vote_id, :claim_source, :status, :reward_rp, :callback_received, :message)'
         );
         $insert->execute([
             'site_id' => (int) $site['id'],
             'player_id' => (int) $player['id'],
             'steam_id64' => (string) $player['steam_id64'],
+            'external_vote_id' => $external_vote_id !== '' ? mb_substr($external_vote_id, 0, 120) : null,
+            'claim_source' => $claim_source,
             'status' => $status,
             'reward_rp' => $reward_rp,
+            'callback_received' => $claim_source === 'callback' ? 1 : 0,
             'message' => $message,
         ]);
         $claim_id = (int) $pdo->lastInsertId();
 
         $request = null;
 
-        if ($mode !== 'strict') {
+        if ($status !== 'pending_callback') {
             $request = raidlands_rewards_queue_point_request(
                 $pdo,
                 (int) $player['id'],
@@ -699,7 +820,12 @@ function raidlands_rewards_claim_vote_reward(int $site_id): array
                 0,
                 $reward_rp,
                 'Vote reward: ' . (string) $site['name'],
-                ['site_slug' => (string) $site['slug'], 'claim_source' => 'manual']
+                [
+                    'site_slug' => (string) $site['slug'],
+                    'claim_source' => $claim_source,
+                    'api_provider' => $provider,
+                    'external_claimed' => !empty($external_check['claimed_external']),
+                ]
             );
 
             $update = $pdo->prepare(
@@ -722,7 +848,8 @@ function raidlands_rewards_claim_vote_reward(int $site_id): array
         return [
             'claim_id' => $claim_id,
             'request' => $request,
-            'strict' => $mode === 'strict',
+            'strict' => $status === 'pending_callback',
+            'api_verified' => $provider !== 'none' && $mode !== 'manual',
             'reward_rp' => $reward_rp,
             'site_name' => (string) $site['name'],
         ];
@@ -754,9 +881,13 @@ function raidlands_rewards_handle_vote_request(): void
         }
 
         $result = raidlands_rewards_claim_vote_reward((int) ($_POST['site_id'] ?? 0));
-        $message = !empty($result['strict'])
-            ? (string) $result['site_name'] . ' claim recorded. RP will queue after the vote site callback arrives.'
-            : (string) $result['site_name'] . ' reward queued for ' . raidlands_store_rp((int) $result['reward_rp']) . '. The Rust server will confirm it shortly.';
+        if (!empty($result['strict'])) {
+            $message = (string) $result['site_name'] . ' claim recorded. RP will queue after the vote site callback arrives.';
+        } elseif (!empty($result['api_verified'])) {
+            $message = (string) $result['site_name'] . ' vote verified and queued for ' . raidlands_store_rp((int) $result['reward_rp']) . '. The Rust server will confirm it shortly.';
+        } else {
+            $message = (string) $result['site_name'] . ' reward queued for ' . raidlands_store_rp((int) $result['reward_rp']) . '. The Rust server will confirm it shortly.';
+        }
 
         raidlands_store_flash('success', $message);
     } catch (Throwable $error) {
@@ -3228,6 +3359,9 @@ function raidlands_rewards_admin_save_vote_sites(array $post): int
 
         $slug = raidlands_rewards_clean_slug((string) ($row['slug'] ?? $name));
         $mode = raidlands_rewards_clean_mode((string) ($row['verification_mode'] ?? 'hybrid'));
+        $api_provider = raidlands_rewards_clean_provider((string) ($row['api_provider'] ?? 'none'));
+        $api_key = mb_substr(trim((string) ($row['api_key'] ?? '')), 0, 160);
+        $api_server_id = mb_substr(raidlands_store_clean_profile_text($row['api_server_id'] ?? '', 80), 0, 80);
         $token = mb_substr(trim((string) ($row['callback_token'] ?? '')), 0, 80);
         $reward = raidlands_rewards_limit_int($row['reward_rp'] ?? 200, 1, 1000000, 200);
         $cooldown = raidlands_rewards_limit_int($row['cooldown_hours'] ?? 24, 1, 8760, 24);
@@ -3242,6 +3376,9 @@ function raidlands_rewards_admin_save_vote_sites(array $post): int
                      description = :description,
                      vote_url_template = :vote_url_template,
                      verification_mode = :verification_mode,
+                     api_provider = :api_provider,
+                     api_key = :api_key,
+                     api_server_id = :api_server_id,
                      callback_token = :callback_token,
                      reward_rp = :reward_rp,
                      cooldown_hours = :cooldown_hours,
@@ -3255,6 +3392,9 @@ function raidlands_rewards_admin_save_vote_sites(array $post): int
                     'description' => $description,
                     'vote_url_template' => $url,
                     'verification_mode' => $mode,
+                    'api_provider' => $api_provider,
+                    'api_key' => $api_key,
+                    'api_server_id' => $api_server_id,
                     'callback_token' => $token,
                     'reward_rp' => $reward,
                     'cooldown_hours' => $cooldown,
@@ -3266,15 +3406,18 @@ function raidlands_rewards_admin_save_vote_sites(array $post): int
         } else {
             raidlands_db_execute(
                 'INSERT INTO vote_reward_sites
-                    (slug, name, description, vote_url_template, verification_mode, callback_token, reward_rp, cooldown_hours, is_active, sort_order)
+                    (slug, name, description, vote_url_template, verification_mode, api_provider, api_key, api_server_id, callback_token, reward_rp, cooldown_hours, is_active, sort_order)
                  VALUES
-                    (:slug, :name, :description, :vote_url_template, :verification_mode, :callback_token, :reward_rp, :cooldown_hours, :is_active, :sort_order)',
+                    (:slug, :name, :description, :vote_url_template, :verification_mode, :api_provider, :api_key, :api_server_id, :callback_token, :reward_rp, :cooldown_hours, :is_active, :sort_order)',
                 [
                     'slug' => $slug,
                     'name' => $name,
                     'description' => $description,
                     'vote_url_template' => $url,
                     'verification_mode' => $mode,
+                    'api_provider' => $api_provider,
+                    'api_key' => $api_key,
+                    'api_server_id' => $api_server_id,
                     'callback_token' => $token,
                     'reward_rp' => $reward,
                     'cooldown_hours' => $cooldown,
