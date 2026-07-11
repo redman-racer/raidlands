@@ -15,7 +15,7 @@
   --editor-toolbar-height: 84px;
   --editor-left-width: 292px;
   --editor-right-width: 420px;
-  --editor-bottom-height: 146px;
+  --editor-bottom-height: 166px;
   --editor-dock-gap: 16px;
   --editor-panel-edge: 16px;
   --editor-bottom-bar-height: 30px;
@@ -283,8 +283,9 @@
 
 .airstrike-editor-bottom-head {
   align-items: center;
-  min-height: 30px;
-  padding: 5px 10px;
+  min-height: 0;
+  height: 54px;
+  padding: 6px 10px;
 }
 
 .airstrike-editor-dock-head > div,
@@ -929,8 +930,9 @@
   display: grid;
   grid-template-columns: auto minmax(180px, 1fr) 72px 104px;
   align-items: center;
-  gap: 8px;
-  padding: 5px 8px;
+  gap: 7px;
+  min-height: 34px;
+  padding: 4px 8px;
   border: 1px solid rgba(129, 167, 174, .2);
   border-radius: 5px;
   background: rgba(8, 12, 14, .9);
@@ -938,16 +940,17 @@
 
 .airstrike-editor-playback {
   display: grid;
-  grid-template-columns: repeat(3, 32px) repeat(3, max-content) minmax(150px, 220px);
+  grid-template-columns: repeat(3, 30px) repeat(3, max-content) minmax(150px, 220px);
   align-items: center;
-  gap: 6px;
+  gap: 5px;
+  min-height: 28px;
 }
 
 .airstrike-editor-checkbox {
   display: inline-flex;
   align-items: center;
   gap: 5px;
-  min-height: 28px;
+  min-height: 24px;
   color: #bdd2d7;
   font-size: 11px;
   white-space: nowrap;
@@ -962,6 +965,13 @@
   font-size: 10px;
 }
 
+.airstrike-editor-playback select {
+  height: 24px;
+  min-height: 0;
+  padding: 0 22px 0 7px;
+  font-size: 11px;
+}
+
 .airstrike-editor-timeline label,
 .airstrike-editor-timeline strong {
   color: #b8c9cd;
@@ -970,15 +980,15 @@
 
 .airstrike-editor-timeline input[type="number"] {
   min-width: 0;
-  height: 26px;
+  height: 24px;
   padding: 0 6px;
   font-size: 11px;
 }
 
 .airstrike-editor-icon-button {
   position: relative;
-  width: 32px;
-  height: 28px;
+  width: 30px;
+  height: 24px;
   padding: 0;
   border: 1px solid rgba(129, 167, 174, .26);
   border-radius: 5px;
@@ -998,7 +1008,7 @@
   display: grid;
   place-items: center;
   color: #e8f7fa;
-  font: 900 15px/1 var(--font-body, Arial, sans-serif);
+  font: 900 11px/1 var(--font-body, Arial, sans-serif);
 }
 
 .airstrike-editor-icon-button:hover,
@@ -1384,6 +1394,7 @@
 .airstrike-editor-bottom-grid {
   display: grid;
   grid-template-columns: minmax(0, 1fr) minmax(260px, 360px);
+  align-items: stretch;
   gap: 10px;
   min-width: 0;
   min-height: 0;
@@ -1399,7 +1410,18 @@
 }
 
 .airstrike-editor-output-panel {
-  grid-template-rows: auto auto minmax(0, 1fr);
+  align-content: center;
+  grid-template-rows: auto auto;
+  gap: 7px;
+}
+
+.airstrike-editor-drawer-main {
+  grid-template-rows: 34px 28px 20px;
+  align-content: center;
+}
+
+.airstrike-editor-bottom .airstrike-editor-source-fallback {
+  display: none;
 }
 
 .airstrike-editor-bottom pre {
@@ -1423,7 +1445,7 @@
   }
 
   .airstrike-editor-playback {
-    grid-template-columns: auto auto auto auto auto auto minmax(140px, 1fr);
+    grid-template-columns: repeat(3, 30px) repeat(3, max-content) minmax(140px, 1fr);
   }
 
   .airstrike-editor-bottom-grid {
