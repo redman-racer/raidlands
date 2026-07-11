@@ -17,6 +17,9 @@
   --editor-right-width: 420px;
   --editor-bottom-height: 232px;
   --editor-dock-gap: 16px;
+  --editor-panel-edge: 16px;
+  --editor-bottom-bar-height: 30px;
+  --editor-bottom-bar-clearance: calc(var(--editor-bottom-bar-height) + var(--editor-panel-edge));
   position: relative;
   display: grid;
   grid-template-columns: 1fr;
@@ -230,7 +233,7 @@
   position: absolute;
   z-index: 6;
   top: calc(var(--editor-toolbar-height) + var(--editor-dock-gap));
-  bottom: calc(var(--editor-bottom-height) + 32px);
+  bottom: var(--editor-bottom-bar-clearance);
   min-height: 0;
   border: 1px solid rgba(129, 167, 174, .22);
   border-radius: 8px;
@@ -239,13 +242,8 @@
   transition: transform .18s ease, opacity .18s ease;
 }
 
-.airstrike-editor.is-bottom-collapsed .airstrike-editor-left,
-.airstrike-editor.is-bottom-collapsed .airstrike-editor-right {
-  bottom: 16px;
-}
-
 .airstrike-editor-left {
-  left: 16px;
+  left: var(--editor-panel-edge);
   width: var(--editor-left-width);
   display: grid;
   grid-template-rows: auto auto minmax(0, 1fr);
@@ -255,7 +253,7 @@
 }
 
 .airstrike-editor-right {
-  right: 16px;
+  right: var(--editor-panel-edge);
   width: var(--editor-right-width);
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
@@ -754,11 +752,11 @@
 
 .airstrike-editor-restore-bottom {
   left: calc(var(--editor-left-width) + 32px);
-  bottom: 42px;
+  bottom: calc(var(--editor-bottom-bar-clearance) + 10px);
 }
 
 .airstrike-editor.is-left-collapsed .airstrike-editor-restore-bottom {
-  left: 18px;
+  left: calc(var(--editor-panel-edge) + 2px);
 }
 
 .airstrike-editor-restore-bottom::before {
@@ -1202,7 +1200,7 @@
   z-index: 7;
   left: calc(var(--editor-left-width) + 32px);
   right: calc(var(--editor-right-width) + 32px);
-  bottom: 16px;
+  bottom: var(--editor-bottom-bar-clearance);
   height: var(--editor-bottom-height);
   display: grid;
   grid-template-rows: auto minmax(0, 1fr);
@@ -1217,11 +1215,11 @@
 }
 
 .airstrike-editor.is-left-collapsed .airstrike-editor-bottom {
-  left: 16px;
+  left: var(--editor-panel-edge);
 }
 
 .airstrike-editor.is-right-collapsed .airstrike-editor-bottom {
-  right: 16px;
+  right: var(--editor-panel-edge);
 }
 
 .airstrike-editor.is-bottom-collapsed .airstrike-editor-bottom {
