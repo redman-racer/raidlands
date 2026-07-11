@@ -83,6 +83,15 @@ type RuntimeVisualProfile = {
   };
 };
 
+type MapView = "iso" | "top";
+
+const isoViewDirections = [
+  new Vector3(0.48, 0.34, 0.58),
+  new Vector3(-0.48, 0.34, 0.58),
+  new Vector3(-0.48, 0.34, -0.58),
+  new Vector3(0.48, 0.34, -0.58),
+];
+
 const roots = Array.from(document.querySelectorAll<HTMLElement>("[data-server-map-viewer]"));
 
 for (const root of roots) {
@@ -201,6 +210,7 @@ class TerrainViewer {
   private readonly onResize = () => this.resize();
   private animationFrame = 0;
   private readonly clockStart = performance.now();
+  private isoViewIndex = -1;
 
   public constructor(
     root: HTMLElement,
@@ -243,7 +253,8 @@ class TerrainViewer {
 
   public mount(): void {
     this.root.appendChild(this.renderer.domElement);
-    this.frameIso();
+    this.frameIso(false);
+    this.bindFloatingViewSelect();
     this.resize();
     window.addEventListener("resize", this.onResize);
     this.animate();
@@ -263,12 +274,18 @@ class TerrainViewer {
     player.start();
   }
 
-  public frameIso(): void {
+  public frameIso(cycle = true): void {
     const size = this.terrain.worldSize || 4500;
     const height = Math.max(220, (this.terrain.maxHeight || 220) - Math.min(this.terrain.minHeight || 0, 0));
+    if (cycle) {
+      this.isoViewIndex = (this.isoViewIndex + 1) % isoViewDirections.length;
+    } else {
+      this.isoViewIndex = 0;
+    }
+    const direction = isoViewDirections[this.isoViewIndex] || isoViewDirections[0]!;
     this.controls.target.set(0, height * 0.22, 0);
     this.camera.up.set(0, 1, 0);
-    this.camera.position.set(size * 0.48, size * 0.34, size * 0.58);
+    this.camera.position.set(size * direction.x, size * direction.y, size * direction.z);
     this.camera.lookAt(this.controls.target);
     this.controls.update();
   }
@@ -280,6 +297,30 @@ class TerrainViewer {
     this.camera.up.set(0, 0, -1);
     this.camera.lookAt(this.controls.target);
     this.controls.update();
+  }
+
+  public setView(view: MapView): void {
+    if (view === "top") {
+      this.frameTop();
+      return;
+    }
+    this.frameIso();
+  }
+
+  private bindFloatingViewSelect(): void {
+    const controls = document.createElement("div");
+    controls.className = "server-terrain-view-select";
+    controls.setAttribute("aria-label", "Map view");
+    controls.innerHTML = `
+      <button type="button" data-map-view="iso" aria-pressed="true" aria-label="Home view" title="Home view">
+        <span aria-hidden="true">Home</span>
+      </button>
+      <button type="button" data-map-view="top" aria-pressed="false" aria-label="Top view" title="Top view">
+        <span aria-hidden="true">Top</span>
+      </button>
+    `;
+    this.root.appendChild(controls);
+    bindMapViewButtons(Array.from(controls.querySelectorAll<HTMLButtonElement>("[data-map-view]")), this);
   }
 
   private createTerrainMesh(): Mesh {
@@ -863,22 +904,21 @@ function createRustMapGridOverlay(terrain: TerrainPayload): Group {
   const half = worldSize / 2;
   const cellSize = rustGridCellSize(worldSize);
   const cells = Math.max(1, Math.ceil(worldSize / cellSize));
-  const lineEnd = -half + cells * cellSize;
   const yOffset = Math.max(8, worldSize * 0.002);
   const positions: number[] = [];
 
   for (let index = 0; index <= cells; index += 1) {
-    const coord = -half + index * cellSize;
-    positions.push(coord, yOffset, half, coord, yOffset, lineEnd);
-    positions.push(-half, yOffset, coord, lineEnd, yOffset, coord);
+    const coord = MathUtils.clamp(-half + index * cellSize, -half, half);
+    positions.push(coord, yOffset, half, coord, yOffset, -half);
+    positions.push(-half, yOffset, coord, half, yOffset, coord);
   }
 
   const geometry = new BufferGeometry();
   geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
   const material = new LineBasicMaterial({
-    color: 0xffd166,
+    color: 0x050607,
     transparent: true,
-    opacity: 0.42,
+    opacity: 0.74,
     depthTest: false,
     depthWrite: false,
   });
@@ -887,13 +927,14 @@ function createRustMapGridOverlay(terrain: TerrainPayload): Group {
   lines.renderOrder = 30;
   group.add(lines);
 
-  const labelSize = MathUtils.clamp(cellSize * 0.22, 42, 82);
-  for (let index = 0; index < cells; index += 1) {
-    const center = -half + index * cellSize + cellSize / 2;
-    const columnLabel = rustGridColumnLabel(index);
-    const rowLabel = String(index);
-    group.add(createGridLabelSprite(columnLabel, labelSize, center, half - cellSize * 0.22, yOffset + 24));
-    group.add(createGridLabelSprite(rowLabel, labelSize, -half + cellSize * 0.22, half - index * cellSize - cellSize / 2, yOffset + 24));
+  const labelSize = MathUtils.clamp(cellSize * 0.18, 34, 62);
+  for (let row = 0; row < cells; row += 1) {
+    for (let col = 0; col < cells; col += 1) {
+      const label = `${rustGridColumnLabel(col)}${row}`;
+      const x = -half + col * cellSize + cellSize * 0.18;
+      const z = half - row * cellSize - cellSize * 0.18;
+      group.add(createGridLabelSprite(label, labelSize, x, z, yOffset + 24));
+    }
   }
 
   return group;
@@ -920,29 +961,25 @@ function rustGridColumnLabel(index: number): string {
 }
 
 function createGridLabelSprite(label: string, size: number, x: number, z: number, y: number): Sprite {
-  const fontSize = 34;
+  const fontSize = 38;
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
 
   if (!context) {
-    return new Sprite(new SpriteMaterial({ color: 0xffd166 }));
+    return new Sprite(new SpriteMaterial({ color: 0x050607 }));
   }
 
   canvas.width = 128;
   canvas.height = 128;
   context.font = `900 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-  context.textAlign = "center";
+  context.textAlign = "left";
   context.textBaseline = "middle";
-  context.fillStyle = "rgba(5, 6, 7, 0.68)";
-  roundRect(context, 20, 32, 88, 64, 10);
-  context.fill();
-  context.strokeStyle = "rgba(255, 209, 102, 0.82)";
-  context.lineWidth = 3;
-  context.stroke();
-  context.fillStyle = "#ffe7a3";
-  context.shadowColor = "rgba(0, 0, 0, 0.72)";
-  context.shadowBlur = 5;
-  context.fillText(label, 64, 65);
+  context.lineJoin = "round";
+  context.strokeStyle = "rgba(255, 246, 218, 0.78)";
+  context.lineWidth = 7;
+  context.strokeText(label, 12, 64);
+  context.fillStyle = "#050607";
+  context.fillText(label, 12, 64);
 
   const texture = new CanvasTexture(canvas);
   texture.colorSpace = SRGBColorSpace;
@@ -1035,19 +1072,20 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): void {
   const buttons = Array.from(panel?.querySelectorAll<HTMLButtonElement>("[data-map-view]") || []);
   const grid = panel?.querySelector<HTMLInputElement>("[data-map-viewer-grid]");
 
-  buttons.forEach((button) => {
-    button.addEventListener("click", () => {
-      buttons.forEach((candidate) => candidate.setAttribute("aria-pressed", String(candidate === button)));
-      if (button.dataset.mapView === "top") {
-        viewer.frameTop();
-      } else {
-        viewer.frameIso();
-      }
-    });
-  });
+  bindMapViewButtons(buttons, viewer);
 
   grid?.addEventListener("change", () => {
     viewer.setGridVisible(grid.checked);
+  });
+}
+
+function bindMapViewButtons(buttons: HTMLButtonElement[], viewer: TerrainViewer): void {
+  buttons.forEach((button) => {
+    button.addEventListener("click", () => {
+      const view: MapView = button.dataset.mapView === "top" ? "top" : "iso";
+      buttons.forEach((candidate) => candidate.setAttribute("aria-pressed", String(candidate.dataset.mapView === view)));
+      viewer.setView(view);
+    });
   });
 }
 

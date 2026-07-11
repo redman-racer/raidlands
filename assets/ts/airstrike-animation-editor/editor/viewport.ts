@@ -110,6 +110,12 @@ const maximumFloorDivisions = 120;
 const preferredGridCellSize = 20;
 const terrainMinimumPatchSize = 800;
 const terrainPatchPadding = 1.45;
+const isoViewDirections = [
+  new Vector3(0.52, 0.46, 0.72),
+  new Vector3(-0.52, 0.46, 0.72),
+  new Vector3(-0.52, 0.46, -0.72),
+  new Vector3(0.52, 0.46, -0.72),
+];
 
 export class AirstrikeViewport {
   private readonly container: HTMLElement;
@@ -152,6 +158,7 @@ export class AirstrikeViewport {
   private rideYawDegrees = 0;
   private ridePitchDegrees = 0;
   private ridePointerId = -1;
+  private isoViewIndex = -1;
   private worldReference: WorldReference = { seed: 1337, worldSize: 4500, mapName: "Procedural preview" };
   private sceneExtrasEnabled = true;
   private terrainReferenceEnabled = true;
@@ -346,7 +353,7 @@ export class AirstrikeViewport {
 
   public setOrientation(orientation: ViewOrientation): void {
     const directions: Record<ViewOrientation, Vector3> = {
-      iso: new Vector3(0.52, 0.46, 0.72),
+      iso: isoViewDirections[0]!.clone(),
       top: new Vector3(0, 1, 0.001),
       bottom: new Vector3(0, -1, 0.001),
       front: new Vector3(0, 0.12, 1),
@@ -354,6 +361,11 @@ export class AirstrikeViewport {
       left: new Vector3(-1, 0.12, 0),
       right: new Vector3(1, 0.12, 0),
     };
+    if (orientation === "iso") {
+      this.isoViewIndex = (this.isoViewIndex + 1) % isoViewDirections.length;
+      this.snapCameraToDirection(isoViewDirections[this.isoViewIndex]!.clone(), orientation);
+      return;
+    }
     this.snapCameraToDirection(directions[orientation] ?? directions.iso, orientation);
   }
 

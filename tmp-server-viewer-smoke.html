@@ -1,0 +1,31 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <title>Server Viewer Smoke</title>
+    <link rel="stylesheet" href="/raidlands/assets/css/styles.css">
+    <style>
+      body { margin: 0; background: #050607; }
+      .server-terrain-viewer { width: 900px; height: 560px; min-height: 560px; margin: 24px; }
+    </style>
+  </head>
+  <body>
+    <div class="server-terrain-panel">
+      <div class="server-terrain-controls">
+        <button type="button" data-map-view="iso" aria-pressed="true">ISO</button>
+        <button type="button" data-map-view="top" aria-pressed="false">TOP</button>
+        <label><input type="checkbox" checked data-map-viewer-grid> Grid</label>
+      </div>
+      <div
+        class="server-terrain-viewer"
+        data-server-map-viewer
+        data-grid-overlay="true"
+        data-world-size="900"
+        data-terrain-url='data:application/json,{"resolution":3,"worldSize":900,"minHeight":0,"maxHeight":120,"heights":[0,40,0,35,120,35,0,40,0]}'
+        aria-label="Smoke terrain viewer">
+        <p class="server-terrain-status" data-map-viewer-status>Loading terrain.</p>
+      </div>
+    </div>
+    <script type="module" src="/raidlands/assets/build/airstrike-animation-editor/server-map-viewer.js"></script>
+  </body>
+</html>

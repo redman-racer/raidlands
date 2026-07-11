@@ -1636,6 +1636,46 @@ h3,
   height: 100%;
 }
 
+.server-terrain-view-select {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  z-index: 3;
+  display: inline-flex;
+  gap: 6px;
+  padding: 6px;
+  border: 1px solid rgba(243, 238, 227, .16);
+  background: rgba(5, 6, 7, .72);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .34);
+  backdrop-filter: blur(10px);
+}
+
+.server-terrain-view-select button {
+  min-width: 44px;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid rgba(243, 238, 227, .16);
+  border-radius: 4px;
+  color: var(--muted);
+  background: rgba(0, 0, 0, .38);
+  font: 900 .72rem var(--font-body);
+  letter-spacing: 0;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.server-terrain-view-select button:hover,
+.server-terrain-view-select button:focus-visible {
+  outline: none;
+  border-color: rgba(255, 138, 40, .62);
+  color: var(--white);
+}
+
+.server-terrain-view-select button[aria-pressed="true"] {
+  color: var(--black);
+  background: var(--orange);
+}
+
 .server-terrain-status {
   position: absolute;
   inset: 18px;
