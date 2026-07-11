@@ -107,14 +107,11 @@ $editor_config = [
             <div>
               <p class="section-kicker">Portable Airstrikes</p>
               <h1>Animation editor</h1>
+              <p class="airstrike-editor-current-profile"><span data-editor-title>New profile</span> <span class="status-pill" data-editor-dirty>Clean</span></p>
             </div>
           </div>
           <div class="airstrike-editor-toolbar-actions">
             <span class="airstrike-editor-state" data-editor-state>Loading profiles...</span>
-            <button class="btn btn-secondary btn-small" type="button" data-editor-validate>Validate</button>
-            <button class="btn btn-secondary btn-small" type="button" data-editor-compile>Compile Preview</button>
-            <button class="btn btn-primary btn-small" type="button" data-editor-save>Save Draft</button>
-            <button class="btn btn-primary btn-small" type="button" data-editor-publish="sync">Publish &amp; Sync</button>
           </div>
         </div>
       </header>
@@ -135,15 +132,13 @@ $editor_config = [
       </aside>
 
       <section class="airstrike-editor-center">
-        <div class="airstrike-editor-stage-head">
-          <div>
-            <p class="section-kicker">3D ordnance editor</p>
-            <h2 data-editor-title>New profile</h2>
-          </div>
-          <span class="status-pill" data-editor-dirty>Clean</span>
-        </div>
         <div class="airstrike-editor-viewport-shell">
           <div class="airstrike-editor-viewport" data-editor-viewport aria-label="Airstrike waypoint viewport"></div>
+          <div class="airstrike-editor-panel-restore" aria-label="Hidden editor panels">
+            <button class="btn btn-secondary btn-small airstrike-editor-restore-left" type="button" data-editor-toggle-panel="left">Profiles</button>
+            <button class="btn btn-secondary btn-small airstrike-editor-restore-right" type="button" data-editor-toggle-panel="right">Inspector</button>
+            <button class="btn btn-secondary btn-small airstrike-editor-restore-bottom" type="button" data-editor-toggle-panel="bottom">Timeline</button>
+          </div>
           <div class="airstrike-editor-viewport-meta">
             <span data-editor-vehicle-meta>Proxy preview</span>
             <span>Target-relative Unity source, Three.js render conversion</span>

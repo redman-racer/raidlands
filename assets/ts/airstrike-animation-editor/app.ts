@@ -286,6 +286,7 @@ class AirstrikeEditorApp {
       },
     });
     this.bindEvents();
+    this.bindMenus();
     this.restorePanelState();
     this.initializePaletteDock();
   }
@@ -361,6 +362,47 @@ class AirstrikeEditorApp {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
         event.preventDefault();
         void this.saveDraft();
+      }
+    });
+  }
+
+  private bindMenus(): void {
+    const menus = Array.from(this.elements.root.querySelectorAll<HTMLDetailsElement>(".airstrike-editor-menu"));
+    if (menus.length === 0) {
+      return;
+    }
+
+    const closeMenus = (except?: HTMLDetailsElement): void => {
+      menus.forEach((menu) => {
+        if (menu !== except) {
+          menu.open = false;
+        }
+      });
+    };
+
+    menus.forEach((menu) => {
+      menu.addEventListener("toggle", () => {
+        if (menu.open) {
+          closeMenus(menu);
+        }
+      });
+      menu.querySelectorAll<HTMLButtonElement | HTMLAnchorElement>("button, a").forEach((control) => {
+        control.addEventListener("click", () => {
+          window.setTimeout(() => closeMenus(), 0);
+        });
+      });
+    });
+
+    document.addEventListener("pointerdown", (event) => {
+      const target = event.target;
+      if (!(target instanceof Node) || menus.some((menu) => menu.contains(target))) {
+        return;
+      }
+      closeMenus();
+    });
+    document.addEventListener("keydown", (event) => {
+      if (event.key === "Escape") {
+        closeMenus();
       }
     });
   }

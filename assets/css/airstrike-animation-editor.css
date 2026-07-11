@@ -12,7 +12,7 @@
 }
 
 .airstrike-editor {
-  --editor-toolbar-height: 92px;
+  --editor-toolbar-height: 84px;
   --editor-left-width: 292px;
   --editor-right-width: 420px;
   --editor-bottom-height: 232px;
@@ -166,8 +166,27 @@
 }
 
 .airstrike-editor-brand h1 {
-  font-size: 19px;
+  font-size: 18px;
   line-height: 1.05;
+}
+
+.airstrike-editor-current-profile {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+  min-width: 0;
+  margin: 3px 0 0;
+  color: #91a4a8;
+  font-size: 12px;
+  line-height: 1.1;
+}
+
+.airstrike-editor-current-profile [data-editor-title] {
+  min-width: 0;
+  max-width: 360px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
 }
 
 .airstrike-editor-toolbar-actions {
@@ -195,6 +214,11 @@
   background: rgba(9, 13, 15, .95);
   box-shadow: 0 16px 42px rgba(0, 0, 0, .42);
   transition: transform .18s ease, opacity .18s ease;
+}
+
+.airstrike-editor.is-bottom-collapsed .airstrike-editor-left,
+.airstrike-editor.is-bottom-collapsed .airstrike-editor-right {
+  bottom: 16px;
 }
 
 .airstrike-editor-left {
@@ -283,31 +307,8 @@
   color: #fff;
 }
 
-.airstrike-editor-panel-head,
-.airstrike-editor-stage-head {
+.airstrike-editor-panel-head {
   justify-content: space-between;
-}
-
-.airstrike-editor-stage-head {
-  position: absolute;
-  z-index: 5;
-  top: 16px;
-  left: calc(var(--editor-left-width) + 42px);
-  right: calc(var(--editor-right-width) + 42px);
-  min-height: 48px;
-  padding: 10px 12px;
-  border: 1px solid rgba(129, 167, 174, .18);
-  border-radius: 8px;
-  background: rgba(8, 12, 14, .78);
-  box-shadow: 0 12px 38px rgba(0, 0, 0, .24);
-}
-
-.airstrike-editor.is-left-collapsed .airstrike-editor-stage-head {
-  left: 18px;
-}
-
-.airstrike-editor.is-right-collapsed .airstrike-editor-stage-head {
-  right: 18px;
 }
 
 .airstrike-editor-left input[type="search"],
@@ -395,6 +396,7 @@
   background: rgba(5, 9, 11, .76);
   color: #bdd2d7;
   font-size: 12px;
+  transition: left .18s ease, right .18s ease, bottom .18s ease;
 }
 
 .airstrike-editor.is-left-collapsed .airstrike-editor-viewport-meta {
@@ -405,11 +407,40 @@
   right: 18px;
 }
 
+.airstrike-editor.is-bottom-collapsed .airstrike-editor-viewport-meta {
+  bottom: 18px;
+}
+
 .airstrike-editor-viewport-meta span {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+}
+
+.airstrike-editor-panel-restore {
+  position: absolute;
+  z-index: 8;
+  top: 14px;
+  left: 16px;
+  right: 16px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  pointer-events: none;
+}
+
+.airstrike-editor-panel-restore button {
+  display: none;
+  pointer-events: auto;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, .32);
+}
+
+.airstrike-editor.is-left-collapsed .airstrike-editor-restore-left,
+.airstrike-editor.is-right-collapsed .airstrike-editor-restore-right,
+.airstrike-editor.is-bottom-collapsed .airstrike-editor-restore-bottom {
+  display: inline-flex;
 }
 
 .airstrike-editor-palette-groups {
