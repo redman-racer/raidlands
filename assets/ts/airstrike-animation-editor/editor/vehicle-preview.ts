@@ -17,7 +17,7 @@ import type { VehiclePreviewMetadata, VehiclePreviewMetadataFile } from "../type
 
 const DEFAULT_METADATA: VehiclePreviewMetadata = {
   vehicle: "f15",
-  modelUrl: "/assets/airstrike-animation-editor/models/f15.glb",
+  modelUrl: "/assets/airstrike-animation-editor/models/f15/scene.gltf",
   prefabLabel: "assets/scripts/entity/misc/f15/f15e.prefab",
   scale: 1,
   positionCorrection: { x: 0, y: 0, z: 0 },

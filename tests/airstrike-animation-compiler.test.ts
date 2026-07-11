@@ -1,4 +1,4 @@
-import { readFile, readdir } from "node:fs/promises";
+import { access, readFile, readdir } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -24,6 +24,24 @@ async function json<T>(path: string): Promise<T> {
 }
 
 describe("airstrike animation golden fixtures", () => {
+  it("keeps vehicle preview metadata pointed at browser-loadable local assets", async () => {
+    const metadata = await json<VehiclePreviewMetadataFile>(metadataPath);
+
+    for (const [vehicle, preview] of Object.entries(metadata.vehicles)) {
+      expect(preview.modelUrl, vehicle).not.toContain(".prefab");
+      expect(preview.modelUrl, vehicle).toMatch(/\.(gltf|glb)(?:$|\?)/);
+
+      const localPath = preview.modelUrl.startsWith("/assets/")
+        ? resolve(preview.modelUrl.slice(1))
+        : preview.modelUrl.startsWith("assets/")
+          ? resolve(preview.modelUrl)
+          : null;
+
+      expect(localPath, vehicle).not.toBeNull();
+      await expect(access(localPath!)).resolves.toBeUndefined();
+    }
+  });
+
   it("recompiles every expected canonical bundle byte-for-byte", async () => {
     const metadata = await json<VehiclePreviewMetadataFile>(metadataPath);
     const directories = (await readdir(fixtureRoot, { withFileTypes: true }))

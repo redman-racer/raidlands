@@ -3,7 +3,7 @@
   "vehicles": {
     "a10": {
       "vehicle": "a10",
-      "modelUrl": "/assets/airstrike-animation-editor/models/a10.glb",
+      "modelUrl": "/assets/airstrike-animation-editor/models/f15/scene.gltf",
       "prefabLabel": "assets/scripts/entity/misc/f15/f15e.prefab",
       "scale": 1,
       "positionCorrection": { "x": 0, "y": 0, "z": 0 },
@@ -59,7 +59,7 @@
     },
     "f15": {
       "vehicle": "f15",
-      "modelUrl": "/assets/scripts/entity/misc/f15/f15e.prefab",
+      "modelUrl": "/assets/airstrike-animation-editor/models/f15/scene.gltf",
       "prefabLabel": "assets/scripts/entity/misc/f15/f15e.prefab",
       "scale": 1,
       "positionCorrection": { "x": 0, "y": 0, "z": 0 },
