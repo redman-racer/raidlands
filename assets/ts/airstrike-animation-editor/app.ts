@@ -1,5 +1,5 @@
 import { Vector3 } from "three";
-import { AirstrikeViewport } from "./editor/viewport";
+import { AirstrikeViewport, type ViewOrientation } from "./editor/viewport";
 import {
   addManualRelease,
   availableHardpoints,
@@ -334,6 +334,9 @@ class AirstrikeEditorApp {
     this.elements.frameRoute.addEventListener("click", () => this.viewport.frameRoute());
     this.elements.frameVehicle.addEventListener("click", () => this.viewport.frameVehicle());
     this.elements.frameTarget.addEventListener("click", () => this.viewport.frameTarget());
+    this.elements.root.querySelectorAll<HTMLButtonElement>("[data-editor-orientation]").forEach((button) => {
+      button.addEventListener("click", () => this.setViewportOrientation(String(button.dataset.editorOrientation || "")));
+    });
     this.elements.root.querySelectorAll<HTMLButtonElement>("[data-editor-toggle-panel]").forEach((button) => {
       button.addEventListener("click", () => this.togglePanel(String(button.dataset.editorTogglePanel || "")));
     });
@@ -1097,6 +1100,13 @@ class AirstrikeEditorApp {
     this.viewport.updateReleaseVisibilityMode(
       mode === "all" || mode === "selected" || mode === "current" ? mode : "near",
     );
+  }
+
+  private setViewportOrientation(value: string): void {
+    const orientations: ViewOrientation[] = ["iso", "top", "bottom", "front", "back", "left", "right"];
+    if (orientations.includes(value as ViewOrientation)) {
+      this.viewport.setOrientation(value as ViewOrientation);
+    }
   }
 
   private handleGlobalSpeedInput(): void {

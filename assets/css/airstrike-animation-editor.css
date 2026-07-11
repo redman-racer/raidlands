@@ -486,6 +486,130 @@
   height: 100%;
 }
 
+.airstrike-editor-orientation {
+  position: absolute;
+  top: 18px;
+  right: calc(var(--editor-right-width) + 42px);
+  z-index: 7;
+  display: grid;
+  grid-template-columns: 46px 62px 46px;
+  grid-template-rows: 26px 62px 26px 26px;
+  gap: 5px;
+  width: 164px;
+  padding: 8px;
+  border: 1px solid rgba(129, 167, 174, .22);
+  border-radius: 8px;
+  background: rgba(5, 9, 11, .72);
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .34);
+  transition: right .18s ease, opacity .18s ease;
+  user-select: none;
+}
+
+.airstrike-editor.is-right-collapsed .airstrike-editor-orientation {
+  right: 18px;
+}
+
+.airstrike-editor-orientation-face,
+.airstrike-editor-orientation-cube {
+  appearance: none;
+  min-width: 0;
+  border: 1px solid rgba(129, 167, 174, .28);
+  border-radius: 6px;
+  background: rgba(12, 19, 21, .86);
+  color: #cde7ec;
+  font: 900 10px/1 var(--font-body, Arial, sans-serif);
+  text-transform: uppercase;
+  cursor: pointer;
+  transition: border-color .16s ease, background .16s ease, color .16s ease, transform .16s ease, box-shadow .16s ease;
+}
+
+.airstrike-editor-orientation-face:hover,
+.airstrike-editor-orientation-face:focus-visible,
+.airstrike-editor-orientation-cube:hover,
+.airstrike-editor-orientation-cube:focus-visible {
+  outline: none;
+  border-color: rgba(54, 197, 230, .72);
+  background: rgba(21, 51, 58, .94);
+  color: #fff;
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .24);
+}
+
+.airstrike-editor-orientation-face:active,
+.airstrike-editor-orientation-cube:active {
+  transform: translateY(1px);
+}
+
+.airstrike-editor-orientation-face-top {
+  grid-area: 1 / 2;
+}
+
+.airstrike-editor-orientation-face-left {
+  grid-area: 2 / 1;
+  align-self: center;
+  height: 34px;
+}
+
+.airstrike-editor-orientation-face-right {
+  grid-area: 2 / 3;
+  align-self: center;
+  height: 34px;
+}
+
+.airstrike-editor-orientation-face-front {
+  grid-area: 3 / 2;
+}
+
+.airstrike-editor-orientation-face-bottom {
+  grid-area: 4 / 1 / 5 / 2;
+}
+
+.airstrike-editor-orientation-face-back {
+  grid-area: 4 / 3 / 5 / 4;
+}
+
+.airstrike-editor-orientation-cube {
+  position: relative;
+  grid-area: 2 / 2;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  overflow: hidden;
+  background: radial-gradient(circle at 50% 24%, rgba(54, 197, 230, .2), rgba(6, 12, 14, .86) 72%);
+}
+
+.airstrike-editor-orientation-cube span {
+  position: absolute;
+  display: block;
+  border: 1px solid rgba(211, 241, 247, .24);
+  background: rgba(54, 197, 230, .18);
+}
+
+.airstrike-editor-orientation-cube-top {
+  top: 14px;
+  left: 18px;
+  width: 28px;
+  height: 16px;
+  transform: skewX(-38deg);
+  background: rgba(255, 209, 102, .24);
+}
+
+.airstrike-editor-orientation-cube-left {
+  top: 30px;
+  left: 12px;
+  width: 28px;
+  height: 22px;
+  transform: skewY(28deg);
+}
+
+.airstrike-editor-orientation-cube-right {
+  top: 30px;
+  right: 12px;
+  width: 28px;
+  height: 22px;
+  transform: skewY(-28deg);
+  background: rgba(115, 214, 239, .26);
+}
+
 .airstrike-editor-viewport-meta {
   position: absolute;
   left: calc(var(--editor-left-width) + 42px);
@@ -564,8 +688,7 @@
 
 .airstrike-editor-restore-left {
   left: 10px;
-  top: 50%;
-  transform: translateY(-50%);
+  top: calc(var(--editor-toolbar-height) + var(--editor-dock-gap) + 10px);
 }
 
 .airstrike-editor-restore-left::before {
@@ -574,8 +697,7 @@
 
 .airstrike-editor-restore-right {
   right: 10px;
-  top: 50%;
-  transform: translateY(-50%);
+  top: calc(var(--editor-toolbar-height) + var(--editor-dock-gap) + 10px);
 }
 
 .airstrike-editor-restore-right::before {
@@ -583,9 +705,12 @@
 }
 
 .airstrike-editor-restore-bottom {
-  left: 50%;
+  right: calc(var(--editor-right-width) + 44px);
   bottom: 10px;
-  transform: translateX(-50%);
+}
+
+.airstrike-editor.is-right-collapsed .airstrike-editor-restore-bottom {
+  right: 28px;
 }
 
 .airstrike-editor-restore-bottom::before {

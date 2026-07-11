@@ -39,6 +39,7 @@ type ViewportStatus = {
 };
 
 export type ReleaseVisibilityMode = "all" | "near" | "current" | "selected";
+export type ViewOrientation = "iso" | "top" | "bottom" | "front" | "back" | "left" | "right";
 
 export interface AirstrikeViewportOptions {
   assetBase: string;
@@ -189,6 +190,19 @@ export class AirstrikeViewport {
   public frameTarget(): void {
     const targetBounds = new Box3().setFromCenterAndSize(new Vector3(0, 20, 0), new Vector3(80, 80, 80));
     this.frameBox(targetBounds);
+  }
+
+  public setOrientation(orientation: ViewOrientation): void {
+    const directions: Record<ViewOrientation, Vector3> = {
+      iso: new Vector3(0.72, 0.46, 0.52),
+      top: new Vector3(0, 1, 0.001),
+      bottom: new Vector3(0, -1, 0.001),
+      front: new Vector3(0, 0.12, 1),
+      back: new Vector3(0, 0.12, -1),
+      left: new Vector3(-1, 0.12, 0),
+      right: new Vector3(1, 0.12, 0),
+    };
+    this.snapCameraToDirection(directions[orientation] ?? directions.iso, orientation);
   }
 
   public dispose(): void {
@@ -461,6 +475,19 @@ export class AirstrikeViewport {
     this.camera.position.copy(frameBounds(this.camera, target, bounds));
     this.camera.lookAt(target);
     this.applyDynamicControls(bounds);
+  }
+
+  private snapCameraToDirection(direction: Vector3, orientation: ViewOrientation): void {
+    const target = this.orbit.target.clone();
+    const distance = Math.max(this.camera.position.distanceTo(target), 80);
+    const normalized = direction.clone().normalize();
+    const cameraUp =
+      orientation === "top" ? new Vector3(0, 0, -1) : orientation === "bottom" ? new Vector3(0, 0, 1) : new Vector3(0, 1, 0);
+    this.camera.up.copy(cameraUp);
+    this.camera.position.copy(target.add(normalized.multiplyScalar(distance)));
+    this.camera.lookAt(this.orbit.target);
+    this.orbit.update();
+    this.applyDynamicControls();
   }
 
   private applyDynamicControls(bounds = this.currentFocusBounds()): void {
