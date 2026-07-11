@@ -162,10 +162,6 @@ $editor_config = [
           </div>
           <div class="airstrike-editor-viewport-meta">
             <span data-editor-vehicle-meta>Proxy preview</span>
-            <label class="airstrike-editor-viewport-toggle" title="Show terrain dressing, scale references, and placeholder scene objects">
-              <input type="checkbox" data-editor-scene-extras checked>
-              <span>Scene extras</span>
-            </label>
             <span>Target-relative Unity source, Three.js render conversion</span>
           </div>
         </div>
@@ -287,6 +283,36 @@ $editor_config = [
                   <div class="airstrike-release-list" data-editor-manual-releases></div>
                   <div class="airstrike-release-editor" data-editor-manual-editor></div>
                   <div class="airstrike-release-editor" data-editor-repeated-editor></div>
+                </div>
+              </details>
+            </div>
+          </section>
+
+          <section class="airstrike-editor-palette-group" aria-label="Ground palettes">
+            <div class="airstrike-editor-palette-group-head">
+              <span>Ground</span>
+              <small>Viewport</small>
+            </div>
+            <div class="airstrike-editor-palette-zone" data-editor-palette-zone="ground">
+              <details class="airstrike-editor-palette" data-editor-palette="ground-reference" open>
+                <summary class="airstrike-editor-palette-summary">
+                  <span class="airstrike-editor-palette-grip" data-editor-palette-drag title="Move panel">||</span>
+                  <span class="airstrike-editor-palette-title"><small>Map</small><strong>Ground</strong></span>
+                  <button class="airstrike-editor-palette-collapse" type="button" data-editor-palette-collapse aria-label="Minimize ground" title="Minimize ground"></button>
+                </summary>
+                <div class="airstrike-editor-palette-body">
+                  <label class="airstrike-editor-checkbox" title="Show the current Rust map heightmap in the viewport">
+                    <input type="checkbox" data-editor-terrain-reference checked>
+                    <span>Map heightmap</span>
+                  </label>
+                  <label class="airstrike-editor-checkbox" title="Show the meter grid on the ground plane">
+                    <input type="checkbox" data-editor-ground-grid checked>
+                    <span>Meter grid</span>
+                  </label>
+                  <label class="airstrike-editor-checkbox" title="Show terrain dressing, scale references, and placeholder scene objects">
+                    <input type="checkbox" data-editor-scene-extras checked>
+                    <span>Scene extras</span>
+                  </label>
                 </div>
               </details>
             </div>

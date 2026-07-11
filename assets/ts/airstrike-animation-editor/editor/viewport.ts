@@ -151,6 +151,8 @@ export class AirstrikeViewport {
   private ridePointerId = -1;
   private worldReference: WorldReference = { seed: 1337, worldSize: 4500, mapName: "Procedural preview" };
   private sceneExtrasEnabled = true;
+  private terrainReferenceEnabled = true;
+  private groundGridEnabled = true;
   private terrainMaterial: MeshStandardMaterial | null = null;
   private readonly ridePointerStart = new Vector2();
   private ridePointerStartYaw = 0;
@@ -226,6 +228,23 @@ export class AirstrikeViewport {
     }
     this.sceneExtrasEnabled = enabled;
     this.createScaleReferenceEntities();
+  }
+
+  public setTerrainReferenceEnabled(enabled: boolean): void {
+    if (this.terrainReferenceEnabled === enabled) {
+      return;
+    }
+    this.terrainReferenceEnabled = enabled;
+    this.syncSceneFloor();
+    this.createScaleReferenceEntities();
+  }
+
+  public setGroundGridEnabled(enabled: boolean): void {
+    if (this.groundGridEnabled === enabled) {
+      return;
+    }
+    this.groundGridEnabled = enabled;
+    this.syncSceneFloor();
   }
 
   public updateProfile(profile: EditorSourceProfile, selectedWaypointId: string, scrubTime = this.scrubTime): void {
@@ -369,20 +388,22 @@ export class AirstrikeViewport {
     this.terrainReferenceGroup.name = "map-terrain-reference";
     this.sceneExtrasGroup.name = "scene-extra-placeholders";
 
-    this.terrainReferenceGroup.add(this.createTerrainReferenceGroup());
-    this.scaleReferenceGroup.add(this.terrainReferenceGroup);
+    if (this.terrainReferenceEnabled) {
+      this.terrainReferenceGroup.add(this.createTerrainReferenceGroup());
+      this.scaleReferenceGroup.add(this.terrainReferenceGroup);
+    }
 
     if (!this.sceneExtrasEnabled) {
       return;
     }
 
     const standingPlayer = this.createPlayerPlaceholder("scale-player-standing", scaleReferenceMaterials.player);
-    standingPlayer.position.set(-26, 0, 18);
+    this.placeOnGround(standingPlayer, -26, 18);
     standingPlayer.rotation.y = MathUtils.degToRad(18);
     this.sceneExtrasGroup.add(standingPlayer);
 
     const secondPlayer = this.createPlayerPlaceholder("scale-player-near-crates", scaleReferenceMaterials.playerAccent);
-    secondPlayer.position.set(40, 0, -34);
+    this.placeOnGround(secondPlayer, 40, -34);
     secondPlayer.rotation.y = MathUtils.degToRad(-32);
     this.sceneExtrasGroup.add(secondPlayer);
 
@@ -399,7 +420,7 @@ export class AirstrikeViewport {
       crate.position.copy(offset);
       crateStack.add(crate);
     }
-    crateStack.position.set(18, 0, 38);
+    this.placeOnGround(crateStack, 18, 38);
     crateStack.rotation.y = MathUtils.degToRad(-16);
     this.sceneExtrasGroup.add(crateStack);
 
@@ -412,12 +433,12 @@ export class AirstrikeViewport {
       block.rotation.y = MathUtils.degToRad(index === 1 ? 8 : -5);
       barricade.add(block);
     }
-    barricade.position.set(-58, 0, -40);
+    this.placeOnGround(barricade, -58, -40);
     barricade.rotation.y = MathUtils.degToRad(24);
     this.sceneExtrasGroup.add(barricade);
 
     const tower = this.createTowerPlaceholder();
-    tower.position.set(68, 0, 42);
+    this.placeOnGround(tower, 68, 42);
     tower.rotation.y = MathUtils.degToRad(-28);
     this.sceneExtrasGroup.add(tower);
     this.scaleReferenceGroup.add(this.sceneExtrasGroup);
@@ -607,6 +628,19 @@ export class AirstrikeViewport {
     const c = terrainPayload.heights[z1 * resolution + x0] || a;
     const d = terrainPayload.heights[z1 * resolution + x1] || c;
     return MathUtils.lerp(MathUtils.lerp(a, b, tx), MathUtils.lerp(c, d, tx), tz);
+  }
+
+  private currentGroundHeightAt(worldX: number, worldZ: number): number {
+    if (this.worldReference.terrain) {
+      const patch = this.currentTerrainPatch(this.worldReference.terrain.worldSize || this.worldReference.worldSize);
+      const baseHeight = this.sampleTerrainHeight(this.worldReference.terrain, patch.center.x, patch.center.z);
+      return this.sampleTerrainHeight(this.worldReference.terrain, worldX, worldZ) - baseHeight;
+    }
+    return this.proceduralTerrainHeight(worldX, worldZ, this.worldReference.seed || 1337);
+  }
+
+  private placeOnGround(object: Object3D, worldX: number, worldZ: number, verticalOffset = 0): void {
+    object.position.set(worldX, this.currentGroundHeightAt(worldX, worldZ) + verticalOffset, worldZ);
   }
 
   private terrainTextureUv(terrainPayload: TerrainReferencePayload, worldX: number, worldZ: number): Vector2 {
@@ -1074,12 +1108,16 @@ export class AirstrikeViewport {
       this.scene.remove(this.grid);
       this.grid.geometry.dispose();
     }
-    this.grid = new GridHelper(floorSize, divisions, 0x23434a, 0x142a30);
-    this.grid.name = "meter-grid";
-    this.grid.position.set(floorCenterX, 0, floorCenterZ);
-    this.scene.add(this.grid);
+    if (this.groundGridEnabled) {
+      this.grid = new GridHelper(floorSize, divisions, 0x23434a, 0x142a30);
+      this.grid.name = "meter-grid";
+      this.grid.position.set(floorCenterX, 0, floorCenterZ);
+      this.scene.add(this.grid);
+    } else {
+      this.grid = null;
+    }
 
-    if (this.worldReference.terrain) {
+    if (this.worldReference.terrain && this.terrainReferenceEnabled) {
       if (this.ground) {
         this.scene.remove(this.ground);
         this.ground.geometry.dispose();

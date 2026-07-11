@@ -103,6 +103,8 @@ interface EditorElements {
   followVehicle: HTMLInputElement;
   rideVehicle: HTMLInputElement;
   sceneExtras: HTMLInputElement;
+  terrainReference: HTMLInputElement;
+  groundGrid: HTMLInputElement;
   releaseVisibility: HTMLSelectElement;
   addRelease: HTMLButtonElement;
   duplicateRelease: HTMLButtonElement;
@@ -358,6 +360,12 @@ class AirstrikeEditorApp {
     });
     this.elements.sceneExtras.addEventListener("change", () => {
       this.viewport.setSceneExtrasEnabled(this.elements.sceneExtras.checked);
+    });
+    this.elements.terrainReference.addEventListener("change", () => {
+      this.viewport.setTerrainReferenceEnabled(this.elements.terrainReference.checked);
+    });
+    this.elements.groundGrid.addEventListener("change", () => {
+      this.viewport.setGroundGridEnabled(this.elements.groundGrid.checked);
     });
     this.elements.releaseVisibility.addEventListener("change", () => this.handleReleaseVisibilityChange());
     this.elements.globalSpeed.addEventListener("input", () => this.handleGlobalSpeedInput());
@@ -1981,6 +1989,8 @@ function collectElements(root: HTMLElement): EditorElements {
     followVehicle: query(root, "[data-editor-follow-vehicle]"),
     rideVehicle: query(root, "[data-editor-ride-vehicle]"),
     sceneExtras: query(root, "[data-editor-scene-extras]"),
+    terrainReference: query(root, "[data-editor-terrain-reference]"),
+    groundGrid: query(root, "[data-editor-ground-grid]"),
     releaseVisibility: query(root, "[data-editor-release-visibility]"),
     addRelease: query(root, "[data-editor-release-add]"),
     duplicateRelease: query(root, "[data-editor-release-duplicate]"),
