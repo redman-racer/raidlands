@@ -517,7 +517,7 @@ class TerrainViewer {
     this.focusCamera({
       position: new Vector3(0, size * 0.86, 0.001),
       target: new Vector3(0, 0, 0),
-      up: new Vector3(0, 0, -1),
+      up: new Vector3(0, 0, 1),
     });
   }
 
@@ -1348,8 +1348,8 @@ function createRustMapGridOverlay(terrain: TerrainPayload): Group {
   const group = new Group();
   const worldSize = terrain.worldSize || 4500;
   const half = worldSize / 2;
-  const cellSize = rustGridCellSize(worldSize);
-  const cells = Math.max(1, Math.ceil(worldSize / cellSize));
+  const cells = rustGridCellCount(worldSize);
+  const cellSize = worldSize / cells;
   const yOffset = Math.max(8, worldSize * 0.002);
   const lineMaterialOptions = {
     color: 0x050607,
@@ -1368,7 +1368,7 @@ function createRustMapGridOverlay(terrain: TerrainPayload): Group {
   const labelSize = MathUtils.clamp(cellSize * 0.34, 54, 92);
   for (let row = 0; row < cells; row += 1) {
     for (let col = 0; col < cells; col += 1) {
-      const label = `${rustGridColumnLabel(col)}${row}`;
+      const label = `${rustGridColumnLabel(col)}${row + 1}`;
       const x = -half + col * cellSize + cellSize * 0.5;
       const z = half - row * cellSize - cellSize * 0.5;
       group.add(createGridLabelSprite(label, labelSize, x, z, yOffset + 24));
@@ -1388,12 +1388,16 @@ function createGridLineSegment(positions: number[], fadeX: number, fadeZ: number
   return line;
 }
 
+function rustGridCellCount(worldSize: number): number {
+  return Math.max(1, Math.round(worldSize / rustGridCellSize(worldSize)));
+}
+
 function rustGridCellSize(worldSize: number): number {
   if (worldSize <= 2000) {
     return 100;
   }
 
-  return 150;
+  return 250;
 }
 
 function rustGridColumnLabel(index: number): string {
