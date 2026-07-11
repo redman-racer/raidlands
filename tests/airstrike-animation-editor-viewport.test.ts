@@ -6,7 +6,13 @@ import {
   threeQuaternionToUnityValue,
   unityQuaternionValueToThreeQuaternion,
 } from "../assets/ts/airstrike-animation-editor/editor/coordinates";
-import { updateWaypointField, updateWaypointPositionFromThree } from "../assets/ts/airstrike-animation-editor/editor/waypoint-source";
+import {
+  addWaypointAtTime,
+  deleteWaypoint,
+  duplicateWaypoint,
+  updateWaypointField,
+  updateWaypointPositionFromThree,
+} from "../assets/ts/airstrike-animation-editor/editor/waypoint-source";
 import { quaternionDot, unityEulerQuaternion } from "../assets/ts/airstrike-animation-editor/index";
 import type { EditorSourceProfile } from "../assets/ts/airstrike-animation-editor/index";
 
@@ -81,5 +87,29 @@ describe("airstrike editor waypoint source updates", () => {
 
     expect(rotated.Waypoints.map((waypoint) => waypoint.Id)).toEqual(["wp_001", "wp_003", "wp_002"]);
     expect(rotated.Waypoints[1]).toMatchObject({ Id: "wp_003", Time: 1, RotationZ: 37.25 });
+  });
+
+  it("adds, duplicates, and deletes waypoints while preserving route constraints", () => {
+    const source = profileFixture();
+    const added = addWaypointAtTime(source, 1);
+    expect(added.profile.Waypoints.map((waypoint) => waypoint.Id)).toContain(added.waypointId);
+    expect(added.profile.Waypoints.find((waypoint) => waypoint.Id === added.waypointId)).toMatchObject({
+      Time: 1,
+      X: expect.any(Number),
+      RotationZ: expect.any(Number),
+    });
+
+    const duplicated = duplicateWaypoint(added.profile, added.waypointId);
+    expect(duplicated.waypointId).not.toBe(added.waypointId);
+    expect(duplicated.profile.Waypoints).toHaveLength(5);
+
+    const deleted = deleteWaypoint(duplicated.profile, duplicated.waypointId);
+    expect(deleted.Waypoints).toHaveLength(4);
+
+    const minimum = deleteWaypoint(
+      { ...source, Waypoints: source.Waypoints.slice(0, 2) },
+      source.Waypoints[0]!.Id,
+    );
+    expect(minimum.Waypoints).toHaveLength(2);
   });
 });

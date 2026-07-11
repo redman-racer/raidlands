@@ -415,6 +415,15 @@
   grid-column: 1 / -1;
 }
 
+.airstrike-waypoint-inspector p {
+  grid-column: 1 / -1;
+  margin: 2px 0 -2px;
+  color: #d9f6ff;
+  font-size: 11px;
+  font-weight: 700;
+  text-transform: uppercase;
+}
+
 .airstrike-waypoint-inspector input {
   width: 100%;
   min-width: 0;

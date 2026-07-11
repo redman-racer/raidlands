@@ -27,6 +27,9 @@ import {
   setWaypointTargetSpeed,
 } from "./editor/speed-normalization";
 import {
+  addWaypointAtTime,
+  deleteWaypoint,
+  duplicateWaypoint,
   firstWaypointId,
   findWaypoint,
   updateWaypointField,
@@ -73,6 +76,9 @@ interface EditorElements {
   waypointTitle: HTMLElement;
   waypointSpeed: HTMLInputElement;
   waypointSpeedMph: HTMLElement;
+  addWaypoint: HTMLButtonElement;
+  duplicateWaypoint: HTMLButtonElement;
+  deleteWaypoint: HTMLButtonElement;
   globalSpeed: HTMLInputElement;
   globalSpeedMph: HTMLElement;
   releaseMode: HTMLSelectElement;
@@ -299,6 +305,9 @@ class AirstrikeEditorApp {
     this.elements.search.addEventListener("input", () => this.renderProfiles());
     this.elements.timeRange.addEventListener("input", () => this.setScrubTime(Number(this.elements.timeRange.value)));
     this.elements.timeNumber.addEventListener("input", () => this.setScrubTime(Number(this.elements.timeNumber.value)));
+    this.elements.addWaypoint.addEventListener("click", () => this.handleAddWaypoint());
+    this.elements.duplicateWaypoint.addEventListener("click", () => this.handleDuplicateWaypoint());
+    this.elements.deleteWaypoint.addEventListener("click", () => this.handleDeleteWaypoint());
     this.elements.normalizeTimes.addEventListener("click", () => this.handleNormalizeTimes());
     this.elements.inferSpeeds.addEventListener("click", () => this.handleInferSpeeds());
     this.elements.play.addEventListener("click", () => this.togglePlayback());
@@ -567,6 +576,8 @@ class AirstrikeEditorApp {
     const profile = this.state.profile;
     const waypoint = profile ? findWaypoint(profile, this.state.selectedWaypointId) : undefined;
     this.elements.waypointTitle.textContent = waypoint ? waypoint.Id : "No waypoint selected";
+    this.elements.duplicateWaypoint.disabled = !waypoint;
+    this.elements.deleteWaypoint.disabled = !waypoint || !profile || profile.Waypoints.length <= 2;
     this.elements.root.querySelectorAll<HTMLInputElement>("[data-editor-waypoint-field]").forEach((input) => {
       const field = input.dataset.editorWaypointField as EditableWaypointField | undefined;
       input.disabled = !waypoint || !field;
@@ -914,6 +925,44 @@ class AirstrikeEditorApp {
     }
   }
 
+  private handleAddWaypoint(): void {
+    if (!this.state.profile) {
+      return;
+    }
+    const result = addWaypointAtTime(this.state.profile, this.state.scrubTime);
+    this.applyProfile(result.profile, true);
+    this.selectWaypoint(result.waypointId);
+  }
+
+  private handleDuplicateWaypoint(): void {
+    if (!this.state.profile || !this.state.selectedWaypointId) {
+      return;
+    }
+    const result = duplicateWaypoint(this.state.profile, this.state.selectedWaypointId);
+    this.applyProfile(result.profile, true);
+    if (result.waypointId) {
+      this.selectWaypoint(result.waypointId);
+      const duplicated = findWaypoint(result.profile, result.waypointId);
+      if (duplicated) {
+        this.setScrubTime(duplicated.Time);
+      }
+    }
+  }
+
+  private handleDeleteWaypoint(): void {
+    if (!this.state.profile || !this.state.selectedWaypointId) {
+      return;
+    }
+    if (this.state.profile.Waypoints.length <= 2) {
+      this.showFeedback("A route needs at least two waypoints.", "error");
+      return;
+    }
+    const deletedId = this.state.selectedWaypointId;
+    const next = deleteWaypoint(this.state.profile, deletedId);
+    this.applyProfile(next, true);
+    this.selectWaypoint(this.state.selectedWaypointId);
+  }
+
   private handleNormalizeTimes(): void {
     if (!this.state.profile) {
       return;
@@ -1221,6 +1270,9 @@ function collectElements(root: HTMLElement): EditorElements {
     waypointTitle: query(root, "[data-editor-waypoint-title]"),
     waypointSpeed: query(root, "[data-editor-waypoint-speed]"),
     waypointSpeedMph: query(root, "[data-editor-waypoint-speed-mph]"),
+    addWaypoint: query(root, "[data-editor-waypoint-add]"),
+    duplicateWaypoint: query(root, "[data-editor-waypoint-duplicate]"),
+    deleteWaypoint: query(root, "[data-editor-waypoint-delete]"),
     globalSpeed: query(root, "[data-editor-global-speed]"),
     globalSpeedMph: query(root, "[data-editor-global-speed-mph]"),
     releaseMode: query(root, "[data-editor-release-mode]"),

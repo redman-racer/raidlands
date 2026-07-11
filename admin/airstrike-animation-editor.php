@@ -138,11 +138,18 @@ $editor_config = [
           <p class="section-kicker">Waypoint</p>
           <h3 data-editor-waypoint-title>No waypoint selected</h3>
           <p class="airstrike-editor-muted">Moves the selected route point. Time controls when the vehicle reaches it.</p>
+          <div class="airstrike-editor-inline-actions">
+            <button class="btn btn-secondary btn-small" type="button" data-editor-waypoint-add>Add At Time</button>
+            <button class="btn btn-secondary btn-small" type="button" data-editor-waypoint-duplicate>Duplicate</button>
+            <button class="btn btn-secondary btn-small" type="button" data-editor-waypoint-delete>Delete</button>
+          </div>
           <div class="airstrike-waypoint-inspector">
             <label><span>Time</span><input type="number" step="0.01" data-editor-waypoint-field="Time"></label>
+            <p>Position</p>
             <label><span>X</span><input type="number" step="0.1" data-editor-waypoint-field="X"></label>
             <label><span>Y</span><input type="number" step="0.1" data-editor-waypoint-field="Y"></label>
             <label><span>Z</span><input type="number" step="0.1" data-editor-waypoint-field="Z"></label>
+            <p>Rotation offset</p>
             <label><span>Rot X</span><input type="number" step="0.1" data-editor-waypoint-field="RotationX"></label>
             <label><span>Rot Y</span><input type="number" step="0.1" data-editor-waypoint-field="RotationY"></label>
             <label><span>Rot Z</span><input type="number" step="0.1" data-editor-waypoint-field="RotationZ"></label>
