@@ -545,7 +545,7 @@ export class AirstrikeViewport {
     const resolution = Math.max(2, Math.min(terrainPayload.resolution, 129));
     const worldSize = Math.max(100, terrainPayload.worldSize || this.worldReference.worldSize || 4500);
     const patch = this.currentTerrainPatch(worldSize);
-    const baseHeight = this.sampleTerrainHeight(terrainPayload, patch.center.x, patch.center.z);
+    const baseHeight = this.terrainReferenceBaseHeight(terrainPayload);
     const positions: number[] = [];
     const uvs: number[] = [];
     const colors: number[] = [];
@@ -632,11 +632,14 @@ export class AirstrikeViewport {
 
   private currentGroundHeightAt(worldX: number, worldZ: number): number {
     if (this.worldReference.terrain) {
-      const patch = this.currentTerrainPatch(this.worldReference.terrain.worldSize || this.worldReference.worldSize);
-      const baseHeight = this.sampleTerrainHeight(this.worldReference.terrain, patch.center.x, patch.center.z);
+      const baseHeight = this.terrainReferenceBaseHeight(this.worldReference.terrain);
       return this.sampleTerrainHeight(this.worldReference.terrain, worldX, worldZ) - baseHeight;
     }
     return this.proceduralTerrainHeight(worldX, worldZ, this.worldReference.seed || 1337);
+  }
+
+  private terrainReferenceBaseHeight(terrainPayload: TerrainReferencePayload): number {
+    return this.sampleTerrainHeight(terrainPayload, 0, 0);
   }
 
   private placeOnGround(object: Object3D, worldX: number, worldZ: number, verticalOffset = 0): void {
