@@ -1,6 +1,7 @@
 import {
   BoxGeometry,
   BoxHelper,
+  Box3,
   CircleGeometry,
   ConeGeometry,
   Group,
@@ -19,7 +20,7 @@ const DEFAULT_METADATA: VehiclePreviewMetadata = {
   vehicle: "f15",
   modelUrl: "/assets/airstrike-animation-editor/models/f15/scene.gltf",
   prefabLabel: "assets/scripts/entity/misc/f15/f15e.prefab",
-  scale: 1,
+  scale: 0.00000185,
   positionCorrection: { x: 0, y: 0, z: 0 },
   rotationCorrection: { x: 0, y: 0, z: 0 },
   bounds: { x: 13, y: 5.5, z: 19.5 },
@@ -82,6 +83,17 @@ function addBounds(group: Group): void {
   const helper = new BoxHelper(group, 0x6ee7ff);
   helper.name = "vehicle-bounds";
   group.add(helper);
+}
+
+function centerLoadedScene(scene: Object3D): void {
+  scene.updateMatrixWorld(true);
+  const box = new Box3().setFromObject(scene);
+  if (box.isEmpty()) {
+    return;
+  }
+  const center = new Vector3();
+  box.getCenter(center);
+  scene.position.sub(center);
 }
 
 function addPlaneProxy(group: Group, metadata: VehiclePreviewMetadata): void {
@@ -147,7 +159,6 @@ export function createVehicleProxy(metadata: VehiclePreviewMetadata): Group {
   }
   addHardpointMarkers(group, metadata);
   addBounds(group);
-  group.scale.setScalar(metadata.scale || 1);
   return group;
 }
 
@@ -165,6 +176,7 @@ export async function loadVehiclePreview(
     const gltf = await loader.loadAsync(resolvedUrl);
     const group = new Group();
     group.name = `vehicle-glb:${metadata.vehicle}`;
+    centerLoadedScene(gltf.scene);
     group.add(gltf.scene);
     group.scale.setScalar(metadata.scale || 1);
     const correction = unityPositionToThreeVector(metadata.positionCorrection);
