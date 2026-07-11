@@ -2,6 +2,7 @@ import {
   AmbientLight,
   Box3,
   BoxGeometry,
+  BufferAttribute,
   BufferGeometry,
   Color,
   ConeGeometry,
@@ -40,6 +41,14 @@ type ViewportStatus = {
   prefabLabel: string;
   modelState: string;
 };
+
+export interface WorldReference {
+  seed: number;
+  worldSize: number;
+  mapName: string;
+  mapImageUrl?: string;
+  heightmapUrl?: string;
+}
 
 export type ReleaseVisibilityMode = "all" | "near" | "current" | "selected";
 export type ViewOrientation = "iso" | "top" | "bottom" | "front" | "back" | "left" | "right";
@@ -120,6 +129,7 @@ export class AirstrikeViewport {
   private rideYawDegrees = 0;
   private ridePitchDegrees = 0;
   private ridePointerId = -1;
+  private worldReference: WorldReference = { seed: 1337, worldSize: 4500, mapName: "Procedural preview" };
   private readonly ridePointerStart = new Vector2();
   private ridePointerStartYaw = 0;
   private ridePointerStartPitch = 0;
@@ -170,6 +180,19 @@ export class AirstrikeViewport {
     if (this.profile) {
       this.loadVehicleForProfile(this.profile);
     }
+  }
+
+  public updateWorldReference(reference: Partial<WorldReference>): void {
+    const seed = Number(reference.seed);
+    const worldSize = Number(reference.worldSize);
+    this.worldReference = {
+      seed: Number.isFinite(seed) && seed > 0 ? seed : this.worldReference.seed,
+      worldSize: Number.isFinite(worldSize) && worldSize > 0 ? worldSize : this.worldReference.worldSize,
+      mapName: String(reference.mapName || this.worldReference.mapName || "Procedural preview"),
+      mapImageUrl: reference.mapImageUrl || this.worldReference.mapImageUrl,
+      heightmapUrl: reference.heightmapUrl || this.worldReference.heightmapUrl,
+    };
+    this.createScaleReferenceEntities();
   }
 
   public updateProfile(profile: EditorSourceProfile, selectedWaypointId: string, scrubTime = this.scrubTime): void {
@@ -360,88 +383,139 @@ export class AirstrikeViewport {
     const terrain = new Group();
     terrain.name = "scale-terrain-placeholders";
 
-    const dirtGeometry = new BoxGeometry(34, 0.18, 104);
-    const dirtSegments = [
-      { position: new Vector3(-88, 0.08, -28), yaw: 18 },
-      { position: new Vector3(-54, 0.1, -6), yaw: 28 },
-      { position: new Vector3(-18, 0.12, 12), yaw: 20 },
-      { position: new Vector3(22, 0.1, 24), yaw: 10 },
-      { position: new Vector3(62, 0.08, 32), yaw: -4 },
-    ];
-    for (const segment of dirtSegments) {
-      const path = new Mesh(dirtGeometry, scaleReferenceMaterials.dirt);
-      path.name = "scale-dirt-track";
-      path.position.copy(segment.position);
-      path.rotation.y = MathUtils.degToRad(segment.yaw);
-      terrain.add(path);
-    }
+    const seed = this.worldReference.seed || 1337;
+    const worldScale = MathUtils.clamp((this.worldReference.worldSize || 4500) / 4500, 0.65, 1.45);
+    const terrainSize = 340 * worldScale;
+    const terrainSegments = 48;
+    const terrainGeometry = new PlaneGeometry(terrainSize, terrainSize, terrainSegments, terrainSegments);
+    const positions = terrainGeometry.getAttribute("position") as BufferAttribute;
 
-    const moundGeometry = new ConeGeometry(1, 1, 18);
-    const mounds = [
-      { position: new Vector3(-82, 2, 52), scale: new Vector3(34, 4, 26), yaw: -12 },
-      { position: new Vector3(86, 2.5, -58), scale: new Vector3(46, 5, 32), yaw: 28 },
-      { position: new Vector3(6, 1.35, -78), scale: new Vector3(28, 2.7, 22), yaw: 4 },
-    ];
-    for (const mound of mounds) {
-      const mesh = new Mesh(moundGeometry, scaleReferenceMaterials.grass);
-      mesh.name = "scale-terrain-mound";
-      mesh.position.copy(mound.position);
-      mesh.scale.copy(mound.scale);
-      mesh.rotation.y = MathUtils.degToRad(mound.yaw);
-      terrain.add(mesh);
+    for (let index = 0; index < positions.count; index += 1) {
+      const x = positions.getX(index);
+      const z = positions.getY(index);
+      positions.setZ(index, this.proceduralTerrainHeight(x, z, seed));
     }
+    positions.needsUpdate = true;
+    terrainGeometry.computeVertexNormals();
 
-    const treePlacements = [
-      { position: new Vector3(-102, 0, 38), scale: 1.15 },
-      { position: new Vector3(-120, 0, 62), scale: 0.85 },
-      { position: new Vector3(-76, 0, 74), scale: 1 },
-      { position: new Vector3(82, 0, -82), scale: 1.2 },
-      { position: new Vector3(110, 0, -54), scale: 0.92 },
-      { position: new Vector3(122, 0, -86), scale: 0.78 },
-      { position: new Vector3(38, 0, 86), scale: 0.95 },
-      { position: new Vector3(62, 0, 100), scale: 0.72 },
-    ];
-    for (const [index, placement] of treePlacements.entries()) {
-      const tree = this.createTreePlaceholder(`scale-tree-${index + 1}`, placement.scale);
-      tree.position.copy(placement.position);
-      tree.rotation.y = MathUtils.degToRad(index * 31);
+    const terrainMesh = new Mesh(terrainGeometry, scaleReferenceMaterials.grass);
+    terrainMesh.name = "procedural-terrain-preview";
+    terrainMesh.rotation.x = -Math.PI / 2;
+    terrain.add(terrainMesh);
+
+    const road = this.createProceduralRoad(seed, terrainSize);
+    terrain.add(road);
+
+    const random = this.seededRandom(seed ^ 0xa517);
+    for (let index = 0; index < 34; index += 1) {
+      const side = index % 2 === 0 ? -1 : 1;
+      const x = (random() - 0.5) * terrainSize * 0.85;
+      const z = side * (terrainSize * (0.26 + random() * 0.2));
+      const height = this.proceduralTerrainHeight(x, z, seed);
+      const tree = this.createTreePlaceholder(`scale-tree-${index + 1}`, 0.55 + random() * 0.85);
+      tree.position.set(x, height, z);
+      tree.rotation.y = MathUtils.degToRad(random() * 360);
       terrain.add(tree);
     }
 
+    const moundGeometry = new ConeGeometry(1, 1, 18);
+    for (let index = 0; index < 5; index += 1) {
+      const x = (random() - 0.5) * terrainSize * 0.72;
+      const z = (random() - 0.5) * terrainSize * 0.72;
+      const mesh = new Mesh(moundGeometry, scaleReferenceMaterials.grass);
+      mesh.name = "scale-terrain-mound";
+      mesh.position.set(x, this.proceduralTerrainHeight(x, z, seed) + 1.4, z);
+      mesh.scale.set(18 + random() * 26, 2.8 + random() * 4, 14 + random() * 22);
+      mesh.rotation.y = MathUtils.degToRad(random() * 360);
+      terrain.add(mesh);
+    }
+
     const rockGeometry = new BoxGeometry(6, 3, 4);
-    const rocks = [
-      { position: new Vector3(-44, 1.5, 64), scale: new Vector3(1.4, 0.8, 1.1), yaw: 22 },
-      { position: new Vector3(-38, 1.1, 72), scale: new Vector3(0.8, 0.6, 0.7), yaw: -18 },
-      { position: new Vector3(76, 1.4, 72), scale: new Vector3(1.2, 0.7, 1.7), yaw: 44 },
-      { position: new Vector3(104, 1.25, 18), scale: new Vector3(0.9, 0.75, 1.1), yaw: 8 },
-    ];
-    for (const rock of rocks) {
+    for (let index = 0; index < 12; index += 1) {
+      const x = (random() - 0.5) * terrainSize * 0.8;
+      const z = (random() - 0.5) * terrainSize * 0.8;
       const mesh = new Mesh(rockGeometry, scaleReferenceMaterials.rock);
       mesh.name = "scale-rock";
-      mesh.position.copy(rock.position);
-      mesh.scale.copy(rock.scale);
-      mesh.rotation.set(MathUtils.degToRad(5), MathUtils.degToRad(rock.yaw), MathUtils.degToRad(-7));
+      mesh.position.set(x, this.proceduralTerrainHeight(x, z, seed) + 1.2, z);
+      mesh.scale.set(0.55 + random() * 1.25, 0.45 + random() * 0.6, 0.55 + random() * 1.3);
+      mesh.rotation.set(MathUtils.degToRad(random() * 12), MathUtils.degToRad(random() * 360), MathUtils.degToRad(random() * -12));
       terrain.add(mesh);
     }
 
     const scrubGeometry = new ConeGeometry(4.5, 4, 8);
-    const scrubPlacements = [
-      new Vector3(-16, 2, -48),
-      new Vector3(-2, 2, -54),
-      new Vector3(22, 2, -52),
-      new Vector3(54, 2, -14),
-      new Vector3(54, 2, 0),
-      new Vector3(-64, 2, 8),
-    ];
-    for (const [index, position] of scrubPlacements.entries()) {
+    for (let index = 0; index < 18; index += 1) {
+      const x = (random() - 0.5) * terrainSize * 0.72;
+      const z = (random() - 0.5) * terrainSize * 0.72;
       const scrub = new Mesh(scrubGeometry, scaleReferenceMaterials.grass);
       scrub.name = "scale-scrub";
-      scrub.position.copy(position);
-      scrub.rotation.y = MathUtils.degToRad(index * 27);
+      scrub.position.set(x, this.proceduralTerrainHeight(x, z, seed) + 1.8, z);
+      scrub.scale.setScalar(0.55 + random() * 0.7);
+      scrub.rotation.y = MathUtils.degToRad(random() * 360);
       terrain.add(scrub);
     }
 
     return terrain;
+  }
+
+  private createProceduralRoad(seed: number, terrainSize: number): Group {
+    const road = new Group();
+    road.name = "procedural-road-preview";
+    const random = this.seededRandom(seed ^ 0x42d3);
+    const segmentCount = 7;
+    const segmentDepth = terrainSize / segmentCount;
+    const roadGeometry = new BoxGeometry(24, 0.22, segmentDepth * 1.12);
+    let x = (random() - 0.5) * terrainSize * 0.28;
+
+    for (let index = 0; index < segmentCount; index += 1) {
+      const z = -terrainSize * 0.5 + segmentDepth * (index + 0.5);
+      x += (random() - 0.5) * 18;
+      const y = this.proceduralTerrainHeight(x, z, seed) + 0.16;
+      const segment = new Mesh(roadGeometry, scaleReferenceMaterials.dirt);
+      segment.name = "scale-dirt-track";
+      segment.position.set(x, y, z);
+      segment.rotation.y = MathUtils.degToRad((random() - 0.5) * 18);
+      road.add(segment);
+    }
+
+    return road;
+  }
+
+  private proceduralTerrainHeight(x: number, z: number, seed: number): number {
+    const continental = this.valueNoise(x * 0.006, z * 0.006, seed) * 17;
+    const hills = this.valueNoise(x * 0.018 + 41, z * 0.018 - 13, seed ^ 0x6d2b) * 7;
+    const detail = this.valueNoise(x * 0.052 - 9, z * 0.052 + 71, seed ^ 0xb529) * 1.8;
+    const targetFlatten = MathUtils.clamp(1 - Math.sqrt(x * x + z * z) / 68, 0, 1);
+    return (continental + hills + detail) * (1 - targetFlatten * 0.68);
+  }
+
+  private valueNoise(x: number, z: number, seed: number): number {
+    const x0 = Math.floor(x);
+    const z0 = Math.floor(z);
+    const tx = this.smoothstep(x - x0);
+    const tz = this.smoothstep(z - z0);
+    const a = this.hashNoise(x0, z0, seed);
+    const b = this.hashNoise(x0 + 1, z0, seed);
+    const c = this.hashNoise(x0, z0 + 1, seed);
+    const d = this.hashNoise(x0 + 1, z0 + 1, seed);
+    return MathUtils.lerp(MathUtils.lerp(a, b, tx), MathUtils.lerp(c, d, tx), tz) * 2 - 1;
+  }
+
+  private hashNoise(x: number, z: number, seed: number): number {
+    let value = Math.imul(x, 374761393) ^ Math.imul(z, 668265263) ^ Math.imul(seed, 2246822519);
+    value = Math.imul(value ^ (value >>> 13), 1274126177);
+    return ((value ^ (value >>> 16)) >>> 0) / 4294967295;
+  }
+
+  private smoothstep(value: number): number {
+    return value * value * (3 - 2 * value);
+  }
+
+  private seededRandom(seed: number): () => number {
+    let state = seed >>> 0;
+    return () => {
+      state = (Math.imul(state, 1664525) + 1013904223) >>> 0;
+      return state / 4294967296;
+    };
   }
 
   private createTreePlaceholder(name: string, scale: number): Group {

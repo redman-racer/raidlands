@@ -1,5 +1,5 @@
 import { Vector3 } from "three";
-import { AirstrikeViewport, type ViewOrientation, type ViewOrientationState } from "./editor/viewport";
+import { AirstrikeViewport, type ViewOrientation, type ViewOrientationState, type WorldReference } from "./editor/viewport";
 import {
   addManualRelease,
   availableHardpoints,
@@ -44,6 +44,7 @@ interface EditorConfig {
   csrf?: string;
   apiBase?: string;
   assetBase?: string;
+  serverStatusUrl?: string;
   managementUrl?: string;
 }
 
@@ -304,6 +305,7 @@ class AirstrikeEditorApp {
     try {
       this.metadata = await this.loadVehicleMetadata();
       this.viewport.updateMetadata(this.metadata);
+      void this.loadWorldReference();
       await this.loadList();
       if (this.config.profileKey) {
         await this.loadProfile(this.config.profileKey);
@@ -1685,6 +1687,43 @@ class AirstrikeEditorApp {
     const payload = await this.request("list.php?include_archived=0", { method: "GET" });
     this.state.profiles = Array.isArray(payload.profiles) ? (payload.profiles as ProfileSummary[]) : [];
     this.renderProfiles();
+  }
+
+  private async loadWorldReference(): Promise<void> {
+    const statusUrl = String(this.config.serverStatusUrl || "../api/server-status.php");
+    try {
+      const response = await fetch(statusUrl, {
+        headers: { Accept: "application/json" },
+        credentials: "same-origin",
+      });
+      if (!response.ok) {
+        return;
+      }
+      const payload = (await response.json()) as {
+        seed?: unknown;
+        worldSize?: unknown;
+        mapName?: unknown;
+        mapImageUrl?: unknown;
+        mapImage?: { url?: unknown; publicUrl?: unknown; heightmapUrl?: unknown };
+      };
+      const reference: Partial<WorldReference> = {
+        seed: Number(payload.seed || 0),
+        worldSize: Number(payload.worldSize || 0),
+        mapName: typeof payload.mapName === "string" ? payload.mapName : "",
+        mapImageUrl:
+          typeof payload.mapImageUrl === "string"
+            ? payload.mapImageUrl
+            : typeof payload.mapImage?.url === "string"
+              ? payload.mapImage.url
+              : typeof payload.mapImage?.publicUrl === "string"
+                ? payload.mapImage.publicUrl
+                : "",
+        heightmapUrl: typeof payload.mapImage?.heightmapUrl === "string" ? payload.mapImage.heightmapUrl : "",
+      };
+      this.viewport.updateWorldReference(reference);
+    } catch {
+      // Offline/local editor sessions keep the default deterministic terrain.
+    }
   }
 
   private async loadProfile(profileKey: string): Promise<void> {

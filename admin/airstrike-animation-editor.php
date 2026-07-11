@@ -30,6 +30,7 @@ $editor_config = [
     'csrf' => raidlands_admin_csrf_token(),
     'apiBase' => $base_path . 'api/admin/airstrike-animations',
     'assetBase' => $base_path . 'assets/',
+    'serverStatusUrl' => $base_path . 'api/server-status.php',
     'managementUrl' => './?section=airstrike-animations',
     'admin' => [
         'id' => is_array($admin_user) ? (int) ($admin_user['id'] ?? 0) : 0,
@@ -125,7 +126,7 @@ $editor_config = [
             <strong>Profiles</strong>
           </div>
           <div class="airstrike-editor-panel-actions">
-            <button class="btn btn-secondary btn-small" type="button" data-editor-new>New</button>
+            <button class="airstrike-editor-action-button airstrike-editor-action-button-compact" type="button" data-editor-new>New</button>
             <button class="airstrike-editor-panel-collapse airstrike-editor-panel-collapse-left" type="button" data-editor-toggle-panel="left" aria-label="Minimize profiles" title="Minimize profiles"></button>
           </div>
         </div>
@@ -218,9 +219,9 @@ $editor_config = [
                 </summary>
                 <div class="airstrike-editor-palette-body">
                   <div class="airstrike-editor-inline-actions">
-                    <button class="btn btn-secondary btn-small" type="button" data-editor-waypoint-add>Add At Time</button>
-                    <button class="btn btn-secondary btn-small" type="button" data-editor-waypoint-duplicate>Duplicate</button>
-                    <button class="btn btn-secondary btn-small" type="button" data-editor-waypoint-delete>Delete</button>
+                    <button class="airstrike-editor-action-button" type="button" data-editor-waypoint-add>Add At Time</button>
+                    <button class="airstrike-editor-action-button" type="button" data-editor-waypoint-duplicate>Duplicate</button>
+                    <button class="airstrike-editor-action-button" type="button" data-editor-waypoint-delete>Delete</button>
                   </div>
                   <div class="airstrike-waypoint-inspector">
                     <label><span>Time</span><input type="number" step="0.01" data-editor-waypoint-field="Time"></label>
@@ -254,8 +255,8 @@ $editor_config = [
                   </label>
                   <p class="airstrike-editor-muted" data-editor-global-speed-mph></p>
                   <div class="airstrike-editor-inline-actions">
-                    <button class="btn btn-secondary btn-small" type="button" data-editor-normalize-times>Normalize Times</button>
-                    <button class="btn btn-secondary btn-small" type="button" data-editor-infer-speeds>Infer From Current Times</button>
+                    <button class="airstrike-editor-action-button" type="button" data-editor-normalize-times>Normalize Times</button>
+                    <button class="airstrike-editor-action-button" type="button" data-editor-infer-speeds>Infer From Current Times</button>
                   </div>
                 </div>
               </details>
@@ -275,9 +276,9 @@ $editor_config = [
                     </select>
                   </label>
                   <div class="airstrike-editor-inline-actions">
-                    <button class="btn btn-secondary btn-small" type="button" data-editor-release-add>Add</button>
-                    <button class="btn btn-secondary btn-small" type="button" data-editor-release-duplicate>Duplicate</button>
-                    <button class="btn btn-secondary btn-small" type="button" data-editor-release-delete>Delete</button>
+                    <button class="airstrike-editor-action-button" type="button" data-editor-release-add>Add</button>
+                    <button class="airstrike-editor-action-button" type="button" data-editor-release-duplicate>Duplicate</button>
+                    <button class="airstrike-editor-action-button" type="button" data-editor-release-delete>Delete</button>
                   </div>
                   <div class="airstrike-release-list" data-editor-manual-releases></div>
                   <div class="airstrike-release-editor" data-editor-manual-editor></div>
