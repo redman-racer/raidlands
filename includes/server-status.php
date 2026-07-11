@@ -1292,6 +1292,7 @@ function raidlands_server_heatmap_history_public(string $metric, string $range, 
         'server_id' => $server_id,
         'wipe_key' => $wipe_key,
         'window_start' => gmdate('Y-m-d H:i:s', $start_aligned),
+        'window_start_bucket' => gmdate('Y-m-d H:i:s', $start_aligned),
         'window_end' => gmdate('Y-m-d H:i:s', $window_end_time),
     ];
     $where = 'server_id = :server_id
@@ -1309,7 +1310,7 @@ function raidlands_server_heatmap_history_public(string $metric, string $range, 
                 MIN(window_start) AS window_start, MAX(window_end) AS window_end
          FROM server_heatmap_buckets
          WHERE ' . $where . '
-         GROUP BY bucket_size, x, z, FLOOR((UNIX_TIMESTAMP(window_end) - UNIX_TIMESTAMP(:window_start)) / ' . $frame_seconds . ')
+         GROUP BY bucket_size, x, z, FLOOR((UNIX_TIMESTAMP(window_end) - UNIX_TIMESTAMP(:window_start_bucket)) / ' . $frame_seconds . ')
          ORDER BY MAX(window_end) ASC, value DESC',
         $params
     );
@@ -1546,6 +1547,75 @@ function raidlands_server_player_locations_public(): array
             'label' => (string) $delay['label'],
             'delaySeconds' => (int) $delay['delay_seconds'],
         ],
+    ];
+}
+
+function raidlands_server_player_locations_history_public(string $range, int $frames = 12): array
+{
+    $range_info = raidlands_server_heatmap_range($range);
+    $delay = raidlands_server_heatmap_viewer_delay();
+    $status = raidlands_server_status_latest();
+    $server_id = (string) ($status['server_id'] ?? raidlands_server_status_server_id());
+    $context = raidlands_server_location_viewer_context($server_id);
+    $frames = max(2, min(96, $frames));
+    $window_end_time = time() - (int) $delay['delay_seconds'];
+    $window_start_time = $range_info['range'] === 'wipe'
+        ? max(0, $window_end_time - (60 * 60 * 24 * 31))
+        : $window_end_time - ((int) $range_info['minutes'] * 60);
+    $duration = max(1, $window_end_time - $window_start_time);
+    $frame_seconds = max(60, (int) ceil($duration / $frames));
+    $start_aligned = $window_end_time - ($frame_seconds * $frames);
+    $frames_payload = [];
+
+    for ($frame = 0; $frame < $frames; $frame += 1) {
+        $frame_start = $start_aligned + ($frame * $frame_seconds);
+        $frame_end = min($window_end_time, $frame_start + $frame_seconds);
+        $players = [];
+
+        if (!empty($context['authenticated'])) {
+            $players = raidlands_server_player_location_rows_for_context($server_id, $context, $frame_end, max(300, $frame_seconds));
+        }
+
+        $frames_payload[] = [
+            'index' => $frame,
+            'label' => gmdate('M j H:i', $frame_end),
+            'windowStart' => gmdate('c', $frame_start),
+            'windowEnd' => gmdate('c', $frame_end),
+            'players' => $players,
+        ];
+    }
+
+    if (!empty($context['authenticated'])) {
+        $has_players = false;
+        foreach ($frames_payload as $frame_payload) {
+            if (!empty($frame_payload['players'])) {
+                $has_players = true;
+                break;
+            }
+        }
+
+        if (!$has_players) {
+            $latest_players = raidlands_server_player_location_rows_for_context($server_id, $context);
+            if (!empty($latest_players)) {
+                $frames_payload[count($frames_payload) - 1]['players'] = $latest_players;
+            }
+        }
+    }
+
+    return [
+        'ok' => true,
+        'authenticated' => !empty($context['authenticated']),
+        'serverId' => $server_id,
+        'range' => $range_info['range'],
+        'rangeLabel' => $range_info['label'],
+        'windowEnd' => gmdate('c', $window_end_time),
+        'frameSeconds' => $frame_seconds,
+        'clanTag' => (string) ($context['clanTag'] ?? ''),
+        'delay' => [
+            'label' => (string) $delay['label'],
+            'delaySeconds' => (int) $delay['delay_seconds'],
+        ],
+        'frames' => $frames_payload,
     ];
 }
 

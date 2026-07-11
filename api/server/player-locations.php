@@ -5,7 +5,11 @@ require_once $site_root . '/includes/store.php';
 require_once $site_root . '/includes/server-status.php';
 
 try {
-    raidlands_store_json_response(raidlands_server_player_locations_public());
+    $playback = !empty($_GET['playback']) && (string) $_GET['playback'] !== '0';
+
+    raidlands_store_json_response($playback
+        ? raidlands_server_player_locations_history_public((string) ($_GET['range'] ?? '24h'), (int) ($_GET['frames'] ?? 12))
+        : raidlands_server_player_locations_public());
 } catch (Throwable $error) {
     raidlands_store_json_response([
         'ok' => false,

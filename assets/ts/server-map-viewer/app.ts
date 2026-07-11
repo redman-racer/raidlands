@@ -140,6 +140,7 @@ type PlayerLocationPayload = {
   ok?: boolean;
   authenticated?: boolean;
   players?: PlayerLocation[];
+  frames?: HeatmapHistoryFrame[];
 };
 
 type ServerStatusPayload = {
@@ -1978,7 +1979,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     heatmapFrameCountLabel.textContent = String(value);
   };
 
-  const showHeatmapFrame = (index: number) => {
+  const showPlaybackFrame = (index: number) => {
     const frame = heatmapHistory[index];
 
     if (!frame) {
@@ -1986,8 +1987,13 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       return;
     }
 
-    viewer.setHeatmap(frame);
-    viewer.setHeatmapVisible(true);
+    if (heatmap?.checked) {
+      viewer.setHeatmap(frame);
+      viewer.setHeatmapVisible(Array.isArray(frame.buckets) && frame.buckets.length > 0);
+    } else {
+      viewer.setHeatmapVisible(false);
+    }
+
     if (players?.checked) {
       viewer.setPlayerLocations({
         ok: true,
@@ -2005,7 +2011,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   const latestVisibleHeatmapFrame = (): number => {
     for (let index = heatmapHistory.length - 1; index >= 0; index -= 1) {
       const frame = heatmapHistory[index];
-      if (Array.isArray(frame?.buckets) && frame.buckets.length > 0) {
+      if ((Array.isArray(frame?.buckets) && frame.buckets.length > 0) || (Array.isArray(frame?.players) && frame.players.length > 0)) {
         return index;
       }
     }
@@ -2013,15 +2019,19 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     return Math.max(0, heatmapHistory.length - 1);
   };
 
-  const reloadHeatmap = () => {
-    if (!heatmap?.checked) {
+  const reloadPlayback = () => {
+    const wantsHeatmap = heatmap?.checked ?? false;
+    const wantsPlayers = players?.checked ?? false;
+
+    if (!wantsHeatmap && !wantsPlayers) {
       stopHeatmapPlayback();
       viewer.setHeatmapVisible(false);
+      viewer.setPlayerLocationsVisible(false);
       return;
     }
 
     if (heatmapPlayback?.checked) {
-      void loadHeatmapHistory(root, metric?.value || "deaths", range?.value || "24h", heatmapFrameCountValue()).then((payload) => {
+      void loadOverlayHistory(root, wantsHeatmap, wantsPlayers, metric?.value || "deaths", range?.value || "24h", heatmapFrameCountValue()).then((payload) => {
         heatmapHistory = Array.isArray(payload.frames) ? payload.frames : [];
         const latestFrame = latestVisibleHeatmapFrame();
         if (heatmapFrame) {
@@ -2029,56 +2039,63 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
           heatmapFrame.value = String(latestFrame);
           heatmapFrame.disabled = heatmapHistory.length === 0;
         }
-        showHeatmapFrame(latestFrame);
+        showPlaybackFrame(latestFrame);
       });
       return;
     }
 
     stopHeatmapPlayback();
-    void loadHeatmap(root, viewer, metric?.value || "deaths", range?.value || "24h");
+    if (wantsHeatmap) {
+      void loadHeatmap(root, viewer, metric?.value || "deaths", range?.value || "24h");
+    } else {
+      viewer.setHeatmapVisible(false);
+    }
+    if (wantsPlayers) {
+      void loadPlayerLocations(root, viewer, myLocation);
+    }
   };
 
-  bind(heatmap, "change", reloadHeatmap);
+  bind(heatmap, "change", reloadPlayback);
   bind(heatmapPlayback, "change", () => {
-    if (heatmapPlayback?.checked && heatmap && !heatmap.checked) {
-      heatmap.checked = true;
+    if (heatmapPlayback?.checked && !heatmap?.checked && players && !players.checked) {
+      players.checked = true;
     }
-    reloadHeatmap();
+    reloadPlayback();
   });
-  bind(metric, "change", reloadHeatmap);
-  bind(range, "change", reloadHeatmap);
+  bind(metric, "change", reloadPlayback);
+  bind(range, "change", reloadPlayback);
   bind(heatmapFrameCount, "input", () => {
     updateFrameCountLabel();
-    if (heatmapPlayback?.checked && heatmap?.checked) {
+    if (heatmapPlayback?.checked && (heatmap?.checked || players?.checked)) {
       stopHeatmapPlayback();
-      reloadHeatmap();
+      reloadPlayback();
     }
   });
   bind(heatmapFrame, "input", () => {
     if (heatmapPlayback && !heatmapPlayback.checked) {
       heatmapPlayback.checked = true;
     }
-    if (heatmap && !heatmap.checked) {
-      heatmap.checked = true;
+    if (!heatmap?.checked && players && !players.checked) {
+      players.checked = true;
     }
     stopHeatmapPlayback();
     if (heatmapHistory.length === 0) {
-      reloadHeatmap();
+      reloadPlayback();
       return;
     }
-    showHeatmapFrame(Number(heatmapFrame?.value) || 0);
+    showPlaybackFrame(Number(heatmapFrame?.value) || 0);
   });
   bind(heatmapPlay, "click", () => {
-    if (heatmap && !heatmap.checked) {
-      heatmap.checked = true;
+    if (!heatmap?.checked && players && !players.checked) {
+      players.checked = true;
     }
     if (heatmapPlayback && !heatmapPlayback.checked) {
       heatmapPlayback.checked = true;
-      reloadHeatmap();
+      reloadPlayback();
       return;
     }
 
-    if (!heatmap?.checked || !heatmapPlayback?.checked || heatmapHistory.length === 0 || !heatmapFrame) {
+    if (!(heatmap?.checked || players?.checked) || !heatmapPlayback?.checked || heatmapHistory.length === 0 || !heatmapFrame) {
       return;
     }
 
@@ -2094,7 +2111,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     playbackTimer = window.setInterval(() => {
       const next = ((Number(heatmapFrame.value) || 0) + 1) % heatmapHistory.length;
       heatmapFrame.value = String(next);
-      showHeatmapFrame(next);
+      showPlaybackFrame(next);
     }, 900);
   });
 
@@ -2116,7 +2133,13 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     }
   };
 
-  bind(players, "change", reloadPlayers);
+  bind(players, "change", () => {
+    if (heatmapPlayback?.checked) {
+      reloadPlayback();
+      return;
+    }
+    reloadPlayers();
+  });
   updateFrameCountLabel();
 
   bind(myLocation, "click", () => {
@@ -2213,6 +2236,53 @@ async function loadHeatmapHistory(root: HTMLElement, metric: string, range: stri
     console.info("Raidlands heat map history could not be loaded.", error);
     return { frames: [] };
   }
+}
+
+async function loadPlayerLocationHistory(root: HTMLElement, range: string, frames = 24): Promise<HeatmapHistoryPayload> {
+  const baseUrl = root.dataset.playerLocationsUrl || "";
+
+  if (!baseUrl) {
+    return { frames: [] };
+  }
+
+  const url = new URL(baseUrl, window.location.href);
+  url.searchParams.set("range", range);
+  url.searchParams.set("playback", "1");
+  url.searchParams.set("frames", String(Math.max(8, Math.min(72, Math.round(frames)))));
+
+  try {
+    const response = await fetch(url.toString(), {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Player location history request failed with HTTP ${response.status}.`);
+    }
+
+    return (await response.json()) as HeatmapHistoryPayload;
+  } catch (error) {
+    console.info("Raidlands player location history could not be loaded.", error);
+    return { frames: [] };
+  }
+}
+
+async function loadOverlayHistory(root: HTMLElement, includeHeatmap: boolean, includePlayers: boolean, metric: string, range: string, frames = 24): Promise<HeatmapHistoryPayload> {
+  const [heatmapPayload, playerPayload] = await Promise.all([
+    includeHeatmap ? loadHeatmapHistory(root, metric, range, frames) : Promise.resolve({ frames: [] }),
+    includePlayers ? loadPlayerLocationHistory(root, range, frames) : Promise.resolve({ frames: [] }),
+  ]);
+  const heatmapFrames = Array.isArray(heatmapPayload.frames) ? heatmapPayload.frames : [];
+  const playerFrames = Array.isArray(playerPayload.frames) ? playerPayload.frames : [];
+  const baseFrames = heatmapFrames.length > 0 ? heatmapFrames : playerFrames;
+
+  return {
+    ...heatmapPayload,
+    frames: baseFrames.map((frame, index) => ({
+      ...frame,
+      players: includePlayers ? (playerFrames[index]?.players || frame.players || []) : frame.players,
+    })),
+  };
 }
 
 async function loadPlayerLocations(root: HTMLElement, viewer: TerrainViewer, myLocation?: HTMLButtonElement | null, showLayer = true): Promise<void> {
