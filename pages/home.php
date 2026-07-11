@@ -174,6 +174,7 @@ $home_is_linked = raidlands_has_linked_account();
             data-texture-url="<?= e($home_server_texture_url) ?>"
             data-airstrike-profiles-url="<?= e($base_path . 'api/airstrike-animation-profiles.php') ?>"
             data-camera-tour="true"
+            data-camera-tour-style="orbit"
             data-camera-locked="true"
             data-grid-overlay="true"
             data-world-size="<?= e((string) ($home_server_map_image['worldSize'] ?? $home_server_status['worldSize'] ?? 0)) ?>"

@@ -93,7 +93,9 @@ type CameraPose = {
   up: Vector3;
 };
 
-type CameraTourKind = "coastal-sweep" | "ridge-crossing" | "monument-orbit" | "map-run";
+type CameraTourKind = "coastal-sweep" | "ridge-crossing" | "monument-orbit" | "map-run" | "home-orbit";
+
+type CameraTourStyle = "cinematic" | "orbit";
 
 type HeatmapBucket = {
   bucketSize: number;
@@ -138,27 +140,64 @@ type PlayerLocationPayload = {
   players?: PlayerLocation[];
 };
 
+type ServerStatusPayload = {
+  ok?: boolean;
+  mapImage?: ServerStatusMapImage | null;
+  mapImageUrl?: string;
+  worldSize?: number;
+  seed?: number;
+  fetchedAt?: string;
+};
+
+type ServerStatusMapImage = {
+  terrainUrl?: string;
+  terrainPublicUrl?: string;
+  terrainHash?: string;
+  textureUrl?: string;
+  url?: string;
+  publicUrl?: string;
+  hash?: string;
+  worldSize?: number;
+  seed?: number;
+  publishedAt?: string;
+  updatedAt?: string;
+  generatedAt?: string;
+};
+
+type ViewerBinding = {
+  dispose: () => void;
+};
+
+type TerrainViewerInstance = {
+  viewer: TerrainViewer;
+  binding: ViewerBinding;
+};
+
 const isoViewDirections = [
-  new Vector3(0, 0.56, 0.74),
-  new Vector3(0.48, 0.34, 0.58),
-  new Vector3(-0.48, 0.34, 0.58),
+  new Vector3(0, 0.56, -0.74),
   new Vector3(-0.48, 0.34, -0.58),
   new Vector3(0.48, 0.34, -0.58),
+  new Vector3(0.48, 0.34, 0.58),
+  new Vector3(-0.48, 0.34, 0.58),
 ];
 
 const roots = Array.from(document.querySelectorAll<HTMLElement>("[data-server-map-viewer]"));
 
 for (const root of roots) {
-  void initTerrainViewer(root);
+  void initTerrainViewer(root).then((instance) => {
+    if (instance) {
+      bindLiveTerrainUpdates(root, instance);
+    }
+  });
 }
 
-async function initTerrainViewer(root: HTMLElement): Promise<void> {
+async function initTerrainViewer(root: HTMLElement): Promise<TerrainViewerInstance | null> {
   const terrainUrl = root.dataset.terrainUrl || "";
   const status = root.querySelector<HTMLElement>("[data-map-viewer-status]");
 
   if (!terrainUrl) {
     setStatus(status, "Terrain export pending.");
-    return;
+    return null;
   }
 
   try {
@@ -178,13 +217,146 @@ async function initTerrainViewer(root: HTMLElement): Promise<void> {
     });
 
     viewer.mount();
-    bindExternalControls(root, viewer);
+    const binding = bindExternalControls(root, viewer);
     void bindAirstrikePreview(root, viewer);
     setStatus(status, "");
+    root.dataset.mapFingerprint = terrainViewerFingerprint(root);
+    return { viewer, binding };
   } catch (error) {
     console.info("Raidlands terrain viewer could not be loaded.", error);
     setStatus(status, "Terrain export pending.");
+    return null;
   }
+}
+
+function bindLiveTerrainUpdates(root: HTMLElement, initial: TerrainViewerInstance): void {
+  const statusUrl = root.dataset.statusUrl || "";
+
+  if (!statusUrl) {
+    return;
+  }
+
+  let instance: TerrainViewerInstance | null = initial;
+  let pollTimer = 0;
+  let polling = false;
+
+  const schedule = (delay = liveTerrainPollDelayMs()) => {
+    window.clearTimeout(pollTimer);
+    pollTimer = window.setTimeout(() => {
+      void poll();
+    }, delay);
+  };
+
+  const poll = async () => {
+    if (polling) {
+      schedule();
+      return;
+    }
+
+    if (document.visibilityState === "hidden") {
+      schedule();
+      return;
+    }
+
+    polling = true;
+
+    try {
+      const metadata = await loadLatestTerrainMetadata(root, statusUrl);
+      if (!metadata) {
+        schedule();
+        return;
+      }
+
+      const nextFingerprint = metadata.fingerprint;
+      if (nextFingerprint === "" || nextFingerprint === (root.dataset.mapFingerprint || "")) {
+        schedule();
+        return;
+      }
+
+      setStatus(root.querySelector<HTMLElement>("[data-map-viewer-status]"), "Refreshing terrain.");
+      root.dataset.terrainUrl = metadata.terrainUrl;
+      root.dataset.textureUrl = metadata.textureUrl;
+      root.dataset.worldSize = metadata.worldSize > 0 ? String(metadata.worldSize) : (root.dataset.worldSize || "");
+      root.dataset.terrainHash = metadata.terrainHash || "";
+      root.dataset.mapPublishedAt = metadata.publishedAt || "";
+
+      instance?.binding.dispose();
+      instance?.viewer.dispose();
+      instance = await initTerrainViewer(root);
+      if (instance) {
+        root.dataset.mapFingerprint = nextFingerprint;
+      }
+    } catch (error) {
+      console.info("Raidlands terrain viewer live refresh skipped.", error);
+    } finally {
+      polling = false;
+      schedule();
+    }
+  };
+
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") {
+      void poll();
+    }
+  });
+
+  schedule(liveTerrainPollDelayMs() + 1200);
+}
+
+async function loadLatestTerrainMetadata(root: HTMLElement, statusUrl: string): Promise<ServerStatusMapImage & { terrainUrl: string; textureUrl: string; worldSize: number; fingerprint: string } | null> {
+  const response = await fetch(new URL(statusUrl, window.location.href).toString(), {
+    cache: "no-store",
+    headers: { Accept: "application/json" },
+  });
+
+  if (!response.ok) {
+    throw new Error(`Server status request failed with HTTP ${response.status}.`);
+  }
+
+  const payload = (await response.json()) as ServerStatusPayload;
+  const mapImage = payload.mapImage && typeof payload.mapImage === "object" ? payload.mapImage : null;
+  const terrainUrl = String(mapImage?.terrainUrl || mapImage?.terrainPublicUrl || "");
+
+  if (terrainUrl === "") {
+    return null;
+  }
+
+  const textureUrl = String(mapImage?.textureUrl || mapImage?.url || mapImage?.publicUrl || payload.mapImageUrl || root.dataset.textureUrl || "");
+  const worldSize = Math.max(0, Number(mapImage?.worldSize || payload.worldSize || root.dataset.worldSize || 0));
+  const metadata = {
+    ...mapImage,
+    terrainUrl,
+    textureUrl,
+    worldSize,
+    fingerprint: "",
+  };
+  metadata.fingerprint = terrainMetadataFingerprint(mapImage || metadata);
+
+  return metadata;
+}
+
+function terrainViewerFingerprint(root: HTMLElement): string {
+  return [
+    root.dataset.terrainHash || "",
+    root.dataset.terrainUrl || "",
+    root.dataset.textureUrl || "",
+    root.dataset.worldSize || "",
+    root.dataset.mapPublishedAt || "",
+  ].join("|");
+}
+
+function terrainMetadataFingerprint(metadata: Partial<ServerStatusMapImage> & { terrainUrl?: string; textureUrl?: string; worldSize?: number }): string {
+  return [
+    metadata.terrainHash || "",
+    metadata.terrainUrl || metadata.terrainPublicUrl || "",
+    metadata.textureUrl || "",
+    String(metadata.worldSize || ""),
+    metadata.publishedAt || metadata.updatedAt || metadata.generatedAt || "",
+  ].join("|");
+}
+
+function liveTerrainPollDelayMs(): number {
+  return 16000;
 }
 
 function normalizeTerrain(value: unknown, root: HTMLElement): TerrainPayload {
@@ -274,6 +446,7 @@ class TerrainViewer {
   private tourKind: CameraTourKind = "coastal-sweep";
   private tourIndex = -1;
   private tourEnabled: boolean;
+  private readonly tourStyle: CameraTourStyle;
   private readonly lockCameraInput: boolean;
   private transitionFrom: CameraPose | null = null;
   private transitionTo: CameraPose | null = null;
@@ -291,6 +464,7 @@ class TerrainViewer {
     this.textureUrl = options.textureUrl;
     this.status = options.status;
     this.tourEnabled = this.root.dataset.cameraTour === "true";
+    this.tourStyle = this.root.dataset.cameraTourStyle === "orbit" ? "orbit" : "cinematic";
     this.lockCameraInput = this.root.dataset.cameraLocked === "true";
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.outputColorSpace = SRGBColorSpace;
@@ -346,6 +520,20 @@ class TerrainViewer {
     this.root.classList.add("is-loaded");
   }
 
+  public dispose(): void {
+    window.cancelAnimationFrame(this.animationFrame);
+    window.removeEventListener("resize", this.onResize);
+    this.controls.dispose();
+    this.scene.traverse((object) => {
+      if (object instanceof Mesh || object instanceof Sprite || object instanceof LineSegments) {
+        disposeGeometryMaterial(object as Mesh | Sprite | LineSegments);
+      }
+    });
+    this.renderer.dispose();
+    this.renderer.domElement.remove();
+    this.root.classList.remove("is-loaded");
+  }
+
   public setGridVisible(visible: boolean): void {
     this.gridLayer.visible = visible;
     this.updateGridOpacity();
@@ -393,9 +581,10 @@ class TerrainViewer {
         return;
       }
 
+      const bucketPosition = rustWorldToViewerPosition(bucket.x, 0, bucket.z);
       const bucketSize = MathUtils.clamp(Number(bucket.bucketSize) || 100, 25, 1000);
       const height = MathUtils.lerp(44, Math.max(120, bucketSize * 1.7), Math.sqrt(normalized));
-      const baseY = sampleTerrainHeight(this.terrain, bucket.x, bucket.z) + 18;
+      const baseY = sampleTerrainHeight(this.terrain, bucketPosition.x, bucketPosition.z) + 18;
       const color = heatmapRampColor(normalized);
       const material = new SpriteMaterial({
         map: texture,
@@ -411,7 +600,7 @@ class TerrainViewer {
         const sprite = new Sprite(material.clone());
         const spread = 1 + layer * 0.26;
         sprite.name = "heatmap-cloud-column";
-        sprite.position.set(bucket.x, baseY + height * (0.24 + layer * 0.23), bucket.z);
+        sprite.position.set(bucketPosition.x, baseY + height * (0.24 + layer * 0.23), bucketPosition.z);
         sprite.scale.set(bucketSize * spread, height * (0.82 - layer * 0.12), 1);
         sprite.renderOrder = 12 + layer;
         this.heatmapLayer.add(sprite);
@@ -433,7 +622,8 @@ class TerrainViewer {
       }
 
       const isSelf = player.isSelf === true;
-      const y = Math.max(Number(player.y) || 0, sampleTerrainHeight(this.terrain, x, z)) + (isSelf ? 72 : 58);
+      const playerPosition = rustWorldToViewerPosition(x, Number(player.y) || 0, z);
+      const y = Math.max(playerPosition.y, sampleTerrainHeight(this.terrain, playerPosition.x, playerPosition.z)) + (isSelf ? 72 : 58);
       const sprite = new Sprite(new SpriteMaterial({
         map: createPlayerLocationTexture(player, isSelf),
         transparent: true,
@@ -442,7 +632,7 @@ class TerrainViewer {
       }));
       const size = isSelf ? 135 : 112;
       sprite.name = isSelf ? "raidlands-player-location-self" : "raidlands-player-location-clan";
-      sprite.position.set(x, y, z);
+      sprite.position.set(playerPosition.x, y, playerPosition.z);
       sprite.scale.set(size, size, 1);
       sprite.userData.baseScale = size;
       sprite.renderOrder = isSelf ? 42 : 40;
@@ -470,12 +660,13 @@ class TerrainViewer {
 
     this.setPlayerLocationsVisible(true);
     const worldSize = this.terrain.worldSize || 4500;
-    const ground = Math.max(Number(player.y) || 0, sampleTerrainHeight(this.terrain, x, z));
-    const target = new Vector3(x, ground + 42, z);
+    const playerPosition = rustWorldToViewerPosition(x, Number(player.y) || 0, z);
+    const ground = Math.max(playerPosition.y, sampleTerrainHeight(this.terrain, playerPosition.x, playerPosition.z));
+    const target = new Vector3(playerPosition.x, ground + 42, playerPosition.z);
     const cameraOffset = MathUtils.clamp(worldSize * 0.085, 280, 560);
 
     this.focusCamera({
-      position: new Vector3(x - cameraOffset * 0.62, ground + cameraOffset * 0.72, z + cameraOffset * 0.78),
+      position: new Vector3(playerPosition.x - cameraOffset * 0.62, ground + cameraOffset * 0.72, playerPosition.z + cameraOffset * 0.78),
       target,
       up: new Vector3(0, 1, 0),
     });
@@ -638,8 +829,9 @@ class TerrainViewer {
 
     monuments.forEach((monument) => {
       const group = createMonumentPrimitive(monument);
-      const terrainHeight = sampleTerrainHeight(this.terrain, monument.x, monument.z);
-      group.position.set(monument.x, Math.max(monument.y, terrainHeight) + 5, monument.z);
+      const monumentPosition = rustWorldToViewerPosition(monument.x, monument.y, monument.z);
+      const terrainHeight = sampleTerrainHeight(this.terrain, monumentPosition.x, monumentPosition.z);
+      group.position.set(monumentPosition.x, Math.max(monumentPosition.y, terrainHeight) + 5, monumentPosition.z);
       group.rotation.y = -MathUtils.degToRad(monument.rotationY || 0);
       layer.add(group);
     });
@@ -737,6 +929,14 @@ class TerrainViewer {
   }
 
   private startNextTour(now: number, blendFromCurrent: boolean): void {
+    if (this.tourStyle === "orbit") {
+      this.tourKind = "home-orbit";
+      this.tourStartedAt = now;
+      this.tourDuration = 32000;
+      this.activePose = blendFromCurrent ? this.currentPose() : null;
+      return;
+    }
+
     const kinds: CameraTourKind[] = ["coastal-sweep", "ridge-crossing", "monument-orbit", "map-run"];
     this.tourIndex = (this.tourIndex + 1) % kinds.length;
     this.tourKind = kinds[this.tourIndex] || "coastal-sweep";
@@ -752,6 +952,16 @@ class TerrainViewer {
     const water = this.terrain.waterLevel || 0;
     const baseTargetHeight = Math.max(50, water + 26);
 
+    if (this.tourKind === "home-orbit") {
+      const target = new Vector3(0, baseTargetHeight + worldSize * 0.012, 0);
+      const radius = half * 0.82;
+      return this.aboveTerrainPose(
+        new Vector3(Math.cos(angle) * radius, 0, Math.sin(angle) * radius),
+        target,
+        worldSize * 0.16,
+      );
+    }
+
     if (this.tourKind === "ridge-crossing") {
       const x = MathUtils.lerp(-half * 0.72, half * 0.72, progress);
       const z = Math.sin(progress * Math.PI * 1.5) * half * 0.44;
@@ -766,8 +976,9 @@ class TerrainViewer {
 
     if (this.tourKind === "monument-orbit") {
       const monument = this.featuredMonument();
+      const monumentPosition = monument ? rustWorldToViewerPosition(monument.x, monument.y, monument.z) : null;
       const center = monument
-        ? new Vector3(monument.x, sampleTerrainHeight(this.terrain, monument.x, monument.z) + Math.max(40, monument.radius * 0.45), monument.z)
+        ? new Vector3(monumentPosition!.x, sampleTerrainHeight(this.terrain, monumentPosition!.x, monumentPosition!.z) + Math.max(40, monument.radius * 0.45), monumentPosition!.z)
         : new Vector3(0, baseTargetHeight, 0);
       const radius = monument ? MathUtils.clamp(monument.radius * 5.2, worldSize * 0.12, worldSize * 0.32) : worldSize * 0.28;
       return this.aboveTerrainPose(
@@ -1371,7 +1582,8 @@ function createRustMapGridOverlay(terrain: TerrainPayload): Group {
       const label = `${rustGridColumnLabel(col)}${row + 1}`;
       const x = -half + col * cellSize + cellSize * 0.5;
       const z = half - row * cellSize - cellSize * 0.5;
-      group.add(createGridLabelSprite(label, labelSize, x, z, yOffset + 24));
+      const viewerPosition = rustWorldToViewerPosition(x, yOffset + 24, z);
+      group.add(createGridLabelSprite(label, labelSize, viewerPosition.x, viewerPosition.z, viewerPosition.y));
     }
   }
 
@@ -1567,6 +1779,19 @@ function setMaterialOpacity(material: Material | Material[], opacity: number): v
   material.transparent = true;
 }
 
+function disposeGeometryMaterial(object: Mesh | Sprite | LineSegments): void {
+  if ("geometry" in object) {
+    object.geometry.dispose();
+  }
+
+  const materials = Array.isArray(object.material) ? object.material : [object.material];
+  materials.forEach((material) => {
+    const map = (material as Material & { map?: { dispose?: () => void } }).map;
+    map?.dispose?.();
+    material.dispose();
+  });
+}
+
 function nextPowerOfTwo(value: number): number {
   return 2 ** Math.ceil(Math.log2(value));
 }
@@ -1599,6 +1824,10 @@ function sampleTerrainHeight(terrain: TerrainPayload, x: number, z: number): num
   const col = resolution - 1 - Math.round(u * (resolution - 1));
   const row = Math.round(v * (resolution - 1));
   return terrain.heights[row * resolution + col] || 0;
+}
+
+function rustWorldToViewerPosition(x: number, y: number, z: number): Vector3 {
+  return new Vector3(-x, y, z);
 }
 
 function monumentMaterial(color: number): MeshStandardMaterial {
@@ -1637,7 +1866,7 @@ function addSphere(group: Group, radius: number, color: number, x: number, y: nu
   return mesh;
 }
 
-function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): void {
+function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerBinding {
   const panel = root.closest<HTMLElement>(".server-terrain-panel");
   const buttons = Array.from(panel?.querySelectorAll<HTMLButtonElement>("[data-map-view]") || []);
   const grid = panel?.querySelector<HTMLInputElement>("[data-map-viewer-grid]");
@@ -1654,15 +1883,28 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): void {
   let heatmapHistory: HeatmapHistoryFrame[] = [];
   let playbackTimer = 0;
   let playerPollTimer = 0;
+  const disposers: Array<() => void> = [];
+  const bind = <T extends EventTarget>(target: T | null | undefined, type: string, listener: EventListenerOrEventListenerObject): void => {
+    if (!target) {
+      return;
+    }
 
-  bindMapViewButtons(buttons, viewer);
+    target.addEventListener(type, listener);
+    disposers.push(() => target.removeEventListener(type, listener));
+  };
 
-  grid?.addEventListener("change", () => {
-    viewer.setGridVisible(grid.checked);
+  disposers.push(bindMapViewButtons(buttons, viewer).dispose);
+
+  bind(grid, "change", () => {
+    if (grid) {
+      viewer.setGridVisible(grid.checked);
+    }
   });
 
-  tour?.addEventListener("change", () => {
-    viewer.setTourEnabled(tour.checked);
+  bind(tour, "change", () => {
+    if (tour) {
+      viewer.setTourEnabled(tour.checked);
+    }
   });
 
   const stopHeatmapPlayback = () => {
@@ -1732,16 +1974,16 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): void {
     void loadHeatmap(root, viewer, metric?.value || "deaths", range?.value || "24h");
   };
 
-  heatmap?.addEventListener("change", reloadHeatmap);
-  heatmapPlayback?.addEventListener("change", () => {
-    if (heatmapPlayback.checked && heatmap && !heatmap.checked) {
+  bind(heatmap, "change", reloadHeatmap);
+  bind(heatmapPlayback, "change", () => {
+    if (heatmapPlayback?.checked && heatmap && !heatmap.checked) {
       heatmap.checked = true;
     }
     reloadHeatmap();
   });
-  metric?.addEventListener("change", reloadHeatmap);
-  range?.addEventListener("change", reloadHeatmap);
-  heatmapFrame?.addEventListener("input", () => {
+  bind(metric, "change", reloadHeatmap);
+  bind(range, "change", reloadHeatmap);
+  bind(heatmapFrame, "input", () => {
     if (heatmapPlayback && !heatmapPlayback.checked) {
       heatmapPlayback.checked = true;
     }
@@ -1753,9 +1995,9 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): void {
       reloadHeatmap();
       return;
     }
-    showHeatmapFrame(Number(heatmapFrame.value) || 0);
+    showHeatmapFrame(Number(heatmapFrame?.value) || 0);
   });
-  heatmapPlay?.addEventListener("click", () => {
+  bind(heatmapPlay, "click", () => {
     if (heatmap && !heatmap.checked) {
       heatmap.checked = true;
     }
@@ -1774,8 +2016,10 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): void {
       return;
     }
 
-    heatmapPlay.setAttribute("aria-pressed", "true");
-    heatmapPlay.textContent = "Pause";
+    heatmapPlay?.setAttribute("aria-pressed", "true");
+    if (heatmapPlay) {
+      heatmapPlay.textContent = "Pause";
+    }
     playbackTimer = window.setInterval(() => {
       const next = ((Number(heatmapFrame.value) || 0) + 1) % heatmapHistory.length;
       heatmapFrame.value = String(next);
@@ -1801,9 +2045,9 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): void {
     }
   };
 
-  players?.addEventListener("change", reloadPlayers);
+  bind(players, "change", reloadPlayers);
 
-  myLocation?.addEventListener("click", () => {
+  bind(myLocation, "click", () => {
     if (players && !players.checked) {
       players.checked = true;
     }
@@ -1823,6 +2067,14 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): void {
   });
 
   void loadPlayerLocations(root, viewer, myLocation, players?.checked ?? false);
+
+  return {
+    dispose: () => {
+      window.clearInterval(playbackTimer);
+      window.clearInterval(playerPollTimer);
+      disposers.forEach((dispose) => dispose());
+    },
+  };
 }
 
 async function loadHeatmap(root: HTMLElement, viewer: TerrainViewer, metric: string, range: string): Promise<void> {
@@ -1928,14 +2180,21 @@ async function loadPlayerLocations(root: HTMLElement, viewer: TerrainViewer, myL
   }
 }
 
-function bindMapViewButtons(buttons: HTMLButtonElement[], viewer: TerrainViewer): void {
+function bindMapViewButtons(buttons: HTMLButtonElement[], viewer: TerrainViewer): ViewerBinding {
+  const disposers: Array<() => void> = [];
   buttons.forEach((button) => {
-    button.addEventListener("click", () => {
+    const listener = () => {
       const view: MapView = button.dataset.mapView === "top" ? "top" : "iso";
       viewer.setView(view);
       syncMapViewButtons(button, view);
-    });
+    };
+    button.addEventListener("click", listener);
+    disposers.push(() => button.removeEventListener("click", listener));
   });
+
+  return {
+    dispose: () => disposers.forEach((dispose) => dispose()),
+  };
 }
 
 function syncMapViewButtons(source: HTMLElement, view: MapView): void {
