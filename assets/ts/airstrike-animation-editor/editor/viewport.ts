@@ -933,6 +933,7 @@ export class AirstrikeViewport {
     this.animationFrame = window.requestAnimationFrame(() => this.animate());
     this.applyDynamicControls();
     this.orbit.update();
+    this.syncVehicleCameraMode();
     this.emitViewOrientation();
     this.renderer.render(this.scene, this.camera);
   }
@@ -1357,6 +1358,10 @@ export class AirstrikeViewport {
     const pose = evaluateSourcePose(this.profile, time);
     this.vehicleRoot.position.copy(unityPositionToThreeVector(pose.position));
     this.vehicleRoot.quaternion.copy(unityQuaternionValueToThreeQuaternion(pose.rotation));
+    this.syncVehicleCameraMode();
+  }
+
+  private syncVehicleCameraMode(): void {
     if (this.rideVehicle) {
       this.rideVehicleCamera();
     } else if (this.followVehicle) {
