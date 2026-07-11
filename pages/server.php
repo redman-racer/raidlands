@@ -155,8 +155,6 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
           <p class="section-lede">Height, water, and surface color sampled from the live Raidlands map publish.</p>
         </div>
         <div class="server-terrain-controls" data-map-viewer-controls>
-          <button type="button" data-map-view="iso" aria-pressed="true">ISO</button>
-          <button type="button" data-map-view="top" aria-pressed="false">TOP</button>
           <label class="server-terrain-toggle">
             <input type="checkbox" checked data-map-viewer-grid>
             <span>Grid coordinates</span>

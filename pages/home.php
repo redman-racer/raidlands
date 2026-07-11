@@ -177,6 +177,9 @@ $home_is_linked = raidlands_has_linked_account();
             data-min-height="<?= e((string) ($home_server_map_image['terrainMinHeight'] ?? 0)) ?>"
             data-max-height="<?= e((string) ($home_server_map_image['terrainMaxHeight'] ?? 0)) ?>"
             aria-label="Current Raidlands wipe map animation preview">
+            <?php if ($home_server_map_url !== '') : ?>
+              <img class="server-terrain-fallback-image" src="<?= e($home_server_map_url) ?>" alt="Current Raidlands wipe map" loading="lazy">
+            <?php endif; ?>
             <p class="server-terrain-status" data-map-viewer-status>Loading terrain.</p>
           </div>
         <?php elseif ($home_server_map_url !== '') : ?>

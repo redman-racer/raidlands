@@ -86,6 +86,14 @@ type RuntimeVisualProfile = {
 
 type MapView = "iso" | "top";
 
+type CameraPose = {
+  position: Vector3;
+  target: Vector3;
+  up: Vector3;
+};
+
+type CameraTourKind = "coastal-sweep" | "ridge-crossing" | "monument-orbit" | "map-run";
+
 const isoViewDirections = [
   new Vector3(0.48, 0.34, 0.58),
   new Vector3(-0.48, 0.34, 0.58),
@@ -212,6 +220,12 @@ class TerrainViewer {
   private animationFrame = 0;
   private readonly clockStart = performance.now();
   private isoViewIndex = -1;
+  private activePose: CameraPose | null = null;
+  private focusUntil = 0;
+  private tourStartedAt = performance.now();
+  private tourDuration = 18000;
+  private tourKind: CameraTourKind = "coastal-sweep";
+  private tourIndex = -1;
 
   public constructor(
     root: HTMLElement,
@@ -244,6 +258,10 @@ class TerrainViewer {
     this.addLights();
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
+    this.controls.enabled = false;
+    this.controls.enableRotate = false;
+    this.controls.enablePan = false;
+    this.controls.enableZoom = false;
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.08;
     this.controls.maxPolarAngle = MathUtils.degToRad(84);
@@ -254,12 +272,13 @@ class TerrainViewer {
 
   public mount(): void {
     this.root.appendChild(this.renderer.domElement);
-    this.frameIso(false);
+    this.startNextTour(performance.now(), false);
     this.bindFloatingViewSelect();
     this.resize();
     window.addEventListener("resize", this.onResize);
     this.animate();
     this.loadTexture();
+    this.root.classList.add("is-loaded");
   }
 
   public setGridVisible(visible: boolean): void {
@@ -285,20 +304,20 @@ class TerrainViewer {
       this.isoViewIndex = 0;
     }
     const direction = isoViewDirections[this.isoViewIndex] || isoViewDirections[0]!;
-    this.controls.target.set(0, height * 0.22, 0);
-    this.camera.up.set(0, 1, 0);
-    this.camera.position.set(size * direction.x, size * direction.y, size * direction.z);
-    this.camera.lookAt(this.controls.target);
-    this.controls.update();
+    this.focusCamera({
+      position: new Vector3(size * direction.x, size * direction.y, size * direction.z),
+      target: new Vector3(0, height * 0.22, 0),
+      up: new Vector3(0, 1, 0),
+    });
   }
 
   public frameTop(): void {
     const size = this.terrain.worldSize || 4500;
-    this.controls.target.set(0, 0, 0);
-    this.camera.position.set(0, size * 0.86, 0.001);
-    this.camera.up.set(0, 0, -1);
-    this.camera.lookAt(this.controls.target);
-    this.controls.update();
+    this.focusCamera({
+      position: new Vector3(0, size * 0.86, 0.001),
+      target: new Vector3(0, 0, 0),
+      up: new Vector3(0, 0, -1),
+    });
   }
 
   public setView(view: MapView): void {
@@ -441,10 +460,146 @@ class TerrainViewer {
 
   private animate(): void {
     this.animationFrame = window.requestAnimationFrame(() => this.animate());
+    this.updateCameraTour(performance.now());
     this.controls.update();
     this.updateGridOpacity();
     this.airstrikeLayer.userData.tick?.((performance.now() - this.clockStart) / 1000);
     this.renderer.render(this.scene, this.camera);
+  }
+
+  private focusCamera(pose: CameraPose): void {
+    this.activePose = this.currentPose();
+    this.focusUntil = performance.now() + 15000;
+    this.applyCameraPose(pose);
+  }
+
+  private updateCameraTour(now: number): void {
+    if (now < this.focusUntil) {
+      return;
+    }
+
+    if (this.focusUntil > 0) {
+      this.focusUntil = 0;
+      this.startNextTour(now, true);
+    }
+
+    const elapsed = now - this.tourStartedAt;
+    if (elapsed >= this.tourDuration) {
+      this.startNextTour(now, true);
+      return;
+    }
+
+    const progress = MathUtils.clamp(elapsed / this.tourDuration, 0, 1);
+    const pose = this.tourPose(progress);
+    const easeIn = MathUtils.smoothstep(MathUtils.clamp(elapsed / 2200, 0, 1), 0, 1);
+
+    if (this.activePose) {
+      pose.position.lerpVectors(this.activePose.position, pose.position, easeIn);
+      pose.target.lerpVectors(this.activePose.target, pose.target, easeIn);
+      pose.up.lerpVectors(this.activePose.up, pose.up, easeIn).normalize();
+      if (easeIn >= 0.995) {
+        this.activePose = null;
+      }
+    }
+
+    this.applyCameraPose(pose);
+  }
+
+  private startNextTour(now: number, blendFromCurrent: boolean): void {
+    const kinds: CameraTourKind[] = ["coastal-sweep", "ridge-crossing", "monument-orbit", "map-run"];
+    this.tourIndex = (this.tourIndex + 1) % kinds.length;
+    this.tourKind = kinds[this.tourIndex] || "coastal-sweep";
+    this.tourStartedAt = now;
+    this.tourDuration = this.tourKind === "map-run" ? 21000 : 18000;
+    this.activePose = blendFromCurrent ? this.currentPose() : null;
+  }
+
+  private tourPose(progress: number): CameraPose {
+    const worldSize = this.terrain.worldSize || 4500;
+    const half = worldSize / 2;
+    const angle = progress * Math.PI * 2;
+    const water = this.terrain.waterLevel || 0;
+    const baseTargetHeight = Math.max(50, water + 26);
+
+    if (this.tourKind === "ridge-crossing") {
+      const x = MathUtils.lerp(-half * 0.72, half * 0.72, progress);
+      const z = Math.sin(progress * Math.PI * 1.5) * half * 0.44;
+      const lookX = MathUtils.lerp(-half * 0.25, half * 0.25, progress);
+      const lookZ = z - half * 0.22;
+      return this.aboveTerrainPose(
+        new Vector3(x, 0, z),
+        new Vector3(lookX, baseTargetHeight, lookZ),
+        worldSize * 0.11,
+      );
+    }
+
+    if (this.tourKind === "monument-orbit") {
+      const monument = this.featuredMonument();
+      const center = monument
+        ? new Vector3(monument.x, sampleTerrainHeight(this.terrain, monument.x, monument.z) + Math.max(40, monument.radius * 0.45), monument.z)
+        : new Vector3(0, baseTargetHeight, 0);
+      const radius = monument ? MathUtils.clamp(monument.radius * 5.2, worldSize * 0.12, worldSize * 0.32) : worldSize * 0.28;
+      return this.aboveTerrainPose(
+        new Vector3(center.x + Math.cos(angle) * radius, 0, center.z + Math.sin(angle) * radius),
+        center,
+        worldSize * 0.095,
+      );
+    }
+
+    if (this.tourKind === "map-run") {
+      const x = Math.sin(progress * Math.PI * 2.2) * half * 0.64;
+      const z = MathUtils.lerp(half * 0.68, -half * 0.68, progress);
+      const lookAheadZ = MathUtils.clamp(z - worldSize * 0.2, -half, half);
+      return this.aboveTerrainPose(
+        new Vector3(x, 0, z),
+        new Vector3(x * 0.55, baseTargetHeight, lookAheadZ),
+        worldSize * 0.08,
+      );
+    }
+
+    return this.aboveTerrainPose(
+      new Vector3(Math.cos(angle) * half * 0.76, 0, Math.sin(angle) * half * 0.76),
+      new Vector3(Math.cos(angle + 0.52) * half * 0.2, baseTargetHeight, Math.sin(angle + 0.52) * half * 0.2),
+      worldSize * 0.13,
+    );
+  }
+
+  private aboveTerrainPose(position: Vector3, target: Vector3, clearance: number): CameraPose {
+    const worldSize = this.terrain.worldSize || 4500;
+    const ground = sampleTerrainHeight(this.terrain, position.x, position.z);
+    const targetGround = sampleTerrainHeight(this.terrain, target.x, target.z);
+    const targetY = Math.max(target.y, targetGround + 28);
+    const cameraY = Math.max(ground + clearance, targetY + worldSize * 0.035);
+
+    return {
+      position: new Vector3(position.x, cameraY, position.z),
+      target: new Vector3(target.x, targetY, target.z),
+      up: new Vector3(0, 1, 0),
+    };
+  }
+
+  private featuredMonument(): MonumentPayload | null {
+    const monuments = this.terrain.monuments || [];
+    if (monuments.length === 0) {
+      return null;
+    }
+
+    return monuments.reduce((best, monument) => monument.radius > best.radius ? monument : best, monuments[0]!);
+  }
+
+  private currentPose(): CameraPose {
+    return {
+      position: this.camera.position.clone(),
+      target: this.controls.target.clone(),
+      up: this.camera.up.clone(),
+    };
+  }
+
+  private applyCameraPose(pose: CameraPose): void {
+    this.camera.position.copy(pose.position);
+    this.camera.up.copy(pose.up);
+    this.controls.target.copy(pose.target);
+    this.camera.lookAt(this.controls.target);
   }
 
   private updateGridOpacity(): void {
@@ -455,17 +610,27 @@ class TerrainViewer {
     const cameraDirection = this.camera.position.clone().sub(this.controls.target).normalize();
     const topDownAmount = MathUtils.clamp(cameraDirection.dot(new Vector3(0, 1, 0)), 0, 1);
     const fade = MathUtils.smoothstep(topDownAmount, 0.62, 0.96);
-    const lineOpacity = MathUtils.lerp(0.16, 0.7, fade);
-    const labelOpacity = MathUtils.lerp(0.18, 0.86, fade);
+    const lineOpacity = MathUtils.lerp(0.1, 0.48, fade);
+    const labelOpacity = MathUtils.lerp(0.34, 1, fade);
+    const worldSize = this.terrain.worldSize || 4500;
+    const gridFadeNear = worldSize * 0.16;
+    const gridFadeFar = worldSize * 0.58;
 
     this.gridLayer.traverse((object) => {
+      const fadePosition = object.userData.fadePosition as Vector3 | undefined;
+      const groundDistance = Math.hypot(
+        (fadePosition?.x ?? object.position.x) - this.camera.position.x,
+        (fadePosition?.z ?? object.position.z) - this.camera.position.z,
+      );
+      const distanceFade = 1 - MathUtils.smoothstep(groundDistance, gridFadeNear, gridFadeFar);
+
       if (object instanceof LineSegments) {
-        setMaterialOpacity(object.material, lineOpacity);
+        setMaterialOpacity(object.material, lineOpacity * distanceFade);
         return;
       }
 
       if (object instanceof Sprite) {
-        setMaterialOpacity(object.material, labelOpacity);
+        setMaterialOpacity(object.material, labelOpacity * distanceFade);
       }
     });
   }
@@ -933,39 +1098,41 @@ function createRustMapGridOverlay(terrain: TerrainPayload): Group {
   const cellSize = rustGridCellSize(worldSize);
   const cells = Math.max(1, Math.ceil(worldSize / cellSize));
   const yOffset = Math.max(8, worldSize * 0.002);
-  const positions: number[] = [];
+  const lineMaterialOptions = {
+    color: 0x050607,
+    transparent: true,
+    opacity: 0.48,
+    depthTest: false,
+    depthWrite: false,
+  };
 
   for (let index = 0; index <= cells; index += 1) {
     const coord = MathUtils.clamp(-half + index * cellSize, -half, half);
-    positions.push(coord, yOffset, half, coord, yOffset, -half);
-    positions.push(-half, yOffset, coord, half, yOffset, coord);
+    group.add(createGridLineSegment([coord, yOffset, half, coord, yOffset, -half], coord, 0, lineMaterialOptions));
+    group.add(createGridLineSegment([-half, yOffset, coord, half, yOffset, coord], 0, coord, lineMaterialOptions));
   }
 
-  const geometry = new BufferGeometry();
-  geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
-  const material = new LineBasicMaterial({
-    color: 0x050607,
-    transparent: true,
-    opacity: 0.74,
-    depthTest: false,
-    depthWrite: false,
-  });
-  const lines = new LineSegments(geometry, material);
-  lines.name = "rust-grid-lines";
-  lines.renderOrder = 30;
-  group.add(lines);
-
-  const labelSize = MathUtils.clamp(cellSize * 0.18, 34, 62);
+  const labelSize = MathUtils.clamp(cellSize * 0.34, 54, 92);
   for (let row = 0; row < cells; row += 1) {
     for (let col = 0; col < cells; col += 1) {
       const label = `${rustGridColumnLabel(col)}${row}`;
-      const x = -half + col * cellSize + cellSize * 0.18;
-      const z = half - row * cellSize - cellSize * 0.18;
+      const x = -half + col * cellSize + cellSize * 0.5;
+      const z = half - row * cellSize - cellSize * 0.5;
       group.add(createGridLabelSprite(label, labelSize, x, z, yOffset + 24));
     }
   }
 
   return group;
+}
+
+function createGridLineSegment(positions: number[], fadeX: number, fadeZ: number, materialOptions: ConstructorParameters<typeof LineBasicMaterial>[0]): LineSegments {
+  const geometry = new BufferGeometry();
+  geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+  const line = new LineSegments(geometry, new LineBasicMaterial(materialOptions));
+  line.name = "rust-grid-line";
+  line.renderOrder = 30;
+  line.userData.fadePosition = new Vector3(fadeX, 0, fadeZ);
+  return line;
 }
 
 function rustGridCellSize(worldSize: number): number {
@@ -989,7 +1156,7 @@ function rustGridColumnLabel(index: number): string {
 }
 
 function createGridLabelSprite(label: string, size: number, x: number, z: number, y: number): Sprite {
-  const fontSize = 38;
+  const fontSize = 42;
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
 
@@ -997,17 +1164,19 @@ function createGridLabelSprite(label: string, size: number, x: number, z: number
     return new Sprite(new SpriteMaterial({ color: 0x050607 }));
   }
 
-  canvas.width = 128;
+  canvas.width = 160;
   canvas.height = 128;
   context.font = `900 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-  context.textAlign = "left";
+  context.textAlign = "center";
   context.textBaseline = "middle";
   context.lineJoin = "round";
-  context.strokeStyle = "rgba(255, 246, 218, 0.78)";
-  context.lineWidth = 7;
-  context.strokeText(label, 12, 64);
-  context.fillStyle = "#050607";
-  context.fillText(label, 12, 64);
+  context.shadowColor = "rgba(0, 0, 0, 0.62)";
+  context.shadowBlur = 6;
+  context.strokeStyle = "rgba(3, 5, 6, 0.88)";
+  context.lineWidth = 9;
+  context.strokeText(label, canvas.width / 2, 64);
+  context.fillStyle = "rgba(255, 246, 218, 0.96)";
+  context.fillText(label, canvas.width / 2, 64);
 
   const texture = new CanvasTexture(canvas);
   texture.colorSpace = SRGBColorSpace;
