@@ -276,13 +276,51 @@ function raidlands_server_map_validate_terrain($terrain): ?array
         }
     }
 
+    $normalized_monuments = [];
+    $world_size = raidlands_server_status_int($terrain['worldSize'] ?? $terrain['world_size'] ?? 0, 0);
+    $world_half = max(100, $world_size) / 2;
+    $monuments = is_array($terrain['monuments'] ?? null) ? $terrain['monuments'] : [];
+
+    foreach (array_slice($monuments, 0, 96) as $monument) {
+        if (!is_array($monument)) {
+            continue;
+        }
+
+        $x = $monument['x'] ?? null;
+        $y = $monument['y'] ?? null;
+        $z = $monument['z'] ?? null;
+
+        if (!is_numeric($x) || !is_numeric($y) || !is_numeric($z)) {
+            continue;
+        }
+
+        $x = round((float) $x, 3);
+        $y = round((float) $y, 3);
+        $z = round((float) $z, 3);
+
+        if (abs($x) > $world_half * 1.2 || abs($z) > $world_half * 1.2) {
+            continue;
+        }
+
+        $normalized_monuments[] = [
+            'name' => raidlands_server_status_clean_text($monument['name'] ?? 'Monument', 80),
+            'prefab' => raidlands_server_status_clean_text($monument['prefab'] ?? '', 160),
+            'kind' => raidlands_server_status_clean_text($monument['kind'] ?? $monument['name'] ?? 'monument', 80),
+            'x' => $x,
+            'y' => $y,
+            'z' => $z,
+            'radius' => max(18, min(280, round((float) ($monument['radius'] ?? 55), 3))),
+            'rotationY' => round((float) ($monument['rotationY'] ?? $monument['rotation_y'] ?? 0), 3),
+        ];
+    }
+
     $payload = [
         'version' => 1,
         'serverId' => raidlands_server_status_clean_text($terrain['serverId'] ?? $terrain['server_id'] ?? '', 120),
         'wipeKey' => raidlands_server_status_clean_text($terrain['wipeKey'] ?? $terrain['wipe_key'] ?? '', 160),
         'mapName' => raidlands_server_status_clean_text($terrain['mapName'] ?? $terrain['map_name'] ?? '', 120),
         'resolution' => $resolution,
-        'worldSize' => raidlands_server_status_int($terrain['worldSize'] ?? $terrain['world_size'] ?? 0, 0),
+        'worldSize' => $world_size,
         'seed' => raidlands_server_status_int($terrain['seed'] ?? 0, 0),
         'waterLevel' => round((float) ($terrain['waterLevel'] ?? $terrain['water_level'] ?? 0), 3),
         'minHeight' => $min_height ?? 0,
@@ -293,6 +331,10 @@ function raidlands_server_map_validate_terrain($terrain): ?array
 
     if ($normalized_colors !== []) {
         $payload['colors'] = $normalized_colors;
+    }
+
+    if ($normalized_monuments !== []) {
+        $payload['monuments'] = $normalized_monuments;
     }
 
     $json = json_encode($payload, JSON_UNESCAPED_SLASHES);

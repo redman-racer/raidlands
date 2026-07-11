@@ -704,6 +704,29 @@
   white-space: nowrap;
 }
 
+.airstrike-editor-viewport-toggle {
+  flex: 0 0 auto;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  min-height: 22px;
+  padding: 0 8px;
+  border: 1px solid rgba(129, 167, 174, .2);
+  border-radius: 5px;
+  background: rgba(10, 16, 18, .72);
+  color: #d7e9ed;
+  font-size: 11px;
+  white-space: nowrap;
+  cursor: pointer;
+}
+
+.airstrike-editor-viewport-toggle input {
+  width: 13px;
+  height: 13px;
+  margin: 0;
+  accent-color: #36c5e6;
+}
+
 .airstrike-editor-panel-restore {
   position: absolute;
   z-index: 8;

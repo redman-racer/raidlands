@@ -2,12 +2,12 @@ import {
   AmbientLight,
   Box3,
   BoxGeometry,
-  BufferAttribute,
   BufferGeometry,
   Color,
   ConeGeometry,
   DirectionalLight,
   DoubleSide,
+  Float32BufferAttribute,
   Group,
   GridHelper,
   Line,
@@ -21,8 +21,11 @@ import {
   PlaneGeometry,
   Raycaster,
   Scene,
+  SRGBColorSpace,
   SphereGeometry,
   CylinderGeometry,
+  TextureLoader,
+  Uint32BufferAttribute,
   Vector2,
   Vector3,
   WebGLRenderer,
@@ -47,7 +50,20 @@ export interface WorldReference {
   worldSize: number;
   mapName: string;
   mapImageUrl?: string;
+  terrainUrl?: string;
   heightmapUrl?: string;
+  terrain?: TerrainReferencePayload;
+}
+
+export interface TerrainReferencePayload {
+  resolution: number;
+  worldSize: number;
+  seed: number;
+  waterLevel: number;
+  minHeight: number;
+  maxHeight: number;
+  heights: number[];
+  colors?: string[];
 }
 
 export type ReleaseVisibilityMode = "all" | "near" | "current" | "selected";
@@ -91,6 +107,8 @@ const scaleReferenceMaterials = {
 const minimumFloorSize = 800;
 const maximumFloorDivisions = 120;
 const preferredGridCellSize = 20;
+const terrainPreviewSize = 380;
+const terrainHeightScale = 0.08;
 
 export class AirstrikeViewport {
   private readonly container: HTMLElement;
@@ -106,6 +124,8 @@ export class AirstrikeViewport {
   private readonly releaseGroup = new Group();
   private readonly vehicleRoot = new Group();
   private readonly scaleReferenceGroup = new Group();
+  private readonly terrainReferenceGroup = new Group();
+  private readonly sceneExtrasGroup = new Group();
   private readonly routeMaterial = new LineBasicMaterial({ color: 0x55d6ff, linewidth: 2 });
   private readonly handleGeometry = new SphereGeometry(3.2, 20, 12);
   private readonly releaseGeometry = new SphereGeometry(2.5, 18, 10);
@@ -130,6 +150,8 @@ export class AirstrikeViewport {
   private ridePitchDegrees = 0;
   private ridePointerId = -1;
   private worldReference: WorldReference = { seed: 1337, worldSize: 4500, mapName: "Procedural preview" };
+  private sceneExtrasEnabled = true;
+  private terrainMaterial: MeshStandardMaterial | null = null;
   private readonly ridePointerStart = new Vector2();
   private ridePointerStartYaw = 0;
   private ridePointerStartPitch = 0;
@@ -145,7 +167,7 @@ export class AirstrikeViewport {
     this.camera.position.set(180, 120, 250);
     this.camera.lookAt(0, 55, 0);
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
-    this.renderer.outputColorSpace = "srgb";
+    this.renderer.outputColorSpace = SRGBColorSpace;
     this.renderer.domElement.dataset.airstrikeViewportCanvas = "true";
     this.container.appendChild(this.renderer.domElement);
 
@@ -190,8 +212,18 @@ export class AirstrikeViewport {
       worldSize: Number.isFinite(worldSize) && worldSize > 0 ? worldSize : this.worldReference.worldSize,
       mapName: String(reference.mapName || this.worldReference.mapName || "Procedural preview"),
       mapImageUrl: reference.mapImageUrl || this.worldReference.mapImageUrl,
+      terrainUrl: reference.terrainUrl || this.worldReference.terrainUrl,
       heightmapUrl: reference.heightmapUrl || this.worldReference.heightmapUrl,
+      terrain: reference.terrain || this.worldReference.terrain,
     };
+    this.createScaleReferenceEntities();
+  }
+
+  public setSceneExtrasEnabled(enabled: boolean): void {
+    if (this.sceneExtrasEnabled === enabled) {
+      return;
+    }
+    this.sceneExtrasEnabled = enabled;
     this.createScaleReferenceEntities();
   }
 
@@ -330,18 +362,27 @@ export class AirstrikeViewport {
   private createScaleReferenceEntities(): void {
     this.scaleReferenceGroup.name = "scale-reference-placeholders";
     this.scaleReferenceGroup.clear();
+    this.terrainReferenceGroup.clear();
+    this.sceneExtrasGroup.clear();
+    this.terrainReferenceGroup.name = "map-terrain-reference";
+    this.sceneExtrasGroup.name = "scene-extra-placeholders";
 
-    this.scaleReferenceGroup.add(this.createTerrainReferenceGroup());
+    this.terrainReferenceGroup.add(this.createTerrainReferenceGroup());
+    this.scaleReferenceGroup.add(this.terrainReferenceGroup);
+
+    if (!this.sceneExtrasEnabled) {
+      return;
+    }
 
     const standingPlayer = this.createPlayerPlaceholder("scale-player-standing", scaleReferenceMaterials.player);
     standingPlayer.position.set(-26, 0, 18);
     standingPlayer.rotation.y = MathUtils.degToRad(18);
-    this.scaleReferenceGroup.add(standingPlayer);
+    this.sceneExtrasGroup.add(standingPlayer);
 
     const secondPlayer = this.createPlayerPlaceholder("scale-player-near-crates", scaleReferenceMaterials.playerAccent);
     secondPlayer.position.set(40, 0, -34);
     secondPlayer.rotation.y = MathUtils.degToRad(-32);
-    this.scaleReferenceGroup.add(secondPlayer);
+    this.sceneExtrasGroup.add(secondPlayer);
 
     const crateStack = new Group();
     crateStack.name = "scale-crate-stack";
@@ -358,7 +399,7 @@ export class AirstrikeViewport {
     }
     crateStack.position.set(18, 0, 38);
     crateStack.rotation.y = MathUtils.degToRad(-16);
-    this.scaleReferenceGroup.add(crateStack);
+    this.sceneExtrasGroup.add(crateStack);
 
     const barricade = new Group();
     barricade.name = "scale-barricade-line";
@@ -371,24 +412,29 @@ export class AirstrikeViewport {
     }
     barricade.position.set(-58, 0, -40);
     barricade.rotation.y = MathUtils.degToRad(24);
-    this.scaleReferenceGroup.add(barricade);
+    this.sceneExtrasGroup.add(barricade);
 
     const tower = this.createTowerPlaceholder();
     tower.position.set(68, 0, 42);
     tower.rotation.y = MathUtils.degToRad(-28);
-    this.scaleReferenceGroup.add(tower);
+    this.sceneExtrasGroup.add(tower);
+    this.scaleReferenceGroup.add(this.sceneExtrasGroup);
   }
 
   private createTerrainReferenceGroup(): Group {
+    if (this.worldReference.terrain) {
+      return this.createHeightmapTerrainReferenceGroup(this.worldReference.terrain);
+    }
+
     const terrain = new Group();
-    terrain.name = "scale-terrain-placeholders";
+    terrain.name = "procedural-terrain-reference";
 
     const seed = this.worldReference.seed || 1337;
     const worldScale = MathUtils.clamp((this.worldReference.worldSize || 4500) / 4500, 0.65, 1.45);
-    const terrainSize = 340 * worldScale;
+    const terrainSize = terrainPreviewSize * worldScale;
     const terrainSegments = 48;
     const terrainGeometry = new PlaneGeometry(terrainSize, terrainSize, terrainSegments, terrainSegments);
-    const positions = terrainGeometry.getAttribute("position") as BufferAttribute;
+    const positions = terrainGeometry.getAttribute("position") as Float32BufferAttribute;
 
     for (let index = 0; index < positions.count; index += 1) {
       const x = positions.getX(index);
@@ -455,6 +501,113 @@ export class AirstrikeViewport {
     }
 
     return terrain;
+  }
+
+  private createHeightmapTerrainReferenceGroup(terrainPayload: TerrainReferencePayload): Group {
+    const terrain = new Group();
+    terrain.name = "heightmap-terrain-reference";
+
+    const mesh = this.createHeightmapTerrainMesh(terrainPayload);
+    terrain.add(mesh);
+
+    if (this.worldReference.mapImageUrl) {
+      this.loadTerrainTexture(this.worldReference.mapImageUrl);
+    }
+
+    return terrain;
+  }
+
+  private createHeightmapTerrainMesh(terrainPayload: TerrainReferencePayload): Mesh {
+    const resolution = terrainPayload.resolution;
+    const worldSize = Math.max(100, terrainPayload.worldSize || this.worldReference.worldSize || 4500);
+    const previewScale = terrainPreviewSize / worldSize;
+    const half = worldSize / 2;
+    const positions: number[] = [];
+    const uvs: number[] = [];
+    const colors: number[] = [];
+    const indices: number[] = [];
+
+    for (let row = 0; row < resolution; row += 1) {
+      const v = row / (resolution - 1);
+      const worldZ = half - v * worldSize;
+      for (let col = 0; col < resolution; col += 1) {
+        const u = col / (resolution - 1);
+        const worldX = -half + u * worldSize;
+        const index = row * resolution + col;
+        const height = terrainPayload.heights[index] || 0;
+        positions.push(worldX * previewScale, height * terrainHeightScale, worldZ * previewScale);
+        uvs.push(u, 1 - v);
+        this.pushTerrainColor(colors, terrainPayload.colors?.[index], height, terrainPayload);
+      }
+    }
+
+    for (let row = 0; row < resolution - 1; row += 1) {
+      for (let col = 0; col < resolution - 1; col += 1) {
+        const a = row * resolution + col;
+        const b = a + 1;
+        const c = a + resolution;
+        const d = c + 1;
+        indices.push(a, c, b, b, c, d);
+      }
+    }
+
+    const geometry = new BufferGeometry();
+    geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+    geometry.setAttribute("uv", new Float32BufferAttribute(uvs, 2));
+    geometry.setAttribute("color", new Float32BufferAttribute(colors, 3));
+    geometry.setIndex(new Uint32BufferAttribute(indices, 1));
+    geometry.computeVertexNormals();
+
+    this.terrainMaterial = new MeshStandardMaterial({
+      color: 0xffffff,
+      roughness: 0.94,
+      metalness: 0,
+      vertexColors: true,
+      side: DoubleSide,
+    });
+
+    const mesh = new Mesh(geometry, this.terrainMaterial);
+    mesh.name = "current-rust-map-heightmap-ground";
+    return mesh;
+  }
+
+  private loadTerrainTexture(url: string): void {
+    const material = this.terrainMaterial;
+    if (!material) {
+      return;
+    }
+    const loader = new TextureLoader();
+    loader.load(
+      url,
+      (texture) => {
+        if (material !== this.terrainMaterial) {
+          return;
+        }
+        texture.colorSpace = SRGBColorSpace;
+        material.map = texture;
+        material.needsUpdate = true;
+      },
+      undefined,
+      () => {
+        // Vertex colors are the primary terrain texturing path; map image texture is optional.
+      },
+    );
+  }
+
+  private pushTerrainColor(target: number[], color: string | undefined, height: number, terrainPayload: TerrainReferencePayload): void {
+    if (color && /^#[0-9a-f]{6}$/i.test(color)) {
+      const parsed = new Color(color);
+      target.push(parsed.r, parsed.g, parsed.b);
+      return;
+    }
+
+    const min = Number.isFinite(terrainPayload.minHeight) ? terrainPayload.minHeight || 0 : 0;
+    const max = Number.isFinite(terrainPayload.maxHeight) ? terrainPayload.maxHeight || 1 : 1;
+    const t = MathUtils.clamp((height - min) / Math.max(1, max - min), 0, 1);
+    const low = new Color(0x44623f);
+    const high = new Color(0xd2d7cf);
+    const mixed = low.lerp(high, Math.pow(t, 1.6));
+    target.push(mixed.r, mixed.g, mixed.b);
   }
 
   private createProceduralRoad(seed: number, terrainSize: number): Group {

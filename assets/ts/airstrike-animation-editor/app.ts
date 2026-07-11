@@ -1,5 +1,11 @@
 import { Vector3 } from "three";
-import { AirstrikeViewport, type ViewOrientation, type ViewOrientationState, type WorldReference } from "./editor/viewport";
+import {
+  AirstrikeViewport,
+  type TerrainReferencePayload,
+  type ViewOrientation,
+  type ViewOrientationState,
+  type WorldReference,
+} from "./editor/viewport";
 import {
   addManualRelease,
   availableHardpoints,
@@ -96,6 +102,7 @@ interface EditorElements {
   loop: HTMLInputElement;
   followVehicle: HTMLInputElement;
   rideVehicle: HTMLInputElement;
+  sceneExtras: HTMLInputElement;
   releaseVisibility: HTMLSelectElement;
   addRelease: HTMLButtonElement;
   duplicateRelease: HTMLButtonElement;
@@ -348,6 +355,9 @@ class AirstrikeEditorApp {
         this.viewport.setVehicleFollowEnabled(false);
       }
       this.viewport.setVehicleRideEnabled(this.elements.rideVehicle.checked);
+    });
+    this.elements.sceneExtras.addEventListener("change", () => {
+      this.viewport.setSceneExtrasEnabled(this.elements.sceneExtras.checked);
     });
     this.elements.releaseVisibility.addEventListener("change", () => this.handleReleaseVisibilityChange());
     this.elements.globalSpeed.addEventListener("input", () => this.handleGlobalSpeedInput());
@@ -1704,8 +1714,14 @@ class AirstrikeEditorApp {
         worldSize?: unknown;
         mapName?: unknown;
         mapImageUrl?: unknown;
-        mapImage?: { url?: unknown; publicUrl?: unknown; heightmapUrl?: unknown };
+        mapImage?: { url?: unknown; publicUrl?: unknown; terrainUrl?: unknown; heightmapUrl?: unknown };
       };
+      const terrainUrl =
+        typeof payload.mapImage?.terrainUrl === "string"
+          ? payload.mapImage.terrainUrl
+          : typeof payload.mapImage?.heightmapUrl === "string"
+            ? payload.mapImage.heightmapUrl
+            : "";
       const reference: Partial<WorldReference> = {
         seed: Number(payload.seed || 0),
         worldSize: Number(payload.worldSize || 0),
@@ -1718,11 +1734,57 @@ class AirstrikeEditorApp {
               : typeof payload.mapImage?.publicUrl === "string"
                 ? payload.mapImage.publicUrl
                 : "",
-        heightmapUrl: typeof payload.mapImage?.heightmapUrl === "string" ? payload.mapImage.heightmapUrl : "",
+        terrainUrl,
+        heightmapUrl: terrainUrl,
       };
+      if (terrainUrl) {
+        const terrain = await this.loadTerrainReference(terrainUrl);
+        if (terrain) {
+          reference.terrain = terrain;
+          reference.worldSize = terrain.worldSize || reference.worldSize;
+          reference.seed = terrain.seed || reference.seed;
+        }
+      }
       this.viewport.updateWorldReference(reference);
     } catch {
       // Offline/local editor sessions keep the default deterministic terrain.
+    }
+  }
+
+  private async loadTerrainReference(url: string): Promise<TerrainReferencePayload | null> {
+    try {
+      const response = await fetch(url, {
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+        credentials: "same-origin",
+      });
+      if (!response.ok) {
+        return null;
+      }
+      const payload = (await response.json()) as Partial<TerrainReferencePayload>;
+      const resolution = Math.max(2, Math.min(257, Math.floor(Number(payload.resolution) || 0)));
+      const heights = Array.isArray(payload.heights) ? payload.heights.map((height) => Number(height)) : [];
+      const expected = resolution * resolution;
+      if (resolution < 2 || heights.length !== expected || heights.some((height) => !Number.isFinite(height))) {
+        return null;
+      }
+      const worldSize = Math.max(100, Number(payload.worldSize) || 4500);
+      const colors =
+        Array.isArray(payload.colors) && payload.colors.length === expected
+          ? payload.colors.map((color) => String(color))
+          : undefined;
+      return {
+        resolution,
+        worldSize,
+        seed: Number(payload.seed) || 0,
+        waterLevel: Number(payload.waterLevel) || 0,
+        minHeight: Number.isFinite(Number(payload.minHeight)) ? Number(payload.minHeight) : Math.min(...heights),
+        maxHeight: Number.isFinite(Number(payload.maxHeight)) ? Number(payload.maxHeight) : Math.max(...heights),
+        heights,
+        colors,
+      };
+    } catch {
+      return null;
     }
   }
 
@@ -1913,6 +1975,7 @@ function collectElements(root: HTMLElement): EditorElements {
     loop: query(root, "[data-editor-loop]"),
     followVehicle: query(root, "[data-editor-follow-vehicle]"),
     rideVehicle: query(root, "[data-editor-ride-vehicle]"),
+    sceneExtras: query(root, "[data-editor-scene-extras]"),
     releaseVisibility: query(root, "[data-editor-release-visibility]"),
     addRelease: query(root, "[data-editor-release-add]"),
     duplicateRelease: query(root, "[data-editor-release-duplicate]"),

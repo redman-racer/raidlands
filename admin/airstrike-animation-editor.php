@@ -162,6 +162,10 @@ $editor_config = [
           </div>
           <div class="airstrike-editor-viewport-meta">
             <span data-editor-vehicle-meta>Proxy preview</span>
+            <label class="airstrike-editor-viewport-toggle" title="Show terrain dressing, scale references, and placeholder scene objects">
+              <input type="checkbox" data-editor-scene-extras checked>
+              <span>Scene extras</span>
+            </label>
             <span>Target-relative Unity source, Three.js render conversion</span>
           </div>
         </div>

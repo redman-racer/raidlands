@@ -1,17 +1,21 @@
 import {
   AmbientLight,
+  BoxGeometry,
   BufferGeometry,
   Color,
+  ConeGeometry,
+  CylinderGeometry,
   DirectionalLight,
   DoubleSide,
   Float32BufferAttribute,
+  Group,
   MathUtils,
   Mesh,
   MeshStandardMaterial,
   PerspectiveCamera,
-  PlaneGeometry,
   Scene,
   SRGBColorSpace,
+  SphereGeometry,
   TextureLoader,
   Uint32BufferAttribute,
   WebGLRenderer,
@@ -28,6 +32,18 @@ type TerrainPayload = {
   maxHeight?: number;
   heights: number[];
   colors?: string[];
+  monuments?: MonumentPayload[];
+};
+
+type MonumentPayload = {
+  name: string;
+  prefab: string;
+  kind: string;
+  x: number;
+  y: number;
+  z: number;
+  radius: number;
+  rotationY: number;
 };
 
 const roots = Array.from(document.querySelectorAll<HTMLElement>("[data-server-map-viewer]"));
@@ -82,6 +98,7 @@ function normalizeTerrain(value: unknown, root: HTMLElement): TerrainPayload {
 
   const worldSize = Number(payload.worldSize) || Number(root.dataset.worldSize) || 4500;
   const colors = Array.isArray(payload.colors) && payload.colors.length === expected ? payload.colors.map(String) : undefined;
+  const monuments = normalizeMonuments(payload.monuments, Math.max(100, worldSize));
 
   return {
     version: Number(payload.version) || 1,
@@ -93,7 +110,41 @@ function normalizeTerrain(value: unknown, root: HTMLElement): TerrainPayload {
     maxHeight: Number.isFinite(Number(payload.maxHeight)) ? Number(payload.maxHeight) : Math.max(...heights),
     heights,
     colors,
+    monuments,
   };
+}
+
+function normalizeMonuments(value: unknown, worldSize: number): MonumentPayload[] {
+  if (!Array.isArray(value)) {
+    return [];
+  }
+
+  const half = worldSize / 2;
+  return value
+    .map((entry): MonumentPayload | null => {
+      const monument = entry && typeof entry === "object" ? (entry as Partial<MonumentPayload>) : {};
+      const x = Number(monument.x);
+      const y = Number(monument.y);
+      const z = Number(monument.z);
+
+      if (![x, y, z].every(Number.isFinite) || Math.abs(x) > half * 1.2 || Math.abs(z) > half * 1.2) {
+        return null;
+      }
+
+      const radius = MathUtils.clamp(Number(monument.radius) || 55, 18, 280);
+      return {
+        name: String(monument.name || "Monument").slice(0, 80),
+        prefab: String(monument.prefab || "").slice(0, 160),
+        kind: String(monument.kind || monument.name || monument.prefab || "monument").slice(0, 80),
+        x,
+        y: Number.isFinite(y) ? y : 0,
+        z,
+        radius,
+        rotationY: Number.isFinite(Number(monument.rotationY)) ? Number(monument.rotationY) : 0,
+      };
+    })
+    .filter((entry): entry is MonumentPayload => entry !== null)
+    .slice(0, 96);
 }
 
 class TerrainViewer {
@@ -126,7 +177,7 @@ class TerrainViewer {
     this.terrainMaterial = this.createTerrainMaterial();
     this.terrainMesh = this.createTerrainMesh();
     this.scene.add(this.terrainMesh);
-    this.addWaterPlane();
+    this.addMonuments();
     this.addLights();
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
@@ -243,23 +294,25 @@ class TerrainViewer {
     );
   }
 
-  private addWaterPlane(): void {
-    const worldSize = this.terrain.worldSize || 4500;
-    const geometry = new PlaneGeometry(worldSize * 1.04, worldSize * 1.04, 1, 1);
-    const material = new MeshStandardMaterial({
-      color: 0x2a5d62,
-      transparent: true,
-      opacity: 0.16,
-      roughness: 0.82,
-      metalness: 0,
-      side: DoubleSide,
-      depthWrite: false,
+  private addMonuments(): void {
+    const monuments = this.terrain.monuments || [];
+
+    if (monuments.length === 0) {
+      return;
+    }
+
+    const layer = new Group();
+    layer.name = "raidlands-monument-primitives";
+
+    monuments.forEach((monument) => {
+      const group = createMonumentPrimitive(monument);
+      const terrainHeight = sampleTerrainHeight(this.terrain, monument.x, monument.z);
+      group.position.set(monument.x, Math.max(monument.y, terrainHeight) + 5, monument.z);
+      group.rotation.y = -MathUtils.degToRad(monument.rotationY || 0);
+      layer.add(group);
     });
-    const water = new Mesh(geometry, material);
-    water.name = "terrain-water-plane";
-    water.rotation.x = -Math.PI / 2;
-    water.position.y = this.terrain.waterLevel || 0;
-    this.scene.add(water);
+
+    this.scene.add(layer);
   }
 
   private addLights(): void {
@@ -284,6 +337,163 @@ class TerrainViewer {
     this.controls.update();
     this.renderer.render(this.scene, this.camera);
   }
+}
+
+function createMonumentPrimitive(monument: MonumentPayload): Group {
+  const group = new Group();
+  const key = monumentKey(monument);
+  const size = MathUtils.clamp(monument.radius, 24, 180);
+
+  group.name = `monument-${key}`;
+
+  if (key.includes("airfield")) {
+    addBox(group, size * 2.1, 5, size * 0.22, 0x2c3030, 0, 1, 0);
+    addBox(group, size * 0.44, 22, size * 0.34, 0x6e7470, -size * 0.55, 13, -size * 0.32);
+    addBox(group, size * 0.34, 16, size * 0.28, 0x7f6b45, size * 0.48, 10, size * 0.26);
+    return group;
+  }
+
+  if (key.includes("launch")) {
+    addBox(group, size * 1.35, 9, size * 0.82, 0x353b3a, 0, 4, 0);
+    addCylinder(group, size * 0.12, size * 1.05, 0x9fafa8, -size * 0.15, size * 0.55, 0);
+    addCone(group, size * 0.2, size * 0.34, 0xb86f3f, -size * 0.15, size * 1.24, 0);
+    addBox(group, size * 0.2, size * 0.78, size * 0.2, 0x6f5f48, size * 0.28, size * 0.42, 0);
+    return group;
+  }
+
+  if (key.includes("sphere") || key.includes("dome")) {
+    addSphere(group, size * 0.42, 0x9baaa0, 0, size * 0.42, 0);
+    addCylinder(group, size * 0.08, size * 0.55, 0x7f6b45, size * 0.48, size * 0.28, -size * 0.12);
+    return group;
+  }
+
+  if (key.includes("satellite")) {
+    addCylinder(group, size * 0.07, size * 0.46, 0x7d837f, 0, size * 0.23, 0);
+    const dish = addCone(group, size * 0.42, size * 0.18, 0x9aa29c, 0, size * 0.58, 0);
+    dish.rotation.x = MathUtils.degToRad(58);
+    addBox(group, size * 0.86, 4, size * 0.16, 0x3f4543, 0, 2, -size * 0.24);
+    return group;
+  }
+
+  if (key.includes("lighthouse")) {
+    addCylinder(group, size * 0.14, size * 1.1, 0xd9d2bd, 0, size * 0.55, 0);
+    addCylinder(group, size * 0.2, size * 0.16, 0x9b3e2e, 0, size * 1.18, 0);
+    addCone(group, size * 0.24, size * 0.18, 0x342f2b, 0, size * 1.35, 0);
+    return group;
+  }
+
+  if (key.includes("oilrig") || key.includes("oil_rig")) {
+    addBox(group, size * 1.1, 10, size * 0.86, 0x3d4546, 0, 6, 0);
+    addBox(group, size * 0.18, size * 0.8, size * 0.18, 0x808783, -size * 0.36, size * 0.45, -size * 0.22);
+    addBox(group, size * 0.18, size * 0.65, size * 0.18, 0x808783, size * 0.34, size * 0.38, size * 0.2);
+    addCylinder(group, size * 0.05, size * 0.88, 0xe0b35f, 0, size * 0.5, 0);
+    return group;
+  }
+
+  if (key.includes("harbor")) {
+    addBox(group, size * 1.4, 7, size * 0.28, 0x3e484a, 0, 4, 0);
+    addBox(group, size * 0.24, size * 0.58, size * 0.24, 0x8b7044, -size * 0.42, size * 0.32, -size * 0.08);
+    addBox(group, size * 0.18, size * 0.46, size * 0.18, 0x8b7044, size * 0.36, size * 0.26, size * 0.12);
+    return group;
+  }
+
+  if (key.includes("powerplant") || key.includes("power_plant")) {
+    addBox(group, size * 0.92, size * 0.2, size * 0.62, 0x5b605c, 0, size * 0.1, 0);
+    addCylinder(group, size * 0.09, size * 0.92, 0x9a9a90, -size * 0.24, size * 0.55, 0);
+    addCylinder(group, size * 0.09, size * 0.72, 0x9a9a90, 0, size * 0.45, 0);
+    addCylinder(group, size * 0.09, size * 0.82, 0x9a9a90, size * 0.24, size * 0.5, 0);
+    return group;
+  }
+
+  if (key.includes("excavator")) {
+    addBox(group, size * 0.7, size * 0.26, size * 0.5, 0x6f5b35, -size * 0.15, size * 0.13, 0);
+    const arm = addBox(group, size * 0.92, size * 0.08, size * 0.12, 0xc59a4a, size * 0.32, size * 0.48, 0);
+    arm.rotation.z = MathUtils.degToRad(-24);
+    addCylinder(group, size * 0.18, size * 0.28, 0x2f3332, -size * 0.36, size * 0.15, -size * 0.18);
+    addCylinder(group, size * 0.18, size * 0.28, 0x2f3332, -size * 0.36, size * 0.15, size * 0.18);
+    return group;
+  }
+
+  if (key.includes("trainyard") || key.includes("train_yard")) {
+    addBox(group, size * 1.3, 4, size * 0.08, 0x252928, 0, 2, -size * 0.22);
+    addBox(group, size * 1.3, 4, size * 0.08, 0x252928, 0, 2, size * 0.22);
+    addBox(group, size * 0.72, size * 0.32, size * 0.34, 0x6f5f48, -size * 0.18, size * 0.18, 0);
+    addBox(group, size * 0.34, size * 0.42, size * 0.28, 0x7f6b45, size * 0.38, size * 0.24, 0);
+    return group;
+  }
+
+  if (key.includes("military") || key.includes("tunnel") || key.includes("bunker")) {
+    addBox(group, size * 0.94, size * 0.26, size * 0.62, 0x59645b, 0, size * 0.13, 0);
+    addBox(group, size * 0.24, size * 0.32, size * 0.28, 0x303635, -size * 0.38, size * 0.16, 0);
+    return group;
+  }
+
+  if (key.includes("gas") || key.includes("supermarket") || key.includes("warehouse")) {
+    addBox(group, size * 0.74, size * 0.26, size * 0.56, 0x7d7359, 0, size * 0.13, 0);
+    addBox(group, size * 0.82, size * 0.08, size * 0.22, 0xb76d3a, 0, size * 0.34, -size * 0.18);
+    return group;
+  }
+
+  if (key.includes("quarry") || key.includes("mining")) {
+    addCone(group, size * 0.42, size * 0.24, 0x6d624c, 0, size * 0.12, 0);
+    addCylinder(group, size * 0.08, size * 0.48, 0x6f5f48, size * 0.26, size * 0.24, 0);
+    return group;
+  }
+
+  addBox(group, size * 0.68, size * 0.24, size * 0.5, 0x6a705e, 0, size * 0.12, 0);
+  addCylinder(group, size * 0.08, size * 0.46, 0x8b7044, size * 0.28, size * 0.23, -size * 0.12);
+  return group;
+}
+
+function monumentKey(monument: MonumentPayload): string {
+  return `${monument.kind} ${monument.name} ${monument.prefab}`.toLowerCase().replace(/[^a-z0-9_]+/g, "_");
+}
+
+function sampleTerrainHeight(terrain: TerrainPayload, x: number, z: number): number {
+  const resolution = terrain.resolution;
+  const worldSize = terrain.worldSize || 4500;
+  const half = worldSize / 2;
+  const u = MathUtils.clamp((x + half) / worldSize, 0, 1);
+  const v = MathUtils.clamp((half - z) / worldSize, 0, 1);
+  const col = Math.round(u * (resolution - 1));
+  const row = Math.round(v * (resolution - 1));
+  return terrain.heights[row * resolution + col] || 0;
+}
+
+function monumentMaterial(color: number): MeshStandardMaterial {
+  return new MeshStandardMaterial({
+    color,
+    roughness: 0.86,
+    metalness: 0.04,
+  });
+}
+
+function addBox(group: Group, width: number, height: number, depth: number, color: number, x: number, y: number, z: number): Mesh {
+  const mesh = new Mesh(new BoxGeometry(width, height, depth), monumentMaterial(color));
+  mesh.position.set(x, y, z);
+  group.add(mesh);
+  return mesh;
+}
+
+function addCylinder(group: Group, radius: number, height: number, color: number, x: number, y: number, z: number): Mesh {
+  const mesh = new Mesh(new CylinderGeometry(radius, radius, height, 14), monumentMaterial(color));
+  mesh.position.set(x, y, z);
+  group.add(mesh);
+  return mesh;
+}
+
+function addCone(group: Group, radius: number, height: number, color: number, x: number, y: number, z: number): Mesh {
+  const mesh = new Mesh(new ConeGeometry(radius, height, 16), monumentMaterial(color));
+  mesh.position.set(x, y, z);
+  group.add(mesh);
+  return mesh;
+}
+
+function addSphere(group: Group, radius: number, color: number, x: number, y: number, z: number): Mesh {
+  const mesh = new Mesh(new SphereGeometry(radius, 18, 12), monumentMaterial(color));
+  mesh.position.set(x, y, z);
+  group.add(mesh);
+  return mesh;
 }
 
 function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): void {
