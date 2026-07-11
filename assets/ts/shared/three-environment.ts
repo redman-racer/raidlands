@@ -8,6 +8,7 @@ import {
   Scene,
   SRGBColorSpace,
   Texture,
+  TextureLoader,
   WebGLRenderer,
 } from "three";
 
@@ -18,6 +19,7 @@ type EnvironmentOptions = {
   backgroundIntensity?: number;
   environmentIntensity?: number;
   exposure?: number;
+  skyboxUrl?: string;
 };
 
 export function applyRaidlandsEnvironment(
@@ -42,6 +44,29 @@ export function applyRaidlandsEnvironment(
   scene.backgroundIntensity = options.backgroundIntensity ?? (preset === "editor" ? 0.82 : 0.96);
   scene.environment = environment;
   scene.environmentIntensity = options.environmentIntensity ?? (preset === "editor" ? 0.72 : 0.9);
+
+  if (options.skyboxUrl) {
+    const loader = new TextureLoader();
+    loader.load(
+      options.skyboxUrl,
+      (loadedSky) => {
+        loadedSky.mapping = EquirectangularReflectionMapping;
+        loadedSky.colorSpace = SRGBColorSpace;
+        loadedSky.needsUpdate = true;
+
+        const loadedPmrem = new PMREMGenerator(renderer);
+        const loadedEnvironment = loadedPmrem.fromEquirectangular(loadedSky).texture;
+        loadedPmrem.dispose();
+
+        scene.background = loadedSky;
+        scene.environment = loadedEnvironment;
+      },
+      undefined,
+      () => {
+        // Keep the procedural Raidlands sky when an optional published skybox is missing.
+      },
+    );
+  }
 }
 
 function createRaidlandsSkyTexture(preset: RaidlandsEnvironmentPreset): Texture {

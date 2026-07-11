@@ -19,6 +19,7 @@ $server_map_image = is_array($server_status['mapImage'] ?? null) ? $server_statu
 $server_map_url = (string) ($server_status['mapImageUrl'] ?? ($server_map_image['url'] ?? ''));
 $server_terrain_url = (string) ($server_map_image['terrainUrl'] ?? '');
 $server_texture_url = (string) ($server_map_image['textureUrl'] ?? $server_map_url);
+$server_skybox_url = (string) ($server_map_image['skyboxUrl'] ?? asset_url('media/skyboxes/raidlands-current-skybox.png'));
 
 function raidlands_server_page_value($value, string $fallback = 'Pending'): string
 {
@@ -225,8 +226,10 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
         data-server-map-viewer
         data-terrain-url="<?= e($server_terrain_url) ?>"
         data-texture-url="<?= e($server_texture_url) ?>"
+        data-skybox-url="<?= e($server_skybox_url) ?>"
         data-status-url="<?= e(route_url('api/server-status.php')) ?>"
         data-terrain-hash="<?= e((string) ($server_map_image['terrainHash'] ?? '')) ?>"
+        data-skybox-hash="<?= e((string) ($server_map_image['skyboxHash'] ?? '')) ?>"
         data-map-published-at="<?= e((string) ($server_map_image['publishedAt'] ?? '')) ?>"
         data-heatmap-url="<?= e(route_url('api/server/heatmap.php')) ?>"
         data-player-locations-url="<?= e(route_url('api/server/player-locations.php')) ?>"

@@ -103,6 +103,20 @@ function raidlands_server_map_terrain_columns_are_ready(): bool
     }
 }
 
+function raidlands_server_map_skybox_columns_are_ready(): bool
+{
+    if (!raidlands_server_map_images_is_ready()) {
+        return false;
+    }
+
+    try {
+        raidlands_db_fetch_one('SELECT skybox_public_url, skybox_hash FROM server_map_images LIMIT 1');
+        return true;
+    } catch (Throwable $error) {
+        return false;
+    }
+}
+
 function raidlands_server_heatmap_is_ready(): bool
 {
     if (!raidlands_db_is_configured()) {
@@ -217,6 +231,11 @@ function raidlands_server_map_terrain_relative_path(string $server_id): string
 function raidlands_server_map_texture_relative_path(string $server_id, string $extension): string
 {
     return 'assets/media/maps/' . raidlands_server_map_slug($server_id) . '/current-texture.' . $extension;
+}
+
+function raidlands_server_map_skybox_relative_path(string $server_id, string $extension): string
+{
+    return 'assets/media/maps/' . raidlands_server_map_slug($server_id) . '/current-skybox.' . $extension;
 }
 
 function raidlands_server_map_public_url(string $relative_path): string
@@ -506,6 +525,47 @@ function raidlands_server_map_write_texture(string $server_id, string $extension
     ];
 }
 
+function raidlands_server_map_write_skybox(string $server_id, string $extension, string $image): array
+{
+    $root = raidlands_server_map_upload_root();
+    $server_dir = $root . '/' . raidlands_server_map_slug($server_id);
+
+    if (!is_dir($server_dir) && !mkdir($server_dir, 0775, true) && !is_dir($server_dir)) {
+        throw new RuntimeException('Could not create map upload directory.');
+    }
+
+    $relative_path = raidlands_server_map_skybox_relative_path($server_id, $extension);
+    $path = dirname(__DIR__) . '/' . $relative_path;
+    $temp_path = $path . '.tmp';
+
+    if (file_put_contents($temp_path, $image, LOCK_EX) === false) {
+        throw new RuntimeException('Could not write skybox image.');
+    }
+
+    if (!rename($temp_path, $path)) {
+        @unlink($temp_path);
+        throw new RuntimeException('Could not publish skybox image.');
+    }
+
+    foreach (['jpg', 'png'] as $other_extension) {
+        if ($other_extension === $extension) {
+            continue;
+        }
+
+        $old_path = dirname(__DIR__) . '/' . raidlands_server_map_skybox_relative_path($server_id, $other_extension);
+
+        if (is_file($old_path)) {
+            @unlink($old_path);
+        }
+    }
+
+    return [
+        'path' => $path,
+        'relative_path' => $relative_path,
+        'public_url' => raidlands_server_map_public_url($relative_path),
+    ];
+}
+
 function raidlands_server_map_write_terrain(string $server_id, string $terrain_json): array
 {
     $root = raidlands_server_map_upload_root();
@@ -561,6 +621,20 @@ function raidlands_server_map_ingest_upload(array $payload, string $header_serve
     if ($texture_base64 !== '') {
         $texture_image = raidlands_server_map_validate_image($texture_base64);
         $texture_written = raidlands_server_map_write_texture($server_id, (string) $texture_image['extension'], (string) $texture_image['bytes']);
+    }
+
+    $skybox = null;
+    $skybox_written = null;
+    $skybox_base64 = (string) ($payload['skybox_image_base64'] ?? $payload['skybox_image'] ?? '');
+
+    if ($skybox_base64 !== '') {
+        $skybox = raidlands_server_map_validate_image($skybox_base64);
+
+        if ((int) $skybox['width'] < 512 || (int) $skybox['height'] < 256) {
+            throw new InvalidArgumentException('Skybox image must be at least 512x256.');
+        }
+
+        $skybox_written = raidlands_server_map_write_skybox($server_id, (string) $skybox['extension'], (string) $skybox['bytes']);
     }
 
     $terrain = raidlands_server_map_validate_terrain($payload['terrain'] ?? null);
@@ -708,6 +782,33 @@ function raidlands_server_map_ingest_upload(array $payload, string $header_serve
         );
     }
 
+    if ($skybox !== null && $skybox_written !== null && raidlands_server_map_skybox_columns_are_ready()) {
+        raidlands_db_execute(
+            'UPDATE server_map_images
+             SET skybox_public_url = :skybox_public_url,
+                 skybox_relative_path = :skybox_relative_path,
+                 skybox_hash = :skybox_hash,
+                 skybox_mime = :skybox_mime,
+                 skybox_extension = :skybox_extension,
+                 skybox_bytes = :skybox_bytes,
+                 skybox_width = :skybox_width,
+                 skybox_height = :skybox_height,
+                 updated_at = NOW()
+             WHERE server_id = :server_id',
+            [
+                'server_id' => $server_id,
+                'skybox_public_url' => (string) $skybox_written['public_url'],
+                'skybox_relative_path' => (string) $skybox_written['relative_path'],
+                'skybox_hash' => (string) $skybox['hash'],
+                'skybox_mime' => (string) $skybox['mime'],
+                'skybox_extension' => (string) $skybox['extension'],
+                'skybox_bytes' => (int) $skybox['size'],
+                'skybox_width' => (int) $skybox['width'],
+                'skybox_height' => (int) $skybox['height'],
+            ]
+        );
+    }
+
     $row = raidlands_server_map_latest($server_id, $wipe_key) ?? array_merge($values, [
         'published_at' => gmdate('Y-m-d H:i:s'),
         'updated_at' => gmdate('Y-m-d H:i:s'),
@@ -761,6 +862,13 @@ function raidlands_server_map_row_public(?array $row): ?array
         $terrain_public_url = raidlands_server_map_public_url($terrain_relative_path);
     }
 
+    $skybox_public_url = (string) ($row['skybox_public_url'] ?? '');
+    $skybox_relative_path = (string) ($row['skybox_relative_path'] ?? '');
+
+    if ($skybox_public_url === '' && $skybox_relative_path !== '') {
+        $skybox_public_url = raidlands_server_map_public_url($skybox_relative_path);
+    }
+
     return [
         'url' => $public_url,
         'publicUrl' => $public_url,
@@ -775,6 +883,15 @@ function raidlands_server_map_row_public(?array $row): ?array
         'terrainMinHeight' => (float) ($row['terrain_min_height'] ?? 0),
         'terrainMaxHeight' => (float) ($row['terrain_max_height'] ?? 0),
         'terrainWaterLevel' => (float) ($row['terrain_water_level'] ?? 0),
+        'skyboxUrl' => $skybox_public_url,
+        'skyboxPublicUrl' => $skybox_public_url,
+        'skyboxRelativePath' => $skybox_relative_path,
+        'skyboxHash' => (string) ($row['skybox_hash'] ?? ''),
+        'skyboxMime' => (string) ($row['skybox_mime'] ?? ''),
+        'skyboxExtension' => (string) ($row['skybox_extension'] ?? ''),
+        'skyboxBytes' => (int) ($row['skybox_bytes'] ?? 0),
+        'skyboxWidth' => (int) ($row['skybox_width'] ?? 0),
+        'skyboxHeight' => (int) ($row['skybox_height'] ?? 0),
         'serverId' => (string) ($row['server_id'] ?? ''),
         'wipeKey' => (string) ($row['wipe_key'] ?? ''),
         'mapName' => (string) ($row['map_name'] ?? ''),

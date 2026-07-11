@@ -157,6 +157,9 @@ type ServerStatusMapImage = {
   terrainPublicUrl?: string;
   terrainHash?: string;
   textureUrl?: string;
+  skyboxUrl?: string;
+  skyboxPublicUrl?: string;
+  skyboxHash?: string;
   url?: string;
   publicUrl?: string;
   hash?: string;
@@ -286,8 +289,10 @@ function bindLiveTerrainUpdates(root: HTMLElement, initial: TerrainViewerInstanc
       setStatus(root.querySelector<HTMLElement>("[data-map-viewer-status]"), "Refreshing terrain.");
       root.dataset.terrainUrl = metadata.terrainUrl;
       root.dataset.textureUrl = metadata.textureUrl;
+      root.dataset.skyboxUrl = metadata.skyboxUrl || root.dataset.skyboxUrl || "";
       root.dataset.worldSize = metadata.worldSize > 0 ? String(metadata.worldSize) : (root.dataset.worldSize || "");
       root.dataset.terrainHash = metadata.terrainHash || "";
+      root.dataset.skyboxHash = metadata.skyboxHash || "";
       root.dataset.mapPublishedAt = metadata.publishedAt || "";
 
       instance?.binding.dispose();
@@ -332,11 +337,13 @@ async function loadLatestTerrainMetadata(root: HTMLElement, statusUrl: string): 
   }
 
   const textureUrl = String(mapImage?.textureUrl || mapImage?.url || mapImage?.publicUrl || payload.mapImageUrl || root.dataset.textureUrl || "");
+  const skyboxUrl = String(mapImage?.skyboxUrl || mapImage?.skyboxPublicUrl || root.dataset.skyboxUrl || "");
   const worldSize = Math.max(0, Number(mapImage?.worldSize || payload.worldSize || root.dataset.worldSize || 0));
   const metadata = {
     ...mapImage,
     terrainUrl,
     textureUrl,
+    skyboxUrl,
     worldSize,
     fingerprint: "",
   };
@@ -350,16 +357,20 @@ function terrainViewerFingerprint(root: HTMLElement): string {
     root.dataset.terrainHash || "",
     root.dataset.terrainUrl || "",
     root.dataset.textureUrl || "",
+    root.dataset.skyboxUrl || "",
+    root.dataset.skyboxHash || "",
     root.dataset.worldSize || "",
     root.dataset.mapPublishedAt || "",
   ].join("|");
 }
 
-function terrainMetadataFingerprint(metadata: Partial<ServerStatusMapImage> & { terrainUrl?: string; textureUrl?: string; worldSize?: number }): string {
+function terrainMetadataFingerprint(metadata: Partial<ServerStatusMapImage> & { terrainUrl?: string; textureUrl?: string; skyboxUrl?: string; worldSize?: number }): string {
   return [
     metadata.terrainHash || "",
     metadata.terrainUrl || metadata.terrainPublicUrl || "",
     metadata.textureUrl || "",
+    metadata.skyboxHash || "",
+    metadata.skyboxUrl || metadata.skyboxPublicUrl || "",
     String(metadata.worldSize || ""),
     metadata.publishedAt || metadata.updatedAt || metadata.generatedAt || "",
   ].join("|");
@@ -484,6 +495,7 @@ class TerrainViewer {
       exposure: 1.08,
       backgroundIntensity: 0.9,
       environmentIntensity: 0.76,
+      skyboxUrl: this.root.dataset.skyboxUrl || "",
     });
     this.renderer.domElement.dataset.serverMapViewerCanvas = "true";
     this.terrainMaterial = this.createTerrainMaterial();
@@ -654,7 +666,7 @@ class TerrainViewer {
       sprite.renderOrder = isSelf ? 42 : 40;
       nextLayer.add(sprite);
     });
-    this.replaceOverlayLayer(this.playerLocationLayer, nextLayer);
+    this.replaceOverlayLayer(this.playerLocationLayer, nextLayer, 0);
   }
 
   public hasSelfLocation(): boolean {
@@ -908,16 +920,38 @@ class TerrainViewer {
     this.updateOverlayLayerTransitions(now);
     this.updateGridOpacity();
     this.airstrikeLayer.userData.tick?.((now - this.clockStart) / 1000);
-    this.playerLocationLayer.children.forEach((child, index) => {
-      const pulse = 1 + Math.sin((now - this.clockStart) / 520 + index) * 0.045;
-      const size = (child.userData.baseScale || child.scale.x) * pulse;
-      child.scale.set(size, size, 1);
-    });
     this.renderer.render(this.scene, this.camera);
   }
 
   private replaceOverlayLayer(parent: Group, incoming: Group, durationMs = 360): void {
+    const existingTransitions = this.overlayLayerTransitions.filter((transition) => transition.incoming.parent === parent || transition.outgoing?.parent === parent);
+    existingTransitions.forEach((transition) => {
+      if (transition.incoming.parent) {
+        transition.incoming.parent.remove(transition.incoming);
+        disposeObjectTree(transition.incoming);
+      }
+      if (transition.outgoing?.parent) {
+        transition.outgoing.parent.remove(transition.outgoing);
+        disposeObjectTree(transition.outgoing);
+      }
+    });
+    for (let index = this.overlayLayerTransitions.length - 1; index >= 0; index -= 1) {
+      if (existingTransitions.includes(this.overlayLayerTransitions[index]!)) {
+        this.overlayLayerTransitions.splice(index, 1);
+      }
+    }
     const outgoing = parent.children.find((child): child is Group => child instanceof Group) || null;
+
+    if (durationMs <= 0) {
+      if (outgoing) {
+        parent.remove(outgoing);
+        disposeObjectTree(outgoing);
+      }
+      setObjectOpacity(incoming, 1);
+      parent.add(incoming);
+      return;
+    }
+
     setObjectOpacity(incoming, 0);
     parent.add(incoming);
     this.overlayLayerTransitions.push({
@@ -2227,6 +2261,15 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     if (heatmapPlayback?.checked && (heatmap?.checked || players?.checked)) {
       stopHeatmapPlayback();
       reloadPlayback();
+    }
+  });
+  bind(heatmapFrame, "pointerdown", () => {
+    stopHeatmapPlayback();
+  });
+  bind(heatmapFrame, "keydown", (event) => {
+    const key = (event as KeyboardEvent).key;
+    if (key === "ArrowLeft" || key === "ArrowRight" || key === "Home" || key === "End" || key === "PageUp" || key === "PageDown") {
+      stopHeatmapPlayback();
     }
   });
   bind(heatmapFrame, "input", () => {

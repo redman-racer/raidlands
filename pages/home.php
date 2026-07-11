@@ -18,6 +18,7 @@ $home_server_map_image = is_array($home_server_status['mapImage'] ?? null) ? $ho
 $home_server_map_url = trim((string) ($home_server_status['mapImageUrl'] ?? ($home_server_map_image['url'] ?? '')));
 $home_server_terrain_url = trim((string) ($home_server_map_image['terrainUrl'] ?? ''));
 $home_server_texture_url = trim((string) ($home_server_map_image['textureUrl'] ?? $home_server_map_url));
+$home_server_skybox_url = trim((string) ($home_server_map_image['skyboxUrl'] ?? asset_url('media/skyboxes/raidlands-current-skybox.png')));
 $home_server_updated_at = (string) ($home_server_status['updatedAt'] ?? $home_server_status['receivedAt'] ?? '');
 $home_server_updated_timestamp = $home_server_updated_at !== '' ? strtotime($home_server_updated_at) : false;
 $home_server_updated_label = $home_server_updated_timestamp !== false
@@ -172,6 +173,7 @@ $home_is_linked = raidlands_has_linked_account();
             data-server-map-viewer
             data-terrain-url="<?= e($home_server_terrain_url) ?>"
             data-texture-url="<?= e($home_server_texture_url) ?>"
+            data-skybox-url="<?= e($home_server_skybox_url) ?>"
             data-airstrike-profiles-url="<?= e($base_path . 'api/airstrike-animation-profiles.php') ?>"
             data-camera-tour="true"
             data-camera-tour-style="orbit"
