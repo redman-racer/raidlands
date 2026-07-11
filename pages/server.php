@@ -172,6 +172,15 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
             <span>Playback</span>
           </label>
           <button type="button" data-map-viewer-heatmap-play aria-pressed="false">Play</button>
+          <div class="server-terrain-speed-controls" aria-label="Playback speed">
+            <button type="button" data-map-viewer-heatmap-speed-down aria-label="Slow playback" title="Slow playback">-</button>
+            <output data-map-viewer-heatmap-speed-label>1x</output>
+            <button type="button" data-map-viewer-heatmap-speed-up aria-label="Speed up playback" title="Speed up playback">+</button>
+          </div>
+          <label class="server-terrain-toggle">
+            <input type="checkbox" checked data-map-viewer-heatmap-loop>
+            <span>Loop</span>
+          </label>
           <label class="server-terrain-field server-terrain-playback-field">
             <span>Timeline <output data-map-viewer-heatmap-frame-label>Latest</output></span>
             <input type="range" min="0" max="15" value="15" data-map-viewer-heatmap-frame>

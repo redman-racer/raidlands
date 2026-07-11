@@ -1911,6 +1911,10 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   const heatmap = panel?.querySelector<HTMLInputElement>("[data-map-viewer-heatmap]");
   const heatmapPlayback = panel?.querySelector<HTMLInputElement>("[data-map-viewer-heatmap-playback]");
   const heatmapPlay = panel?.querySelector<HTMLButtonElement>("[data-map-viewer-heatmap-play]");
+  const heatmapLoop = panel?.querySelector<HTMLInputElement>("[data-map-viewer-heatmap-loop]");
+  const heatmapSpeedDown = panel?.querySelector<HTMLButtonElement>("[data-map-viewer-heatmap-speed-down]");
+  const heatmapSpeedUp = panel?.querySelector<HTMLButtonElement>("[data-map-viewer-heatmap-speed-up]");
+  const heatmapSpeedLabel = panel?.querySelector<HTMLOutputElement>("[data-map-viewer-heatmap-speed-label]");
   const heatmapFrame = panel?.querySelector<HTMLInputElement>("[data-map-viewer-heatmap-frame]");
   const heatmapFrameLabel = panel?.querySelector<HTMLOutputElement>("[data-map-viewer-heatmap-frame-label]");
   const heatmapFrameCount = panel?.querySelector<HTMLInputElement>("[data-map-viewer-heatmap-frame-count]");
@@ -1921,7 +1925,9 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   const range = panel?.querySelector<HTMLSelectElement>("[data-map-viewer-heatmap-range]");
   let heatmapHistory: HeatmapHistoryFrame[] = [];
   let playbackTimer = 0;
+  let playbackSpeedIndex = 2;
   let playerPollTimer = 0;
+  const playbackSpeeds = [0.25, 0.5, 1, 2, 4, 8];
   const disposers: Array<() => void> = [];
   const bind = <T extends EventTarget>(target: T | null | undefined, type: string, listener: EventListenerOrEventListenerObject): void => {
     if (!target) {
@@ -1953,6 +1959,52 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     if (heatmapPlay) {
       heatmapPlay.textContent = "Play";
     }
+  };
+
+  const playbackSpeed = (): number => playbackSpeeds[playbackSpeedIndex] || 1;
+
+  const playbackIntervalMs = (): number => Math.max(80, Math.round(900 / playbackSpeed()));
+
+  const updatePlaybackSpeedControls = () => {
+    const speed = playbackSpeed();
+    if (heatmapSpeedLabel) {
+      heatmapSpeedLabel.value = `${speed}x`;
+      heatmapSpeedLabel.textContent = `${speed}x`;
+    }
+    if (heatmapSpeedDown) {
+      heatmapSpeedDown.disabled = playbackSpeedIndex <= 0;
+    }
+    if (heatmapSpeedUp) {
+      heatmapSpeedUp.disabled = playbackSpeedIndex >= playbackSpeeds.length - 1;
+    }
+  };
+
+  const startHeatmapPlayback = () => {
+    if (!(heatmap?.checked || players?.checked) || !heatmapPlayback?.checked || heatmapHistory.length === 0 || !heatmapFrame) {
+      return;
+    }
+
+    window.clearInterval(playbackTimer);
+    heatmapPlay?.setAttribute("aria-pressed", "true");
+    if (heatmapPlay) {
+      heatmapPlay.textContent = "Pause";
+    }
+
+    playbackTimer = window.setInterval(() => {
+      const current = Number(heatmapFrame.value) || 0;
+      let next = current + 1;
+      if (next >= heatmapHistory.length) {
+        if (!heatmapLoop?.checked) {
+          heatmapFrame.value = String(heatmapHistory.length - 1);
+          showPlaybackFrame(heatmapHistory.length - 1);
+          stopHeatmapPlayback();
+          return;
+        }
+        next = 0;
+      }
+      heatmapFrame.value = String(next);
+      showPlaybackFrame(next);
+    }, playbackIntervalMs());
   };
 
   const setTimelineLabel = (frame: HeatmapHistoryFrame | null, fallback = "Latest") => {
@@ -2085,6 +2137,20 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     }
     showPlaybackFrame(Number(heatmapFrame?.value) || 0);
   });
+  bind(heatmapSpeedDown, "click", () => {
+    playbackSpeedIndex = Math.max(0, playbackSpeedIndex - 1);
+    updatePlaybackSpeedControls();
+    if (playbackTimer > 0) {
+      startHeatmapPlayback();
+    }
+  });
+  bind(heatmapSpeedUp, "click", () => {
+    playbackSpeedIndex = Math.min(playbackSpeeds.length - 1, playbackSpeedIndex + 1);
+    updatePlaybackSpeedControls();
+    if (playbackTimer > 0) {
+      startHeatmapPlayback();
+    }
+  });
   bind(heatmapPlay, "click", () => {
     if (!heatmap?.checked && players && !players.checked) {
       players.checked = true;
@@ -2104,15 +2170,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       return;
     }
 
-    heatmapPlay?.setAttribute("aria-pressed", "true");
-    if (heatmapPlay) {
-      heatmapPlay.textContent = "Pause";
-    }
-    playbackTimer = window.setInterval(() => {
-      const next = ((Number(heatmapFrame.value) || 0) + 1) % heatmapHistory.length;
-      heatmapFrame.value = String(next);
-      showPlaybackFrame(next);
-    }, 900);
+    startHeatmapPlayback();
   });
 
   const reloadPlayers = () => {
@@ -2141,6 +2199,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     reloadPlayers();
   });
   updateFrameCountLabel();
+  updatePlaybackSpeedControls();
 
   bind(myLocation, "click", () => {
     if (players && !players.checked) {
