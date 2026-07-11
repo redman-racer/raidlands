@@ -15,7 +15,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteMapBridge", "Raidlands", "1.0.6")]
+    [Info("WebsiteMapBridge", "Raidlands", "1.0.7")]
     [Description("Publishes the current RustMapApi map image and sampled terrain to the Raidlands website.")]
     public class WebsiteMapBridge : CovalencePlugin
     {
@@ -175,9 +175,10 @@ namespace Oxide.Plugins
         protected override void LoadConfig()
         {
             base.LoadConfig();
+            var hasPublishSkyboxSetting = ConfigHasProperty("PublishSkybox");
             Config.Settings.DefaultValueHandling = DefaultValueHandling.Populate;
             config = Config.ReadObject<Configuration>() ?? new Configuration();
-            NormalizeConfig();
+            NormalizeConfig(hasPublishSkyboxSetting);
             Config.WriteObject(config, true);
         }
 
@@ -246,7 +247,7 @@ namespace Oxide.Plugins
 
             ReplyToCommand(
                 arg,
-                $"WebsiteMapBridge v1.0.6 status: server={ResolveServerId()}, api={apiState}, ready={readyState}, secret={secretState}, render={config.RenderName}, textureRender={config.TextureRenderName}, terrainEnabled={config.PublishTerrain}, terrainResolution={config.TerrainSampleResolution}, monumentsEnabled={config.IncludeMonuments}, playerLocations={config.PublishPlayerLocations}/{config.PlayerLocationIntervalSeconds}s, heightMap={heightMapState}, lastWipe={lastPublishedWipeKey}."
+                $"WebsiteMapBridge v1.0.7 status: server={ResolveServerId()}, api={apiState}, ready={readyState}, secret={secretState}, render={config.RenderName}, textureRender={config.TextureRenderName}, terrainEnabled={config.PublishTerrain}, terrainResolution={config.TerrainSampleResolution}, monumentsEnabled={config.IncludeMonuments}, skybox={config.PublishSkybox}/{config.SkyboxImagePath}, playerLocations={config.PublishPlayerLocations}/{config.PlayerLocationIntervalSeconds}s, heightMap={heightMapState}, lastWipe={lastPublishedWipeKey}."
             );
         }
 
@@ -1229,7 +1230,7 @@ namespace Oxide.Plugins
             return string.Equals(config.FileType, "Png", StringComparison.OrdinalIgnoreCase) ? EncodingPng : EncodingJpg;
         }
 
-        private void NormalizeConfig()
+        private void NormalizeConfig(bool hasPublishSkyboxSetting)
         {
             var defaults = new Configuration();
             config.ApiBaseUrl = ConfiguredOrDefault(config.ApiBaseUrl, defaults.ApiBaseUrl);
@@ -1241,7 +1242,32 @@ namespace Oxide.Plugins
             config.AutoPublishDelaySeconds = Math.Max(1, config.AutoPublishDelaySeconds);
             config.WebRequestTimeoutMilliseconds = Math.Max(5000, config.WebRequestTimeoutMilliseconds);
             config.TerrainSampleResolution = Math.Max(17, Math.Min(257, config.TerrainSampleResolution <= 0 ? defaults.TerrainSampleResolution : config.TerrainSampleResolution));
+            config.SkyboxImagePath = ConfiguredOrDefault(config.SkyboxImagePath, defaults.SkyboxImagePath);
+            if (!hasPublishSkyboxSetting)
+            {
+                config.PublishSkybox = defaults.PublishSkybox;
+            }
             config.PlayerLocationIntervalSeconds = Math.Max(5, config.PlayerLocationIntervalSeconds <= 0 ? defaults.PlayerLocationIntervalSeconds : config.PlayerLocationIntervalSeconds);
+        }
+
+        private bool ConfigHasProperty(string propertyName)
+        {
+            try
+            {
+                var path = Path.Combine(Interface.Oxide.ConfigDirectory, $"{Name}.json");
+
+                if (!File.Exists(path))
+                {
+                    return false;
+                }
+
+                var json = JObject.Parse(File.ReadAllText(path));
+                return json.Properties().Any(property => property.Name.Equals(propertyName, StringComparison.OrdinalIgnoreCase));
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private bool IsSuccess(int code, string response, out string error)

@@ -19,7 +19,10 @@ $server_map_image = is_array($server_status['mapImage'] ?? null) ? $server_statu
 $server_map_url = (string) ($server_status['mapImageUrl'] ?? ($server_map_image['url'] ?? ''));
 $server_terrain_url = (string) ($server_map_image['terrainUrl'] ?? '');
 $server_texture_url = (string) ($server_map_image['textureUrl'] ?? $server_map_url);
-$server_skybox_url = (string) ($server_map_image['skyboxUrl'] ?? asset_url('media/skyboxes/raidlands-current-skybox.png'));
+$server_skybox_url = trim((string) ($server_map_image['skyboxUrl'] ?? ''));
+if ($server_skybox_url === '') {
+    $server_skybox_url = asset_url('media/skyboxes/raidlands-current-skybox.png');
+}
 
 function raidlands_server_page_value($value, string $fallback = 'Pending'): string
 {
