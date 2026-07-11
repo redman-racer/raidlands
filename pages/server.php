@@ -171,6 +171,7 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
         data-terrain-url="<?= e($server_terrain_url) ?>"
         data-texture-url="<?= e($server_texture_url) ?>"
         data-camera-tour="false"
+        data-camera-locked="false"
         data-grid-overlay="true"
         data-world-size="<?= e((string) ($server_map_image['worldSize'] ?? $server_status['worldSize'] ?? 0)) ?>"
         data-min-height="<?= e((string) ($server_map_image['terrainMinHeight'] ?? 0)) ?>"

@@ -227,6 +227,7 @@ class TerrainViewer {
   private tourKind: CameraTourKind = "coastal-sweep";
   private tourIndex = -1;
   private tourEnabled: boolean;
+  private readonly lockCameraInput: boolean;
   private transitionFrom: CameraPose | null = null;
   private transitionTo: CameraPose | null = null;
   private transitionStartedAt = 0;
@@ -242,6 +243,7 @@ class TerrainViewer {
     this.textureUrl = options.textureUrl;
     this.status = options.status;
     this.tourEnabled = this.root.dataset.cameraTour === "true";
+    this.lockCameraInput = this.root.dataset.cameraLocked === "true";
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.outputColorSpace = SRGBColorSpace;
     applyRaidlandsEnvironment(this.scene, this.renderer, {
@@ -264,10 +266,10 @@ class TerrainViewer {
     this.addLights();
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
-    this.controls.enabled = false;
-    this.controls.enableRotate = false;
-    this.controls.enablePan = false;
-    this.controls.enableZoom = false;
+    this.controls.enabled = !this.lockCameraInput;
+    this.controls.enableRotate = !this.lockCameraInput;
+    this.controls.enablePan = !this.lockCameraInput;
+    this.controls.enableZoom = !this.lockCameraInput;
     this.controls.enableDamping = true;
     this.controls.dampingFactor = 0.08;
     this.controls.maxPolarAngle = MathUtils.degToRad(84);
@@ -297,6 +299,10 @@ class TerrainViewer {
 
   public setTourEnabled(enabled: boolean): void {
     this.tourEnabled = enabled;
+    this.controls.enabled = !enabled && !this.lockCameraInput;
+    this.controls.enableRotate = !enabled && !this.lockCameraInput;
+    this.controls.enablePan = !enabled && !this.lockCameraInput;
+    this.controls.enableZoom = !enabled && !this.lockCameraInput;
     this.focusUntil = 0;
     if (enabled) {
       this.startNextTour(performance.now(), true);
