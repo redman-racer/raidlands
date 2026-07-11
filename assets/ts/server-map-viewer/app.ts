@@ -1083,9 +1083,17 @@ function bindMapViewButtons(buttons: HTMLButtonElement[], viewer: TerrainViewer)
   buttons.forEach((button) => {
     button.addEventListener("click", () => {
       const view: MapView = button.dataset.mapView === "top" ? "top" : "iso";
-      buttons.forEach((candidate) => candidate.setAttribute("aria-pressed", String(candidate.dataset.mapView === view)));
       viewer.setView(view);
+      syncMapViewButtons(button, view);
     });
+  });
+}
+
+function syncMapViewButtons(source: HTMLElement, view: MapView): void {
+  const panel = source.closest<HTMLElement>(".server-terrain-panel");
+  const scope = panel || source.closest<HTMLElement>("[data-server-map-viewer]");
+  scope?.querySelectorAll<HTMLButtonElement>("[data-map-view]").forEach((button) => {
+    button.setAttribute("aria-pressed", String(button.dataset.mapView === view));
   });
 }
 
