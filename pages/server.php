@@ -176,6 +176,10 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
             <span>Timeline <output data-map-viewer-heatmap-frame-label>Latest</output></span>
             <input type="range" min="0" max="15" value="15" data-map-viewer-heatmap-frame>
           </label>
+          <label class="server-terrain-field server-terrain-frame-field">
+            <span>Frames <output data-map-viewer-heatmap-frame-count-label>24</output></span>
+            <input type="range" min="8" max="72" step="4" value="24" data-map-viewer-heatmap-frame-count>
+          </label>
           <label class="server-terrain-toggle">
             <input type="checkbox" checked data-map-viewer-players>
             <span>Clan locations</span>
@@ -195,8 +199,12 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
           <label class="server-terrain-field">
             <span>Range</span>
             <select data-map-viewer-heatmap-range>
+              <option value="15m">15M</option>
+              <option value="30m">30M</option>
               <option value="1h">1H</option>
+              <option value="3h">3H</option>
               <option value="6h">6H</option>
+              <option value="12h">12H</option>
               <option value="24h" selected>24H</option>
               <option value="wipe">Wipe</option>
             </select>

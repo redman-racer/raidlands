@@ -18,6 +18,7 @@ import {
   Mesh,
   MeshStandardMaterial,
   PerspectiveCamera,
+  PlaneGeometry,
   Quaternion,
   Scene,
   SRGBColorSpace,
@@ -116,6 +117,7 @@ type HeatmapHistoryFrame = HeatmapPayload & {
   label?: string;
   windowStart?: string;
   windowEnd?: string;
+  players?: PlayerLocation[];
 };
 
 type HeatmapHistoryPayload = HeatmapPayload & {
@@ -476,6 +478,7 @@ class TerrainViewer {
     });
     this.renderer.domElement.dataset.serverMapViewerCanvas = "true";
     this.terrainMaterial = this.createTerrainMaterial();
+    this.scene.add(this.createOceanFloorMesh());
     this.terrainMesh = this.createTerrainMesh();
     this.scene.add(this.terrainMesh);
     this.gridLayer.name = "raidlands-rust-map-grid";
@@ -794,6 +797,27 @@ class TerrainViewer {
       vertexColors: true,
       side: DoubleSide,
     });
+  }
+
+  private createOceanFloorMesh(): Mesh {
+    const worldSize = this.terrain.worldSize || 4500;
+    const oceanSize = worldSize * 8;
+    const waterLevel = Number.isFinite(this.terrain.waterLevel) ? this.terrain.waterLevel || 0 : 0;
+    const geometry = new PlaneGeometry(oceanSize, oceanSize, 1, 1);
+    const material = new MeshStandardMaterial({
+      color: 0x06393a,
+      roughness: 0.96,
+      metalness: 0,
+      transparent: true,
+      opacity: 0.86,
+      side: DoubleSide,
+    });
+    const mesh = new Mesh(geometry, material);
+    mesh.name = "raidlands-extended-ocean-floor";
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.y = waterLevel - 4;
+    mesh.renderOrder = -10;
+    return mesh;
   }
 
   private loadTexture(): void {
@@ -1876,6 +1900,8 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   const heatmapPlay = panel?.querySelector<HTMLButtonElement>("[data-map-viewer-heatmap-play]");
   const heatmapFrame = panel?.querySelector<HTMLInputElement>("[data-map-viewer-heatmap-frame]");
   const heatmapFrameLabel = panel?.querySelector<HTMLOutputElement>("[data-map-viewer-heatmap-frame-label]");
+  const heatmapFrameCount = panel?.querySelector<HTMLInputElement>("[data-map-viewer-heatmap-frame-count]");
+  const heatmapFrameCountLabel = panel?.querySelector<HTMLOutputElement>("[data-map-viewer-heatmap-frame-count-label]");
   const players = panel?.querySelector<HTMLInputElement>("[data-map-viewer-players]");
   const myLocation = panel?.querySelector<HTMLButtonElement>("[data-map-viewer-my-location]");
   const metric = panel?.querySelector<HTMLSelectElement>("[data-map-viewer-heatmap-metric]");
@@ -1925,6 +1951,21 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     heatmapFrameLabel.textContent = frame?.label || fallback;
   };
 
+  const heatmapFrameCountValue = (): number => {
+    const value = Math.round(Number(heatmapFrameCount?.value) || 24);
+    return Math.max(8, Math.min(72, value));
+  };
+
+  const updateFrameCountLabel = () => {
+    if (!heatmapFrameCountLabel) {
+      return;
+    }
+
+    const value = heatmapFrameCountValue();
+    heatmapFrameCountLabel.value = String(value);
+    heatmapFrameCountLabel.textContent = String(value);
+  };
+
   const showHeatmapFrame = (index: number) => {
     const frame = heatmapHistory[index];
 
@@ -1935,6 +1976,17 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
 
     viewer.setHeatmap(frame);
     viewer.setHeatmapVisible(true);
+    if (players?.checked) {
+      viewer.setPlayerLocations({
+        ok: true,
+        authenticated: true,
+        players: Array.isArray(frame.players) ? frame.players : [],
+      });
+      viewer.setPlayerLocationsVisible((frame.players || []).length > 0);
+      if (myLocation) {
+        myLocation.disabled = !viewer.hasSelfLocation();
+      }
+    }
     setTimelineLabel(frame);
   };
 
@@ -1957,7 +2009,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     }
 
     if (heatmapPlayback?.checked) {
-      void loadHeatmapHistory(root, metric?.value || "deaths", range?.value || "24h").then((payload) => {
+      void loadHeatmapHistory(root, metric?.value || "deaths", range?.value || "24h", heatmapFrameCountValue()).then((payload) => {
         heatmapHistory = Array.isArray(payload.frames) ? payload.frames : [];
         const latestFrame = latestVisibleHeatmapFrame();
         if (heatmapFrame) {
@@ -1983,6 +2035,13 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   });
   bind(metric, "change", reloadHeatmap);
   bind(range, "change", reloadHeatmap);
+  bind(heatmapFrameCount, "input", () => {
+    updateFrameCountLabel();
+    if (heatmapPlayback?.checked && heatmap?.checked) {
+      stopHeatmapPlayback();
+      reloadHeatmap();
+    }
+  });
   bind(heatmapFrame, "input", () => {
     if (heatmapPlayback && !heatmapPlayback.checked) {
       heatmapPlayback.checked = true;
@@ -2046,6 +2105,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   };
 
   bind(players, "change", reloadPlayers);
+  updateFrameCountLabel();
 
   bind(myLocation, "click", () => {
     if (players && !players.checked) {
@@ -2113,7 +2173,7 @@ async function loadHeatmap(root: HTMLElement, viewer: TerrainViewer, metric: str
   }
 }
 
-async function loadHeatmapHistory(root: HTMLElement, metric: string, range: string): Promise<HeatmapHistoryPayload> {
+async function loadHeatmapHistory(root: HTMLElement, metric: string, range: string, frames = 24): Promise<HeatmapHistoryPayload> {
   const baseUrl = root.dataset.heatmapUrl || "";
 
   if (!baseUrl) {
@@ -2124,7 +2184,7 @@ async function loadHeatmapHistory(root: HTMLElement, metric: string, range: stri
   url.searchParams.set("metric", metric);
   url.searchParams.set("range", range);
   url.searchParams.set("playback", "1");
-  url.searchParams.set("frames", "16");
+  url.searchParams.set("frames", String(Math.max(8, Math.min(72, Math.round(frames)))));
 
   try {
     const response = await fetch(url.toString(), {

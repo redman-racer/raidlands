@@ -1666,6 +1666,10 @@ h3,
   min-width: min(100%, 340px);
 }
 
+.server-terrain-controls .server-terrain-frame-field {
+  min-width: min(100%, 220px);
+}
+
 .server-terrain-controls .server-terrain-playback-field > span {
   display: flex;
   align-items: center;
