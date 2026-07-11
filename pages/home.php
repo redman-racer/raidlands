@@ -173,6 +173,8 @@ $home_is_linked = raidlands_has_linked_account();
             data-terrain-url="<?= e($home_server_terrain_url) ?>"
             data-texture-url="<?= e($home_server_texture_url) ?>"
             data-airstrike-profiles-url="<?= e($base_path . 'api/airstrike-animation-profiles.php') ?>"
+            data-camera-tour="true"
+            data-grid-overlay="true"
             data-world-size="<?= e((string) ($home_server_map_image['worldSize'] ?? $home_server_status['worldSize'] ?? 0)) ?>"
             data-min-height="<?= e((string) ($home_server_map_image['terrainMinHeight'] ?? 0)) ?>"
             data-max-height="<?= e((string) ($home_server_map_image['terrainMaxHeight'] ?? 0)) ?>"

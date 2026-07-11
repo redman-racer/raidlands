@@ -226,6 +226,11 @@ class TerrainViewer {
   private tourDuration = 18000;
   private tourKind: CameraTourKind = "coastal-sweep";
   private tourIndex = -1;
+  private tourEnabled: boolean;
+  private transitionFrom: CameraPose | null = null;
+  private transitionTo: CameraPose | null = null;
+  private transitionStartedAt = 0;
+  private transitionDuration = 1400;
 
   public constructor(
     root: HTMLElement,
@@ -236,6 +241,7 @@ class TerrainViewer {
     this.terrain = terrain;
     this.textureUrl = options.textureUrl;
     this.status = options.status;
+    this.tourEnabled = this.root.dataset.cameraTour === "true";
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.outputColorSpace = SRGBColorSpace;
     applyRaidlandsEnvironment(this.scene, this.renderer, {
@@ -272,7 +278,10 @@ class TerrainViewer {
 
   public mount(): void {
     this.root.appendChild(this.renderer.domElement);
-    this.startNextTour(performance.now(), false);
+    this.applyCameraPose(this.isoPose(false));
+    if (this.tourEnabled) {
+      this.startNextTour(performance.now(), true);
+    }
     this.bindFloatingViewSelect();
     this.resize();
     window.addEventListener("resize", this.onResize);
@@ -286,6 +295,18 @@ class TerrainViewer {
     this.updateGridOpacity();
   }
 
+  public setTourEnabled(enabled: boolean): void {
+    this.tourEnabled = enabled;
+    this.focusUntil = 0;
+    if (enabled) {
+      this.startNextTour(performance.now(), true);
+      return;
+    }
+
+    this.transitionFrom = null;
+    this.transitionTo = null;
+  }
+
   public addAirstrikePreview(profiles: RuntimeVisualProfile[]): void {
     if (profiles.length === 0) {
       return;
@@ -296,6 +317,10 @@ class TerrainViewer {
   }
 
   public frameIso(cycle = true): void {
+    this.focusCamera(this.isoPose(cycle));
+  }
+
+  private isoPose(cycle = true): CameraPose {
     const size = this.terrain.worldSize || 4500;
     const height = Math.max(220, (this.terrain.maxHeight || 220) - Math.min(this.terrain.minHeight || 0, 0));
     if (cycle) {
@@ -304,11 +329,11 @@ class TerrainViewer {
       this.isoViewIndex = 0;
     }
     const direction = isoViewDirections[this.isoViewIndex] || isoViewDirections[0]!;
-    this.focusCamera({
+    return {
       position: new Vector3(size * direction.x, size * direction.y, size * direction.z),
       target: new Vector3(0, height * 0.22, 0),
       up: new Vector3(0, 1, 0),
-    });
+    };
   }
 
   public frameTop(): void {
@@ -468,13 +493,33 @@ class TerrainViewer {
   }
 
   private focusCamera(pose: CameraPose): void {
-    this.activePose = this.currentPose();
+    this.transitionFrom = this.currentPose();
+    this.transitionTo = clonePose(pose);
+    this.transitionStartedAt = performance.now();
+    this.transitionDuration = 1350;
+    this.activePose = null;
     this.focusUntil = performance.now() + 15000;
-    this.applyCameraPose(pose);
   }
 
   private updateCameraTour(now: number): void {
+    if (this.transitionTo) {
+      const progress = MathUtils.clamp((now - this.transitionStartedAt) / Math.max(1, this.transitionDuration), 0, 1);
+      const eased = easeInOutCubic(progress);
+      const from = this.transitionFrom || this.currentPose();
+      const pose = interpolatePose(from, this.transitionTo, eased);
+      this.applyCameraPose(pose);
+      if (progress >= 1) {
+        this.transitionFrom = null;
+        this.transitionTo = null;
+      }
+      return;
+    }
+
     if (now < this.focusUntil) {
+      return;
+    }
+
+    if (!this.tourEnabled) {
       return;
     }
 
@@ -890,6 +935,28 @@ function randomEntry<T>(values: T[]): T | null {
   return values[Math.floor(Math.random() * values.length)] || null;
 }
 
+function clonePose(pose: CameraPose): CameraPose {
+  return {
+    position: pose.position.clone(),
+    target: pose.target.clone(),
+    up: pose.up.clone(),
+  };
+}
+
+function interpolatePose(from: CameraPose, to: CameraPose, progress: number): CameraPose {
+  return {
+    position: from.position.clone().lerp(to.position, progress),
+    target: from.target.clone().lerp(to.target, progress),
+    up: from.up.clone().lerp(to.up, progress).normalize(),
+  };
+}
+
+function easeInOutCubic(progress: number): number {
+  return progress < 0.5
+    ? 4 * progress * progress * progress
+    : 1 - ((-2 * progress + 2) ** 3) / 2;
+}
+
 function randomMapOrigin(terrain: TerrainPayload, lane: number): Vector3 {
   const worldSize = terrain.worldSize || 4500;
   const span = worldSize * 0.44;
@@ -1278,11 +1345,16 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): void {
   const panel = root.closest<HTMLElement>(".server-terrain-panel");
   const buttons = Array.from(panel?.querySelectorAll<HTMLButtonElement>("[data-map-view]") || []);
   const grid = panel?.querySelector<HTMLInputElement>("[data-map-viewer-grid]");
+  const tour = panel?.querySelector<HTMLInputElement>("[data-map-viewer-tour]");
 
   bindMapViewButtons(buttons, viewer);
 
   grid?.addEventListener("change", () => {
     viewer.setGridVisible(grid.checked);
+  });
+
+  tour?.addEventListener("change", () => {
+    viewer.setTourEnabled(tour.checked);
   });
 }
 
