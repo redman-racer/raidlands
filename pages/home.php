@@ -16,6 +16,8 @@ $home_server_queue = (int) ($home_server_status['queue'] ?? 0);
 $home_server_map_name = (string) ($home_server_status['mapName'] ?? $site_config['mapName'] ?? 'Unknown');
 $home_server_map_image = is_array($home_server_status['mapImage'] ?? null) ? $home_server_status['mapImage'] : [];
 $home_server_map_url = trim((string) ($home_server_status['mapImageUrl'] ?? ($home_server_map_image['url'] ?? '')));
+$home_server_terrain_url = trim((string) ($home_server_map_image['terrainUrl'] ?? ''));
+$home_server_texture_url = trim((string) ($home_server_map_image['textureUrl'] ?? $home_server_map_url));
 $home_server_updated_at = (string) ($home_server_status['updatedAt'] ?? $home_server_status['receivedAt'] ?? '');
 $home_server_updated_timestamp = $home_server_updated_at !== '' ? strtotime($home_server_updated_at) : false;
 $home_server_updated_label = $home_server_updated_timestamp !== false
@@ -164,7 +166,20 @@ $home_is_linked = raidlands_has_linked_account();
           </div>
           <span class="status-pill <?= e($home_server_status_class) ?>"><?= e($home_server_status_label) ?></span>
         </div>
-        <?php if ($home_server_map_url !== '') : ?>
+        <?php if ($home_server_terrain_url !== '') : ?>
+          <div
+            class="server-terrain-viewer home-map-frame home-map-terrain"
+            data-server-map-viewer
+            data-terrain-url="<?= e($home_server_terrain_url) ?>"
+            data-texture-url="<?= e($home_server_texture_url) ?>"
+            data-airstrike-profiles-url="<?= e($base_path . 'api/airstrike-animation-profiles.php') ?>"
+            data-world-size="<?= e((string) ($home_server_map_image['worldSize'] ?? $home_server_status['worldSize'] ?? 0)) ?>"
+            data-min-height="<?= e((string) ($home_server_map_image['terrainMinHeight'] ?? 0)) ?>"
+            data-max-height="<?= e((string) ($home_server_map_image['terrainMaxHeight'] ?? 0)) ?>"
+            aria-label="Current Raidlands wipe map animation preview">
+            <p class="server-terrain-status" data-map-viewer-status>Loading terrain.</p>
+          </div>
+        <?php elseif ($home_server_map_url !== '') : ?>
           <a class="server-map-frame home-map-frame" href="<?= e($home_server_map_url) ?>" target="_blank" rel="noopener">
             <img src="<?= e($home_server_map_url) ?>" alt="Current Raidlands wipe map" loading="lazy">
           </a>
@@ -210,6 +225,9 @@ $home_is_linked = raidlands_has_linked_account();
     </div>
   </div>
 </section>
+<?php if ($home_server_terrain_url !== '') : ?>
+<script type="module" src="<?= e(asset_url('build/airstrike-animation-editor/server-map-viewer.js')) ?>"></script>
+<?php endif; ?>
 
 <section class="section alt home-leaderboard-section">
   <div class="section-inner">

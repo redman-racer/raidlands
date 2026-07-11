@@ -11543,6 +11543,11 @@ button.admin-permission-chip:focus-visible {
   aspect-ratio: 1 / 1;
 }
 
+.home-map-terrain {
+  aspect-ratio: 1 / 1;
+  min-height: 0;
+}
+
 .home-map-empty {
   aspect-ratio: 1 / 1;
   display: flex;

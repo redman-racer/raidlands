@@ -538,7 +538,8 @@ export class AirstrikeViewport {
         const localX = patch.center.x - patch.size * 0.5 + u * patch.size;
         const height = this.sampleTerrainHeight(terrainPayload, localX, localZ);
         positions.push(localX, height - baseHeight, localZ);
-        uvs.push(u, 1 - v);
+        const textureUv = this.terrainTextureUv(terrainPayload, localX, localZ);
+        uvs.push(textureUv.x, textureUv.y);
         this.pushTerrainColor(colors, this.sampleTerrainColor(terrainPayload, localX, localZ), height, terrainPayload);
       }
     }
@@ -606,6 +607,15 @@ export class AirstrikeViewport {
     const c = terrainPayload.heights[z1 * resolution + x0] || a;
     const d = terrainPayload.heights[z1 * resolution + x1] || c;
     return MathUtils.lerp(MathUtils.lerp(a, b, tx), MathUtils.lerp(c, d, tx), tz);
+  }
+
+  private terrainTextureUv(terrainPayload: TerrainReferencePayload, worldX: number, worldZ: number): Vector2 {
+    const worldSize = Math.max(100, terrainPayload.worldSize || this.worldReference.worldSize || 4500);
+    const half = worldSize / 2;
+    const rustPosition = threeVectorToUnityPosition(new Vector3(worldX, 0, worldZ));
+    const u = MathUtils.clamp((rustPosition.x + half) / worldSize, 0, 1);
+    const v = MathUtils.clamp((half - rustPosition.z) / worldSize, 0, 1);
+    return new Vector2(u, 1 - v);
   }
 
   private sampleTerrainColor(terrainPayload: TerrainReferencePayload, worldX: number, worldZ: number): string | undefined {
@@ -773,20 +783,20 @@ export class AirstrikeViewport {
     const player = new Group();
     player.name = name;
 
-    const body = new Mesh(new CylinderGeometry(1.4, 1.8, 5.2, 12), material);
-    body.position.y = 4.4;
+    const body = new Mesh(new CylinderGeometry(0.26, 0.32, 1.05, 12), material);
+    body.position.y = 1.03;
     player.add(body);
 
-    const head = new Mesh(new SphereGeometry(1.25, 14, 10), material);
-    head.position.y = 7.8;
+    const head = new Mesh(new SphereGeometry(0.24, 14, 10), material);
+    head.position.y = 1.7;
     player.add(head);
 
-    const legs = new Mesh(new BoxGeometry(2.8, 2.8, 1.2), material);
-    legs.position.y = 1.4;
+    const legs = new Mesh(new BoxGeometry(0.48, 0.68, 0.28), material);
+    legs.position.y = 0.34;
     player.add(legs);
 
-    const sightLine = new Mesh(new BoxGeometry(0.32, 0.32, 8), scaleReferenceMaterials.tower);
-    sightLine.position.set(0, 5.2, -4.6);
+    const sightLine = new Mesh(new BoxGeometry(0.05, 0.05, 1.4), scaleReferenceMaterials.tower);
+    sightLine.position.set(0, 1.28, -0.82);
     player.add(sightLine);
 
     return player;

@@ -13,11 +13,13 @@ import {
   Mesh,
   MeshStandardMaterial,
   PerspectiveCamera,
+  Quaternion,
   Scene,
   SRGBColorSpace,
   SphereGeometry,
   TextureLoader,
   Uint32BufferAttribute,
+  Vector3,
   WebGLRenderer,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
@@ -44,6 +46,35 @@ type MonumentPayload = {
   z: number;
   radius: number;
   rotationY: number;
+};
+
+type RuntimeVisualFrame = {
+  Time: number;
+  X: number;
+  Y: number;
+  Z: number;
+  Qx: number;
+  Qy: number;
+  Qz: number;
+  Qw: number;
+};
+
+type RuntimePayloadEvent = {
+  Time: number;
+  CarrierOffsetX?: number;
+  CarrierOffsetY?: number;
+  CarrierOffsetZ?: number;
+};
+
+type RuntimeVisualProfile = {
+  Vehicle?: string;
+  DurationSeconds?: number;
+  PayloadEvents?: RuntimePayloadEvent[];
+  CompiledReleaseEvents?: RuntimePayloadEvent[];
+  CompiledTrack?: {
+    DurationSeconds?: number;
+    Frames?: RuntimeVisualFrame[];
+  };
 };
 
 const roots = Array.from(document.querySelectorAll<HTMLElement>("[data-server-map-viewer]"));
@@ -79,6 +110,7 @@ async function initTerrainViewer(root: HTMLElement): Promise<void> {
 
     viewer.mount();
     bindExternalControls(root, viewer);
+    void bindAirstrikePreview(root, viewer);
     setStatus(status, "");
   } catch (error) {
     console.info("Raidlands terrain viewer could not be loaded.", error);
@@ -158,8 +190,10 @@ class TerrainViewer {
   private readonly controls: OrbitControls;
   private readonly terrainMesh: Mesh;
   private readonly terrainMaterial: MeshStandardMaterial;
+  private readonly airstrikeLayer = new Group();
   private readonly onResize = () => this.resize();
   private animationFrame = 0;
+  private readonly clockStart = performance.now();
 
   public constructor(
     root: HTMLElement,
@@ -177,6 +211,8 @@ class TerrainViewer {
     this.terrainMaterial = this.createTerrainMaterial();
     this.terrainMesh = this.createTerrainMesh();
     this.scene.add(this.terrainMesh);
+    this.airstrikeLayer.name = "raidlands-airstrike-preview-layer";
+    this.scene.add(this.airstrikeLayer);
     this.addMonuments();
     this.addLights();
 
@@ -200,6 +236,15 @@ class TerrainViewer {
 
   public setRelief(value: number): void {
     this.terrainMesh.scale.y = MathUtils.clamp(value, 0.35, 2.5);
+  }
+
+  public addAirstrikePreview(profiles: RuntimeVisualProfile[]): void {
+    if (profiles.length === 0) {
+      return;
+    }
+
+    const player = new AirstrikePreviewPlayer(this.airstrikeLayer, this.terrain, profiles);
+    player.start();
   }
 
   public frameIso(): void {
@@ -336,8 +381,304 @@ class TerrainViewer {
   private animate(): void {
     this.animationFrame = window.requestAnimationFrame(() => this.animate());
     this.controls.update();
+    this.airstrikeLayer.userData.tick?.((performance.now() - this.clockStart) / 1000);
     this.renderer.render(this.scene, this.camera);
   }
+}
+
+class AirstrikePreviewPlayer {
+  private readonly layer: Group;
+  private readonly terrain: TerrainPayload;
+  private readonly profiles: RuntimeVisualProfile[];
+  private readonly active = new Group();
+  private nextStartAt = 0;
+  private runs: AirstrikeRun[] = [];
+
+  public constructor(layer: Group, terrain: TerrainPayload, profiles: RuntimeVisualProfile[]) {
+    this.layer = layer;
+    this.terrain = terrain;
+    this.profiles = profiles;
+    this.active.name = "active-airstrike-previews";
+    this.layer.add(this.active);
+  }
+
+  public start(): void {
+    this.layer.userData.tick = (time: number) => this.tick(time);
+  }
+
+  private tick(time: number): void {
+    this.runs = this.runs.filter((run) => {
+      const alive = run.update(time);
+      if (!alive) {
+        this.active.remove(run.group);
+      }
+      return alive;
+    });
+
+    if (this.runs.length > 0 || time < this.nextStartAt || Math.random() > 0.96) {
+      return;
+    }
+
+    const count = Math.random() > 0.72 ? 2 : 1;
+    for (let index = 0; index < count; index += 1) {
+      const profile = randomEntry(this.profiles);
+      if (!profile) {
+        continue;
+      }
+
+      const run = new AirstrikeRun(profile, this.terrain, time + index * (0.35 + Math.random() * 0.55), index);
+      this.runs.push(run);
+      this.active.add(run.group);
+    }
+
+    this.nextStartAt = time + 1.6 + Math.random() * 2.8;
+  }
+}
+
+class AirstrikeRun {
+  public readonly group = new Group();
+  private readonly profile: RuntimeVisualProfile;
+  private readonly terrain: TerrainPayload;
+  private readonly startAt: number;
+  private readonly duration: number;
+  private readonly frames: RuntimeVisualFrame[];
+  private readonly aircraft: Mesh;
+  private readonly payloads: RuntimePayloadEvent[];
+  private readonly firedPayloads = new Set<number>();
+  private readonly origin: Vector3;
+  private readonly routeScale: number;
+
+  public constructor(profile: RuntimeVisualProfile, terrain: TerrainPayload, startAt: number, lane: number) {
+    this.profile = profile;
+    this.terrain = terrain;
+    this.startAt = startAt;
+    this.frames = normalizePreviewFrames(profile);
+    this.duration = Math.max(2, Number(profile.CompiledTrack?.DurationSeconds || profile.DurationSeconds || lastFrameTime(this.frames) || 8));
+    this.payloads = normalizePayloadEvents(profile);
+    this.origin = randomMapOrigin(terrain, lane);
+    this.routeScale = MathUtils.clamp((terrain.worldSize || 4500) / 1200, 2.2, 5.4);
+    this.group.name = `airstrike-preview-${String(profile.Vehicle || "aircraft")}`;
+    this.aircraft = createAircraftMarker(String(profile.Vehicle || "f15"));
+    this.group.add(this.aircraft);
+  }
+
+  public update(now: number): boolean {
+    const elapsed = now - this.startAt;
+    if (elapsed < 0) {
+      this.group.visible = false;
+      return true;
+    }
+
+    this.group.visible = true;
+    if (elapsed > this.duration + 2.2) {
+      return false;
+    }
+
+    const pose = samplePreviewPose(this.frames, Math.min(elapsed, this.duration));
+    const world = this.toWorld(pose.position);
+    world.y = Math.max(world.y, sampleTerrainHeight(this.terrain, world.x, world.z) + 95);
+    this.aircraft.position.copy(world);
+    this.aircraft.quaternion.copy(pose.rotation);
+    this.aircraft.rotateY(Math.PI);
+
+    this.payloads.forEach((payload, index) => {
+      if (!this.firedPayloads.has(index) && elapsed >= Number(payload.Time || 0)) {
+        this.firedPayloads.add(index);
+        this.group.add(createPayloadFlash(this.toWorld(new Vector3(
+          pose.position.x + Number(payload.CarrierOffsetX || 0),
+          pose.position.y + Number(payload.CarrierOffsetY || 0),
+          pose.position.z + Number(payload.CarrierOffsetZ || 0),
+        )), now));
+      }
+    });
+
+    this.group.children.forEach((child) => {
+      if (child.userData.flashStart === undefined) {
+        return;
+      }
+      const age = now - Number(child.userData.flashStart);
+      child.scale.setScalar(Math.max(0.01, 1 + age * 3.8));
+      const material = (child as Mesh).material;
+      if (material instanceof MeshStandardMaterial) {
+        material.opacity = Math.max(0, 1 - age / 0.9);
+      }
+      if (age > 0.9) {
+        this.group.remove(child);
+      }
+    });
+
+    return true;
+  }
+
+  private toWorld(local: Vector3): Vector3 {
+    return new Vector3(
+      this.origin.x + local.x * this.routeScale,
+      this.origin.y + local.y * this.routeScale,
+      this.origin.z + local.z * this.routeScale,
+    );
+  }
+}
+
+async function bindAirstrikePreview(root: HTMLElement, viewer: TerrainViewer): Promise<void> {
+  const profilesUrl = root.dataset.airstrikeProfilesUrl || "";
+  if (!profilesUrl) {
+    return;
+  }
+
+  try {
+    const response = await fetch(profilesUrl, {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+    if (!response.ok) {
+      throw new Error(`Airstrike profile request failed with HTTP ${response.status}.`);
+    }
+
+    const payload = await response.json() as { profiles?: Record<string, RuntimeVisualProfile> };
+    const profiles = Object.values(payload.profiles || {}).filter(hasUsablePreviewTrack).slice(0, 48);
+    viewer.addAirstrikePreview(profiles);
+  } catch (error) {
+    console.info("Raidlands airstrike map preview could not be loaded.", error);
+  }
+}
+
+function hasUsablePreviewTrack(profile: RuntimeVisualProfile): boolean {
+  return normalizePreviewFrames(profile).length >= 2;
+}
+
+function normalizePreviewFrames(profile: RuntimeVisualProfile): RuntimeVisualFrame[] {
+  const frames = Array.isArray(profile.CompiledTrack?.Frames) ? profile.CompiledTrack.Frames : [];
+  return frames
+    .map((frame) => ({
+      Time: Number(frame.Time),
+      X: Number(frame.X),
+      Y: Number(frame.Y),
+      Z: Number(frame.Z),
+      Qx: Number(frame.Qx),
+      Qy: Number(frame.Qy),
+      Qz: Number(frame.Qz),
+      Qw: Number(frame.Qw),
+    }))
+    .filter((frame) => [
+      frame.Time,
+      frame.X,
+      frame.Y,
+      frame.Z,
+      frame.Qx,
+      frame.Qy,
+      frame.Qz,
+      frame.Qw,
+    ].every(Number.isFinite))
+    .sort((a, b) => a.Time - b.Time);
+}
+
+function normalizePayloadEvents(profile: RuntimeVisualProfile): RuntimePayloadEvent[] {
+  const source = Array.isArray(profile.CompiledReleaseEvents) && profile.CompiledReleaseEvents.length > 0
+    ? profile.CompiledReleaseEvents
+    : Array.isArray(profile.PayloadEvents)
+      ? profile.PayloadEvents
+      : [];
+
+  return source
+    .map((event) => ({
+      Time: Number(event.Time),
+      CarrierOffsetX: Number(event.CarrierOffsetX || 0),
+      CarrierOffsetY: Number(event.CarrierOffsetY || 0),
+      CarrierOffsetZ: Number(event.CarrierOffsetZ || 0),
+    }))
+    .filter((event) => Number.isFinite(event.Time))
+    .slice(0, 16);
+}
+
+function samplePreviewPose(frames: RuntimeVisualFrame[], time: number): { position: Vector3; rotation: Quaternion } {
+  if (frames.length === 0) {
+    return { position: new Vector3(), rotation: new Quaternion() };
+  }
+
+  if (time <= frames[0].Time) {
+    return framePose(frames[0]);
+  }
+
+  for (let index = 1; index < frames.length; index += 1) {
+    const frame = frames[index];
+    const previous = frames[index - 1];
+    if (time <= frame.Time) {
+      const progress = MathUtils.clamp((time - previous.Time) / Math.max(0.001, frame.Time - previous.Time), 0, 1);
+      const position = frameVector(previous).lerp(frameVector(frame), progress);
+      const rotation = frameQuaternion(previous).slerp(frameQuaternion(frame), progress);
+      return { position, rotation };
+    }
+  }
+
+  return framePose(frames[frames.length - 1]);
+}
+
+function framePose(frame: RuntimeVisualFrame): { position: Vector3; rotation: Quaternion } {
+  return {
+    position: frameVector(frame),
+    rotation: frameQuaternion(frame),
+  };
+}
+
+function frameVector(frame: RuntimeVisualFrame): Vector3 {
+  return new Vector3(frame.X, frame.Y, frame.Z);
+}
+
+function frameQuaternion(frame: RuntimeVisualFrame): Quaternion {
+  return new Quaternion(frame.Qx, frame.Qy, frame.Qz, frame.Qw).normalize();
+}
+
+function lastFrameTime(frames: RuntimeVisualFrame[]): number {
+  return frames.length > 0 ? Number(frames[frames.length - 1].Time || 0) : 0;
+}
+
+function randomEntry<T>(values: T[]): T | null {
+  if (values.length === 0) {
+    return null;
+  }
+
+  return values[Math.floor(Math.random() * values.length)] || null;
+}
+
+function randomMapOrigin(terrain: TerrainPayload, lane: number): Vector3 {
+  const worldSize = terrain.worldSize || 4500;
+  const span = worldSize * 0.44;
+  const x = (Math.random() - 0.5) * span + (lane === 0 ? -worldSize * 0.1 : worldSize * 0.1);
+  const z = (Math.random() - 0.5) * span;
+  return new Vector3(x, sampleTerrainHeight(terrain, x, z), z);
+}
+
+function createAircraftMarker(vehicle: string): Mesh {
+  const geometry = new ConeGeometry(vehicle.includes("heli") ? 22 : 16, vehicle.includes("heli") ? 46 : 64, 3);
+  const material = new MeshStandardMaterial({
+    color: vehicle.includes("drone") ? 0xd8d2c5 : 0xf0a33a,
+    emissive: 0x4a1b08,
+    emissiveIntensity: 0.36,
+    roughness: 0.42,
+    metalness: 0.18,
+  });
+  const mesh = new Mesh(geometry, material);
+  mesh.name = "airstrike-preview-aircraft";
+  mesh.rotation.x = MathUtils.degToRad(90);
+  return mesh;
+}
+
+function createPayloadFlash(position: Vector3, startTime: number): Mesh {
+  const mesh = new Mesh(
+    new SphereGeometry(18, 18, 12),
+    new MeshStandardMaterial({
+      color: 0xff9d28,
+      emissive: 0xff5a12,
+      emissiveIntensity: 1.8,
+      roughness: 0.2,
+      transparent: true,
+      opacity: 0.9,
+    }),
+  );
+  mesh.name = "airstrike-preview-payload-flash";
+  mesh.position.copy(position);
+  mesh.userData.flashStart = startTime;
+  return mesh;
 }
 
 function createMonumentPrimitive(monument: MonumentPayload): Group {
