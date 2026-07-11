@@ -34,7 +34,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { TransformControls } from "three/examples/jsm/controls/TransformControls.js";
 import { evaluateSourcePose } from "../math";
 import type { EditorSourceProfile, VehiclePreviewMetadataFile } from "../types";
-import { unityPositionToThreeVector, unityQuaternionValueToThreeQuaternion } from "./coordinates";
+import { threeVectorToUnityPosition, unityPositionToThreeVector, unityQuaternionValueToThreeQuaternion } from "./coordinates";
 import { getReleasePreviewEvents, type ReleasePreviewEvent } from "./release-source";
 import { createVehicleProxy, loadVehiclePreview, metadataForVehicle } from "./vehicle-preview";
 import { dynamicControlScale, frameBounds, routeBounds } from "./viewport-framing";
@@ -108,7 +108,6 @@ const minimumFloorSize = 800;
 const maximumFloorDivisions = 120;
 const preferredGridCellSize = 20;
 const terrainMinimumPatchSize = 800;
-const terrainMaximumPatchSize = 1800;
 const terrainPatchPadding = 1.45;
 
 export class AirstrikeViewport {
@@ -524,7 +523,6 @@ export class AirstrikeViewport {
   private createHeightmapTerrainMesh(terrainPayload: TerrainReferencePayload): Mesh {
     const resolution = Math.max(2, Math.min(terrainPayload.resolution, 129));
     const worldSize = Math.max(100, terrainPayload.worldSize || this.worldReference.worldSize || 4500);
-    const half = worldSize / 2;
     const patch = this.currentTerrainPatch(worldSize);
     const baseHeight = this.sampleTerrainHeight(terrainPayload, patch.center.x, patch.center.z);
     const positions: number[] = [];
@@ -538,12 +536,10 @@ export class AirstrikeViewport {
       for (let col = 0; col < resolution; col += 1) {
         const u = col / (resolution - 1);
         const localX = patch.center.x - patch.size * 0.5 + u * patch.size;
-        const worldX = MathUtils.clamp(localX, -half, half);
-        const worldZ = MathUtils.clamp(localZ, -half, half);
-        const height = this.sampleTerrainHeight(terrainPayload, worldX, worldZ);
+        const height = this.sampleTerrainHeight(terrainPayload, localX, localZ);
         positions.push(localX, height - baseHeight, localZ);
         uvs.push(u, 1 - v);
-        this.pushTerrainColor(colors, this.sampleTerrainColor(terrainPayload, worldX, worldZ), height, terrainPayload);
+        this.pushTerrainColor(colors, this.sampleTerrainColor(terrainPayload, localX, localZ), height, terrainPayload);
       }
     }
 
@@ -584,7 +580,7 @@ export class AirstrikeViewport {
     bounds.getSize(size);
     bounds.getCenter(center);
     const routeFootprint = Math.max(size.x, size.z, terrainMinimumPatchSize);
-    const patchSize = MathUtils.clamp(routeFootprint * terrainPatchPadding, terrainMinimumPatchSize, Math.min(terrainMaximumPatchSize, worldSize));
+    const patchSize = MathUtils.clamp(routeFootprint * terrainPatchPadding, terrainMinimumPatchSize, worldSize);
     const halfRange = Math.max(0, worldSize * 0.5 - patchSize * 0.5);
     center.x = MathUtils.clamp(Number.isFinite(center.x) ? center.x : 0, -halfRange, halfRange);
     center.y = 0;
@@ -596,8 +592,9 @@ export class AirstrikeViewport {
     const resolution = terrainPayload.resolution;
     const worldSize = Math.max(100, terrainPayload.worldSize || this.worldReference.worldSize || 4500);
     const half = worldSize / 2;
-    const u = MathUtils.clamp((worldX + half) / worldSize, 0, 1) * (resolution - 1);
-    const v = MathUtils.clamp((half - worldZ) / worldSize, 0, 1) * (resolution - 1);
+    const rustPosition = threeVectorToUnityPosition(new Vector3(worldX, 0, worldZ));
+    const u = MathUtils.clamp((rustPosition.x + half) / worldSize, 0, 1) * (resolution - 1);
+    const v = MathUtils.clamp((half - rustPosition.z) / worldSize, 0, 1) * (resolution - 1);
     const x0 = Math.floor(u);
     const z0 = Math.floor(v);
     const x1 = Math.min(resolution - 1, x0 + 1);
@@ -618,8 +615,9 @@ export class AirstrikeViewport {
     const resolution = terrainPayload.resolution;
     const worldSize = Math.max(100, terrainPayload.worldSize || this.worldReference.worldSize || 4500);
     const half = worldSize / 2;
-    const col = Math.round(MathUtils.clamp((worldX + half) / worldSize, 0, 1) * (resolution - 1));
-    const row = Math.round(MathUtils.clamp((half - worldZ) / worldSize, 0, 1) * (resolution - 1));
+    const rustPosition = threeVectorToUnityPosition(new Vector3(worldX, 0, worldZ));
+    const col = Math.round(MathUtils.clamp((rustPosition.x + half) / worldSize, 0, 1) * (resolution - 1));
+    const row = Math.round(MathUtils.clamp((half - rustPosition.z) / worldSize, 0, 1) * (resolution - 1));
     return terrainPayload.colors[row * resolution + col];
   }
 

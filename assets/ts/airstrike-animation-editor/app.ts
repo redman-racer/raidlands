@@ -1768,7 +1768,10 @@ class AirstrikeEditorApp {
       if (resolution < 2 || heights.length !== expected || heights.some((height) => !Number.isFinite(height))) {
         return null;
       }
-      const worldSize = Math.max(100, Number(payload.worldSize) || 4500);
+      const worldSize = Number(payload.worldSize);
+      if (!Number.isFinite(worldSize) || worldSize <= 0) {
+        return null;
+      }
       const colors =
         Array.isArray(payload.colors) && payload.colors.length === expected
           ? payload.colors.map((color) => String(color))

@@ -18,6 +18,7 @@ $server_health_label = raidlands_server_page_health_label($server_status);
 $server_map_image = is_array($server_status['mapImage'] ?? null) ? $server_status['mapImage'] : null;
 $server_map_url = (string) ($server_status['mapImageUrl'] ?? ($server_map_image['url'] ?? ''));
 $server_terrain_url = (string) ($server_map_image['terrainUrl'] ?? '');
+$server_texture_url = (string) ($server_map_image['textureUrl'] ?? $server_map_url);
 
 function raidlands_server_page_value($value, string $fallback = 'Pending'): string
 {
@@ -166,6 +167,7 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
         class="server-terrain-viewer"
         data-server-map-viewer
         data-terrain-url="<?= e($server_terrain_url) ?>"
+        data-texture-url="<?= e($server_texture_url) ?>"
         data-world-size="<?= e((string) ($server_map_image['worldSize'] ?? $server_status['worldSize'] ?? 0)) ?>"
         data-min-height="<?= e((string) ($server_map_image['terrainMinHeight'] ?? 0)) ?>"
         data-max-height="<?= e((string) ($server_map_image['terrainMaxHeight'] ?? 0)) ?>"

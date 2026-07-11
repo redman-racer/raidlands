@@ -172,6 +172,11 @@ function raidlands_server_map_terrain_relative_path(string $server_id): string
     return 'assets/media/maps/' . raidlands_server_map_slug($server_id) . '/current-terrain.json';
 }
 
+function raidlands_server_map_texture_relative_path(string $server_id, string $extension): string
+{
+    return 'assets/media/maps/' . raidlands_server_map_slug($server_id) . '/current-texture.' . $extension;
+}
+
 function raidlands_server_map_public_url(string $relative_path): string
 {
     $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
@@ -188,6 +193,24 @@ function raidlands_server_map_public_url(string $relative_path): string
     $root = $root === '/' ? '' : $root;
 
     return $scheme . '://' . $host . $root . '/' . ltrim($relative_path, '/');
+}
+
+function raidlands_server_map_texture_url(string $server_id): string
+{
+    if ($server_id === '') {
+        return '';
+    }
+
+    foreach (['jpg', 'png'] as $extension) {
+        $relative_path = raidlands_server_map_texture_relative_path($server_id, $extension);
+        $path = dirname(__DIR__) . '/' . $relative_path;
+
+        if (is_file($path)) {
+            return raidlands_server_map_public_url($relative_path);
+        }
+    }
+
+    return '';
 }
 
 function raidlands_server_map_validate_image(string $base64): array
@@ -400,6 +423,47 @@ function raidlands_server_map_write_image(string $server_id, string $extension, 
     ];
 }
 
+function raidlands_server_map_write_texture(string $server_id, string $extension, string $image): array
+{
+    $root = raidlands_server_map_upload_root();
+    $server_dir = $root . '/' . raidlands_server_map_slug($server_id);
+
+    if (!is_dir($server_dir) && !mkdir($server_dir, 0775, true) && !is_dir($server_dir)) {
+        throw new RuntimeException('Could not create map upload directory.');
+    }
+
+    $relative_path = raidlands_server_map_texture_relative_path($server_id, $extension);
+    $path = dirname(__DIR__) . '/' . $relative_path;
+    $temp_path = $path . '.tmp';
+
+    if (file_put_contents($temp_path, $image, LOCK_EX) === false) {
+        throw new RuntimeException('Could not write map texture image.');
+    }
+
+    if (!rename($temp_path, $path)) {
+        @unlink($temp_path);
+        throw new RuntimeException('Could not publish map texture image.');
+    }
+
+    foreach (['jpg', 'png'] as $other_extension) {
+        if ($other_extension === $extension) {
+            continue;
+        }
+
+        $old_path = dirname(__DIR__) . '/' . raidlands_server_map_texture_relative_path($server_id, $other_extension);
+
+        if (is_file($old_path)) {
+            @unlink($old_path);
+        }
+    }
+
+    return [
+        'path' => $path,
+        'relative_path' => $relative_path,
+        'public_url' => raidlands_server_map_public_url($relative_path),
+    ];
+}
+
 function raidlands_server_map_write_terrain(string $server_id, string $terrain_json): array
 {
     $root = raidlands_server_map_upload_root();
@@ -449,6 +513,14 @@ function raidlands_server_map_ingest_upload(array $payload, string $header_serve
     $image_base64 = (string) ($payload['image_base64'] ?? $payload['image'] ?? '');
     $image = raidlands_server_map_validate_image($image_base64);
     $written = raidlands_server_map_write_image($server_id, (string) $image['extension'], (string) $image['bytes']);
+    $texture_written = null;
+    $texture_base64 = (string) ($payload['texture_image_base64'] ?? $payload['texture_image'] ?? '');
+
+    if ($texture_base64 !== '') {
+        $texture_image = raidlands_server_map_validate_image($texture_base64);
+        $texture_written = raidlands_server_map_write_texture($server_id, (string) $texture_image['extension'], (string) $texture_image['bytes']);
+    }
+
     $terrain = raidlands_server_map_validate_terrain($payload['terrain'] ?? null);
     $terrain_written = null;
 
@@ -651,6 +723,7 @@ function raidlands_server_map_row_public(?array $row): ?array
         'url' => $public_url,
         'publicUrl' => $public_url,
         'relativePath' => $relative_path,
+        'textureUrl' => raidlands_server_map_texture_url((string) ($row['server_id'] ?? '')),
         'terrainUrl' => $terrain_public_url,
         'terrainPublicUrl' => $terrain_public_url,
         'terrainRelativePath' => $terrain_relative_path,
