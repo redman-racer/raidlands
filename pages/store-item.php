@@ -493,7 +493,7 @@ function store_item_render_perks(array $perks): string
             <span><?= e((string) $offer_count) ?> offer<?= $offer_count === 1 ? '' : 's' ?></span>
           </div>
           <div class="store-item-overview-actions">
-            <a class="btn btn-secondary" href="#purchase-options">Skip to Purchase Options</a>
+            <a class="btn btn-primary" href="#purchase-options">Buy Now</a>
           </div>
         </div>
       </article>
