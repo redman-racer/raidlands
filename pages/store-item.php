@@ -391,7 +391,10 @@ function store_item_render_kit(array $kit): string
         $meta[] = store_item_format_seconds($cooldown) . ' cooldown';
     }
 
-    return '<article class="store-item-kit-row">'
+    $item_count = count($items);
+    $row_class = 'store-item-kit-row' . ($item_count > 4 ? ' is-wide' : ' is-compact');
+
+    return '<article class="' . e($row_class) . '">'
         . '<div class="store-item-kit-row-head">'
         . ($image !== '' ? '<img src="' . e($image) . '" alt="" loading="lazy" decoding="async">' : '<span class="store-kit-item-placeholder" aria-hidden="true"></span>')
         . '<div><h3><a href="' . e(raidlands_store_kit_public_url($kit)) . '">' . e((string) ($kit['kit_name'] ?? 'Kit')) . '</a></h3>'

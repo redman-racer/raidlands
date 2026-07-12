@@ -3466,13 +3466,15 @@ h3,
   grid-template-columns: minmax(0, 1fr);
   gap: 22px;
   align-items: start;
+  justify-items: center;
 }
 
 .store-item-overview {
   display: grid;
-  grid-template-columns: minmax(180px, 280px) minmax(0, 1fr);
-  gap: 22px;
+  grid-template-columns: minmax(160px, 240px) minmax(260px, 1fr);
+  gap: 20px;
   align-items: center;
+  width: min(100%, 760px);
 }
 
 .store-item-hero-image {
@@ -3593,6 +3595,7 @@ h3,
 
 .store-item-kit-list {
   display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
   gap: 16px;
 }
 
@@ -3603,6 +3606,14 @@ h3,
   padding: 14px;
   border: 1px solid rgba(181, 170, 160, .16);
   background: rgba(0, 0, 0, .22);
+}
+
+.store-item-kit-row.is-wide {
+  grid-column: 1 / -1;
+}
+
+.store-item-kit-row.is-compact {
+  min-height: 0;
 }
 
 .store-item-kit-row-head {
@@ -3711,6 +3722,7 @@ h3,
 .store-item-kit-actions {
   display: flex;
   justify-content: flex-start;
+  margin-top: auto;
 }
 
 .store-item-perk-list {
@@ -10414,7 +10426,8 @@ button.admin-permission-chip:focus-visible {
   .store-kit-focus-grid,
   .store-kit-hero-card,
   .store-item-layout,
-  .store-item-overview {
+  .store-item-overview,
+  .store-item-kit-list {
     grid-template-columns: 1fr;
   }
 
