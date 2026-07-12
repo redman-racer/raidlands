@@ -34,7 +34,8 @@ import {
   WebGLRenderer,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
-import { loadVehiclePreview, metadataForVehicle } from "../airstrike-animation-editor/editor/vehicle-preview";
+import { unityPositionToThreeVector, unityQuaternionValueToThreeQuaternion } from "../airstrike-animation-editor/editor/coordinates";
+import { createVehicleProxy, loadVehiclePreview, metadataForVehicle } from "../airstrike-animation-editor/editor/vehicle-preview";
 import type { VehiclePreviewMetadataFile } from "../airstrike-animation-editor/types";
 import { applyRaidlandsEnvironment } from "../shared/three-environment";
 
@@ -850,6 +851,12 @@ class TerrainViewer {
     this.airstrikeReplay?.showEvents(events, playbackSpeed);
   }
 
+  public clearReplayEvents(): void {
+    this.latestReplayEvents = [];
+    this.latestReplaySpeed = 1;
+    this.airstrikeReplay?.clear();
+  }
+
   public frameIso(cycle = true): void {
     this.focusCamera(this.isoPose(cycle));
   }
@@ -1578,15 +1585,6 @@ class AirstrikeReplayPlayer {
   }
 
   public showEvents(events: MapReplayEvent[], playbackSpeed: number): void {
-    const eventKeys = new Set(events.map((event, index) => replayEventKey(event, index)));
-    this.runs = this.runs.filter((run) => {
-      if (eventKeys.has(run.key)) {
-        return true;
-      }
-      this.active.remove(run.group);
-      return false;
-    });
-
     events.forEach((event, index) => {
       const key = replayEventKey(event, index);
       if (this.runs.some((run) => run.key === key)) {
@@ -1600,6 +1598,14 @@ class AirstrikeReplayPlayer {
       this.runs.push(run);
       this.active.add(run.group);
     });
+  }
+
+  public clear(): void {
+    this.runs.forEach((run) => {
+      this.active.remove(run.group);
+      disposeObjectTree(run.group);
+    });
+    this.runs = [];
   }
 
   private tick(time: number): void {
@@ -1695,7 +1701,6 @@ class AirstrikeReplayRun implements MapReplayRun {
     world.y = Math.max(world.y, sampleTerrainHeight(this.terrain, world.x, world.z) + 10);
     this.aircraft.position.copy(world);
     this.aircraft.quaternion.copy(pose.rotation);
-    this.aircraft.rotateY(Math.PI);
 
     this.payloads.forEach((payload, index) => {
       if (!this.firedPayloads.has(index) && profileTime >= Number(payload.Time || 0)) {
@@ -1736,13 +1741,18 @@ class AirstrikeReplayRun implements MapReplayRun {
         Number(payload.CarrierOffsetX || 0),
         Number(payload.CarrierOffsetY || 0),
         Number(payload.CarrierOffsetZ || 0),
-      ).applyQuaternion(pose.rotation);
-      const origin = this.toWorld(pose.position.clone().add(carrierOffset));
-      const targetOffset = new Vector3(
-        Number(payload.TargetOffsetX || 0),
-        Number(payload.TargetOffsetY || 0),
-        Number(payload.TargetOffsetZ || 0),
       );
+      const convertedCarrierOffset = unityPositionToThreeVector({
+        x: carrierOffset.x,
+        y: carrierOffset.y,
+        z: carrierOffset.z,
+      }).applyQuaternion(pose.rotation);
+      const origin = this.toWorld(pose.position.clone().add(convertedCarrierOffset));
+      const targetOffset = unityPositionToThreeVector({
+        x: Number(payload.TargetOffsetX || 0),
+        y: Number(payload.TargetOffsetY || 0),
+        z: Number(payload.TargetOffsetZ || 0),
+      });
       if (spread > 0 && count > 1) {
         const angle = (index / count) * Math.PI * 2 + ((index % 2) * 0.37);
         const radius = spread * Math.sqrt((index + 0.65) / count);
@@ -2039,11 +2049,20 @@ function framePose(frame: RuntimeVisualFrame): { position: Vector3; rotation: Qu
 }
 
 function frameVector(frame: RuntimeVisualFrame): Vector3 {
-  return new Vector3(frame.X, frame.Y, frame.Z);
+  return unityPositionToThreeVector({
+    x: frame.X,
+    y: frame.Y,
+    z: frame.Z,
+  });
 }
 
 function frameQuaternion(frame: RuntimeVisualFrame): Quaternion {
-  return new Quaternion(frame.Qx, frame.Qy, frame.Qz, frame.Qw).normalize();
+  return unityQuaternionValueToThreeQuaternion({
+    x: frame.Qx,
+    y: frame.Qy,
+    z: frame.Qz,
+    w: frame.Qw,
+  }).normalize();
 }
 
 function lastFrameTime(frames: RuntimeVisualFrame[]): number {
@@ -2119,36 +2138,22 @@ function randomMapOrigin(terrain: TerrainPayload, lane: number): Vector3 {
 function createAircraftMarker(vehicle: string, metadataFile: VehiclePreviewMetadataFile | null, assetBase: string): Group {
   const group = new Group();
   group.name = `airstrike-preview-aircraft-${vehicle}`;
-  const fallback = createAircraftFallbackMarker(vehicle);
+  const metadata = metadataForVehicle(metadataFile, vehicle);
+  const fallback = createVehicleProxy(metadata);
+  prepareLoadedAircraftForMap(fallback);
   group.add(fallback);
 
-  const metadata = metadataForVehicle(metadataFile, vehicle);
   void loadVehiclePreview(metadata, assetBase || "/assets/").then((result) => {
     if (result.usedFallback) {
       return;
     }
     group.remove(fallback);
-    disposeGeometryMaterial(fallback);
+    disposeObjectTree(fallback);
     prepareLoadedAircraftForMap(result.object);
     group.add(result.object);
   });
 
   return group;
-}
-
-function createAircraftFallbackMarker(vehicle: string): Mesh {
-  const geometry = new ConeGeometry(vehicle.includes("heli") ? 22 : 16, vehicle.includes("heli") ? 46 : 64, 3);
-  const material = new MeshStandardMaterial({
-    color: vehicle.includes("drone") ? 0xd8d2c5 : 0xf0a33a,
-    emissive: 0x4a1b08,
-    emissiveIntensity: 0.36,
-    roughness: 0.42,
-    metalness: 0.18,
-  });
-  const mesh = new Mesh(geometry, material);
-  mesh.name = "airstrike-preview-aircraft";
-  mesh.rotation.x = MathUtils.degToRad(90);
-  return mesh;
 }
 
 function prepareLoadedAircraftForMap(object: Object3D): void {
@@ -2964,7 +2969,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     }
 
     void loadLiveReplayEvents(root).then((events) => {
-      if (!wantsTimelineOverlay()) {
+      if (!wantsTimelineOverlay() && events.length > 0) {
         viewer.showReplayEvents(events, 1);
       }
     });
@@ -3215,7 +3220,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       stopLiveOverlayPolling();
       stopPlaybackHistoryPolling();
       heatmapHistory = [];
-      viewer.showReplayEvents([], 1);
+      viewer.clearReplayEvents();
       viewer.setHeatmapVisible(false);
       viewer.setPlayerLocationsVisible(false);
       updatePlaybackControlAvailability();
@@ -3282,7 +3287,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       heatmapFrame.value = "0";
       heatmapFrame.max = "0";
     }
-    viewer.showReplayEvents([], 1);
+    viewer.clearReplayEvents();
     startLiveOverlayPolling();
     updatePlaybackControlAvailability();
   };
@@ -3666,7 +3671,7 @@ async function loadLiveReplayEvents(root: HTMLElement): Promise<MapReplayEvent[]
   const payload = await loadReplayEventHistory(root, "15m", 8);
   const frames = Array.isArray(payload.frames) ? payload.frames : [];
   const now = Date.now();
-  const maxAgeMs = 10 * 60 * 1000;
+  const maxAgeMs = 15 * 60 * 1000;
 
   for (let index = frames.length - 1; index >= 0; index -= 1) {
     const events = Array.isArray(frames[index]?.events)
