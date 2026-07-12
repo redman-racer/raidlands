@@ -2925,6 +2925,59 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
 
   const playbackHistoryPollDelayMs = (): number => playerLocationRefreshMs;
 
+  const stopLiveOverlayPolling = () => {
+    window.clearInterval(playerPollTimer);
+    playerPollTimer = 0;
+  };
+
+  const loadLiveOverlays = () => {
+    if (wantsTimelineOverlay()) {
+      return;
+    }
+
+    const heatmapEnabled = wantsHeatmap();
+    const playersEnabled = wantsPlayers();
+
+    if (heatmapEnabled) {
+      void loadHeatmap(root, viewer, selectedMetric(), selectedRange());
+    } else {
+      viewer.setHeatmapVisible(false);
+    }
+
+    if (playersEnabled) {
+      void loadPlayerLocations(root, viewer, myLocation, true, wantsAllPlayers()).then(() => {
+        syncMyLocationControl();
+        if (followMyLocation && !orbitMyLocation) {
+          viewer.followSelfLocation();
+        }
+      });
+    } else {
+      viewer.setPlayerLocationsVisible(false);
+    }
+  };
+
+  const startLiveOverlayPolling = () => {
+    if (wantsTimelineOverlay() || !(wantsHeatmap() || wantsPlayers())) {
+      stopLiveOverlayPolling();
+      return;
+    }
+
+    loadLiveOverlays();
+
+    if (playerPollTimer !== 0) {
+      return;
+    }
+
+    playerPollTimer = window.setInterval(() => {
+      if (wantsTimelineOverlay() || !(wantsHeatmap() || wantsPlayers())) {
+        stopLiveOverlayPolling();
+        return;
+      }
+
+      loadLiveOverlays();
+    }, playerLocationRefreshMs);
+  };
+
   const updateTimelineValue = (value: number) => {
     if (!heatmapFrame) {
       return;
@@ -3145,9 +3198,10 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
 
     if (!heatmapEnabled && !playersEnabled) {
       stopHeatmapPlayback();
-      window.clearInterval(playerPollTimer);
-      playerPollTimer = 0;
+      stopLiveOverlayPolling();
       stopPlaybackHistoryPolling();
+      heatmapHistory = [];
+      viewer.showReplayEvents([], 1);
       viewer.setHeatmapVisible(false);
       viewer.setPlayerLocationsVisible(false);
       updatePlaybackControlAvailability();
@@ -3155,8 +3209,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     }
 
     if (wantsPlayback()) {
-      window.clearInterval(playerPollTimer);
-      playerPollTimer = 0;
+      stopLiveOverlayPolling();
       const requestId = playbackRequestId + 1;
       playbackRequestId = requestId;
       const requestRange = selectedRange();
@@ -3204,15 +3257,19 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     }
 
     stopHeatmapPlayback();
+    playbackRequestId += 1;
     stopPlaybackHistoryPolling();
-    if (heatmapEnabled) {
-      void loadHeatmap(root, viewer, selectedMetric(), selectedRange());
-    } else {
-      viewer.setHeatmapVisible(false);
+    heatmapHistory = [];
+    playbackVirtualFrame = 0;
+    playbackShownFrame = -1;
+    setTimelineLabel(null, "Live");
+    if (heatmapFrame) {
+      heatmapFrame.step = "1";
+      heatmapFrame.value = "0";
+      heatmapFrame.max = "0";
     }
-    if (playersEnabled) {
-      void loadPlayerLocations(root, viewer, myLocation, true, wantsAllPlayers());
-    }
+    viewer.showReplayEvents([], 1);
+    startLiveOverlayPolling();
     updatePlaybackControlAvailability();
   };
 
@@ -3318,15 +3375,16 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
 
   const reloadPlayers = () => {
     if (!wantsPlayers()) {
-      window.clearInterval(playerPollTimer);
-      playerPollTimer = 0;
+      stopLiveOverlayPolling();
       viewer.setPlayerLocationsVisible(false);
+      if (wantsHeatmap() && !wantsTimelineOverlay()) {
+        startLiveOverlayPolling();
+      }
       return;
     }
 
     if (wantsTimelineOverlay()) {
-      window.clearInterval(playerPollTimer);
-      playerPollTimer = 0;
+      stopLiveOverlayPolling();
       const selectedFrame = currentPlaybackFrameIndex();
       if (heatmapHistory.length > 0) {
         showPlaybackFrame(selectedFrame);
@@ -3336,24 +3394,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       return;
     }
 
-    void loadPlayerLocations(root, viewer, myLocation, true, wantsAllPlayers()).then(() => {
-      syncMyLocationControl();
-      if (followMyLocation && !orbitMyLocation) {
-        viewer.followSelfLocation();
-      }
-    });
-    if (playerPollTimer === 0) {
-      playerPollTimer = window.setInterval(() => {
-        if (players?.checked && !wantsTimelineOverlay()) {
-          void loadPlayerLocations(root, viewer, myLocation, true, wantsAllPlayers()).then(() => {
-            syncMyLocationControl();
-            if (followMyLocation && !orbitMyLocation) {
-              viewer.followSelfLocation();
-            }
-          });
-        }
-      }, playerLocationRefreshMs);
-    }
+    startLiveOverlayPolling();
   };
 
   bind(players, "change", () => {
@@ -3438,13 +3479,13 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   });
 
   if (!wantsPlayback()) {
-    void loadPlayerLocations(root, viewer, myLocation, wantsPlayers(), wantsAllPlayers()).then(syncMyLocationControl);
+    startLiveOverlayPolling();
   }
 
   return {
     dispose: () => {
       window.cancelAnimationFrame(playbackAnimationFrame);
-      window.clearInterval(playerPollTimer);
+      stopLiveOverlayPolling();
       stopPlaybackHistoryPolling();
       disposers.forEach((dispose) => dispose());
     },
