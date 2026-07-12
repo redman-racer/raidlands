@@ -212,6 +212,64 @@ function raidlands_airstrike_animations_latest_bundle_row(?int $revision = null)
     );
 }
 
+function raidlands_airstrike_animations_decode_bundle_row(array $row): array
+{
+    $revision = (int) ($row['revision'] ?? 0);
+    $sha256 = strtolower((string) ($row['sha256'] ?? ''));
+    $canonical_json = (string) ($row['bundle_json'] ?? '');
+
+    $bundle = raidlands_airstrike_animations_decode_json($canonical_json, 'Published bundle');
+    $actual_sha256 = hash('sha256', $canonical_json);
+
+    if (!hash_equals($sha256, $actual_sha256)) {
+        $canonical_json = raidlands_airstrike_animation_canonical_json($bundle);
+        $sha256 = hash('sha256', $canonical_json);
+
+        raidlands_db_execute(
+            'UPDATE airstrike_animation_bundles
+             SET bundle_json = :bundle_json,
+                 sha256 = :sha256
+             WHERE revision = :revision',
+            [
+                'bundle_json' => $canonical_json,
+                'sha256' => $sha256,
+                'revision' => $revision,
+            ]
+        );
+
+        $bundle = raidlands_airstrike_animations_decode_json($canonical_json, 'Published bundle');
+    }
+
+    return [
+        'row' => $row,
+        'bundle' => $bundle,
+        'canonical_json' => $canonical_json,
+        'sha256' => $sha256,
+    ];
+}
+
+function raidlands_airstrike_animations_latest_valid_bundle(?int $revision = null): ?array
+{
+    if ($revision !== null) {
+        $row = raidlands_airstrike_animations_latest_bundle_row($revision);
+        return $row === null ? null : raidlands_airstrike_animations_decode_bundle_row($row);
+    }
+
+    $rows = raidlands_db_fetch_all(
+        'SELECT * FROM airstrike_animation_bundles ORDER BY revision DESC LIMIT 25'
+    );
+
+    foreach ($rows as $row) {
+        try {
+            return raidlands_airstrike_animations_decode_bundle_row($row);
+        } catch (InvalidArgumentException $error) {
+            continue;
+        }
+    }
+
+    return null;
+}
+
 function raidlands_airstrike_animations_server_status(?string $server_id = null): ?array
 {
     raidlands_airstrike_animations_require_schema();
@@ -649,9 +707,9 @@ function raidlands_airstrike_animations_bundle_for_server(int $since = 0, ?int $
         throw new InvalidArgumentException('since must be zero or a positive integer.');
     }
 
-    $row = raidlands_airstrike_animations_latest_bundle_row($revision);
+    $resolved = raidlands_airstrike_animations_latest_valid_bundle($revision);
 
-    if ($row === null) {
+    if ($resolved === null) {
         return [
             'ok' => true,
             'has_update' => false,
@@ -660,8 +718,9 @@ function raidlands_airstrike_animations_bundle_for_server(int $since = 0, ?int $
         ];
     }
 
+    $row = (array) $resolved['row'];
     $current_revision = (int) $row['revision'];
-    $sha256 = strtolower((string) $row['sha256']);
+    $sha256 = (string) $resolved['sha256'];
 
     if ($revision === null && $since >= $current_revision) {
         return [
@@ -672,28 +731,8 @@ function raidlands_airstrike_animations_bundle_for_server(int $since = 0, ?int $
         ];
     }
 
-    $canonical_json = (string) $row['bundle_json'];
-    $actual_sha256 = hash('sha256', $canonical_json);
-
-    if (!hash_equals($sha256, $actual_sha256)) {
-        $bundle = raidlands_airstrike_animations_decode_json($canonical_json, 'Published bundle');
-        $canonical_json = raidlands_airstrike_animation_canonical_json($bundle);
-        $sha256 = hash('sha256', $canonical_json);
-
-        raidlands_db_execute(
-            'UPDATE airstrike_animation_bundles
-             SET bundle_json = :bundle_json,
-                 sha256 = :sha256
-             WHERE revision = :revision',
-            [
-                'bundle_json' => $canonical_json,
-                'sha256' => $sha256,
-                'revision' => $current_revision,
-            ]
-        );
-    } else {
-        $bundle = raidlands_airstrike_animations_decode_json($canonical_json, 'Published bundle');
-    }
+    $canonical_json = (string) $resolved['canonical_json'];
+    $bundle = (array) $resolved['bundle'];
 
     return [
         'ok' => true,
