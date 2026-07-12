@@ -124,6 +124,7 @@ type HeatmapHistoryFrame = HeatmapPayload & {
 type HeatmapHistoryPayload = HeatmapPayload & {
   frames?: HeatmapHistoryFrame[];
   frameSeconds?: number;
+  windowEnd?: string;
   authenticated?: boolean;
   historyAvailable?: boolean;
 };
@@ -2114,6 +2115,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   let playbackSpeedIndex = 2;
   let playerPollTimer = 0;
   let playbackHistoryPollTimer = 0;
+  let playbackRequestId = 0;
   const playbackSpeeds = [0.25, 0.5, 1, 2, 4, 8];
   const playerLocationRefreshMs = 15_000;
   const disposers: Array<() => void> = [];
@@ -2304,26 +2306,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   };
 
   const selectedRangeSeconds = (): number => {
-    switch (selectedRange()) {
-      case "15m":
-        return 15 * 60;
-      case "30m":
-        return 30 * 60;
-      case "1h":
-        return 60 * 60;
-      case "3h":
-        return 3 * 60 * 60;
-      case "6h":
-        return 6 * 60 * 60;
-      case "12h":
-        return 12 * 60 * 60;
-      case "24h":
-        return 24 * 60 * 60;
-      case "wipe":
-        return 31 * 24 * 60 * 60;
-      default:
-        return 24 * 60 * 60;
-    }
+    return historyRangeSeconds(selectedRange());
   };
 
   const estimatedFrameSeconds = (): number => {
@@ -2431,11 +2414,19 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     if (wantsPlayback()) {
       window.clearInterval(playerPollTimer);
       playerPollTimer = 0;
+      const requestId = playbackRequestId + 1;
+      playbackRequestId = requestId;
+      const requestRange = selectedRange();
+      const requestFrameCount = heatmapFrameCountValue();
       const previousFrame = heatmapHistory[currentPlaybackFrameIndex()] || null;
       const previousFrameTime = previousFrame ? historyFrameTime(previousFrame) : null;
       const shouldFollowLatest = selectLatest || (preferredFrame === undefined && isFollowingLatestPlaybackFrame());
-      void loadOverlayHistory(root, heatmapEnabled, playersEnabled, wantsAllPlayers(), selectedMetric(), selectedRange(), heatmapFrameCountValue()).then((payload) => {
-        heatmapHistory = Array.isArray(payload.frames) ? payload.frames : [];
+      void loadOverlayHistory(root, heatmapEnabled, playersEnabled, wantsAllPlayers(), selectedMetric(), requestRange, requestFrameCount).then((payload) => {
+        if (requestId !== playbackRequestId || selectedRange() !== requestRange) {
+          return;
+        }
+
+        heatmapHistory = trimHistoryFramesToRange(Array.isArray(payload.frames) ? payload.frames : [], requestRange, payload.windowEnd);
         setFrameIntervalLabel(payload.frameSeconds);
         const latestFrame = preferredFrame !== undefined
           ? MathUtils.clamp(Math.round(preferredFrame), 0, Math.max(0, heatmapHistory.length - 1))
@@ -2790,6 +2781,7 @@ async function loadOverlayHistory(root: HTMLElement, includeHeatmap: boolean, in
   return {
     ...heatmapPayload,
     frameSeconds,
+    windowEnd: heatmapPayload.windowEnd || playerPayload.windowEnd,
     authenticated: Boolean(heatmapPayload.authenticated || playerPayload.authenticated),
     frames: baseFrames.map((frame, index) => {
       const matchingPlayerFrame = includePlayers ? playerHistoryFrameFor(frame, playerFrames, index, frameSeconds) : null;
@@ -2867,6 +2859,50 @@ function historyFrameTime(frame: HeatmapHistoryFrame): number | null {
   const raw = frame.windowEnd || frame.windowStart || "";
   const time = Date.parse(raw);
   return Number.isFinite(time) ? time : null;
+}
+
+function trimHistoryFramesToRange(frames: HeatmapHistoryFrame[], range: string, windowEnd?: string): HeatmapHistoryFrame[] {
+  if (frames.length === 0) {
+    return frames;
+  }
+
+  const durationSeconds = historyRangeSeconds(range);
+  const parsedWindowEnd = windowEnd ? Date.parse(windowEnd) : Number.NaN;
+  const latestFrameTime = historyFrameTime(frames[frames.length - 1]);
+  const endMs = Number.isFinite(parsedWindowEnd) ? parsedWindowEnd : latestFrameTime;
+
+  if (!endMs || !Number.isFinite(endMs)) {
+    return frames;
+  }
+
+  const startMs = endMs - durationSeconds * 1000;
+  return frames.filter((frame) => {
+    const frameTime = historyFrameTime(frame);
+    return frameTime === null || frameTime >= startMs;
+  });
+}
+
+function historyRangeSeconds(range: string): number {
+  switch (range) {
+    case "15m":
+      return 15 * 60;
+    case "30m":
+      return 30 * 60;
+    case "1h":
+      return 60 * 60;
+    case "3h":
+      return 3 * 60 * 60;
+    case "6h":
+      return 6 * 60 * 60;
+    case "12h":
+      return 12 * 60 * 60;
+    case "24h":
+      return 24 * 60 * 60;
+    case "wipe":
+      return 31 * 24 * 60 * 60;
+    default:
+      return 24 * 60 * 60;
+  }
 }
 
 function formatDurationLabel(seconds: number): string {
