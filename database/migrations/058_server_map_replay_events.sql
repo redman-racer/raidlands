@@ -1,0 +1,20 @@
+CREATE TABLE IF NOT EXISTS server_map_replay_events (
+  id BIGINT UNSIGNED NOT NULL AUTO_INCREMENT,
+  server_id VARCHAR(120) NOT NULL,
+  wipe_key VARCHAR(160) NOT NULL,
+  event_key VARCHAR(160) NOT NULL,
+  event_type VARCHAR(40) NOT NULL,
+  occurred_at TIMESTAMP NOT NULL,
+  x DECIMAL(10,3) NOT NULL DEFAULT 0,
+  y DECIMAL(10,3) NOT NULL DEFAULT 0,
+  z DECIMAL(10,3) NOT NULL DEFAULT 0,
+  profile_key VARCHAR(120) NOT NULL DEFAULT '',
+  vehicle VARCHAR(40) NOT NULL DEFAULT '',
+  payload_json LONGTEXT NULL DEFAULT NULL,
+  created_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  updated_at TIMESTAMP NOT NULL DEFAULT CURRENT_TIMESTAMP ON UPDATE CURRENT_TIMESTAMP,
+  PRIMARY KEY (id),
+  UNIQUE KEY uniq_server_replay_event (server_id, wipe_key, event_key),
+  KEY idx_replay_events_public_window (server_id, wipe_key, event_type, occurred_at),
+  KEY idx_replay_events_time (server_id, occurred_at)
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;

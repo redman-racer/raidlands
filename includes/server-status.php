@@ -159,6 +159,20 @@ function raidlands_server_player_location_history_is_ready(): bool
     }
 }
 
+function raidlands_server_map_replay_events_are_ready(): bool
+{
+    if (!raidlands_db_is_configured()) {
+        return false;
+    }
+
+    try {
+        raidlands_db_fetch_one('SELECT id FROM server_map_replay_events LIMIT 1');
+        return true;
+    } catch (Throwable $error) {
+        return false;
+    }
+}
+
 function raidlands_server_status_clean_text($value, int $max_length = 120): string
 {
     $text = trim(str_replace("\0", '', (string) $value));
@@ -1854,6 +1868,270 @@ function raidlands_server_player_locations_history_public(string $range, int $fr
         'windowEnd' => gmdate('c', $window_end_time),
         'frameSeconds' => $frame_seconds,
         'clanTag' => (string) ($context['clanTag'] ?? ''),
+        'delay' => [
+            'label' => (string) $delay['label'],
+            'delaySeconds' => (int) $delay['delay_seconds'],
+        ],
+        'frames' => $frames_payload,
+    ];
+}
+
+function raidlands_server_map_replay_event_type($value): string
+{
+    $type = strtolower(trim((string) $value));
+    $type = preg_replace('/[^a-z0-9_:-]+/', '_', $type) ?? '';
+
+    if (in_array($type, ['airstrike', 'airdrop'], true)) {
+        return $type;
+    }
+
+    return '';
+}
+
+function raidlands_server_map_replay_event_payload(array $event): string
+{
+    $payload = $event['payload'] ?? $event['details'] ?? [];
+    if (!is_array($payload)) {
+        $payload = [];
+    }
+
+    $json = json_encode($payload, JSON_UNESCAPED_SLASHES);
+    return is_string($json) && strlen($json) <= 12000 ? $json : '{}';
+}
+
+function raidlands_server_map_replay_events_ingest_snapshot(array $payload, string $header_server_id): array
+{
+    if (!raidlands_server_map_replay_events_are_ready()) {
+        throw new RuntimeException('Server map replay event table is not installed. Run database/migrations/058_server_map_replay_events.sql.');
+    }
+
+    $header_server_id = raidlands_server_status_clean_text($header_server_id !== '' ? $header_server_id : raidlands_server_status_server_id(), 120);
+    $server_id = raidlands_server_status_clean_text($payload['server_id'] ?? $header_server_id, 120);
+
+    if ($server_id === '' || ($header_server_id !== '' && !hash_equals($header_server_id, $server_id))) {
+        throw new InvalidArgumentException('Replay event server_id does not match the authenticated server.');
+    }
+
+    $wipe_key = raidlands_server_status_clean_text($payload['wipe_key'] ?? '', 160);
+    if ($wipe_key === '') {
+        $wipe_key = $server_id . '-current';
+    }
+
+    $events = $payload['events'] ?? [];
+    if (!is_array($events) || count($events) < 1 || count($events) > 250) {
+        throw new InvalidArgumentException('Replay event snapshot must include 1 to 250 events.');
+    }
+
+    $statement = raidlands_db_required()->prepare(
+        'INSERT INTO server_map_replay_events
+            (server_id, wipe_key, event_key, event_type, occurred_at, x, y, z, profile_key, vehicle, payload_json)
+         VALUES
+            (:server_id, :wipe_key, :event_key, :event_type, :occurred_at, :x, :y, :z, :profile_key, :vehicle, :payload_json)
+         ON DUPLICATE KEY UPDATE
+            event_type = VALUES(event_type),
+            occurred_at = VALUES(occurred_at),
+            x = VALUES(x),
+            y = VALUES(y),
+            z = VALUES(z),
+            profile_key = VALUES(profile_key),
+            vehicle = VALUES(vehicle),
+            payload_json = VALUES(payload_json),
+            updated_at = NOW()'
+    );
+    $accepted = 0;
+
+    foreach ($events as $index => $event) {
+        if (!is_array($event)) {
+            continue;
+        }
+
+        $type = raidlands_server_map_replay_event_type($event['event_type'] ?? $event['eventType'] ?? $event['type'] ?? '');
+        if ($type === '') {
+            continue;
+        }
+
+        $occurred_at = raidlands_server_heatmap_timestamp($event['occurred_at'] ?? $event['occurredAt'] ?? $event['sampled_at'] ?? $payload['sampled_at'] ?? '', 'now');
+        $event_key = raidlands_server_status_clean_text($event['event_key'] ?? $event['eventKey'] ?? '', 160);
+        if ($event_key === '') {
+            $event_key = hash('sha256', $type . '|' . $occurred_at . '|' . round((float) ($event['x'] ?? 0), 1) . '|' . round((float) ($event['z'] ?? 0), 1) . '|' . $index);
+        }
+
+        $statement->execute([
+            'server_id' => $server_id,
+            'wipe_key' => $wipe_key,
+            'event_key' => $event_key,
+            'event_type' => $type,
+            'occurred_at' => $occurred_at,
+            'x' => round((float) ($event['x'] ?? 0), 3),
+            'y' => round((float) ($event['y'] ?? 0), 3),
+            'z' => round((float) ($event['z'] ?? 0), 3),
+            'profile_key' => raidlands_server_status_clean_text($event['profile_key'] ?? $event['profileKey'] ?? '', 120),
+            'vehicle' => raidlands_server_status_clean_text($event['vehicle'] ?? '', 40),
+            'payload_json' => raidlands_server_map_replay_event_payload($event),
+        ]);
+        $accepted += 1;
+    }
+
+    return [
+        'serverId' => $server_id,
+        'wipeKey' => $wipe_key,
+        'acceptedEvents' => $accepted,
+    ];
+}
+
+function raidlands_server_map_replay_event_from_row(array $row): array
+{
+    $payload = json_decode((string) ($row['payload_json'] ?? '{}'), true);
+    if (!is_array($payload)) {
+        $payload = [];
+    }
+
+    return [
+        'id' => (int) ($row['id'] ?? 0),
+        'eventKey' => (string) ($row['event_key'] ?? ''),
+        'eventType' => (string) ($row['event_type'] ?? ''),
+        'occurredAt' => raidlands_server_status_iso($row['occurred_at'] ?? ''),
+        'x' => (float) ($row['x'] ?? 0),
+        'y' => (float) ($row['y'] ?? 0),
+        'z' => (float) ($row['z'] ?? 0),
+        'profileKey' => (string) ($row['profile_key'] ?? ''),
+        'vehicle' => (string) ($row['vehicle'] ?? ''),
+        'payload' => $payload,
+    ];
+}
+
+function raidlands_server_map_replay_events_history_public(string $range, int $frames = 12): array
+{
+    $range_info = raidlands_server_heatmap_range($range);
+    $delay = raidlands_server_heatmap_viewer_delay();
+    $status = raidlands_server_status_latest();
+    $server_id = (string) ($status['server_id'] ?? raidlands_server_status_server_id());
+    $wipe_key = (string) ($status['wipe_key'] ?? ($server_id . '-current'));
+    $location_context = raidlands_server_location_viewer_context($server_id);
+    $window_end_time = raidlands_server_history_window_end_time(
+        $server_id,
+        $wipe_key,
+        (int) $delay['delay_seconds'],
+        !empty($location_context['authenticated']) || !empty($location_context['canViewAll'])
+    );
+    $window_start_time = $range_info['range'] === 'wipe'
+        ? max(0, $window_end_time - (60 * 60 * 24 * 31))
+        : $window_end_time - ((int) $range_info['minutes'] * 60);
+    $duration = max(1, $window_end_time - $window_start_time);
+    [$frames, $frame_seconds] = raidlands_server_history_frame_shape($duration, $frames);
+    $start_aligned = $window_end_time - ($frame_seconds * $frames);
+    $frames_payload = [];
+
+    for ($frame = 0; $frame < $frames; $frame += 1) {
+        $frame_start = $start_aligned + ($frame * $frame_seconds);
+        $frame_end = min($window_end_time, $frame_start + $frame_seconds);
+        $frames_payload[] = [
+            'index' => $frame,
+            'label' => gmdate('M j H:i', $frame_end),
+            'windowStart' => gmdate('c', $frame_start),
+            'windowEnd' => gmdate('c', $frame_end),
+            'events' => [],
+        ];
+    }
+
+    if (!raidlands_server_map_replay_events_are_ready()) {
+        return [
+            'ok' => false,
+            'error' => 'Replay events are not available yet.',
+            'serverId' => $server_id,
+            'wipeKey' => $wipe_key,
+            'range' => $range_info['range'],
+            'windowEnd' => gmdate('c', $window_end_time),
+            'frameSeconds' => $frame_seconds,
+            'frames' => $frames_payload,
+        ];
+    }
+
+    $rows = raidlands_db_fetch_all(
+        'SELECT *
+         FROM server_map_replay_events
+         WHERE server_id = :server_id
+           AND wipe_key = :wipe_key
+           AND occurred_at >= :window_start
+           AND occurred_at <= :window_end
+         ORDER BY occurred_at ASC
+         LIMIT 800',
+        [
+            'server_id' => $server_id,
+            'wipe_key' => $wipe_key,
+            'window_start' => gmdate('Y-m-d H:i:s', $start_aligned),
+            'window_end' => gmdate('Y-m-d H:i:s', $window_end_time),
+        ]
+    );
+
+    $airdrop_groups = [];
+    foreach ($rows as $row) {
+        $event = raidlands_server_map_replay_event_from_row($row);
+        $occurred = strtotime((string) $event['occurredAt']);
+        if ($occurred === false) {
+            continue;
+        }
+
+        if ($event['eventType'] === 'airdrop') {
+            $matched = null;
+            foreach ($airdrop_groups as $group_index => $group) {
+                $distance = hypot(((float) $event['x']) - ((float) $group['x']), ((float) $event['z']) - ((float) $group['z']));
+                if (abs($occurred - (int) $group['occurred']) <= 120 && $distance <= 150) {
+                    $matched = $group_index;
+                    break;
+                }
+            }
+            if ($matched !== null) {
+                $group = $airdrop_groups[$matched];
+                $count = (int) $group['count'] + 1;
+                $airdrop_groups[$matched]['x'] = (((float) $group['x']) * ($count - 1) + (float) $event['x']) / $count;
+                $airdrop_groups[$matched]['y'] = max((float) $group['y'], (float) $event['y']);
+                $airdrop_groups[$matched]['z'] = (((float) $group['z']) * ($count - 1) + (float) $event['z']) / $count;
+                $airdrop_groups[$matched]['count'] = $count;
+                $airdrop_groups[$matched]['eventKeys'][] = $event['eventKey'];
+                continue;
+            }
+            $airdrop_groups[] = [
+                'event' => $event,
+                'occurred' => $occurred,
+                'x' => (float) $event['x'],
+                'y' => (float) $event['y'],
+                'z' => (float) $event['z'],
+                'count' => 1,
+                'eventKeys' => [$event['eventKey']],
+            ];
+            continue;
+        }
+
+        $frame_index = (int) floor(($occurred - $start_aligned) / $frame_seconds);
+        if ($frame_index >= 0 && $frame_index < $frames) {
+            $frames_payload[$frame_index]['events'][] = $event;
+        }
+    }
+
+    foreach ($airdrop_groups as $group) {
+        $event = $group['event'];
+        $event['eventKey'] = 'airdrop-group-' . hash('sha1', implode('|', $group['eventKeys']));
+        $event['x'] = round((float) $group['x'], 3);
+        $event['y'] = round((float) $group['y'], 3);
+        $event['z'] = round((float) $group['z'], 3);
+        $event['vehicle'] = 'cargo_plane';
+        $event['payload']['dropCount'] = (int) $group['count'];
+        $event['payload']['groupedEventKeys'] = $group['eventKeys'];
+        $frame_index = (int) floor((((int) $group['occurred']) - $start_aligned) / $frame_seconds);
+        if ($frame_index >= 0 && $frame_index < $frames) {
+            $frames_payload[$frame_index]['events'][] = $event;
+        }
+    }
+
+    return [
+        'ok' => true,
+        'serverId' => $server_id,
+        'wipeKey' => $wipe_key,
+        'range' => $range_info['range'],
+        'rangeLabel' => $range_info['label'],
+        'windowEnd' => gmdate('c', $window_end_time),
+        'frameSeconds' => $frame_seconds,
         'delay' => [
             'label' => (string) $delay['label'],
             'delaySeconds' => (int) $delay['delay_seconds'],

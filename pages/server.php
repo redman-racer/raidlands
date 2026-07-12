@@ -253,6 +253,8 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
         data-map-published-at="<?= e((string) ($server_map_image['publishedAt'] ?? '')) ?>"
         data-heatmap-url="<?= e(route_url('api/server/heatmap.php')) ?>"
         data-player-locations-url="<?= e(route_url('api/server/player-locations.php')) ?>"
+        data-map-replay-events-url="<?= e(route_url('api/server/map-replay-events.php')) ?>"
+        data-airstrike-profiles-url="<?= e(route_url('api/airstrike-animation-profiles.php')) ?>"
         data-camera-tour="true"
         data-camera-locked="false"
         data-grid-overlay="true"

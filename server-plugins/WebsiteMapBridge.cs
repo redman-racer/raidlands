@@ -58,6 +58,7 @@ namespace Oxide.Plugins
             public string SkyboxImagePath = "oxide/data/WebsiteMapBridge/current-skybox.png";
             public bool PublishPlayerLocations = true;
             public int PlayerLocationIntervalSeconds = 15;
+            public bool PublishReplayEvents = true;
         }
 
         private class MapUploadPayload
@@ -166,6 +167,25 @@ namespace Oxide.Plugins
             public string sampledAt;
         }
 
+        private class ReplayEventSnapshotPayload
+        {
+            public string server_id;
+            public string wipe_key;
+            public List<ReplayEventPayload> events;
+        }
+
+        private class ReplayEventPayload
+        {
+            public string event_key;
+            public string event_type;
+            public string occurred_at;
+            public float x;
+            public float y;
+            public float z;
+            public string vehicle;
+            public Dictionary<string, object> payload;
+        }
+
         protected override void LoadDefaultConfig()
         {
             PrintWarning("Creating default WebsiteMapBridge config.");
@@ -187,6 +207,23 @@ namespace Oxide.Plugins
             LogBridgeSecretDiagnostics();
             QueueAutoPublish("server initialized");
             StartPlayerLocationPublisher();
+        }
+
+        private void OnEntitySpawned(BaseNetworkable entity)
+        {
+            if (!config.PublishReplayEvents || entity == null)
+            {
+                return;
+            }
+
+            var baseEntity = entity as BaseEntity;
+            var prefab = baseEntity == null ? "" : (baseEntity.PrefabName ?? baseEntity.ShortPrefabName ?? "");
+            if (prefab.IndexOf("supply_drop", StringComparison.OrdinalIgnoreCase) < 0)
+            {
+                return;
+            }
+
+            timer.Once(0.25f, () => PublishAirdropReplayEvent(baseEntity));
         }
 
         private void Unload()
@@ -247,7 +284,7 @@ namespace Oxide.Plugins
 
             ReplyToCommand(
                 arg,
-                $"WebsiteMapBridge v1.0.8 status: server={ResolveServerId()}, api={apiState}, ready={readyState}, secret={secretState}, render={config.RenderName}, textureRender={config.TextureRenderName}, terrainEnabled={config.PublishTerrain}, terrainResolution={config.TerrainSampleResolution}, monumentsEnabled={config.IncludeMonuments}, skybox={config.PublishSkybox}/{config.SkyboxImagePath}, playerLocations={config.PublishPlayerLocations}/{config.PlayerLocationIntervalSeconds}s, heightMap={heightMapState}, lastWipe={lastPublishedWipeKey}."
+                $"WebsiteMapBridge v1.0.8 status: server={ResolveServerId()}, api={apiState}, ready={readyState}, secret={secretState}, render={config.RenderName}, textureRender={config.TextureRenderName}, terrainEnabled={config.PublishTerrain}, terrainResolution={config.TerrainSampleResolution}, monumentsEnabled={config.IncludeMonuments}, skybox={config.PublishSkybox}/{config.SkyboxImagePath}, playerLocations={config.PublishPlayerLocations}/{config.PlayerLocationIntervalSeconds}s, replayEvents={config.PublishReplayEvents}, heightMap={heightMapState}, lastWipe={lastPublishedWipeKey}."
             );
         }
 
@@ -391,6 +428,50 @@ namespace Oxide.Plugins
                 if (verbose)
                 {
                     reply?.Invoke($"Website player locations synced: {result.locations?.acceptedPlayers ?? players.Count} connected players.");
+                }
+            });
+        }
+
+        private void PublishAirdropReplayEvent(BaseEntity entity)
+        {
+            var secret = ResolveBridgeSharedSecret();
+            if (entity == null || entity.IsDestroyed || string.IsNullOrWhiteSpace(secret))
+            {
+                return;
+            }
+
+            var position = entity.transform.position;
+            var payload = new ReplayEventSnapshotPayload
+            {
+                server_id = ResolveServerId(),
+                wipe_key = ResolveWipeKey(),
+                events = new List<ReplayEventPayload>
+                {
+                    new ReplayEventPayload
+                    {
+                        event_key = "airdrop:" + entity.net.ID.Value + ":" + DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(),
+                        event_type = "airdrop",
+                        occurred_at = DateTime.UtcNow.ToString("o"),
+                        x = (float)Math.Round(position.x, 3),
+                        y = (float)Math.Round(position.y, 3),
+                        z = (float)Math.Round(position.z, 3),
+                        vehicle = "cargo_plane",
+                        payload = new Dictionary<string, object>
+                        {
+                            ["prefab"] = entity.PrefabName ?? entity.ShortPrefabName ?? "",
+                            ["networkId"] = entity.net.ID.Value.ToString()
+                        }
+                    }
+                }
+            };
+            var body = JsonConvert.SerializeObject(payload);
+            var url = $"{TrimSlash(ResolveApiBaseUrl())}/api/server/map-replay-events-snapshot.php";
+
+            SendPost(url, body, (code, response) =>
+            {
+                if (!IsSuccess(code, response, out var requestError))
+                {
+                    PrintWarning("Website airdrop replay event post failed: " + requestError);
                 }
             });
         }

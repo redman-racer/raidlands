@@ -128,6 +128,7 @@ type HeatmapHistoryFrame = HeatmapPayload & {
   windowStart?: string;
   windowEnd?: string;
   players?: PlayerLocation[];
+  events?: MapReplayEvent[];
 };
 
 type HeatmapHistoryPayload = HeatmapPayload & {
@@ -154,6 +155,28 @@ type PlayerLocationPayload = {
   authenticated?: boolean;
   players?: PlayerLocation[];
   frames?: HeatmapHistoryFrame[];
+};
+
+type MapReplayEvent = {
+  eventKey?: string;
+  eventType?: "airstrike" | "airdrop" | string;
+  occurredAt?: string;
+  x: number;
+  y?: number;
+  z: number;
+  profileKey?: string;
+  vehicle?: string;
+  payload?: Record<string, unknown>;
+};
+
+type MapReplayHistoryPayload = {
+  ok?: boolean;
+  frames?: Array<{
+    index?: number;
+    windowStart?: string;
+    windowEnd?: string;
+    events?: MapReplayEvent[];
+  }>;
 };
 
 type ServerStatusPayload = {
@@ -479,6 +502,7 @@ class TerrainViewer {
   private readonly playerLocationLayer = new Group();
   private readonly overlayLayerTransitions: OverlayLayerTransition[] = [];
   private readonly airstrikeLayer = new Group();
+  private airstrikeReplay: AirstrikeReplayPlayer | null = null;
   private readonly onResize = () => this.resize();
   private animationFrame = 0;
   private readonly clockStart = performance.now();
@@ -794,13 +818,13 @@ class TerrainViewer {
     this.focusSelfLocation(true, true);
   }
 
-  public addAirstrikePreview(profiles: RuntimeVisualProfile[]): void {
-    if (profiles.length === 0) {
-      return;
-    }
+  public setAirstrikeProfiles(profiles: Record<string, RuntimeVisualProfile>): void {
+    this.airstrikeReplay = new AirstrikeReplayPlayer(this.airstrikeLayer, this.terrain, profiles);
+    this.airstrikeReplay.start();
+  }
 
-    const player = new AirstrikePreviewPlayer(this.airstrikeLayer, this.terrain, profiles);
-    player.start();
+  public showReplayEvents(events: MapReplayEvent[], playbackSpeed: number): void {
+    this.airstrikeReplay?.showEvents(events, playbackSpeed);
   }
 
   public frameIso(cycle = true): void {
@@ -1507,19 +1531,18 @@ class TerrainViewer {
   }
 }
 
-class AirstrikePreviewPlayer {
+class AirstrikeReplayPlayer {
   private readonly layer: Group;
   private readonly terrain: TerrainPayload;
-  private readonly profiles: RuntimeVisualProfile[];
+  private readonly profiles: Record<string, RuntimeVisualProfile>;
   private readonly active = new Group();
-  private nextStartAt = 0;
-  private runs: AirstrikeRun[] = [];
+  private runs: MapReplayRun[] = [];
 
-  public constructor(layer: Group, terrain: TerrainPayload, profiles: RuntimeVisualProfile[]) {
+  public constructor(layer: Group, terrain: TerrainPayload, profiles: Record<string, RuntimeVisualProfile>) {
     this.layer = layer;
     this.terrain = terrain;
     this.profiles = profiles;
-    this.active.name = "active-airstrike-previews";
+    this.active.name = "active-map-replay-events";
     this.layer.add(this.active);
   }
 
@@ -1527,7 +1550,33 @@ class AirstrikePreviewPlayer {
     this.layer.userData.tick = (time: number) => this.tick(time);
   }
 
+  public showEvents(events: MapReplayEvent[], playbackSpeed: number): void {
+    const eventKeys = new Set(events.map((event, index) => replayEventKey(event, index)));
+    this.runs = this.runs.filter((run) => {
+      if (eventKeys.has(run.key)) {
+        return true;
+      }
+      this.active.remove(run.group);
+      return false;
+    });
+
+    events.forEach((event, index) => {
+      const key = replayEventKey(event, index);
+      if (this.runs.some((run) => run.key === key)) {
+        return;
+      }
+
+      const startAt = Number(this.layer.userData.lastTickTime || 0);
+      const run = event.eventType === "airdrop"
+        ? new AirdropReplayRun(key, event, this.terrain, startAt, playbackSpeed)
+        : new AirstrikeReplayRun(key, event, this.terrain, this.profileForEvent(event), startAt, playbackSpeed);
+      this.runs.push(run);
+      this.active.add(run.group);
+    });
+  }
+
   private tick(time: number): void {
+    this.layer.userData.lastTickTime = time;
     this.runs = this.runs.filter((run) => {
       const alive = run.update(time);
       if (!alive) {
@@ -1535,51 +1584,59 @@ class AirstrikePreviewPlayer {
       }
       return alive;
     });
+  }
 
-    if (this.runs.length > 0 || time < this.nextStartAt || Math.random() > 0.96) {
-      return;
+  private profileForEvent(event: MapReplayEvent): RuntimeVisualProfile | null {
+    const key = String(event.profileKey || "").trim();
+    if (key && this.profiles[key] && hasUsablePreviewTrack(this.profiles[key])) {
+      return this.profiles[key];
     }
 
-    const count = Math.random() > 0.72 ? 2 : 1;
-    for (let index = 0; index < count; index += 1) {
-      const profile = randomEntry(this.profiles);
-      if (!profile) {
-        continue;
-      }
+    const vehicle = String(event.vehicle || "").trim().toLowerCase();
+    const fallback = Object.values(this.profiles).find((profile) => {
+      return hasUsablePreviewTrack(profile) && String(profile.Vehicle || "").toLowerCase() === vehicle;
+    });
 
-      const run = new AirstrikeRun(profile, this.terrain, time + index * (0.35 + Math.random() * 0.55), index);
-      this.runs.push(run);
-      this.active.add(run.group);
-    }
-
-    this.nextStartAt = time + 1.6 + Math.random() * 2.8;
+    return fallback || Object.values(this.profiles).find(hasUsablePreviewTrack) || null;
   }
 }
 
-class AirstrikeRun {
+type MapReplayRun = {
+  key: string;
+  group: Group;
+  update: (now: number) => boolean;
+};
+
+class AirstrikeReplayRun implements MapReplayRun {
+  public readonly key: string;
   public readonly group = new Group();
-  private readonly profile: RuntimeVisualProfile;
+  private readonly profile: RuntimeVisualProfile | null;
   private readonly terrain: TerrainPayload;
+  private readonly event: MapReplayEvent;
   private readonly startAt: number;
   private readonly duration: number;
   private readonly frames: RuntimeVisualFrame[];
   private readonly aircraft: Mesh;
   private readonly payloads: RuntimePayloadEvent[];
   private readonly firedPayloads = new Set<number>();
-  private readonly origin: Vector3;
+  private readonly target: Vector3;
   private readonly routeScale: number;
+  private readonly playbackSpeed: number;
 
-  public constructor(profile: RuntimeVisualProfile, terrain: TerrainPayload, startAt: number, lane: number) {
+  public constructor(key: string, event: MapReplayEvent, terrain: TerrainPayload, profile: RuntimeVisualProfile | null, startAt: number, playbackSpeed: number) {
+    this.key = key;
     this.profile = profile;
     this.terrain = terrain;
+    this.event = event;
     this.startAt = startAt;
-    this.frames = normalizePreviewFrames(profile);
-    this.duration = Math.max(2, Number(profile.CompiledTrack?.DurationSeconds || profile.DurationSeconds || lastFrameTime(this.frames) || 8));
-    this.payloads = normalizePayloadEvents(profile);
-    this.origin = randomMapOrigin(terrain, lane);
+    this.playbackSpeed = MathUtils.clamp(playbackSpeed || 1, 0.1, 12);
+    this.frames = profile ? normalizePreviewFrames(profile) : [];
+    this.duration = Math.max(2, Number(profile?.CompiledTrack?.DurationSeconds || profile?.DurationSeconds || lastFrameTime(this.frames) || 8)) / this.playbackSpeed;
+    this.payloads = profile ? normalizePayloadEvents(profile) : [];
+    this.target = replayEventPosition(event, terrain);
     this.routeScale = MathUtils.clamp((terrain.worldSize || 4500) / 1200, 2.2, 5.4);
-    this.group.name = `airstrike-preview-${String(profile.Vehicle || "aircraft")}`;
-    this.aircraft = createAircraftMarker(String(profile.Vehicle || "f15"));
+    this.group.name = `airstrike-replay-${String(profile?.Vehicle || event.vehicle || "aircraft")}`;
+    this.aircraft = createAircraftMarker(String(profile?.Vehicle || event.vehicle || "f15"));
     this.group.add(this.aircraft);
   }
 
@@ -1595,7 +1652,10 @@ class AirstrikeRun {
       return false;
     }
 
-    const pose = samplePreviewPose(this.frames, Math.min(elapsed, this.duration));
+    const profileTime = Math.min(elapsed * this.playbackSpeed, Math.max(0.1, lastFrameTime(this.frames)));
+    const pose = this.frames.length >= 2
+      ? samplePreviewPose(this.frames, profileTime)
+      : fallbackFlyoverPose(elapsed / Math.max(0.1, this.duration));
     const world = this.toWorld(pose.position);
     world.y = Math.max(world.y, sampleTerrainHeight(this.terrain, world.x, world.z) + 95);
     this.aircraft.position.copy(world);
@@ -1633,10 +1693,79 @@ class AirstrikeRun {
 
   private toWorld(local: Vector3): Vector3 {
     return new Vector3(
-      this.origin.x + local.x * this.routeScale,
-      this.origin.y + local.y * this.routeScale,
-      this.origin.z + local.z * this.routeScale,
+      this.target.x + local.x * this.routeScale,
+      this.target.y + local.y * this.routeScale,
+      this.target.z + local.z * this.routeScale,
     );
+  }
+}
+
+class AirdropReplayRun implements MapReplayRun {
+  public readonly key: string;
+  public readonly group = new Group();
+  private readonly terrain: TerrainPayload;
+  private readonly target: Vector3;
+  private readonly startAt: number;
+  private readonly duration: number;
+  private readonly aircraft: Mesh;
+  private readonly packageMesh: Mesh;
+  private readonly parachute: Mesh;
+  private readonly dropCount: number;
+
+  public constructor(key: string, event: MapReplayEvent, terrain: TerrainPayload, startAt: number, playbackSpeed: number) {
+    this.key = key;
+    this.terrain = terrain;
+    this.target = replayEventPosition(event, terrain);
+    this.startAt = startAt;
+    this.duration = 9 / MathUtils.clamp(playbackSpeed || 1, 0.1, 12);
+    this.dropCount = Math.max(1, Number(event.payload?.dropCount || 1));
+    this.group.name = "airdrop-replay";
+    this.aircraft = createAircraftMarker("cargo_plane");
+    this.aircraft.scale.setScalar(1.35);
+    this.packageMesh = new Mesh(
+      new BoxGeometry(26, 20, 26),
+      new MeshStandardMaterial({ color: 0x8a5f36, roughness: 0.82, metalness: 0.05 }),
+    );
+    this.packageMesh.name = "airdrop-replay-package";
+    this.parachute = new Mesh(
+      new ConeGeometry(34, 22, 24, 1, true),
+      new MeshStandardMaterial({ color: 0xf5ead8, roughness: 0.74, transparent: true, opacity: 0.88, side: DoubleSide }),
+    );
+    this.parachute.name = "airdrop-replay-parachute";
+    this.group.add(this.aircraft, this.packageMesh, this.parachute);
+  }
+
+  public update(now: number): boolean {
+    const elapsed = now - this.startAt;
+    if (elapsed < 0) {
+      this.group.visible = false;
+      return true;
+    }
+
+    this.group.visible = true;
+    if (elapsed > this.duration + 1.5) {
+      return false;
+    }
+
+    const progress = MathUtils.clamp(elapsed / Math.max(0.1, this.duration), 0, 1);
+    const worldSize = this.terrain.worldSize || 4500;
+    const pass = MathUtils.clamp(worldSize * 0.42, 900, 2200);
+    const x = this.target.x + MathUtils.lerp(-pass, pass, progress);
+    const z = this.target.z;
+    const ground = sampleTerrainHeight(this.terrain, this.target.x, this.target.z);
+    const planeHeight = ground + MathUtils.clamp(worldSize * 0.09, 260, 520);
+    this.aircraft.position.set(x, planeHeight, z);
+    this.aircraft.rotation.set(0, 0, -Math.PI / 2);
+
+    const dropProgress = MathUtils.clamp((progress - 0.22) / 0.56, 0, 1);
+    const packageHeight = MathUtils.lerp(planeHeight - 42, ground + 20, easeInOutCubic(dropProgress));
+    const packageOffset = (this.dropCount - 1) * 8;
+    this.packageMesh.position.set(this.target.x + packageOffset, packageHeight, this.target.z);
+    this.parachute.position.set(this.packageMesh.position.x, packageHeight + 34, this.packageMesh.position.z);
+    const visibleDrop = progress > 0.2 && progress < 0.92;
+    this.packageMesh.visible = progress > 0.2;
+    this.parachute.visible = visibleDrop && dropProgress < 0.98;
+    return true;
   }
 }
 
@@ -1656,8 +1785,7 @@ async function bindAirstrikePreview(root: HTMLElement, viewer: TerrainViewer): P
     }
 
     const payload = await response.json() as { profiles?: Record<string, RuntimeVisualProfile> };
-    const profiles = Object.values(payload.profiles || {}).filter(hasUsablePreviewTrack).slice(0, 48);
-    viewer.addAirstrikePreview(profiles);
+    viewer.setAirstrikeProfiles(payload.profiles || {});
   } catch (error) {
     console.info("Raidlands airstrike map preview could not be loaded.", error);
   }
@@ -1751,6 +1879,25 @@ function frameQuaternion(frame: RuntimeVisualFrame): Quaternion {
 
 function lastFrameTime(frames: RuntimeVisualFrame[]): number {
   return frames.length > 0 ? Number(frames[frames.length - 1].Time || 0) : 0;
+}
+
+function replayEventKey(event: MapReplayEvent, index: number): string {
+  return String(event.eventKey || `${event.eventType || "event"}-${event.occurredAt || ""}-${event.x}-${event.z}-${index}`);
+}
+
+function replayEventPosition(event: MapReplayEvent, terrain: TerrainPayload): Vector3 {
+  const x = Number.isFinite(Number(event.x)) ? Number(event.x) : 0;
+  const z = Number.isFinite(Number(event.z)) ? Number(event.z) : 0;
+  const y = Number.isFinite(Number(event.y)) ? Number(event.y) : sampleTerrainHeight(terrain, x, z);
+  return new Vector3(x, y, z);
+}
+
+function fallbackFlyoverPose(progress: number): { position: Vector3; rotation: Quaternion } {
+  const clamped = MathUtils.clamp(progress, 0, 1);
+  return {
+    position: new Vector3(MathUtils.lerp(-170, 170, clamped), 38, 0),
+    rotation: new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI / 2),
+  };
 }
 
 function randomEntry<T>(values: T[]): T | null {
@@ -2692,6 +2839,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
         viewer.followSelfLocation();
       }
     }
+    viewer.showReplayEvents(Array.isArray(frame.events) ? frame.events : [], playbackSpeed());
     setTimelineLabel(frame);
   };
 
@@ -2736,12 +2884,16 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       const previousFrame = heatmapHistory[currentPlaybackFrameIndex()] || null;
       const previousFrameTime = previousFrame ? historyFrameTime(previousFrame) : null;
       const shouldFollowLatest = selectLatest || (preferredFrame === undefined && isFollowingLatestPlaybackFrame());
-      void loadOverlayHistory(root, heatmapEnabled, playersEnabled, wantsAllPlayers(), selectedMetric(), requestRange, requestFrameCount).then((payload) => {
+      void Promise.all([
+        loadOverlayHistory(root, heatmapEnabled, playersEnabled, wantsAllPlayers(), selectedMetric(), requestRange, requestFrameCount),
+        loadReplayEventHistory(root, requestRange, requestFrameCount),
+      ]).then(([payload, replayPayload]) => {
         if (requestId !== playbackRequestId || selectedRange() !== requestRange) {
           return;
         }
 
         heatmapHistory = trimHistoryFramesToRange(Array.isArray(payload.frames) ? payload.frames : [], requestRange, payload.windowEnd);
+        mergeReplayEventsIntoFrames(heatmapHistory, replayPayload);
         setFrameIntervalLabel(payload.frameSeconds);
         const latestFrame = preferredFrame !== undefined
           ? MathUtils.clamp(Math.round(preferredFrame), 0, Math.max(0, heatmapHistory.length - 1))
@@ -3141,6 +3293,66 @@ async function loadOverlayHistory(root: HTMLElement, includeHeatmap: boolean, in
         players: includePlayers ? (matchingPlayers.length > 0 ? matchingPlayers : framePlayers) : frame.players,
       };
     }),
+  };
+}
+
+async function loadReplayEventHistory(root: HTMLElement, range: string, frames = 24): Promise<MapReplayHistoryPayload> {
+  const url = root.dataset.mapReplayEventsUrl || "";
+  if (!url) {
+    return { ok: true, frames: [] };
+  }
+
+  const params = new URLSearchParams({
+    range,
+    frames: String(Math.max(2, frames)),
+  });
+
+  try {
+    const response = await fetch(`${url}?${params.toString()}`, {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+    if (!response.ok) {
+      throw new Error(`Replay events request failed with HTTP ${response.status}.`);
+    }
+    return await response.json() as MapReplayHistoryPayload;
+  } catch (error) {
+    console.info("Raidlands replay events could not be loaded.", error);
+    return { ok: false, frames: [] };
+  }
+}
+
+function mergeReplayEventsIntoFrames(frames: HeatmapHistoryFrame[], replayPayload: MapReplayHistoryPayload): void {
+  const replayFrames = Array.isArray(replayPayload.frames) ? replayPayload.frames : [];
+  frames.forEach((frame, index) => {
+    const replayFrame = replayFrames[index];
+    frame.events = Array.isArray(replayFrame?.events)
+      ? replayFrame.events.map(normalizeReplayEvent).filter((event): event is MapReplayEvent => event !== null)
+      : [];
+  });
+}
+
+function normalizeReplayEvent(event: MapReplayEvent): MapReplayEvent | null {
+  if (!event || typeof event !== "object") {
+    return null;
+  }
+
+  const x = Number(event.x);
+  const z = Number(event.z);
+  if (!Number.isFinite(x) || !Number.isFinite(z)) {
+    return null;
+  }
+
+  return {
+    eventKey: String(event.eventKey || ""),
+    eventType: String(event.eventType || ""),
+    occurredAt: String(event.occurredAt || ""),
+    x,
+    y: Number.isFinite(Number(event.y)) ? Number(event.y) : undefined,
+    z,
+    profileKey: String(event.profileKey || ""),
+    vehicle: String(event.vehicle || ""),
+    payload: event.payload && typeof event.payload === "object" ? event.payload : {},
   };
 }
 
