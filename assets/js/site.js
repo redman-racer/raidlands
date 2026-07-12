@@ -161,7 +161,8 @@
 
     if (!catalog) return;
 
-    const grid = catalog.querySelector("[data-store-catalog-grid]");
+    const grids = Array.from(catalog.querySelectorAll("[data-store-catalog-grid]"));
+    const sections = Array.from(catalog.querySelectorAll("[data-store-category]"));
     const searchInput = catalog.querySelector("[data-store-search]");
     const typeFilter = catalog.querySelector("[data-store-type-filter]");
     const offerFilter = catalog.querySelector("[data-store-offer-filter]");
@@ -171,7 +172,7 @@
     const emptyNode = catalog.querySelector("[data-store-catalog-empty]");
     const cards = Array.from(catalog.querySelectorAll("[data-store-product]"));
 
-    if (!grid || !cards.length) return;
+    if (!grids.length || !cards.length) return;
 
     const readNumber = (card, key, fallback = 0) => {
       const value = Number(card.dataset[key] || fallback);
@@ -180,7 +181,8 @@
     };
     const sortCards = () => {
       const mode = sortSelect ? sortSelect.value : "featured";
-      const sorted = [...cards].sort((left, right) => {
+      grids.forEach(grid => {
+        const sorted = Array.from(grid.querySelectorAll("[data-store-product]")).sort((left, right) => {
         if (mode === "name") {
           return String(left.dataset.storeName || "").localeCompare(String(right.dataset.storeName || ""));
         }
@@ -197,9 +199,10 @@
 
         return readNumber(left, "storeSort", 100) - readNumber(right, "storeSort", 100)
           || String(left.dataset.storeName || "").localeCompare(String(right.dataset.storeName || ""));
-      });
+        });
 
-      sorted.forEach(card => grid.appendChild(card));
+        sorted.forEach(card => grid.appendChild(card));
+      });
     };
     const applyFilters = () => {
       const query = searchInput ? searchInput.value.trim().toLowerCase() : "";
@@ -231,6 +234,11 @@
       if (emptyNode) {
         emptyNode.hidden = shown !== 0;
       }
+
+      sections.forEach(section => {
+        const visibleCards = section.querySelectorAll("[data-store-product]:not([hidden])").length;
+        section.hidden = visibleCards === 0;
+      });
     };
 
     [searchInput, typeFilter, offerFilter, sortSelect].forEach(control => {

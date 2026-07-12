@@ -1,7 +1,7 @@
 <?php
 
 $page_id = 'store-item';
-$base_path = '../../';
+$base_path = '../../../';
 
 require dirname(__DIR__, 2) . '/includes/bootstrap.php';
 require_once $site_root . '/includes/store.php';

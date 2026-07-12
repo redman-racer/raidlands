@@ -362,11 +362,31 @@ function render_store_catalog(array $products, ?array $player, string $csrf, boo
         return '';
     }
 
+    $sections = [
+        'kit_bundle' => [
+            'kicker' => 'Main bundles',
+            'title' => 'Kit bundles',
+            'copy' => 'Rank-style packages that combine kits, perks, and access into one product.',
+            'products' => raidlands_store_products_by_type($products, 'kit_bundle'),
+        ],
+        'kit_unlock' => [
+            'kicker' => 'Specific unlocks',
+            'title' => 'Individual kits',
+            'copy' => 'Single kit and pack unlocks for players who want one specific redeem path.',
+            'products' => raidlands_store_products_by_type($products, 'kit_unlock'),
+        ],
+        'perk' => [
+            'kicker' => 'Standalone access',
+            'title' => 'Standalone perks',
+            'copy' => 'Individual permissions and quality-of-life access without buying a whole bundle.',
+            'products' => raidlands_store_products_by_type($products, 'perk'),
+        ],
+    ];
     $counts = [
         'all' => count($products),
-        'kit_bundle' => count(raidlands_store_products_by_type($products, 'kit_bundle')),
-        'kit_unlock' => count(raidlands_store_products_by_type($products, 'kit_unlock')),
-        'perk' => count(raidlands_store_products_by_type($products, 'perk')),
+        'kit_bundle' => count($sections['kit_bundle']['products']),
+        'kit_unlock' => count($sections['kit_unlock']['products']),
+        'perk' => count($sections['perk']['products']),
     ];
     $html = '<section class="section store-catalog-section" data-store-catalog>'
         . '<div class="section-inner">'
@@ -398,10 +418,27 @@ function render_store_catalog(array $products, ?array $player, string $csrf, boo
         . '<button class="btn btn-secondary store-catalog-reset" type="button" data-store-reset>Reset</button>'
         . '</div>'
         . '<div class="store-catalog-summary" aria-live="polite"><strong data-store-catalog-count>' . e((string) $counts['all']) . '</strong><span>products shown</span></div>'
-        . '<div class="grid three store-grid" data-store-catalog-grid>';
+        . '<div class="store-catalog-sections">';
 
-    foreach ($products as $product) {
-        $html .= render_store_product_card($product, $player, $csrf, $cash_ready);
+    foreach ($sections as $type => $section) {
+        if ($section['products'] === []) {
+            continue;
+        }
+
+        $html .= '<section class="store-product-category" data-store-category="' . e($type) . '">'
+            . '<div class="store-product-category-head">'
+            . '<div><p class="section-kicker">' . e($section['kicker']) . '</p>'
+            . '<h3>' . e($section['title']) . '</h3>'
+            . '<p>' . e($section['copy']) . '</p></div>'
+            . '<span>' . e((string) count($section['products'])) . ' product' . (count($section['products']) === 1 ? '' : 's') . '</span>'
+            . '</div>'
+            . '<div class="grid three store-grid" data-store-catalog-grid>';
+
+        foreach ($section['products'] as $product) {
+            $html .= render_store_product_card($product, $player, $csrf, $cash_ready);
+        }
+
+        $html .= '</div></section>';
     }
 
     return $html
