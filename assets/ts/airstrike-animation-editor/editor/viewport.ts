@@ -13,6 +13,7 @@ import {
   GridHelper,
   Line,
   LineBasicMaterial,
+  LineSegments,
   MathUtils,
   Mesh,
   MeshBasicMaterial,
@@ -27,6 +28,7 @@ import {
   Sprite,
   SpriteMaterial,
   CylinderGeometry,
+  RepeatWrapping,
   TextureLoader,
   Uint32BufferAttribute,
   Vector2,
@@ -157,7 +159,11 @@ export class AirstrikeViewport {
   private readonly handles = new Map<string, Mesh>();
   private readonly releaseMarkers = new Map<string, Mesh>();
   private grid: GridHelper | null = null;
+  private mapGrid: Group | null = null;
   private ground: Mesh | null = null;
+  private oceanFloor: Mesh | null = null;
+  private oceanSurface: Mesh | null = null;
+  private oceanWaveTexture: CanvasTexture | null = null;
   private routeLine: Line | null = null;
   private targetMarker: Mesh | null = null;
   private approachMarker: Mesh | null = null;
@@ -255,9 +261,9 @@ export class AirstrikeViewport {
     if (reference.skyboxUrl) {
       applyRaidlandsEnvironment(this.scene, this.renderer, {
         preset: "terrain",
-        exposure: 1.05,
-        backgroundIntensity: 0.95,
-        environmentIntensity: 0.92,
+        exposure: 1.08,
+        backgroundIntensity: 0.9,
+        environmentIntensity: 0.76,
         skyboxUrl: reference.skyboxUrl,
       });
     }
@@ -528,7 +534,7 @@ export class AirstrikeViewport {
 
     monuments.forEach((monument) => {
       const group = createMonumentPrimitive(monument);
-      const position = unityPositionToThreeVector({ x: monument.x, y: monument.y, z: monument.z });
+      const position = rustWorldToViewerPosition(monument.x, monument.y, monument.z);
       const terrainHeight = this.currentGroundHeightAt(position.x, position.z);
       group.position.set(position.x, Math.max(position.y, terrainHeight) + 5, position.z);
       group.rotation.y = -MathUtils.degToRad(monument.rotationY || 0);
@@ -756,7 +762,7 @@ export class AirstrikeViewport {
     const rustPosition = threeVectorToUnityPosition(new Vector3(worldX, 0, worldZ));
     const u = MathUtils.clamp((rustPosition.x + half) / worldSize, 0, 1);
     const v = MathUtils.clamp((half - rustPosition.z) / worldSize, 0, 1);
-    return new Vector2(u, 1 - v);
+    return new Vector2(1 - u, 1 - v);
   }
 
   private sampleTerrainColor(terrainPayload: TerrainReferencePayload, worldX: number, worldZ: number): string | undefined {
@@ -979,11 +985,57 @@ export class AirstrikeViewport {
 
   private animate(): void {
     this.animationFrame = window.requestAnimationFrame(() => this.animate());
+    const now = performance.now();
     this.applyDynamicControls();
     this.orbit.update();
     this.syncVehicleCameraMode();
+    this.updateMapEnvironment(now);
     this.emitViewOrientation();
     this.renderer.render(this.scene, this.camera);
+  }
+
+  private updateMapEnvironment(now: number): void {
+    this.updateGridOpacity();
+    if (this.oceanSurface && this.oceanFloor) {
+      this.oceanSurface.position.x = this.camera.position.x;
+      this.oceanSurface.position.z = this.camera.position.z;
+      this.oceanFloor.position.x = this.camera.position.x;
+      this.oceanFloor.position.z = this.camera.position.z;
+    }
+    this.oceanWaveTexture?.offset.set((now * 0.000018) % 1, (now * 0.000011) % 1);
+  }
+
+  private updateGridOpacity(): void {
+    if (!this.mapGrid || !this.mapGrid.visible || !this.worldReference.terrain) {
+      return;
+    }
+
+    const cameraDirection = this.camera.position.clone().sub(this.orbit.target).normalize();
+    const topDownAmount = MathUtils.clamp(cameraDirection.dot(new Vector3(0, 1, 0)), 0, 1);
+    const fade = MathUtils.smoothstep(topDownAmount, 0.62, 0.96);
+    const lineOpacity = MathUtils.lerp(0.1, 0.48, fade);
+    const labelOpacity = MathUtils.lerp(0.34, 1, fade);
+    const worldSize = this.worldReference.terrain.worldSize || this.worldReference.worldSize || 4500;
+    const gridFadeNear = worldSize * 0.16;
+    const gridFadeFar = worldSize * 0.58;
+
+    this.mapGrid.traverse((object) => {
+      const fadePosition = object.userData.fadePosition as Vector3 | undefined;
+      const groundDistance = Math.hypot(
+        (fadePosition?.x ?? object.position.x) - this.camera.position.x,
+        (fadePosition?.z ?? object.position.z) - this.camera.position.z,
+      );
+      const distanceFade = 1 - MathUtils.smoothstep(groundDistance, gridFadeNear, gridFadeFar);
+
+      if (object instanceof LineSegments) {
+        setMaterialOpacity(object.material, lineOpacity * distanceFade);
+        return;
+      }
+
+      if (object instanceof Sprite) {
+        setMaterialOpacity(object.material, labelOpacity * distanceFade);
+      }
+    });
   }
 
   private handlePointerDown(event: PointerEvent): void {
@@ -1212,21 +1264,34 @@ export class AirstrikeViewport {
     const divisions = Math.max(4, Math.min(maximumFloorDivisions, Math.round(floorSize / preferredGridCellSize)));
     const floorCenterX = Number.isFinite(center.x) ? center.x : 0;
     const floorCenterZ = Number.isFinite(center.z) ? center.z : 0;
+    const useMapEnvironment = Boolean(this.worldReference.terrain && this.terrainReferenceEnabled);
 
     if (this.grid) {
       this.scene.remove(this.grid);
       this.grid.geometry.dispose();
+      this.grid = null;
     }
-    if (this.groundGridEnabled) {
+    if (this.mapGrid) {
+      this.scene.remove(this.mapGrid);
+      this.mapGrid = null;
+    }
+
+    if (useMapEnvironment && this.worldReference.terrain) {
+      if (this.groundGridEnabled) {
+        this.mapGrid = createRustMapGridOverlay(this.worldReference.terrain);
+        this.mapGrid.name = "raidlands-rust-map-grid";
+        this.scene.add(this.mapGrid);
+        this.updateGridOpacity();
+      }
+      this.syncOceanReference();
+    } else if (this.groundGridEnabled) {
       this.grid = new GridHelper(floorSize, divisions, 0x23434a, 0x142a30);
       this.grid.name = "meter-grid";
       this.grid.position.set(floorCenterX, 0, floorCenterZ);
       this.scene.add(this.grid);
-    } else {
-      this.grid = null;
     }
 
-    if (this.worldReference.terrain && this.terrainReferenceEnabled) {
+    if (useMapEnvironment) {
       if (this.ground) {
         this.scene.remove(this.ground);
         this.ground.geometry.dispose();
@@ -1235,6 +1300,7 @@ export class AirstrikeViewport {
       return;
     }
 
+    this.clearOceanReference();
     if (this.ground) {
       this.scene.remove(this.ground);
       this.ground.geometry.dispose();
@@ -1244,6 +1310,84 @@ export class AirstrikeViewport {
     this.ground.position.set(floorCenterX, 0, floorCenterZ);
     this.ground.name = "ground-plane";
     this.scene.add(this.ground);
+  }
+
+  private syncOceanReference(): void {
+    const terrain = this.worldReference.terrain;
+    if (!terrain) {
+      this.clearOceanReference();
+      return;
+    }
+
+    if (!this.oceanFloor) {
+      this.oceanFloor = this.createOceanFloorMesh(terrain);
+      this.scene.add(this.oceanFloor);
+    }
+    if (!this.oceanWaveTexture) {
+      this.oceanWaveTexture = createOceanWaveTexture();
+    }
+    if (!this.oceanSurface) {
+      this.oceanSurface = this.createOceanSurfaceMesh(terrain);
+      this.scene.add(this.oceanSurface);
+    }
+  }
+
+  private clearOceanReference(): void {
+    if (this.oceanFloor) {
+      this.scene.remove(this.oceanFloor);
+      this.oceanFloor.geometry.dispose();
+      this.oceanFloor = null;
+    }
+    if (this.oceanSurface) {
+      this.scene.remove(this.oceanSurface);
+      this.oceanSurface.geometry.dispose();
+      this.oceanSurface = null;
+    }
+  }
+
+  private createOceanFloorMesh(terrain: TerrainReferencePayload): Mesh {
+    const worldSize = terrain.worldSize || this.worldReference.worldSize || 4500;
+    const sampledMinHeight = Number.isFinite(terrain.minHeight)
+      ? terrain.minHeight || 0
+      : Math.min(...terrain.heights.filter((height) => Number.isFinite(height)));
+    const oceanFloorHeight = Number.isFinite(sampledMinHeight) ? sampledMinHeight - 3 : -12;
+    const mesh = new Mesh(
+      new PlaneGeometry(worldSize * 6, worldSize * 6, 1, 1),
+      new MeshStandardMaterial({
+        color: 0x063646,
+        roughness: 0.88,
+        metalness: 0,
+        transparent: true,
+        opacity: 0.94,
+        side: DoubleSide,
+      }),
+    );
+    mesh.name = "raidlands-infinite-ocean-floor";
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.y = oceanFloorHeight;
+    mesh.renderOrder = -10;
+    return mesh;
+  }
+
+  private createOceanSurfaceMesh(terrain: TerrainReferencePayload): Mesh {
+    const worldSize = terrain.worldSize || this.worldReference.worldSize || 4500;
+    const mesh = new Mesh(
+      new PlaneGeometry(worldSize * 6, worldSize * 6, 1, 1),
+      new MeshStandardMaterial({
+        color: 0x0a4f63,
+        roughness: 0.42,
+        metalness: 0.02,
+        transparent: true,
+        opacity: 0.72,
+        map: this.oceanWaveTexture || undefined,
+        side: DoubleSide,
+      }),
+    );
+    mesh.name = "raidlands-infinite-ocean-surface";
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.y = resolveOceanWaterLevel(terrain) + 0.08;
+    mesh.renderOrder = -8;
+    return mesh;
   }
 
   private frameBox(bounds: Box3): void {
@@ -1554,6 +1698,163 @@ function createMonumentPrimitive(monument: MonumentReferencePayload): Group {
   addBox(group, size * 0.68, size * 0.24, size * 0.5, 0x6a705e, 0, size * 0.12, 0);
   addCylinder(group, size * 0.08, size * 0.46, 0x8b7044, size * 0.28, size * 0.23, -size * 0.12);
   return addTitle();
+}
+
+function createRustMapGridOverlay(terrain: TerrainReferencePayload): Group {
+  const group = new Group();
+  const worldSize = terrain.worldSize || 4500;
+  const half = worldSize / 2;
+  const cells = rustGridCellCount(worldSize);
+  const cellSize = worldSize / cells;
+  const yOffset = Math.max(8, worldSize * 0.002);
+  const lineMaterialOptions = {
+    color: 0x050607,
+    transparent: true,
+    opacity: 0.48,
+    depthTest: false,
+    depthWrite: false,
+  };
+
+  for (let index = 0; index <= cells; index += 1) {
+    const coord = MathUtils.clamp(-half + index * cellSize, -half, half);
+    group.add(createGridLineSegment([coord, yOffset, half, coord, yOffset, -half], coord, 0, lineMaterialOptions));
+    group.add(createGridLineSegment([-half, yOffset, coord, half, yOffset, coord], 0, coord, lineMaterialOptions));
+  }
+
+  const labelSize = MathUtils.clamp(cellSize * 0.34, 54, 92);
+  for (let row = 0; row < cells; row += 1) {
+    for (let col = 0; col < cells; col += 1) {
+      const label = `${rustGridColumnLabel(col)}${row + 1}`;
+      const x = -half + col * cellSize + cellSize * 0.5;
+      const z = half - row * cellSize - cellSize * 0.5;
+      const viewerPosition = rustWorldToViewerPosition(x, yOffset + 24, z);
+      group.add(createGridLabelSprite(label, labelSize, viewerPosition.x, viewerPosition.z, viewerPosition.y));
+    }
+  }
+
+  return group;
+}
+
+function createGridLineSegment(positions: number[], fadeX: number, fadeZ: number, materialOptions: ConstructorParameters<typeof LineBasicMaterial>[0]): LineSegments {
+  const geometry = new BufferGeometry();
+  geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+  const line = new LineSegments(geometry, new LineBasicMaterial(materialOptions));
+  line.name = "rust-grid-line";
+  line.renderOrder = 30;
+  line.userData.fadePosition = new Vector3(fadeX, 0, fadeZ);
+  return line;
+}
+
+function rustGridCellCount(worldSize: number): number {
+  return Math.max(1, Math.round(worldSize / rustGridCellSize(worldSize)));
+}
+
+function rustGridCellSize(worldSize: number): number {
+  return worldSize <= 2000 ? 100 : 250;
+}
+
+function rustGridColumnLabel(index: number): string {
+  let value = index;
+  let label = "";
+
+  do {
+    label = String.fromCharCode(65 + (value % 26)) + label;
+    value = Math.floor(value / 26) - 1;
+  } while (value >= 0);
+
+  return label;
+}
+
+function createGridLabelSprite(label: string, size: number, x: number, z: number, y: number): Sprite {
+  const fontSize = 42;
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    return new Sprite(new SpriteMaterial({ color: 0x050607 }));
+  }
+
+  canvas.width = 160;
+  canvas.height = 128;
+  context.font = `900 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.lineJoin = "round";
+  context.shadowColor = "rgba(0, 0, 0, 0.62)";
+  context.shadowBlur = 6;
+  context.strokeStyle = "rgba(3, 5, 6, 0.88)";
+  context.lineWidth = 9;
+  context.strokeText(label, canvas.width / 2, 64);
+  context.fillStyle = "rgba(255, 246, 218, 0.96)";
+  context.fillText(label, canvas.width / 2, 64);
+
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  const sprite = new Sprite(new SpriteMaterial({ map: texture, transparent: true, depthTest: false, depthWrite: false }));
+  sprite.name = `rust-grid-label-${label}`;
+  sprite.position.set(x, y, z);
+  sprite.scale.set(size, size, 1);
+  sprite.renderOrder = 31;
+  return sprite;
+}
+
+function createOceanWaveTexture(): CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 256;
+  const context = canvas.getContext("2d");
+  if (context) {
+    const gradient = context.createLinearGradient(0, 0, 0, canvas.height);
+    gradient.addColorStop(0, "#126f83");
+    gradient.addColorStop(0.52, "#0b5065");
+    gradient.addColorStop(1, "#073748");
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+
+    for (let index = 0; index < 54; index += 1) {
+      const y = (index * 37) % canvas.height;
+      const phase = (index * 53) % canvas.width;
+      const length = 92 + (index % 6) * 18;
+      context.beginPath();
+      for (let step = 0; step <= length; step += 4) {
+        const x = (phase + step) % canvas.width;
+        const waveY = y + Math.sin((step / length) * Math.PI * 2 + index) * (2.4 + (index % 4) * 0.45);
+        if (step === 0) {
+          context.moveTo(x, waveY);
+        } else {
+          context.lineTo(x, waveY);
+        }
+      }
+      context.strokeStyle = index % 3 === 0 ? "rgba(190, 235, 238, 0.16)" : "rgba(104, 184, 200, 0.12)";
+      context.lineWidth = index % 3 === 0 ? 1.35 : 0.8;
+      context.stroke();
+    }
+  }
+
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  texture.wrapS = RepeatWrapping;
+  texture.wrapT = RepeatWrapping;
+  texture.repeat.set(38, 38);
+  return texture;
+}
+
+function setMaterialOpacity(material: LineBasicMaterial | SpriteMaterial, opacity: number): void {
+  material.transparent = true;
+  material.opacity = MathUtils.clamp(opacity, 0, 1);
+  material.needsUpdate = true;
+}
+
+function rustWorldToViewerPosition(x: number, y: number, z: number): Vector3 {
+  return new Vector3(-x, y, z);
+}
+
+function resolveOceanWaterLevel(terrain: TerrainReferencePayload): number {
+  const waterLevel = Number(terrain.waterLevel);
+  if (Number.isFinite(waterLevel) && waterLevel !== 0) {
+    return waterLevel;
+  }
+  return 0;
 }
 
 function createMonumentTitleSprite(title: string, size: number): Sprite {
