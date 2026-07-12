@@ -2126,6 +2126,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   const wantsPlayers = (): boolean => players?.checked ?? dataFlag("overlayPlayers");
   const wantsAllPlayers = (): boolean => Boolean(allPlayers?.checked);
   const wantsLoop = (): boolean => heatmapLoop?.checked ?? dataFlag("overlayLoop");
+  const wantsTimelineOverlay = (): boolean => wantsPlayback() && (wantsHeatmap() || wantsPlayers());
   const selectedMetric = (): string => metric?.value || root.dataset.overlayMetric || "deaths";
   const selectedRange = (): string => range?.value || root.dataset.overlayRange || "24h";
   const bind = <T extends EventTarget>(target: T | null | undefined, type: string, listener: EventListenerOrEventListenerObject): void => {
@@ -2314,12 +2315,16 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
 
     if (!heatmapEnabled && !playersEnabled) {
       stopHeatmapPlayback();
+      window.clearInterval(playerPollTimer);
+      playerPollTimer = 0;
       viewer.setHeatmapVisible(false);
       viewer.setPlayerLocationsVisible(false);
       return;
     }
 
     if (wantsPlayback()) {
+      window.clearInterval(playerPollTimer);
+      playerPollTimer = 0;
       void loadOverlayHistory(root, heatmapEnabled, playersEnabled, wantsAllPlayers(), selectedMetric(), selectedRange(), heatmapFrameCountValue()).then((payload) => {
         heatmapHistory = Array.isArray(payload.frames) ? payload.frames : [];
         const latestFrame = preferredFrame === undefined
@@ -2440,10 +2445,22 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       return;
     }
 
+    if (wantsTimelineOverlay()) {
+      window.clearInterval(playerPollTimer);
+      playerPollTimer = 0;
+      const selectedFrame = Math.round(Number(heatmapFrame?.value ?? playbackVirtualFrame) || 0);
+      if (heatmapHistory.length > 0) {
+        showPlaybackFrame(selectedFrame);
+      } else {
+        reloadPlayback(selectedFrame);
+      }
+      return;
+    }
+
     void loadPlayerLocations(root, viewer, myLocation, true, wantsAllPlayers());
     if (playerPollTimer === 0) {
       playerPollTimer = window.setInterval(() => {
-        if (players?.checked) {
+        if (players?.checked && !wantsTimelineOverlay()) {
           void loadPlayerLocations(root, viewer, myLocation, true, wantsAllPlayers());
         }
       }, 15000);
@@ -2479,6 +2496,17 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   bind(myLocation, "click", () => {
     if (players && !players.checked) {
       players.checked = true;
+    }
+
+    if (wantsTimelineOverlay()) {
+      const selectedFrame = Math.round(Number(heatmapFrame?.value ?? playbackVirtualFrame) || 0);
+      if (heatmapHistory.length > 0) {
+        showPlaybackFrame(selectedFrame);
+        viewer.frameSelfLocation();
+      } else {
+        reloadPlayback(selectedFrame);
+      }
+      return;
     }
 
     if (viewer.frameSelfLocation()) {
