@@ -549,6 +549,46 @@ function raidlands_store_admin_player_by_steam(string $steam_id64): ?array
     return raidlands_store_attach_steam_profiles([$player])[0] ?? $player;
 }
 
+function raidlands_store_admin_known_players(int $limit = 250): array
+{
+    if (!raidlands_db_is_configured() || !raidlands_store_table_exists('players')) {
+        return [];
+    }
+
+    $limit = max(25, min(500, $limit));
+    $has_identities = raidlands_store_table_exists('steam_identities');
+    $select_identity = $has_identities
+        ? 'si.display_name AS steam_display_name, si.avatar_url AS steam_avatar_url, si.profile_url AS steam_profile_url, si.verified_at AS steam_verified_at,'
+        : 'NULL AS steam_display_name, NULL AS steam_avatar_url, NULL AS steam_profile_url, NULL AS steam_verified_at,';
+    $join_identity = $has_identities
+        ? 'LEFT JOIN steam_identities si ON si.player_id = p.id AND si.steam_id64 = p.steam_id64'
+        : '';
+
+    return raidlands_db_fetch_all(
+        "SELECT p.id, p.steam_id64, p.display_name, p.created_at, p.updated_at, p.last_seen_at,
+                {$select_identity}
+                EXISTS (
+                    SELECT 1
+                    FROM entitlements e
+                    WHERE e.player_id = p.id
+                      AND e.status = 'active'
+                      AND (e.ends_at IS NULL OR e.ends_at > NOW())
+                ) AS has_product_access,
+                " . (raidlands_store_player_group_assignments_ready() ? "EXISTS (
+                    SELECT 1
+                    FROM player_group_assignments pga
+                    WHERE pga.player_id = p.id
+                      AND pga.status = 'active'
+                      AND (pga.ends_at IS NULL OR pga.ends_at > NOW())
+                )" : '0') . " AS has_direct_access
+         FROM players p
+         {$join_identity}
+         WHERE p.steam_id64 REGEXP '^7656119[0-9]{10}$'
+         ORDER BY COALESCE(p.last_seen_at, p.updated_at, p.created_at) DESC, p.id DESC
+         LIMIT {$limit}"
+    );
+}
+
 function raidlands_store_admin_ensure_player_for_steam(string $steam_id64): array
 {
     $steam_id64 = raidlands_store_normalize_steam_id64($steam_id64);

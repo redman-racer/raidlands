@@ -117,6 +117,7 @@ $admin_store_catalog = ['products' => []];
 $admin_access_steam_id64 = raidlands_store_normalize_steam_id64($_GET['steam_id64'] ?? '');
 $admin_access_state = null;
 $admin_access_group_rows = [];
+$admin_access_known_players = [];
 $admin_access_assignments_ready = false;
 $admin_access_lookup_error = '';
 $admin_sync_rows = [];
@@ -271,6 +272,7 @@ try {
 
         $admin_access_assignments_ready = raidlands_store_player_group_assignments_ready();
         $admin_access_group_rows = raidlands_store_admin_assignable_group_rows();
+        $admin_access_known_players = raidlands_store_admin_known_players();
 
         if ($admin_access_steam_id64 !== '') {
             if (raidlands_store_validate_steam_id64($admin_access_steam_id64)) {
@@ -5206,20 +5208,36 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                         $admin_access_entitlements = is_array($admin_access_state) ? (array) ($admin_access_state['entitlements'] ?? []) : [];
                         $admin_access_direct_groups = is_array($admin_access_state) ? (array) ($admin_access_state['direct_groups'] ?? []) : [];
                         $admin_access_groups = is_array($admin_access_state) ? (array) ($admin_access_state['groups'] ?? []) : [];
+                        $admin_access_known_count = count($admin_access_known_players);
                       ?>
-                      <div class="admin-grid two">
-                        <label class="admin-field">
-                          <?= admin_field_head('SteamID64', 'The 17-digit Rust player ID to load or update.') ?>
-                          <input type="text" name="steam_id64" inputmode="numeric" pattern="[0-9]{17}" maxlength="17" placeholder="7656119XXXXXXXXXX" value="<?= e($admin_access_steam_id64) ?>" required>
-                          <?= admin_hint('Loading does not create a player record. Granting access creates one if needed.') ?>
-                        </label>
-                        <div class="admin-field">
-                          <span class="admin-label-row"><span>Lookup</span></span>
-                          <button class="btn btn-secondary" type="submit" name="grant_action" value="load_player">Load Player</button>
-                          <?= admin_hint('Use this before granting or removing access so current sources are visible.') ?>
-                        </div>
-                      </div>
+                      <div class="admin-access-workbench" data-admin-access-workbench>
+                        <div class="admin-access-main">
+                          <section class="admin-section admin-access-lookup">
+                            <div class="admin-subsection-head">
+                              <h3>Player Lookup</h3>
+                              <p>Choose a known player or paste a SteamID64 before granting or removing website-owned access.</p>
+                            </div>
+                            <div class="admin-grid two">
+                              <label class="admin-field">
+                                <?= admin_field_head('SteamID64', 'The 17-digit Rust player ID to load or update.') ?>
+                                <input type="text" name="steam_id64" inputmode="numeric" pattern="[0-9]{17}" maxlength="17" placeholder="7656119XXXXXXXXXX" value="<?= e($admin_access_steam_id64) ?>" required data-admin-access-steam-input>
+                                <?= admin_hint('Loading does not create a player record. Granting access creates one if needed.') ?>
+                              </label>
+                              <div class="admin-field">
+                                <span class="admin-label-row"><span>Lookup</span></span>
+                                <button class="btn btn-secondary" type="submit" name="grant_action" value="load_player">Load Player</button>
+                                <?= admin_hint('Use this before granting or removing access so current sources are visible.') ?>
+                              </div>
+                            </div>
+                          </section>
 
+                          <div class="admin-access-tabs" role="tablist" aria-label="Player access sections">
+                            <button class="admin-access-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="admin-access-review" data-admin-access-tab="review">Review</button>
+                            <button class="admin-access-tab" type="button" role="tab" aria-selected="false" aria-controls="admin-access-product" data-admin-access-tab="product">Grant Product</button>
+                            <button class="admin-access-tab" type="button" role="tab" aria-selected="false" aria-controls="admin-access-groups" data-admin-access-tab="groups">Direct Groups</button>
+                          </div>
+
+                          <div class="admin-access-panel is-active" id="admin-access-review" role="tabpanel" data-admin-access-panel="review">
                       <?php if ($admin_access_lookup_error !== '') : ?>
                         <div class="admin-alert error"><?= e($admin_access_lookup_error) ?></div>
                       <?php elseif ($admin_access_steam_id64 === '') : ?>
@@ -5338,8 +5356,10 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                         </section>
                       <?php endif; ?>
 
-                      <div class="admin-grid two">
-                        <section class="admin-section">
+                          </div>
+
+                          <section class="admin-access-panel" id="admin-access-product" role="tabpanel" data-admin-access-panel="product" hidden>
+                            <div class="admin-access-card">
                           <div class="admin-subsection-head">
                             <h3>Grant Product</h3>
                             <p>Products apply their configured store groups and remain visible as manual product access.</p>
@@ -5358,8 +5378,8 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               </select>
                             </label>
                             <label class="admin-field">
-                              <?= admin_field_head('Ends at', 'Optional datetime such as 2026-07-31 23:59:59. Leave blank for lifetime access.') ?>
-                              <input type="text" name="product_ends_at" placeholder="YYYY-MM-DD HH:MM:SS">
+                              <?= admin_field_head('Ends at', 'Optional future datetime. The field normalizes to YYYY-MM-DD HH:MM:SS when edited.') ?>
+                              <input type="text" name="product_ends_at" placeholder="YYYY-MM-DD HH:MM:SS" autocomplete="off" data-admin-access-datetime>
                             </label>
                             <label class="admin-field">
                               <?= admin_field_head('Admin note', 'Optional note recorded in the admin audit log for this product grant.') ?>
@@ -5367,9 +5387,11 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             </label>
                             <button class="btn btn-primary" type="submit" name="grant_action" value="grant_product">Grant Product</button>
                           <?php endif; ?>
-                        </section>
+                            </div>
+                          </section>
 
-                        <section class="admin-section">
+                          <section class="admin-access-panel" id="admin-access-groups" role="tabpanel" data-admin-access-panel="groups" hidden>
+                            <div class="admin-access-card">
                           <div class="admin-subsection-head">
                             <h3>Add Direct Groups</h3>
                             <p>Standalone shop groups must be active VIP, perk, or store groups in Groups.</p>
@@ -5391,8 +5413,8 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               <?php endforeach; ?>
                             </div>
                             <label class="admin-field">
-                              <?= admin_field_head('Ends at', 'Optional datetime such as 2026-07-31 23:59:59. Leave blank for lifetime access.') ?>
-                              <input type="text" name="group_ends_at" placeholder="YYYY-MM-DD HH:MM:SS">
+                              <?= admin_field_head('Ends at', 'Optional future datetime. The field normalizes to YYYY-MM-DD HH:MM:SS when edited.') ?>
+                              <input type="text" name="group_ends_at" placeholder="YYYY-MM-DD HH:MM:SS" autocomplete="off" data-admin-access-datetime>
                             </label>
                             <label class="admin-field">
                               <?= admin_field_head('Admin note', 'Optional note stored with the direct group assignment.') ?>
@@ -5400,7 +5422,91 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             </label>
                             <button class="btn btn-primary" type="submit" name="grant_action" value="grant_direct_groups">Add Groups</button>
                           <?php endif; ?>
-                        </section>
+                            </div>
+                          </section>
+                        </div>
+
+                        <aside class="admin-access-player-picker" aria-label="Known player selector">
+                          <div class="admin-access-player-picker-head">
+                            <div>
+                              <h3>Known Players</h3>
+                              <p class="admin-feedback-subtitle"><?= e((string) $admin_access_known_count) ?> recent players</p>
+                            </div>
+                          </div>
+                          <div class="admin-store-picker-controls">
+                            <label class="admin-field">
+                              <?= admin_field_head('Search', 'Search display name, Steam profile name, SteamID64, and player ID.') ?>
+                              <input type="search" maxlength="160" placeholder="Name or SteamID64" data-admin-access-search>
+                            </label>
+                            <div class="admin-store-filter-grid">
+                              <label class="admin-field">
+                                <?= admin_field_head('Access', 'Filter by current website-owned access state.') ?>
+                                <select data-admin-access-filter>
+                                  <option value="">Any access</option>
+                                  <option value="active">Any active access</option>
+                                  <option value="product">Product access</option>
+                                  <option value="direct">Direct group access</option>
+                                  <option value="none">No active access</option>
+                                </select>
+                              </label>
+                              <label class="admin-field">
+                                <?= admin_field_head('Sort', 'Sort the known player list.') ?>
+                                <select data-admin-access-sort>
+                                  <option value="recent">Recently seen</option>
+                                  <option value="name">Name A-Z</option>
+                                  <option value="steam">SteamID64</option>
+                                  <option value="access">Access first</option>
+                                </select>
+                              </label>
+                            </div>
+                            <button class="btn btn-secondary admin-store-filter-reset" type="button" data-admin-access-reset>Clear</button>
+                            <p class="admin-store-filter-count" data-admin-access-count><?= e((string) $admin_access_known_count) ?> players shown</p>
+                            <div class="admin-alert warning admin-access-empty" data-admin-access-empty hidden>No known players match these controls.</div>
+                          </div>
+                          <div class="admin-access-player-list" data-admin-access-list>
+                            <?php foreach ($admin_access_known_players as $known_player) : ?>
+                              <?php
+                                $known_steam = raidlands_store_normalize_steam_id64($known_player['steam_id64'] ?? '');
+                                $known_name = trim((string) ($known_player['display_name'] ?? ''));
+                                $known_steam_name = trim((string) ($known_player['steam_display_name'] ?? ''));
+                                $known_label = $known_name !== '' ? $known_name : ($known_steam_name !== '' ? $known_steam_name : $known_steam);
+                                $known_last_seen = (string) (($known_player['last_seen_at'] ?? '') ?: (($known_player['updated_at'] ?? '') ?: ($known_player['created_at'] ?? '')));
+                                $known_has_product = !empty($known_player['has_product_access']);
+                                $known_has_direct = !empty($known_player['has_direct_access']);
+                                $known_access = $known_has_product || $known_has_direct ? 'active' : 'none';
+                                $known_search = strtolower(trim(implode(' ', [
+                                    $known_label,
+                                    $known_name,
+                                    $known_steam_name,
+                                    $known_steam,
+                                    (string) ($known_player['id'] ?? ''),
+                                ])));
+                              ?>
+                              <button
+                                class="admin-access-player-button<?= $known_steam === $admin_access_steam_id64 ? ' is-active' : '' ?>"
+                                type="button"
+                                data-admin-access-player
+                                data-steam-id="<?= e($known_steam) ?>"
+                                data-name="<?= e(strtolower($known_label)) ?>"
+                                data-last-seen="<?= e($known_last_seen) ?>"
+                                data-access="<?= e($known_access) ?>"
+                                data-product="<?= $known_has_product ? '1' : '0' ?>"
+                                data-direct="<?= $known_has_direct ? '1' : '0' ?>"
+                                data-search="<?= e($known_search) ?>">
+                                <span>
+                                  <strong><?= e($known_label) ?></strong>
+                                  <small><code><?= e($known_steam) ?></code></small>
+                                </span>
+                                <span class="admin-access-player-meta">
+                                  <?php if ($known_has_product) : ?><em>Product</em><?php endif; ?>
+                                  <?php if ($known_has_direct) : ?><em>Direct</em><?php endif; ?>
+                                  <small><?= e($known_last_seen !== '' ? $known_last_seen : 'No activity yet') ?></small>
+                                </span>
+                              </button>
+                            <?php endforeach; ?>
+                          </div>
+                        </aside>
+                      </div>
                       </div>
                       <?php endif; ?>
                   </section>
@@ -6155,6 +6261,9 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
       <?php endif; ?>
       <?php if ($active_section === 'store') : ?>
         <script src="<?= e(asset_url('js/admin-store.js')) ?>" defer></script>
+      <?php endif; ?>
+      <?php if ($active_section === 'grants') : ?>
+        <script src="<?= e(asset_url('js/admin-player-access.js')) ?>" defer></script>
       <?php endif; ?>
       <?php if ($active_section === 'features') : ?>
         <script src="<?= e(asset_url('js/admin-features.js')) ?>" defer></script>

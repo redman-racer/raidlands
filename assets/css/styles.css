@@ -8016,6 +8016,155 @@ button.admin-permission-chip:focus-visible {
   font-size: .94rem;
 }
 
+.admin-access-workbench {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(280px, 380px);
+  gap: 18px;
+  align-items: start;
+}
+
+.admin-access-main,
+.admin-access-card,
+.admin-access-panel {
+  min-width: 0;
+}
+
+.admin-access-main {
+  display: grid;
+  gap: 14px;
+}
+
+.admin-access-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.admin-access-tab {
+  min-height: 42px;
+  padding: 10px 14px;
+  border: 1px solid rgba(255, 138, 40, .28);
+  border-radius: calc(var(--radius) - 2px);
+  color: var(--muted);
+  background: rgba(0, 0, 0, .24);
+  font-family: var(--font-body);
+  font-weight: 900;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.admin-access-tab:hover,
+.admin-access-tab:focus-visible,
+.admin-access-tab.is-active {
+  border-color: rgba(255, 138, 40, .62);
+  color: var(--white);
+  outline: none;
+  background:
+    linear-gradient(180deg, rgba(255, 138, 40, .18), rgba(0, 0, 0, .26)),
+    rgba(0, 0, 0, .32);
+}
+
+.admin-access-card,
+.admin-access-player-picker {
+  padding: 18px;
+  border: 1px solid rgba(255, 138, 40, .30);
+  border-radius: var(--radius);
+  background:
+    var(--metal-texture) center / 320px repeat,
+    rgba(0, 0, 0, .24);
+}
+
+.admin-access-player-picker {
+  position: sticky;
+  top: 100px;
+  display: grid;
+  gap: 14px;
+}
+
+.admin-access-player-picker-head {
+  display: flex;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.admin-access-player-picker-head h3 {
+  margin: 0;
+  color: var(--white);
+  text-transform: uppercase;
+}
+
+.admin-access-player-list {
+  max-height: 680px;
+  overflow: auto;
+  display: grid;
+  gap: 8px;
+  padding-right: 4px;
+}
+
+.admin-access-player-button {
+  width: 100%;
+  min-height: 74px;
+  padding: 10px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  border: 1px solid rgba(181, 170, 160, .20);
+  border-radius: calc(var(--radius) - 2px);
+  color: var(--white);
+  background: rgba(0, 0, 0, .22);
+  text-align: left;
+  cursor: pointer;
+}
+
+.admin-access-player-button:hover,
+.admin-access-player-button:focus-visible,
+.admin-access-player-button.is-active {
+  border-color: rgba(255, 138, 40, .58);
+  outline: none;
+  background:
+    radial-gradient(ellipse at 100% 50%, rgba(255, 138, 40, .13), transparent 58%),
+    rgba(0, 0, 0, .32);
+}
+
+.admin-access-player-button strong,
+.admin-access-player-button small,
+.admin-access-player-button code {
+  display: block;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.admin-access-player-button strong {
+  font-size: .98rem;
+  line-height: 1.2;
+}
+
+.admin-access-player-button small {
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: .76rem;
+}
+
+.admin-access-player-meta {
+  display: grid;
+  justify-items: end;
+  gap: 4px;
+  text-align: right;
+}
+
+.admin-access-player-meta em {
+  padding: 3px 7px;
+  border: 1px solid rgba(255, 138, 40, .35);
+  border-radius: 999px;
+  color: var(--orange);
+  font-family: var(--font-body);
+  font-size: .68rem;
+  font-style: normal;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
 .admin-repeat-list {
   display: grid;
   gap: 14px;
@@ -10615,6 +10764,7 @@ button.admin-permission-chip:focus-visible {
   .admin-kit-editor-shell,
   .admin-group-editor-shell,
   .admin-store-editor-shell,
+  .admin-access-workbench,
   .admin-kit-modal-top {
     grid-template-columns: 1fr;
   }
@@ -10627,7 +10777,8 @@ button.admin-permission-chip:focus-visible {
   .admin-feedback-picker,
   .admin-kit-picker,
   .admin-group-picker,
-  .admin-store-picker {
+  .admin-store-picker,
+  .admin-access-player-picker {
     position: static;
   }
 
@@ -10635,7 +10786,8 @@ button.admin-permission-chip:focus-visible {
   .admin-feedback-picker-list,
   .admin-kit-picker-list,
   .admin-group-picker-list,
-  .admin-store-picker-list {
+  .admin-store-picker-list,
+  .admin-access-player-list {
     max-height: none;
   }
 
@@ -10654,6 +10806,15 @@ button.admin-permission-chip:focus-visible {
   .admin-group-picker-controls,
   .admin-group-filter-grid {
     grid-template-columns: 1fr;
+  }
+
+  .admin-access-player-button {
+    grid-template-columns: 1fr;
+  }
+
+  .admin-access-player-meta {
+    justify-items: start;
+    text-align: left;
   }
 
   .admin-store-meaning {
