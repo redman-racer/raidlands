@@ -111,15 +111,20 @@
     return String(value).padStart(2, '0');
   }
 
-  function formatDate(date) {
+  function minimumAccessDate() {
+    var minimum = new Date(Date.now() + 60 * 60 * 1000);
+    minimum.setSeconds(0, 0);
+    return minimum;
+  }
+
+  function formatPickerDate(date) {
     return [
       date.getFullYear(),
       pad(date.getMonth() + 1),
       pad(date.getDate())
-    ].join('-') + ' ' + [
+    ].join('-') + 'T' + [
       pad(date.getHours()),
-      pad(date.getMinutes()),
-      pad(date.getSeconds())
+      pad(date.getMinutes())
     ].join(':');
   }
 
@@ -149,21 +154,15 @@
   }
 
   function normalizeDateField(input) {
-    var parsed = parseDateInput(input.value);
+    var minimum = minimumAccessDate();
+    var parsed = parseDateInput(input.value) || minimum;
 
-    if (!parsed) {
-      input.value = '';
-      input.setCustomValidity('');
-      return;
-    }
-
-    var minimum = new Date(Date.now() + 5 * 60 * 1000);
-
-    if (parsed <= minimum) {
+    if (parsed < minimum) {
       parsed = minimum;
     }
 
-    input.value = formatDate(parsed);
+    input.min = formatPickerDate(minimum);
+    input.value = formatPickerDate(parsed);
     input.setCustomValidity('');
   }
 
@@ -211,7 +210,11 @@
   }
 
   root.querySelectorAll('[data-admin-access-datetime]').forEach(function (input) {
+    normalizeDateField(input);
     input.addEventListener('blur', function () {
+      normalizeDateField(input);
+    });
+    input.addEventListener('change', function () {
       normalizeDateField(input);
     });
   });

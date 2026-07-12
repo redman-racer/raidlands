@@ -355,7 +355,9 @@ function bindLiveTerrainUpdates(root: HTMLElement, initial: TerrainViewerInstanc
 }
 
 async function loadLatestTerrainMetadata(root: HTMLElement, statusUrl: string): Promise<ServerStatusMapImage & { terrainUrl: string; textureUrl: string; worldSize: number; fingerprint: string } | null> {
-  const response = await fetch(new URL(statusUrl, window.location.href).toString(), {
+  const url = new URL(statusUrl, window.location.href);
+  url.searchParams.set("refresh", String(Date.now()));
+  const response = await fetch(url.toString(), {
     cache: "no-store",
     headers: { Accept: "application/json" },
   });
@@ -419,7 +421,7 @@ function terrainIdentityFingerprint(metadata: Partial<ServerStatusMapImage> & { 
 }
 
 function liveTerrainPollDelayMs(): number {
-  return 1800000;
+  return 30000;
 }
 
 function normalizeTerrain(value: unknown, root: HTMLElement): TerrainPayload {
@@ -2846,7 +2848,11 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   const latestVisibleHeatmapFrame = (): number => {
     for (let index = heatmapHistory.length - 1; index >= 0; index -= 1) {
       const frame = heatmapHistory[index];
-      if ((Array.isArray(frame?.buckets) && frame.buckets.length > 0) || (Array.isArray(frame?.players) && frame.players.length > 0)) {
+      if (
+        (Array.isArray(frame?.buckets) && frame.buckets.length > 0)
+        || (Array.isArray(frame?.players) && frame.players.length > 0)
+        || (Array.isArray(frame?.events) && frame.events.length > 0)
+      ) {
         return index;
       }
     }

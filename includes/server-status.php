@@ -1888,6 +1888,34 @@ function raidlands_server_map_replay_event_type($value): string
     return '';
 }
 
+function raidlands_server_map_replay_active_wipe_key(string $server_id): string
+{
+    $status = raidlands_server_status_latest($server_id);
+    $wipe_key = trim((string) ($status['wipe_key'] ?? ''));
+
+    if ($wipe_key !== '') {
+        return $wipe_key;
+    }
+
+    $map_image = raidlands_server_map_latest($server_id);
+    $wipe_key = trim((string) ($map_image['wipe_key'] ?? ''));
+
+    return $wipe_key !== '' ? $wipe_key : ($server_id . '-current');
+}
+
+function raidlands_server_map_replay_read_wipe_keys(string $server_id, string $wipe_key): array
+{
+    $keys = [];
+    foreach ([$wipe_key, $server_id . '-current'] as $candidate) {
+        $candidate = trim($candidate);
+        if ($candidate !== '' && !in_array($candidate, $keys, true)) {
+            $keys[] = $candidate;
+        }
+    }
+
+    return $keys;
+}
+
 function raidlands_server_map_replay_event_payload(array $event): string
 {
     $payload = $event['payload'] ?? $event['details'] ?? [];
@@ -1913,8 +1941,8 @@ function raidlands_server_map_replay_events_ingest_snapshot(array $payload, stri
     }
 
     $wipe_key = raidlands_server_status_clean_text($payload['wipe_key'] ?? '', 160);
-    if ($wipe_key === '') {
-        $wipe_key = $server_id . '-current';
+    if ($wipe_key === '' || hash_equals($server_id . '-current', $wipe_key)) {
+        $wipe_key = raidlands_server_map_replay_active_wipe_key($server_id);
     }
 
     $events = $payload['events'] ?? [];
@@ -2047,21 +2075,29 @@ function raidlands_server_map_replay_events_history_public(string $range, int $f
         ];
     }
 
+    $read_wipe_keys = raidlands_server_map_replay_read_wipe_keys($server_id, $wipe_key);
+    $wipe_placeholders = [];
+    $params = [
+        'server_id' => $server_id,
+        'window_start' => gmdate('Y-m-d H:i:s', $start_aligned),
+        'window_end' => gmdate('Y-m-d H:i:s', $window_end_time),
+    ];
+    foreach ($read_wipe_keys as $index => $read_wipe_key) {
+        $key = 'wipe_key_' . $index;
+        $wipe_placeholders[] = ':' . $key;
+        $params[$key] = $read_wipe_key;
+    }
+
     $rows = raidlands_db_fetch_all(
         'SELECT *
          FROM server_map_replay_events
          WHERE server_id = :server_id
-           AND wipe_key = :wipe_key
+           AND wipe_key IN (' . implode(', ', $wipe_placeholders) . ')
            AND occurred_at >= :window_start
            AND occurred_at <= :window_end
          ORDER BY occurred_at ASC
          LIMIT 800',
-        [
-            'server_id' => $server_id,
-            'wipe_key' => $wipe_key,
-            'window_start' => gmdate('Y-m-d H:i:s', $start_aligned),
-            'window_end' => gmdate('Y-m-d H:i:s', $window_end_time),
-        ]
+        $params
     );
 
     $airdrop_groups = [];

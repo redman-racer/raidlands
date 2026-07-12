@@ -5378,8 +5378,8 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               </select>
                             </label>
                             <label class="admin-field">
-                              <?= admin_field_head('Ends at', 'Optional future datetime. The field normalizes to YYYY-MM-DD HH:MM:SS when edited.') ?>
-                              <input type="text" name="product_ends_at" placeholder="YYYY-MM-DD HH:MM:SS" autocomplete="off" data-admin-access-datetime>
+                              <?= admin_field_head('Ends at', 'Pick a future date and time. Defaults to one hour from now and cannot be set earlier.') ?>
+                              <input type="datetime-local" name="product_ends_at" step="60" autocomplete="off" data-admin-access-datetime>
                             </label>
                             <label class="admin-field">
                               <?= admin_field_head('Admin note', 'Optional note recorded in the admin audit log for this product grant.') ?>
@@ -5413,8 +5413,8 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               <?php endforeach; ?>
                             </div>
                             <label class="admin-field">
-                              <?= admin_field_head('Ends at', 'Optional future datetime. The field normalizes to YYYY-MM-DD HH:MM:SS when edited.') ?>
-                              <input type="text" name="group_ends_at" placeholder="YYYY-MM-DD HH:MM:SS" autocomplete="off" data-admin-access-datetime>
+                              <?= admin_field_head('Ends at', 'Pick a future date and time. Defaults to one hour from now and cannot be set earlier.') ?>
+                              <input type="datetime-local" name="group_ends_at" step="60" autocomplete="off" data-admin-access-datetime>
                             </label>
                             <label class="admin-field">
                               <?= admin_field_head('Admin note', 'Optional note stored with the direct group assignment.') ?>
