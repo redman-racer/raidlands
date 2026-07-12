@@ -1,0 +1,286 @@
+<?php
+
+$store_flash = raidlands_store_flash();
+$store_player = raidlands_store_current_player();
+$store_csrf = raidlands_store_csrf_token();
+$cash_checkout_ready = trim((string) ($stripe_config['secretKey'] ?? '')) !== '';
+$store_item_context = $store_item_context ?? null;
+
+function store_item_image_key(string $value): string
+{
+    $value = strtolower(str_replace('+', 'plus', $value));
+
+    return preg_replace('/[^a-z0-9]+/', '', $value) ?? '';
+}
+
+function store_item_primary_image_path(array $product): string
+{
+    $keys = array_values(array_filter([
+        store_item_image_key((string) ($product['slug'] ?? '')),
+        store_item_image_key((string) ($product['name'] ?? '')),
+    ]));
+    $images = [
+        'rankvip' => '/assets/media/kits/vip-kit.png',
+        'vip' => '/assets/media/kits/vip-kit.png',
+        'rankvipplus' => '/assets/media/kits/vip-plus-kit.png',
+        'vipplus' => '/assets/media/kits/vip-plus-kit.png',
+        'rankmvp' => '/assets/media/kits/mvp-kit.png',
+        'mvp' => '/assets/media/kits/mvp-kit.png',
+        'rankgoldenvip' => '/assets/media/kits/golden-vip-kit.png',
+        'goldenvip' => '/assets/media/kits/golden-vip-kit.png',
+        'rankdiamondvip' => '/assets/media/kits/vip-diamond-kit.webp',
+        'diamondvip' => '/assets/media/kits/vip-diamond-kit.webp',
+        'rankultimatevip' => '/assets/media/kits/ultimate-vip-kit.png',
+        'ultimatevip' => '/assets/media/kits/ultimate-vip-kit.png',
+        'ranktitanvip' => '/assets/media/kits/titan-vip-kit.png',
+        'titanvip' => '/assets/media/kits/titan-vip-kit.png',
+        'redeemkitvip' => '/assets/media/kits/vip-kit.png',
+        'redeemkitvipplus' => '/assets/media/kits/vip-plus-kit.png',
+        'redeemkitmvp' => '/assets/media/kits/mvp-kit.png',
+        'redeemkitgoldenvip' => '/assets/media/kits/golden-vip-kit.png',
+        'redeemkitultimatevip' => '/assets/media/kits/ultimate-vip-kit.png',
+        'redeemkittitanvip' => '/assets/media/kits/titan-vip-kit.png',
+        'redeempacksentrysmall' => '/assets/media/kits/sentry-small-pack.webp',
+        'redeempacksentrylarge' => '/assets/media/kits/sentry-large-pack.webp',
+        'redeempackportafort' => '/assets/media/kits/portafort-token.webp',
+        'redeempackvehicle' => '/assets/media/kits/vehicle-pack.webp',
+    ];
+
+    foreach ($keys as $key) {
+        if (isset($images[$key])) {
+            return $images[$key];
+        }
+    }
+
+    return '';
+}
+
+function store_item_image_url(array $product): string
+{
+    $image = store_item_primary_image_path($product);
+
+    if ($image !== '') {
+        return raidlands_kits_public_image_url($image);
+    }
+
+    foreach ((array) ($product['linked_kits'] ?? []) as $kit) {
+        $kit = (array) $kit;
+        $image = raidlands_kits_public_image_url((string) ($kit['image_path'] ?? ''));
+
+        if ($image !== '') {
+            return $image;
+        }
+    }
+
+    return '';
+}
+
+function store_item_format_seconds(int $seconds): string
+{
+    if ($seconds <= 0) {
+        return 'No';
+    }
+
+    if ($seconds % 86400 === 0) {
+        return (string) ($seconds / 86400) . 'd';
+    }
+
+    if ($seconds % 3600 === 0) {
+        return (string) ($seconds / 3600) . 'h';
+    }
+
+    if ($seconds % 60 === 0) {
+        return (string) ($seconds / 60) . 'm';
+    }
+
+    return (string) $seconds . 's';
+}
+
+function store_item_offer_row(array $offer, string $csrf, string $kind, bool $cash_ready = true): string
+{
+    $is_rp = $kind === 'rp';
+    $buyable = $is_rp
+        ? raidlands_store_rp_offer_is_buyable($offer)
+        : ($cash_ready && raidlands_store_price_is_buyable($offer));
+    $label = raidlands_store_offer_label($offer, $is_rp ? 'RP' : 'Cash');
+    $price = $is_rp
+        ? raidlands_store_rp((int) ($offer['rp_cost'] ?? 0))
+        : raidlands_store_money((int) ($offer['amount_cents'] ?? 0), (string) ($offer['currency'] ?? 'usd'));
+    $interval = raidlands_store_access_interval_label((string) ($offer['access_interval'] ?? $offer['billing_interval'] ?? 'one_time'));
+    $action = $is_rp ? route_url('store') . 'rp-checkout.php' : route_url('store') . 'checkout.php';
+    $button = $is_rp ? 'Use RP' : 'Checkout';
+    $html = '<form class="store-item-offer" method="post" action="' . e($action) . '">'
+        . '<input type="hidden" name="csrf" value="' . e($csrf) . '">'
+        . '<input type="hidden" name="price_id" value="' . e((string) ($offer['id'] ?? 0)) . '">'
+        . '<div><strong>' . e($label) . '</strong><span>' . e($price) . '</span><small>' . e($interval) . '</small></div>';
+
+    if ($is_rp && !empty($offer['allow_auto_renew']) && (string) ($offer['access_interval'] ?? 'one_time') !== 'one_time') {
+        $html .= '<label class="store-renew-toggle">'
+            . '<input type="checkbox" name="auto_renew" value="1">'
+            . '<span>Auto-renew</span>'
+            . '</label>';
+    }
+
+    return $html
+        . '<button class="btn btn-primary" type="submit" ' . ($buyable ? '' : 'disabled') . '>'
+        . e($buyable ? $button : ($is_rp ? 'RP Not Ready' : 'Cash Not Ready'))
+        . '</button></form>';
+}
+
+function store_item_offer_group(string $title, array $offers, string $csrf, string $kind, bool $cash_ready = true): string
+{
+    $offers = array_values(array_filter($offers, static fn (array $offer): bool => !empty($offer['is_active'])));
+
+    if ($offers === []) {
+        return '';
+    }
+
+    $html = '<section class="store-item-offer-group"><h3>' . e($title) . '</h3><div class="store-item-offers">';
+
+    foreach ($offers as $offer) {
+        $html .= store_item_offer_row($offer, $csrf, $kind, $cash_ready);
+    }
+
+    return $html . '</div></section>';
+}
+
+function store_item_purchase_panel(array $product, ?array $player, string $csrf, bool $cash_ready): string
+{
+    if ($player === null || empty($player['steam_id64'])) {
+        return '<div class="metal-panel store-item-purchase-panel">'
+            . '<p class="section-kicker">Purchase options</p>'
+            . '<h2>Connect Steam first</h2>'
+            . '<p class="section-lede">Store access is attached to your SteamID64 so the game server can apply it correctly.</p>'
+            . '<a class="btn btn-primary" href="' . e(route_url('link')) . '">Connect Steam</a>'
+            . '</div>';
+    }
+
+    if (empty($player['id'])) {
+        return '<div class="metal-panel store-item-purchase-panel">'
+            . '<p class="section-kicker">Purchase options</p>'
+            . '<h2>Account needed</h2>'
+            . '<p class="section-lede">Open your profile so the store can finish loading your linked account.</p>'
+            . '<a class="btn btn-primary" href="' . e(route_url('profile')) . '">View Account</a>'
+            . '</div>';
+    }
+
+    $groups = store_item_offer_group('RP', raidlands_store_rp_offers($product, true), $csrf, 'rp')
+        . store_item_offer_group('Cash passes', raidlands_store_cash_pass_offers($product, true), $csrf, 'cash', $cash_ready)
+        . store_item_offer_group('Cash subscriptions', raidlands_store_cash_subscription_offers($product, true), $csrf, 'cash', $cash_ready);
+
+    if ($groups === '') {
+        $groups = '<button class="btn btn-ghost" type="button" disabled>Offers Unavailable</button>';
+    }
+
+    return '<div class="metal-panel store-item-purchase-panel">'
+        . '<p class="section-kicker">Purchase options</p>'
+        . '<h2>Choose access</h2>'
+        . $groups
+        . '</div>';
+}
+
+function store_item_render_kit(array $kit): string
+{
+    $image = function_exists('store_linked_kit_image_url') ? store_linked_kit_image_url($kit) : raidlands_kits_public_image_url((string) ($kit['image_path'] ?? ''));
+    $items = raidlands_kits_item_summary($kit, 5);
+    $uses = (int) ($kit['maximum_uses'] ?? 0);
+    $cooldown = (int) ($kit['cooldown_seconds'] ?? 0);
+    $meta = [$uses > 0 ? number_format($uses) . ' uses' : 'Unlimited uses'];
+
+    if ($cooldown > 0) {
+        $meta[] = store_item_format_seconds($cooldown) . ' cooldown';
+    }
+
+    return '<article class="store-item-kit-row">'
+        . ($image !== '' ? '<img src="' . e($image) . '" alt="" loading="lazy" decoding="async">' : '<span class="store-kit-item-placeholder" aria-hidden="true"></span>')
+        . '<div><h3><a href="' . e(raidlands_store_kit_public_url($kit)) . '">' . e((string) ($kit['kit_name'] ?? 'Kit')) . '</a></h3>'
+        . '<p>' . e(implode(' / ', $meta)) . '</p>'
+        . ($items !== [] ? '<small>' . e(implode(', ', $items)) . '</small>' : '')
+        . '</div></article>';
+}
+
+function store_item_render_perks(array $perks): string
+{
+    if ($perks === []) {
+        return '';
+    }
+
+    $html = '<div class="store-item-perk-list">';
+
+    foreach ($perks as $perk) {
+        $html .= '<span>' . e((string) ($perk['label'] ?? $perk['permission'] ?? 'Permission')) . '</span>';
+    }
+
+    return $html . '</div>';
+}
+?>
+
+<?php if ($store_item_context === null) : ?>
+  <?= render_page_hero('store-item', '<a class="btn btn-primary" href="' . e(route_url('store')) . '">Back to Store</a>') ?>
+  <section class="section">
+    <div class="section-inner">
+      <div class="metal-panel">
+        <p class="section-kicker">Store item</p>
+        <h2>Item not found</h2>
+        <p class="section-lede">This store URL does not match an active Raidlands product.</p>
+        <a class="btn btn-primary" href="<?= e(route_url('store')) ?>">Browse Store</a>
+      </div>
+    </div>
+  </section>
+<?php else : ?>
+  <?php
+    $product = (array) $store_item_context['product'];
+    $linked_kits = (array) ($product['linked_kits'] ?? []);
+    $linked_perks = (array) ($product['linked_perks'] ?? []);
+    $image = store_item_image_url($product);
+    $offer_count = count(raidlands_store_rp_offers($product, true))
+        + count(raidlands_store_cash_pass_offers($product, true))
+        + count(raidlands_store_cash_subscription_offers($product, true));
+  ?>
+  <?= render_page_hero('store-item',
+      '<a class="btn btn-primary" href="' . e(route_url('store')) . '">Back to Store</a>'
+      . '<a class="btn btn-secondary" href="' . e(raidlands_account_url()) . '">' . e(raidlands_account_label('Connect Steam', 'View Account')) . '</a>'
+  ) ?>
+
+  <section class="section store-item-focus">
+    <div class="section-inner store-item-layout">
+      <article class="metal-card store-item-overview">
+        <?php if ($image !== '') : ?>
+          <img class="store-item-hero-image" src="<?= e($image) ?>" alt="<?= e((string) ($product['name'] ?? 'Store item')) ?>" loading="eager" decoding="async">
+        <?php endif; ?>
+        <div>
+          <p class="section-kicker"><?= e(raidlands_store_type_label((string) ($product['product_type'] ?? 'perk'))) ?></p>
+          <h2><?= e((string) ($product['name'] ?? 'Store item')) ?></h2>
+          <p class="section-lede"><?= e((string) ($product['description'] ?: $product['short_description'] ?? '')) ?></p>
+          <div class="store-card-facts">
+            <span><?= e((string) count($linked_kits)) ?> kit<?= count($linked_kits) === 1 ? '' : 's' ?></span>
+            <span><?= e((string) count($linked_perks)) ?> perk<?= count($linked_perks) === 1 ? '' : 's' ?></span>
+            <span><?= e((string) $offer_count) ?> offer<?= $offer_count === 1 ? '' : 's' ?></span>
+          </div>
+        </div>
+      </article>
+      <?= store_item_purchase_panel($product, $store_player, $store_csrf, $cash_checkout_ready) ?>
+    </div>
+  </section>
+
+  <section class="section">
+    <div class="section-inner">
+      <div class="section-header">
+        <p class="section-kicker">Included access</p>
+        <h2>What this item grants</h2>
+      </div>
+      <?php if ($linked_kits === [] && $linked_perks === []) : ?>
+        <div class="metal-panel"><p class="store-muted">This product does not currently expose kit or perk details.</p></div>
+      <?php else : ?>
+        <?php if ($linked_kits !== []) : ?>
+          <div class="store-item-kit-list">
+            <?php foreach ($linked_kits as $kit) : ?>
+              <?= store_item_render_kit((array) $kit) ?>
+            <?php endforeach; ?>
+          </div>
+        <?php endif; ?>
+        <?= store_item_render_perks($linked_perks) ?>
+      <?php endif; ?>
+    </div>
+  </section>
+<?php endif; ?>

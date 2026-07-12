@@ -1008,6 +1008,61 @@ function raidlands_store_kit_public_url(array $kit): string
     return route_url('store/kit/' . raidlands_store_kit_public_slug($kit));
 }
 
+function raidlands_store_product_public_slug(array $product): string
+{
+    $id = (int) ($product['id'] ?? 0);
+    $label = (string) ($product['slug'] ?? $product['name'] ?? 'item');
+    $slug = raidlands_store_public_slug($label, 'item');
+
+    return $id > 0 ? $id . '-' . $slug : $slug;
+}
+
+function raidlands_store_product_public_url(array $product): string
+{
+    return route_url('store/item/' . raidlands_store_product_public_slug($product));
+}
+
+function raidlands_store_product_slug_matches(array $product, string $candidate): bool
+{
+    $candidate = raidlands_store_public_slug($candidate, '');
+
+    if ($candidate === '') {
+        return false;
+    }
+
+    $id = (int) ($product['id'] ?? 0);
+    $slug = raidlands_store_public_slug((string) ($product['slug'] ?? ''), '');
+    $name_slug = raidlands_store_public_slug((string) ($product['name'] ?? ''), '');
+
+    return $candidate === raidlands_store_product_public_slug($product)
+        || ($id > 0 && $candidate === (string) $id)
+        || ($slug !== '' && $candidate === $slug)
+        || ($name_slug !== '' && $candidate === $name_slug);
+}
+
+function raidlands_store_product_focus_context(string $slug): ?array
+{
+    $catalog = raidlands_store_catalog(true);
+    $products = (array) ($catalog['products'] ?? []);
+
+    if (function_exists('raidlands_kits_attach_to_products')) {
+        $products = raidlands_kits_attach_to_products($products);
+    }
+
+    foreach ($products as $product) {
+        $product = (array) $product;
+
+        if (raidlands_store_product_slug_matches($product, $slug)) {
+            return [
+                'product' => $product,
+                'catalog' => $catalog,
+            ];
+        }
+    }
+
+    return null;
+}
+
 function raidlands_store_kit_slug_matches(array $kit, string $candidate): bool
 {
     $candidate = raidlands_store_public_slug($candidate, '');

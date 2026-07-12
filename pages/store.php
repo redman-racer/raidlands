@@ -252,80 +252,53 @@ function render_store_product_card(array $product, ?array $player, string $csrf,
     $rp_offers = raidlands_store_rp_offers($product, true);
     $cash_passes = raidlands_store_cash_pass_offers($product, true);
     $cash_subscriptions = raidlands_store_cash_subscription_offers($product, true);
-    $has_linked_identity = $player !== null && !empty($player['steam_id64']);
-    $has_checkout_player = $has_linked_identity && !empty($player['id']);
     $linked_kits = (array) ($product['linked_kits'] ?? []);
     $linked_perks = (array) ($product['linked_perks'] ?? []);
     $kit_html = '';
     $perk_html = '';
-    $actions = '';
 
     if ($linked_kits !== []) {
-        $kit_html .= '<div class="store-kit-details">';
+        $kit_html .= '<div class="store-card-kit-strip">';
 
-        foreach (array_slice($linked_kits, 0, 4) as $kit) {
+        foreach (array_slice($linked_kits, 0, 3) as $kit) {
             $kit = (array) $kit;
             $image = store_linked_kit_image_url($kit);
             $uses = (int) ($kit['maximum_uses'] ?? 0);
             $cooldown = (int) ($kit['cooldown_seconds'] ?? 0);
-            $items = raidlands_kits_item_summary($kit, 4);
             $meta = [$uses > 0 ? number_format($uses) . ' uses' : 'Unlimited uses'];
 
             if ($cooldown > 0) {
                 $meta[] = raidlands_store_format_seconds($cooldown) . ' cooldown';
             }
 
-            $kit_html .= '<div class="store-kit-detail">';
+            $kit_html .= '<a class="store-card-kit-pill" href="' . e(raidlands_store_kit_public_url($kit)) . '">';
 
             if ($image !== '') {
                 $kit_html .= '<img src="' . e($image) . '" alt="" loading="lazy" referrerpolicy="no-referrer">';
             }
 
-            $kit_html .= '<div>'
-                . '<strong><a href="' . e(raidlands_store_kit_public_url($kit)) . '">' . e((string) ($kit['kit_name'] ?? 'Kit')) . '</a></strong>'
-                . '<span>' . e(implode(' / ', $meta)) . '</span>';
-
-            if ($items !== []) {
-                $kit_html .= '<small>' . e(implode(', ', $items)) . '</small>';
-            }
-
-            $kit_html .= '<a class="store-kit-detail-link" href="' . e(raidlands_store_kit_public_url($kit)) . '">Full kit page</a>'
-                . '</div></div>';
+            $kit_html .= '<span><strong>' . e((string) ($kit['kit_name'] ?? 'Kit')) . '</strong><small>' . e(implode(' / ', $meta)) . '</small></span></a>';
         }
 
-        if (count($linked_kits) > 4) {
-            $kit_html .= '<p class="store-muted">+' . e((string) (count($linked_kits) - 4)) . ' more kit options attached. Use search to find the exact kit page.</p>';
+        if (count($linked_kits) > 3) {
+            $kit_html .= '<span class="store-card-more">+' . e((string) (count($linked_kits) - 3)) . ' more kits</span>';
         }
 
         $kit_html .= '</div>';
     }
 
     if ($linked_perks !== []) {
-        $perk_html .= '<div class="store-perk-details"><strong>Group perks</strong><div>';
+        $perk_html .= '<div class="store-card-perk-strip">';
 
-        foreach (array_slice($linked_perks, 0, 6) as $perk) {
+        foreach (array_slice($linked_perks, 0, 4) as $perk) {
             $perk_html .= '<span>' . e((string) ($perk['label'] ?? $perk['permission'] ?? 'Permission')) . '</span>';
         }
 
-        if (count($linked_perks) > 6) {
-            $perk_html .= '<span>+' . e((string) (count($linked_perks) - 6)) . ' more</span>';
+        if (count($linked_perks) > 4) {
+            $perk_html .= '<span>+' . e((string) (count($linked_perks) - 4)) . ' perks</span>';
         }
 
-        $perk_html .= '</div></div>';
-    }
-
-    if (!$has_linked_identity) {
-        $actions = '<a class="btn btn-secondary" href="' . e(route_url('link')) . '">Connect Steam First</a>';
-    } elseif (!$has_checkout_player) {
-        $actions = '<a class="btn btn-secondary" href="' . e(route_url('profile')) . '">View Account</a>';
-    } else {
-        $actions .= render_store_offer_group('RP', $rp_offers, $csrf, 'rp');
-        $actions .= render_store_offer_group('Cash passes', $cash_passes, $csrf, 'cash', $cash_ready);
-        $actions .= render_store_offer_group('Cash subscriptions', $cash_subscriptions, $csrf, 'cash', $cash_ready);
-
-        if ($actions === '') {
-            $actions = '<button class="btn btn-ghost" type="button" disabled>Offers Unavailable</button>';
-        }
+        $perk_html .= '</div>';
     }
 
     $active_offer_count = count($rp_offers) + count($cash_passes) + count($cash_subscriptions);
@@ -351,14 +324,14 @@ function render_store_product_card(array $product, ?array $player, string $csrf,
         . '</div>'
         . '<h3>' . e((string) $product['name']) . '</h3>'
         . '<p class="card-copy">' . e((string) $product['short_description']) . '</p>'
-        . '<div class="store-price"><strong>' . e($active_offer_count > 0 ? 'Offers available' : 'Offers unavailable') . '</strong><span>' . e((string) $active_offer_count) . ' option' . ($active_offer_count === 1 ? '' : 's') . '</span></div>'
+        . '<div class="store-card-facts">'
+        . '<span>' . e((string) count($linked_kits)) . ' kit' . (count($linked_kits) === 1 ? '' : 's') . '</span>'
+        . '<span>' . e((string) count($linked_perks)) . ' perk' . (count($linked_perks) === 1 ? '' : 's') . '</span>'
+        . '<span>' . e((string) $active_offer_count) . ' offer' . ($active_offer_count === 1 ? '' : 's') . '</span>'
+        . '</div>'
         . $kit_html
         . $perk_html
-        . '<ul class="store-mini-list">'
-        . '<li>Purchases are attached to your connected Steam account.</li>'
-        . '<li>Timed access ends automatically; lifetime access has no scheduled expiration.</li>'
-        . '</ul>'
-        . '<div class="store-card-actions">' . $actions . '</div>'
+        . '<div class="store-card-actions"><a class="btn btn-primary" href="' . e(raidlands_store_product_public_url($product)) . '">View Details</a></div>'
         . '</article>';
 }
 

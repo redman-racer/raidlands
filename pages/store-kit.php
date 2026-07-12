@@ -116,21 +116,6 @@ function store_kit_render_product_offer(array $product, ?array $player, string $
     $rp_offers = raidlands_store_rp_offers($product, true);
     $cash_passes = raidlands_store_cash_pass_offers($product, true);
     $cash_subscriptions = raidlands_store_cash_subscription_offers($product, true);
-    $has_linked_identity = $player !== null && !empty($player['steam_id64']);
-    $has_checkout_player = $has_linked_identity && !empty($player['id']);
-    $actions = '';
-
-    if (!$has_linked_identity) {
-        $actions = '<a class="btn btn-secondary" href="' . e(route_url('link')) . '">Connect Steam First</a>';
-    } elseif (!$has_checkout_player) {
-        $actions = '<a class="btn btn-secondary" href="' . e(route_url('profile')) . '">View Account</a>';
-    } else {
-        $actions .= store_kit_render_offer_group('RP', $rp_offers, $csrf, 'rp');
-        $actions .= store_kit_render_offer_group('Cash passes', $cash_passes, $csrf, 'cash', $cash_ready);
-        $actions .= store_kit_render_offer_group('Cash subscriptions', $cash_subscriptions, $csrf, 'cash', $cash_ready);
-        $actions = $actions !== '' ? $actions : '<button class="btn btn-ghost" type="button" disabled>Offers Unavailable</button>';
-    }
-
     $offer_count = count($rp_offers) + count($cash_passes) + count($cash_subscriptions);
 
     return '<article class="metal-card store-kit-product-card">'
@@ -138,7 +123,7 @@ function store_kit_render_product_offer(array $product, ?array $player, string $
         . '<h3>' . e((string) ($product['name'] ?? 'Store product')) . '</h3>'
         . '<p class="card-copy">' . e((string) ($product['short_description'] ?? '')) . '</p></div>'
         . '<div class="store-price"><strong>' . e($offer_count > 0 ? 'Offers available' : 'Offers unavailable') . '</strong><span>' . e((string) $offer_count) . ' option' . ($offer_count === 1 ? '' : 's') . '</span></div>'
-        . '<div class="store-card-actions">' . $actions . '</div>'
+        . '<div class="store-card-actions"><a class="btn btn-primary" href="' . e(raidlands_store_product_public_url($product)) . '">View Product</a></div>'
         . '</article>';
 }
 

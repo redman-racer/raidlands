@@ -5,6 +5,7 @@ SetEnvIf Authorization "(.+)" HTTP_AUTHORIZATION=$1
 
 <IfModule mod_rewrite.c>
   RewriteEngine On
+  RewriteRule ^store/item/([^/]+)/?$ store/item/index.php?item=$1 [L,QSA]
   RewriteRule ^store/kit/([^/]+)/?$ store/kit/index.php?kit=$1 [L,QSA]
 </IfModule>
 
