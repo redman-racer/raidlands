@@ -2111,6 +2111,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   let playbackShownFrame = -1;
   let playbackSpeedIndex = 2;
   let playerPollTimer = 0;
+  let playbackHistoryPollTimer = 0;
   const playbackSpeeds = [0.25, 0.5, 1, 2, 4, 8];
   const disposers: Array<() => void> = [];
   const dataFlag = (name: string, fallback = false): boolean => {
@@ -2171,6 +2172,14 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
 
   const playbackIntervalMs = (): number => Math.max(80, Math.round(900 / playbackSpeed()));
 
+  const playbackHistoryPollDelayMs = (): number => {
+    const latestFrame = heatmapHistory[heatmapHistory.length - 1];
+    const frameSeconds = Number(latestFrame?.windowEnd && heatmapHistory.length > 1
+      ? (historyFrameTime(heatmapHistory[heatmapHistory.length - 1]!) ?? 0) - (historyFrameTime(heatmapHistory[heatmapHistory.length - 2]!) ?? 0)
+      : 0);
+    return Math.max(12_000, Math.min(45_000, Number.isFinite(frameSeconds) && frameSeconds > 0 ? frameSeconds * 0.5 : 15_000));
+  };
+
   const updateTimelineValue = (value: number) => {
     if (!heatmapFrame) {
       return;
@@ -2191,6 +2200,37 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     if (heatmapSpeedUp) {
       heatmapSpeedUp.disabled = playbackSpeedIndex >= playbackSpeeds.length - 1;
     }
+  };
+
+  const currentPlaybackFrameIndex = (): number => {
+    return MathUtils.clamp(Math.round(Number(heatmapFrame?.value ?? playbackVirtualFrame) || 0), 0, Math.max(0, heatmapHistory.length - 1));
+  };
+
+  const nearestPlaybackFrameIndexForTime = (targetMs: number): number => {
+    if (heatmapHistory.length === 0 || !Number.isFinite(targetMs)) {
+      return 0;
+    }
+
+    let closestIndex = 0;
+    let closestDelta = Number.POSITIVE_INFINITY;
+    heatmapHistory.forEach((frame, index) => {
+      const time = historyFrameTime(frame);
+      if (time === null) {
+        return;
+      }
+
+      const delta = Math.abs(time - targetMs);
+      if (delta < closestDelta) {
+        closestDelta = delta;
+        closestIndex = index;
+      }
+    });
+    return closestIndex;
+  };
+
+  const stopPlaybackHistoryPolling = () => {
+    window.clearInterval(playbackHistoryPollTimer);
+    playbackHistoryPollTimer = 0;
   };
 
   const startHeatmapPlayback = () => {
@@ -2309,7 +2349,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     return Math.max(0, heatmapHistory.length - 1);
   };
 
-  const reloadPlayback = (preferredFrame?: number) => {
+  const reloadPlayback = (preferredFrame?: number, restartPlayback = true) => {
     const heatmapEnabled = wantsHeatmap();
     const playersEnabled = wantsPlayers();
 
@@ -2317,6 +2357,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       stopHeatmapPlayback();
       window.clearInterval(playerPollTimer);
       playerPollTimer = 0;
+      stopPlaybackHistoryPolling();
       viewer.setHeatmapVisible(false);
       viewer.setPlayerLocationsVisible(false);
       return;
@@ -2325,11 +2366,16 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     if (wantsPlayback()) {
       window.clearInterval(playerPollTimer);
       playerPollTimer = 0;
+      const previousFrame = heatmapHistory[currentPlaybackFrameIndex()] || null;
+      const previousFrameTime = previousFrame ? historyFrameTime(previousFrame) : null;
+      const shouldFollowLatest = preferredFrame === undefined && currentPlaybackFrameIndex() >= Math.max(0, heatmapHistory.length - 1);
       void loadOverlayHistory(root, heatmapEnabled, playersEnabled, wantsAllPlayers(), selectedMetric(), selectedRange(), heatmapFrameCountValue()).then((payload) => {
         heatmapHistory = Array.isArray(payload.frames) ? payload.frames : [];
-        const latestFrame = preferredFrame === undefined
-          ? latestVisibleHeatmapFrame()
-          : MathUtils.clamp(Math.round(preferredFrame), 0, Math.max(0, heatmapHistory.length - 1));
+        const latestFrame = preferredFrame !== undefined
+          ? MathUtils.clamp(Math.round(preferredFrame), 0, Math.max(0, heatmapHistory.length - 1))
+          : shouldFollowLatest || previousFrameTime === null
+            ? latestVisibleHeatmapFrame()
+            : nearestPlaybackFrameIndexForTime(previousFrameTime);
         if (heatmapFrame) {
           heatmapFrame.max = String(Math.max(0, heatmapHistory.length - 1));
           heatmapFrame.step = "1";
@@ -2338,7 +2384,8 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
         }
         playbackVirtualFrame = latestFrame;
         showPlaybackFrame(latestFrame);
-        if (wantsPlayback() && heatmapHistory.length > 1) {
+        startPlaybackHistoryPolling();
+        if (restartPlayback && wantsPlayback() && heatmapHistory.length > 1) {
           startHeatmapPlayback();
         }
       });
@@ -2346,6 +2393,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     }
 
     stopHeatmapPlayback();
+    stopPlaybackHistoryPolling();
     if (heatmapEnabled) {
       void loadHeatmap(root, viewer, selectedMetric(), selectedRange());
     } else {
@@ -2354,6 +2402,26 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     if (playersEnabled) {
       void loadPlayerLocations(root, viewer, myLocation, true, wantsAllPlayers());
     }
+  };
+
+  const startPlaybackHistoryPolling = () => {
+    if (!wantsTimelineOverlay()) {
+      stopPlaybackHistoryPolling();
+      return;
+    }
+
+    if (playbackHistoryPollTimer !== 0) {
+      return;
+    }
+
+    playbackHistoryPollTimer = window.setInterval(() => {
+      if (!wantsTimelineOverlay()) {
+        stopPlaybackHistoryPolling();
+        return;
+      }
+
+      reloadPlayback(undefined, false);
+    }, playbackHistoryPollDelayMs());
   };
 
   bind(heatmap, "change", () => reloadPlayback());
@@ -2448,7 +2516,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     if (wantsTimelineOverlay()) {
       window.clearInterval(playerPollTimer);
       playerPollTimer = 0;
-      const selectedFrame = Math.round(Number(heatmapFrame?.value ?? playbackVirtualFrame) || 0);
+      const selectedFrame = currentPlaybackFrameIndex();
       if (heatmapHistory.length > 0) {
         showPlaybackFrame(selectedFrame);
       } else {
@@ -2499,7 +2567,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     }
 
     if (wantsTimelineOverlay()) {
-      const selectedFrame = Math.round(Number(heatmapFrame?.value ?? playbackVirtualFrame) || 0);
+      const selectedFrame = currentPlaybackFrameIndex();
       if (heatmapHistory.length > 0) {
         showPlaybackFrame(selectedFrame);
         viewer.frameSelfLocation();
@@ -2531,6 +2599,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     dispose: () => {
       window.cancelAnimationFrame(playbackAnimationFrame);
       window.clearInterval(playerPollTimer);
+      stopPlaybackHistoryPolling();
       disposers.forEach((dispose) => dispose());
     },
   };

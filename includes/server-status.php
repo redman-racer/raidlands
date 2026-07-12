@@ -1737,6 +1737,7 @@ function raidlands_server_player_locations_history_public(string $range, int $fr
     $status = raidlands_server_status_latest();
     $server_id = (string) ($status['server_id'] ?? raidlands_server_status_server_id());
     $context = raidlands_server_location_viewer_context($server_id);
+    $history_ready = raidlands_server_player_location_history_is_ready();
     $frames = max(2, min(96, $frames));
     $window_end_time = time() - (int) $delay['delay_seconds'];
     $window_start_time = $range_info['range'] === 'wipe'
@@ -1752,7 +1753,7 @@ function raidlands_server_player_locations_history_public(string $range, int $fr
         $frame_end = min($window_end_time, $frame_start + $frame_seconds);
         $players = [];
 
-        if (!empty($context['authenticated']) || ($include_all_players && !empty($context['canViewAll']))) {
+        if ($history_ready && (!empty($context['authenticated']) || ($include_all_players && !empty($context['canViewAll'])))) {
             $players = raidlands_server_player_location_rows_for_context($server_id, $context, $frame_end, max(300, $frame_seconds), $include_all_players);
         }
 
@@ -1786,6 +1787,7 @@ function raidlands_server_player_locations_history_public(string $range, int $fr
         'ok' => true,
         'authenticated' => !empty($context['authenticated']),
         'allPlayers' => $include_all_players && !empty($context['canViewAll']),
+        'historyAvailable' => $history_ready,
         'serverId' => $server_id,
         'range' => $range_info['range'],
         'rangeLabel' => $range_info['label'],
