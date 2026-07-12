@@ -194,6 +194,13 @@ type MapReplayHistoryPayload = {
   }>;
 };
 
+type ReplayDisplayMode = "ambient" | "timeline";
+
+type ReplayDisplayOptions = {
+  mode?: ReplayDisplayMode;
+  cursorMs?: number;
+};
+
 type ServerStatusPayload = {
   ok?: boolean;
   mapImage?: ServerStatusMapImage | null;
@@ -522,6 +529,7 @@ class TerrainViewer {
   private airstrikeReplay: AirstrikeReplayPlayer | null = null;
   private latestReplayEvents: MapReplayEvent[] = [];
   private latestReplaySpeed = 1;
+  private latestReplayOptions: ReplayDisplayOptions = {};
   private readonly onResize = () => this.resize();
   private animationFrame = 0;
   private readonly clockStart = performance.now();
@@ -841,19 +849,21 @@ class TerrainViewer {
     this.airstrikeReplay = new AirstrikeReplayPlayer(this.airstrikeLayer, this.terrain, profiles, vehicleMetadata, assetBase);
     this.airstrikeReplay.start();
     if (this.latestReplayEvents.length > 0) {
-      this.airstrikeReplay.showEvents(this.latestReplayEvents, this.latestReplaySpeed);
+      this.airstrikeReplay.showEvents(this.latestReplayEvents, this.latestReplaySpeed, this.latestReplayOptions);
     }
   }
 
-  public showReplayEvents(events: MapReplayEvent[], playbackSpeed: number): void {
+  public showReplayEvents(events: MapReplayEvent[], playbackSpeed: number, options: ReplayDisplayOptions = {}): void {
     this.latestReplayEvents = events;
     this.latestReplaySpeed = playbackSpeed;
-    this.airstrikeReplay?.showEvents(events, playbackSpeed);
+    this.latestReplayOptions = options;
+    this.airstrikeReplay?.showEvents(events, playbackSpeed, options);
   }
 
   public clearReplayEvents(): void {
     this.latestReplayEvents = [];
     this.latestReplaySpeed = 1;
+    this.latestReplayOptions = {};
     this.airstrikeReplay?.clear();
   }
 
@@ -1584,20 +1594,45 @@ class AirstrikeReplayPlayer {
     this.layer.userData.tick = (time: number) => this.tick(time);
   }
 
-  public showEvents(events: MapReplayEvent[], playbackSpeed: number): void {
-    events.forEach((event, index) => {
+  public showEvents(events: MapReplayEvent[], playbackSpeed: number, options: ReplayDisplayOptions = {}): void {
+    const mode = options.mode || "ambient";
+    const cursorMs = Number(options.cursorMs);
+    const visibleKeys = new Set<string>();
+
+    events.slice(0, mode === "timeline" ? 80 : 8).forEach((event, index) => {
       const key = replayEventKey(event, index);
-      if (this.runs.some((run) => run.key === key)) {
+      visibleKeys.add(key);
+      const existing = this.runs.find((run) => run.key === key);
+      if (existing) {
+        if (mode === "timeline" && Number.isFinite(cursorMs)) {
+          existing.syncToTimeline(cursorMs, playbackSpeed);
+        }
         return;
       }
 
       const startAt = Number(this.layer.userData.lastTickTime || 0);
-      const run = event.eventType === "airdrop"
-        ? new AirdropReplayRun(key, event, this.terrain, startAt, playbackSpeed, this.vehicleMetadata, this.assetBase)
-        : new AirstrikeReplayRun(key, event, this.terrain, this.profileForEvent(event), startAt, playbackSpeed, this.vehicleMetadata, this.assetBase);
+      const run = event.eventType === "airstrike"
+        ? new AirstrikeReplayRun(key, event, this.terrain, this.profileForEvent(event), startAt, playbackSpeed, this.vehicleMetadata, this.assetBase)
+        : event.eventType === "airdrop"
+          ? new AirdropReplayRun(key, event, this.terrain, startAt, playbackSpeed, this.vehicleMetadata, this.assetBase)
+          : new GenericMapEventReplayRun(key, event, this.terrain, startAt, playbackSpeed);
+      if (mode === "timeline" && Number.isFinite(cursorMs)) {
+        run.syncToTimeline(cursorMs, playbackSpeed);
+      }
       this.runs.push(run);
       this.active.add(run.group);
     });
+
+    if (mode === "timeline") {
+      this.runs = this.runs.filter((run) => {
+        if (visibleKeys.has(run.key)) {
+          return true;
+        }
+        this.active.remove(run.group);
+        disposeObjectTree(run.group);
+        return false;
+      });
+    }
   }
 
   public clear(): void {
@@ -1638,6 +1673,7 @@ type MapReplayRun = {
   key: string;
   group: Group;
   update: (now: number) => boolean;
+  syncToTimeline: (cursorMs: number, playbackSpeed: number) => void;
 };
 
 class AirstrikeReplayRun implements MapReplayRun {
@@ -1654,7 +1690,9 @@ class AirstrikeReplayRun implements MapReplayRun {
   private readonly firedPayloads = new Set<number>();
   private readonly projectiles: AirstrikeProjectile[] = [];
   private readonly target: Vector3;
-  private readonly playbackSpeed: number;
+  private playbackSpeed: number;
+  private timelineElapsed: number | null = null;
+  private lastProfileTime = -1;
 
   public constructor(
     key: string,
@@ -1673,7 +1711,7 @@ class AirstrikeReplayRun implements MapReplayRun {
     this.startAt = startAt;
     this.playbackSpeed = MathUtils.clamp(playbackSpeed || 1, 0.1, 12);
     this.frames = profile ? normalizePreviewFrames(profile) : [];
-    this.duration = Math.max(2, Number(profile?.CompiledTrack?.DurationSeconds || profile?.DurationSeconds || lastFrameTime(this.frames) || 8)) / this.playbackSpeed;
+    this.duration = Math.max(2, Number(profile?.CompiledTrack?.DurationSeconds || profile?.DurationSeconds || lastFrameTime(this.frames) || 8));
     this.payloads = profile ? normalizePayloadEvents(profile) : [];
     this.target = replayEventPosition(event, terrain);
     this.group.name = `airstrike-replay-${String(profile?.Vehicle || event.vehicle || "aircraft")}`;
@@ -1682,21 +1720,26 @@ class AirstrikeReplayRun implements MapReplayRun {
   }
 
   public update(now: number): boolean {
-    const elapsed = now - this.startAt;
+    const elapsed = this.timelineElapsed ?? (now - this.startAt);
     if (elapsed < 0) {
       this.group.visible = false;
       return true;
     }
 
     this.group.visible = true;
-    if (elapsed > this.duration + 3.6 && this.projectiles.length === 0) {
+    if ((elapsed * this.playbackSpeed) > this.duration + 3.6 && this.projectiles.length === 0) {
       return false;
     }
 
     const profileTime = Math.min(elapsed * this.playbackSpeed, Math.max(0.1, lastFrameTime(this.frames)));
+    if (profileTime + 0.05 < this.lastProfileTime) {
+      this.clearProjectiles();
+      this.firedPayloads.clear();
+    }
+    this.lastProfileTime = profileTime;
     const pose = this.frames.length >= 2
       ? samplePreviewPose(this.frames, profileTime)
-      : fallbackFlyoverPose(elapsed / Math.max(0.1, this.duration));
+      : fallbackFlyoverPose((elapsed * this.playbackSpeed) / Math.max(0.1, this.duration));
     const world = this.toWorld(pose.position);
     world.y = Math.max(world.y, sampleTerrainHeight(this.terrain, world.x, world.z) + 10);
     this.aircraft.position.copy(world);
@@ -1719,6 +1762,16 @@ class AirstrikeReplayRun implements MapReplayRun {
     }
 
     return true;
+  }
+
+  public syncToTimeline(cursorMs: number, playbackSpeed: number): void {
+    const occurredMs = Date.parse(String(this.event.occurredAt || ""));
+    if (!Number.isFinite(occurredMs) || !Number.isFinite(cursorMs)) {
+      this.timelineElapsed = null;
+      return;
+    }
+    this.playbackSpeed = MathUtils.clamp(playbackSpeed || 1, 0.1, 12);
+    this.timelineElapsed = (cursorMs - occurredMs) / 1000 / this.playbackSpeed;
   }
 
   private toWorld(local: Vector3): Vector3 {
@@ -1765,6 +1818,14 @@ class AirstrikeReplayRun implements MapReplayRun {
       this.projectiles.push(projectile);
       this.group.add(projectile.group);
     }
+  }
+
+  private clearProjectiles(): void {
+    this.projectiles.forEach((projectile) => {
+      this.group.remove(projectile.group);
+      disposeObjectTree(projectile.group);
+    });
+    this.projectiles.length = 0;
   }
 }
 
@@ -1839,14 +1900,17 @@ class AirstrikeProjectile {
 class AirdropReplayRun implements MapReplayRun {
   public readonly key: string;
   public readonly group = new Group();
+  private readonly event: MapReplayEvent;
   private readonly terrain: TerrainPayload;
   private readonly target: Vector3;
   private readonly startAt: number;
   private readonly duration: number;
+  private playbackSpeed: number;
   private readonly aircraft: Group;
   private readonly packageMesh: Mesh;
   private readonly parachute: Mesh;
   private readonly dropCount: number;
+  private timelineElapsed: number | null = null;
 
   public constructor(
     key: string,
@@ -1858,10 +1922,12 @@ class AirdropReplayRun implements MapReplayRun {
     assetBase: string,
   ) {
     this.key = key;
+    this.event = event;
     this.terrain = terrain;
     this.target = replayEventPosition(event, terrain);
     this.startAt = startAt;
-    this.duration = 9 / MathUtils.clamp(playbackSpeed || 1, 0.1, 12);
+    this.playbackSpeed = MathUtils.clamp(playbackSpeed || 1, 0.1, 12);
+    this.duration = 9;
     this.dropCount = Math.max(1, Number(event.payload?.dropCount || 1));
     this.group.name = "airdrop-replay";
     this.aircraft = createAircraftMarker("cargo_plane", vehicleMetadata, assetBase);
@@ -1880,18 +1946,18 @@ class AirdropReplayRun implements MapReplayRun {
   }
 
   public update(now: number): boolean {
-    const elapsed = now - this.startAt;
+    const elapsed = this.timelineElapsed ?? (now - this.startAt);
     if (elapsed < 0) {
       this.group.visible = false;
       return true;
     }
 
     this.group.visible = true;
-    if (elapsed > this.duration + 1.5) {
+    if ((elapsed * this.playbackSpeed) > this.duration + 1.5) {
       return false;
     }
 
-    const progress = MathUtils.clamp(elapsed / Math.max(0.1, this.duration), 0, 1);
+    const progress = MathUtils.clamp((elapsed * this.playbackSpeed) / Math.max(0.1, this.duration), 0, 1);
     const worldSize = this.terrain.worldSize || 4500;
     const pass = MathUtils.clamp(worldSize * 0.42, 900, 2200);
     const x = this.target.x + MathUtils.lerp(-pass, pass, progress);
@@ -1910,6 +1976,87 @@ class AirdropReplayRun implements MapReplayRun {
     this.packageMesh.visible = progress > 0.2;
     this.parachute.visible = visibleDrop && dropProgress < 0.98;
     return true;
+  }
+
+  public syncToTimeline(cursorMs: number, playbackSpeed: number): void {
+    const occurredMs = Date.parse(String(this.event.occurredAt || ""));
+    if (!Number.isFinite(occurredMs) || !Number.isFinite(cursorMs)) {
+      this.timelineElapsed = null;
+      return;
+    }
+    this.playbackSpeed = MathUtils.clamp(playbackSpeed || 1, 0.1, 12);
+    this.timelineElapsed = (cursorMs - occurredMs) / 1000 / this.playbackSpeed;
+  }
+}
+
+class GenericMapEventReplayRun implements MapReplayRun {
+  public readonly key: string;
+  public readonly group = new Group();
+  private readonly event: MapReplayEvent;
+  private readonly target: Vector3;
+  private readonly startAt: number;
+  private readonly duration = 12;
+  private playbackSpeed: number;
+  private timelineElapsed: number | null = null;
+  private readonly marker: Mesh;
+  private readonly ring: Mesh;
+  private readonly beacon: Sprite;
+
+  public constructor(key: string, event: MapReplayEvent, terrain: TerrainPayload, startAt: number, playbackSpeed: number) {
+    this.key = key;
+    this.event = event;
+    this.startAt = startAt;
+    this.playbackSpeed = MathUtils.clamp(playbackSpeed || 1, 0.1, 12);
+    this.target = replayEventPosition(event, terrain);
+    this.target.y = sampleTerrainHeight(terrain, this.target.x, this.target.z) + 5;
+    this.group.name = `map-event-replay-${String(event.eventType || "event")}`;
+    this.marker = new Mesh(
+      new SphereGeometry(13, 20, 12),
+      new MeshStandardMaterial({ color: replayEventColor(event), emissive: replayEventColor(event), emissiveIntensity: 0.5, roughness: 0.5 }),
+    );
+    this.ring = new Mesh(
+      new RingGeometry(28, 34, 48),
+      new MeshStandardMaterial({ color: replayEventColor(event), transparent: true, opacity: 0.62, side: DoubleSide }),
+    );
+    this.beacon = new Sprite(new SpriteMaterial({ color: replayEventColor(event), transparent: true, opacity: 0.5, depthWrite: false }));
+    this.ring.rotation.x = -Math.PI / 2;
+    this.group.add(this.marker, this.ring, this.beacon);
+  }
+
+  public update(now: number): boolean {
+    const elapsed = this.timelineElapsed ?? (now - this.startAt);
+    if (elapsed < 0) {
+      this.group.visible = false;
+      return true;
+    }
+
+    const eventTime = elapsed * this.playbackSpeed;
+    if (eventTime > this.duration) {
+      return false;
+    }
+
+    this.group.visible = true;
+    const progress = MathUtils.clamp(eventTime / this.duration, 0, 1);
+    const pulse = 0.5 + (Math.sin(progress * Math.PI * 6) * 0.5);
+    this.marker.position.copy(this.target).add(new Vector3(0, 10 + pulse * 10, 0));
+    this.marker.scale.setScalar(MathUtils.lerp(0.8, 1.25, pulse));
+    this.ring.position.copy(this.target);
+    this.ring.scale.setScalar(MathUtils.lerp(0.5, 2.8, easeOutCubic(progress)));
+    this.beacon.position.copy(this.target).add(new Vector3(0, 54, 0));
+    this.beacon.scale.setScalar(MathUtils.lerp(38, 92, easeOutCubic(progress)));
+    setMaterialOpacity(this.ring.material, MathUtils.lerp(0.62, 0, progress));
+    setMaterialOpacity(this.beacon.material, MathUtils.lerp(0.48, 0, progress));
+    return true;
+  }
+
+  public syncToTimeline(cursorMs: number, playbackSpeed: number): void {
+    const occurredMs = Date.parse(String(this.event.occurredAt || ""));
+    if (!Number.isFinite(occurredMs) || !Number.isFinite(cursorMs)) {
+      this.timelineElapsed = null;
+      return;
+    }
+    this.playbackSpeed = MathUtils.clamp(playbackSpeed || 1, 0.1, 12);
+    this.timelineElapsed = (cursorMs - occurredMs) / 1000 / this.playbackSpeed;
   }
 }
 
@@ -2079,6 +2226,23 @@ function replayEventPosition(event: MapReplayEvent, terrain: TerrainPayload): Ve
   const position = rustWorldToViewerPosition(x, Number(event.y) || 0, z);
   position.y = Number.isFinite(Number(event.y)) ? position.y : sampleTerrainHeight(terrain, position.x, position.z);
   return position;
+}
+
+function replayEventColor(event: MapReplayEvent): number {
+  const type = String(event.eventType || "").toLowerCase();
+  if (type.includes("oil")) {
+    return 0x5fb4ff;
+  }
+  if (type.includes("excavator") || type.includes("quarry")) {
+    return 0xf6c65b;
+  }
+  if (type.includes("crate") || type.includes("hack")) {
+    return 0x73f29a;
+  }
+  if (type.includes("cargo")) {
+    return 0xd5ecff;
+  }
+  return 0xff8f4a;
 }
 
 function fallbackFlyoverPose(progress: number): { position: Vector3; rotation: Quaternion } {
@@ -3006,6 +3170,61 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     heatmapFrame.value = String(MathUtils.clamp(value, 0, Math.max(0, heatmapHistory.length - 1)));
   };
 
+  const playbackCursorMs = (frameValue = playbackVirtualFrame): number | null => {
+    if (heatmapHistory.length === 0) {
+      return null;
+    }
+    const clamped = MathUtils.clamp(frameValue, 0, Math.max(0, heatmapHistory.length - 1));
+    const lowerIndex = Math.floor(clamped);
+    const upperIndex = Math.min(heatmapHistory.length - 1, lowerIndex + 1);
+    const lowerTime = historyFrameTime(heatmapHistory[lowerIndex]);
+    const upperTime = historyFrameTime(heatmapHistory[upperIndex]);
+    if (lowerTime === null) {
+      return upperTime;
+    }
+    if (upperTime === null || upperIndex === lowerIndex) {
+      return lowerTime;
+    }
+    return MathUtils.lerp(lowerTime, upperTime, clamped - lowerIndex);
+  };
+
+  const timelineReplayEvents = (cursorMs: number | null): MapReplayEvent[] => {
+    if (cursorMs === null) {
+      return [];
+    }
+    const leadMs = 10_000;
+    const trailMs = 120_000;
+    const seen = new Set<string>();
+    const events: MapReplayEvent[] = [];
+    heatmapHistory.forEach((frame) => {
+      (Array.isArray(frame.events) ? frame.events : []).forEach((event, index) => {
+        const occurred = Date.parse(String(event.occurredAt || ""));
+        if (!Number.isFinite(occurred) || occurred > cursorMs + leadMs || occurred < cursorMs - trailMs) {
+          return;
+        }
+        const key = replayEventKey(event, index);
+        if (seen.has(key)) {
+          return;
+        }
+        seen.add(key);
+        events.push(event);
+      });
+    });
+    return events;
+  };
+
+  const syncTimelineReplay = () => {
+    const cursorMs = playbackCursorMs();
+    if (cursorMs === null) {
+      viewer.clearReplayEvents();
+      return;
+    }
+    viewer.showReplayEvents(timelineReplayEvents(cursorMs), playbackSpeed(), {
+      mode: "timeline",
+      cursorMs,
+    });
+  };
+
   const updatePlaybackSpeedControls = () => {
     const controlsActive = wantsTimelineOverlay();
     const speed = playbackSpeed();
@@ -3119,6 +3338,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
 
       updateTimelineValue(playbackVirtualFrame);
       const nextFrame = Math.floor(playbackVirtualFrame);
+      syncTimelineReplay();
       if (nextFrame !== playbackShownFrame) {
         showPlaybackFrame(nextFrame);
       }
@@ -3193,7 +3413,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
         viewer.followSelfLocation();
       }
     }
-    viewer.showReplayEvents(Array.isArray(frame.events) ? frame.events : [], playbackSpeed());
+    syncTimelineReplay();
     setTimelineLabel(frame);
   };
 

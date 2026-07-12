@@ -1881,7 +1881,21 @@ function raidlands_server_map_replay_event_type($value): string
     $type = strtolower(trim((string) $value));
     $type = preg_replace('/[^a-z0-9_:-]+/', '_', $type) ?? '';
 
-    if (in_array($type, ['airstrike', 'airdrop'], true)) {
+    if (in_array($type, [
+        'airstrike',
+        'airdrop',
+        'excavator_start',
+        'excavator_stop',
+        'quarry_start',
+        'quarry_stop',
+        'oilrig_call',
+        'oilrig_start',
+        'oilrig_stop',
+        'crate_hack_start',
+        'crate_hack_complete',
+        'cargo_ship',
+        'server_event',
+    ], true)) {
         return $type;
     }
 
