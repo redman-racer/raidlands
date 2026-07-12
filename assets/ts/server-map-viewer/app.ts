@@ -2100,6 +2100,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   const heatmapFrameLabel = panel?.querySelector<HTMLOutputElement>("[data-map-viewer-heatmap-frame-label]");
   const heatmapFrameCount = panel?.querySelector<HTMLInputElement>("[data-map-viewer-heatmap-frame-count]");
   const heatmapFrameCountLabel = panel?.querySelector<HTMLOutputElement>("[data-map-viewer-heatmap-frame-count-label]");
+  const heatmapFrameIntervalLabel = panel?.querySelector<HTMLOutputElement>("[data-map-viewer-heatmap-frame-interval-label]");
   const players = panel?.querySelector<HTMLInputElement>("[data-map-viewer-players]");
   const allPlayers = panel?.querySelector<HTMLInputElement>("[data-map-viewer-all-players]");
   const myLocation = panel?.querySelector<HTMLButtonElement>("[data-map-viewer-my-location]");
@@ -2200,6 +2201,15 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
 
   const currentPlaybackFrameIndex = (): number => {
     return MathUtils.clamp(Math.round(Number(heatmapFrame?.value ?? playbackVirtualFrame) || 0), 0, Math.max(0, heatmapHistory.length - 1));
+  };
+
+  const isFollowingLatestPlaybackFrame = (): boolean => {
+    if (heatmapHistory.length === 0) {
+      return true;
+    }
+
+    const selectedFrame = currentPlaybackFrameIndex();
+    return selectedFrame >= Math.max(0, heatmapHistory.length - 1) || selectedFrame >= latestVisibleHeatmapFrame();
   };
 
   const nearestPlaybackFrameIndexForTime = (targetMs: number): number => {
@@ -2303,6 +2313,17 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     heatmapFrameCountLabel.textContent = String(value);
   };
 
+  const setFrameIntervalLabel = (frameSeconds: number | undefined) => {
+    if (!heatmapFrameIntervalLabel) {
+      return;
+    }
+
+    const seconds = Math.max(0, Math.round(Number(frameSeconds) || 0));
+    const label = seconds > 0 ? `~${formatDurationLabel(seconds)} apart` : "waiting";
+    heatmapFrameIntervalLabel.value = label;
+    heatmapFrameIntervalLabel.textContent = label;
+  };
+
   const showPlaybackFrame = (index: number) => {
     const clampedIndex = MathUtils.clamp(Math.round(index), 0, Math.max(0, heatmapHistory.length - 1));
     const frame = heatmapHistory[clampedIndex];
@@ -2345,7 +2366,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     return Math.max(0, heatmapHistory.length - 1);
   };
 
-  const reloadPlayback = (preferredFrame?: number, restartPlayback = true) => {
+  const reloadPlayback = (preferredFrame?: number, restartPlayback = true, selectLatest = false) => {
     const heatmapEnabled = wantsHeatmap();
     const playersEnabled = wantsPlayers();
 
@@ -2364,9 +2385,10 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       playerPollTimer = 0;
       const previousFrame = heatmapHistory[currentPlaybackFrameIndex()] || null;
       const previousFrameTime = previousFrame ? historyFrameTime(previousFrame) : null;
-      const shouldFollowLatest = preferredFrame === undefined && currentPlaybackFrameIndex() >= Math.max(0, heatmapHistory.length - 1);
+      const shouldFollowLatest = selectLatest || (preferredFrame === undefined && isFollowingLatestPlaybackFrame());
       void loadOverlayHistory(root, heatmapEnabled, playersEnabled, wantsAllPlayers(), selectedMetric(), selectedRange(), heatmapFrameCountValue()).then((payload) => {
         heatmapHistory = Array.isArray(payload.frames) ? payload.frames : [];
+        setFrameIntervalLabel(payload.frameSeconds);
         const latestFrame = preferredFrame !== undefined
           ? MathUtils.clamp(Math.round(preferredFrame), 0, Math.max(0, heatmapHistory.length - 1))
           : shouldFollowLatest || previousFrameTime === null
@@ -2425,10 +2447,13 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     if (wantsPlayback() && !wantsHeatmap() && players && !players.checked) {
       players.checked = true;
     }
-    reloadPlayback();
+    reloadPlayback(undefined, true, wantsPlayback());
   });
   bind(metric, "change", () => reloadPlayback());
-  bind(range, "change", () => reloadPlayback());
+  bind(range, "change", () => {
+    stopHeatmapPlayback();
+    reloadPlayback(undefined, true, true);
+  });
   bind(heatmapFrameCount, "input", () => {
     updateFrameCountLabel();
     if (wantsPlayback() && (wantsHeatmap() || wantsPlayers())) {
@@ -2485,7 +2510,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     }
     if (heatmapPlayback && !heatmapPlayback.checked) {
       heatmapPlayback.checked = true;
-      reloadPlayback();
+      reloadPlayback(undefined, true, true);
       return;
     }
 
@@ -2789,6 +2814,24 @@ function historyFrameTime(frame: HeatmapHistoryFrame): number | null {
   const raw = frame.windowEnd || frame.windowStart || "";
   const time = Date.parse(raw);
   return Number.isFinite(time) ? time : null;
+}
+
+function formatDurationLabel(seconds: number): string {
+  if (seconds < 90) {
+    return "1 min";
+  }
+
+  const minutes = Math.round(seconds / 60);
+  if (minutes < 90) {
+    return `${minutes} min`;
+  }
+
+  const hours = Math.round(minutes / 60);
+  if (hours < 48) {
+    return `${hours} hr`;
+  }
+
+  return `${Math.round(hours / 24)} days`;
 }
 
 async function loadPlayerLocations(root: HTMLElement, viewer: TerrainViewer, myLocation?: HTMLButtonElement | null, showLayer = true, allPlayers = false): Promise<void> {

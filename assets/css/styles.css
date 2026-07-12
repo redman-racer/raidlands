@@ -1715,6 +1715,13 @@ h3,
   text-transform: none;
 }
 
+.server-terrain-controls small {
+  color: var(--muted);
+  font-size: .68rem;
+  font-weight: 800;
+  text-transform: none;
+}
+
 .server-terrain-viewer {
   position: relative;
   z-index: 90;

@@ -192,8 +192,9 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
             <input type="range" min="0" max="15" value="15" data-map-viewer-heatmap-frame>
           </label>
           <label class="server-terrain-field server-terrain-frame-field">
-            <span>Frames <output data-map-viewer-heatmap-frame-count-label>24</output></span>
+            <span>Time points <output data-map-viewer-heatmap-frame-count-label>24</output></span>
             <input type="range" min="8" max="72" step="4" value="24" data-map-viewer-heatmap-frame-count>
+            <small>Within selected range <output data-map-viewer-heatmap-frame-interval-label>waiting</output></small>
           </label>
           <label class="server-terrain-toggle">
             <input type="checkbox" checked data-map-viewer-players>
