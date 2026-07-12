@@ -82,7 +82,7 @@ function raidlands_airstrike_animations_decode_json(string $json, string $label)
     try {
         $decoded = json_decode($json, true, 512, JSON_THROW_ON_ERROR);
     } catch (JsonException $error) {
-        throw new InvalidArgumentException($label . ' is not valid JSON.', 0, $error);
+        throw new InvalidArgumentException($label . ' is not valid JSON: ' . $error->getMessage() . '.', 0, $error);
     }
 
     if (!is_array($decoded)) {
