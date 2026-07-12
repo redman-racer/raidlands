@@ -9,3 +9,4 @@ data/*.log
 dist/
 assets/media/maps/*
 !assets/media/maps/.gitkeep
+database/exports/7-11-26-2045/raiduonz_website.sql

@@ -1766,23 +1766,6 @@ function raidlands_server_player_locations_history_public(string $range, int $fr
         ];
     }
 
-    if (!empty($context['authenticated']) || ($include_all_players && !empty($context['canViewAll']))) {
-        $has_players = false;
-        foreach ($frames_payload as $frame_payload) {
-            if (!empty($frame_payload['players'])) {
-                $has_players = true;
-                break;
-            }
-        }
-
-        if (!$has_players) {
-            $latest_players = raidlands_server_player_location_rows_for_context($server_id, $context, null, 300, $include_all_players);
-            if (!empty($latest_players)) {
-                $frames_payload[count($frames_payload) - 1]['players'] = $latest_players;
-            }
-        }
-    }
-
     return [
         'ok' => true,
         'authenticated' => !empty($context['authenticated']),

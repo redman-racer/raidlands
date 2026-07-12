@@ -15,3 +15,10 @@ CREATE TABLE IF NOT EXISTS server_player_location_history (
   KEY idx_player_location_history_clan (server_id, clan_tag, sampled_at),
   KEY idx_player_location_history_player (server_id, steam_id64, sampled_at)
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4 COLLATE=utf8mb4_unicode_ci;
+
+INSERT IGNORE INTO server_player_location_history
+  (server_id, steam_id64, display_name, clan_tag, x, y, z, sampled_at)
+SELECT
+  server_id, steam_id64, display_name, clan_tag, x, y, z, sampled_at
+FROM server_player_locations
+WHERE sampled_at IS NOT NULL;
