@@ -861,7 +861,7 @@ class TerrainViewer {
   private createOceanSurfaceMesh(): Mesh {
     const worldSize = this.terrain.worldSize || 4500;
     const oceanSize = worldSize * 6;
-    const waterLevel = Number.isFinite(this.terrain.waterLevel) ? this.terrain.waterLevel || 0 : 0;
+    const waterLevel = resolveOceanWaterLevel(this.terrain);
     const geometry = new PlaneGeometry(oceanSize, oceanSize, 1, 1);
     const material = new MeshStandardMaterial({
       color: 0x0a4f63,
@@ -875,7 +875,7 @@ class TerrainViewer {
     const mesh = new Mesh(geometry, material);
     mesh.name = "raidlands-infinite-ocean-surface";
     mesh.rotation.x = -Math.PI / 2;
-    mesh.position.y = waterLevel + 0.45;
+    mesh.position.y = waterLevel + 0.08;
     mesh.renderOrder = -8;
     return mesh;
   }
@@ -1108,7 +1108,7 @@ class TerrainViewer {
     const worldSize = this.terrain.worldSize || 4500;
     const half = worldSize / 2;
     const angle = progress * Math.PI * 2;
-    const water = this.terrain.waterLevel || 0;
+    const water = resolveOceanWaterLevel(this.terrain);
     const baseTargetHeight = Math.max(50, water + 26);
 
     if (this.tourKind === "home-orbit") {
@@ -2686,6 +2686,51 @@ function syncMapViewButtons(source: HTMLElement, view: MapView): void {
   scope?.querySelectorAll<HTMLButtonElement>("[data-map-view]").forEach((button) => {
     button.setAttribute("aria-pressed", String(button.dataset.mapView === view));
   });
+}
+
+function resolveOceanWaterLevel(terrain: TerrainPayload): number {
+  const exportedLevel = Number(terrain.waterLevel);
+  const inferredLevel = inferOceanWaterLevel(terrain);
+
+  if (!Number.isFinite(exportedLevel)) {
+    return inferredLevel;
+  }
+
+  if (exportedLevel > inferredLevel + 8) {
+    return inferredLevel;
+  }
+
+  return exportedLevel;
+}
+
+function inferOceanWaterLevel(terrain: TerrainPayload): number {
+  const heights = terrain.heights.filter((height) => Number.isFinite(height)).sort((a, b) => a - b);
+
+  if (heights.length === 0) {
+    return 0;
+  }
+
+  const median = percentile(heights, 0.5);
+  const lowShelf = percentile(heights, 0.12);
+
+  if (Math.abs(median) <= 4) {
+    return median;
+  }
+
+  if (Math.abs(lowShelf) <= 4) {
+    return lowShelf;
+  }
+
+  return 0;
+}
+
+function percentile(sortedValues: number[], amount: number): number {
+  if (sortedValues.length === 0) {
+    return 0;
+  }
+
+  const index = MathUtils.clamp(Math.round((sortedValues.length - 1) * amount), 0, sortedValues.length - 1);
+  return sortedValues[index] || 0;
 }
 
 function pushColor(target: number[], color: string | undefined, height: number, terrain: TerrainPayload): void {

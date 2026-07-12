@@ -15,7 +15,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteMapBridge", "Raidlands", "1.0.7")]
+    [Info("WebsiteMapBridge", "Raidlands", "1.0.8")]
     [Description("Publishes the current RustMapApi map image and sampled terrain to the Raidlands website.")]
     public class WebsiteMapBridge : CovalencePlugin
     {
@@ -247,7 +247,7 @@ namespace Oxide.Plugins
 
             ReplyToCommand(
                 arg,
-                $"WebsiteMapBridge v1.0.7 status: server={ResolveServerId()}, api={apiState}, ready={readyState}, secret={secretState}, render={config.RenderName}, textureRender={config.TextureRenderName}, terrainEnabled={config.PublishTerrain}, terrainResolution={config.TerrainSampleResolution}, monumentsEnabled={config.IncludeMonuments}, skybox={config.PublishSkybox}/{config.SkyboxImagePath}, playerLocations={config.PublishPlayerLocations}/{config.PlayerLocationIntervalSeconds}s, heightMap={heightMapState}, lastWipe={lastPublishedWipeKey}."
+                $"WebsiteMapBridge v1.0.8 status: server={ResolveServerId()}, api={apiState}, ready={readyState}, secret={secretState}, render={config.RenderName}, textureRender={config.TextureRenderName}, terrainEnabled={config.PublishTerrain}, terrainResolution={config.TerrainSampleResolution}, monumentsEnabled={config.IncludeMonuments}, skybox={config.PublishSkybox}/{config.SkyboxImagePath}, playerLocations={config.PublishPlayerLocations}/{config.PlayerLocationIntervalSeconds}s, heightMap={heightMapState}, lastWipe={lastPublishedWipeKey}."
             );
         }
 
@@ -730,7 +730,7 @@ namespace Oxide.Plugins
             var colors = config.IncludeTerrainColors ? new List<string>(resolution * resolution) : null;
             var minHeight = float.MaxValue;
             var maxHeight = float.MinValue;
-            var waterLevel = 0f;
+            var waterLevel = EstimateOceanWaterLevel(worldSize, resolution);
 
             for (var row = 0; row < resolution; row++)
             {
@@ -745,7 +745,6 @@ namespace Oxide.Plugins
                     var height = TerrainMeta.HeightMap.GetHeight(position);
 
                     var sampleWaterLevel = TerrainMeta.WaterMap != null ? TerrainMeta.WaterMap.GetHeight(position) : 0f;
-                    waterLevel = Math.Max(waterLevel, sampleWaterLevel);
 
                     minHeight = Math.Min(minHeight, height);
                     maxHeight = Math.Max(maxHeight, height);
@@ -769,7 +768,7 @@ namespace Oxide.Plugins
             }
 
             var monuments = CreateMonumentPayloads();
-            summary = $"terrain {resolution}x{resolution}, height {minHeight:0.###}-{maxHeight:0.###}, water {waterLevel:0.###}, monuments {monuments.Count}";
+            summary = $"terrain {resolution}x{resolution}, height {minHeight:0.###}-{maxHeight:0.###}, ocean {waterLevel:0.###}, monuments {monuments.Count}";
 
             return new TerrainUploadPayload
             {
@@ -787,6 +786,46 @@ namespace Oxide.Plugins
                 colors = colors,
                 monuments = monuments
             };
+        }
+
+        private float EstimateOceanWaterLevel(float worldSize, int resolution)
+        {
+            if (TerrainMeta.WaterMap == null)
+            {
+                return 0f;
+            }
+
+            var half = worldSize * 0.5f;
+            var samples = new List<float>();
+            var edgeSamples = Mathf.Clamp(resolution, 17, 129);
+
+            for (var index = 0; index < edgeSamples; index++)
+            {
+                var t = edgeSamples <= 1 ? 0f : index / (float)(edgeSamples - 1);
+                var coord = -half + (t * worldSize);
+                AddWaterLevelSample(samples, new Vector3(coord, 0f, half));
+                AddWaterLevelSample(samples, new Vector3(coord, 0f, -half));
+                AddWaterLevelSample(samples, new Vector3(-half, 0f, coord));
+                AddWaterLevelSample(samples, new Vector3(half, 0f, coord));
+            }
+
+            if (samples.Count == 0)
+            {
+                return 0f;
+            }
+
+            samples.Sort();
+            return samples[samples.Count / 2];
+        }
+
+        private void AddWaterLevelSample(List<float> samples, Vector3 position)
+        {
+            var waterLevel = TerrainMeta.WaterMap.GetHeight(position);
+
+            if (!float.IsNaN(waterLevel) && !float.IsInfinity(waterLevel))
+            {
+                samples.Add(waterLevel);
+            }
         }
 
         private List<MonumentUploadPayload> CreateMonumentPayloads()
