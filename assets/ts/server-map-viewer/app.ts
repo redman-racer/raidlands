@@ -138,14 +138,6 @@ type HeatmapHistoryPayload = HeatmapPayload & {
   historyAvailable?: boolean;
 };
 
-type OverlayHistoryCache = {
-  key: string;
-  frames: HeatmapHistoryFrame[];
-  frameSeconds?: number;
-  windowEnd?: string;
-  updatedAt: number;
-};
-
 type PlayerLocation = {
   steamId64?: string;
   displayName?: string;
@@ -216,9 +208,6 @@ const isoViewDirections = [
 ];
 
 const roots = Array.from(document.querySelectorAll<HTMLElement>("[data-server-map-viewer]"));
-const overlayHistoryCacheMaxFrames = 288;
-const overlayHistoryCacheMaxBytes = 2_500_000;
-const overlayHistoryCacheMaxAgeMs = 2 * 60_000;
 
 for (const root of roots) {
   void initTerrainViewer(root).then((instance) => {
@@ -2339,7 +2328,6 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   let playerPollTimer = 0;
   let playbackHistoryPollTimer = 0;
   let playbackRequestId = 0;
-  let playbackHistoryCache: OverlayHistoryCache | null = null;
   const playbackSpeeds = [0.25, 0.5, 1, 2, 4, 8];
   const playerLocationRefreshMs = 15_000;
   const disposers: Array<() => void> = [];
@@ -2630,7 +2618,6 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       window.clearInterval(playerPollTimer);
       playerPollTimer = 0;
       stopPlaybackHistoryPolling();
-      playbackHistoryCache = null;
       viewer.setHeatmapVisible(false);
       viewer.setPlayerLocationsVisible(false);
       return;
@@ -2643,7 +2630,11 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       playbackRequestId = requestId;
       const requestRange = selectedRange();
       const requestFrameCount = heatmapFrameCountValue();
-      const requestCacheKey = overlayHistoryCacheKey(heatmapEnabled, playersEnabled, wantsAllPlayers(), selectedMetric(), requestRange);
+      const wasPlayingLoop = playbackAnimationFrame > 0 && wantsLoop();
+      const previousHistoryLength = heatmapHistory.length;
+      const previousFrameProgress = previousHistoryLength > 0
+        ? MathUtils.clamp(playbackVirtualFrame / Math.max(1, previousHistoryLength - 1), 0, 1)
+        : 1;
       const previousFrame = heatmapHistory[currentPlaybackFrameIndex()] || null;
       const previousFrameTime = previousFrame ? historyFrameTime(previousFrame) : null;
       const shouldFollowLatest = selectLatest || (preferredFrame === undefined && isFollowingLatestPlaybackFrame());
@@ -2652,17 +2643,18 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
           return;
         }
 
-        playbackHistoryCache = mergeOverlayHistoryCache(playbackHistoryCache, requestCacheKey, payload, requestRange);
-        heatmapHistory = playbackHistoryCache.frames;
-        setFrameIntervalLabel(playbackHistoryCache.frameSeconds);
+        heatmapHistory = trimHistoryFramesToRange(Array.isArray(payload.frames) ? payload.frames : [], requestRange, payload.windowEnd);
+        setFrameIntervalLabel(payload.frameSeconds);
         const latestFrame = preferredFrame !== undefined
           ? MathUtils.clamp(Math.round(preferredFrame), 0, Math.max(0, heatmapHistory.length - 1))
-          : shouldFollowLatest || previousFrameTime === null
+          : wasPlayingLoop
+            ? MathUtils.clamp(previousFrameProgress * Math.max(0, heatmapHistory.length - 1), 0, Math.max(0, heatmapHistory.length - 1))
+            : shouldFollowLatest || previousFrameTime === null
             ? latestVisibleHeatmapFrame()
             : nearestPlaybackFrameIndexForTime(previousFrameTime);
         if (heatmapFrame) {
           heatmapFrame.max = String(Math.max(0, heatmapHistory.length - 1));
-          heatmapFrame.step = "1";
+          heatmapFrame.step = wasPlayingLoop ? "any" : "1";
           heatmapFrame.value = String(latestFrame);
           heatmapFrame.disabled = heatmapHistory.length === 0;
         }
@@ -2945,6 +2937,7 @@ async function loadHeatmapHistory(root: HTMLElement, metric: string, range: stri
   url.searchParams.set("range", range);
   url.searchParams.set("playback", "1");
   url.searchParams.set("frames", String(Math.max(8, Math.min(72, Math.round(frames)))));
+  url.searchParams.set("refresh", String(Date.now()));
 
   try {
     const response = await fetch(url.toString(), {
@@ -2974,6 +2967,7 @@ async function loadPlayerLocationHistory(root: HTMLElement, range: string, frame
   url.searchParams.set("range", range);
   url.searchParams.set("playback", "1");
   url.searchParams.set("frames", String(Math.max(8, Math.min(72, Math.round(frames)))));
+  url.searchParams.set("refresh", String(Date.now()));
   if (allPlayers) {
     url.searchParams.set("all", "1");
   }
@@ -3023,102 +3017,6 @@ async function loadOverlayHistory(root: HTMLElement, includeHeatmap: boolean, in
       };
     }),
   };
-}
-
-function overlayHistoryCacheKey(includeHeatmap: boolean, includePlayers: boolean, allPlayers: boolean, metric: string, range: string): string {
-  return [
-    includeHeatmap ? metric : "no-heatmap",
-    includePlayers ? "players" : "no-players",
-    allPlayers ? "all" : "scoped",
-    range,
-  ].join("|");
-}
-
-function mergeOverlayHistoryCache(existing: OverlayHistoryCache | null, key: string, payload: HeatmapHistoryPayload, range: string): OverlayHistoryCache {
-  const now = Date.now();
-  const canReuseExisting = existing !== null && existing.key === key && now - existing.updatedAt <= overlayHistoryCacheMaxAgeMs;
-  const incomingFrames = Array.isArray(payload.frames) ? payload.frames : [];
-  const byTime = new Map<string, HeatmapHistoryFrame>();
-
-  if (canReuseExisting) {
-    for (const frame of existing.frames) {
-      byTime.set(historyFrameCacheKey(frame, byTime.size), frame);
-    }
-  }
-
-  for (const frame of incomingFrames) {
-    const frameKey = historyFrameCacheKey(frame, byTime.size);
-    const previousFrame = byTime.get(frameKey);
-    byTime.set(frameKey, previousFrame ? mergeHistoryFrame(previousFrame, frame) : frame);
-  }
-
-  const windowEnd = payload.windowEnd || (canReuseExisting ? existing?.windowEnd : undefined);
-  const frames = trimOverlayHistoryCacheBudget(
-    sortHistoryFrames(trimHistoryFramesToRange(Array.from(byTime.values()), range, windowEnd))
-  );
-
-  return {
-    key,
-    frames,
-    frameSeconds: payload.frameSeconds || (canReuseExisting ? existing?.frameSeconds : undefined),
-    windowEnd,
-    updatedAt: incomingFrames.length > 0 ? now : (canReuseExisting ? existing.updatedAt : now),
-  };
-}
-
-function historyFrameCacheKey(frame: HeatmapHistoryFrame, fallbackIndex: number): string {
-  const frameTime = historyFrameTime(frame);
-  if (frameTime !== null) {
-    return String(Math.round(frameTime / 1000));
-  }
-
-  return `${frame.windowEnd || frame.windowStart || frame.label || frame.index || "frame"}:${fallbackIndex}`;
-}
-
-function mergeHistoryFrame(existing: HeatmapHistoryFrame, incoming: HeatmapHistoryFrame): HeatmapHistoryFrame {
-  return {
-    ...existing,
-    ...incoming,
-    buckets: Array.isArray(incoming.buckets) ? incoming.buckets : existing.buckets,
-    players: Array.isArray(incoming.players) ? incoming.players : existing.players,
-  };
-}
-
-function sortHistoryFrames(frames: HeatmapHistoryFrame[]): HeatmapHistoryFrame[] {
-  return frames.slice().sort((left, right) => {
-    const leftTime = historyFrameTime(left);
-    const rightTime = historyFrameTime(right);
-    if (leftTime === null && rightTime === null) {
-      return Number(left.index ?? 0) - Number(right.index ?? 0);
-    }
-    if (leftTime === null) {
-      return 1;
-    }
-    if (rightTime === null) {
-      return -1;
-    }
-    return leftTime - rightTime;
-  });
-}
-
-function trimOverlayHistoryCacheBudget(frames: HeatmapHistoryFrame[]): HeatmapHistoryFrame[] {
-  const cappedFrames = frames.length > overlayHistoryCacheMaxFrames
-    ? frames.slice(frames.length - overlayHistoryCacheMaxFrames)
-    : frames.slice();
-  let estimatedBytes = cappedFrames.reduce((total, frame) => total + estimateHistoryFrameBytes(frame), 0);
-
-  while (cappedFrames.length > 8 && estimatedBytes > overlayHistoryCacheMaxBytes) {
-    const removed = cappedFrames.shift();
-    estimatedBytes -= removed ? estimateHistoryFrameBytes(removed) : 0;
-  }
-
-  return cappedFrames;
-}
-
-function estimateHistoryFrameBytes(frame: HeatmapHistoryFrame): number {
-  return 240
-    + (Array.isArray(frame.buckets) ? frame.buckets.length * 96 : 0)
-    + (Array.isArray(frame.players) ? frame.players.length * 180 : 0);
 }
 
 function playerHistoryFrameFor(frame: HeatmapHistoryFrame, playerFrames: HeatmapHistoryFrame[], fallbackIndex: number, frameSeconds: number): HeatmapHistoryFrame | null {
