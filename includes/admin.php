@@ -85,8 +85,8 @@ function raidlands_admin_handle_request(): void
             if ($section === 'store') {
                 $store_rows = $_POST['store_products'] ?? [];
 
-                raidlands_store_admin_save_product_rows($store_rows);
-                $stripe_sync = raidlands_store_admin_sync_stripe_catalog();
+                $changed_product_ids = raidlands_store_admin_save_product_rows($store_rows);
+                $stripe_sync = raidlands_store_admin_sync_stripe_catalog($changed_product_ids);
                 $stripe_summary = raidlands_store_admin_stripe_sync_summary_text($stripe_sync);
                 $stripe_errors = array_slice((array) ($stripe_sync['errors'] ?? []), 0, 3);
 

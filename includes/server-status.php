@@ -1204,6 +1204,68 @@ function raidlands_server_heatmap_viewer_delay(): array
     return $best;
 }
 
+function raidlands_server_history_latest_sample_time(string $server_id, string $wipe_key): ?int
+{
+    $timestamps = [];
+
+    try {
+        $heatmap_row = raidlands_db_fetch_one(
+            'SELECT MAX(window_end) AS latest_at
+             FROM server_heatmap_buckets
+             WHERE server_id = :server_id AND wipe_key = :wipe_key',
+            ['server_id' => $server_id, 'wipe_key' => $wipe_key]
+        );
+        $heatmap_time = strtotime((string) ($heatmap_row['latest_at'] ?? ''));
+        if ($heatmap_time !== false) {
+            $timestamps[] = $heatmap_time;
+        }
+    } catch (Throwable $error) {
+        // Optional telemetry tables can be absent during initial setup.
+    }
+
+    foreach (['server_player_locations', 'server_player_location_history'] as $table) {
+        try {
+            $location_row = raidlands_db_fetch_one(
+                'SELECT MAX(sampled_at) AS latest_at
+                 FROM ' . $table . '
+                 WHERE server_id = :server_id',
+                ['server_id' => $server_id]
+            );
+            $location_time = strtotime((string) ($location_row['latest_at'] ?? ''));
+            if ($location_time !== false) {
+                $timestamps[] = $location_time;
+            }
+        } catch (Throwable $error) {
+            // Optional telemetry tables can be absent during initial setup.
+        }
+    }
+
+    return $timestamps === [] ? null : max($timestamps);
+}
+
+function raidlands_server_history_window_end_time(string $server_id, string $wipe_key, int $delay_seconds, bool $use_latest_sample): int
+{
+    $delayed_now = time() - max(0, $delay_seconds);
+
+    if (!$use_latest_sample) {
+        return $delayed_now;
+    }
+
+    $latest_sample = raidlands_server_history_latest_sample_time($server_id, $wipe_key);
+
+    return $latest_sample === null ? $delayed_now : $latest_sample;
+}
+
+function raidlands_server_history_frame_shape(int $duration, int $requested_frames): array
+{
+    $requested_frames = max(2, min(96, $requested_frames));
+    $max_minute_frames = max(2, (int) floor($duration / 60));
+    $frames = min($requested_frames, $max_minute_frames);
+    $frame_seconds = max(60, (int) ceil($duration / $frames));
+
+    return [$frames, $frame_seconds];
+}
+
 function raidlands_server_heatmap_timestamp($value, string $fallback = ''): string
 {
     $timestamp = strtotime((string) $value);
@@ -1329,7 +1391,13 @@ function raidlands_server_heatmap_public(string $metric, string $range): array
     $world_size = (int) ($status['world_size'] ?? 0);
     $max_value = 0.0;
     $buckets = [];
-    $window_end_time = time() - (int) $delay['delay_seconds'];
+    $location_context = raidlands_server_location_viewer_context($server_id);
+    $window_end_time = raidlands_server_history_window_end_time(
+        $server_id,
+        $wipe_key,
+        (int) $delay['delay_seconds'],
+        !empty($location_context['authenticated']) || !empty($location_context['canViewAll'])
+    );
     $window_start_time = $range_info['range'] === 'wipe'
         ? 0
         : $window_end_time - ((int) $range_info['minutes'] * 60);
@@ -1426,13 +1494,18 @@ function raidlands_server_heatmap_history_public(string $metric, string $range, 
     $server_id = (string) ($status['server_id'] ?? raidlands_server_status_server_id());
     $wipe_key = (string) ($status['wipe_key'] ?? ($server_id . '-current'));
     $world_size = (int) ($status['world_size'] ?? 0);
-    $frames = max(2, min(96, $frames));
-    $window_end_time = time() - (int) $delay['delay_seconds'];
+    $location_context = raidlands_server_location_viewer_context($server_id);
+    $window_end_time = raidlands_server_history_window_end_time(
+        $server_id,
+        $wipe_key,
+        (int) $delay['delay_seconds'],
+        !empty($location_context['authenticated']) || !empty($location_context['canViewAll'])
+    );
     $window_start_time = $range_info['range'] === 'wipe'
         ? max(0, $window_end_time - (60 * 60 * 24 * 31))
         : $window_end_time - ((int) $range_info['minutes'] * 60);
     $duration = max(1, $window_end_time - $window_start_time);
-    $frame_seconds = max(60, (int) ceil($duration / $frames));
+    [$frames, $frame_seconds] = raidlands_server_history_frame_shape($duration, $frames);
     $start_aligned = $window_end_time - ($frame_seconds * $frames);
     $max_value = 0.0;
     $frames_payload = [];
@@ -1531,7 +1604,6 @@ function raidlands_server_heatmap_history_public(string $metric, string $range, 
     }
     unset($frame_payload);
 
-    $location_context = raidlands_server_location_viewer_context($server_id);
     if (!empty($location_context['authenticated'])) {
         foreach ($frames_payload as &$frame_payload) {
             $frame_time = strtotime((string) ($frame_payload['windowEnd'] ?? ''));
@@ -1738,13 +1810,18 @@ function raidlands_server_player_locations_history_public(string $range, int $fr
     $server_id = (string) ($status['server_id'] ?? raidlands_server_status_server_id());
     $context = raidlands_server_location_viewer_context($server_id);
     $history_ready = raidlands_server_player_location_history_is_ready();
-    $frames = max(2, min(96, $frames));
-    $window_end_time = time() - (int) $delay['delay_seconds'];
+    $wipe_key = (string) ($status['wipe_key'] ?? ($server_id . '-current'));
+    $window_end_time = raidlands_server_history_window_end_time(
+        $server_id,
+        $wipe_key,
+        (int) $delay['delay_seconds'],
+        !empty($context['authenticated']) || !empty($context['canViewAll'])
+    );
     $window_start_time = $range_info['range'] === 'wipe'
         ? max(0, $window_end_time - (60 * 60 * 24 * 31))
         : $window_end_time - ((int) $range_info['minutes'] * 60);
     $duration = max(1, $window_end_time - $window_start_time);
-    $frame_seconds = max(60, (int) ceil($duration / $frames));
+    [$frames, $frame_seconds] = raidlands_server_history_frame_shape($duration, $frames);
     $start_aligned = $window_end_time - ($frame_seconds * $frames);
     $frames_payload = [];
 

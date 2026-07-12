@@ -3223,9 +3223,24 @@ function raidlands_store_admin_update_stripe_product_default_price(PDO $pdo, arr
     }
 }
 
-function raidlands_store_admin_stripe_product_rows(PDO $pdo): array
+function raidlands_store_admin_stripe_product_rows(PDO $pdo, array $product_ids = []): array
 {
-    return $pdo->query('SELECT * FROM store_products ORDER BY sort_order ASC, id ASC')->fetchAll();
+    $product_ids = array_values(array_unique(array_filter(array_map('intval', $product_ids))));
+
+    if ($product_ids === []) {
+        return $pdo->query('SELECT * FROM store_products ORDER BY sort_order ASC, id ASC')->fetchAll();
+    }
+
+    [$placeholders, $params] = raidlands_store_sql_in_params($product_ids, 'product_id');
+    $statement = $pdo->prepare(
+        'SELECT *
+         FROM store_products
+         WHERE id IN (' . implode(', ', $placeholders) . ')
+         ORDER BY sort_order ASC, id ASC'
+    );
+    $statement->execute($params);
+
+    return $statement->fetchAll();
 }
 
 function raidlands_store_admin_stripe_prices_by_product(PDO $pdo, array $product_ids): array
@@ -3254,10 +3269,16 @@ function raidlands_store_admin_stripe_prices_by_product(PDO $pdo, array $product
     return $by_product;
 }
 
-function raidlands_store_admin_sync_stripe_catalog(): array
+function raidlands_store_admin_sync_stripe_catalog(array $product_ids = []): array
 {
     $result = raidlands_store_admin_stripe_sync_empty_result();
     $status = raidlands_store_stripe_setup_status();
+    $product_ids = array_values(array_unique(array_filter(array_map('intval', $product_ids))));
+
+    if (func_num_args() > 0 && $product_ids === []) {
+        $result['message'] = 'No local Store product changes needed Stripe sync.';
+        return $result;
+    }
 
     if (!raidlands_db_is_configured()) {
         $result['ok'] = false;
@@ -3291,7 +3312,7 @@ function raidlands_store_admin_sync_stripe_catalog(): array
     \Stripe\Stripe::setApiKey(raidlands_store_stripe_secret_key());
 
     $pdo = raidlands_db_required();
-    $products = raidlands_store_admin_stripe_product_rows($pdo);
+    $products = raidlands_store_admin_stripe_product_rows($pdo, $product_ids);
     $prices_by_product = raidlands_store_admin_stripe_prices_by_product(
         $pdo,
         array_map(static fn (array $product): int => (int) ($product['id'] ?? 0), $products)
@@ -3398,9 +3419,12 @@ function raidlands_store_admin_stripe_sync_summary_text(array $result): string
         $parts[] = $errors . ' error' . ($errors === 1 ? '' : 's');
     }
 
-    return $parts === []
-        ? 'Stripe catalog sync found no cash offers to update.'
-        : 'Stripe catalog sync: ' . implode(', ', $parts) . '.';
+    if ($parts === []) {
+        $message = trim((string) ($result['message'] ?? ''));
+        return $message !== '' ? $message : 'Stripe catalog sync found no cash offers to update.';
+    }
+
+    return 'Stripe catalog sync: ' . implode(', ', $parts) . '.';
 }
 
 function raidlands_store_checkout_for_price(int $price_id): string
@@ -4912,14 +4936,26 @@ function raidlands_store_admin_sync_product_groups(
     string $name,
     int $tier_priority,
     int $sort_order
-): void {
+): bool {
     $groups = raidlands_store_clean_groups($groups);
+    $changed = false;
 
     try {
-        $pdo->prepare(
+        $existing_statement = $pdo->prepare(
+            'SELECT oxide_group
+             FROM product_fulfillment_actions
+             WHERE product_id = :product_id AND action_type = "grant_group"
+             ORDER BY sort_order ASC, id ASC'
+        );
+        $existing_statement->execute(['product_id' => $product_id]);
+        $existing_groups = array_map('strval', $existing_statement->fetchAll(PDO::FETCH_COLUMN));
+        $changed = $existing_groups !== $groups;
+
+        $delete = $pdo->prepare(
             'DELETE FROM product_fulfillment_actions
              WHERE product_id = :product_id AND action_type = "grant_group"'
-        )->execute(['product_id' => $product_id]);
+        );
+        $delete->execute(['product_id' => $product_id]);
 
         if ($groups !== []) {
             $statement = $pdo->prepare(
@@ -4946,7 +4982,7 @@ function raidlands_store_admin_sync_product_groups(
         || !function_exists('raidlands_permissions_upsert_group')
         || !raidlands_permissions_is_ready()
     ) {
-        return;
+        return $changed;
     }
 
     foreach ($groups as $index => $group) {
@@ -4991,7 +5027,10 @@ function raidlands_store_admin_sync_product_groups(
             'sort_order' => $sort_order + ($index * 10),
             'notes' => trim('Store product: ' . $name),
         ], false);
+        $changed = true;
     }
+
+    return $changed;
 }
 
 function raidlands_store_admin_offer_placeholder(string $slug, string $kind, string $interval): string
@@ -5066,14 +5105,45 @@ function raidlands_store_admin_record_saved_price_sync_state(
     }
 }
 
-function raidlands_store_admin_save_offer_price(PDO $pdo, int $product_id, string $slug, string $kind, string $interval, array $row): void
+function raidlands_store_admin_price_values_changed(?array $existing, array $price): bool
+{
+    if ($existing === null) {
+        return true;
+    }
+
+    $fields = [
+        'product_id',
+        'payment_method',
+        'stripe_price_id',
+        'label',
+        'amount_cents',
+        'currency',
+        'rp_cost',
+        'billing_interval',
+        'access_interval',
+        'access_duration_seconds',
+        'allow_auto_renew',
+        'is_active',
+        'is_default',
+    ];
+
+    foreach ($fields as $field) {
+        if ((string) ($existing[$field] ?? '') !== (string) ($price[$field] ?? '')) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function raidlands_store_admin_save_offer_price(PDO $pdo, int $product_id, string $slug, string $kind, string $interval, array $row): bool
 {
     $allowed = $kind === 'cash_sub'
         ? raidlands_store_admin_subscription_intervals()
         : raidlands_store_offer_intervals(true);
 
     if (!in_array($interval, $allowed, true)) {
-        return;
+        return false;
     }
 
     $price_id = (int) ($row['id'] ?? 0);
@@ -5089,9 +5159,12 @@ function raidlands_store_admin_save_offer_price(PDO $pdo, int $product_id, strin
     $previous_stripe_price_id = '';
 
     if ($price_id > 0 && raidlands_store_stripe_catalog_sync_schema_ready()) {
-        $previous_statement = $pdo->prepare('SELECT stripe_price_id FROM store_prices WHERE id = :id');
+        $previous_statement = $pdo->prepare('SELECT * FROM store_prices WHERE id = :id');
         $previous_statement->execute(['id' => $price_id]);
-        $previous_stripe_price_id = (string) ($previous_statement->fetchColumn() ?: '');
+        $previous_price = $previous_statement->fetch() ?: null;
+        $previous_stripe_price_id = (string) ($previous_price['stripe_price_id'] ?? '');
+    } else {
+        $previous_price = null;
     }
 
     $stripe_price_id = $is_rp
@@ -5119,6 +5192,7 @@ function raidlands_store_admin_save_offer_price(PDO $pdo, int $product_id, strin
     ];
 
     if ($price_id > 0) {
+        $changed = raidlands_store_admin_price_values_changed($previous_price, array_merge($price, ['id' => $price_id]));
         $price['id'] = $price_id;
         $statement = $pdo->prepare(
             'UPDATE store_prices
@@ -5139,17 +5213,26 @@ function raidlands_store_admin_save_offer_price(PDO $pdo, int $product_id, strin
         );
         unset($price['product_id']);
         $statement->execute($price);
-        raidlands_store_admin_record_saved_price_sync_state(
-            $pdo,
-            $price_id,
-            (string) $price['payment_method'],
-            (string) $price['stripe_price_id'],
-            $previous_stripe_price_id,
-            (int) $price['is_active'],
-            (int) $price['amount_cents']
-        );
-        return;
+
+        if ($changed) {
+            raidlands_store_admin_record_saved_price_sync_state(
+                $pdo,
+                $price_id,
+                (string) $price['payment_method'],
+                (string) $price['stripe_price_id'],
+                $previous_stripe_price_id,
+                (int) $price['is_active'],
+                (int) $price['amount_cents']
+            );
+        }
+
+        return $changed;
     }
+
+    $lookup = $pdo->prepare('SELECT * FROM store_prices WHERE stripe_price_id = :stripe_price_id');
+    $lookup->execute(['stripe_price_id' => $stripe_price_id]);
+    $previous_price = $lookup->fetch() ?: null;
+    $changed = raidlands_store_admin_price_values_changed($previous_price, $price);
 
     $statement = $pdo->prepare(
         'INSERT INTO store_prices
@@ -5176,20 +5259,28 @@ function raidlands_store_admin_save_offer_price(PDO $pdo, int $product_id, strin
     $saved_price_id = (int) ($pdo->lastInsertId() ?: 0);
 
     if ($saved_price_id <= 0) {
-        $lookup = $pdo->prepare('SELECT id FROM store_prices WHERE stripe_price_id = :stripe_price_id');
-        $lookup->execute(['stripe_price_id' => $stripe_price_id]);
-        $saved_price_id = (int) ($lookup->fetchColumn() ?: 0);
+        $saved_price_id = (int) ($previous_price['id'] ?? 0);
+
+        if ($saved_price_id <= 0) {
+            $lookup = $pdo->prepare('SELECT id FROM store_prices WHERE stripe_price_id = :stripe_price_id');
+            $lookup->execute(['stripe_price_id' => $stripe_price_id]);
+            $saved_price_id = (int) ($lookup->fetchColumn() ?: 0);
+        }
     }
 
-    raidlands_store_admin_record_saved_price_sync_state(
-        $pdo,
-        $saved_price_id,
-        (string) $price['payment_method'],
-        (string) $price['stripe_price_id'],
-        $previous_stripe_price_id,
-        (int) $price['is_active'],
-        (int) $price['amount_cents']
-    );
+    if ($changed) {
+        raidlands_store_admin_record_saved_price_sync_state(
+            $pdo,
+            $saved_price_id,
+            (string) $price['payment_method'],
+            (string) $price['stripe_price_id'],
+            $previous_stripe_price_id,
+            (int) $price['is_active'],
+            (int) $price['amount_cents']
+        );
+    }
+
+    return $changed;
 }
 
 function raidlands_store_admin_save_rp_price(PDO $pdo, int $product_id, string $slug, string $product_type, string $interval, array $row): void
@@ -5197,10 +5288,58 @@ function raidlands_store_admin_save_rp_price(PDO $pdo, int $product_id, string $
     raidlands_store_admin_save_offer_price($pdo, $product_id, $slug, 'rp', $interval, $row);
 }
 
-function raidlands_store_admin_save_product_rows($rows): void
+function raidlands_store_admin_product_values_changed(?array $existing, array $params): bool
+{
+    if ($existing === null) {
+        return true;
+    }
+
+    $fields = [
+        'slug',
+        'name',
+        'product_type',
+        'short_description',
+        'description',
+        'oxide_group',
+        'tier_priority',
+        'is_stackable',
+        'is_active',
+        'is_featured',
+        'sort_order',
+    ];
+
+    foreach ($fields as $field) {
+        if ((string) ($existing[$field] ?? '') !== (string) ($params[$field] ?? '')) {
+            return true;
+        }
+    }
+
+    return false;
+}
+
+function raidlands_store_admin_deactivate_product_prices(PDO $pdo, int $product_id): bool
+{
+    if ($product_id <= 0) {
+        return false;
+    }
+
+    $statement = $pdo->prepare(
+        'UPDATE store_prices
+         SET is_active = 0,
+             updated_at = NOW()
+         WHERE product_id = :product_id
+           AND is_active = 1'
+    );
+    $statement->execute(['product_id' => $product_id]);
+
+    return $statement->rowCount() > 0;
+}
+
+function raidlands_store_admin_save_product_rows($rows): array
 {
     $pdo = raidlands_db_required();
     $publish_permissions = false;
+    $changed_product_ids = [];
     $pdo->beginTransaction();
 
     try {
@@ -5212,9 +5351,18 @@ function raidlands_store_admin_save_product_rows($rows): void
             $type = raidlands_store_normalize_product_type((string) ($row['product_type'] ?? 'perk'));
 
             if (!empty($row['delete']) && $id > 0) {
+                $previous_statement = $pdo->prepare('SELECT is_active FROM store_products WHERE id = :id');
+                $previous_statement->execute(['id' => $id]);
+                $was_active = (int) ($previous_statement->fetchColumn() ?: 0) === 1;
                 $statement = $pdo->prepare('UPDATE store_products SET is_active = 0, updated_at = NOW() WHERE id = :id');
                 $statement->execute(['id' => $id]);
-                $publish_permissions = true;
+                $prices_changed = raidlands_store_admin_deactivate_product_prices($pdo, $id);
+                if ($was_active || $prices_changed) {
+                    $changed_product_ids[$id] = $id;
+                }
+                if ($was_active) {
+                    $publish_permissions = true;
+                }
                 continue;
             }
 
@@ -5259,6 +5407,9 @@ function raidlands_store_admin_save_product_rows($rows): void
             ];
 
             if ($id > 0) {
+                $previous_statement = $pdo->prepare('SELECT * FROM store_products WHERE id = :id');
+                $previous_statement->execute(['id' => $id]);
+                $product_changed = raidlands_store_admin_product_values_changed($previous_statement->fetch() ?: null, $params);
                 $params['id'] = $id;
                 $statement = $pdo->prepare(
                     "UPDATE store_products
@@ -5279,6 +5430,9 @@ function raidlands_store_admin_save_product_rows($rows): void
                 $statement->execute($params);
                 $product_id = $id;
             } else {
+                $previous_statement = $pdo->prepare('SELECT * FROM store_products WHERE slug = :slug');
+                $previous_statement->execute(['slug' => $slug]);
+                $product_changed = raidlands_store_admin_product_values_changed($previous_statement->fetch() ?: null, $params);
                 $statement = $pdo->prepare(
                     "INSERT INTO store_products
                         (slug, name, product_type, short_description, description, oxide_group, tier_priority, is_stackable, is_active, is_featured, sort_order)
@@ -5311,7 +5465,7 @@ function raidlands_store_admin_save_product_rows($rows): void
                 continue;
             }
 
-            raidlands_store_admin_sync_product_groups(
+            $groups_changed = raidlands_store_admin_sync_product_groups(
                 $pdo,
                 $product_id,
                 $fulfillment_groups,
@@ -5321,19 +5475,40 @@ function raidlands_store_admin_save_product_rows($rows): void
                 (int) $params['sort_order']
             );
             raidlands_store_admin_touch_product_entitlements($pdo, $product_id, (string) $params['oxide_group']);
-            $publish_permissions = true;
+
+            if ($product_changed) {
+                $changed_product_ids[$product_id] = $product_id;
+            }
+
+            if ($product_changed || $groups_changed) {
+                $publish_permissions = true;
+            }
+
+            if ((int) $params['is_active'] === 0) {
+                if (raidlands_store_admin_deactivate_product_prices($pdo, $product_id)) {
+                    $changed_product_ids[$product_id] = $product_id;
+                }
+
+                continue;
+            }
 
             foreach (raidlands_store_offer_intervals(true) as $interval) {
                 $rp_rows = (array) ($row['rp_prices'] ?? []);
-                raidlands_store_admin_save_offer_price($pdo, $product_id, $slug, 'rp', $interval, (array) ($rp_rows[$interval] ?? []));
+                if (raidlands_store_admin_save_offer_price($pdo, $product_id, $slug, 'rp', $interval, (array) ($rp_rows[$interval] ?? []))) {
+                    $publish_permissions = true;
+                }
 
                 $cash_pass_rows = (array) ($row['cash_pass_prices'] ?? []);
-                raidlands_store_admin_save_offer_price($pdo, $product_id, $slug, 'cash_pass', $interval, (array) ($cash_pass_rows[$interval] ?? []));
+                if (raidlands_store_admin_save_offer_price($pdo, $product_id, $slug, 'cash_pass', $interval, (array) ($cash_pass_rows[$interval] ?? []))) {
+                    $changed_product_ids[$product_id] = $product_id;
+                }
             }
 
             foreach (raidlands_store_admin_subscription_intervals() as $interval) {
                 $cash_subscription_rows = (array) ($row['cash_subscription_prices'] ?? []);
-                raidlands_store_admin_save_offer_price($pdo, $product_id, $slug, 'cash_sub', $interval, (array) ($cash_subscription_rows[$interval] ?? []));
+                if (raidlands_store_admin_save_offer_price($pdo, $product_id, $slug, 'cash_sub', $interval, (array) ($cash_subscription_rows[$interval] ?? []))) {
+                    $changed_product_ids[$product_id] = $product_id;
+                }
             }
 
         }
@@ -5347,6 +5522,8 @@ function raidlands_store_admin_save_product_rows($rows): void
     if ($publish_permissions && function_exists('raidlands_permissions_publish_from_related_change')) {
         raidlands_permissions_publish_from_related_change('Published permission sync from store product group changes.');
     }
+
+    return array_values($changed_product_ids);
 }
 
 function raidlands_store_admin_manual_grant(string $steam_id64, int $product_id, ?string $ends_at = null): void
