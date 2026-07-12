@@ -2808,6 +2808,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   const heatmapFrame = panel?.querySelector<HTMLInputElement>("[data-map-viewer-heatmap-frame]");
   const heatmapFrameLabel = panel?.querySelector<HTMLOutputElement>("[data-map-viewer-heatmap-frame-label]");
   const heatmapFrameIntervalLabel = panel?.querySelector<HTMLOutputElement>("[data-map-viewer-heatmap-frame-interval-label]");
+  const forceAirstrike = panel?.querySelector<HTMLButtonElement>("[data-map-viewer-force-airstrike]");
   const players = panel?.querySelector<HTMLInputElement>("[data-map-viewer-players]");
   const allPlayers = panel?.querySelector<HTMLInputElement>("[data-map-viewer-all-players]");
   const myLocation = panel?.querySelector<HTMLButtonElement>("[data-map-viewer-my-location]");
@@ -3392,6 +3393,41 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     startHeatmapPlayback();
   });
 
+  bind(forceAirstrike, "click", () => {
+    if (!forceAirstrike) {
+      return;
+    }
+
+    const originalLabel = forceAirstrike.textContent || "Replay latest strike";
+    forceAirstrike.disabled = true;
+    forceAirstrike.textContent = "Loading strike";
+    void loadForcedReplayEvents(root, selectedRange(), heatmapFrameCountValue()).then((events) => {
+      if (events.length === 0) {
+        forceAirstrike.textContent = "No recent strike";
+        window.setTimeout(() => {
+          forceAirstrike.textContent = originalLabel;
+          forceAirstrike.disabled = false;
+        }, 1800);
+        return;
+      }
+
+      viewer.clearReplayEvents();
+      viewer.showReplayEvents(events, 1);
+      forceAirstrike.textContent = `Playing ${events.length}`;
+      window.setTimeout(() => {
+        forceAirstrike.textContent = originalLabel;
+        forceAirstrike.disabled = false;
+      }, 1800);
+    }).catch((error) => {
+      console.info("Raidlands forced airstrike replay could not be loaded.", error);
+      forceAirstrike.textContent = "Replay failed";
+      window.setTimeout(() => {
+        forceAirstrike.textContent = originalLabel;
+        forceAirstrike.disabled = false;
+      }, 1800);
+    });
+  });
+
   const reloadPlayers = () => {
     if (!wantsPlayers()) {
       stopLiveOverlayPolling();
@@ -3669,18 +3705,39 @@ async function loadReplayEventHistory(root: HTMLElement, range: string, frames =
 
 async function loadLiveReplayEvents(root: HTMLElement): Promise<MapReplayEvent[]> {
   const payload = await loadReplayEventHistory(root, "15m", 8);
+  return latestReplayEventsFromPayload(payload, 15 * 60 * 1000);
+}
+
+async function loadForcedReplayEvents(root: HTMLElement, range: string, frames: number): Promise<MapReplayEvent[]> {
+  const requestRange = range || "15m";
+  const requestFrames = Math.max(8, Math.min(72, Math.round(frames) || 24));
+  const payload = await loadReplayEventHistory(root, requestRange, requestFrames);
+  return latestReplayEventsFromPayload(payload, 0);
+}
+
+function latestReplayEventsFromPayload(payload: MapReplayHistoryPayload, maxAgeMs: number): MapReplayEvent[] {
   const frames = Array.isArray(payload.frames) ? payload.frames : [];
-  const now = Date.now();
-  const maxAgeMs = 15 * 60 * 1000;
+  const payloadWindowEnd = Date.parse(String((payload as MapReplayHistoryPayload & { windowEnd?: string }).windowEnd || ""));
+  const newestFrameEnd = [...frames].reverse()
+    .map((frame) => Date.parse(String(frame.windowEnd || "")))
+    .find((value) => Number.isFinite(value));
+  const frameWindowEnd = newestFrameEnd ?? Number.NaN;
+  const referenceTime: number = Number.isFinite(payloadWindowEnd)
+    ? payloadWindowEnd
+    : Number.isFinite(frameWindowEnd)
+      ? frameWindowEnd
+      : Date.now();
 
   for (let index = frames.length - 1; index >= 0; index -= 1) {
     const events = Array.isArray(frames[index]?.events)
       ? frames[index]!.events!.map(normalizeReplayEvent).filter((event): event is MapReplayEvent => event !== null)
       : [];
-    const freshEvents = events.filter((event) => {
-      const occurred = Date.parse(String(event.occurredAt || ""));
-      return Number.isFinite(occurred) ? now - occurred <= maxAgeMs : true;
-    });
+    const freshEvents = maxAgeMs > 0
+      ? events.filter((event) => {
+        const occurred = Date.parse(String(event.occurredAt || ""));
+        return Number.isFinite(occurred) ? referenceTime - occurred <= maxAgeMs : true;
+      })
+      : events;
 
     if (freshEvents.length > 0) {
       return freshEvents.slice(0, 8);

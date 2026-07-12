@@ -207,6 +207,9 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
             <span>Timeline <output data-map-viewer-heatmap-frame-label>Latest</output></span>
             <input type="range" min="0" max="15" value="15" data-map-viewer-heatmap-frame>
           </label>
+          <?php if ($server_can_view_all_player_locations): ?>
+          <button type="button" data-map-viewer-force-airstrike>Replay latest strike</button>
+          <?php endif; ?>
         </div>
         <div class="server-terrain-control-group server-terrain-control-group-secondary" aria-label="Location and filters">
           <div class="server-terrain-interval" aria-live="polite">
