@@ -711,6 +711,14 @@ class TerrainViewer {
   }
 
   public frameSelfLocation(): boolean {
+    return this.focusSelfLocation(false);
+  }
+
+  public followSelfLocation(): boolean {
+    return this.focusSelfLocation(true);
+  }
+
+  private focusSelfLocation(immediate: boolean): boolean {
     const player = this.selfLocation;
 
     if (!player) {
@@ -730,12 +738,21 @@ class TerrainViewer {
     const ground = Math.max(playerPosition.y, sampleTerrainHeight(this.terrain, playerPosition.x, playerPosition.z));
     const target = new Vector3(playerPosition.x, ground + 42, playerPosition.z);
     const cameraOffset = MathUtils.clamp(worldSize * 0.085, 280, 560);
-
-    this.focusCamera({
+    const pose = {
       position: new Vector3(playerPosition.x - cameraOffset * 0.62, ground + cameraOffset * 0.72, playerPosition.z + cameraOffset * 0.78),
       target,
       up: new Vector3(0, 1, 0),
-    });
+    };
+
+    if (immediate) {
+      this.transitionFrom = null;
+      this.transitionTo = null;
+      this.activePose = null;
+      this.focusUntil = performance.now() + 15000;
+      this.applyCameraPose(pose);
+    } else {
+      this.focusCamera(pose);
+    }
 
     return true;
   }
@@ -2331,6 +2348,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   const playbackSpeeds = [0.25, 0.5, 1, 2, 4, 8];
   const playerLocationRefreshMs = 15_000;
   const disposers: Array<() => void> = [];
+  let followMyLocation = false;
   const dataFlag = (name: string, fallback = false): boolean => {
     const value = root.dataset[name];
     if (value === undefined) {
@@ -2358,6 +2376,32 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
 
   disposers.push(bindMapViewButtons(buttons, viewer).dispose);
 
+  const setFollowMyLocation = (enabled: boolean) => {
+    followMyLocation = enabled && viewer.hasSelfLocation();
+    if (myLocation) {
+      myLocation.setAttribute("aria-pressed", String(followMyLocation));
+    }
+    if (tour) {
+      viewer.setTourEnabled(tour.checked && !followMyLocation);
+    }
+  };
+
+  const syncMyLocationControl = () => {
+    if (!myLocation) {
+      return;
+    }
+
+    const available = viewer.hasSelfLocation();
+    myLocation.disabled = !available;
+    myLocation.setAttribute("aria-pressed", String(followMyLocation && available));
+    myLocation.title = available
+      ? "Toggle camera follow for your server location during playback"
+      : "Log in and join the server to show your location";
+    if (!available && followMyLocation) {
+      setFollowMyLocation(false);
+    }
+  };
+
   bind(grid, "change", () => {
     if (grid) {
       viewer.setGridVisible(grid.checked);
@@ -2366,7 +2410,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
 
   bind(tour, "change", () => {
     if (tour) {
-      viewer.setTourEnabled(tour.checked);
+      viewer.setTourEnabled(tour.checked && !followMyLocation);
     }
   });
 
@@ -2612,8 +2656,9 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
         players: Array.isArray(frame.players) ? frame.players : [],
       });
       viewer.setPlayerLocationsVisible((frame.players || []).length > 0);
-      if (myLocation) {
-        myLocation.disabled = !viewer.hasSelfLocation();
+      syncMyLocationControl();
+      if (followMyLocation) {
+        viewer.followSelfLocation();
       }
     }
     setTimelineLabel(frame);
@@ -2833,11 +2878,21 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       return;
     }
 
-    void loadPlayerLocations(root, viewer, myLocation, true, wantsAllPlayers());
+    void loadPlayerLocations(root, viewer, myLocation, true, wantsAllPlayers()).then(() => {
+      syncMyLocationControl();
+      if (followMyLocation) {
+        viewer.followSelfLocation();
+      }
+    });
     if (playerPollTimer === 0) {
       playerPollTimer = window.setInterval(() => {
         if (players?.checked && !wantsTimelineOverlay()) {
-          void loadPlayerLocations(root, viewer, myLocation, true, wantsAllPlayers());
+          void loadPlayerLocations(root, viewer, myLocation, true, wantsAllPlayers()).then(() => {
+            syncMyLocationControl();
+            if (followMyLocation) {
+              viewer.followSelfLocation();
+            }
+          });
         }
       }, playerLocationRefreshMs);
     }
@@ -2865,7 +2920,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   updatePlaybackControlAvailability();
   updatePlaybackSpeedControls();
   if (tour) {
-    viewer.setTourEnabled(tour.checked);
+    viewer.setTourEnabled(tour.checked && !followMyLocation);
   }
   if (wantsHeatmap() || wantsPlayers()) {
     reloadPlayback();
@@ -2880,7 +2935,10 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       const selectedFrame = currentPlaybackFrameIndex();
       if (heatmapHistory.length > 0) {
         showPlaybackFrame(selectedFrame);
-        viewer.frameSelfLocation();
+        setFollowMyLocation(!followMyLocation);
+        if (followMyLocation) {
+          viewer.followSelfLocation();
+        }
       } else {
         reloadPlayback(selectedFrame);
       }
@@ -2888,6 +2946,10 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     }
 
     if (viewer.frameSelfLocation()) {
+      setFollowMyLocation(!followMyLocation);
+      if (followMyLocation) {
+        viewer.followSelfLocation();
+      }
       if (playerPollTimer === 0) {
         reloadPlayers();
       }
@@ -2897,12 +2959,14 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     void loadPlayerLocations(root, viewer, myLocation, true, wantsAllPlayers()).then(() => {
       if (viewer.frameSelfLocation() && players) {
         players.checked = true;
+        setFollowMyLocation(true);
       }
+      syncMyLocationControl();
     });
   });
 
   if (!wantsPlayback()) {
-    void loadPlayerLocations(root, viewer, myLocation, wantsPlayers(), wantsAllPlayers());
+    void loadPlayerLocations(root, viewer, myLocation, wantsPlayers(), wantsAllPlayers()).then(syncMyLocationControl);
   }
 
   return {

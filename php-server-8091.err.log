@@ -17684,3 +17684,1269 @@
 [Sat Jul  4 00:00:14 2026] 127.0.0.1:49863 Closing
 [Sat Jul  4 00:00:14 2026] 127.0.0.1:61623 Closing
 [Sat Jul  4 00:00:14 2026] 127.0.0.1:49595 Closing
+[Sun Jul 12 00:33:22 2026] 127.0.0.1:54945 Accepted
+[Sun Jul 12 00:33:22 2026] 127.0.0.1:54945 [200]: GET /store/
+[Sun Jul 12 00:33:22 2026] 127.0.0.1:54945 Closing
+[Sun Jul 12 00:33:31 2026] 127.0.0.1:63430 Accepted
+[Sun Jul 12 00:33:31 2026] 127.0.0.1:63430 [200]: GET /store/
+[Sun Jul 12 00:33:31 2026] 127.0.0.1:63430 Closing
+[Sun Jul 12 00:33:40 2026] 127.0.0.1:64262 Accepted
+[Sun Jul 12 00:33:41 2026] 127.0.0.1:64262 [200]: GET /store/item/9-rank-vip/
+[Sun Jul 12 00:33:41 2026] 127.0.0.1:64262 Closing
+[Sun Jul 12 00:33:41 2026] 127.0.0.1:64265 Accepted
+[Sun Jul 12 00:33:42 2026] 127.0.0.1:64265 [200]: GET /store/
+[Sun Jul 12 00:33:42 2026] 127.0.0.1:64265 Closing
+[Sun Jul 12 00:34:26 2026] 127.0.0.1:49549 Accepted
+[Sun Jul 12 00:34:26 2026] 127.0.0.1:49549 [200]: GET /store/item/9-rank-vip/
+[Sun Jul 12 00:34:26 2026] 127.0.0.1:49549 Closing
+[Sun Jul 12 00:34:26 2026] 127.0.0.1:49551 Accepted
+[Sun Jul 12 00:34:27 2026] 127.0.0.1:49551 [200]: GET /store/
+[Sun Jul 12 00:34:27 2026] 127.0.0.1:49551 Closing
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:65175 Accepted
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:65175 [200]: GET /store/item/9-rank-vip/
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:65175 Closing
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:59428 Accepted
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:59428 [200]: GET /assets/css/loader.css?v=1782945392
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:59428 Closing
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:61774 Accepted
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:60405 Accepted
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:51294 Accepted
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:62053 Accepted
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:61912 Accepted
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:61774 [200]: GET /assets/css/styles.css?v=1783834489
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:60405 [200]: GET /assets/media/loading/battlefield-background.webp
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:51294 [200]: GET /assets/js/raidlands-loader.js?v=1783379241
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:62053 [200]: GET /assets/media/raidlands-logo.webp
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:61912 [200]: GET /assets/media/kits/vip-kit.png
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:60405 Closing
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:51294 Closing
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:62053 Closing
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:61774 Closing
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:61912 Closing
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:54603 Accepted
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:54603 [200]: GET /api/server-status.php
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:54603 Closing
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:63767 Accepted
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:56507 Accepted
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:55471 Accepted
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:63767 [200]: GET /assets/media/texture-grunge.svg
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:57804 Accepted
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:56507 [200]: GET /assets/media/pattern-bg.webp
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:55471 [200]: GET /assets/media/loading/terminal-frame.webp
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:57804 [200]: GET /assets/media/texture-metal.svg
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:63767 Closing
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:55471 Closing
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:56507 Closing
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:57804 Closing
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:57161 Accepted
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:57161 [200]: GET /assets/media/loading/fine-hud-ring.webp
+[Sun Jul 12 00:35:37 2026] 127.0.0.1:57161 Closing
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:64764 Accepted
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:64764 [200]: GET /assets/media/loading/raidlands-vfx-05-shockwave-ring-green.webp
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:64764 Closing
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:64756 Accepted
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:50221 Accepted
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:59462 Accepted
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:50067 Accepted
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:54748 Accepted
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:64756 [200]: GET /assets/media/loading/raidlands-vfx-03-molten-debris-burst-green.webp
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:50221 [200]: GET /assets/media/loading/raidlands-vfx-06-ember-field-green.webp
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:59462 [200]: GET /assets/media/plate-seams.svg
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:50067 [200]: GET /assets/media/loading/spark-burst.webp
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:54748 [200]: GET /assets/media/ember-flare-overlay.webp
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:50221 Closing
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:59462 Closing
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:50067 Closing
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:54748 Closing
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:64756 Closing
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:53346 Accepted
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:53346 [200]: GET /assets/media/header-bg-rust-v2.webp
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:53346 Closing
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:52198 Accepted
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:52198 [200]: GET /assets/media/nav-plate-seams.webp
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:52198 Closing
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:61640 Accepted
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:60417 Accepted
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:61640 [200]: GET /assets/media/nav-burnt-metal-base.webp
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:63927 Accepted
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:61640 Closing
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:50673 Accepted
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:60417 [200]: GET /assets/media/section-divider.svg
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:63927 [200]: GET /assets/media/nav-active-ember.webp
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:50673 [200]: POST /api/animation-diagnostics.php
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:50673 Closing
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:53091 Accepted
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:53091 [200]: GET /assets/media/feature-icons/fix.webp
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:60417 Closing
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:63927 Closing
+[Sun Jul 12 00:35:38 2026] 127.0.0.1:53091 Closing
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:61295 Accepted
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:52141 Accepted
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:61295 [200]: GET /assets/media/loading/target-reticle.webp
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:52141 [200]: GET /assets/media/loading/target-silhouette.webp
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:61295 Closing
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:52141 Closing
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:50544 Accepted
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:54580 Accepted
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:53767 Accepted
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:64214 Accepted
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:50544 [200]: GET /assets/media/loading/breach-ring.webp
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:54580 [200]: GET /assets/media/loading/raidlands-vfx-01-ground-blast-green.webp
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:53767 [200]: GET /assets/media/loading/raidlands-vfx-04-smoke-plume-green.webp
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:64214 [200]: GET /assets/js/site.js?v=1783827976
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:50544 Closing
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:64214 Closing
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:54580 Closing
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:53767 Closing
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:63841 Accepted
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:55768 Accepted
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:63841 [200]: GET /assets/js/chat.js?v=1783398900
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:55768 [200]: GET /assets/media/loading/raidlands-vfx-02-fireball-core-green.webp
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:63841 Closing
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:64756 Accepted
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:64756 [200]: GET /assets/media/kits/portafort-token.webp
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:64756 Closing
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:50571 Accepted
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:50571 [200]: GET /assets/media/rust-items/grenade.smoke.webp
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:50571 Closing
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:50929 Accepted
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:50929 [200]: GET /assets/media/kits/sentry-small-pack.webp
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:50929 Closing
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:55768 Closing
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:61125 Accepted
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:61125 [200]: GET /api/chat/
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:61125 Closing
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:61075 Accepted
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:62106 Accepted
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:61075 [200]: GET /assets/icons/favicon.ico
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:58249 Accepted
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:62106 [200]: GET /assets/media/rust-items/autoturret.webp
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:58249 [200]: GET /assets/media/rust-items/ammo.rocket.basic.webp
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:61075 Closing
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:51008 Accepted
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:62106 Closing
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:58249 Closing
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:60879 Accepted
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:51008 [200]: GET /assets/media/rust-items/ammo.rocket.hv.webp
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:60879 [200]: GET /assets/media/rust-items/electric.generator.small.webp
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:51008 Closing
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:60879 Closing
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:63843 Accepted
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:63843 [200]: POST /api/animation-diagnostics.php
+[Sun Jul 12 00:35:39 2026] 127.0.0.1:63843 Closing
+[Sun Jul 12 00:35:40 2026] 127.0.0.1:56353 Accepted
+[Sun Jul 12 00:35:40 2026] 127.0.0.1:57385 Accepted
+[Sun Jul 12 00:35:40 2026] 127.0.0.1:56353 [200]: GET /assets/media/rust-items/weapon.mod.lasersight.webp
+[Sun Jul 12 00:35:40 2026] 127.0.0.1:50152 Accepted
+[Sun Jul 12 00:35:40 2026] 127.0.0.1:57385 [200]: GET /assets/media/rust-items/weapon.mod.holosight.webp
+[Sun Jul 12 00:35:40 2026] 127.0.0.1:63911 Accepted
+[Sun Jul 12 00:35:40 2026] 127.0.0.1:50152 [200]: GET /assets/media/rust-items/weapon.mod.flashlight.webp
+[Sun Jul 12 00:35:40 2026] 127.0.0.1:62645 Accepted
+[Sun Jul 12 00:35:40 2026] 127.0.0.1:63911 [200]: GET /assets/media/rust-items/ammo.rifle.explosive.webp
+[Sun Jul 12 00:35:40 2026] 127.0.0.1:56353 Closing
+[Sun Jul 12 00:35:40 2026] 127.0.0.1:62645 [200]: GET /assets/media/rust-items/ammo.rifle.webp
+[Sun Jul 12 00:35:40 2026] 127.0.0.1:57385 Closing
+[Sun Jul 12 00:35:40 2026] 127.0.0.1:50152 Closing
+[Sun Jul 12 00:35:40 2026] 127.0.0.1:63911 Closing
+[Sun Jul 12 00:35:40 2026] 127.0.0.1:62645 Closing
+[Sun Jul 12 00:35:40 2026] 127.0.0.1:60475 Accepted
+[Sun Jul 12 00:35:40 2026] 127.0.0.1:60475 [200]: GET /assets/media/rust-items/weapon.mod.small.scope.webp
+[Sun Jul 12 00:35:40 2026] 127.0.0.1:60475 Closing
+[Sun Jul 12 00:35:40 2026] 127.0.0.1:59495 Accepted
+[Sun Jul 12 00:35:40 2026] 127.0.0.1:51868 Accepted
+[Sun Jul 12 00:35:40 2026] 127.0.0.1:59495 [200]: GET /assets/media/rust-items/weapon.mod.silencer.webp
+[Sun Jul 12 00:35:40 2026] 127.0.0.1:51868 [200]: GET /assets/media/rust-items/weapon.mod.8x.scope.webp
+[Sun Jul 12 00:35:40 2026] 127.0.0.1:59495 Closing
+[Sun Jul 12 00:35:40 2026] 127.0.0.1:51868 Closing
+[Sun Jul 12 00:35:40 2026] 127.0.0.1:56341 Accepted
+[Sun Jul 12 00:35:40 2026] 127.0.0.1:56341 [200]: POST /api/animation-diagnostics.php
+[Sun Jul 12 00:35:40 2026] 127.0.0.1:56341 Closing
+[Sun Jul 12 00:35:41 2026] 127.0.0.1:51834 Accepted
+[Sun Jul 12 00:35:41 2026] 127.0.0.1:51834 [200]: POST /api/animation-diagnostics.php
+[Sun Jul 12 00:35:41 2026] 127.0.0.1:51834 Closing
+[Sun Jul 12 00:35:54 2026] 127.0.0.1:59080 Accepted
+[Sun Jul 12 00:35:54 2026] 127.0.0.1:59080 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:35:54 2026] 127.0.0.1:59080 Closing
+[Sun Jul 12 00:35:55 2026] 127.0.0.1:62754 Accepted
+[Sun Jul 12 00:35:57 2026] 127.0.0.1:62754 [200]: GET /store/item/9-rank-vip/
+[Sun Jul 12 00:35:57 2026] 127.0.0.1:62754 Closing
+[Sun Jul 12 00:35:57 2026] 127.0.0.1:53907 Accepted
+[Sun Jul 12 00:35:57 2026] 127.0.0.1:56236 Accepted
+[Sun Jul 12 00:35:57 2026] 127.0.0.1:57609 Accepted
+[Sun Jul 12 00:35:57 2026] 127.0.0.1:54404 Accepted
+[Sun Jul 12 00:35:57 2026] 127.0.0.1:58485 Accepted
+[Sun Jul 12 00:35:57 2026] 127.0.0.1:52698 Accepted
+[Sun Jul 12 00:35:57 2026] 127.0.0.1:53907 [200]: GET /assets/css/loader.css?v=1782945392
+[Sun Jul 12 00:35:57 2026] 127.0.0.1:56236 [200]: GET /assets/css/styles.css?v=1783834489
+[Sun Jul 12 00:35:57 2026] 127.0.0.1:57609 [200]: GET /assets/media/loading/battlefield-background.webp
+[Sun Jul 12 00:35:57 2026] 127.0.0.1:54404 [200]: GET /assets/js/raidlands-loader.js?v=1783379241
+[Sun Jul 12 00:35:57 2026] 127.0.0.1:58485 [200]: GET /assets/media/raidlands-logo.webp
+[Sun Jul 12 00:35:57 2026] 127.0.0.1:52698 [200]: GET /assets/media/loading/breach-ring.webp
+[Sun Jul 12 00:35:57 2026] 127.0.0.1:53907 Closing
+[Sun Jul 12 00:35:57 2026] 127.0.0.1:57609 Closing
+[Sun Jul 12 00:35:57 2026] 127.0.0.1:54404 Closing
+[Sun Jul 12 00:35:57 2026] 127.0.0.1:56236 Closing
+[Sun Jul 12 00:35:57 2026] 127.0.0.1:58485 Closing
+[Sun Jul 12 00:35:57 2026] 127.0.0.1:52698 Closing
+[Sun Jul 12 00:35:57 2026] 127.0.0.1:57651 Accepted
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:57651 [200]: GET /api/server-status.php
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:57651 Closing
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:55973 Accepted
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:60622 Accepted
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:55973 [200]: GET /assets/media/loading/raidlands-vfx-02-fireball-core-green.webp
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:55401 Accepted
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:60622 [200]: GET /assets/media/loading/raidlands-vfx-03-molten-debris-burst-green.webp
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:56410 Accepted
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:55401 [200]: GET /assets/media/pattern-bg.webp
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:51887 Accepted
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:56410 [200]: GET /assets/media/loading/raidlands-vfx-05-shockwave-ring-green.webp
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:51887 [200]: GET /assets/media/loading/terminal-frame.webp
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:55401 Closing
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:51887 Closing
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:60622 Closing
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:56410 Closing
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:55973 Closing
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:56347 Accepted
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:56347 [200]: GET /assets/media/texture-grunge.svg
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:56347 Closing
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:55669 Accepted
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:55300 Accepted
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:55669 [200]: GET /assets/media/texture-metal.svg
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:55300 [200]: GET /assets/media/plate-seams.svg
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:55669 Closing
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:57100 Accepted
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:55300 Closing
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:57100 [200]: GET /assets/media/loading/raidlands-vfx-06-ember-field-green.webp
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:57100 Closing
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:54622 Accepted
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:54043 Accepted
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:54622 [200]: GET /assets/media/loading/fine-hud-ring.webp
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:54043 [200]: GET /assets/media/loading/spark-burst.webp
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:54622 Closing
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:54043 Closing
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:58635 Accepted
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:58635 [200]: GET /assets/media/ember-flare-overlay.webp
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:58635 Closing
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:57945 Accepted
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:57945 [200]: GET /assets/media/nav-burnt-metal-base.webp
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:57945 Closing
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:62612 Accepted
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:59759 Accepted
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:62612 [200]: GET /assets/media/nav-plate-seams.webp
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:57689 Accepted
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:59759 [200]: GET /assets/media/header-bg-rust-v2.webp
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:57689 [200]: GET /assets/media/nav-active-ember.webp
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:62612 Closing
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:57689 Closing
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:49168 Accepted
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:49168 [200]: GET /assets/media/section-divider.svg
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:49168 Closing
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:59759 Closing
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:52536 Accepted
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:52536 [200]: GET /assets/media/feature-icons/fix.webp
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:52536 Closing
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:56083 Accepted
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:56083 [200]: POST /api/animation-diagnostics.php
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:56083 Closing
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:56878 Accepted
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:56878 [200]: GET /assets/media/kits/vip-kit.png
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:56878 Closing
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:49630 Accepted
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:49630 [200]: GET /assets/media/loading/raidlands-vfx-01-ground-blast-green.webp
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:52481 Accepted
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:52481 [200]: GET /assets/media/loading/raidlands-vfx-04-smoke-plume-green.webp
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:49630 Closing
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:53646 Accepted
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:53646 [200]: GET /assets/js/site.js?v=1783827976
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:53646 Closing
+[Sun Jul 12 00:35:58 2026] 127.0.0.1:52481 Closing
+[Sun Jul 12 00:35:59 2026] 127.0.0.1:49318 Accepted
+[Sun Jul 12 00:35:59 2026] 127.0.0.1:59963 Accepted
+[Sun Jul 12 00:35:59 2026] 127.0.0.1:49318 [200]: GET /assets/js/chat.js?v=1783398900
+[Sun Jul 12 00:35:59 2026] 127.0.0.1:57449 Accepted
+[Sun Jul 12 00:35:59 2026] 127.0.0.1:59963 [200]: GET /assets/media/kits/portafort-token.webp
+[Sun Jul 12 00:35:59 2026] 127.0.0.1:50424 Accepted
+[Sun Jul 12 00:35:59 2026] 127.0.0.1:57449 [200]: GET /assets/media/rust-items/grenade.smoke.webp
+[Sun Jul 12 00:35:59 2026] 127.0.0.1:53122 Accepted
+[Sun Jul 12 00:35:59 2026] 127.0.0.1:50424 [200]: GET /assets/media/kits/sentry-small-pack.webp
+[Sun Jul 12 00:35:59 2026] 127.0.0.1:49318 Closing
+[Sun Jul 12 00:35:59 2026] 127.0.0.1:53122 [200]: GET /assets/media/rust-items/autoturret.webp
+[Sun Jul 12 00:35:59 2026] 127.0.0.1:59963 Closing
+[Sun Jul 12 00:35:59 2026] 127.0.0.1:57449 Closing
+[Sun Jul 12 00:35:59 2026] 127.0.0.1:50424 Closing
+[Sun Jul 12 00:35:59 2026] 127.0.0.1:53122 Closing
+[Sun Jul 12 00:35:59 2026] 127.0.0.1:61185 Accepted
+[Sun Jul 12 00:35:59 2026] 127.0.0.1:65270 Accepted
+[Sun Jul 12 00:35:59 2026] 127.0.0.1:61185 [200]: GET /store/
+[Sun Jul 12 00:35:59 2026] 127.0.0.1:61185 Closing
+[Sun Jul 12 00:35:59 2026] 127.0.0.1:54117 Accepted
+[Sun Jul 12 00:35:59 2026] 127.0.0.1:65270 [200]: GET /api/chat/
+[Sun Jul 12 00:35:59 2026] 127.0.0.1:65270 Closing
+[Sun Jul 12 00:35:59 2026] 127.0.0.1:53159 Accepted
+[Sun Jul 12 00:35:59 2026] 127.0.0.1:54117 [200]: POST /api/animation-diagnostics.php
+[Sun Jul 12 00:35:59 2026] 127.0.0.1:54117 Closing
+[Sun Jul 12 00:35:59 2026] 127.0.0.1:53159 [200]: GET /assets/icons/favicon.ico
+[Sun Jul 12 00:35:59 2026] 127.0.0.1:53159 Closing
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:52901 Accepted
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:59661 Accepted
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:52901 [200]: GET /assets/css/loader.css?v=1782945392
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:63361 Accepted
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:59661 [200]: GET /assets/css/styles.css?v=1783834489
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:61478 Accepted
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:63361 [200]: GET /assets/media/loading/battlefield-background.webp
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:51565 Accepted
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:61478 [200]: GET /assets/js/raidlands-loader.js?v=1783379241
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:52901 Closing
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:51565 [200]: GET /assets/media/raidlands-logo.webp
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:63361 Closing
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:61478 Closing
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:51565 Closing
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:59661 Closing
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:50723 Accepted
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:50723 [200]: GET /assets/media/texture-grunge.svg
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:50723 Closing
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:59935 Accepted
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:51411 Accepted
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:59935 [200]: GET /assets/media/pattern-bg.webp
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:57680 Accepted
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:51411 [200]: GET /assets/media/ember-flare-overlay.webp
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:60496 Accepted
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:57680 [200]: GET /assets/media/plate-seams.svg
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:64648 Accepted
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:60496 [200]: GET /assets/media/nav-active-ember.webp
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:64648 [200]: GET /assets/media/nav-plate-seams.webp
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:59935 Closing
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:51411 Closing
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:57680 Closing
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:60496 Closing
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:64648 Closing
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:55630 Accepted
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:55630 [200]: GET /assets/media/section-divider.svg
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:55630 Closing
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:51602 Accepted
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:60880 Accepted
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:54593 Accepted
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:53636 Accepted
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:51602 [200]: GET /assets/media/nav-burnt-metal-base.webp
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:60880 [200]: GET /assets/media/header-bg-rust-v2.webp
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:54593 [200]: POST /api/animation-diagnostics.php
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:54593 Closing
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:53636 [200]: GET /assets/media/loading/breach-ring.webp
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:56551 Accepted
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:56551 [200]: GET /assets/media/loading/raidlands-vfx-01-ground-blast-green.webp
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:51602 Closing
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:53636 Closing
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:56551 Closing
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:60880 Closing
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:53237 Accepted
+[Sun Jul 12 00:36:00 2026] 127.0.0.1:53237 [200]: GET /assets/media/loading/raidlands-vfx-04-smoke-plume-green.webp
+[Sun Jul 12 00:36:01 2026] 127.0.0.1:53237 Closing
+[Sun Jul 12 00:36:01 2026] 127.0.0.1:58637 Accepted
+[Sun Jul 12 00:36:01 2026] 127.0.0.1:49756 Accepted
+[Sun Jul 12 00:36:01 2026] 127.0.0.1:58637 [200]: GET /assets/js/site.js?v=1783827976
+[Sun Jul 12 00:36:01 2026] 127.0.0.1:59472 Accepted
+[Sun Jul 12 00:36:01 2026] 127.0.0.1:49756 [200]: GET /assets/js/chat.js?v=1783398900
+[Sun Jul 12 00:36:01 2026] 127.0.0.1:59472 [200]: GET /assets/media/texture-metal.svg
+[Sun Jul 12 00:36:01 2026] 127.0.0.1:54954 Accepted
+[Sun Jul 12 00:36:01 2026] 127.0.0.1:58637 Closing
+[Sun Jul 12 00:36:01 2026] 127.0.0.1:57586 Accepted
+[Sun Jul 12 00:36:01 2026] 127.0.0.1:49756 Closing
+[Sun Jul 12 00:36:01 2026] 127.0.0.1:54954 [200]: GET /assets/media/console-scan.svg
+[Sun Jul 12 00:36:01 2026] 127.0.0.1:57586 [200]: GET /assets/media/kits/vip-kit.png
+[Sun Jul 12 00:36:01 2026] 127.0.0.1:59472 Closing
+[Sun Jul 12 00:36:01 2026] 127.0.0.1:54954 Closing
+[Sun Jul 12 00:36:01 2026] 127.0.0.1:57586 Closing
+[Sun Jul 12 00:36:01 2026] 127.0.0.1:58139 Accepted
+[Sun Jul 12 00:36:01 2026] 127.0.0.1:58139 [200]: GET /assets/media/kits/portafort-token.webp
+[Sun Jul 12 00:36:01 2026] 127.0.0.1:58139 Closing
+[Sun Jul 12 00:36:01 2026] 127.0.0.1:61706 Accepted
+[Sun Jul 12 00:36:01 2026] 127.0.0.1:49860 Accepted
+[Sun Jul 12 00:36:01 2026] 127.0.0.1:61706 [200]: GET /assets/media/kits/sentry-small-pack.webp
+[Sun Jul 12 00:36:01 2026] 127.0.0.1:49860 [200]: GET /assets/media/feature-icons/fix.webp
+[Sun Jul 12 00:36:01 2026] 127.0.0.1:61706 Closing
+[Sun Jul 12 00:36:01 2026] 127.0.0.1:49860 Closing
+[Sun Jul 12 00:36:02 2026] 127.0.0.1:52753 Accepted
+[Sun Jul 12 00:36:02 2026] 127.0.0.1:63147 Accepted
+[Sun Jul 12 00:36:02 2026] 127.0.0.1:52753 [200]: GET /api/server-status.php
+[Sun Jul 12 00:36:02 2026] 127.0.0.1:52753 Closing
+[Sun Jul 12 00:36:02 2026] 127.0.0.1:63147 [200]: GET /api/chat/
+[Sun Jul 12 00:36:02 2026] 127.0.0.1:63147 Closing
+[Sun Jul 12 00:36:02 2026] 127.0.0.1:58687 Accepted
+[Sun Jul 12 00:36:02 2026] 127.0.0.1:58687 [200]: GET /assets/icons/favicon.ico
+[Sun Jul 12 00:36:02 2026] 127.0.0.1:58687 Closing
+[Sun Jul 12 00:36:02 2026] 127.0.0.1:56743 Accepted
+[Sun Jul 12 00:36:02 2026] 127.0.0.1:56743 [200]: POST /api/animation-diagnostics.php
+[Sun Jul 12 00:36:02 2026] 127.0.0.1:56743 Closing
+[Sun Jul 12 00:36:02 2026] 127.0.0.1:53386 Accepted
+[Sun Jul 12 00:36:03 2026] 127.0.0.1:53386 [200]: GET /assets/media/kits/vip-kit.png
+[Sun Jul 12 00:36:03 2026] 127.0.0.1:53386 Closing
+[Sun Jul 12 00:36:03 2026] 127.0.0.1:59752 Accepted
+[Sun Jul 12 00:36:03 2026] 127.0.0.1:58637 Accepted
+[Sun Jul 12 00:36:03 2026] 127.0.0.1:59752 [200]: POST /api/animation-diagnostics.php
+[Sun Jul 12 00:36:03 2026] 127.0.0.1:59752 Closing
+[Sun Jul 12 00:36:03 2026] 127.0.0.1:54222 Accepted
+[Sun Jul 12 00:36:03 2026] 127.0.0.1:58637 [200]: GET /assets/media/kits/portafort-token.webp
+[Sun Jul 12 00:36:03 2026] 127.0.0.1:51803 Accepted
+[Sun Jul 12 00:36:03 2026] 127.0.0.1:54222 [200]: GET /assets/media/kits/sentry-small-pack.webp
+[Sun Jul 12 00:36:03 2026] 127.0.0.1:51771 Accepted
+[Sun Jul 12 00:36:03 2026] 127.0.0.1:51803 [200]: GET /assets/media/kits/vip-plus-kit.png
+[Sun Jul 12 00:36:03 2026] 127.0.0.1:65326 Accepted
+[Sun Jul 12 00:36:03 2026] 127.0.0.1:51771 [200]: GET /assets/media/kits/mvp-kit.png
+[Sun Jul 12 00:36:03 2026] 127.0.0.1:58637 Closing
+[Sun Jul 12 00:36:03 2026] 127.0.0.1:65326 [200]: GET /assets/media/kits/golden-vip-kit.png
+[Sun Jul 12 00:36:03 2026] 127.0.0.1:54222 Closing
+[Sun Jul 12 00:36:03 2026] 127.0.0.1:51771 Closing
+[Sun Jul 12 00:36:03 2026] 127.0.0.1:51803 Closing
+[Sun Jul 12 00:36:03 2026] 127.0.0.1:65326 Closing
+[Sun Jul 12 00:36:03 2026] 127.0.0.1:49466 Accepted
+[Sun Jul 12 00:36:03 2026] 127.0.0.1:65380 Accepted
+[Sun Jul 12 00:36:03 2026] 127.0.0.1:49466 [200]: GET /assets/media/kits/vip-diamond-kit.webp
+[Sun Jul 12 00:36:03 2026] 127.0.0.1:65380 [200]: GET /assets/media/kits/ultimate-vip-kit.png
+[Sun Jul 12 00:36:03 2026] 127.0.0.1:49466 Closing
+[Sun Jul 12 00:36:03 2026] 127.0.0.1:65380 Closing
+[Sun Jul 12 00:36:17 2026] 127.0.0.1:58384 Accepted
+[Sun Jul 12 00:36:17 2026] 127.0.0.1:58384 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:36:17 2026] 127.0.0.1:58384 Closing
+[Sun Jul 12 00:36:17 2026] 127.0.0.1:54226 Accepted
+[Sun Jul 12 00:36:25 2026] 127.0.0.1:54226 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:36:25 2026] 127.0.0.1:54226 Closing
+[Sun Jul 12 00:36:41 2026] 127.0.0.1:59626 Accepted
+[Sun Jul 12 00:36:41 2026] 127.0.0.1:59626 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:36:41 2026] 127.0.0.1:59626 Closing
+[Sun Jul 12 00:36:41 2026] 127.0.0.1:65297 Accepted
+[Sun Jul 12 00:36:57 2026] 127.0.0.1:65297 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:36:57 2026] 127.0.0.1:65297 Closing
+[Sun Jul 12 00:37:02 2026] 127.0.0.1:49865 Accepted
+[Sun Jul 12 00:37:02 2026] 127.0.0.1:49865 [200]: GET /api/server-status.php
+[Sun Jul 12 00:37:02 2026] 127.0.0.1:49865 Closing
+[Sun Jul 12 00:37:02 2026] 127.0.0.1:61095 Accepted
+[Sun Jul 12 00:37:13 2026] 127.0.0.1:61095 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:37:13 2026] 127.0.0.1:61095 Closing
+[Sun Jul 12 00:37:29 2026] 127.0.0.1:55867 Accepted
+[Sun Jul 12 00:37:29 2026] 127.0.0.1:55867 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:37:29 2026] 127.0.0.1:55867 Closing
+[Sun Jul 12 00:37:29 2026] 127.0.0.1:57917 Accepted
+[Sun Jul 12 00:37:45 2026] 127.0.0.1:57917 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:37:45 2026] 127.0.0.1:57917 Closing
+[Sun Jul 12 00:38:01 2026] 127.0.0.1:63638 Accepted
+[Sun Jul 12 00:38:01 2026] 127.0.0.1:63638 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:38:01 2026] 127.0.0.1:63638 Closing
+[Sun Jul 12 00:38:01 2026] 127.0.0.1:50732 Accepted
+[Sun Jul 12 00:38:02 2026] 127.0.0.1:50732 [200]: GET /api/server-status.php
+[Sun Jul 12 00:38:02 2026] 127.0.0.1:50732 Closing
+[Sun Jul 12 00:38:17 2026] 127.0.0.1:60232 Accepted
+[Sun Jul 12 00:38:17 2026] 127.0.0.1:60232 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:38:17 2026] 127.0.0.1:60232 Closing
+[Sun Jul 12 00:38:17 2026] 127.0.0.1:64901 Accepted
+[Sun Jul 12 00:38:33 2026] 127.0.0.1:64901 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:38:33 2026] 127.0.0.1:64901 Closing
+[Sun Jul 12 00:38:49 2026] 127.0.0.1:50185 Accepted
+[Sun Jul 12 00:38:49 2026] 127.0.0.1:50185 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:38:49 2026] 127.0.0.1:50185 Closing
+[Sun Jul 12 00:38:49 2026] 127.0.0.1:63900 Accepted
+[Sun Jul 12 00:39:02 2026] 127.0.0.1:63900 [200]: GET /api/server-status.php
+[Sun Jul 12 00:39:02 2026] 127.0.0.1:63900 Closing
+[Sun Jul 12 00:39:05 2026] 127.0.0.1:61960 Accepted
+[Sun Jul 12 00:39:05 2026] 127.0.0.1:61960 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:39:05 2026] 127.0.0.1:61960 Closing
+[Sun Jul 12 00:39:05 2026] 127.0.0.1:64791 Accepted
+[Sun Jul 12 00:39:21 2026] 127.0.0.1:64791 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:39:21 2026] 127.0.0.1:64791 Closing
+[Sun Jul 12 00:39:37 2026] 127.0.0.1:60835 Accepted
+[Sun Jul 12 00:39:37 2026] 127.0.0.1:60835 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:39:37 2026] 127.0.0.1:60835 Closing
+[Sun Jul 12 00:39:37 2026] 127.0.0.1:52380 Accepted
+[Sun Jul 12 00:39:53 2026] 127.0.0.1:52380 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:39:53 2026] 127.0.0.1:52380 Closing
+[Sun Jul 12 00:40:02 2026] 127.0.0.1:63439 Accepted
+[Sun Jul 12 00:40:02 2026] 127.0.0.1:63439 [200]: GET /api/server-status.php
+[Sun Jul 12 00:40:02 2026] 127.0.0.1:63439 Closing
+[Sun Jul 12 00:40:02 2026] 127.0.0.1:57379 Accepted
+[Sun Jul 12 00:40:09 2026] 127.0.0.1:57379 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:40:09 2026] 127.0.0.1:57379 Closing
+[Sun Jul 12 00:40:25 2026] 127.0.0.1:52173 Accepted
+[Sun Jul 12 00:40:25 2026] 127.0.0.1:52173 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:40:25 2026] 127.0.0.1:52173 Closing
+[Sun Jul 12 00:40:25 2026] 127.0.0.1:50280 Accepted
+[Sun Jul 12 00:40:41 2026] 127.0.0.1:50280 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:40:41 2026] 127.0.0.1:50280 Closing
+[Sun Jul 12 00:40:57 2026] 127.0.0.1:59380 Accepted
+[Sun Jul 12 00:40:57 2026] 127.0.0.1:59380 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:40:57 2026] 127.0.0.1:59380 Closing
+[Sun Jul 12 00:40:57 2026] 127.0.0.1:63713 Accepted
+[Sun Jul 12 00:41:02 2026] 127.0.0.1:63713 [200]: GET /api/server-status.php
+[Sun Jul 12 00:41:02 2026] 127.0.0.1:63713 Closing
+[Sun Jul 12 00:41:13 2026] 127.0.0.1:51403 Accepted
+[Sun Jul 12 00:41:13 2026] 127.0.0.1:51403 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:41:13 2026] 127.0.0.1:51403 Closing
+[Sun Jul 12 00:41:13 2026] 127.0.0.1:50672 Accepted
+[Sun Jul 12 00:41:29 2026] 127.0.0.1:50672 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:41:29 2026] 127.0.0.1:50672 Closing
+[Sun Jul 12 00:41:45 2026] 127.0.0.1:60037 Accepted
+[Sun Jul 12 00:41:45 2026] 127.0.0.1:60037 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:41:45 2026] 127.0.0.1:60037 Closing
+[Sun Jul 12 00:41:45 2026] 127.0.0.1:53082 Accepted
+[Sun Jul 12 00:42:01 2026] 127.0.0.1:53082 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:42:01 2026] 127.0.0.1:53082 Closing
+[Sun Jul 12 00:42:02 2026] 127.0.0.1:50696 Accepted
+[Sun Jul 12 00:42:02 2026] 127.0.0.1:50696 [200]: GET /api/server-status.php
+[Sun Jul 12 00:42:02 2026] 127.0.0.1:50696 Closing
+[Sun Jul 12 00:42:02 2026] 127.0.0.1:65056 Accepted
+[Sun Jul 12 00:42:17 2026] 127.0.0.1:65056 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:42:17 2026] 127.0.0.1:65056 Closing
+[Sun Jul 12 00:42:33 2026] 127.0.0.1:56515 Accepted
+[Sun Jul 12 00:42:33 2026] 127.0.0.1:56515 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:42:33 2026] 127.0.0.1:56515 Closing
+[Sun Jul 12 00:42:33 2026] 127.0.0.1:56166 Accepted
+[Sun Jul 12 00:42:49 2026] 127.0.0.1:56166 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:42:49 2026] 127.0.0.1:56166 Closing
+[Sun Jul 12 00:43:05 2026] 127.0.0.1:53068 Accepted
+[Sun Jul 12 00:43:05 2026] 127.0.0.1:53068 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:43:05 2026] 127.0.0.1:53068 Closing
+[Sun Jul 12 00:43:05 2026] 127.0.0.1:51353 Accepted
+[Sun Jul 12 00:43:20 2026] 127.0.0.1:51353 [200]: GET /api/server-status.php
+[Sun Jul 12 00:43:20 2026] 127.0.0.1:51353 Closing
+[Sun Jul 12 00:43:21 2026] 127.0.0.1:50694 Accepted
+[Sun Jul 12 00:43:21 2026] 127.0.0.1:50694 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:43:21 2026] 127.0.0.1:50694 Closing
+[Sun Jul 12 00:43:21 2026] 127.0.0.1:62986 Accepted
+[Sun Jul 12 00:43:37 2026] 127.0.0.1:62986 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:43:37 2026] 127.0.0.1:62986 Closing
+[Sun Jul 12 00:43:53 2026] 127.0.0.1:64031 Accepted
+[Sun Jul 12 00:43:53 2026] 127.0.0.1:64031 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:43:53 2026] 127.0.0.1:64031 Closing
+[Sun Jul 12 00:43:53 2026] 127.0.0.1:49609 Accepted
+[Sun Jul 12 00:44:09 2026] 127.0.0.1:49609 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:44:09 2026] 127.0.0.1:49609 Closing
+[Sun Jul 12 00:44:20 2026] 127.0.0.1:63274 Accepted
+[Sun Jul 12 00:44:20 2026] 127.0.0.1:63274 [200]: GET /api/server-status.php
+[Sun Jul 12 00:44:20 2026] 127.0.0.1:63274 Closing
+[Sun Jul 12 00:44:20 2026] 127.0.0.1:49498 Accepted
+[Sun Jul 12 00:44:25 2026] 127.0.0.1:49498 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:44:25 2026] 127.0.0.1:49498 Closing
+[Sun Jul 12 00:44:41 2026] 127.0.0.1:65428 Accepted
+[Sun Jul 12 00:44:41 2026] 127.0.0.1:65428 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:44:41 2026] 127.0.0.1:65428 Closing
+[Sun Jul 12 00:44:41 2026] 127.0.0.1:58457 Accepted
+[Sun Jul 12 00:44:57 2026] 127.0.0.1:58457 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:44:57 2026] 127.0.0.1:58457 Closing
+[Sun Jul 12 00:45:13 2026] 127.0.0.1:65172 Accepted
+[Sun Jul 12 00:45:13 2026] 127.0.0.1:65172 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:45:13 2026] 127.0.0.1:65172 Closing
+[Sun Jul 12 00:45:13 2026] 127.0.0.1:51720 Accepted
+[Sun Jul 12 00:45:20 2026] 127.0.0.1:51720 [200]: GET /api/server-status.php
+[Sun Jul 12 00:45:20 2026] 127.0.0.1:51720 Closing
+[Sun Jul 12 00:45:29 2026] 127.0.0.1:65084 Accepted
+[Sun Jul 12 00:45:29 2026] 127.0.0.1:65084 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:45:29 2026] 127.0.0.1:65084 Closing
+[Sun Jul 12 00:45:29 2026] 127.0.0.1:64894 Accepted
+[Sun Jul 12 00:45:45 2026] 127.0.0.1:64894 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:45:45 2026] 127.0.0.1:64894 Closing
+[Sun Jul 12 00:46:01 2026] 127.0.0.1:56348 Accepted
+[Sun Jul 12 00:46:01 2026] 127.0.0.1:56348 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:46:01 2026] 127.0.0.1:56348 Closing
+[Sun Jul 12 00:46:01 2026] 127.0.0.1:64391 Accepted
+[Sun Jul 12 00:46:17 2026] 127.0.0.1:64391 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:46:17 2026] 127.0.0.1:64391 Closing
+[Sun Jul 12 00:46:20 2026] 127.0.0.1:57800 Accepted
+[Sun Jul 12 00:46:20 2026] 127.0.0.1:57800 [200]: GET /api/server-status.php
+[Sun Jul 12 00:46:20 2026] 127.0.0.1:57800 Closing
+[Sun Jul 12 00:46:20 2026] 127.0.0.1:51631 Accepted
+[Sun Jul 12 00:46:33 2026] 127.0.0.1:51631 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:46:33 2026] 127.0.0.1:51631 Closing
+[Sun Jul 12 00:46:49 2026] 127.0.0.1:51315 Accepted
+[Sun Jul 12 00:46:49 2026] 127.0.0.1:51315 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:46:49 2026] 127.0.0.1:51315 Closing
+[Sun Jul 12 00:46:49 2026] 127.0.0.1:49180 Accepted
+[Sun Jul 12 00:47:05 2026] 127.0.0.1:49180 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:47:05 2026] 127.0.0.1:49180 Closing
+[Sun Jul 12 00:47:20 2026] 127.0.0.1:51737 Accepted
+[Sun Jul 12 00:47:20 2026] 127.0.0.1:51737 [200]: GET /api/server-status.php
+[Sun Jul 12 00:47:20 2026] 127.0.0.1:51737 Closing
+[Sun Jul 12 00:47:20 2026] 127.0.0.1:58058 Accepted
+[Sun Jul 12 00:47:21 2026] 127.0.0.1:58058 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:47:21 2026] 127.0.0.1:58058 Closing
+[Sun Jul 12 00:47:37 2026] 127.0.0.1:59711 Accepted
+[Sun Jul 12 00:47:37 2026] 127.0.0.1:59711 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:47:37 2026] 127.0.0.1:59711 Closing
+[Sun Jul 12 00:47:37 2026] 127.0.0.1:55745 Accepted
+[Sun Jul 12 00:47:53 2026] 127.0.0.1:55745 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:47:53 2026] 127.0.0.1:55745 Closing
+[Sun Jul 12 00:48:09 2026] 127.0.0.1:52269 Accepted
+[Sun Jul 12 00:48:09 2026] 127.0.0.1:52269 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:48:09 2026] 127.0.0.1:52269 Closing
+[Sun Jul 12 00:48:09 2026] 127.0.0.1:54836 Accepted
+[Sun Jul 12 00:48:20 2026] 127.0.0.1:54836 [200]: GET /api/server-status.php
+[Sun Jul 12 00:48:20 2026] 127.0.0.1:54836 Closing
+[Sun Jul 12 00:48:25 2026] 127.0.0.1:51056 Accepted
+[Sun Jul 12 00:48:25 2026] 127.0.0.1:51056 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:48:25 2026] 127.0.0.1:51056 Closing
+[Sun Jul 12 00:48:25 2026] 127.0.0.1:57045 Accepted
+[Sun Jul 12 00:48:41 2026] 127.0.0.1:57045 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:48:41 2026] 127.0.0.1:57045 Closing
+[Sun Jul 12 00:48:57 2026] 127.0.0.1:55613 Accepted
+[Sun Jul 12 00:48:57 2026] 127.0.0.1:55613 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:48:57 2026] 127.0.0.1:55613 Closing
+[Sun Jul 12 00:48:57 2026] 127.0.0.1:64673 Accepted
+[Sun Jul 12 00:49:13 2026] 127.0.0.1:64673 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:49:13 2026] 127.0.0.1:64673 Closing
+[Sun Jul 12 00:49:20 2026] 127.0.0.1:60295 Accepted
+[Sun Jul 12 00:49:20 2026] 127.0.0.1:60295 [200]: GET /api/server-status.php
+[Sun Jul 12 00:49:20 2026] 127.0.0.1:60295 Closing
+[Sun Jul 12 00:49:20 2026] 127.0.0.1:55131 Accepted
+[Sun Jul 12 00:49:29 2026] 127.0.0.1:55131 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:49:29 2026] 127.0.0.1:55131 Closing
+[Sun Jul 12 00:49:45 2026] 127.0.0.1:63203 Accepted
+[Sun Jul 12 00:49:45 2026] 127.0.0.1:63203 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:49:45 2026] 127.0.0.1:63203 Closing
+[Sun Jul 12 00:49:45 2026] 127.0.0.1:63010 Accepted
+[Sun Jul 12 00:50:01 2026] 127.0.0.1:63010 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:50:01 2026] 127.0.0.1:63010 Closing
+[Sun Jul 12 00:50:17 2026] 127.0.0.1:53106 Accepted
+[Sun Jul 12 00:50:17 2026] 127.0.0.1:53106 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:50:17 2026] 127.0.0.1:53106 Closing
+[Sun Jul 12 00:50:17 2026] 127.0.0.1:60735 Accepted
+[Sun Jul 12 00:50:20 2026] 127.0.0.1:60735 [200]: GET /api/server-status.php
+[Sun Jul 12 00:50:20 2026] 127.0.0.1:60735 Closing
+[Sun Jul 12 00:50:33 2026] 127.0.0.1:58460 Accepted
+[Sun Jul 12 00:50:33 2026] 127.0.0.1:58460 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:50:33 2026] 127.0.0.1:58460 Closing
+[Sun Jul 12 00:50:33 2026] 127.0.0.1:63538 Accepted
+[Sun Jul 12 00:50:49 2026] 127.0.0.1:63538 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:50:49 2026] 127.0.0.1:63538 Closing
+[Sun Jul 12 00:51:05 2026] 127.0.0.1:49808 Accepted
+[Sun Jul 12 00:51:05 2026] 127.0.0.1:49808 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:51:05 2026] 127.0.0.1:49808 Closing
+[Sun Jul 12 00:51:05 2026] 127.0.0.1:62909 Accepted
+[Sun Jul 12 00:51:20 2026] 127.0.0.1:62909 [200]: GET /api/server-status.php
+[Sun Jul 12 00:51:20 2026] 127.0.0.1:62909 Closing
+[Sun Jul 12 00:51:21 2026] 127.0.0.1:60438 Accepted
+[Sun Jul 12 00:51:21 2026] 127.0.0.1:60438 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:51:21 2026] 127.0.0.1:60438 Closing
+[Sun Jul 12 00:51:21 2026] 127.0.0.1:61821 Accepted
+[Sun Jul 12 00:51:37 2026] 127.0.0.1:61821 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:51:37 2026] 127.0.0.1:61821 Closing
+[Sun Jul 12 00:51:53 2026] 127.0.0.1:61574 Accepted
+[Sun Jul 12 00:51:53 2026] 127.0.0.1:61574 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:51:53 2026] 127.0.0.1:61574 Closing
+[Sun Jul 12 00:51:53 2026] 127.0.0.1:50936 Accepted
+[Sun Jul 12 00:52:09 2026] 127.0.0.1:50936 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:52:09 2026] 127.0.0.1:50936 Closing
+[Sun Jul 12 00:52:20 2026] 127.0.0.1:61856 Accepted
+[Sun Jul 12 00:52:20 2026] 127.0.0.1:61856 [200]: GET /api/server-status.php
+[Sun Jul 12 00:52:20 2026] 127.0.0.1:61856 Closing
+[Sun Jul 12 00:52:20 2026] 127.0.0.1:55465 Accepted
+[Sun Jul 12 00:52:25 2026] 127.0.0.1:55465 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:52:25 2026] 127.0.0.1:55465 Closing
+[Sun Jul 12 00:52:41 2026] 127.0.0.1:59747 Accepted
+[Sun Jul 12 00:52:41 2026] 127.0.0.1:59747 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:52:41 2026] 127.0.0.1:59747 Closing
+[Sun Jul 12 00:52:41 2026] 127.0.0.1:56049 Accepted
+[Sun Jul 12 00:52:57 2026] 127.0.0.1:56049 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:52:57 2026] 127.0.0.1:56049 Closing
+[Sun Jul 12 00:53:13 2026] 127.0.0.1:52295 Accepted
+[Sun Jul 12 00:53:13 2026] 127.0.0.1:52295 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:53:13 2026] 127.0.0.1:52295 Closing
+[Sun Jul 12 00:53:13 2026] 127.0.0.1:59264 Accepted
+[Sun Jul 12 00:53:17 2026] 127.0.0.1:50088 Accepted
+[Sun Jul 12 00:53:17 2026] 127.0.0.1:50088 [200]: GET /store/item/9-rank-vip
+[Sun Jul 12 00:53:17 2026] 127.0.0.1:50088 Closing
+[Sun Jul 12 00:53:20 2026] 127.0.0.1:59264 [200]: GET /api/server-status.php
+[Sun Jul 12 00:53:20 2026] 127.0.0.1:59264 Closing
+[Sun Jul 12 00:53:29 2026] 127.0.0.1:61058 Accepted
+[Sun Jul 12 00:53:29 2026] 127.0.0.1:61058 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:53:29 2026] 127.0.0.1:61058 Closing
+[Sun Jul 12 00:53:29 2026] 127.0.0.1:51544 Accepted
+[Sun Jul 12 00:53:45 2026] 127.0.0.1:51544 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:53:45 2026] 127.0.0.1:51544 Closing
+[Sun Jul 12 00:54:01 2026] 127.0.0.1:62273 Accepted
+[Sun Jul 12 00:54:01 2026] 127.0.0.1:62273 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:54:01 2026] 127.0.0.1:62273 Closing
+[Sun Jul 12 00:54:01 2026] 127.0.0.1:54902 Accepted
+[Sun Jul 12 00:54:17 2026] 127.0.0.1:54902 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:54:17 2026] 127.0.0.1:54902 Closing
+[Sun Jul 12 00:54:20 2026] 127.0.0.1:61376 Accepted
+[Sun Jul 12 00:54:20 2026] 127.0.0.1:61376 [200]: GET /api/server-status.php
+[Sun Jul 12 00:54:20 2026] 127.0.0.1:61376 Closing
+[Sun Jul 12 00:54:20 2026] 127.0.0.1:53361 Accepted
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:63537 Accepted
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:63537 [200]: GET /store/item/9-rank-vip
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:63537 Closing
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:50274 Accepted
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:56022 Accepted
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:63591 Accepted
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:62984 Accepted
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:50274 [200]: GET /assets/css/styles.css?v=1783835579
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:64975 Accepted
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:56022 [200]: GET /assets/js/raidlands-loader.js?v=1783379241
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:63591 [200]: GET /assets/media/loading/battlefield-background.webp
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:62984 [200]: GET /assets/css/loader.css?v=1782945392
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:53463 Accepted
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:64975 [200]: GET /assets/media/raidlands-logo.webp
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:53463 [200]: GET /assets/media/loading/breach-ring.webp
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:56022 Closing
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:63591 Closing
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:62984 Closing
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:50274 Closing
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:64975 Closing
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:53463 Closing
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:59640 Accepted
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:59640 [200]: GET /assets/media/kits/vip-kit.png
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:56447 Accepted
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:58399 Accepted
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:56447 [200]: GET /assets/media/loading/raidlands-vfx-01-ground-blast-green.webp
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:58399 [200]: GET /assets/js/site.js?v=1783827976
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:58399 Closing
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:54701 Accepted
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:60429 Accepted
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:59640 Closing
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:54701 [200]: GET /assets/media/loading/raidlands-vfx-04-smoke-plume-green.webp
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:60429 [200]: GET /assets/js/chat.js?v=1783398900
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:51224 Accepted
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:60429 Closing
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:51224 [200]: GET /assets/media/loading/raidlands-vfx-02-fireball-core-green.webp
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:56447 Closing
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:62189 Accepted
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:49640 Accepted
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:62189 [200]: GET /assets/media/loading/raidlands-vfx-03-molten-debris-burst-green.webp
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:51688 Accepted
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:51224 Closing
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:49640 [200]: GET /assets/media/loading/raidlands-vfx-05-shockwave-ring-green.webp
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:51688 [200]: GET /assets/media/loading/raidlands-vfx-06-ember-field-green.webp
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:51688 Closing
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:52899 Accepted
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:54701 Closing
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:62189 Closing
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:52899 [200]: GET /api/server-status.php
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:52899 Closing
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:49640 Closing
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:59958 Accepted
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:59958 [200]: GET /api/chat/
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:59958 Closing
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:61651 Accepted
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:61651 [200]: GET /assets/media/texture-metal.svg
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:61651 Closing
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:52731 Accepted
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:54817 Accepted
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:52731 [200]: GET /assets/media/pattern-bg.webp
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:54817 [200]: GET /assets/media/texture-grunge.svg
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:62098 Accepted
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:62098 [200]: GET /assets/media/plate-seams.svg
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:52731 Closing
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:54817 Closing
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:62098 Closing
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:61815 Accepted
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:54433 Accepted
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:61815 [200]: GET /assets/media/loading/terminal-frame.webp
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:54433 [200]: GET /assets/media/loading/fine-hud-ring.webp
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:61815 Closing
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:54433 Closing
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:57157 Accepted
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:57157 [200]: GET /assets/media/loading/spark-burst.webp
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:57157 Closing
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:63057 Accepted
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:54094 Accepted
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:49781 Accepted
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:58524 Accepted
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:63057 [200]: GET /assets/media/ember-flare-overlay.webp
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:57965 Accepted
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:54094 [200]: GET /assets/media/nav-plate-seams.webp
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:49781 [200]: GET /assets/media/nav-burnt-metal-base.webp
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:58524 [200]: GET /assets/media/nav-active-ember.webp
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:57965 [200]: GET /assets/media/section-divider.svg
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:63057 Closing
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:54094 Closing
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:49781 Closing
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:58524 Closing
+[Sun Jul 12 00:54:23 2026] 127.0.0.1:57965 Closing
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:51635 Accepted
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:51635 [200]: GET /assets/media/header-bg-rust-v2.webp
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:51635 Closing
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:56507 Accepted
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:63603 Accepted
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:65181 Accepted
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:50673 Accepted
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:55293 Accepted
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:62221 Accepted
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:56507 [200]: GET /assets/media/kits/portafort-token.webp
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:63603 [200]: GET /assets/media/rust-items/grenade.smoke.webp
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:65181 [200]: GET /assets/media/kits/sentry-small-pack.webp
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:50673 [200]: GET /assets/media/rust-items/autoturret.webp
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:55293 [200]: GET /assets/media/rust-items/ammo.rocket.basic.webp
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:62221 [200]: GET /assets/media/rust-items/ammo.rocket.hv.webp
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:56507 Closing
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:59986 Accepted
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:63603 Closing
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:65181 Closing
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:50673 Closing
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:55293 Closing
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:62221 Closing
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:59986 [200]: GET /assets/media/feature-icons/fix.webp
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:59986 Closing
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:51585 Accepted
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:63880 Accepted
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:58206 Accepted
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:51585 [200]: GET /assets/media/loading/target-reticle.webp
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:63880 [200]: GET /assets/media/loading/target-silhouette.webp
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:58206 [200]: GET /assets/icons/favicon.ico
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:51585 Closing
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:63880 Closing
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:58206 Closing
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:61120 Accepted
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:55149 Accepted
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:61120 [200]: GET /assets/media/rust-items/electric.generator.small.webp
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:55149 [200]: GET /assets/media/rust-items/weapon.mod.lasersight.webp
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:61120 Closing
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:55149 Closing
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:49260 Accepted
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:62039 Accepted
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:53062 Accepted
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:49260 [200]: GET /assets/media/rust-items/weapon.mod.holosight.webp
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:62039 [200]: GET /assets/media/rust-items/weapon.mod.flashlight.webp
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:53062 [200]: GET /assets/media/rust-items/ammo.rifle.explosive.webp
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:49260 Closing
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:62039 Closing
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:53062 Closing
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:59033 Accepted
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:50831 Accepted
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:59033 [200]: GET /assets/media/rust-items/ammo.rifle.webp
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:50831 [200]: GET /assets/media/rust-items/weapon.mod.small.scope.webp
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:59033 Closing
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:53614 Accepted
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:50831 Closing
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:53614 [200]: GET /assets/media/rust-items/weapon.mod.silencer.webp
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:53614 Closing
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:61783 Accepted
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:61783 [200]: GET /assets/media/rust-items/weapon.mod.8x.scope.webp
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:61783 Closing
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:56784 Accepted
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:56784 [200]: POST /api/animation-diagnostics.php
+[Sun Jul 12 00:54:24 2026] 127.0.0.1:56784 Closing
+[Sun Jul 12 00:54:26 2026] 127.0.0.1:53499 Accepted
+[Sun Jul 12 00:54:26 2026] 127.0.0.1:53499 [200]: POST /api/animation-diagnostics.php
+[Sun Jul 12 00:54:26 2026] 127.0.0.1:53499 Closing
+[Sun Jul 12 00:54:27 2026] 127.0.0.1:49567 Accepted
+[Sun Jul 12 00:54:28 2026] 127.0.0.1:49567 [200]: POST /api/animation-diagnostics.php
+[Sun Jul 12 00:54:28 2026] 127.0.0.1:49567 Closing
+[Sun Jul 12 00:54:33 2026] 127.0.0.1:53361 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:54:33 2026] 127.0.0.1:53361 Closing
+[Sun Jul 12 00:54:39 2026] 127.0.0.1:55989 Accepted
+[Sun Jul 12 00:54:39 2026] 127.0.0.1:55989 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:54:39 2026] 127.0.0.1:55989 Closing
+[Sun Jul 12 00:54:49 2026] 127.0.0.1:54342 Accepted
+[Sun Jul 12 00:54:49 2026] 127.0.0.1:54342 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:54:49 2026] 127.0.0.1:54342 Closing
+[Sun Jul 12 00:54:49 2026] 127.0.0.1:65273 Accepted
+[Sun Jul 12 00:54:54 2026] 127.0.0.1:56093 Accepted
+[Sun Jul 12 00:54:54 2026] 127.0.0.1:56093 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:54:54 2026] 127.0.0.1:56093 Closing
+[Sun Jul 12 00:55:05 2026] 127.0.0.1:65273 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:55:05 2026] 127.0.0.1:65273 Closing
+[Sun Jul 12 00:55:10 2026] 127.0.0.1:52557 Accepted
+[Sun Jul 12 00:55:10 2026] 127.0.0.1:52557 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:55:10 2026] 127.0.0.1:52557 Closing
+[Sun Jul 12 00:55:20 2026] 127.0.0.1:51742 Accepted
+[Sun Jul 12 00:55:20 2026] 127.0.0.1:51742 [200]: GET /api/server-status.php
+[Sun Jul 12 00:55:20 2026] 127.0.0.1:51742 Closing
+[Sun Jul 12 00:55:20 2026] 127.0.0.1:53868 Accepted
+[Sun Jul 12 00:55:21 2026] 127.0.0.1:53868 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:55:21 2026] 127.0.0.1:53868 Closing
+[Sun Jul 12 00:55:24 2026] 127.0.0.1:58846 Accepted
+[Sun Jul 12 00:55:24 2026] 127.0.0.1:58846 [200]: GET /api/server-status.php
+[Sun Jul 12 00:55:24 2026] 127.0.0.1:58846 Closing
+[Sun Jul 12 00:55:26 2026] 127.0.0.1:52470 Accepted
+[Sun Jul 12 00:55:26 2026] 127.0.0.1:52470 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:55:26 2026] 127.0.0.1:52470 Closing
+[Sun Jul 12 00:55:37 2026] 127.0.0.1:51154 Accepted
+[Sun Jul 12 00:55:37 2026] 127.0.0.1:51154 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:55:37 2026] 127.0.0.1:51154 Closing
+[Sun Jul 12 00:55:37 2026] 127.0.0.1:59103 Accepted
+[Sun Jul 12 00:55:42 2026] 127.0.0.1:64533 Accepted
+[Sun Jul 12 00:55:42 2026] 127.0.0.1:64533 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:55:42 2026] 127.0.0.1:64533 Closing
+[Sun Jul 12 00:55:53 2026] 127.0.0.1:59103 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:55:53 2026] 127.0.0.1:59103 Closing
+[Sun Jul 12 00:55:58 2026] 127.0.0.1:58172 Accepted
+[Sun Jul 12 00:55:58 2026] 127.0.0.1:58172 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:55:58 2026] 127.0.0.1:58172 Closing
+[Sun Jul 12 00:56:09 2026] 127.0.0.1:63558 Accepted
+[Sun Jul 12 00:56:09 2026] 127.0.0.1:63558 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:56:09 2026] 127.0.0.1:63558 Closing
+[Sun Jul 12 00:56:09 2026] 127.0.0.1:49955 Accepted
+[Sun Jul 12 00:56:14 2026] 127.0.0.1:52432 Accepted
+[Sun Jul 12 00:56:14 2026] 127.0.0.1:52432 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:56:14 2026] 127.0.0.1:52432 Closing
+[Sun Jul 12 00:56:20 2026] 127.0.0.1:49955 [200]: GET /api/server-status.php
+[Sun Jul 12 00:56:20 2026] 127.0.0.1:49955 Closing
+[Sun Jul 12 00:56:24 2026] 127.0.0.1:59563 Accepted
+[Sun Jul 12 00:56:24 2026] 127.0.0.1:59563 [200]: GET /api/server-status.php
+[Sun Jul 12 00:56:24 2026] 127.0.0.1:59563 Closing
+[Sun Jul 12 00:56:25 2026] 127.0.0.1:54256 Accepted
+[Sun Jul 12 00:56:25 2026] 127.0.0.1:54256 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:56:25 2026] 127.0.0.1:54256 Closing
+[Sun Jul 12 00:56:25 2026] 127.0.0.1:51375 Accepted
+[Sun Jul 12 00:56:30 2026] 127.0.0.1:58189 Accepted
+[Sun Jul 12 00:56:30 2026] 127.0.0.1:58189 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:56:30 2026] 127.0.0.1:58189 Closing
+[Sun Jul 12 00:56:41 2026] 127.0.0.1:51375 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:56:41 2026] 127.0.0.1:51375 Closing
+[Sun Jul 12 00:56:46 2026] 127.0.0.1:64824 Accepted
+[Sun Jul 12 00:56:46 2026] 127.0.0.1:64824 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:56:46 2026] 127.0.0.1:64824 Closing
+[Sun Jul 12 00:56:57 2026] 127.0.0.1:55846 Accepted
+[Sun Jul 12 00:56:57 2026] 127.0.0.1:55846 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:56:57 2026] 127.0.0.1:55846 Closing
+[Sun Jul 12 00:56:57 2026] 127.0.0.1:58568 Accepted
+[Sun Jul 12 00:57:02 2026] 127.0.0.1:59449 Accepted
+[Sun Jul 12 00:57:02 2026] 127.0.0.1:59449 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:57:02 2026] 127.0.0.1:59449 Closing
+[Sun Jul 12 00:57:13 2026] 127.0.0.1:58568 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:57:13 2026] 127.0.0.1:58568 Closing
+[Sun Jul 12 00:57:18 2026] 127.0.0.1:61589 Accepted
+[Sun Jul 12 00:57:18 2026] 127.0.0.1:61589 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:57:18 2026] 127.0.0.1:61589 Closing
+[Sun Jul 12 00:57:20 2026] 127.0.0.1:63933 Accepted
+[Sun Jul 12 00:57:20 2026] 127.0.0.1:63933 [200]: GET /api/server-status.php
+[Sun Jul 12 00:57:20 2026] 127.0.0.1:63933 Closing
+[Sun Jul 12 00:57:20 2026] 127.0.0.1:52166 Accepted
+[Sun Jul 12 00:57:24 2026] 127.0.0.1:60837 Accepted
+[Sun Jul 12 00:57:24 2026] 127.0.0.1:60837 [200]: GET /api/server-status.php
+[Sun Jul 12 00:57:24 2026] 127.0.0.1:60837 Closing
+[Sun Jul 12 00:57:29 2026] 127.0.0.1:52166 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:57:29 2026] 127.0.0.1:52166 Closing
+[Sun Jul 12 00:57:34 2026] 127.0.0.1:51285 Accepted
+[Sun Jul 12 00:57:34 2026] 127.0.0.1:51285 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:57:34 2026] 127.0.0.1:51285 Closing
+[Sun Jul 12 00:57:45 2026] 127.0.0.1:58403 Accepted
+[Sun Jul 12 00:57:45 2026] 127.0.0.1:58403 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:57:45 2026] 127.0.0.1:58403 Closing
+[Sun Jul 12 00:57:45 2026] 127.0.0.1:61315 Accepted
+[Sun Jul 12 00:57:50 2026] 127.0.0.1:61486 Accepted
+[Sun Jul 12 00:57:50 2026] 127.0.0.1:61486 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:57:50 2026] 127.0.0.1:61486 Closing
+[Sun Jul 12 00:58:01 2026] 127.0.0.1:61315 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:58:01 2026] 127.0.0.1:61315 Closing
+[Sun Jul 12 00:58:06 2026] 127.0.0.1:49582 Accepted
+[Sun Jul 12 00:58:06 2026] 127.0.0.1:49582 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:58:06 2026] 127.0.0.1:49582 Closing
+[Sun Jul 12 00:58:17 2026] 127.0.0.1:50028 Accepted
+[Sun Jul 12 00:58:17 2026] 127.0.0.1:50028 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:58:17 2026] 127.0.0.1:50028 Closing
+[Sun Jul 12 00:58:17 2026] 127.0.0.1:58541 Accepted
+[Sun Jul 12 00:58:20 2026] 127.0.0.1:58541 [200]: GET /api/server-status.php
+[Sun Jul 12 00:58:20 2026] 127.0.0.1:58541 Closing
+[Sun Jul 12 00:58:22 2026] 127.0.0.1:49823 Accepted
+[Sun Jul 12 00:58:22 2026] 127.0.0.1:49823 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:58:22 2026] 127.0.0.1:49823 Closing
+[Sun Jul 12 00:58:24 2026] 127.0.0.1:54090 Accepted
+[Sun Jul 12 00:58:24 2026] 127.0.0.1:54090 [200]: GET /api/server-status.php
+[Sun Jul 12 00:58:24 2026] 127.0.0.1:54090 Closing
+[Sun Jul 12 00:58:33 2026] 127.0.0.1:53844 Accepted
+[Sun Jul 12 00:58:33 2026] 127.0.0.1:53844 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:58:33 2026] 127.0.0.1:53844 Closing
+[Sun Jul 12 00:58:33 2026] 127.0.0.1:58139 Accepted
+[Sun Jul 12 00:58:38 2026] 127.0.0.1:58279 Accepted
+[Sun Jul 12 00:58:38 2026] 127.0.0.1:58279 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:58:38 2026] 127.0.0.1:58279 Closing
+[Sun Jul 12 00:58:49 2026] 127.0.0.1:58139 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:58:49 2026] 127.0.0.1:58139 Closing
+[Sun Jul 12 00:58:54 2026] 127.0.0.1:63003 Accepted
+[Sun Jul 12 00:58:54 2026] 127.0.0.1:63003 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:58:54 2026] 127.0.0.1:63003 Closing
+[Sun Jul 12 00:59:05 2026] 127.0.0.1:56811 Accepted
+[Sun Jul 12 00:59:05 2026] 127.0.0.1:56811 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:59:05 2026] 127.0.0.1:56811 Closing
+[Sun Jul 12 00:59:05 2026] 127.0.0.1:60701 Accepted
+[Sun Jul 12 00:59:10 2026] 127.0.0.1:49305 Accepted
+[Sun Jul 12 00:59:10 2026] 127.0.0.1:49305 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:59:10 2026] 127.0.0.1:49305 Closing
+[Sun Jul 12 00:59:20 2026] 127.0.0.1:60701 [200]: GET /api/server-status.php
+[Sun Jul 12 00:59:20 2026] 127.0.0.1:60701 Closing
+[Sun Jul 12 00:59:21 2026] 127.0.0.1:60464 Accepted
+[Sun Jul 12 00:59:21 2026] 127.0.0.1:60464 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:59:21 2026] 127.0.0.1:60464 Closing
+[Sun Jul 12 00:59:21 2026] 127.0.0.1:53995 Accepted
+[Sun Jul 12 00:59:24 2026] 127.0.0.1:58360 Accepted
+[Sun Jul 12 00:59:24 2026] 127.0.0.1:58360 [200]: GET /api/server-status.php
+[Sun Jul 12 00:59:24 2026] 127.0.0.1:58360 Closing
+[Sun Jul 12 00:59:26 2026] 127.0.0.1:61637 Accepted
+[Sun Jul 12 00:59:26 2026] 127.0.0.1:61637 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:59:26 2026] 127.0.0.1:61637 Closing
+[Sun Jul 12 00:59:37 2026] 127.0.0.1:53995 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:59:37 2026] 127.0.0.1:53995 Closing
+[Sun Jul 12 00:59:42 2026] 127.0.0.1:53366 Accepted
+[Sun Jul 12 00:59:42 2026] 127.0.0.1:53366 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:59:42 2026] 127.0.0.1:53366 Closing
+[Sun Jul 12 00:59:53 2026] 127.0.0.1:59644 Accepted
+[Sun Jul 12 00:59:53 2026] 127.0.0.1:59644 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:59:53 2026] 127.0.0.1:59644 Closing
+[Sun Jul 12 00:59:53 2026] 127.0.0.1:55787 Accepted
+[Sun Jul 12 00:59:58 2026] 127.0.0.1:52715 Accepted
+[Sun Jul 12 00:59:58 2026] 127.0.0.1:52715 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 00:59:58 2026] 127.0.0.1:52715 Closing
+[Sun Jul 12 01:00:09 2026] 127.0.0.1:55787 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:00:09 2026] 127.0.0.1:55787 Closing
+[Sun Jul 12 01:00:14 2026] 127.0.0.1:58218 Accepted
+[Sun Jul 12 01:00:14 2026] 127.0.0.1:58218 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:00:14 2026] 127.0.0.1:58218 Closing
+[Sun Jul 12 01:00:20 2026] 127.0.0.1:56925 Accepted
+[Sun Jul 12 01:00:20 2026] 127.0.0.1:56925 [200]: GET /api/server-status.php
+[Sun Jul 12 01:00:20 2026] 127.0.0.1:56925 Closing
+[Sun Jul 12 01:00:20 2026] 127.0.0.1:61472 Accepted
+[Sun Jul 12 01:00:24 2026] 127.0.0.1:49534 Accepted
+[Sun Jul 12 01:00:24 2026] 127.0.0.1:49534 [200]: GET /api/server-status.php
+[Sun Jul 12 01:00:24 2026] 127.0.0.1:49534 Closing
+[Sun Jul 12 01:00:25 2026] 127.0.0.1:61472 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:00:25 2026] 127.0.0.1:61472 Closing
+[Sun Jul 12 01:00:30 2026] 127.0.0.1:54138 Accepted
+[Sun Jul 12 01:00:30 2026] 127.0.0.1:54138 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:00:30 2026] 127.0.0.1:54138 Closing
+[Sun Jul 12 01:00:41 2026] 127.0.0.1:58707 Accepted
+[Sun Jul 12 01:00:41 2026] 127.0.0.1:58707 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:00:41 2026] 127.0.0.1:58707 Closing
+[Sun Jul 12 01:00:41 2026] 127.0.0.1:49386 Accepted
+[Sun Jul 12 01:00:46 2026] 127.0.0.1:65057 Accepted
+[Sun Jul 12 01:00:46 2026] 127.0.0.1:65057 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:00:46 2026] 127.0.0.1:65057 Closing
+[Sun Jul 12 01:00:57 2026] 127.0.0.1:49386 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:00:57 2026] 127.0.0.1:49386 Closing
+[Sun Jul 12 01:01:02 2026] 127.0.0.1:61124 Accepted
+[Sun Jul 12 01:01:02 2026] 127.0.0.1:61124 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:01:02 2026] 127.0.0.1:61124 Closing
+[Sun Jul 12 01:01:13 2026] 127.0.0.1:54651 Accepted
+[Sun Jul 12 01:01:13 2026] 127.0.0.1:54651 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:01:13 2026] 127.0.0.1:54651 Closing
+[Sun Jul 12 01:01:13 2026] 127.0.0.1:56587 Accepted
+[Sun Jul 12 01:01:18 2026] 127.0.0.1:50571 Accepted
+[Sun Jul 12 01:01:18 2026] 127.0.0.1:50571 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:01:18 2026] 127.0.0.1:50571 Closing
+[Sun Jul 12 01:01:20 2026] 127.0.0.1:56587 [200]: GET /api/server-status.php
+[Sun Jul 12 01:01:20 2026] 127.0.0.1:56587 Closing
+[Sun Jul 12 01:01:29 2026] 127.0.0.1:58833 Accepted
+[Sun Jul 12 01:01:29 2026] 127.0.0.1:58833 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:01:29 2026] 127.0.0.1:58833 Closing
+[Sun Jul 12 01:01:29 2026] 127.0.0.1:64878 Accepted
+[Sun Jul 12 01:01:34 2026] 127.0.0.1:52045 Accepted
+[Sun Jul 12 01:01:34 2026] 127.0.0.1:52045 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:01:34 2026] 127.0.0.1:52045 Closing
+[Sun Jul 12 01:01:45 2026] 127.0.0.1:64878 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:01:45 2026] 127.0.0.1:64878 Closing
+[Sun Jul 12 01:01:50 2026] 127.0.0.1:52050 Accepted
+[Sun Jul 12 01:01:50 2026] 127.0.0.1:52050 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:01:50 2026] 127.0.0.1:52050 Closing
+[Sun Jul 12 01:02:01 2026] 127.0.0.1:56665 Accepted
+[Sun Jul 12 01:02:01 2026] 127.0.0.1:56665 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:02:01 2026] 127.0.0.1:56665 Closing
+[Sun Jul 12 01:02:01 2026] 127.0.0.1:54070 Accepted
+[Sun Jul 12 01:02:06 2026] 127.0.0.1:63982 Accepted
+[Sun Jul 12 01:02:06 2026] 127.0.0.1:63982 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:02:06 2026] 127.0.0.1:63982 Closing
+[Sun Jul 12 01:02:17 2026] 127.0.0.1:54070 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:02:17 2026] 127.0.0.1:54070 Closing
+[Sun Jul 12 01:02:20 2026] 127.0.0.1:56435 Accepted
+[Sun Jul 12 01:02:20 2026] 127.0.0.1:56435 [200]: GET /api/server-status.php
+[Sun Jul 12 01:02:20 2026] 127.0.0.1:56435 Closing
+[Sun Jul 12 01:02:20 2026] 127.0.0.1:54055 Accepted
+[Sun Jul 12 01:02:20 2026] 127.0.0.1:54055 [200]: GET /api/server-status.php
+[Sun Jul 12 01:02:20 2026] 127.0.0.1:54055 Closing
+[Sun Jul 12 01:02:20 2026] 127.0.0.1:50054 Accepted
+[Sun Jul 12 01:02:22 2026] 127.0.0.1:63894 Accepted
+[Sun Jul 12 01:02:22 2026] 127.0.0.1:63894 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:02:22 2026] 127.0.0.1:63894 Closing
+[Sun Jul 12 01:02:33 2026] 127.0.0.1:50054 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:02:33 2026] 127.0.0.1:50054 Closing
+[Sun Jul 12 01:02:38 2026] 127.0.0.1:59228 Accepted
+[Sun Jul 12 01:02:38 2026] 127.0.0.1:59228 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:02:38 2026] 127.0.0.1:59228 Closing
+[Sun Jul 12 01:02:49 2026] 127.0.0.1:57004 Accepted
+[Sun Jul 12 01:02:49 2026] 127.0.0.1:57004 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:02:49 2026] 127.0.0.1:57004 Closing
+[Sun Jul 12 01:02:49 2026] 127.0.0.1:54856 Accepted
+[Sun Jul 12 01:02:54 2026] 127.0.0.1:60947 Accepted
+[Sun Jul 12 01:02:54 2026] 127.0.0.1:60947 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:02:54 2026] 127.0.0.1:60947 Closing
+[Sun Jul 12 01:03:05 2026] 127.0.0.1:54856 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:03:05 2026] 127.0.0.1:54856 Closing
+[Sun Jul 12 01:03:10 2026] 127.0.0.1:53914 Accepted
+[Sun Jul 12 01:03:10 2026] 127.0.0.1:53914 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:03:10 2026] 127.0.0.1:53914 Closing
+[Sun Jul 12 01:03:20 2026] 127.0.0.1:55431 Accepted
+[Sun Jul 12 01:03:20 2026] 127.0.0.1:55431 [200]: GET /api/server-status.php
+[Sun Jul 12 01:03:20 2026] 127.0.0.1:55431 Closing
+[Sun Jul 12 01:03:20 2026] 127.0.0.1:61965 Accepted
+[Sun Jul 12 01:03:20 2026] 127.0.0.1:61965 [200]: GET /api/server-status.php
+[Sun Jul 12 01:03:20 2026] 127.0.0.1:61965 Closing
+[Sun Jul 12 01:03:20 2026] 127.0.0.1:52053 Accepted
+[Sun Jul 12 01:03:21 2026] 127.0.0.1:52053 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:03:21 2026] 127.0.0.1:52053 Closing
+[Sun Jul 12 01:03:26 2026] 127.0.0.1:64204 Accepted
+[Sun Jul 12 01:03:26 2026] 127.0.0.1:64204 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:03:26 2026] 127.0.0.1:64204 Closing
+[Sun Jul 12 01:03:37 2026] 127.0.0.1:52308 Accepted
+[Sun Jul 12 01:03:37 2026] 127.0.0.1:52308 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:03:37 2026] 127.0.0.1:52308 Closing
+[Sun Jul 12 01:03:37 2026] 127.0.0.1:63229 Accepted
+[Sun Jul 12 01:03:42 2026] 127.0.0.1:51605 Accepted
+[Sun Jul 12 01:03:42 2026] 127.0.0.1:51605 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:03:42 2026] 127.0.0.1:51605 Closing
+[Sun Jul 12 01:03:53 2026] 127.0.0.1:63229 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:03:53 2026] 127.0.0.1:63229 Closing
+[Sun Jul 12 01:03:58 2026] 127.0.0.1:62273 Accepted
+[Sun Jul 12 01:03:58 2026] 127.0.0.1:62273 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:03:58 2026] 127.0.0.1:62273 Closing
+[Sun Jul 12 01:04:09 2026] 127.0.0.1:56105 Accepted
+[Sun Jul 12 01:04:09 2026] 127.0.0.1:56105 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:04:09 2026] 127.0.0.1:56105 Closing
+[Sun Jul 12 01:04:09 2026] 127.0.0.1:58409 Accepted
+[Sun Jul 12 01:04:14 2026] 127.0.0.1:58132 Accepted
+[Sun Jul 12 01:04:14 2026] 127.0.0.1:58132 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:04:14 2026] 127.0.0.1:58132 Closing
+[Sun Jul 12 01:04:20 2026] 127.0.0.1:51079 Accepted
+[Sun Jul 12 01:04:20 2026] 127.0.0.1:51079 [200]: GET /api/server-status.php
+[Sun Jul 12 01:04:20 2026] 127.0.0.1:51079 Closing
+[Sun Jul 12 01:04:20 2026] 127.0.0.1:58409 [200]: GET /api/server-status.php
+[Sun Jul 12 01:04:20 2026] 127.0.0.1:58409 Closing
+[Sun Jul 12 01:04:25 2026] 127.0.0.1:57835 Accepted
+[Sun Jul 12 01:04:25 2026] 127.0.0.1:57835 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:04:25 2026] 127.0.0.1:57835 Closing
+[Sun Jul 12 01:04:25 2026] 127.0.0.1:52018 Accepted
+[Sun Jul 12 01:04:30 2026] 127.0.0.1:61156 Accepted
+[Sun Jul 12 01:04:30 2026] 127.0.0.1:61156 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:04:30 2026] 127.0.0.1:61156 Closing
+[Sun Jul 12 01:04:41 2026] 127.0.0.1:52018 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:04:41 2026] 127.0.0.1:52018 Closing
+[Sun Jul 12 01:04:46 2026] 127.0.0.1:58782 Accepted
+[Sun Jul 12 01:04:46 2026] 127.0.0.1:58782 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:04:46 2026] 127.0.0.1:58782 Closing
+[Sun Jul 12 01:04:57 2026] 127.0.0.1:63626 Accepted
+[Sun Jul 12 01:04:57 2026] 127.0.0.1:63626 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:04:57 2026] 127.0.0.1:63626 Closing
+[Sun Jul 12 01:04:57 2026] 127.0.0.1:53830 Accepted
+[Sun Jul 12 01:05:02 2026] 127.0.0.1:56863 Accepted
+[Sun Jul 12 01:05:02 2026] 127.0.0.1:56863 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:05:02 2026] 127.0.0.1:56863 Closing
+[Sun Jul 12 01:05:13 2026] 127.0.0.1:53830 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:05:13 2026] 127.0.0.1:53830 Closing
+[Sun Jul 12 01:05:18 2026] 127.0.0.1:56719 Accepted
+[Sun Jul 12 01:05:18 2026] 127.0.0.1:56719 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:05:18 2026] 127.0.0.1:56719 Closing
+[Sun Jul 12 01:05:20 2026] 127.0.0.1:57897 Accepted
+[Sun Jul 12 01:05:20 2026] 127.0.0.1:57897 [200]: GET /api/server-status.php
+[Sun Jul 12 01:05:20 2026] 127.0.0.1:57897 Closing
+[Sun Jul 12 01:05:20 2026] 127.0.0.1:62855 Accepted
+[Sun Jul 12 01:05:20 2026] 127.0.0.1:62855 [200]: GET /api/server-status.php
+[Sun Jul 12 01:05:20 2026] 127.0.0.1:62855 Closing
+[Sun Jul 12 01:05:20 2026] 127.0.0.1:64911 Accepted
+[Sun Jul 12 01:05:29 2026] 127.0.0.1:64911 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:05:29 2026] 127.0.0.1:64911 Closing
+[Sun Jul 12 01:05:34 2026] 127.0.0.1:58342 Accepted
+[Sun Jul 12 01:05:34 2026] 127.0.0.1:58342 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:05:34 2026] 127.0.0.1:58342 Closing
+[Sun Jul 12 01:05:45 2026] 127.0.0.1:57584 Accepted
+[Sun Jul 12 01:05:45 2026] 127.0.0.1:57584 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:05:45 2026] 127.0.0.1:57584 Closing
+[Sun Jul 12 01:05:45 2026] 127.0.0.1:59685 Accepted
+[Sun Jul 12 01:05:50 2026] 127.0.0.1:64370 Accepted
+[Sun Jul 12 01:05:50 2026] 127.0.0.1:64370 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:05:50 2026] 127.0.0.1:64370 Closing
+[Sun Jul 12 01:06:01 2026] 127.0.0.1:59685 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:06:01 2026] 127.0.0.1:59685 Closing
+[Sun Jul 12 01:06:06 2026] 127.0.0.1:58450 Accepted
+[Sun Jul 12 01:06:06 2026] 127.0.0.1:58450 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:06:06 2026] 127.0.0.1:58450 Closing
+[Sun Jul 12 01:06:17 2026] 127.0.0.1:61393 Accepted
+[Sun Jul 12 01:06:17 2026] 127.0.0.1:61393 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:06:17 2026] 127.0.0.1:61393 Closing
+[Sun Jul 12 01:06:17 2026] 127.0.0.1:58339 Accepted
+[Sun Jul 12 01:06:20 2026] 127.0.0.1:61286 Accepted
+[Sun Jul 12 01:06:20 2026] 127.0.0.1:61286 [200]: GET /api/server-status.php
+[Sun Jul 12 01:06:20 2026] 127.0.0.1:61286 Closing
+[Sun Jul 12 01:06:20 2026] 127.0.0.1:58339 [200]: GET /api/server-status.php
+[Sun Jul 12 01:06:20 2026] 127.0.0.1:58339 Closing
+[Sun Jul 12 01:06:22 2026] 127.0.0.1:58420 Accepted
+[Sun Jul 12 01:06:22 2026] 127.0.0.1:58420 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:06:22 2026] 127.0.0.1:58420 Closing
+[Sun Jul 12 01:06:33 2026] 127.0.0.1:59810 Accepted
+[Sun Jul 12 01:06:33 2026] 127.0.0.1:59810 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:06:33 2026] 127.0.0.1:59810 Closing
+[Sun Jul 12 01:06:33 2026] 127.0.0.1:57064 Accepted
+[Sun Jul 12 01:06:38 2026] 127.0.0.1:53196 Accepted
+[Sun Jul 12 01:06:38 2026] 127.0.0.1:53196 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:06:38 2026] 127.0.0.1:53196 Closing
+[Sun Jul 12 01:06:49 2026] 127.0.0.1:57064 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:06:49 2026] 127.0.0.1:57064 Closing
+[Sun Jul 12 01:06:54 2026] 127.0.0.1:58985 Accepted
+[Sun Jul 12 01:06:54 2026] 127.0.0.1:58985 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:06:54 2026] 127.0.0.1:58985 Closing
+[Sun Jul 12 01:07:05 2026] 127.0.0.1:49750 Accepted
+[Sun Jul 12 01:07:05 2026] 127.0.0.1:49750 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:07:05 2026] 127.0.0.1:49750 Closing
+[Sun Jul 12 01:07:05 2026] 127.0.0.1:62478 Accepted
+[Sun Jul 12 01:07:10 2026] 127.0.0.1:49687 Accepted
+[Sun Jul 12 01:07:10 2026] 127.0.0.1:49687 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:07:10 2026] 127.0.0.1:49687 Closing
+[Sun Jul 12 01:07:20 2026] 127.0.0.1:62478 [200]: GET /api/server-status.php
+[Sun Jul 12 01:07:20 2026] 127.0.0.1:62478 Closing
+[Sun Jul 12 01:07:20 2026] 127.0.0.1:50076 Accepted
+[Sun Jul 12 01:07:20 2026] 127.0.0.1:50076 [200]: GET /api/server-status.php
+[Sun Jul 12 01:07:20 2026] 127.0.0.1:50076 Closing
+[Sun Jul 12 01:07:21 2026] 127.0.0.1:50146 Accepted
+[Sun Jul 12 01:07:21 2026] 127.0.0.1:50146 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:07:21 2026] 127.0.0.1:50146 Closing
+[Sun Jul 12 01:07:21 2026] 127.0.0.1:60516 Accepted
+[Sun Jul 12 01:07:26 2026] 127.0.0.1:57035 Accepted
+[Sun Jul 12 01:07:26 2026] 127.0.0.1:57035 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:07:26 2026] 127.0.0.1:57035 Closing
+[Sun Jul 12 01:07:37 2026] 127.0.0.1:60516 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:07:37 2026] 127.0.0.1:60516 Closing
+[Sun Jul 12 01:07:42 2026] 127.0.0.1:53667 Accepted
+[Sun Jul 12 01:07:42 2026] 127.0.0.1:53667 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:07:42 2026] 127.0.0.1:53667 Closing
+[Sun Jul 12 01:07:53 2026] 127.0.0.1:51452 Accepted
+[Sun Jul 12 01:07:53 2026] 127.0.0.1:51452 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:07:53 2026] 127.0.0.1:51452 Closing
+[Sun Jul 12 01:07:53 2026] 127.0.0.1:65442 Accepted
+[Sun Jul 12 01:07:58 2026] 127.0.0.1:60591 Accepted
+[Sun Jul 12 01:07:58 2026] 127.0.0.1:60591 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:07:58 2026] 127.0.0.1:60591 Closing
+[Sun Jul 12 01:08:09 2026] 127.0.0.1:65442 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:08:09 2026] 127.0.0.1:65442 Closing
+[Sun Jul 12 01:08:14 2026] 127.0.0.1:61916 Accepted
+[Sun Jul 12 01:08:14 2026] 127.0.0.1:61916 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:08:14 2026] 127.0.0.1:61916 Closing
+[Sun Jul 12 01:08:20 2026] 127.0.0.1:55483 Accepted
+[Sun Jul 12 01:08:20 2026] 127.0.0.1:55483 [200]: GET /api/server-status.php
+[Sun Jul 12 01:08:20 2026] 127.0.0.1:55483 Closing
+[Sun Jul 12 01:08:20 2026] 127.0.0.1:61208 Accepted
+[Sun Jul 12 01:08:20 2026] 127.0.0.1:61208 [200]: GET /api/server-status.php
+[Sun Jul 12 01:08:20 2026] 127.0.0.1:61208 Closing
+[Sun Jul 12 01:08:20 2026] 127.0.0.1:64246 Accepted
+[Sun Jul 12 01:08:25 2026] 127.0.0.1:64246 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:08:25 2026] 127.0.0.1:64246 Closing
+[Sun Jul 12 01:08:30 2026] 127.0.0.1:62850 Accepted
+[Sun Jul 12 01:08:30 2026] 127.0.0.1:62850 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:08:30 2026] 127.0.0.1:62850 Closing
+[Sun Jul 12 01:08:41 2026] 127.0.0.1:65245 Accepted
+[Sun Jul 12 01:08:41 2026] 127.0.0.1:65245 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:08:41 2026] 127.0.0.1:65245 Closing
+[Sun Jul 12 01:08:41 2026] 127.0.0.1:58256 Accepted
+[Sun Jul 12 01:08:46 2026] 127.0.0.1:56011 Accepted
+[Sun Jul 12 01:08:46 2026] 127.0.0.1:56011 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:08:46 2026] 127.0.0.1:56011 Closing
+[Sun Jul 12 01:08:57 2026] 127.0.0.1:58256 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:08:57 2026] 127.0.0.1:58256 Closing
+[Sun Jul 12 01:09:02 2026] 127.0.0.1:51740 Accepted
+[Sun Jul 12 01:09:02 2026] 127.0.0.1:51740 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:09:02 2026] 127.0.0.1:51740 Closing
+[Sun Jul 12 01:09:13 2026] 127.0.0.1:59160 Accepted
+[Sun Jul 12 01:09:13 2026] 127.0.0.1:59160 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:09:13 2026] 127.0.0.1:59160 Closing
+[Sun Jul 12 01:09:13 2026] 127.0.0.1:59212 Accepted
+[Sun Jul 12 01:09:18 2026] 127.0.0.1:56210 Accepted
+[Sun Jul 12 01:09:18 2026] 127.0.0.1:56210 [200]: GET /api/chat/?after_id=8
+[Sun Jul 12 01:09:18 2026] 127.0.0.1:56210 Closing
+[Sun Jul 12 01:09:20 2026] 127.0.0.1:59212 [200]: GET /api/server-status.php
+[Sun Jul 12 01:09:20 2026] 127.0.0.1:59212 Closing
+[Sun Jul 12 01:09:20 2026] 127.0.0.1:52415 Accepted
+[Sun Jul 12 01:09:20 2026] 127.0.0.1:52415 [200]: GET /api/server-status.php
+[Sun Jul 12 01:09:20 2026] 127.0.0.1:52415 Closing
