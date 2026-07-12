@@ -848,14 +848,23 @@ function admin_store_public_offer_summary(array $product): array
 {
     $offers = [];
 
-    foreach (raidlands_store_rp_offers($product, true) as $price) {
+    foreach ((array) ($product['rp_prices'] ?? []) as $price) {
+        $price = (array) $price;
+
+        if (empty($price['is_active'])) {
+            continue;
+        }
+
         $offers[] = raidlands_store_offer_label($price, 'RP') . ' - ' . raidlands_store_rp((int) ($price['rp_cost'] ?? 0));
     }
 
-    foreach (array_merge(
-        raidlands_store_cash_pass_offers($product, true),
-        raidlands_store_cash_subscription_offers($product, true)
-    ) as $price) {
+    foreach (array_merge((array) ($product['cash_pass_prices'] ?? []), (array) ($product['cash_subscription_prices'] ?? [])) as $price) {
+        $price = (array) $price;
+
+        if (empty($price['is_active'])) {
+            continue;
+        }
+
         $offers[] = raidlands_store_offer_label($price, 'Cash') . ' - ' . raidlands_store_money((int) ($price['amount_cents'] ?? 0), (string) ($price['currency'] ?? 'usd'));
     }
 

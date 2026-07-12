@@ -96,6 +96,97 @@ function store_item_format_seconds(int $seconds): string
     return (string) $seconds . 's';
 }
 
+function store_item_item_image_url(array $item): string
+{
+    $shortname = strtolower(trim((string) ($item['shortname'] ?? '')));
+
+    if ($shortname === '' || !preg_match('/^[a-z0-9._-]+$/', $shortname)) {
+        return '';
+    }
+
+    $relative = 'media/rust-items/' . $shortname . '.webp';
+    $absolute = dirname(__DIR__) . '/assets/' . $relative;
+
+    return is_file($absolute) ? asset_url($relative) : '';
+}
+
+function store_item_item_label(array $item): string
+{
+    $display = trim((string) ($item['display_name'] ?? ''));
+
+    return $display !== '' ? $display : (string) ($item['shortname'] ?? 'Item');
+}
+
+function store_item_kit_items(array $kit): array
+{
+    if (isset($kit['items_flat'])) {
+        return array_values((array) $kit['items_flat']);
+    }
+
+    $items = [];
+
+    foreach (['main', 'wear', 'belt'] as $container) {
+        foreach ((array) ($kit['items'][$container] ?? []) as $item) {
+            $item = (array) $item;
+            $item['container_name'] = (string) ($item['container_name'] ?? $container);
+            $items[] = $item;
+        }
+    }
+
+    return $items;
+}
+
+function store_item_render_kit_inventory_item(array $item): string
+{
+    $image = store_item_item_image_url($item);
+    $amount = max(1, (int) ($item['amount'] ?? 1));
+    $shortname = (string) ($item['shortname'] ?? '');
+    $meta = [];
+    $skin = (int) ($item['skin'] ?? 0);
+    $ammo = (int) ($item['ammo'] ?? 0);
+    $ammo_type = trim((string) ($item['ammo_type'] ?? ''));
+
+    if ($skin > 0) {
+        $meta[] = 'Skin ' . $skin;
+    }
+
+    if ($ammo > 0) {
+        $meta[] = $ammo . ' ammo' . ($ammo_type !== '' ? ' / ' . $ammo_type : '');
+    }
+
+    return '<li class="store-item-kit-inventory-item">'
+        . ($image !== '' ? '<img src="' . e($image) . '" alt="" loading="lazy" decoding="async">' : '<span class="store-kit-item-placeholder" aria-hidden="true"></span>')
+        . '<div><strong>' . e($amount . 'x ' . store_item_item_label($item)) . '</strong>'
+        . ($shortname !== '' ? '<span>' . e($shortname) . '</span>' : '')
+        . ($meta !== [] ? '<small>' . e(implode(' / ', $meta)) . '</small>' : '')
+        . '</div></li>';
+}
+
+function store_item_render_kit_inventory(array $kit, int $limit = 12): string
+{
+    $items = store_item_kit_items($kit);
+
+    if ($items === []) {
+        return '<p class="store-muted">This kit is linked, but item contents have not synced into the website yet.</p>';
+    }
+
+    $visible = array_slice($items, 0, max(1, $limit));
+    $remaining = count($items) - count($visible);
+    $html = '<ul class="store-item-kit-inventory-grid">';
+
+    foreach ($visible as $item) {
+        $html .= store_item_render_kit_inventory_item((array) $item);
+    }
+
+    $html .= '</ul>';
+
+    if ($remaining > 0) {
+        $html .= '<p class="store-item-kit-more">+' . e((string) $remaining) . ' more item' . ($remaining === 1 ? '' : 's') . ' on the full kit page.</p>';
+    }
+
+    return $html;
+}
+
 function store_item_offer_row(array $offer, string $csrf, string $kind, bool $cash_ready = true): string
 {
     $is_rp = $kind === 'rp';
@@ -182,21 +273,29 @@ function store_item_purchase_panel(array $product, ?array $player, string $csrf,
 function store_item_render_kit(array $kit): string
 {
     $image = function_exists('store_linked_kit_image_url') ? store_linked_kit_image_url($kit) : raidlands_kits_public_image_url((string) ($kit['image_path'] ?? ''));
-    $items = raidlands_kits_item_summary($kit, 5);
     $uses = (int) ($kit['maximum_uses'] ?? 0);
     $cooldown = (int) ($kit['cooldown_seconds'] ?? 0);
-    $meta = [$uses > 0 ? number_format($uses) . ' uses' : 'Unlimited uses'];
+    $items = store_item_kit_items($kit);
+    $description = trim((string) ($kit['description'] ?? ''));
+    $meta = [
+        $uses > 0 ? number_format($uses) . ' uses' : 'Unlimited uses',
+        count($items) . ' item' . (count($items) === 1 ? '' : 's'),
+    ];
 
     if ($cooldown > 0) {
         $meta[] = store_item_format_seconds($cooldown) . ' cooldown';
     }
 
     return '<article class="store-item-kit-row">'
+        . '<div class="store-item-kit-row-head">'
         . ($image !== '' ? '<img src="' . e($image) . '" alt="" loading="lazy" decoding="async">' : '<span class="store-kit-item-placeholder" aria-hidden="true"></span>')
         . '<div><h3><a href="' . e(raidlands_store_kit_public_url($kit)) . '">' . e((string) ($kit['kit_name'] ?? 'Kit')) . '</a></h3>'
         . '<p>' . e(implode(' / ', $meta)) . '</p>'
-        . ($items !== [] ? '<small>' . e(implode(', ', $items)) . '</small>' : '')
-        . '</div></article>';
+        . ($description !== '' ? '<small>' . e($description) . '</small>' : '')
+        . '</div></div>'
+        . store_item_render_kit_inventory($kit, 12)
+        . '<div class="store-item-kit-actions"><a class="btn btn-secondary" href="' . e(raidlands_store_kit_public_url($kit)) . '">Full Kit Details</a></div>'
+        . '</article>';
 }
 
 function store_item_render_perks(array $perks): string
@@ -205,10 +304,38 @@ function store_item_render_perks(array $perks): string
         return '';
     }
 
-    $html = '<div class="store-item-perk-list">';
+    $groups = [];
 
     foreach ($perks as $perk) {
-        $html .= '<span>' . e((string) ($perk['label'] ?? $perk['permission'] ?? 'Permission')) . '</span>';
+        $perk = (array) $perk;
+        $plugin = trim((string) ($perk['plugin_name'] ?? ''));
+        $permission = trim((string) ($perk['permission'] ?? ''));
+        $prefix = $permission !== '' && str_contains($permission, '.') ? strtok($permission, '.') : '';
+        $group = $plugin !== '' ? $plugin : ($prefix !== '' ? ucfirst($prefix) : 'Server access');
+
+        $groups[$group][] = $perk;
+    }
+
+    ksort($groups, SORT_NATURAL | SORT_FLAG_CASE);
+    $html = '<div class="store-item-perk-list">';
+
+    foreach ($groups as $group => $group_perks) {
+        $html .= '<article class="store-item-perk-group"><h3>' . e($group) . '</h3><ul>';
+
+        foreach ($group_perks as $perk) {
+            $permission = (string) ($perk['permission'] ?? '');
+            $label = (string) ($perk['label'] ?? $permission ?: 'Permission');
+
+            if ($permission !== '' && str_contains($label, ': ')) {
+                $label = substr($label, (int) strpos($label, ': ') + 2);
+            }
+
+            $html .= '<li><strong>' . e($label) . '</strong>'
+                . ($permission !== '' ? '<code>' . e($permission) . '</code>' : '')
+                . '</li>';
+        }
+
+        $html .= '</ul></article>';
     }
 
     return $html . '</div>';

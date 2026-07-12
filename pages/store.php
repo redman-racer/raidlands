@@ -271,13 +271,16 @@ function render_store_product_card(array $product, ?array $player, string $csrf,
                 $meta[] = raidlands_store_format_seconds($cooldown) . ' cooldown';
             }
 
+            $items = raidlands_kits_item_summary($kit, 3);
             $kit_html .= '<a class="store-card-kit-pill" href="' . e(raidlands_store_kit_public_url($kit)) . '">';
 
             if ($image !== '') {
                 $kit_html .= '<img src="' . e($image) . '" alt="" loading="lazy" referrerpolicy="no-referrer">';
             }
 
-            $kit_html .= '<span><strong>' . e((string) ($kit['kit_name'] ?? 'Kit')) . '</strong><small>' . e(implode(' / ', $meta)) . '</small></span></a>';
+            $kit_html .= '<span><strong>' . e((string) ($kit['kit_name'] ?? 'Kit')) . '</strong><small>' . e(implode(' / ', $meta)) . '</small>'
+                . ($items !== [] ? '<em>' . e('Includes ' . implode(', ', $items)) . '</em>' : '')
+                . '</span></a>';
         }
 
         if (count($linked_kits) > 3) {

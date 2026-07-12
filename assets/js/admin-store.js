@@ -154,6 +154,22 @@
     return plainText(input ? input.value : '') || 'New Store Product';
   }
 
+  function productIdentity(panel) {
+    var idInput = productIdInput(panel);
+    var slug = panel.querySelector('[data-admin-store-slug-input]');
+    var parts = [];
+
+    if (idInput && plainText(idInput.value) !== '') {
+      parts.push('#' + plainText(idInput.value));
+    }
+
+    if (slug && plainText(slug.value) !== '') {
+      parts.push(plainText(slug.value));
+    }
+
+    return parts.join(' / ');
+  }
+
   function productCategory(panel) {
     var select = panel.querySelector('[data-admin-store-type-select]');
     var value = select ? String(select.value || '') : '';
@@ -235,6 +251,7 @@
     var category = productCategory(panel);
     var status = productStatus(panel);
     var group = productGroupSummary(panel);
+    var identity = productIdentity(panel);
     var rpCount = countActiveOffers(panel, 'rp_prices');
     var cashCount = countActiveOffers(panel, 'cash_pass_prices') + countActiveOffers(panel, 'cash_subscription_prices');
     var sortInput = panel.querySelector('[data-admin-store-sort-input]');
@@ -242,7 +259,8 @@
     var meta = selector.querySelector('[data-admin-store-select-meta]');
     var heading = panel.querySelector('[data-admin-store-card-title]');
     var subtitle = panel.querySelector('.admin-feedback-subtitle');
-    var metaText = statusLabel(status) + ' / ' + group + ' / ' + rpCount + ' RP, ' + cashCount + ' cash';
+    var metaLead = identity !== '' ? identity + ' / ' : '';
+    var metaText = metaLead + statusLabel(status) + ' / ' + group + ' / ' + rpCount + ' RP, ' + cashCount + ' cash';
 
     if (label) {
       label.textContent = title;
@@ -257,7 +275,7 @@
     }
 
     if (subtitle) {
-      subtitle.textContent = statusLabel(status) + ' / ' + group;
+      subtitle.textContent = metaLead + statusLabel(status) + ' / ' + group;
     }
 
     selector.classList.toggle('is-draft', status === 'draft');

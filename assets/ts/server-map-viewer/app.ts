@@ -99,6 +99,15 @@ type CameraTourKind = "coastal-sweep" | "ridge-crossing" | "monument-orbit" | "m
 
 type CameraTourStyle = "cinematic" | "orbit";
 
+type ActionHighlightSource = "heatmap" | "players";
+
+type ActionHighlightFocus = {
+  center: Vector3;
+  radius: number;
+  weight: number;
+  updatedAt: number;
+};
+
 type HeatmapBucket = {
   bucketSize: number;
   x: number;
@@ -493,6 +502,8 @@ class TerrainViewer {
   private tourIndex = -1;
   private tourEnabled: boolean;
   private readonly tourStyle: CameraTourStyle;
+  private readonly actionHighlights = new Map<ActionHighlightSource, ActionHighlightFocus>();
+  private actionTourStartedAt = performance.now();
   private readonly lockCameraInput: boolean;
   private transitionFrom: CameraPose | null = null;
   private transitionTo: CameraPose | null = null;
@@ -609,10 +620,16 @@ class TerrainViewer {
 
   public setHeatmapVisible(visible: boolean): void {
     this.heatmapLayer.visible = visible;
+    if (!visible) {
+      this.setActionHighlight("heatmap", null);
+    }
   }
 
   public setPlayerLocationsVisible(visible: boolean): void {
     this.playerLocationLayer.visible = visible;
+    if (!visible) {
+      this.setActionHighlight("players", null);
+    }
   }
 
   public setHeatmap(payload: HeatmapPayload): void {
@@ -621,12 +638,14 @@ class TerrainViewer {
     const buckets = Array.isArray(payload.buckets) ? payload.buckets : [];
 
     if (buckets.length === 0) {
+      this.setActionHighlight("heatmap", null);
       this.replaceOverlayLayer(this.heatmapLayer, nextLayer);
       return;
     }
 
     const texture = createHeatmapCloudTexture();
     const maxValue = Math.max(0.0001, Number(payload.maxValue) || Math.max(...buckets.map((bucket) => Number(bucket.value) || 0), 0.0001));
+    this.setActionHighlight("heatmap", this.heatmapActionHighlight(buckets, maxValue));
 
     buckets.slice(0, 900).forEach((bucket) => {
       const normalized = MathUtils.clamp(Number(bucket.normalized) || ((Number(bucket.value) || 0) / maxValue), 0, 1);
@@ -668,6 +687,7 @@ class TerrainViewer {
     nextLayer.name = "player-location-playback-frame";
     const players = Array.isArray(payload.players) ? payload.players : [];
     this.selfLocation = players.find((player) => player.isSelf === true) || null;
+    this.setActionHighlight("players", this.playerActionHighlight(players));
 
     players.slice(0, 80).forEach((player) => {
       const x = Number(player.x);
@@ -1073,6 +1093,12 @@ class TerrainViewer {
       return;
     }
 
+    const actionPose = this.actionHighlightPose(now);
+    if (actionPose) {
+      this.applyBlendedTourPose(actionPose, now - this.actionTourStartedAt);
+      return;
+    }
+
     if (this.focusUntil > 0) {
       this.focusUntil = 0;
       this.startNextTour(now, true);
@@ -1092,18 +1118,7 @@ class TerrainViewer {
 
     const progress = MathUtils.clamp(elapsed / this.tourDuration, 0, 1);
     const pose = this.tourPose(progress);
-    const easeIn = MathUtils.smoothstep(MathUtils.clamp(elapsed / 2200, 0, 1), 0, 1);
-
-    if (this.activePose) {
-      pose.position.lerpVectors(this.activePose.position, pose.position, easeIn);
-      pose.target.lerpVectors(this.activePose.target, pose.target, easeIn);
-      pose.up.lerpVectors(this.activePose.up, pose.up, easeIn).normalize();
-      if (easeIn >= 0.995) {
-        this.activePose = null;
-      }
-    }
-
-    this.applyCameraPose(pose);
+    this.applyBlendedTourPose(pose, elapsed);
   }
 
   private startNextTour(now: number, blendFromCurrent: boolean): void {
@@ -1184,6 +1199,50 @@ class TerrainViewer {
     );
   }
 
+  private actionHighlightPose(now: number): CameraPose | null {
+    const highlight = this.currentActionHighlight();
+
+    if (!highlight) {
+      return null;
+    }
+
+    const worldSize = this.terrain.worldSize || 4500;
+    const focus = highlight.center.clone();
+    const ground = sampleTerrainHeight(this.terrain, focus.x, focus.z);
+    const radius = MathUtils.clamp(highlight.radius, worldSize * 0.08, worldSize * 0.48);
+    const orbitRadius = MathUtils.clamp(radius * 2.55, worldSize * 0.26, worldSize * 0.68);
+    const clearance = MathUtils.clamp(worldSize * 0.2 + radius * 0.28, worldSize * 0.13, worldSize * 0.44);
+    const orbitProgress = ((now - this.actionTourStartedAt) / 26000) % 1;
+    const angle = orbitProgress * Math.PI * 2 + Math.PI * 0.18;
+    const mapCenterPull = MathUtils.clamp(radius / Math.max(1, worldSize) * 0.18, 0.04, 0.12);
+    const target = new Vector3(
+      MathUtils.lerp(focus.x, 0, mapCenterPull),
+      ground + MathUtils.clamp(radius * 0.12, 44, 140),
+      MathUtils.lerp(focus.z, 0, mapCenterPull),
+    );
+
+    return this.aboveTerrainPose(
+      new Vector3(focus.x + Math.cos(angle) * orbitRadius, 0, focus.z + Math.sin(angle) * orbitRadius),
+      target,
+      clearance,
+    );
+  }
+
+  private applyBlendedTourPose(pose: CameraPose, elapsed: number): void {
+    const easeIn = MathUtils.smoothstep(MathUtils.clamp(elapsed / 2200, 0, 1), 0, 1);
+
+    if (this.activePose) {
+      pose.position.lerpVectors(this.activePose.position, pose.position, easeIn);
+      pose.target.lerpVectors(this.activePose.target, pose.target, easeIn);
+      pose.up.lerpVectors(this.activePose.up, pose.up, easeIn).normalize();
+      if (easeIn >= 0.995) {
+        this.activePose = null;
+      }
+    }
+
+    this.applyCameraPose(pose);
+  }
+
   private aboveTerrainPose(position: Vector3, target: Vector3, clearance: number): CameraPose {
     const worldSize = this.terrain.worldSize || 4500;
     const ground = sampleTerrainHeight(this.terrain, position.x, position.z);
@@ -1205,6 +1264,154 @@ class TerrainViewer {
     }
 
     return monuments.reduce((best, monument) => monument.radius > best.radius ? monument : best, monuments[0]!);
+  }
+
+  private heatmapActionHighlight(buckets: HeatmapBucket[], maxValue: number): ActionHighlightFocus | null {
+    const candidates = buckets
+      .map((bucket) => {
+        const normalized = MathUtils.clamp(Number(bucket.normalized) || ((Number(bucket.value) || 0) / Math.max(0.0001, maxValue)), 0, 1);
+        const value = Math.max(0, Number(bucket.value) || 0);
+        const bucketSize = MathUtils.clamp(Number(bucket.bucketSize) || 100, 25, 1000);
+        const position = rustWorldToViewerPosition(bucket.x, 0, bucket.z);
+        const score = Math.max(normalized, value / Math.max(0.0001, maxValue));
+
+        return {
+          position,
+          bucketSize,
+          score,
+          weight: Math.max(0.001, score * score * Math.max(1, value)),
+        };
+      })
+      .filter((candidate) => candidate.score >= 0.12)
+      .sort((a, b) => b.weight - a.weight)
+      .slice(0, 14);
+
+    if (candidates.length === 0) {
+      return null;
+    }
+
+    const center = new Vector3();
+    const totalWeight = candidates.reduce((sum, candidate) => sum + candidate.weight, 0);
+    candidates.forEach((candidate) => {
+      center.addScaledVector(candidate.position, candidate.weight / totalWeight);
+    });
+
+    let radius = 0;
+    candidates.forEach((candidate) => {
+      radius = Math.max(radius, center.distanceTo(candidate.position) + candidate.bucketSize * 0.72);
+    });
+
+    center.y = sampleTerrainHeight(this.terrain, center.x, center.z);
+
+    return {
+      center,
+      radius: Math.max(radius, 160),
+      weight: totalWeight,
+      updatedAt: performance.now(),
+    };
+  }
+
+  private playerActionHighlight(players: PlayerLocation[]): ActionHighlightFocus | null {
+    const candidates = players
+      .map((player) => {
+        const x = Number(player.x);
+        const y = Number(player.y) || 0;
+        const z = Number(player.z);
+
+        if (!Number.isFinite(x) || !Number.isFinite(z)) {
+          return null;
+        }
+
+        return {
+          position: rustWorldToViewerPosition(x, y, z),
+          weight: player.isSelf === true ? 1.8 : 1,
+        };
+      })
+      .filter((candidate): candidate is { position: Vector3; weight: number } => candidate !== null)
+      .slice(0, 80);
+
+    if (candidates.length === 0) {
+      return null;
+    }
+
+    const center = new Vector3();
+    const totalWeight = candidates.reduce((sum, candidate) => sum + candidate.weight, 0);
+    candidates.forEach((candidate) => {
+      center.addScaledVector(candidate.position, candidate.weight / totalWeight);
+    });
+
+    let radius = 0;
+    candidates.forEach((candidate) => {
+      radius = Math.max(radius, center.distanceTo(candidate.position) + (candidate.weight > 1 ? 170 : 130));
+    });
+
+    center.y = sampleTerrainHeight(this.terrain, center.x, center.z);
+
+    return {
+      center,
+      radius: Math.max(radius, 190),
+      weight: totalWeight * 1.35,
+      updatedAt: performance.now(),
+    };
+  }
+
+  private setActionHighlight(source: ActionHighlightSource, focus: ActionHighlightFocus | null): void {
+    const now = performance.now();
+    const previous = this.currentActionHighlight();
+
+    if (focus) {
+      this.actionHighlights.set(source, { ...focus, updatedAt: now });
+    } else {
+      this.actionHighlights.delete(source);
+    }
+
+    const next = this.currentActionHighlight();
+
+    if (!this.tourEnabled) {
+      return;
+    }
+
+    if (!next) {
+      if (previous) {
+        this.startNextTour(now, true);
+      }
+      return;
+    }
+
+    const movedFarEnough = !previous || previous.center.distanceTo(next.center) > Math.max(140, Math.min(previous.radius, next.radius) * 0.36);
+
+    if (movedFarEnough) {
+      this.actionTourStartedAt = now;
+      this.activePose = this.currentPose();
+    }
+  }
+
+  private currentActionHighlight(): ActionHighlightFocus | null {
+    if (this.actionHighlights.size === 0) {
+      return null;
+    }
+
+    const highlights = Array.from(this.actionHighlights.values());
+    const totalWeight = highlights.reduce((sum, highlight) => sum + Math.max(0.001, highlight.weight), 0);
+    const center = new Vector3();
+
+    highlights.forEach((highlight) => {
+      center.addScaledVector(highlight.center, Math.max(0.001, highlight.weight) / totalWeight);
+    });
+
+    let radius = 0;
+    highlights.forEach((highlight) => {
+      radius = Math.max(radius, center.distanceTo(highlight.center) + highlight.radius);
+    });
+
+    center.y = sampleTerrainHeight(this.terrain, center.x, center.z);
+
+    return {
+      center,
+      radius,
+      weight: totalWeight,
+      updatedAt: Math.max(...highlights.map((highlight) => highlight.updatedAt)),
+    };
   }
 
   private currentPose(): CameraPose {

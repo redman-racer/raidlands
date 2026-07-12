@@ -873,7 +873,9 @@ function raidlands_kits_permission_report(array $permissions, array $metadata, i
         return strnatcasecmp((string) $left['label'], (string) $right['label']);
     });
 
-    return array_slice(array_values($reports), 0, $limit);
+    $reports = array_values($reports);
+
+    return $limit > 0 ? array_slice($reports, 0, $limit) : $reports;
 }
 
 function raidlands_kits_public_match_key(string $value): string
@@ -2075,7 +2077,7 @@ function raidlands_kits_attach_to_products(array $products): array
         });
 
         $product['linked_kits'] = $linked_kits;
-        $product['linked_perks'] = raidlands_kits_permission_report($permissions, $permission_metadata, 8);
+        $product['linked_perks'] = raidlands_kits_permission_report($permissions, $permission_metadata, 0);
         $product['derived_permissions'] = $permissions;
     }
     unset($product);
