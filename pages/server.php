@@ -254,6 +254,7 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
         data-terrain-hash="<?= e((string) ($server_map_image['terrainHash'] ?? '')) ?>"
         data-skybox-hash="<?= e((string) ($server_map_image['skyboxHash'] ?? '')) ?>"
         data-map-published-at="<?= e((string) ($server_map_image['publishedAt'] ?? '')) ?>"
+        data-seed="<?= e((string) ($server_map_image['seed'] ?? $server_status['seed'] ?? 0)) ?>"
         data-heatmap-url="<?= e(route_url('api/server/heatmap.php')) ?>"
         data-player-locations-url="<?= e(route_url('api/server/player-locations.php')) ?>"
         data-map-replay-events-url="<?= e(route_url('api/server/map-replay-events.php')) ?>"

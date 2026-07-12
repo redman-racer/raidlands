@@ -191,6 +191,8 @@ $home_is_linked = raidlands_has_linked_account();
             data-camera-tour-style="orbit"
             data-camera-locked="true"
             data-grid-overlay="true"
+            data-terrain-hash="<?= e((string) ($home_server_map_image['terrainHash'] ?? '')) ?>"
+            data-seed="<?= e((string) ($home_server_map_image['seed'] ?? $home_server_status['seed'] ?? 0)) ?>"
             data-world-size="<?= e((string) ($home_server_map_image['worldSize'] ?? $home_server_status['worldSize'] ?? 0)) ?>"
             data-min-height="<?= e((string) ($home_server_map_image['terrainMinHeight'] ?? 0)) ?>"
             data-max-height="<?= e((string) ($home_server_map_image['terrainMaxHeight'] ?? 0)) ?>"

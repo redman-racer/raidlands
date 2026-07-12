@@ -349,6 +349,7 @@ function bindLiveTerrainUpdates(root: HTMLElement, initial: TerrainViewerInstanc
       root.dataset.textureUrl = metadata.textureUrl;
       root.dataset.skyboxUrl = metadata.skyboxUrl || root.dataset.skyboxUrl || "";
       root.dataset.worldSize = metadata.worldSize > 0 ? String(metadata.worldSize) : (root.dataset.worldSize || "");
+      root.dataset.seed = Number.isFinite(Number(metadata.seed)) ? String(metadata.seed) : (root.dataset.seed || "");
       root.dataset.terrainHash = metadata.terrainHash || "";
       root.dataset.skyboxHash = metadata.skyboxHash || "";
       root.dataset.mapPublishedAt = metadata.publishedAt || "";
@@ -417,6 +418,7 @@ function terrainViewerFingerprint(root: HTMLElement): string {
     terrainHash: root.dataset.terrainHash || "",
     terrainUrl: root.dataset.terrainUrl || "",
     worldSize: Number(root.dataset.worldSize || 0),
+    seed: Number(root.dataset.seed || 0),
   });
 }
 
