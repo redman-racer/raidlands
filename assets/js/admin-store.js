@@ -315,8 +315,8 @@
       draft: 30
     };
 
-    function draftRank(selector) {
-      return selector.getAttribute('data-admin-store-status') === 'draft' ? 1 : 0;
+    function publicRank(selector) {
+      return statusRank[selector.getAttribute('data-admin-store-status') || 'draft'] || 99;
     }
 
     function byTitle(a, b) {
@@ -324,7 +324,7 @@
     }
 
     function byPublicOrder(a, b) {
-      return draftRank(a) - draftRank(b)
+      return publicRank(a) - publicRank(b)
         || numberValue(a, 'data-admin-store-sort-order', 100) - numberValue(b, 'data-admin-store-sort-order', 100)
         || byTitle(a, b);
     }
@@ -402,6 +402,7 @@
     function applyFilters() {
       var currentFilters = filters();
       var visible = [];
+      var activeVisible = 0;
 
       sortSelectors(selectors, currentFilters.sort).forEach(function (selector) {
         if (list) {
@@ -413,11 +414,15 @@
 
         if (isVisible) {
           visible.push(selector);
+
+          if (selector.getAttribute('data-admin-store-status') === 'active') {
+            activeVisible += 1;
+          }
         }
       });
 
       if (resultCount) {
-        resultCount.textContent = visible.length + ' product' + (visible.length === 1 ? '' : 's') + ' shown';
+        resultCount.textContent = visible.length + ' product' + (visible.length === 1 ? '' : 's') + ' shown / ' + activeVisible + ' public-active';
       }
 
       if (empty) {

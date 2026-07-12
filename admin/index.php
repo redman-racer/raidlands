@@ -3039,6 +3039,27 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                         $product_total = count($product_rows) + 2;
                         $store_selector_items = [];
                         $store_has_active_panel = false;
+                        $store_category_counts = [];
+
+                        foreach ($admin_store_type_options as $type_key => $type_label) {
+                            $store_category_counts[$type_key] = ['total' => 0, 'active' => 0, 'inactive' => 0];
+                        }
+
+                        foreach ($product_rows as $count_row) {
+                            $count_type = raidlands_store_normalize_product_type((string) ($count_row['product_type'] ?? 'perk'));
+
+                            if (!isset($store_category_counts[$count_type])) {
+                                $store_category_counts[$count_type] = ['total' => 0, 'active' => 0, 'inactive' => 0];
+                            }
+
+                            $store_category_counts[$count_type]['total'] += 1;
+
+                            if (!empty($count_row['is_active'])) {
+                                $store_category_counts[$count_type]['active'] += 1;
+                            } else {
+                                $store_category_counts[$count_type]['inactive'] += 1;
+                            }
+                        }
                       ?>
                       <div class="admin-grid three">
                         <div class="metal-panel">
@@ -3116,6 +3137,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             $store_status = $store_is_existing ? (!empty($row['is_active']) ? 'Active' : 'Inactive') : 'Draft slot';
                             $store_status_value = $store_is_existing ? (!empty($row['is_active']) ? 'active' : 'inactive') : 'draft';
                             $store_type_label = $admin_store_type_options[$product_type_value] ?? $product_type_value;
+                            $store_type_counts = $store_category_counts[$product_type_value] ?? ['total' => 0, 'active' => 0, 'inactive' => 0];
                             $store_public_offers = admin_store_public_offer_summary($row);
                             $store_rp_active_count = 0;
                             foreach ($rp_prices as $rp_price_summary_row) {
@@ -3213,11 +3235,15 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               <div>
                                 <span class="status-pill <?= !empty($row['is_active']) ? 'active' : 'closed' ?>"><?= !empty($row['is_active']) ? 'Public product active' : 'Hidden from public store' ?></span>
                                 <span class="status-pill <?= $store_public_offers !== [] ? 'paid' : 'pending' ?>"><?= e((string) count($store_public_offers)) ?> active public offer<?= count($store_public_offers) === 1 ? '' : 's' ?></span>
+                                <span class="status-pill pending"><?= e((string) ($store_type_counts['active'] ?? 0)) ?> active in <?= e($store_type_label) ?></span>
                               </div>
                               <?php if ($store_public_offers === []) : ?>
                                 <p>No active price rows are currently buyable for this product. Enable an RP or cash offer before it can sell.</p>
                               <?php else : ?>
                                 <p>Public page will show: <?= e(implode(' / ', $store_public_offers)) ?></p>
+                              <?php endif; ?>
+                              <?php if (empty($row['is_active']) && (int) ($store_type_counts['active'] ?? 0) > 0) : ?>
+                                <p>This row is hidden, but <?= e($store_type_label) ?> still has <?= e((string) ($store_type_counts['active'] ?? 0)) ?> other active product<?= (int) ($store_type_counts['active'] ?? 0) === 1 ? '' : 's' ?> that can appear on the store.</p>
                               <?php endif; ?>
                             </div>
                             <div class="admin-store-section-stack">
