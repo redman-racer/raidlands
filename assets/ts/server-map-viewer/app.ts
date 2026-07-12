@@ -124,6 +124,7 @@ type HeatmapHistoryFrame = HeatmapPayload & {
 type HeatmapHistoryPayload = HeatmapPayload & {
   frames?: HeatmapHistoryFrame[];
   frameSeconds?: number;
+  authenticated?: boolean;
 };
 
 type PlayerLocation = {
@@ -2288,7 +2289,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     return Math.max(0, heatmapHistory.length - 1);
   };
 
-  const reloadPlayback = () => {
+  const reloadPlayback = (preferredFrame?: number) => {
     const wantsHeatmap = heatmap?.checked ?? false;
     const wantsPlayers = players?.checked ?? false;
 
@@ -2302,7 +2303,9 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     if (heatmapPlayback?.checked) {
       void loadOverlayHistory(root, wantsHeatmap, wantsPlayers, metric?.value || "deaths", range?.value || "24h", heatmapFrameCountValue()).then((payload) => {
         heatmapHistory = Array.isArray(payload.frames) ? payload.frames : [];
-        const latestFrame = latestVisibleHeatmapFrame();
+        const latestFrame = preferredFrame === undefined
+          ? latestVisibleHeatmapFrame()
+          : MathUtils.clamp(Math.round(preferredFrame), 0, Math.max(0, heatmapHistory.length - 1));
         if (heatmapFrame) {
           heatmapFrame.max = String(Math.max(0, heatmapHistory.length - 1));
           heatmapFrame.step = "1";
@@ -2326,15 +2329,15 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     }
   };
 
-  bind(heatmap, "change", reloadPlayback);
+  bind(heatmap, "change", () => reloadPlayback());
   bind(heatmapPlayback, "change", () => {
     if (heatmapPlayback?.checked && !heatmap?.checked && players && !players.checked) {
       players.checked = true;
     }
     reloadPlayback();
   });
-  bind(metric, "change", reloadPlayback);
-  bind(range, "change", reloadPlayback);
+  bind(metric, "change", () => reloadPlayback());
+  bind(range, "change", () => reloadPlayback());
   bind(heatmapFrameCount, "input", () => {
     updateFrameCountLabel();
     if (heatmapPlayback?.checked && (heatmap?.checked || players?.checked)) {
@@ -2352,19 +2355,19 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     }
   });
   bind(heatmapFrame, "input", () => {
+    const selectedFrame = Math.round(Number(heatmapFrame?.value) || 0);
     if (heatmapPlayback && !heatmapPlayback.checked) {
       heatmapPlayback.checked = true;
     }
     if (!heatmap?.checked && players && !players.checked) {
       players.checked = true;
     }
+    playbackVirtualFrame = selectedFrame;
     stopHeatmapPlayback();
     if (heatmapHistory.length === 0) {
-      reloadPlayback();
+      reloadPlayback(selectedFrame);
       return;
     }
-    const selectedFrame = Math.round(Number(heatmapFrame?.value) || 0);
-    playbackVirtualFrame = selectedFrame;
     if (heatmapFrame) {
       heatmapFrame.step = "1";
       heatmapFrame.value = String(selectedFrame);
@@ -2562,20 +2565,65 @@ async function loadPlayerLocationHistory(root: HTMLElement, range: string, frame
 
 async function loadOverlayHistory(root: HTMLElement, includeHeatmap: boolean, includePlayers: boolean, metric: string, range: string, frames = 24): Promise<HeatmapHistoryPayload> {
   const [heatmapPayload, playerPayload] = await Promise.all([
-    includeHeatmap ? loadHeatmapHistory(root, metric, range, frames) : Promise.resolve({ frames: [] }),
-    includePlayers ? loadPlayerLocationHistory(root, range, frames) : Promise.resolve({ frames: [] }),
+    includeHeatmap ? loadHeatmapHistory(root, metric, range, frames) : Promise.resolve({ frames: [] } as HeatmapHistoryPayload),
+    includePlayers ? loadPlayerLocationHistory(root, range, frames) : Promise.resolve({ frames: [] } as HeatmapHistoryPayload),
   ]);
   const heatmapFrames = Array.isArray(heatmapPayload.frames) ? heatmapPayload.frames : [];
   const playerFrames = Array.isArray(playerPayload.frames) ? playerPayload.frames : [];
   const baseFrames = heatmapFrames.length > 0 ? heatmapFrames : playerFrames;
+  const frameSeconds = Math.max(60, Number(heatmapPayload.frameSeconds || playerPayload.frameSeconds || 60));
 
   return {
     ...heatmapPayload,
-    frames: baseFrames.map((frame, index) => ({
-      ...frame,
-      players: includePlayers ? (playerFrames[index]?.players || frame.players || []) : frame.players,
-    })),
+    frameSeconds,
+    authenticated: Boolean(heatmapPayload.authenticated || playerPayload.authenticated),
+    frames: baseFrames.map((frame, index) => {
+      const matchingPlayerFrame = includePlayers ? playerHistoryFrameFor(frame, playerFrames, index, frameSeconds) : null;
+
+      return {
+        ...frame,
+        players: includePlayers ? (matchingPlayerFrame?.players || frame.players || []) : frame.players,
+      };
+    }),
   };
+}
+
+function playerHistoryFrameFor(frame: HeatmapHistoryFrame, playerFrames: HeatmapHistoryFrame[], fallbackIndex: number, frameSeconds: number): HeatmapHistoryFrame | null {
+  if (playerFrames.length === 0) {
+    return null;
+  }
+
+  const frameTime = historyFrameTime(frame);
+  const fallbackFrame = playerFrames[fallbackIndex] || null;
+
+  if (frameTime === null) {
+    return fallbackFrame;
+  }
+
+  let closest: HeatmapHistoryFrame | null = fallbackFrame;
+  let closestDelta = closest ? historyFrameDeltaMs(closest, frameTime) : Number.POSITIVE_INFINITY;
+  const toleranceMs = Math.max(90_000, frameSeconds * 1000 * 0.6);
+
+  for (const playerFrame of playerFrames) {
+    const delta = historyFrameDeltaMs(playerFrame, frameTime);
+    if (delta < closestDelta) {
+      closest = playerFrame;
+      closestDelta = delta;
+    }
+  }
+
+  return closestDelta <= toleranceMs ? closest : fallbackFrame;
+}
+
+function historyFrameDeltaMs(frame: HeatmapHistoryFrame, targetMs: number): number {
+  const time = historyFrameTime(frame);
+  return time === null ? Number.POSITIVE_INFINITY : Math.abs(time - targetMs);
+}
+
+function historyFrameTime(frame: HeatmapHistoryFrame): number | null {
+  const raw = frame.windowEnd || frame.windowStart || "";
+  const time = Date.parse(raw);
+  return Number.isFinite(time) ? time : null;
 }
 
 async function loadPlayerLocations(root: HTMLElement, viewer: TerrainViewer, myLocation?: HTMLButtonElement | null, showLayer = true): Promise<void> {
