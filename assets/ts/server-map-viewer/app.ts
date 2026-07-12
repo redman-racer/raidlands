@@ -357,32 +357,37 @@ async function loadLatestTerrainMetadata(root: HTMLElement, statusUrl: string): 
 }
 
 function terrainViewerFingerprint(root: HTMLElement): string {
-  return [
-    root.dataset.terrainHash || "",
-    root.dataset.terrainUrl || "",
-    root.dataset.textureUrl || "",
-    root.dataset.skyboxUrl || "",
-    root.dataset.skyboxHash || "",
-    root.dataset.worldSize || "",
-    root.dataset.mapPublishedAt || "",
-  ].join("|");
+  return terrainIdentityFingerprint({
+    terrainHash: root.dataset.terrainHash || "",
+    terrainUrl: root.dataset.terrainUrl || "",
+    worldSize: Number(root.dataset.worldSize || 0),
+  });
 }
 
 function terrainMetadataFingerprint(metadata: Partial<ServerStatusMapImage> & { terrainUrl?: string; textureUrl?: string; skyboxUrl?: string; worldSize?: number }): string {
+  return terrainIdentityFingerprint(metadata);
+}
+
+function terrainIdentityFingerprint(metadata: Partial<ServerStatusMapImage> & { terrainUrl?: string; worldSize?: number }): string {
+  const terrainHash = String(metadata.terrainHash || "").trim();
+
+  if (terrainHash !== "") {
+    return [
+      terrainHash,
+      String(metadata.worldSize || ""),
+      String(metadata.seed || ""),
+    ].join("|");
+  }
+
   return [
-    metadata.terrainHash || "",
     metadata.terrainUrl || metadata.terrainPublicUrl || "",
-    metadata.textureUrl || metadata.url || metadata.publicUrl || "",
-    metadata.hash || "",
-    metadata.skyboxHash || "",
-    metadata.skyboxUrl || metadata.skyboxPublicUrl || "",
     String(metadata.worldSize || ""),
-    metadata.publishedAt || metadata.generatedAt || "",
+    String(metadata.seed || ""),
   ].join("|");
 }
 
 function liveTerrainPollDelayMs(): number {
-  return 300000;
+  return 1800000;
 }
 
 function normalizeTerrain(value: unknown, root: HTMLElement): TerrainPayload {
