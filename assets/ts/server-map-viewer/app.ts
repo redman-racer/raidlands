@@ -1907,9 +1907,8 @@ class AirdropReplayRun implements MapReplayRun {
   private readonly duration: number;
   private playbackSpeed: number;
   private readonly aircraft: Group;
-  private readonly packageMesh: Mesh;
-  private readonly parachute: Mesh;
   private readonly dropCount: number;
+  private readonly packageVisuals: Array<{ packageMesh: Mesh; parachute: Mesh; offsetX: number; offsetZ: number }>;
   private timelineElapsed: number | null = null;
 
   public constructor(
@@ -1929,20 +1928,31 @@ class AirdropReplayRun implements MapReplayRun {
     this.playbackSpeed = MathUtils.clamp(playbackSpeed || 1, 0.1, 12);
     this.duration = 9;
     this.dropCount = Math.max(1, Number(event.payload?.dropCount || 1));
+    const visualDropCount = MathUtils.clamp(Math.ceil(this.dropCount / 3), 1, 3);
     this.group.name = "airdrop-replay";
     this.aircraft = createAircraftMarker("cargo_plane", vehicleMetadata, assetBase);
     this.aircraft.scale.setScalar(1.35);
-    this.packageMesh = new Mesh(
-      new BoxGeometry(26, 20, 26),
-      new MeshStandardMaterial({ color: 0x8a5f36, roughness: 0.82, metalness: 0.05 }),
-    );
-    this.packageMesh.name = "airdrop-replay-package";
-    this.parachute = new Mesh(
-      new ConeGeometry(34, 22, 24, 1, true),
-      new MeshStandardMaterial({ color: 0xf5ead8, roughness: 0.74, transparent: true, opacity: 0.88, side: DoubleSide }),
-    );
-    this.parachute.name = "airdrop-replay-parachute";
-    this.group.add(this.aircraft, this.packageMesh, this.parachute);
+    this.packageVisuals = Array.from({ length: visualDropCount }, (_, index) => {
+      const packageMesh = new Mesh(
+        new BoxGeometry(26, 20, 26),
+        new MeshStandardMaterial({ color: 0x8a5f36, roughness: 0.82, metalness: 0.05 }),
+      );
+      packageMesh.name = `airdrop-replay-package-${index + 1}`;
+      const parachute = new Mesh(
+        new ConeGeometry(34, 22, 24, 1, true),
+        new MeshStandardMaterial({ color: 0xf5ead8, roughness: 0.74, transparent: true, opacity: 0.88, side: DoubleSide }),
+      );
+      parachute.name = `airdrop-replay-parachute-${index + 1}`;
+      const centeredIndex = index - ((visualDropCount - 1) / 2);
+      this.group.add(packageMesh, parachute);
+      return {
+        packageMesh,
+        parachute,
+        offsetX: centeredIndex * 34,
+        offsetZ: Math.abs(centeredIndex) * 10,
+      };
+    });
+    this.group.add(this.aircraft);
   }
 
   public update(now: number): boolean {
@@ -1969,12 +1979,16 @@ class AirdropReplayRun implements MapReplayRun {
 
     const dropProgress = MathUtils.clamp((progress - 0.22) / 0.56, 0, 1);
     const packageHeight = MathUtils.lerp(planeHeight - 42, ground + 20, easeInOutCubic(dropProgress));
-    const packageOffset = (this.dropCount - 1) * 8;
-    this.packageMesh.position.set(this.target.x + packageOffset, packageHeight, this.target.z);
-    this.parachute.position.set(this.packageMesh.position.x, packageHeight + 34, this.packageMesh.position.z);
     const visibleDrop = progress > 0.2 && progress < 0.92;
-    this.packageMesh.visible = progress > 0.2;
-    this.parachute.visible = visibleDrop && dropProgress < 0.98;
+    this.packageVisuals.forEach((visual, index) => {
+      const stagger = index * 0.06;
+      const visualProgress = MathUtils.clamp((progress - 0.22 - stagger) / 0.56, 0, 1);
+      const visualHeight = MathUtils.lerp(planeHeight - 42, ground + 20, easeInOutCubic(visualProgress));
+      visual.packageMesh.position.set(this.target.x + visual.offsetX, visualHeight, this.target.z + visual.offsetZ);
+      visual.parachute.position.set(visual.packageMesh.position.x, visualHeight + 34, visual.packageMesh.position.z);
+      visual.packageMesh.visible = progress > 0.2 + stagger;
+      visual.parachute.visible = visibleDrop && visualProgress < 0.98;
+    });
     return true;
   }
 
