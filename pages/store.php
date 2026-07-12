@@ -247,6 +247,73 @@ function store_product_search_blob(array $product): string
     return strtolower(trim(implode(' ', array_filter($parts))));
 }
 
+function store_product_offer_interval(array $offer, bool $use_billing_interval = false): string
+{
+    return (string) ($use_billing_interval ? ($offer['billing_interval'] ?? 'one_time') : ($offer['access_interval'] ?? 'one_time'));
+}
+
+function render_store_offer_matrix_preview(array $product): string
+{
+    $rows = [
+        'cash' => [
+            'label' => 'Cash',
+            'offers' => array_merge(
+                raidlands_store_cash_pass_offers($product, true),
+                raidlands_store_cash_subscription_offers($product, true)
+            ),
+        ],
+        'rp' => [
+            'label' => 'RP',
+            'offers' => raidlands_store_rp_offers($product, true),
+        ],
+    ];
+    $intervals = raidlands_store_offer_intervals(true);
+    $offers_by_row = [];
+    $has_offers = false;
+
+    foreach ($rows as $row_key => $row) {
+        foreach ((array) $row['offers'] as $offer) {
+            $offer = (array) $offer;
+            $interval = store_product_offer_interval($offer, $row_key === 'cash' && (string) ($offer['billing_interval'] ?? 'one_time') !== 'one_time');
+            $offers_by_row[$row_key][$interval] = $offer;
+            $has_offers = true;
+        }
+    }
+
+    if (!$has_offers) {
+        return '<div class="store-card-offer-matrix"><p class="store-muted">No purchase options are active yet.</p></div>';
+    }
+
+    $html = '<div class="store-card-offer-matrix" aria-label="Purchase option preview"><table><thead><tr><th>Type</th>';
+
+    foreach ($intervals as $interval) {
+        $html .= '<th>' . e(raidlands_store_access_interval_label($interval)) . '</th>';
+    }
+
+    $html .= '</tr></thead><tbody>';
+
+    foreach ($rows as $row_key => $row) {
+        $html .= '<tr><th>' . e((string) $row['label']) . '</th>';
+
+        foreach ($intervals as $interval) {
+            $offer = $offers_by_row[$row_key][$interval] ?? null;
+            $value = 'Not offered';
+
+            if ($offer !== null) {
+                $value = $row_key === 'rp'
+                    ? raidlands_store_rp((int) ($offer['rp_cost'] ?? 0))
+                    : raidlands_store_money((int) ($offer['amount_cents'] ?? 0), (string) ($offer['currency'] ?? 'usd'));
+            }
+
+            $html .= '<td>' . e($value) . '</td>';
+        }
+
+        $html .= '</tr>';
+    }
+
+    return $html . '</tbody></table></div>';
+}
+
 function render_store_product_card(array $product, ?array $player, string $csrf, bool $cash_ready): string
 {
     $rp_offers = raidlands_store_rp_offers($product, true);
@@ -334,6 +401,7 @@ function render_store_product_card(array $product, ?array $player, string $csrf,
         . '</div>'
         . $kit_html
         . $perk_html
+        . render_store_offer_matrix_preview($product)
         . '<div class="store-card-actions"><a class="btn btn-primary" href="' . e(raidlands_store_product_public_url($product)) . '">View Details</a></div>'
         . '</article>';
 }

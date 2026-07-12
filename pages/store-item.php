@@ -187,7 +187,12 @@ function store_item_render_kit_inventory(array $kit, int $limit = 12): string
     return $html;
 }
 
-function store_item_offer_row(array $offer, string $csrf, string $kind, bool $cash_ready = true): string
+function store_item_offer_interval(array $offer, bool $use_billing_interval = false): string
+{
+    return (string) ($use_billing_interval ? ($offer['billing_interval'] ?? 'one_time') : ($offer['access_interval'] ?? 'one_time'));
+}
+
+function store_item_offer_cell(array $offer, string $csrf, string $kind, bool $cash_ready = true): string
 {
     $is_rp = $kind === 'rp';
     $buyable = $is_rp
@@ -197,13 +202,12 @@ function store_item_offer_row(array $offer, string $csrf, string $kind, bool $ca
     $price = $is_rp
         ? raidlands_store_rp((int) ($offer['rp_cost'] ?? 0))
         : raidlands_store_money((int) ($offer['amount_cents'] ?? 0), (string) ($offer['currency'] ?? 'usd'));
-    $interval = raidlands_store_access_interval_label((string) ($offer['access_interval'] ?? $offer['billing_interval'] ?? 'one_time'));
     $action = $is_rp ? route_url('store') . 'rp-checkout.php' : route_url('store') . 'checkout.php';
     $button = $is_rp ? 'Use RP' : 'Checkout';
-    $html = '<form class="store-item-offer" method="post" action="' . e($action) . '">'
+    $html = '<form class="store-item-offer store-purchase-cell" method="post" action="' . e($action) . '">'
         . '<input type="hidden" name="csrf" value="' . e($csrf) . '">'
         . '<input type="hidden" name="price_id" value="' . e((string) ($offer['id'] ?? 0)) . '">'
-        . '<div><strong>' . e($label) . '</strong><span>' . e($price) . '</span><small>' . e($interval) . '</small></div>';
+        . '<div><strong>' . e($price) . '</strong><span>' . e($label) . '</span></div>';
 
     if ($is_rp && !empty($offer['allow_auto_renew']) && (string) ($offer['access_interval'] ?? 'one_time') !== 'one_time') {
         $html .= '<label class="store-renew-toggle">'
@@ -218,55 +222,156 @@ function store_item_offer_row(array $offer, string $csrf, string $kind, bool $ca
         . '</button></form>';
 }
 
-function store_item_offer_group(string $title, array $offers, string $csrf, string $kind, bool $cash_ready = true): string
+function store_item_purchase_matrix(array $product, string $csrf, bool $cash_ready): string
 {
-    $offers = array_values(array_filter($offers, static fn (array $offer): bool => !empty($offer['is_active'])));
+    $rows = [
+        'cash' => [
+            'label' => 'Cash',
+            'kind' => 'cash',
+            'offers' => array_merge(
+                raidlands_store_cash_pass_offers($product, true),
+                raidlands_store_cash_subscription_offers($product, true)
+            ),
+        ],
+        'rp' => [
+            'label' => 'RP',
+            'kind' => 'rp',
+            'offers' => raidlands_store_rp_offers($product, true),
+        ],
+    ];
+    $intervals = raidlands_store_offer_intervals(true);
+    $offers_by_row = [];
+    $has_offers = false;
 
-    if ($offers === []) {
-        return '';
+    foreach ($rows as $row_key => $row) {
+        foreach ((array) $row['offers'] as $offer) {
+            $offer = (array) $offer;
+            $interval = store_item_offer_interval($offer, $row_key === 'cash' && (string) ($offer['billing_interval'] ?? 'one_time') !== 'one_time');
+            $offers_by_row[$row_key][$interval] = $offer;
+            $has_offers = true;
+        }
     }
 
-    $html = '<section class="store-item-offer-group"><h3>' . e($title) . '</h3><div class="store-item-offers">';
-
-    foreach ($offers as $offer) {
-        $html .= store_item_offer_row($offer, $csrf, $kind, $cash_ready);
+    if (!$has_offers) {
+        return '<button class="btn btn-ghost" type="button" disabled>Offers Unavailable</button>';
     }
 
-    return $html . '</div></section>';
+    $html = '<div class="store-purchase-table-wrap"><table class="store-purchase-table">'
+        . '<thead><tr><th scope="col">Purchase type</th>';
+
+    foreach ($intervals as $interval) {
+        $html .= '<th scope="col">' . e(raidlands_store_access_interval_label($interval)) . '</th>';
+    }
+
+    $html .= '</tr></thead><tbody>';
+
+    foreach ($rows as $row_key => $row) {
+        $html .= '<tr><th scope="row">' . e((string) $row['label']) . '</th>';
+
+        foreach ($intervals as $interval) {
+            $offer = $offers_by_row[$row_key][$interval] ?? null;
+            $html .= '<td>';
+            $html .= $offer !== null
+                ? store_item_offer_cell((array) $offer, $csrf, (string) $row['kind'], $cash_ready)
+                : '<span class="store-purchase-empty">Not offered</span>';
+            $html .= '</td>';
+        }
+
+        $html .= '</tr>';
+    }
+
+    return $html . '</tbody></table></div>';
+}
+
+function store_item_purchase_matrix_preview(array $product): string
+{
+    $rows = [
+        'cash' => [
+            'label' => 'Cash',
+            'offers' => array_merge(
+                raidlands_store_cash_pass_offers($product, true),
+                raidlands_store_cash_subscription_offers($product, true)
+            ),
+        ],
+        'rp' => [
+            'label' => 'RP',
+            'offers' => raidlands_store_rp_offers($product, true),
+        ],
+    ];
+    $intervals = raidlands_store_offer_intervals(true);
+    $offers_by_row = [];
+    $has_offers = false;
+
+    foreach ($rows as $row_key => $row) {
+        foreach ((array) $row['offers'] as $offer) {
+            $offer = (array) $offer;
+            $interval = store_item_offer_interval($offer, $row_key === 'cash' && (string) ($offer['billing_interval'] ?? 'one_time') !== 'one_time');
+            $offers_by_row[$row_key][$interval] = $offer;
+            $has_offers = true;
+        }
+    }
+
+    if (!$has_offers) {
+        return '<button class="btn btn-ghost" type="button" disabled>Offers Unavailable</button>';
+    }
+
+    $html = '<div class="store-purchase-table-wrap"><table class="store-purchase-table">'
+        . '<thead><tr><th scope="col">Purchase type</th>';
+
+    foreach ($intervals as $interval) {
+        $html .= '<th scope="col">' . e(raidlands_store_access_interval_label($interval)) . '</th>';
+    }
+
+    $html .= '</tr></thead><tbody>';
+
+    foreach ($rows as $row_key => $row) {
+        $html .= '<tr><th scope="row">' . e((string) $row['label']) . '</th>';
+
+        foreach ($intervals as $interval) {
+            $offer = $offers_by_row[$row_key][$interval] ?? null;
+            $value = 'Not offered';
+
+            if ($offer !== null) {
+                $value = $row_key === 'rp'
+                    ? raidlands_store_rp((int) ($offer['rp_cost'] ?? 0))
+                    : raidlands_store_money((int) ($offer['amount_cents'] ?? 0), (string) ($offer['currency'] ?? 'usd'));
+            }
+
+            $html .= '<td><span class="' . e($offer !== null ? 'store-purchase-preview-price' : 'store-purchase-empty') . '">' . e($value) . '</span></td>';
+        }
+
+        $html .= '</tr>';
+    }
+
+    return $html . '</tbody></table></div>';
 }
 
 function store_item_purchase_panel(array $product, ?array $player, string $csrf, bool $cash_ready): string
 {
     if ($player === null || empty($player['steam_id64'])) {
-        return '<div class="metal-panel store-item-purchase-panel">'
+        return '<div class="metal-panel store-item-purchase-panel" id="purchase-options">'
             . '<p class="section-kicker">Purchase options</p>'
             . '<h2>Connect Steam first</h2>'
             . '<p class="section-lede">Store access is attached to your SteamID64 so the game server can apply it correctly.</p>'
+            . store_item_purchase_matrix_preview($product)
             . '<a class="btn btn-primary" href="' . e(route_url('link')) . '">Connect Steam</a>'
             . '</div>';
     }
 
     if (empty($player['id'])) {
-        return '<div class="metal-panel store-item-purchase-panel">'
+        return '<div class="metal-panel store-item-purchase-panel" id="purchase-options">'
             . '<p class="section-kicker">Purchase options</p>'
             . '<h2>Account needed</h2>'
             . '<p class="section-lede">Open your profile so the store can finish loading your linked account.</p>'
+            . store_item_purchase_matrix_preview($product)
             . '<a class="btn btn-primary" href="' . e(route_url('profile')) . '">View Account</a>'
             . '</div>';
     }
 
-    $groups = store_item_offer_group('RP', raidlands_store_rp_offers($product, true), $csrf, 'rp')
-        . store_item_offer_group('Cash passes', raidlands_store_cash_pass_offers($product, true), $csrf, 'cash', $cash_ready)
-        . store_item_offer_group('Cash subscriptions', raidlands_store_cash_subscription_offers($product, true), $csrf, 'cash', $cash_ready);
-
-    if ($groups === '') {
-        $groups = '<button class="btn btn-ghost" type="button" disabled>Offers Unavailable</button>';
-    }
-
-    return '<div class="metal-panel store-item-purchase-panel">'
+    return '<div class="metal-panel store-item-purchase-panel" id="purchase-options">'
         . '<p class="section-kicker">Purchase options</p>'
         . '<h2>Choose access</h2>'
-        . $groups
+        . store_item_purchase_matrix($product, $csrf, $cash_ready)
         . '</div>';
 }
 
@@ -384,9 +489,11 @@ function store_item_render_perks(array $perks): string
             <span><?= e((string) count($linked_perks)) ?> perk<?= count($linked_perks) === 1 ? '' : 's' ?></span>
             <span><?= e((string) $offer_count) ?> offer<?= $offer_count === 1 ? '' : 's' ?></span>
           </div>
+          <div class="store-item-overview-actions">
+            <a class="btn btn-secondary" href="#purchase-options">Skip to Purchase Options</a>
+          </div>
         </div>
       </article>
-      <?= store_item_purchase_panel($product, $store_player, $store_csrf, $cash_checkout_ready) ?>
     </div>
   </section>
 
@@ -408,6 +515,15 @@ function store_item_render_perks(array $perks): string
         <?php endif; ?>
         <?= store_item_render_perks($linked_perks) ?>
       <?php endif; ?>
+    </div>
+  </section>
+
+  <section class="section alt store-item-purchase-section">
+    <div class="section-inner">
+      <?php if ($store_flash !== null) : ?>
+        <div class="form-status <?= e((string) $store_flash['type']) ?>"><?= e((string) $store_flash['message']) ?></div>
+      <?php endif; ?>
+      <?= store_item_purchase_panel($product, $store_player, $store_csrf, $cash_checkout_ready) ?>
     </div>
   </section>
 <?php endif; ?>

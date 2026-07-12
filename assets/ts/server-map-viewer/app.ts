@@ -2400,17 +2400,38 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   };
 
   const updatePlaybackSpeedControls = () => {
+    const controlsActive = wantsTimelineOverlay();
     const speed = playbackSpeed();
     if (heatmapSpeedLabel) {
       heatmapSpeedLabel.value = `${speed}x`;
       heatmapSpeedLabel.textContent = `${speed}x`;
     }
     if (heatmapSpeedDown) {
-      heatmapSpeedDown.disabled = playbackSpeedIndex <= 0;
+      heatmapSpeedDown.disabled = !controlsActive || playbackSpeedIndex <= 0;
     }
     if (heatmapSpeedUp) {
-      heatmapSpeedUp.disabled = playbackSpeedIndex >= playbackSpeeds.length - 1;
+      heatmapSpeedUp.disabled = !controlsActive || playbackSpeedIndex >= playbackSpeeds.length - 1;
     }
+  };
+
+  const updatePlaybackControlAvailability = () => {
+    const controlsActive = wantsTimelineOverlay();
+    if (!controlsActive) {
+      stopHeatmapPlayback();
+    }
+    if (heatmapPlay) {
+      heatmapPlay.disabled = !controlsActive || heatmapHistory.length === 0;
+    }
+    if (heatmapLoop) {
+      heatmapLoop.disabled = !controlsActive;
+    }
+    if (heatmapFrame) {
+      heatmapFrame.disabled = !controlsActive || heatmapHistory.length === 0;
+    }
+    if (heatmapFrameCount) {
+      heatmapFrameCount.disabled = !controlsActive;
+    }
+    updatePlaybackSpeedControls();
   };
 
   const currentPlaybackFrameIndex = (): number => {
@@ -2620,6 +2641,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       stopPlaybackHistoryPolling();
       viewer.setHeatmapVisible(false);
       viewer.setPlayerLocationsVisible(false);
+      updatePlaybackControlAvailability();
       return;
     }
 
@@ -2656,11 +2678,11 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
           heatmapFrame.max = String(Math.max(0, heatmapHistory.length - 1));
           heatmapFrame.step = wasPlayingLoop ? "any" : "1";
           heatmapFrame.value = String(latestFrame);
-          heatmapFrame.disabled = heatmapHistory.length === 0;
         }
         playbackVirtualFrame = latestFrame;
         showPlaybackFrame(latestFrame);
         startPlaybackHistoryPolling();
+        updatePlaybackControlAvailability();
         if (restartPlayback && wantsPlayback() && heatmapHistory.length > 1) {
           startHeatmapPlayback();
         }
@@ -2678,6 +2700,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     if (playersEnabled) {
       void loadPlayerLocations(root, viewer, myLocation, true, wantsAllPlayers());
     }
+    updatePlaybackControlAvailability();
   };
 
   const startPlaybackHistoryPolling = () => {
@@ -2705,6 +2728,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     if (wantsPlayback() && !wantsHeatmap() && players && !players.checked) {
       players.checked = true;
     }
+    updatePlaybackControlAvailability();
     reloadPlayback(undefined, true, wantsPlayback());
   });
   bind(metric, "change", () => reloadPlayback());
@@ -2734,11 +2758,12 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   });
   bind(heatmapFrame, "input", () => {
     const selectedFrame = Math.round(Number(heatmapFrame?.value) || 0);
-    if (heatmapPlayback && !heatmapPlayback.checked) {
-      heatmapPlayback.checked = true;
-    }
     if (!wantsHeatmap() && players && !players.checked) {
       players.checked = true;
+    }
+    if (!wantsTimelineOverlay()) {
+      updatePlaybackControlAvailability();
+      return;
     }
     playbackVirtualFrame = selectedFrame;
     stopHeatmapPlayback();
@@ -2837,6 +2862,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   });
   updateFrameCountLabel();
   updateEstimatedFrameIntervalLabel();
+  updatePlaybackControlAvailability();
   updatePlaybackSpeedControls();
   if (tour) {
     viewer.setTourEnabled(tour.checked);

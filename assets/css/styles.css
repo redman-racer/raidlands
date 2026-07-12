@@ -1667,6 +1667,12 @@ h3,
   min-width: 180px;
 }
 
+.server-terrain-controls button:disabled,
+.server-terrain-controls input:disabled {
+  cursor: not-allowed;
+  opacity: .45;
+}
+
 .server-terrain-controls .server-terrain-playback-field {
   min-width: min(100%, 340px);
 }
@@ -3416,9 +3422,48 @@ h3,
   overflow-wrap: anywhere;
 }
 
+.store-card-offer-matrix {
+  margin-top: 16px;
+  overflow-x: auto;
+}
+
+.store-card-offer-matrix table,
+.store-purchase-table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 520px;
+}
+
+.store-card-offer-matrix th,
+.store-card-offer-matrix td,
+.store-purchase-table th,
+.store-purchase-table td {
+  border: 1px solid rgba(181, 170, 160, .14);
+  background: rgba(0, 0, 0, .18);
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: .72rem;
+  font-weight: 850;
+  line-height: 1.2;
+  padding: 8px;
+  text-align: left;
+  vertical-align: top;
+}
+
+.store-card-offer-matrix th,
+.store-purchase-table th {
+  color: var(--white);
+  text-transform: uppercase;
+}
+
+.store-card-offer-matrix td {
+  color: var(--yellow);
+  white-space: nowrap;
+}
+
 .store-item-layout {
   display: grid;
-  grid-template-columns: minmax(0, 1.25fr) minmax(300px, .75fr);
+  grid-template-columns: minmax(0, 1fr);
   gap: 22px;
   align-items: start;
 }
@@ -3436,6 +3481,13 @@ h3,
   object-fit: cover;
   border: 1px solid rgba(255, 255, 255, .12);
   background: rgba(0, 0, 0, .28);
+}
+
+.store-item-overview-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin-top: 18px;
 }
 
 .store-item-purchase-panel {
@@ -3465,12 +3517,55 @@ h3,
 
 .store-item-offer {
   display: grid;
-  grid-template-columns: minmax(0, 1fr) auto auto;
+  grid-template-columns: minmax(0, 1fr) auto;
   gap: 10px;
   align-items: center;
   padding: 10px;
   border: 1px solid rgba(181, 170, 160, .18);
   background: rgba(0, 0, 0, .22);
+}
+
+.store-purchase-table-wrap {
+  overflow-x: auto;
+}
+
+.store-purchase-table td {
+  min-width: 150px;
+}
+
+.store-purchase-table .store-item-offer,
+.store-purchase-cell {
+  grid-template-columns: minmax(0, 1fr);
+  padding: 0;
+  border: 0;
+  background: transparent;
+}
+
+.store-purchase-cell .btn {
+  width: 100%;
+  margin-top: 8px;
+  padding: 9px 10px;
+}
+
+.store-purchase-cell .store-renew-toggle {
+  margin-top: 7px;
+  white-space: normal;
+}
+
+.store-purchase-empty {
+  display: block;
+  color: rgba(181, 170, 160, .55);
+  font-size: .76rem;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.store-purchase-preview-price {
+  display: block;
+  color: var(--yellow);
+  font-size: .82rem;
+  font-weight: 900;
+  line-height: 1.2;
 }
 
 .store-item-offer strong,
