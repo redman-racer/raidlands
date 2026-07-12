@@ -2114,6 +2114,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   let playerPollTimer = 0;
   let playbackHistoryPollTimer = 0;
   const playbackSpeeds = [0.25, 0.5, 1, 2, 4, 8];
+  const playerLocationRefreshMs = 15_000;
   const disposers: Array<() => void> = [];
   const dataFlag = (name: string, fallback = false): boolean => {
     const value = root.dataset[name];
@@ -2173,13 +2174,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
 
   const playbackIntervalMs = (): number => Math.max(80, Math.round(900 / playbackSpeed()));
 
-  const playbackHistoryPollDelayMs = (): number => {
-    const latestFrame = heatmapHistory[heatmapHistory.length - 1];
-    const frameSeconds = Number(latestFrame?.windowEnd && heatmapHistory.length > 1
-      ? (historyFrameTime(heatmapHistory[heatmapHistory.length - 1]!) ?? 0) - (historyFrameTime(heatmapHistory[heatmapHistory.length - 2]!) ?? 0)
-      : 0);
-    return Math.max(12_000, Math.min(45_000, Number.isFinite(frameSeconds) && frameSeconds > 0 ? frameSeconds * 0.5 : 15_000));
-  };
+  const playbackHistoryPollDelayMs = (): number => playerLocationRefreshMs;
 
   const updateTimelineValue = (value: number) => {
     if (!heatmapFrame) {
@@ -2532,7 +2527,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
         if (players?.checked && !wantsTimelineOverlay()) {
           void loadPlayerLocations(root, viewer, myLocation, true, wantsAllPlayers());
         }
-      }, 15000);
+      }, playerLocationRefreshMs);
     }
   };
 
