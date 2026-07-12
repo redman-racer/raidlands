@@ -1,6 +1,7 @@
 import { Vector3 } from "three";
 import {
   AirstrikeViewport,
+  type MonumentReferencePayload,
   type TerrainReferencePayload,
   type ViewOrientation,
   type ViewOrientationState,
@@ -1800,7 +1801,15 @@ class AirstrikeEditorApp {
         worldSize?: unknown;
         mapName?: unknown;
         mapImageUrl?: unknown;
-        mapImage?: { url?: unknown; publicUrl?: unknown; textureUrl?: unknown; terrainUrl?: unknown; heightmapUrl?: unknown };
+        mapImage?: {
+          url?: unknown;
+          publicUrl?: unknown;
+          textureUrl?: unknown;
+          terrainUrl?: unknown;
+          heightmapUrl?: unknown;
+          skyboxUrl?: unknown;
+          skyboxPublicUrl?: unknown;
+        };
       };
       const terrainUrl =
         typeof payload.mapImage?.terrainUrl === "string"
@@ -1822,6 +1831,12 @@ class AirstrikeEditorApp {
               : typeof payload.mapImage?.publicUrl === "string"
                 ? payload.mapImage.publicUrl
                 : "",
+        skyboxUrl:
+          typeof payload.mapImage?.skyboxUrl === "string"
+            ? payload.mapImage.skyboxUrl
+            : typeof payload.mapImage?.skyboxPublicUrl === "string"
+              ? payload.mapImage.skyboxPublicUrl
+              : "",
         terrainUrl,
         heightmapUrl: terrainUrl,
       };
@@ -1864,6 +1879,29 @@ class AirstrikeEditorApp {
         Array.isArray(payload.colors) && payload.colors.length === expected
           ? payload.colors.map((color) => String(color))
           : undefined;
+      const monuments = Array.isArray(payload.monuments)
+        ? payload.monuments
+            .map((entry): MonumentReferencePayload | null => {
+              const monument = entry && typeof entry === "object" ? (entry as Partial<MonumentReferencePayload>) : {};
+              const x = Number(monument.x);
+              const y = Number(monument.y);
+              const z = Number(monument.z);
+              if (![x, y, z].every(Number.isFinite)) {
+                return null;
+              }
+              return {
+                name: String(monument.name || "Monument").slice(0, 80),
+                prefab: String(monument.prefab || "").slice(0, 160),
+                kind: String(monument.kind || monument.name || monument.prefab || "monument").slice(0, 80),
+                x,
+                y,
+                z,
+                radius: Math.max(18, Math.min(280, Number(monument.radius) || 55)),
+                rotationY: Number.isFinite(Number(monument.rotationY)) ? Number(monument.rotationY) : 0,
+              };
+            })
+            .filter((entry): entry is MonumentReferencePayload => entry !== null)
+        : undefined;
       return {
         resolution,
         worldSize,
@@ -1873,6 +1911,7 @@ class AirstrikeEditorApp {
         maxHeight: Number.isFinite(Number(payload.maxHeight)) ? Number(payload.maxHeight) : Math.max(...heights),
         heights,
         colors,
+        monuments,
       };
     } catch {
       return null;

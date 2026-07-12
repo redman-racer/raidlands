@@ -3,6 +3,7 @@ import {
   Box3,
   BoxGeometry,
   BufferGeometry,
+  CanvasTexture,
   Color,
   ConeGeometry,
   DirectionalLight,
@@ -23,6 +24,8 @@ import {
   Scene,
   SRGBColorSpace,
   SphereGeometry,
+  Sprite,
+  SpriteMaterial,
   CylinderGeometry,
   TextureLoader,
   Uint32BufferAttribute,
@@ -53,6 +56,7 @@ export interface WorldReference {
   mapImageUrl?: string;
   terrainUrl?: string;
   heightmapUrl?: string;
+  skyboxUrl?: string;
   terrain?: TerrainReferencePayload;
 }
 
@@ -65,6 +69,18 @@ export interface TerrainReferencePayload {
   maxHeight: number;
   heights: number[];
   colors?: string[];
+  monuments?: MonumentReferencePayload[];
+}
+
+export interface MonumentReferencePayload {
+  name: string;
+  prefab: string;
+  kind: string;
+  x: number;
+  y: number;
+  z: number;
+  radius: number;
+  rotationY: number;
 }
 
 export type ReleaseVisibilityMode = "all" | "near" | "current" | "selected";
@@ -133,6 +149,7 @@ export class AirstrikeViewport {
   private readonly scaleReferenceGroup = new Group();
   private readonly terrainReferenceGroup = new Group();
   private readonly sceneExtrasGroup = new Group();
+  private readonly monumentReferenceGroup = new Group();
   private readonly routeMaterial = new LineBasicMaterial({ color: 0x55d6ff, linewidth: 2 });
   private readonly handleGeometry = new SphereGeometry(3.2, 20, 12);
   private readonly releaseGeometry = new SphereGeometry(2.5, 18, 10);
@@ -232,8 +249,18 @@ export class AirstrikeViewport {
       mapImageUrl: reference.mapImageUrl || this.worldReference.mapImageUrl,
       terrainUrl: reference.terrainUrl || this.worldReference.terrainUrl,
       heightmapUrl: reference.heightmapUrl || this.worldReference.heightmapUrl,
+      skyboxUrl: reference.skyboxUrl || this.worldReference.skyboxUrl,
       terrain: reference.terrain || this.worldReference.terrain,
     };
+    if (reference.skyboxUrl) {
+      applyRaidlandsEnvironment(this.scene, this.renderer, {
+        preset: "terrain",
+        exposure: 1.05,
+        backgroundIntensity: 0.95,
+        environmentIntensity: 0.92,
+        skyboxUrl: reference.skyboxUrl,
+      });
+    }
     this.syncSceneFloor();
     this.syncSceneChromeMarkers();
     this.createScaleReferenceEntities();
@@ -429,13 +456,17 @@ export class AirstrikeViewport {
     this.scaleReferenceGroup.name = "scale-reference-placeholders";
     this.scaleReferenceGroup.clear();
     this.terrainReferenceGroup.clear();
+    this.monumentReferenceGroup.clear();
     this.sceneExtrasGroup.clear();
     this.terrainReferenceGroup.name = "map-terrain-reference";
+    this.monumentReferenceGroup.name = "monument-reference-primitives";
     this.sceneExtrasGroup.name = "scene-extra-placeholders";
 
     if (this.terrainReferenceEnabled) {
       this.terrainReferenceGroup.add(this.createTerrainReferenceGroup());
       this.scaleReferenceGroup.add(this.terrainReferenceGroup);
+      this.addMonumentReferencePrimitives();
+      this.scaleReferenceGroup.add(this.monumentReferenceGroup);
     }
 
     if (!this.sceneExtrasEnabled) {
@@ -487,6 +518,22 @@ export class AirstrikeViewport {
     tower.rotation.y = MathUtils.degToRad(-28);
     this.sceneExtrasGroup.add(tower);
     this.scaleReferenceGroup.add(this.sceneExtrasGroup);
+  }
+
+  private addMonumentReferencePrimitives(): void {
+    const monuments = this.worldReference.terrain?.monuments || [];
+    if (monuments.length === 0) {
+      return;
+    }
+
+    monuments.forEach((monument) => {
+      const group = createMonumentPrimitive(monument);
+      const position = unityPositionToThreeVector({ x: monument.x, y: monument.y, z: monument.z });
+      const terrainHeight = this.currentGroundHeightAt(position.x, position.z);
+      group.position.set(position.x, Math.max(position.y, terrainHeight) + 5, position.z);
+      group.rotation.y = -MathUtils.degToRad(monument.rotationY || 0);
+      this.monumentReferenceGroup.add(group);
+    });
   }
 
   private createTerrainReferenceGroup(): Group {
@@ -590,7 +637,6 @@ export class AirstrikeViewport {
     const resolution = Math.max(2, Math.min(terrainPayload.resolution, 129));
     const worldSize = Math.max(100, terrainPayload.worldSize || this.worldReference.worldSize || 4500);
     const patch = this.currentTerrainPatch(worldSize);
-    const baseHeight = this.terrainReferenceBaseHeight(terrainPayload);
     const positions: number[] = [];
     const uvs: number[] = [];
     const colors: number[] = [];
@@ -603,7 +649,7 @@ export class AirstrikeViewport {
         const u = col / (resolution - 1);
         const localX = patch.center.x - patch.size * 0.5 + u * patch.size;
         const height = this.sampleTerrainHeight(terrainPayload, localX, localZ);
-        positions.push(localX, height - baseHeight, localZ);
+        positions.push(localX, height, localZ);
         const textureUv = this.terrainTextureUv(terrainPayload, localX, localZ);
         uvs.push(textureUv.x, textureUv.y);
         this.pushTerrainColor(colors, this.sampleTerrainColor(terrainPayload, localX, localZ), height, terrainPayload);
@@ -668,17 +714,18 @@ export class AirstrikeViewport {
     const z1 = Math.min(resolution - 1, z0 + 1);
     const tx = u - x0;
     const tz = v - z0;
-    const a = terrainPayload.heights[z0 * resolution + x0] || 0;
-    const b = terrainPayload.heights[z0 * resolution + x1] || a;
-    const c = terrainPayload.heights[z1 * resolution + x0] || a;
-    const d = terrainPayload.heights[z1 * resolution + x1] || c;
+    const mirroredX0 = resolution - 1 - x0;
+    const mirroredX1 = resolution - 1 - x1;
+    const a = terrainPayload.heights[z0 * resolution + mirroredX0] || 0;
+    const b = terrainPayload.heights[z0 * resolution + mirroredX1] || a;
+    const c = terrainPayload.heights[z1 * resolution + mirroredX0] || a;
+    const d = terrainPayload.heights[z1 * resolution + mirroredX1] || c;
     return MathUtils.lerp(MathUtils.lerp(a, b, tx), MathUtils.lerp(c, d, tx), tz);
   }
 
   private currentGroundHeightAt(worldX: number, worldZ: number): number {
     if (this.worldReference.terrain) {
-      const baseHeight = this.terrainReferenceBaseHeight(this.worldReference.terrain);
-      return this.sampleTerrainHeight(this.worldReference.terrain, worldX, worldZ) - baseHeight;
+      return this.sampleTerrainHeight(this.worldReference.terrain, worldX, worldZ);
     }
     return this.proceduralTerrainHeight(worldX, worldZ, this.worldReference.seed || 1337);
   }
@@ -720,7 +767,8 @@ export class AirstrikeViewport {
     const worldSize = Math.max(100, terrainPayload.worldSize || this.worldReference.worldSize || 4500);
     const half = worldSize / 2;
     const rustPosition = threeVectorToUnityPosition(new Vector3(worldX, 0, worldZ));
-    const col = Math.round(MathUtils.clamp((rustPosition.x + half) / worldSize, 0, 1) * (resolution - 1));
+    const sourceCol = Math.round(MathUtils.clamp((rustPosition.x + half) / worldSize, 0, 1) * (resolution - 1));
+    const col = resolution - 1 - sourceCol;
     const row = Math.round(MathUtils.clamp((half - rustPosition.z) / worldSize, 0, 1) * (resolution - 1));
     return terrainPayload.colors[row * resolution + col];
   }
@@ -1418,4 +1466,187 @@ export class AirstrikeViewport {
     this.applyDynamicControls(bounds);
     this.emitViewOrientation(true);
   }
+}
+
+function createMonumentPrimitive(monument: MonumentReferencePayload): Group {
+  const group = new Group();
+  const key = monumentKey(monument);
+  const size = MathUtils.clamp(monument.radius, 24, 180);
+  group.name = `monument-${key}`;
+  const addTitle = () => {
+    group.add(createMonumentTitleSprite(monument.name, size));
+    return group;
+  };
+
+  if (key.includes("airfield")) {
+    addBox(group, size * 2.1, 5, size * 0.22, 0x2c3030, 0, 1, 0);
+    addBox(group, size * 0.44, 22, size * 0.34, 0x6e7470, -size * 0.55, 13, -size * 0.32);
+    return addTitle();
+  }
+  if (key.includes("launch")) {
+    addBox(group, size * 1.35, 9, size * 0.82, 0x353b3a, 0, 4, 0);
+    addCylinder(group, size * 0.12, size * 1.05, 0x9fafa8, -size * 0.15, size * 0.55, 0);
+    addCone(group, size * 0.2, size * 0.34, 0xb86f3f, -size * 0.15, size * 1.24, 0);
+    return addTitle();
+  }
+  if (key.includes("sphere") || key.includes("dome")) {
+    addSphere(group, size * 0.42, 0x9baaa0, 0, size * 0.42, 0);
+    addCylinder(group, size * 0.08, size * 0.55, 0x7f6b45, size * 0.48, size * 0.28, -size * 0.12);
+    return addTitle();
+  }
+  if (key.includes("satellite")) {
+    addCylinder(group, size * 0.07, size * 0.46, 0x7d837f, 0, size * 0.23, 0);
+    const dish = addCone(group, size * 0.42, size * 0.18, 0x9aa29c, 0, size * 0.58, 0);
+    dish.rotation.x = MathUtils.degToRad(58);
+    return addTitle();
+  }
+  if (key.includes("lighthouse")) {
+    addCylinder(group, size * 0.14, size * 1.1, 0xd9d2bd, 0, size * 0.55, 0);
+    addCylinder(group, size * 0.2, size * 0.16, 0x9b3e2e, 0, size * 1.18, 0);
+    addCone(group, size * 0.24, size * 0.18, 0x342f2b, 0, size * 1.35, 0);
+    return addTitle();
+  }
+  if (key.includes("oilrig") || key.includes("oil_rig")) {
+    addBox(group, size * 1.1, 10, size * 0.86, 0x3d4546, 0, 6, 0);
+    addBox(group, size * 0.18, size * 0.8, size * 0.18, 0x808783, -size * 0.36, size * 0.45, -size * 0.22);
+    addCylinder(group, size * 0.05, size * 0.88, 0xe0b35f, 0, size * 0.5, 0);
+    return addTitle();
+  }
+  if (key.includes("harbor")) {
+    addBox(group, size * 1.4, 7, size * 0.28, 0x3e484a, 0, 4, 0);
+    addBox(group, size * 0.24, size * 0.58, size * 0.24, 0x8b7044, -size * 0.42, size * 0.32, -size * 0.08);
+    return addTitle();
+  }
+  if (key.includes("powerplant") || key.includes("power_plant")) {
+    addBox(group, size * 0.92, size * 0.2, size * 0.62, 0x5b605c, 0, size * 0.1, 0);
+    addCylinder(group, size * 0.09, size * 0.92, 0x9a9a90, -size * 0.24, size * 0.55, 0);
+    addCylinder(group, size * 0.09, size * 0.72, 0x9a9a90, size * 0.24, size * 0.45, 0);
+    return addTitle();
+  }
+  if (key.includes("excavator")) {
+    addBox(group, size * 0.7, size * 0.26, size * 0.5, 0x6f5b35, -size * 0.15, size * 0.13, 0);
+    const arm = addBox(group, size * 0.92, size * 0.08, size * 0.12, 0xc59a4a, size * 0.32, size * 0.48, 0);
+    arm.rotation.z = MathUtils.degToRad(-24);
+    return addTitle();
+  }
+  if (key.includes("trainyard") || key.includes("train_yard")) {
+    addBox(group, size * 1.3, 4, size * 0.08, 0x252928, 0, 2, -size * 0.22);
+    addBox(group, size * 1.3, 4, size * 0.08, 0x252928, 0, 2, size * 0.22);
+    addBox(group, size * 0.72, size * 0.32, size * 0.34, 0x6f5f48, -size * 0.18, size * 0.18, 0);
+    return addTitle();
+  }
+  if (key.includes("military") || key.includes("tunnel") || key.includes("bunker")) {
+    addBox(group, size * 0.94, size * 0.26, size * 0.62, 0x59645b, 0, size * 0.13, 0);
+    addBox(group, size * 0.24, size * 0.32, size * 0.28, 0x303635, -size * 0.38, size * 0.16, 0);
+    return addTitle();
+  }
+  if (key.includes("gas") || key.includes("supermarket") || key.includes("warehouse")) {
+    addBox(group, size * 0.74, size * 0.26, size * 0.56, 0x7d7359, 0, size * 0.13, 0);
+    addBox(group, size * 0.82, size * 0.08, size * 0.22, 0xb76d3a, 0, size * 0.34, -size * 0.18);
+    return addTitle();
+  }
+  if (key.includes("quarry") || key.includes("mining")) {
+    addCone(group, size * 0.42, size * 0.24, 0x6d624c, 0, size * 0.12, 0);
+    addCylinder(group, size * 0.08, size * 0.48, 0x6f5f48, size * 0.26, size * 0.24, 0);
+    return addTitle();
+  }
+
+  addBox(group, size * 0.68, size * 0.24, size * 0.5, 0x6a705e, 0, size * 0.12, 0);
+  addCylinder(group, size * 0.08, size * 0.46, 0x8b7044, size * 0.28, size * 0.23, -size * 0.12);
+  return addTitle();
+}
+
+function createMonumentTitleSprite(title: string, size: number): Sprite {
+  const label = title.trim() || "Monument";
+  const fontSize = 34;
+  const paddingX = 22;
+  const paddingY = 14;
+  const canvas = document.createElement("canvas");
+  const context = canvas.getContext("2d");
+
+  if (!context) {
+    return new Sprite(new SpriteMaterial({ color: 0xf8f0dc }));
+  }
+
+  context.font = `700 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+  const metrics = context.measureText(label);
+  const width = Math.ceil(metrics.width + paddingX * 2);
+  const height = fontSize + paddingY * 2;
+  canvas.width = nextPowerOfTwo(Math.max(128, width));
+  canvas.height = nextPowerOfTwo(Math.max(64, height));
+
+  context.font = `700 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+  context.textAlign = "center";
+  context.textBaseline = "middle";
+  context.fillStyle = "rgba(18, 20, 18, 0.74)";
+  roundRect(context, (canvas.width - width) / 2, (canvas.height - height) / 2, width, height, 16);
+  context.fill();
+  context.strokeStyle = "rgba(248, 231, 172, 0.82)";
+  context.lineWidth = 3;
+  context.stroke();
+  context.fillStyle = "#fff5d7";
+  context.shadowColor = "rgba(0, 0, 0, 0.65)";
+  context.shadowBlur = 5;
+  context.fillText(label, canvas.width / 2, canvas.height / 2 + 1);
+
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  const sprite = new Sprite(new SpriteMaterial({ map: texture, transparent: true, depthTest: false, depthWrite: false }));
+  const worldWidth = MathUtils.clamp(size * 1.35, 80, 230);
+  sprite.name = "monument-title";
+  sprite.position.set(0, Math.max(size * 1.48, 64), 0);
+  sprite.scale.set(worldWidth, worldWidth * (canvas.height / canvas.width), 1);
+  sprite.renderOrder = 20;
+  return sprite;
+}
+
+function monumentKey(monument: MonumentReferencePayload): string {
+  return `${monument.kind} ${monument.name} ${monument.prefab}`.toLowerCase().replace(/[^a-z0-9_]+/g, "_");
+}
+
+function monumentMaterial(color: number): MeshStandardMaterial {
+  return new MeshStandardMaterial({ color, metalness: 0.08, roughness: 0.72 });
+}
+
+function addBox(group: Group, width: number, height: number, depth: number, color: number, x: number, y: number, z: number): Mesh {
+  const mesh = new Mesh(new BoxGeometry(width, height, depth), monumentMaterial(color));
+  mesh.position.set(x, y, z);
+  group.add(mesh);
+  return mesh;
+}
+
+function addCylinder(group: Group, radius: number, height: number, color: number, x: number, y: number, z: number): Mesh {
+  const mesh = new Mesh(new CylinderGeometry(radius, radius, height, 14), monumentMaterial(color));
+  mesh.position.set(x, y, z);
+  group.add(mesh);
+  return mesh;
+}
+
+function addCone(group: Group, radius: number, height: number, color: number, x: number, y: number, z: number): Mesh {
+  const mesh = new Mesh(new ConeGeometry(radius, height, 16), monumentMaterial(color));
+  mesh.position.set(x, y, z);
+  group.add(mesh);
+  return mesh;
+}
+
+function addSphere(group: Group, radius: number, color: number, x: number, y: number, z: number): Mesh {
+  const mesh = new Mesh(new SphereGeometry(radius, 18, 12), monumentMaterial(color));
+  mesh.position.set(x, y, z);
+  group.add(mesh);
+  return mesh;
+}
+
+function nextPowerOfTwo(value: number): number {
+  return 2 ** Math.ceil(Math.log2(Math.max(1, value)));
+}
+
+function roundRect(context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number): void {
+  const r = Math.min(radius, width / 2, height / 2);
+  context.beginPath();
+  context.moveTo(x + r, y);
+  context.arcTo(x + width, y, x + width, y + height, r);
+  context.arcTo(x + width, y + height, x, y + height, r);
+  context.arcTo(x, y + height, x, y, r);
+  context.arcTo(x, y, x + width, y, r);
+  context.closePath();
 }
