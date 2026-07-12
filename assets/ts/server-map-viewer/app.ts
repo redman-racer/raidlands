@@ -519,6 +519,8 @@ class TerrainViewer {
   private readonly overlayLayerTransitions: OverlayLayerTransition[] = [];
   private readonly airstrikeLayer = new Group();
   private airstrikeReplay: AirstrikeReplayPlayer | null = null;
+  private latestReplayEvents: MapReplayEvent[] = [];
+  private latestReplaySpeed = 1;
   private readonly onResize = () => this.resize();
   private animationFrame = 0;
   private readonly clockStart = performance.now();
@@ -837,9 +839,14 @@ class TerrainViewer {
   public setAirstrikeProfiles(profiles: Record<string, RuntimeVisualProfile>, vehicleMetadata: VehiclePreviewMetadataFile | null, assetBase: string): void {
     this.airstrikeReplay = new AirstrikeReplayPlayer(this.airstrikeLayer, this.terrain, profiles, vehicleMetadata, assetBase);
     this.airstrikeReplay.start();
+    if (this.latestReplayEvents.length > 0) {
+      this.airstrikeReplay.showEvents(this.latestReplayEvents, this.latestReplaySpeed);
+    }
   }
 
   public showReplayEvents(events: MapReplayEvent[], playbackSpeed: number): void {
+    this.latestReplayEvents = events;
+    this.latestReplaySpeed = playbackSpeed;
     this.airstrikeReplay?.showEvents(events, playbackSpeed);
   }
 
@@ -2050,8 +2057,9 @@ function replayEventKey(event: MapReplayEvent, index: number): string {
 function replayEventPosition(event: MapReplayEvent, terrain: TerrainPayload): Vector3 {
   const x = Number.isFinite(Number(event.x)) ? Number(event.x) : 0;
   const z = Number.isFinite(Number(event.z)) ? Number(event.z) : 0;
-  const y = Number.isFinite(Number(event.y)) ? Number(event.y) : sampleTerrainHeight(terrain, x, z);
-  return new Vector3(x, y, z);
+  const position = rustWorldToViewerPosition(x, Number(event.y) || 0, z);
+  position.y = Number.isFinite(Number(event.y)) ? position.y : sampleTerrainHeight(terrain, position.x, position.z);
+  return position;
 }
 
 function fallbackFlyoverPose(progress: number): { position: Vector3; rotation: Quaternion } {
@@ -2954,6 +2962,12 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     } else {
       viewer.setPlayerLocationsVisible(false);
     }
+
+    void loadLiveReplayEvents(root).then((events) => {
+      if (!wantsTimelineOverlay()) {
+        viewer.showReplayEvents(events, 1);
+      }
+    });
   };
 
   const startLiveOverlayPolling = () => {
@@ -3646,6 +3660,29 @@ async function loadReplayEventHistory(root: HTMLElement, range: string, frames =
     console.info("Raidlands replay events could not be loaded.", error);
     return { ok: false, frames: [] };
   }
+}
+
+async function loadLiveReplayEvents(root: HTMLElement): Promise<MapReplayEvent[]> {
+  const payload = await loadReplayEventHistory(root, "15m", 8);
+  const frames = Array.isArray(payload.frames) ? payload.frames : [];
+  const now = Date.now();
+  const maxAgeMs = 10 * 60 * 1000;
+
+  for (let index = frames.length - 1; index >= 0; index -= 1) {
+    const events = Array.isArray(frames[index]?.events)
+      ? frames[index]!.events!.map(normalizeReplayEvent).filter((event): event is MapReplayEvent => event !== null)
+      : [];
+    const freshEvents = events.filter((event) => {
+      const occurred = Date.parse(String(event.occurredAt || ""));
+      return Number.isFinite(occurred) ? now - occurred <= maxAgeMs : true;
+    });
+
+    if (freshEvents.length > 0) {
+      return freshEvents.slice(0, 8);
+    }
+  }
+
+  return [];
 }
 
 function mergeReplayEventsIntoFrames(frames: HeatmapHistoryFrame[], replayPayload: MapReplayHistoryPayload): void {
