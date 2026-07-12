@@ -252,6 +252,18 @@ function raidlands_airstrike_animations_latest_bundle_row(?int $revision = null)
     );
 }
 
+function raidlands_airstrike_animations_latest_bundle_meta_row(): ?array
+{
+    raidlands_airstrike_animations_require_schema();
+
+    return raidlands_db_fetch_one(
+        'SELECT revision, schema_version, compiler_version, sha256, profile_count, publish_notes, published_by, published_at
+         FROM airstrike_animation_bundles
+         ORDER BY revision DESC
+         LIMIT 1'
+    );
+}
+
 function raidlands_airstrike_animations_decode_bundle_row(array $row): array
 {
     $revision = (int) ($row['revision'] ?? 0);
@@ -304,12 +316,18 @@ function raidlands_airstrike_animations_latest_valid_bundle(?int $revision = nul
     }
 
     $rows = raidlands_db_fetch_all(
-        'SELECT * FROM airstrike_animation_bundles ORDER BY revision DESC LIMIT 25'
+        'SELECT revision
+         FROM airstrike_animation_bundles
+         ORDER BY revision DESC
+         LIMIT 25'
     );
 
     foreach ($rows as $row) {
         try {
-            return raidlands_airstrike_animations_decode_bundle_row($row);
+            $bundle_row = raidlands_airstrike_animations_latest_bundle_row((int) ($row['revision'] ?? 0));
+            if ($bundle_row !== null) {
+                return raidlands_airstrike_animations_decode_bundle_row($bundle_row);
+            }
         } catch (InvalidArgumentException $error) {
             continue;
         }
@@ -753,6 +771,21 @@ function raidlands_airstrike_animations_bundle_for_server(int $since = 0, ?int $
 
     if ($since < 0) {
         throw new InvalidArgumentException('since must be zero or a positive integer.');
+    }
+
+    if ($revision === null) {
+        $meta = raidlands_airstrike_animations_latest_bundle_meta_row();
+        if ($meta !== null) {
+            $current_revision = (int) ($meta['revision'] ?? 0);
+            if ($since >= $current_revision) {
+                return [
+                    'ok' => true,
+                    'has_update' => false,
+                    'current_revision' => $current_revision,
+                    'sha256' => strtolower((string) ($meta['sha256'] ?? '')),
+                ];
+            }
+        }
     }
 
     $resolved = raidlands_airstrike_animations_latest_valid_bundle($revision);
