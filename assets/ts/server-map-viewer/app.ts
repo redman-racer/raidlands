@@ -1975,7 +1975,7 @@ class AirdropReplayRun implements MapReplayRun {
     const ground = sampleTerrainHeight(this.terrain, this.target.x, this.target.z);
     const planeHeight = ground + MathUtils.clamp(worldSize * 0.09, 260, 520);
     this.aircraft.position.set(x, planeHeight, z);
-    this.aircraft.rotation.set(0, 0, -Math.PI / 2);
+    this.aircraft.rotation.set(0, Math.PI / 2, -Math.PI / 2);
 
     const dropProgress = MathUtils.clamp((progress - 0.22) / 0.56, 0, 1);
     const packageHeight = MathUtils.lerp(planeHeight - 42, ground + 20, easeInOutCubic(dropProgress));
