@@ -288,7 +288,7 @@ function bindLiveTerrainUpdates(root: HTMLElement, initial: TerrainViewerInstanc
         return;
       }
 
-      setStatus(root.querySelector<HTMLElement>("[data-map-viewer-status]"), "Refreshing terrain.");
+      setStatus(root.querySelector<HTMLElement>("[data-map-viewer-status]"), "Loading new wipe terrain.");
       root.dataset.terrainUrl = metadata.terrainUrl;
       root.dataset.textureUrl = metadata.textureUrl;
       root.dataset.skyboxUrl = metadata.skyboxUrl || root.dataset.skyboxUrl || "";
@@ -349,7 +349,7 @@ async function loadLatestTerrainMetadata(root: HTMLElement, statusUrl: string): 
     worldSize,
     fingerprint: "",
   };
-  metadata.fingerprint = terrainMetadataFingerprint(mapImage || metadata);
+  metadata.fingerprint = terrainMetadataFingerprint(metadata);
 
   return metadata;
 }
@@ -370,16 +370,17 @@ function terrainMetadataFingerprint(metadata: Partial<ServerStatusMapImage> & { 
   return [
     metadata.terrainHash || "",
     metadata.terrainUrl || metadata.terrainPublicUrl || "",
-    metadata.textureUrl || "",
+    metadata.textureUrl || metadata.url || metadata.publicUrl || "",
+    metadata.hash || "",
     metadata.skyboxHash || "",
     metadata.skyboxUrl || metadata.skyboxPublicUrl || "",
     String(metadata.worldSize || ""),
-    metadata.publishedAt || metadata.updatedAt || metadata.generatedAt || "",
+    metadata.publishedAt || metadata.generatedAt || "",
   ].join("|");
 }
 
 function liveTerrainPollDelayMs(): number {
-  return 16000;
+  return 300000;
 }
 
 function normalizeTerrain(value: unknown, root: HTMLElement): TerrainPayload {
