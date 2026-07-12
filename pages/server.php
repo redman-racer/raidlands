@@ -164,15 +164,15 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
             <span>Grid coordinates</span>
           </label>
           <label class="server-terrain-toggle">
-            <input type="checkbox" data-map-viewer-tour>
+            <input type="checkbox" checked data-map-viewer-tour>
             <span>Camera flyover</span>
           </label>
           <label class="server-terrain-toggle">
-            <input type="checkbox" data-map-viewer-heatmap>
+            <input type="checkbox" checked data-map-viewer-heatmap>
             <span>Heat map</span>
           </label>
           <label class="server-terrain-toggle">
-            <input type="checkbox" data-map-viewer-heatmap-playback>
+            <input type="checkbox" checked data-map-viewer-heatmap-playback>
             <span>Playback</span>
           </label>
           <button type="button" data-map-viewer-heatmap-play aria-pressed="false">Play</button>
@@ -216,9 +216,9 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
               <option value="30m">30M</option>
               <option value="1h">1H</option>
               <option value="3h">3H</option>
-              <option value="6h">6H</option>
+              <option value="6h" selected>6H</option>
               <option value="12h">12H</option>
-              <option value="24h" selected>24H</option>
+              <option value="24h">24H</option>
               <option value="wipe">Wipe</option>
             </select>
           </label>
@@ -236,7 +236,7 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
         data-map-published-at="<?= e((string) ($server_map_image['publishedAt'] ?? '')) ?>"
         data-heatmap-url="<?= e(route_url('api/server/heatmap.php')) ?>"
         data-player-locations-url="<?= e(route_url('api/server/player-locations.php')) ?>"
-        data-camera-tour="false"
+        data-camera-tour="true"
         data-camera-locked="false"
         data-grid-overlay="true"
         data-world-size="<?= e((string) ($server_map_image['worldSize'] ?? $server_status['worldSize'] ?? 0)) ?>"
