@@ -844,6 +844,24 @@ function admin_store_stripe_sync_note(array $row, string $kind = 'price'): strin
     return '<small>' . e($note) . '</small>';
 }
 
+function admin_store_public_offer_summary(array $product): array
+{
+    $offers = [];
+
+    foreach (raidlands_store_rp_offers($product, true) as $price) {
+        $offers[] = raidlands_store_offer_label($price, 'RP') . ' - ' . raidlands_store_rp((int) ($price['rp_cost'] ?? 0));
+    }
+
+    foreach (array_merge(
+        raidlands_store_cash_pass_offers($product, true),
+        raidlands_store_cash_subscription_offers($product, true)
+    ) as $price) {
+        $offers[] = raidlands_store_offer_label($price, 'Cash') . ' - ' . raidlands_store_money((int) ($price['amount_cents'] ?? 0), (string) ($price['currency'] ?? 'usd'));
+    }
+
+    return $offers;
+}
+
 function admin_kit_item_rows(array $kit, string $container): array
 {
     $capacity = admin_kit_slot_capacity($container);
@@ -3089,6 +3107,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             $store_status = $store_is_existing ? (!empty($row['is_active']) ? 'Active' : 'Inactive') : 'Draft slot';
                             $store_status_value = $store_is_existing ? (!empty($row['is_active']) ? 'active' : 'inactive') : 'draft';
                             $store_type_label = $admin_store_type_options[$product_type_value] ?? $product_type_value;
+                            $store_public_offers = admin_store_public_offer_summary($row);
                             $store_rp_active_count = 0;
                             foreach ($rp_prices as $rp_price_summary_row) {
                                 if (!empty($rp_price_summary_row['is_active'])) {
@@ -3150,7 +3169,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 'id' => $store_panel_id,
                                 'index' => (string) $index,
                                 'label' => $store_label,
-                                'meta' => $store_status . ' / ' . $store_group_summary . ' / ' . $store_rp_active_count . ' RP, ' . $store_cash_active_count . ' cash',
+                                'meta' => ($store_is_existing ? '#' . (string) ($row['id'] ?? '') . ' / ' : '') . $store_status . ' / ' . (string) ($row['slug'] ?? '') . ' / ' . $store_rp_active_count . ' RP, ' . $store_cash_active_count . ' cash',
                                 'is_active' => $store_is_active_panel,
                                 'is_draft' => !$store_is_existing,
                                 'category' => $product_type_value,
@@ -3170,13 +3189,26 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             <div class="admin-repeat-card-head">
                               <div>
                                 <h3 data-admin-store-card-title><?= e($store_label) ?></h3>
-                                <p class="admin-feedback-subtitle"><?= e($store_status) ?> / <?= e($store_group_summary) ?></p>
+                                <p class="admin-feedback-subtitle">
+                                  <?= $store_is_existing ? '#' . e((string) ($row['id'] ?? '')) . ' / ' : '' ?><?= e($store_status) ?> / <?= e((string) ($row['slug'] ?? '')) ?> / <?= e($store_group_summary) ?>
+                                </p>
                               </div>
                               <?php if (!empty($row['id'])) : ?>
                                 <label class="admin-check admin-delete-check">
                                   <input type="checkbox" name="store_products[<?= e((string) $index) ?>][delete]" value="1">
-                                  <span>Deactivate</span>
+                                  <span>Deactivate on save</span>
                                 </label>
+                              <?php endif; ?>
+                            </div>
+                            <div class="admin-store-public-summary">
+                              <div>
+                                <span class="status-pill <?= !empty($row['is_active']) ? 'active' : 'closed' ?>"><?= !empty($row['is_active']) ? 'Public product active' : 'Hidden from public store' ?></span>
+                                <span class="status-pill <?= $store_public_offers !== [] ? 'paid' : 'pending' ?>"><?= e((string) count($store_public_offers)) ?> active public offer<?= count($store_public_offers) === 1 ? '' : 's' ?></span>
+                              </div>
+                              <?php if ($store_public_offers === []) : ?>
+                                <p>No active price rows are currently buyable for this product. Enable an RP or cash offer before it can sell.</p>
+                              <?php else : ?>
+                                <p>Public page will show: <?= e(implode(' / ', $store_public_offers)) ?></p>
                               <?php endif; ?>
                             </div>
                             <div class="admin-store-section-stack">
