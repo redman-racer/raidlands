@@ -37,5 +37,11 @@ try {
 } catch (OutOfBoundsException $error) {
     raidlands_store_json_response(['ok' => false, 'error' => $error->getMessage()], 404);
 } catch (Throwable $error) {
-    raidlands_store_json_response(['ok' => false, 'error' => $error->getMessage()], 500);
+    $message = $error->getMessage();
+    if (str_contains($message, 'SQLSTATE[01004]') || str_contains($message, 'right truncated')) {
+        $message .= ' Run database/migrations/057_repair_airstrike_animation_column_widths.sql on the website database. Storage: '
+            . raidlands_airstrike_animations_storage_summary();
+    }
+
+    raidlands_store_json_response(['ok' => false, 'error' => $message], 500);
 }

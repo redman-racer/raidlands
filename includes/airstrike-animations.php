@@ -45,6 +45,46 @@ function raidlands_airstrike_animations_require_schema(): void
     }
 }
 
+function raidlands_airstrike_animations_storage_summary(): string
+{
+    if (!raidlands_db_is_configured()) {
+        return 'database is not configured';
+    }
+
+    try {
+        $rows = raidlands_db_fetch_all(
+            "SELECT TABLE_NAME, COLUMN_NAME, COLUMN_TYPE
+             FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME IN (
+                 'airstrike_animation_bundles',
+                 'airstrike_animation_profile_revisions',
+                 'airstrike_animation_server_snapshots',
+                 'airstrike_animation_server_syncs'
+               )
+               AND COLUMN_NAME IN (
+                 'bundle_json',
+                 'source_json',
+                 'runtime_json',
+                 'snapshot_json',
+                 'changed_profile_keys_json',
+                 'compiler_version',
+                 'message'
+               )
+             ORDER BY TABLE_NAME, COLUMN_NAME"
+        );
+    } catch (Throwable $error) {
+        return 'storage summary unavailable: ' . $error->getMessage();
+    }
+
+    $parts = [];
+    foreach ($rows as $row) {
+        $parts[] = (string) $row['TABLE_NAME'] . '.' . (string) $row['COLUMN_NAME'] . '=' . (string) $row['COLUMN_TYPE'];
+    }
+
+    return $parts === [] ? 'no airstrike animation storage columns found' : implode('; ', $parts);
+}
+
 function raidlands_airstrike_animations_server_id(): string
 {
     global $vip_bridge_config;
@@ -225,17 +265,25 @@ function raidlands_airstrike_animations_decode_bundle_row(array $row): array
         $canonical_json = raidlands_airstrike_animation_canonical_json($bundle);
         $sha256 = hash('sha256', $canonical_json);
 
-        raidlands_db_execute(
-            'UPDATE airstrike_animation_bundles
-             SET bundle_json = :bundle_json,
-                 sha256 = :sha256
-             WHERE revision = :revision',
-            [
-                'bundle_json' => $canonical_json,
-                'sha256' => $sha256,
-                'revision' => $revision,
-            ]
-        );
+        try {
+            raidlands_db_execute(
+                'UPDATE airstrike_animation_bundles
+                 SET bundle_json = :bundle_json,
+                     sha256 = :sha256
+                 WHERE revision = :revision',
+                [
+                    'bundle_json' => $canonical_json,
+                    'sha256' => $sha256,
+                    'revision' => $revision,
+                ]
+            );
+        } catch (Throwable $error) {
+            error_log(
+                'Airstrike animation bundle revision ' . $revision
+                . ' could not be canonicalized during read: ' . $error->getMessage()
+                . ' Storage: ' . raidlands_airstrike_animations_storage_summary()
+            );
+        }
 
         $bundle = raidlands_airstrike_animations_decode_json($canonical_json, 'Published bundle');
     }
