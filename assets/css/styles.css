@@ -1576,7 +1576,6 @@ h3,
   align-items: flex-start;
   justify-content: space-between;
   gap: 20px;
-  flex-wrap: wrap;
 }
 
 .server-terrain-head h2 {
@@ -1584,20 +1583,54 @@ h3,
 }
 
 .server-terrain-controls {
+  display: grid;
+  grid-template-columns: repeat(12, minmax(0, 1fr));
+  align-items: stretch;
+  gap: 10px;
+  padding: 12px;
+  border: 1px solid rgba(243, 238, 227, .1);
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, .045), rgba(0, 0, 0, .24)),
+    rgba(7, 8, 8, .54);
+  box-shadow: inset 0 0 0 1px rgba(255, 138, 40, .08);
+}
+
+.server-terrain-control-group {
   display: flex;
   align-items: center;
-  gap: 10px;
+  gap: 8px;
   flex-wrap: wrap;
+  min-width: 0;
+  padding: 8px;
+  border: 1px solid rgba(243, 238, 227, .08);
+  background: rgba(0, 0, 0, .22);
+}
+
+.server-terrain-control-group-compact {
+  grid-column: span 3;
+}
+
+.server-terrain-control-group:not(.server-terrain-control-group-compact, .server-terrain-control-group-playback, .server-terrain-control-group-secondary) {
+  grid-column: span 3;
+}
+
+.server-terrain-control-group-playback {
+  grid-column: span 6;
+}
+
+.server-terrain-control-group-secondary {
+  grid-column: 1 / -1;
 }
 
 .server-terrain-controls button {
-  min-width: 58px;
-  min-height: 38px;
-  padding: 0 12px;
-  border: 1px solid rgba(243, 238, 227, .14);
+  min-width: 54px;
+  min-height: 34px;
+  padding: 0 11px;
+  border: 1px solid rgba(243, 238, 227, .13);
+  border-radius: 4px;
   color: var(--muted);
-  background: rgba(0, 0, 0, .28);
-  font: 900 .78rem var(--font-body);
+  background: rgba(0, 0, 0, .34);
+  font: 900 .72rem var(--font-body);
   letter-spacing: 0;
   cursor: pointer;
 }
@@ -1623,38 +1656,45 @@ h3,
   display: inline-grid;
   grid-template-columns: auto auto;
   align-items: center;
-  gap: 10px;
-  min-height: 42px;
-  padding: 0 14px;
-  border: 1px solid rgba(255, 138, 40, .24);
+  gap: 8px;
+  min-height: 34px;
+  padding: 0 10px;
+  border: 1px solid rgba(243, 238, 227, .12);
+  border-radius: 4px;
   color: var(--white);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, .05), rgba(0, 0, 0, .2)),
-    rgba(0, 0, 0, .34);
-  font-size: .8rem;
+  background: rgba(0, 0, 0, .26);
+  font-size: .7rem;
   font-weight: 900;
   text-transform: uppercase;
-  box-shadow: inset 0 0 0 1px rgba(243, 238, 227, .04);
 }
 
 .server-terrain-controls .server-terrain-toggle {
   cursor: pointer;
 }
 
+.server-terrain-controls .server-terrain-toggle:has(input:checked) {
+  border-color: rgba(255, 138, 40, .52);
+  color: var(--yellow);
+  background:
+    linear-gradient(180deg, rgba(255, 138, 40, .14), rgba(0, 0, 0, .2)),
+    rgba(0, 0, 0, .28);
+}
+
 .server-terrain-controls .server-terrain-field {
   grid-template-columns: 1fr;
   align-items: start;
   gap: 4px;
+  min-height: 54px;
   padding-block: 6px;
 }
 
 .server-terrain-controls select {
-  min-width: 9.5rem;
+  min-width: 9rem;
   border: 1px solid rgba(243, 238, 227, .16);
-  border-radius: 6px;
+  border-radius: 4px;
   background: rgba(0, 0, 0, .42);
   color: var(--white);
-  font: 800 .82rem var(--font-body);
+  font: 800 .78rem var(--font-body);
   padding: 7px 9px;
 }
 
@@ -1663,7 +1703,7 @@ h3,
 }
 
 .server-terrain-controls input[type="range"] {
-  width: clamp(180px, 22vw, 320px);
+  width: 100%;
   min-width: 180px;
 }
 
@@ -1674,36 +1714,37 @@ h3,
 }
 
 .server-terrain-controls .server-terrain-playback-field {
-  min-width: min(100%, 340px);
+  flex: 1 1 280px;
+  min-width: min(100%, 280px);
 }
 
 .server-terrain-controls .server-terrain-frame-field {
-  min-width: min(100%, 220px);
+  flex: 1 1 240px;
+  min-width: min(100%, 240px);
 }
 
 .server-terrain-speed-controls {
   display: inline-grid;
-  grid-template-columns: 38px minmax(46px, auto) 38px;
+  grid-template-columns: 34px minmax(44px, auto) 34px;
   align-items: center;
-  min-height: 42px;
-  border: 1px solid rgba(255, 138, 40, .24);
-  background:
-    linear-gradient(180deg, rgba(255, 255, 255, .05), rgba(0, 0, 0, .2)),
-    rgba(0, 0, 0, .34);
-  box-shadow: inset 0 0 0 1px rgba(243, 238, 227, .04);
+  min-height: 34px;
+  border: 1px solid rgba(243, 238, 227, .12);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, .26);
+  overflow: hidden;
 }
 
 .server-terrain-speed-controls button {
-  min-width: 38px;
-  min-height: 40px;
+  min-width: 34px;
+  min-height: 32px;
   border-width: 0;
   background: transparent;
   color: var(--white);
-  font-size: 1rem;
+  font-size: .9rem;
 }
 
 .server-terrain-speed-controls output {
-  min-width: 46px;
+  min-width: 44px;
   text-align: center;
   font-weight: 900;
 }
@@ -5974,11 +6015,24 @@ a.leaderboard-steam:hover,
 
   .server-terrain-controls {
     width: 100%;
+    grid-template-columns: 1fr;
+    padding: 10px;
+  }
+
+  .server-terrain-control-group,
+  .server-terrain-control-group-compact,
+  .server-terrain-control-group-playback,
+  .server-terrain-control-group-secondary {
+    grid-column: 1 / -1;
   }
 
   .server-terrain-controls label {
-    width: 100%;
+    flex: 1 1 160px;
     justify-content: center;
+  }
+
+  .server-terrain-controls .server-terrain-field {
+    flex-basis: 100%;
   }
 
   .server-terrain-viewer {

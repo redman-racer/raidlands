@@ -160,7 +160,9 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
           <h2>3D map viewer</h2>
           <p class="section-lede">Height, water, and surface color sampled from the live Raidlands map publish.</p>
         </div>
-        <div class="server-terrain-controls" data-map-viewer-controls>
+      </div>
+      <div class="server-terrain-controls" data-map-viewer-controls>
+        <div class="server-terrain-control-group server-terrain-control-group-compact" aria-label="View controls">
           <label class="server-terrain-toggle">
             <input type="checkbox" checked data-map-viewer-grid>
             <span>Grid coordinates</span>
@@ -169,10 +171,24 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
             <input type="checkbox" checked data-map-viewer-tour>
             <span>Camera flyover</span>
           </label>
+        </div>
+        <div class="server-terrain-control-group" aria-label="Overlay controls">
           <label class="server-terrain-toggle">
             <input type="checkbox" checked data-map-viewer-heatmap>
             <span>Heat map</span>
           </label>
+          <label class="server-terrain-toggle">
+            <input type="checkbox" checked data-map-viewer-players>
+            <span>Clan locations</span>
+          </label>
+          <?php if ($server_can_view_all_player_locations): ?>
+          <label class="server-terrain-toggle">
+            <input type="checkbox" data-map-viewer-all-players>
+            <span>All players</span>
+          </label>
+          <?php endif; ?>
+        </div>
+        <div class="server-terrain-control-group server-terrain-control-group-playback" aria-label="Playback controls">
           <label class="server-terrain-toggle">
             <input type="checkbox" checked data-map-viewer-heatmap-playback>
             <span>Playback</span>
@@ -191,21 +207,13 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
             <span>Timeline <output data-map-viewer-heatmap-frame-label>Latest</output></span>
             <input type="range" min="0" max="15" value="15" data-map-viewer-heatmap-frame>
           </label>
+        </div>
+        <div class="server-terrain-control-group server-terrain-control-group-secondary" aria-label="Location and filters">
           <label class="server-terrain-field server-terrain-frame-field">
             <span>Time points <output data-map-viewer-heatmap-frame-count-label>24</output></span>
             <input type="range" min="8" max="72" step="4" value="24" data-map-viewer-heatmap-frame-count>
             <small>Within selected range <output data-map-viewer-heatmap-frame-interval-label>waiting</output></small>
           </label>
-          <label class="server-terrain-toggle">
-            <input type="checkbox" checked data-map-viewer-players>
-            <span>Clan locations</span>
-          </label>
-          <?php if ($server_can_view_all_player_locations): ?>
-          <label class="server-terrain-toggle">
-            <input type="checkbox" data-map-viewer-all-players>
-            <span>All players</span>
-          </label>
-          <?php endif; ?>
           <button type="button" data-map-viewer-my-location aria-pressed="false" disabled>Follow my location</button>
           <button type="button" data-map-viewer-my-location-orbit aria-pressed="false" disabled>Orbit follow</button>
           <label class="server-terrain-field">
