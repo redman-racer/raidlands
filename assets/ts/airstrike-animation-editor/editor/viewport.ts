@@ -640,9 +640,9 @@ export class AirstrikeViewport {
   }
 
   private createHeightmapTerrainMesh(terrainPayload: TerrainReferencePayload): Mesh {
-    const resolution = Math.max(2, Math.min(terrainPayload.resolution, 129));
+    const resolution = Math.max(2, Math.min(terrainPayload.resolution, 257));
     const worldSize = Math.max(100, terrainPayload.worldSize || this.worldReference.worldSize || 4500);
-    const patch = this.currentTerrainPatch(worldSize);
+    const half = worldSize / 2;
     const positions: number[] = [];
     const uvs: number[] = [];
     const colors: number[] = [];
@@ -650,15 +650,15 @@ export class AirstrikeViewport {
 
     for (let row = 0; row < resolution; row += 1) {
       const v = row / (resolution - 1);
-      const localZ = patch.center.z + patch.size * 0.5 - v * patch.size;
+      const z = half - v * worldSize;
       for (let col = 0; col < resolution; col += 1) {
         const u = col / (resolution - 1);
-        const localX = patch.center.x - patch.size * 0.5 + u * patch.size;
-        const height = this.sampleTerrainHeight(terrainPayload, localX, localZ);
-        positions.push(localX, height, localZ);
-        const textureUv = this.terrainTextureUv(terrainPayload, localX, localZ);
-        uvs.push(textureUv.x, textureUv.y);
-        this.pushTerrainColor(colors, this.sampleTerrainColor(terrainPayload, localX, localZ), height, terrainPayload);
+        const x = -half + u * worldSize;
+        const index = row * resolution + (resolution - 1 - col);
+        const height = terrainPayload.heights[index] || 0;
+        positions.push(x, height, z);
+        uvs.push(1 - u, 1 - v);
+        this.pushTerrainColor(colors, terrainPayload.colors?.[index], height, terrainPayload);
       }
     }
 
@@ -1850,11 +1850,48 @@ function rustWorldToViewerPosition(x: number, y: number, z: number): Vector3 {
 }
 
 function resolveOceanWaterLevel(terrain: TerrainReferencePayload): number {
-  const waterLevel = Number(terrain.waterLevel);
-  if (Number.isFinite(waterLevel) && waterLevel !== 0) {
-    return waterLevel;
+  const exportedLevel = Number(terrain.waterLevel);
+  const inferredLevel = inferOceanWaterLevel(terrain);
+
+  if (!Number.isFinite(exportedLevel)) {
+    return inferredLevel;
   }
+
+  if (exportedLevel > inferredLevel + 8) {
+    return inferredLevel;
+  }
+
+  return exportedLevel;
+}
+
+function inferOceanWaterLevel(terrain: TerrainReferencePayload): number {
+  const heights = terrain.heights.filter((height) => Number.isFinite(height)).sort((a, b) => a - b);
+
+  if (heights.length === 0) {
+    return 0;
+  }
+
+  const median = percentile(heights, 0.5);
+  const lowShelf = percentile(heights, 0.12);
+
+  if (Math.abs(median) <= 4) {
+    return median;
+  }
+
+  if (Math.abs(lowShelf) <= 4) {
+    return lowShelf;
+  }
+
   return 0;
+}
+
+function percentile(sortedValues: number[], amount: number): number {
+  if (sortedValues.length === 0) {
+    return 0;
+  }
+
+  const index = MathUtils.clamp(Math.round((sortedValues.length - 1) * amount), 0, sortedValues.length - 1);
+  return sortedValues[index] || 0;
 }
 
 function createMonumentTitleSprite(title: string, size: number): Sprite {
