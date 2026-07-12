@@ -1,6 +1,7 @@
 <?php
 
 require_once $site_root . '/includes/server-status.php';
+require_once $site_root . '/includes/admin.php';
 
 $server_status = raidlands_server_status_public();
 $server_online = $server_status['online'] ?? null;
@@ -23,6 +24,7 @@ $server_skybox_url = trim((string) ($server_map_image['skyboxUrl'] ?? ''));
 if ($server_skybox_url === '') {
     $server_skybox_url = asset_url('media/skyboxes/raidlands-current-skybox.png');
 }
+$server_can_view_all_player_locations = raidlands_admin_can('admin.sync.view');
 
 function raidlands_server_page_value($value, string $fallback = 'Pending'): string
 {
@@ -197,6 +199,12 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
             <input type="checkbox" checked data-map-viewer-players>
             <span>Clan locations</span>
           </label>
+          <?php if ($server_can_view_all_player_locations): ?>
+          <label class="server-terrain-toggle">
+            <input type="checkbox" data-map-viewer-all-players>
+            <span>All players</span>
+          </label>
+          <?php endif; ?>
           <button type="button" data-map-viewer-my-location disabled>My location</button>
           <label class="server-terrain-field">
             <span>Metric</span>

@@ -994,15 +994,17 @@ function raidlands_server_heatmap_range(string $range): array
 
 function raidlands_server_location_viewer_context(string $server_id): array
 {
+    $can_view_all = function_exists('raidlands_admin_can') && raidlands_admin_can('admin.sync.view');
+
     if (!raidlands_server_player_locations_are_ready()) {
-        return ['authenticated' => false, 'steamId64' => '', 'clanTag' => ''];
+        return ['authenticated' => false, 'steamId64' => '', 'clanTag' => '', 'canViewAll' => $can_view_all];
     }
 
     $player = function_exists('raidlands_store_current_player') ? raidlands_store_current_player() : null;
     $steam_id64 = is_array($player) ? preg_replace('/\D+/', '', (string) ($player['steam_id64'] ?? '')) : '';
 
     if (!is_array($player) || !function_exists('raidlands_store_validate_steam_id64') || !raidlands_store_validate_steam_id64((string) $steam_id64)) {
-        return ['authenticated' => false, 'steamId64' => '', 'clanTag' => ''];
+        return ['authenticated' => false, 'steamId64' => '', 'clanTag' => '', 'canViewAll' => $can_view_all];
     }
 
     $self_location = raidlands_db_fetch_one(
@@ -1025,12 +1027,16 @@ function raidlands_server_location_viewer_context(string $server_id): array
         $clan_tag = raidlands_server_status_clean_text($clan_row['clan_tag'] ?? '', 32);
     }
 
-    return ['authenticated' => true, 'steamId64' => $steam_id64, 'clanTag' => $clan_tag];
+    return ['authenticated' => true, 'steamId64' => $steam_id64, 'clanTag' => $clan_tag, 'canViewAll' => $can_view_all];
 }
 
-function raidlands_server_player_location_rows_for_context(string $server_id, array $context, ?int $at_time = null, int $window_seconds = 300): array
+function raidlands_server_player_location_rows_for_context(string $server_id, array $context, ?int $at_time = null, int $window_seconds = 300, bool $include_all_players = false): array
 {
     $steam_id64 = (string) ($context['steamId64'] ?? '');
+
+    if ($include_all_players && !empty($context['canViewAll'])) {
+        return raidlands_server_player_location_rows_all($server_id, $steam_id64, $at_time, $window_seconds);
+    }
 
     if (empty($context['authenticated']) || $steam_id64 === '') {
         return [];
@@ -1088,6 +1094,62 @@ function raidlands_server_player_location_rows_for_context(string $server_id, ar
             'y' => (float) ($row['y'] ?? 0),
             'z' => (float) ($row['z'] ?? 0),
             'isSelf' => hash_equals($steam_id64, $row_steam),
+            'sampledAt' => raidlands_server_status_iso($row['sampled_at'] ?? ''),
+        ];
+    }
+
+    return $players;
+}
+
+function raidlands_server_player_location_rows_all(string $server_id, string $self_steam_id64 = '', ?int $at_time = null, int $window_seconds = 300): array
+{
+    if ($at_time !== null && raidlands_server_player_location_history_is_ready()) {
+        $rows = raidlands_db_fetch_all(
+            'SELECT steam_id64, display_name, clan_tag, x, y, z, sampled_at
+             FROM server_player_location_history
+             WHERE server_id = :server_id
+               AND sampled_at BETWEEN :window_start AND :window_end
+             ORDER BY ABS(TIMESTAMPDIFF(SECOND, sampled_at, :target_time)) ASC, display_name ASC
+             LIMIT 200',
+            [
+                'server_id' => $server_id,
+                'window_start' => gmdate('Y-m-d H:i:s', $at_time - max(60, $window_seconds)),
+                'window_end' => gmdate('Y-m-d H:i:s', $at_time + max(60, $window_seconds)),
+                'target_time' => gmdate('Y-m-d H:i:s', $at_time),
+            ]
+        );
+    } else {
+        $rows = raidlands_db_fetch_all(
+            'SELECT steam_id64, display_name, clan_tag, x, y, z, sampled_at
+             FROM server_player_locations
+             WHERE server_id = :server_id
+               AND is_online = 1
+               AND sampled_at >= :stale_after
+             ORDER BY display_name ASC
+             LIMIT 200',
+            [
+                'server_id' => $server_id,
+                'stale_after' => gmdate('Y-m-d H:i:s', time() - 120),
+            ]
+        );
+    }
+
+    $seen = [];
+    $players = [];
+    foreach ($rows as $row) {
+        $row_steam = (string) ($row['steam_id64'] ?? '');
+        if ($row_steam === '' || isset($seen[$row_steam])) {
+            continue;
+        }
+        $seen[$row_steam] = true;
+        $players[] = [
+            'steamId64' => $row_steam,
+            'displayName' => raidlands_server_status_clean_text($row['display_name'] ?? '', 120),
+            'clanTag' => raidlands_server_status_clean_text($row['clan_tag'] ?? '', 32),
+            'x' => (float) ($row['x'] ?? 0),
+            'y' => (float) ($row['y'] ?? 0),
+            'z' => (float) ($row['z'] ?? 0),
+            'isSelf' => $self_steam_id64 !== '' && hash_equals($self_steam_id64, $row_steam),
             'sampledAt' => raidlands_server_status_iso($row['sampled_at'] ?? ''),
         ];
     }
@@ -1626,7 +1688,7 @@ function raidlands_server_player_locations_ingest_snapshot(array $payload, strin
     ];
 }
 
-function raidlands_server_player_locations_public(): array
+function raidlands_server_player_locations_public(bool $include_all_players = false): array
 {
     $delay = raidlands_server_heatmap_viewer_delay();
     $status = raidlands_server_status_latest();
@@ -1659,7 +1721,8 @@ function raidlands_server_player_locations_public(): array
         'authenticated' => true,
         'serverId' => $server_id,
         'clanTag' => (string) ($context['clanTag'] ?? ''),
-        'players' => raidlands_server_player_location_rows_for_context($server_id, $context),
+        'allPlayers' => $include_all_players && !empty($context['canViewAll']),
+        'players' => raidlands_server_player_location_rows_for_context($server_id, $context, null, 300, $include_all_players),
         'delay' => [
             'label' => (string) $delay['label'],
             'delaySeconds' => (int) $delay['delay_seconds'],
@@ -1667,7 +1730,7 @@ function raidlands_server_player_locations_public(): array
     ];
 }
 
-function raidlands_server_player_locations_history_public(string $range, int $frames = 12): array
+function raidlands_server_player_locations_history_public(string $range, int $frames = 12, bool $include_all_players = false): array
 {
     $range_info = raidlands_server_heatmap_range($range);
     $delay = raidlands_server_heatmap_viewer_delay();
@@ -1689,8 +1752,8 @@ function raidlands_server_player_locations_history_public(string $range, int $fr
         $frame_end = min($window_end_time, $frame_start + $frame_seconds);
         $players = [];
 
-        if (!empty($context['authenticated'])) {
-            $players = raidlands_server_player_location_rows_for_context($server_id, $context, $frame_end, max(300, $frame_seconds));
+        if (!empty($context['authenticated']) || ($include_all_players && !empty($context['canViewAll']))) {
+            $players = raidlands_server_player_location_rows_for_context($server_id, $context, $frame_end, max(300, $frame_seconds), $include_all_players);
         }
 
         $frames_payload[] = [
@@ -1702,7 +1765,7 @@ function raidlands_server_player_locations_history_public(string $range, int $fr
         ];
     }
 
-    if (!empty($context['authenticated'])) {
+    if (!empty($context['authenticated']) || ($include_all_players && !empty($context['canViewAll']))) {
         $has_players = false;
         foreach ($frames_payload as $frame_payload) {
             if (!empty($frame_payload['players'])) {
@@ -1712,7 +1775,7 @@ function raidlands_server_player_locations_history_public(string $range, int $fr
         }
 
         if (!$has_players) {
-            $latest_players = raidlands_server_player_location_rows_for_context($server_id, $context);
+            $latest_players = raidlands_server_player_location_rows_for_context($server_id, $context, null, 300, $include_all_players);
             if (!empty($latest_players)) {
                 $frames_payload[count($frames_payload) - 1]['players'] = $latest_players;
             }
@@ -1722,6 +1785,7 @@ function raidlands_server_player_locations_history_public(string $range, int $fr
     return [
         'ok' => true,
         'authenticated' => !empty($context['authenticated']),
+        'allPlayers' => $include_all_players && !empty($context['canViewAll']),
         'serverId' => $server_id,
         'range' => $range_info['range'],
         'rangeLabel' => $range_info['label'],

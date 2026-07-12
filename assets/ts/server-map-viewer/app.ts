@@ -2099,6 +2099,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   const heatmapFrameCount = panel?.querySelector<HTMLInputElement>("[data-map-viewer-heatmap-frame-count]");
   const heatmapFrameCountLabel = panel?.querySelector<HTMLOutputElement>("[data-map-viewer-heatmap-frame-count-label]");
   const players = panel?.querySelector<HTMLInputElement>("[data-map-viewer-players]");
+  const allPlayers = panel?.querySelector<HTMLInputElement>("[data-map-viewer-all-players]");
   const myLocation = panel?.querySelector<HTMLButtonElement>("[data-map-viewer-my-location]");
   const metric = panel?.querySelector<HTMLSelectElement>("[data-map-viewer-heatmap-metric]");
   const range = panel?.querySelector<HTMLSelectElement>("[data-map-viewer-heatmap-range]");
@@ -2122,6 +2123,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   const wantsHeatmap = (): boolean => heatmap?.checked ?? dataFlag("overlayHeatmap");
   const wantsPlayback = (): boolean => heatmapPlayback?.checked ?? dataFlag("overlayPlayback");
   const wantsPlayers = (): boolean => players?.checked ?? dataFlag("overlayPlayers");
+  const wantsAllPlayers = (): boolean => Boolean(allPlayers?.checked);
   const wantsLoop = (): boolean => heatmapLoop?.checked ?? dataFlag("overlayLoop");
   const selectedMetric = (): string => metric?.value || root.dataset.overlayMetric || "deaths";
   const selectedRange = (): string => range?.value || root.dataset.overlayRange || "24h";
@@ -2317,7 +2319,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     }
 
     if (wantsPlayback()) {
-      void loadOverlayHistory(root, heatmapEnabled, playersEnabled, selectedMetric(), selectedRange(), heatmapFrameCountValue()).then((payload) => {
+      void loadOverlayHistory(root, heatmapEnabled, playersEnabled, wantsAllPlayers(), selectedMetric(), selectedRange(), heatmapFrameCountValue()).then((payload) => {
         heatmapHistory = Array.isArray(payload.frames) ? payload.frames : [];
         const latestFrame = preferredFrame === undefined
           ? latestVisibleHeatmapFrame()
@@ -2344,7 +2346,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       viewer.setHeatmapVisible(false);
     }
     if (playersEnabled) {
-      void loadPlayerLocations(root, viewer, myLocation);
+      void loadPlayerLocations(root, viewer, myLocation, true, wantsAllPlayers());
     }
   };
 
@@ -2437,17 +2439,27 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       return;
     }
 
-    void loadPlayerLocations(root, viewer, myLocation);
+    void loadPlayerLocations(root, viewer, myLocation, true, wantsAllPlayers());
     if (playerPollTimer === 0) {
       playerPollTimer = window.setInterval(() => {
-        if (players.checked) {
-          void loadPlayerLocations(root, viewer, myLocation);
+        if (players?.checked) {
+          void loadPlayerLocations(root, viewer, myLocation, true, wantsAllPlayers());
         }
       }, 15000);
     }
   };
 
   bind(players, "change", () => {
+    if (wantsPlayback()) {
+      reloadPlayback();
+      return;
+    }
+    reloadPlayers();
+  });
+  bind(allPlayers, "change", () => {
+    if (allPlayers?.checked && players && !players.checked) {
+      players.checked = true;
+    }
     if (wantsPlayback()) {
       reloadPlayback();
       return;
@@ -2475,7 +2487,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       return;
     }
 
-    void loadPlayerLocations(root, viewer, myLocation).then(() => {
+    void loadPlayerLocations(root, viewer, myLocation, true, wantsAllPlayers()).then(() => {
       if (viewer.frameSelfLocation() && players) {
         players.checked = true;
       }
@@ -2483,7 +2495,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   });
 
   if (!wantsPlayback()) {
-    void loadPlayerLocations(root, viewer, myLocation, wantsPlayers());
+    void loadPlayerLocations(root, viewer, myLocation, wantsPlayers(), wantsAllPlayers());
   }
 
   return {
@@ -2561,7 +2573,7 @@ async function loadHeatmapHistory(root: HTMLElement, metric: string, range: stri
   }
 }
 
-async function loadPlayerLocationHistory(root: HTMLElement, range: string, frames = 24): Promise<HeatmapHistoryPayload> {
+async function loadPlayerLocationHistory(root: HTMLElement, range: string, frames = 24, allPlayers = false): Promise<HeatmapHistoryPayload> {
   const baseUrl = root.dataset.playerLocationsUrl || "";
 
   if (!baseUrl) {
@@ -2572,6 +2584,9 @@ async function loadPlayerLocationHistory(root: HTMLElement, range: string, frame
   url.searchParams.set("range", range);
   url.searchParams.set("playback", "1");
   url.searchParams.set("frames", String(Math.max(8, Math.min(72, Math.round(frames)))));
+  if (allPlayers) {
+    url.searchParams.set("all", "1");
+  }
 
   try {
     const response = await fetch(url.toString(), {
@@ -2590,10 +2605,10 @@ async function loadPlayerLocationHistory(root: HTMLElement, range: string, frame
   }
 }
 
-async function loadOverlayHistory(root: HTMLElement, includeHeatmap: boolean, includePlayers: boolean, metric: string, range: string, frames = 24): Promise<HeatmapHistoryPayload> {
+async function loadOverlayHistory(root: HTMLElement, includeHeatmap: boolean, includePlayers: boolean, allPlayers: boolean, metric: string, range: string, frames = 24): Promise<HeatmapHistoryPayload> {
   const [heatmapPayload, playerPayload] = await Promise.all([
     includeHeatmap ? loadHeatmapHistory(root, metric, range, frames) : Promise.resolve({ frames: [] } as HeatmapHistoryPayload),
-    includePlayers ? loadPlayerLocationHistory(root, range, frames) : Promise.resolve({ frames: [] } as HeatmapHistoryPayload),
+    includePlayers ? loadPlayerLocationHistory(root, range, frames, allPlayers) : Promise.resolve({ frames: [] } as HeatmapHistoryPayload),
   ]);
   const heatmapFrames = Array.isArray(heatmapPayload.frames) ? heatmapPayload.frames : [];
   const playerFrames = Array.isArray(playerPayload.frames) ? playerPayload.frames : [];
@@ -2653,7 +2668,7 @@ function historyFrameTime(frame: HeatmapHistoryFrame): number | null {
   return Number.isFinite(time) ? time : null;
 }
 
-async function loadPlayerLocations(root: HTMLElement, viewer: TerrainViewer, myLocation?: HTMLButtonElement | null, showLayer = true): Promise<void> {
+async function loadPlayerLocations(root: HTMLElement, viewer: TerrainViewer, myLocation?: HTMLButtonElement | null, showLayer = true, allPlayers = false): Promise<void> {
   const baseUrl = root.dataset.playerLocationsUrl || "";
 
   if (!baseUrl) {
@@ -2665,7 +2680,12 @@ async function loadPlayerLocations(root: HTMLElement, viewer: TerrainViewer, myL
   }
 
   try {
-    const response = await fetch(new URL(baseUrl, window.location.href).toString(), {
+    const url = new URL(baseUrl, window.location.href);
+    if (allPlayers) {
+      url.searchParams.set("all", "1");
+    }
+
+    const response = await fetch(url.toString(), {
       cache: "no-store",
       headers: { Accept: "application/json" },
     });
