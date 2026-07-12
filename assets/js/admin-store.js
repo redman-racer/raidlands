@@ -286,6 +286,22 @@
     selector.setAttribute('data-admin-store-search', collectPanelSearch(panel));
   }
 
+  function panelIsDirty(panel) {
+    return panel && panel.getAttribute('data-admin-store-dirty') === '1';
+  }
+
+  function setPanelDirty(panel) {
+    if (panel) {
+      panel.setAttribute('data-admin-store-dirty', '1');
+    }
+  }
+
+  function setPanelControlsEnabled(panel, enabled) {
+    toArray(panel.querySelectorAll('input, select, textarea')).forEach(function (control) {
+      control.disabled = !enabled;
+    });
+  }
+
   function activatePanel(editor, targetId) {
     var panels = toArray(editor.querySelectorAll('[data-admin-store-panel]'));
     var selectors = toArray(editor.querySelectorAll('[data-admin-store-select]'));
@@ -294,6 +310,7 @@
       var isActive = targetId !== '' && panel.id === targetId;
       panel.hidden = !isActive;
       panel.classList.toggle('is-active', isActive);
+      setPanelControlsEnabled(panel, isActive);
     });
 
     selectors.forEach(function (selector) {
@@ -305,6 +322,12 @@
       } else {
         selector.removeAttribute('aria-current');
       }
+    });
+  }
+
+  function prepareStoreSubmit(editor) {
+    toArray(editor.querySelectorAll('[data-admin-store-panel]')).forEach(function (panel) {
+      setPanelControlsEnabled(panel, panelIsDirty(panel));
     });
   }
 
@@ -380,6 +403,7 @@
     var resetButton = editor.querySelector('[data-admin-store-reset]');
     var resultCount = editor.querySelector('[data-admin-store-result-count]');
     var empty = editor.querySelector('[data-admin-store-empty]');
+    var form = editor.closest('form');
     var activePanel = panels.find(function (panel) {
       return panel.classList.contains('is-active');
     }) || panels[0];
@@ -476,8 +500,13 @@
       };
 
       toArray(panel.querySelectorAll('input, select, textarea')).forEach(function (control) {
-        control.addEventListener('input', refreshPanel);
-        control.addEventListener('change', refreshPanel);
+        var markAndRefresh = function () {
+          setPanelDirty(panel);
+          refreshPanel();
+        };
+
+        control.addEventListener('input', markAndRefresh);
+        control.addEventListener('change', markAndRefresh);
       });
 
       updateSelectorFromPanel(editor, panel);
@@ -493,6 +522,12 @@
 
     if (resetButton) {
       resetButton.addEventListener('click', resetFilters);
+    }
+
+    if (form) {
+      form.addEventListener('submit', function () {
+        prepareStoreSubmit(editor);
+      });
     }
 
     applyFilters();
