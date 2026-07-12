@@ -209,11 +209,10 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
           </label>
         </div>
         <div class="server-terrain-control-group server-terrain-control-group-secondary" aria-label="Location and filters">
-          <label class="server-terrain-field server-terrain-frame-field">
-            <span>Time points <output data-map-viewer-heatmap-frame-count-label>24</output></span>
-            <input type="range" min="8" max="72" step="4" value="24" data-map-viewer-heatmap-frame-count>
-            <small>Within selected range <output data-map-viewer-heatmap-frame-interval-label>waiting</output></small>
-          </label>
+          <div class="server-terrain-interval" aria-live="polite">
+            <span>Frame spacing</span>
+            <output data-map-viewer-heatmap-frame-interval-label>waiting</output>
+          </div>
           <button type="button" data-map-viewer-my-location aria-pressed="false" disabled>Follow my location</button>
           <button type="button" data-map-viewer-my-location-orbit aria-pressed="false" disabled>Orbit follow</button>
           <label class="server-terrain-field">

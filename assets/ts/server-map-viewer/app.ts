@@ -2366,8 +2366,6 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   const heatmapSpeedLabel = panel?.querySelector<HTMLOutputElement>("[data-map-viewer-heatmap-speed-label]");
   const heatmapFrame = panel?.querySelector<HTMLInputElement>("[data-map-viewer-heatmap-frame]");
   const heatmapFrameLabel = panel?.querySelector<HTMLOutputElement>("[data-map-viewer-heatmap-frame-label]");
-  const heatmapFrameCount = panel?.querySelector<HTMLInputElement>("[data-map-viewer-heatmap-frame-count]");
-  const heatmapFrameCountLabel = panel?.querySelector<HTMLOutputElement>("[data-map-viewer-heatmap-frame-count-label]");
   const heatmapFrameIntervalLabel = panel?.querySelector<HTMLOutputElement>("[data-map-viewer-heatmap-frame-interval-label]");
   const players = panel?.querySelector<HTMLInputElement>("[data-map-viewer-players]");
   const allPlayers = panel?.querySelector<HTMLInputElement>("[data-map-viewer-all-players]");
@@ -2536,9 +2534,6 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     if (heatmapFrame) {
       heatmapFrame.disabled = !controlsActive || heatmapHistory.length === 0;
     }
-    if (heatmapFrameCount) {
-      heatmapFrameCount.disabled = !controlsActive;
-    }
     updatePlaybackSpeedControls();
   };
 
@@ -2641,48 +2636,20 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     heatmapFrameLabel.textContent = frame?.label || fallback;
   };
 
-  const heatmapFrameCountValue = (): number => {
-    const value = Math.round(Number(heatmapFrameCount?.value ?? root.dataset.overlayFrames) || 24);
-    return Math.max(8, Math.min(72, value));
-  };
-
   const selectedRangeSeconds = (): number => {
     return historyRangeSeconds(selectedRange());
-  };
-
-  const estimatedFrameSeconds = (): number => {
-    return Math.max(60, Math.ceil(selectedRangeSeconds() / heatmapFrameCountValue()));
   };
 
   const maxFrameCountForSelectedRange = (): number => {
     return Math.max(8, Math.min(72, Math.floor(selectedRangeSeconds() / 60)));
   };
 
-  const syncFrameCountBounds = () => {
-    if (!heatmapFrameCount) {
-      return;
-    }
-
-    const max = maxFrameCountForSelectedRange();
-    heatmapFrameCount.max = String(max);
-    if (heatmapFrameCountValue() > max) {
-      heatmapFrameCount.value = String(max);
-    }
-  };
-
-  const updateFrameCountLabel = () => {
-    if (!heatmapFrameCountLabel) {
-      return;
-    }
-
-    syncFrameCountBounds();
-    const value = heatmapFrameCountValue();
-    heatmapFrameCountLabel.value = String(value);
-    heatmapFrameCountLabel.textContent = String(value);
+  const heatmapFrameCountValue = (): number => {
+    return maxFrameCountForSelectedRange();
   };
 
   const updateEstimatedFrameIntervalLabel = () => {
-    setFrameIntervalLabel(estimatedFrameSeconds());
+    setFrameIntervalLabel(Math.max(60, Math.ceil(selectedRangeSeconds() / heatmapFrameCountValue())));
   };
 
   const setFrameIntervalLabel = (frameSeconds: number | undefined) => {
@@ -2843,18 +2810,8 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   bind(metric, "change", () => reloadPlayback());
   bind(range, "change", () => {
     stopHeatmapPlayback();
-    syncFrameCountBounds();
-    updateFrameCountLabel();
     updateEstimatedFrameIntervalLabel();
     reloadPlayback(undefined, true, true);
-  });
-  bind(heatmapFrameCount, "input", () => {
-    updateFrameCountLabel();
-    updateEstimatedFrameIntervalLabel();
-    if (wantsPlayback() && (wantsHeatmap() || wantsPlayers())) {
-      stopHeatmapPlayback();
-      reloadPlayback();
-    }
   });
   bind(heatmapFrame, "pointerdown", () => {
     stopHeatmapPlayback();
@@ -2979,7 +2936,6 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     }
     reloadPlayers();
   });
-  updateFrameCountLabel();
   updateEstimatedFrameIntervalLabel();
   updatePlaybackControlAvailability();
   updatePlaybackSpeedControls();

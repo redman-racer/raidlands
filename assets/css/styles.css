@@ -1718,11 +1718,6 @@ h3,
   min-width: min(100%, 280px);
 }
 
-.server-terrain-controls .server-terrain-frame-field {
-  flex: 1 1 240px;
-  min-width: min(100%, 240px);
-}
-
 .server-terrain-speed-controls {
   display: inline-grid;
   grid-template-columns: 34px minmax(44px, auto) 34px;
@@ -1747,6 +1742,27 @@ h3,
   min-width: 44px;
   text-align: center;
   font-weight: 900;
+}
+
+.server-terrain-interval {
+  display: inline-grid;
+  gap: 3px;
+  min-height: 54px;
+  min-width: min(100%, 150px);
+  padding: 6px 10px;
+  border: 1px solid rgba(243, 238, 227, .12);
+  border-radius: 4px;
+  background: rgba(0, 0, 0, .22);
+  color: var(--white);
+  font-size: .7rem;
+  font-weight: 900;
+  text-transform: uppercase;
+}
+
+.server-terrain-interval output {
+  color: var(--yellow);
+  font-size: .72rem;
+  text-transform: none;
 }
 
 .server-terrain-controls .server-terrain-playback-field > span {
