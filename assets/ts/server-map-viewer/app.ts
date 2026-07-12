@@ -827,21 +827,18 @@ class TerrainViewer {
 
   private createOceanFloorMesh(): Mesh {
     const worldSize = this.terrain.worldSize || 4500;
-    const oceanSize = worldSize * 8;
-    const waterLevel = Number.isFinite(this.terrain.waterLevel) ? this.terrain.waterLevel || 0 : 0;
     const sampledMinHeight = Number.isFinite(this.terrain.minHeight)
       ? this.terrain.minHeight || 0
       : Math.min(...this.terrain.heights.filter((height) => Number.isFinite(height)));
-    const oceanFloorHeight = Number.isFinite(sampledMinHeight)
-      ? Math.min(sampledMinHeight - 6, waterLevel - 80)
-      : waterLevel - 120;
+    const oceanFloorHeight = Number.isFinite(sampledMinHeight) ? sampledMinHeight - 3 : -12;
+    const oceanSize = worldSize * 1.08;
     const geometry = new PlaneGeometry(oceanSize, oceanSize, 1, 1);
     const material = new MeshStandardMaterial({
-      color: 0x082b32,
-      roughness: 0.96,
+      color: 0x063646,
+      roughness: 0.88,
       metalness: 0,
       transparent: true,
-      opacity: 0.78,
+      opacity: 0.94,
       side: DoubleSide,
     });
     const mesh = new Mesh(geometry, material);
