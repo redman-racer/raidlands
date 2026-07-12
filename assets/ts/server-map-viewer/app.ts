@@ -17,9 +17,11 @@ import {
   MathUtils,
   Mesh,
   MeshStandardMaterial,
+  Object3D,
   PerspectiveCamera,
   PlaneGeometry,
   Quaternion,
+  RingGeometry,
   RepeatWrapping,
   Scene,
   SRGBColorSpace,
@@ -32,6 +34,8 @@ import {
   WebGLRenderer,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { loadVehiclePreview, metadataForVehicle } from "../airstrike-animation-editor/editor/vehicle-preview";
+import type { VehiclePreviewMetadataFile } from "../airstrike-animation-editor/types";
 import { applyRaidlandsEnvironment } from "../shared/three-environment";
 
 type TerrainPayload = {
@@ -71,9 +75,19 @@ type RuntimeVisualFrame = {
 
 type RuntimePayloadEvent = {
   Time: number;
+  Payload?: string;
+  Count?: number;
   CarrierOffsetX?: number;
   CarrierOffsetY?: number;
   CarrierOffsetZ?: number;
+  TargetOffsetX?: number;
+  TargetOffsetY?: number;
+  TargetOffsetZ?: number;
+  SpreadRadius?: number;
+  FuseSeconds?: number;
+  SplashRadius?: number;
+  ImpactRadius?: number;
+  LaunchSpeed?: number;
 };
 
 type RuntimeVisualProfile = {
@@ -820,8 +834,8 @@ class TerrainViewer {
     this.focusSelfLocation(true, true);
   }
 
-  public setAirstrikeProfiles(profiles: Record<string, RuntimeVisualProfile>): void {
-    this.airstrikeReplay = new AirstrikeReplayPlayer(this.airstrikeLayer, this.terrain, profiles);
+  public setAirstrikeProfiles(profiles: Record<string, RuntimeVisualProfile>, vehicleMetadata: VehiclePreviewMetadataFile | null, assetBase: string): void {
+    this.airstrikeReplay = new AirstrikeReplayPlayer(this.airstrikeLayer, this.terrain, profiles, vehicleMetadata, assetBase);
     this.airstrikeReplay.start();
   }
 
@@ -1537,13 +1551,17 @@ class AirstrikeReplayPlayer {
   private readonly layer: Group;
   private readonly terrain: TerrainPayload;
   private readonly profiles: Record<string, RuntimeVisualProfile>;
+  private readonly vehicleMetadata: VehiclePreviewMetadataFile | null;
+  private readonly assetBase: string;
   private readonly active = new Group();
   private runs: MapReplayRun[] = [];
 
-  public constructor(layer: Group, terrain: TerrainPayload, profiles: Record<string, RuntimeVisualProfile>) {
+  public constructor(layer: Group, terrain: TerrainPayload, profiles: Record<string, RuntimeVisualProfile>, vehicleMetadata: VehiclePreviewMetadataFile | null, assetBase: string) {
     this.layer = layer;
     this.terrain = terrain;
     this.profiles = profiles;
+    this.vehicleMetadata = vehicleMetadata;
+    this.assetBase = assetBase;
     this.active.name = "active-map-replay-events";
     this.layer.add(this.active);
   }
@@ -1570,8 +1588,8 @@ class AirstrikeReplayPlayer {
 
       const startAt = Number(this.layer.userData.lastTickTime || 0);
       const run = event.eventType === "airdrop"
-        ? new AirdropReplayRun(key, event, this.terrain, startAt, playbackSpeed)
-        : new AirstrikeReplayRun(key, event, this.terrain, this.profileForEvent(event), startAt, playbackSpeed);
+        ? new AirdropReplayRun(key, event, this.terrain, startAt, playbackSpeed, this.vehicleMetadata, this.assetBase)
+        : new AirstrikeReplayRun(key, event, this.terrain, this.profileForEvent(event), startAt, playbackSpeed, this.vehicleMetadata, this.assetBase);
       this.runs.push(run);
       this.active.add(run.group);
     });
@@ -1618,14 +1636,23 @@ class AirstrikeReplayRun implements MapReplayRun {
   private readonly startAt: number;
   private readonly duration: number;
   private readonly frames: RuntimeVisualFrame[];
-  private readonly aircraft: Mesh;
+  private readonly aircraft: Group;
   private readonly payloads: RuntimePayloadEvent[];
   private readonly firedPayloads = new Set<number>();
+  private readonly projectiles: AirstrikeProjectile[] = [];
   private readonly target: Vector3;
-  private readonly routeScale: number;
   private readonly playbackSpeed: number;
 
-  public constructor(key: string, event: MapReplayEvent, terrain: TerrainPayload, profile: RuntimeVisualProfile | null, startAt: number, playbackSpeed: number) {
+  public constructor(
+    key: string,
+    event: MapReplayEvent,
+    terrain: TerrainPayload,
+    profile: RuntimeVisualProfile | null,
+    startAt: number,
+    playbackSpeed: number,
+    vehicleMetadata: VehiclePreviewMetadataFile | null,
+    assetBase: string,
+  ) {
     this.key = key;
     this.profile = profile;
     this.terrain = terrain;
@@ -1636,9 +1663,8 @@ class AirstrikeReplayRun implements MapReplayRun {
     this.duration = Math.max(2, Number(profile?.CompiledTrack?.DurationSeconds || profile?.DurationSeconds || lastFrameTime(this.frames) || 8)) / this.playbackSpeed;
     this.payloads = profile ? normalizePayloadEvents(profile) : [];
     this.target = replayEventPosition(event, terrain);
-    this.routeScale = MathUtils.clamp((terrain.worldSize || 4500) / 1200, 2.2, 5.4);
     this.group.name = `airstrike-replay-${String(profile?.Vehicle || event.vehicle || "aircraft")}`;
-    this.aircraft = createAircraftMarker(String(profile?.Vehicle || event.vehicle || "f15"));
+    this.aircraft = createAircraftMarker(String(profile?.Vehicle || event.vehicle || "f15"), vehicleMetadata, assetBase);
     this.group.add(this.aircraft);
   }
 
@@ -1650,7 +1676,7 @@ class AirstrikeReplayRun implements MapReplayRun {
     }
 
     this.group.visible = true;
-    if (elapsed > this.duration + 2.2) {
+    if (elapsed > this.duration + 3.6 && this.projectiles.length === 0) {
       return false;
     }
 
@@ -1659,46 +1685,137 @@ class AirstrikeReplayRun implements MapReplayRun {
       ? samplePreviewPose(this.frames, profileTime)
       : fallbackFlyoverPose(elapsed / Math.max(0.1, this.duration));
     const world = this.toWorld(pose.position);
-    world.y = Math.max(world.y, sampleTerrainHeight(this.terrain, world.x, world.z) + 95);
+    world.y = Math.max(world.y, sampleTerrainHeight(this.terrain, world.x, world.z) + 10);
     this.aircraft.position.copy(world);
     this.aircraft.quaternion.copy(pose.rotation);
     this.aircraft.rotateY(Math.PI);
 
     this.payloads.forEach((payload, index) => {
-      if (!this.firedPayloads.has(index) && elapsed >= Number(payload.Time || 0)) {
+      if (!this.firedPayloads.has(index) && profileTime >= Number(payload.Time || 0)) {
         this.firedPayloads.add(index);
-        this.group.add(createPayloadFlash(this.toWorld(new Vector3(
-          pose.position.x + Number(payload.CarrierOffsetX || 0),
-          pose.position.y + Number(payload.CarrierOffsetY || 0),
-          pose.position.z + Number(payload.CarrierOffsetZ || 0),
-        )), now));
+        this.spawnPayloadProjectiles(payload, pose, now);
       }
     });
 
-    this.group.children.forEach((child) => {
-      if (child.userData.flashStart === undefined) {
-        return;
+    for (let index = this.projectiles.length - 1; index >= 0; index -= 1) {
+      const projectile = this.projectiles[index]!;
+      if (!projectile.update(now, this.playbackSpeed)) {
+        this.group.remove(projectile.group);
+        disposeObjectTree(projectile.group);
+        this.projectiles.splice(index, 1);
       }
-      const age = now - Number(child.userData.flashStart);
-      child.scale.setScalar(Math.max(0.01, 1 + age * 3.8));
-      const material = (child as Mesh).material;
-      if (material instanceof MeshStandardMaterial) {
-        material.opacity = Math.max(0, 1 - age / 0.9);
-      }
-      if (age > 0.9) {
-        this.group.remove(child);
-      }
-    });
+    }
 
     return true;
   }
 
   private toWorld(local: Vector3): Vector3 {
     return new Vector3(
-      this.target.x + local.x * this.routeScale,
-      this.target.y + local.y * this.routeScale,
-      this.target.z + local.z * this.routeScale,
+      this.target.x + local.x,
+      this.target.y + local.y,
+      this.target.z + local.z,
     );
+  }
+
+  private spawnPayloadProjectiles(payload: RuntimePayloadEvent, pose: { position: Vector3; rotation: Quaternion }, now: number): void {
+    const count = MathUtils.clamp(Math.round(Number(payload.Count || 1)), 1, 6);
+    const spread = MathUtils.clamp(Number(payload.SpreadRadius || payload.ImpactRadius || 0), 0, 80);
+    const impactRadius = MathUtils.clamp(Number(payload.ImpactRadius || payload.SplashRadius || 18), 10, 70);
+    const fuseSeconds = MathUtils.clamp(Number(payload.FuseSeconds || 0.7), 0.18, 3.4);
+    const payloadName = String(payload.Payload || this.event.payload?.payload || this.event.payload?.payloadType || "payload");
+
+    for (let index = 0; index < count; index += 1) {
+      const carrierOffset = new Vector3(
+        Number(payload.CarrierOffsetX || 0),
+        Number(payload.CarrierOffsetY || 0),
+        Number(payload.CarrierOffsetZ || 0),
+      ).applyQuaternion(pose.rotation);
+      const origin = this.toWorld(pose.position.clone().add(carrierOffset));
+      const targetOffset = new Vector3(
+        Number(payload.TargetOffsetX || 0),
+        Number(payload.TargetOffsetY || 0),
+        Number(payload.TargetOffsetZ || 0),
+      );
+      if (spread > 0 && count > 1) {
+        const angle = (index / count) * Math.PI * 2 + ((index % 2) * 0.37);
+        const radius = spread * Math.sqrt((index + 0.65) / count);
+        targetOffset.x += Math.cos(angle) * radius;
+        targetOffset.z += Math.sin(angle) * radius;
+      }
+      const impact = this.toWorld(targetOffset);
+      impact.y = sampleTerrainHeight(this.terrain, impact.x, impact.z) + 2;
+      const projectile = new AirstrikeProjectile(origin, impact, now, fuseSeconds / this.playbackSpeed, impactRadius, payloadName);
+      this.projectiles.push(projectile);
+      this.group.add(projectile.group);
+    }
+  }
+}
+
+class AirstrikeProjectile {
+  public readonly group = new Group();
+  private readonly projectile: Mesh;
+  private readonly flash: Mesh;
+  private readonly ring: Mesh;
+  private readonly smoke: Sprite;
+  private explodedAt = 0;
+
+  public constructor(
+    private readonly origin: Vector3,
+    private readonly impact: Vector3,
+    private readonly startAt: number,
+    private readonly duration: number,
+    private readonly impactRadius: number,
+    payloadName: string,
+  ) {
+    this.group.name = `airstrike-payload-${payloadName}`;
+    this.projectile = createPayloadPrimitive(payloadName, impactRadius);
+    this.flash = createExplosionFlash(impactRadius);
+    this.ring = createExplosionRing(impactRadius);
+    this.smoke = createExplosionSmoke(impactRadius);
+    this.flash.visible = false;
+    this.ring.visible = false;
+    this.smoke.visible = false;
+    this.group.add(this.projectile, this.flash, this.ring, this.smoke);
+  }
+
+  public update(now: number, playbackSpeed: number): boolean {
+    const progress = MathUtils.clamp((now - this.startAt) / Math.max(0.08, this.duration), 0, 1);
+
+    if (progress < 1) {
+      const arc = Math.sin(progress * Math.PI) * Math.max(22, this.origin.distanceTo(this.impact) * 0.08);
+      this.projectile.visible = true;
+      this.projectile.position.copy(this.origin).lerp(this.impact, easeInCubic(progress));
+      this.projectile.position.y += arc;
+      this.projectile.lookAt(this.impact);
+      this.projectile.rotateX(Math.PI / 2);
+      return true;
+    }
+
+    if (this.explodedAt === 0) {
+      this.explodedAt = now;
+      this.projectile.visible = false;
+      this.flash.visible = true;
+      this.ring.visible = true;
+      this.smoke.visible = true;
+      this.flash.position.copy(this.impact);
+      this.ring.position.copy(this.impact);
+      this.ring.position.y += 1.2;
+      this.smoke.position.copy(this.impact).add(new Vector3(0, Math.max(12, this.impactRadius * 0.45), 0));
+    }
+
+    const age = (now - this.explodedAt) * MathUtils.clamp(playbackSpeed || 1, 0.5, 8);
+    const flashProgress = MathUtils.clamp(age / 0.82, 0, 1);
+    const smokeProgress = MathUtils.clamp(age / 1.9, 0, 1);
+    const flashScale = MathUtils.lerp(0.18, 1.15, easeOutCubic(flashProgress));
+    const ringScale = MathUtils.lerp(0.24, 1.85, easeOutCubic(flashProgress));
+    this.flash.scale.setScalar(this.impactRadius * flashScale);
+    this.ring.scale.set(this.impactRadius * ringScale, this.impactRadius * ringScale, 1);
+    this.smoke.scale.setScalar(this.impactRadius * MathUtils.lerp(1.2, 3.1, easeOutCubic(smokeProgress)));
+    setMaterialOpacity(this.flash.material, MathUtils.lerp(0.92, 0, flashProgress));
+    setMaterialOpacity(this.ring.material, MathUtils.lerp(0.72, 0, flashProgress));
+    setMaterialOpacity(this.smoke.material, MathUtils.lerp(0.38, 0, smokeProgress));
+
+    return smokeProgress < 1;
   }
 }
 
@@ -1709,12 +1826,20 @@ class AirdropReplayRun implements MapReplayRun {
   private readonly target: Vector3;
   private readonly startAt: number;
   private readonly duration: number;
-  private readonly aircraft: Mesh;
+  private readonly aircraft: Group;
   private readonly packageMesh: Mesh;
   private readonly parachute: Mesh;
   private readonly dropCount: number;
 
-  public constructor(key: string, event: MapReplayEvent, terrain: TerrainPayload, startAt: number, playbackSpeed: number) {
+  public constructor(
+    key: string,
+    event: MapReplayEvent,
+    terrain: TerrainPayload,
+    startAt: number,
+    playbackSpeed: number,
+    vehicleMetadata: VehiclePreviewMetadataFile | null,
+    assetBase: string,
+  ) {
     this.key = key;
     this.terrain = terrain;
     this.target = replayEventPosition(event, terrain);
@@ -1722,7 +1847,7 @@ class AirdropReplayRun implements MapReplayRun {
     this.duration = 9 / MathUtils.clamp(playbackSpeed || 1, 0.1, 12);
     this.dropCount = Math.max(1, Number(event.payload?.dropCount || 1));
     this.group.name = "airdrop-replay";
-    this.aircraft = createAircraftMarker("cargo_plane");
+    this.aircraft = createAircraftMarker("cargo_plane", vehicleMetadata, assetBase);
     this.aircraft.scale.setScalar(1.35);
     this.packageMesh = new Mesh(
       new BoxGeometry(26, 20, 26),
@@ -1778,18 +1903,43 @@ async function bindAirstrikePreview(root: HTMLElement, viewer: TerrainViewer): P
   }
 
   try {
-    const response = await fetch(profilesUrl, {
-      cache: "no-store",
-      headers: { Accept: "application/json" },
-    });
+    const assetBase = normalizedAssetBase(root);
+    const [response, vehicleMetadata] = await Promise.all([
+      fetch(profilesUrl, {
+        cache: "no-store",
+        headers: { Accept: "application/json" },
+      }),
+      loadVehicleMetadata(assetBase),
+    ]);
     if (!response.ok) {
       throw new Error(`Airstrike profile request failed with HTTP ${response.status}.`);
     }
 
     const payload = await response.json() as { profiles?: Record<string, RuntimeVisualProfile> };
-    viewer.setAirstrikeProfiles(payload.profiles || {});
+    viewer.setAirstrikeProfiles(payload.profiles || {}, vehicleMetadata, assetBase);
   } catch (error) {
     console.info("Raidlands airstrike map preview could not be loaded.", error);
+  }
+}
+
+function normalizedAssetBase(root: HTMLElement): string {
+  const configured = String(root.dataset.assetBase || "/assets/");
+  return configured.endsWith("/") ? configured : `${configured}/`;
+}
+
+async function loadVehicleMetadata(assetBase: string): Promise<VehiclePreviewMetadataFile | null> {
+  try {
+    const response = await fetch(`${assetBase}airstrike-animation-editor/vehicle-preview.json`, {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+    if (!response.ok) {
+      throw new Error(`Vehicle metadata request failed with HTTP ${response.status}.`);
+    }
+    return (await response.json()) as VehiclePreviewMetadataFile;
+  } catch (error) {
+    console.info("Raidlands airstrike vehicle assets could not be loaded.", error);
+    return null;
   }
 }
 
@@ -1833,12 +1983,22 @@ function normalizePayloadEvents(profile: RuntimeVisualProfile): RuntimePayloadEv
   return source
     .map((event) => ({
       Time: Number(event.Time),
+      Payload: String(event.Payload || ""),
+      Count: MathUtils.clamp(Math.round(Number(event.Count || 1)), 1, 12),
       CarrierOffsetX: Number(event.CarrierOffsetX || 0),
       CarrierOffsetY: Number(event.CarrierOffsetY || 0),
       CarrierOffsetZ: Number(event.CarrierOffsetZ || 0),
+      TargetOffsetX: Number(event.TargetOffsetX || 0),
+      TargetOffsetY: Number(event.TargetOffsetY || 0),
+      TargetOffsetZ: Number(event.TargetOffsetZ || 0),
+      SpreadRadius: Number(event.SpreadRadius || 0),
+      FuseSeconds: Number(event.FuseSeconds || 0),
+      SplashRadius: Number(event.SplashRadius || 0),
+      ImpactRadius: Number(event.ImpactRadius || 0),
+      LaunchSpeed: Number(event.LaunchSpeed || 0),
     }))
     .filter((event) => Number.isFinite(event.Time))
-    .slice(0, 16);
+    .slice(0, 32);
 }
 
 function samplePreviewPose(frames: RuntimeVisualFrame[], time: number): { position: Vector3; rotation: Quaternion } {
@@ -1932,6 +2092,14 @@ function easeInOutCubic(progress: number): number {
     : 1 - ((-2 * progress + 2) ** 3) / 2;
 }
 
+function easeInCubic(progress: number): number {
+  return progress * progress * progress;
+}
+
+function easeOutCubic(progress: number): number {
+  return 1 - ((1 - progress) ** 3);
+}
+
 function randomMapOrigin(terrain: TerrainPayload, lane: number): Vector3 {
   const worldSize = terrain.worldSize || 4500;
   const span = worldSize * 0.44;
@@ -1940,7 +2108,27 @@ function randomMapOrigin(terrain: TerrainPayload, lane: number): Vector3 {
   return new Vector3(x, sampleTerrainHeight(terrain, x, z), z);
 }
 
-function createAircraftMarker(vehicle: string): Mesh {
+function createAircraftMarker(vehicle: string, metadataFile: VehiclePreviewMetadataFile | null, assetBase: string): Group {
+  const group = new Group();
+  group.name = `airstrike-preview-aircraft-${vehicle}`;
+  const fallback = createAircraftFallbackMarker(vehicle);
+  group.add(fallback);
+
+  const metadata = metadataForVehicle(metadataFile, vehicle);
+  void loadVehiclePreview(metadata, assetBase || "/assets/").then((result) => {
+    if (result.usedFallback) {
+      return;
+    }
+    group.remove(fallback);
+    disposeGeometryMaterial(fallback);
+    prepareLoadedAircraftForMap(result.object);
+    group.add(result.object);
+  });
+
+  return group;
+}
+
+function createAircraftFallbackMarker(vehicle: string): Mesh {
   const geometry = new ConeGeometry(vehicle.includes("heli") ? 22 : 16, vehicle.includes("heli") ? 46 : 64, 3);
   const material = new MeshStandardMaterial({
     color: vehicle.includes("drone") ? 0xd8d2c5 : 0xf0a33a,
@@ -1955,18 +2143,109 @@ function createAircraftMarker(vehicle: string): Mesh {
   return mesh;
 }
 
-function createPayloadFlash(position: Vector3, startTime: number): Mesh {
+function prepareLoadedAircraftForMap(object: Object3D): void {
+  object.name = `airstrike-preview-${object.name || "vehicle-asset"}`;
+  object.traverse((child) => {
+    if (child instanceof Mesh) {
+      child.castShadow = false;
+      child.receiveShadow = false;
+    }
+  });
+}
+
+function createPayloadPrimitive(payloadName: string, impactRadius: number): Mesh {
+  const key = payloadName.toLowerCase();
+  const explosive = key.includes("rocket") || key.includes("missile") || key.includes("mlrs");
+  const geometry = explosive
+    ? new ConeGeometry(MathUtils.clamp(impactRadius * 0.12, 2.6, 6), MathUtils.clamp(impactRadius * 0.52, 10, 28), 10)
+    : new SphereGeometry(MathUtils.clamp(impactRadius * 0.13, 3.2, 8), 12, 8);
+  const material = new MeshStandardMaterial({
+    color: explosive ? 0xd6dad5 : 0x3c3c36,
+    emissive: explosive ? 0xff7b25 : 0xff3d16,
+    emissiveIntensity: explosive ? 0.42 : 0.28,
+    roughness: 0.46,
+    metalness: explosive ? 0.2 : 0.05,
+  });
+  const mesh = new Mesh(geometry, material);
+  mesh.name = "airstrike-preview-payload-primitive";
+  return mesh;
+}
+
+function createExplosionFlash(impactRadius: number): Mesh {
   const mesh = new Mesh(
-    new SphereGeometry(18, 18, 12),
+    new SphereGeometry(1, 18, 12),
     new MeshStandardMaterial({
-      color: 0xff9d28,
-      emissive: 0xff5a12,
-      emissiveIntensity: 1.8,
+      color: 0xfff0b8,
+      emissive: 0xff681f,
+      emissiveIntensity: 2.4,
       roughness: 0.2,
       transparent: true,
       opacity: 0.9,
+      depthWrite: false,
+      blending: AdditiveBlending,
     }),
   );
+  mesh.name = "airstrike-preview-explosion-flash";
+  mesh.scale.setScalar(Math.max(6, impactRadius * 0.35));
+  return mesh;
+}
+
+function createExplosionRing(impactRadius: number): Mesh {
+  const mesh = new Mesh(
+    new RingGeometry(0.72, 1, 36),
+    new MeshStandardMaterial({
+      color: 0xffb35c,
+      emissive: 0xff4d16,
+      emissiveIntensity: 1.6,
+      roughness: 0.38,
+      transparent: true,
+      opacity: 0.72,
+      side: DoubleSide,
+      depthWrite: false,
+      blending: AdditiveBlending,
+    }),
+  );
+  mesh.name = "airstrike-preview-explosion-ring";
+  mesh.rotation.x = -Math.PI / 2;
+  mesh.position.y = 1.2;
+  mesh.scale.setScalar(Math.max(8, impactRadius * 0.6));
+  return mesh;
+}
+
+function createExplosionSmoke(impactRadius: number): Sprite {
+  const sprite = new Sprite(new SpriteMaterial({
+    map: createExplosionSmokeTexture(),
+    color: 0x6f655a,
+    transparent: true,
+    opacity: 0.38,
+    depthWrite: false,
+  }));
+  sprite.name = "airstrike-preview-explosion-smoke";
+  sprite.scale.setScalar(Math.max(20, impactRadius * 1.4));
+  return sprite;
+}
+
+function createExplosionSmokeTexture(): CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 128;
+  canvas.height = 128;
+  const context = canvas.getContext("2d");
+  if (context) {
+    const gradient = context.createRadialGradient(64, 64, 2, 64, 64, 62);
+    gradient.addColorStop(0, "rgba(255, 228, 172, 0.68)");
+    gradient.addColorStop(0.18, "rgba(194, 116, 54, 0.48)");
+    gradient.addColorStop(0.52, "rgba(92, 83, 74, 0.28)");
+    gradient.addColorStop(1, "rgba(30, 28, 24, 0)");
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+  }
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  return texture;
+}
+
+function createPayloadFlash(position: Vector3, startTime: number): Mesh {
+  const mesh = createExplosionFlash(18);
   mesh.name = "airstrike-preview-payload-flash";
   mesh.position.copy(position);
   mesh.userData.flashStart = startTime;

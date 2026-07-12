@@ -255,6 +255,7 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
         data-player-locations-url="<?= e(route_url('api/server/player-locations.php')) ?>"
         data-map-replay-events-url="<?= e(route_url('api/server/map-replay-events.php')) ?>"
         data-airstrike-profiles-url="<?= e(route_url('api/airstrike-animation-profiles.php')) ?>"
+        data-asset-base="<?= e($base_path . 'assets/') ?>"
         data-camera-tour="true"
         data-camera-locked="false"
         data-grid-overlay="true"
