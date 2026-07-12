@@ -125,6 +125,7 @@ type HeatmapHistoryPayload = HeatmapPayload & {
   frames?: HeatmapHistoryFrame[];
   frameSeconds?: number;
   authenticated?: boolean;
+  historyAvailable?: boolean;
 };
 
 type PlayerLocation = {
@@ -2719,10 +2720,14 @@ async function loadOverlayHistory(root: HTMLElement, includeHeatmap: boolean, in
     authenticated: Boolean(heatmapPayload.authenticated || playerPayload.authenticated),
     frames: baseFrames.map((frame, index) => {
       const matchingPlayerFrame = includePlayers ? playerHistoryFrameFor(frame, playerFrames, index, frameSeconds) : null;
+      const framePlayers = Array.isArray(frame.players) && frame.players.length > 0 ? frame.players : [];
+      const matchingPlayers = Array.isArray(matchingPlayerFrame?.players) && matchingPlayerFrame.players.length > 0
+        ? matchingPlayerFrame.players
+        : [];
 
       return {
         ...frame,
-        players: includePlayers ? (matchingPlayerFrame?.players || frame.players || []) : frame.players,
+        players: includePlayers ? (matchingPlayers.length > 0 ? matchingPlayers : framePlayers) : frame.players,
       };
     }),
   };
@@ -2737,11 +2742,13 @@ function playerHistoryFrameFor(frame: HeatmapHistoryFrame, playerFrames: Heatmap
   const fallbackFrame = playerFrames[fallbackIndex] || null;
 
   if (frameTime === null) {
-    return fallbackFrame;
+    return frameHasPlayers(fallbackFrame) ? fallbackFrame : latestFrameWithPlayers(playerFrames);
   }
 
   let closest: HeatmapHistoryFrame | null = fallbackFrame;
   let closestDelta = closest ? historyFrameDeltaMs(closest, frameTime) : Number.POSITIVE_INFINITY;
+  let closestWithPlayers: HeatmapHistoryFrame | null = frameHasPlayers(fallbackFrame) ? fallbackFrame : null;
+  let closestWithPlayersDelta = closestWithPlayers ? historyFrameDeltaMs(closestWithPlayers, frameTime) : Number.POSITIVE_INFINITY;
   const toleranceMs = Math.max(90_000, frameSeconds * 1000 * 0.6);
 
   for (const playerFrame of playerFrames) {
@@ -2750,9 +2757,32 @@ function playerHistoryFrameFor(frame: HeatmapHistoryFrame, playerFrames: Heatmap
       closest = playerFrame;
       closestDelta = delta;
     }
+    if (frameHasPlayers(playerFrame) && delta < closestWithPlayersDelta) {
+      closestWithPlayers = playerFrame;
+      closestWithPlayersDelta = delta;
+    }
   }
 
-  return closestDelta <= toleranceMs ? closest : fallbackFrame;
+  if (closestWithPlayers && closestWithPlayersDelta <= toleranceMs) {
+    return closestWithPlayers;
+  }
+
+  return closestDelta <= toleranceMs ? closest : frameHasPlayers(fallbackFrame) ? fallbackFrame : null;
+}
+
+function frameHasPlayers(frame: HeatmapHistoryFrame | null | undefined): frame is HeatmapHistoryFrame {
+  return Array.isArray(frame?.players) && frame.players.length > 0;
+}
+
+function latestFrameWithPlayers(frames: HeatmapHistoryFrame[]): HeatmapHistoryFrame | null {
+  for (let index = frames.length - 1; index >= 0; index -= 1) {
+    const frame = frames[index];
+    if (frameHasPlayers(frame)) {
+      return frame;
+    }
+  }
+
+  return null;
 }
 
 function historyFrameDeltaMs(frame: HeatmapHistoryFrame, targetMs: number): number {
