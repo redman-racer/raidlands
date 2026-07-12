@@ -2303,14 +2303,62 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     return Math.max(8, Math.min(72, value));
   };
 
+  const selectedRangeSeconds = (): number => {
+    switch (selectedRange()) {
+      case "15m":
+        return 15 * 60;
+      case "30m":
+        return 30 * 60;
+      case "1h":
+        return 60 * 60;
+      case "3h":
+        return 3 * 60 * 60;
+      case "6h":
+        return 6 * 60 * 60;
+      case "12h":
+        return 12 * 60 * 60;
+      case "24h":
+        return 24 * 60 * 60;
+      case "wipe":
+        return 31 * 24 * 60 * 60;
+      default:
+        return 24 * 60 * 60;
+    }
+  };
+
+  const estimatedFrameSeconds = (): number => {
+    return Math.max(60, Math.ceil(selectedRangeSeconds() / heatmapFrameCountValue()));
+  };
+
+  const maxFrameCountForSelectedRange = (): number => {
+    return Math.max(8, Math.min(72, Math.floor(selectedRangeSeconds() / 60)));
+  };
+
+  const syncFrameCountBounds = () => {
+    if (!heatmapFrameCount) {
+      return;
+    }
+
+    const max = maxFrameCountForSelectedRange();
+    heatmapFrameCount.max = String(max);
+    if (heatmapFrameCountValue() > max) {
+      heatmapFrameCount.value = String(max);
+    }
+  };
+
   const updateFrameCountLabel = () => {
     if (!heatmapFrameCountLabel) {
       return;
     }
 
+    syncFrameCountBounds();
     const value = heatmapFrameCountValue();
     heatmapFrameCountLabel.value = String(value);
     heatmapFrameCountLabel.textContent = String(value);
+  };
+
+  const updateEstimatedFrameIntervalLabel = () => {
+    setFrameIntervalLabel(estimatedFrameSeconds());
   };
 
   const setFrameIntervalLabel = (frameSeconds: number | undefined) => {
@@ -2452,10 +2500,14 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   bind(metric, "change", () => reloadPlayback());
   bind(range, "change", () => {
     stopHeatmapPlayback();
+    syncFrameCountBounds();
+    updateFrameCountLabel();
+    updateEstimatedFrameIntervalLabel();
     reloadPlayback(undefined, true, true);
   });
   bind(heatmapFrameCount, "input", () => {
     updateFrameCountLabel();
+    updateEstimatedFrameIntervalLabel();
     if (wantsPlayback() && (wantsHeatmap() || wantsPlayers())) {
       stopHeatmapPlayback();
       reloadPlayback();
@@ -2574,6 +2626,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     reloadPlayers();
   });
   updateFrameCountLabel();
+  updateEstimatedFrameIntervalLabel();
   updatePlaybackSpeedControls();
   if (tour) {
     viewer.setTourEnabled(tour.checked);
