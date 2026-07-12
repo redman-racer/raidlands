@@ -20,6 +20,7 @@ import {
   PerspectiveCamera,
   PlaneGeometry,
   Quaternion,
+  RepeatWrapping,
   Scene,
   SRGBColorSpace,
   SphereGeometry,
@@ -452,6 +453,9 @@ class TerrainViewer {
   private readonly controls: OrbitControls;
   private readonly terrainMesh: Mesh;
   private readonly terrainMaterial: MeshStandardMaterial;
+  private readonly oceanSurfaceMesh: Mesh;
+  private readonly oceanFloorMesh: Mesh;
+  private readonly oceanWaveTexture: CanvasTexture;
   private readonly gridLayer = new Group();
   private readonly heatmapLayer = new Group();
   private readonly playerLocationLayer = new Group();
@@ -499,9 +503,13 @@ class TerrainViewer {
     });
     this.renderer.domElement.dataset.serverMapViewerCanvas = "true";
     this.terrainMaterial = this.createTerrainMaterial();
-    this.scene.add(this.createOceanFloorMesh());
+    this.oceanFloorMesh = this.createOceanFloorMesh();
+    this.scene.add(this.oceanFloorMesh);
     this.terrainMesh = this.createTerrainMesh();
     this.scene.add(this.terrainMesh);
+    this.oceanWaveTexture = createOceanWaveTexture();
+    this.oceanSurfaceMesh = this.createOceanSurfaceMesh();
+    this.scene.add(this.oceanSurfaceMesh);
     this.gridLayer.name = "raidlands-rust-map-grid";
     this.gridLayer.add(createRustMapGridOverlay(this.terrain));
     this.gridLayer.visible = this.root.dataset.gridOverlay === "true";
@@ -831,7 +839,7 @@ class TerrainViewer {
       ? this.terrain.minHeight || 0
       : Math.min(...this.terrain.heights.filter((height) => Number.isFinite(height)));
     const oceanFloorHeight = Number.isFinite(sampledMinHeight) ? sampledMinHeight - 3 : -12;
-    const oceanSize = worldSize * 1.08;
+    const oceanSize = worldSize * 6;
     const geometry = new PlaneGeometry(oceanSize, oceanSize, 1, 1);
     const material = new MeshStandardMaterial({
       color: 0x063646,
@@ -842,11 +850,43 @@ class TerrainViewer {
       side: DoubleSide,
     });
     const mesh = new Mesh(geometry, material);
-    mesh.name = "raidlands-extended-ocean-floor";
+    mesh.name = "raidlands-infinite-ocean-floor";
     mesh.rotation.x = -Math.PI / 2;
     mesh.position.y = oceanFloorHeight;
     mesh.renderOrder = -10;
     return mesh;
+  }
+
+  private createOceanSurfaceMesh(): Mesh {
+    const worldSize = this.terrain.worldSize || 4500;
+    const oceanSize = worldSize * 6;
+    const waterLevel = Number.isFinite(this.terrain.waterLevel) ? this.terrain.waterLevel || 0 : 0;
+    const geometry = new PlaneGeometry(oceanSize, oceanSize, 1, 1);
+    const material = new MeshStandardMaterial({
+      color: 0x0a4f63,
+      roughness: 0.42,
+      metalness: 0.02,
+      transparent: true,
+      opacity: 0.72,
+      map: this.oceanWaveTexture,
+      side: DoubleSide,
+    });
+    const mesh = new Mesh(geometry, material);
+    mesh.name = "raidlands-infinite-ocean-surface";
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.position.y = waterLevel + 0.45;
+    mesh.renderOrder = -8;
+    return mesh;
+  }
+
+  private updateOceanPlanes(now: number): void {
+    const anchorX = this.camera.position.x;
+    const anchorZ = this.camera.position.z;
+    this.oceanSurfaceMesh.position.x = anchorX;
+    this.oceanSurfaceMesh.position.z = anchorZ;
+    this.oceanFloorMesh.position.x = anchorX;
+    this.oceanFloorMesh.position.z = anchorZ;
+    this.oceanWaveTexture.offset.set((now * 0.000018) % 1, (now * 0.000011) % 1);
   }
 
   private loadTexture(): void {
@@ -916,6 +956,7 @@ class TerrainViewer {
     this.controls.update();
     this.updateOverlayLayerTransitions(now);
     this.updateGridOpacity();
+    this.updateOceanPlanes(now);
     this.airstrikeLayer.userData.tick?.((now - this.clockStart) / 1000);
     this.renderer.render(this.scene, this.camera);
   }
@@ -1923,6 +1964,47 @@ function disposeGeometryMaterial(object: Mesh | Sprite | LineSegments): void {
     map?.dispose?.();
     material.dispose();
   });
+}
+
+function createOceanWaveTexture(): CanvasTexture {
+  const canvas = document.createElement("canvas");
+  canvas.width = 256;
+  canvas.height = 256;
+  const context = canvas.getContext("2d");
+  if (context) {
+    const gradient = context.createLinearGradient(0, 0, 0, canvas.height);
+    gradient.addColorStop(0, "#126f83");
+    gradient.addColorStop(0.52, "#0b5065");
+    gradient.addColorStop(1, "#073748");
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+
+    for (let index = 0; index < 54; index += 1) {
+      const y = (index * 37) % canvas.height;
+      const phase = (index * 53) % canvas.width;
+      const length = 92 + (index % 6) * 18;
+      context.beginPath();
+      for (let step = 0; step <= length; step += 4) {
+        const x = (phase + step) % canvas.width;
+        const waveY = y + Math.sin((step / length) * Math.PI * 2 + index) * (2.4 + (index % 4) * 0.45);
+        if (step === 0) {
+          context.moveTo(x, waveY);
+        } else {
+          context.lineTo(x, waveY);
+        }
+      }
+      context.strokeStyle = index % 3 === 0 ? "rgba(190, 235, 238, 0.16)" : "rgba(104, 184, 200, 0.12)";
+      context.lineWidth = index % 3 === 0 ? 1.35 : 0.8;
+      context.stroke();
+    }
+  }
+
+  const texture = new CanvasTexture(canvas);
+  texture.colorSpace = SRGBColorSpace;
+  texture.wrapS = RepeatWrapping;
+  texture.wrapT = RepeatWrapping;
+  texture.repeat.set(38, 38);
+  return texture;
 }
 
 function nextPowerOfTwo(value: number): number {
