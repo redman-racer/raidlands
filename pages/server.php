@@ -207,6 +207,7 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
           </label>
           <?php endif; ?>
           <button type="button" data-map-viewer-my-location aria-pressed="false" disabled>Follow my location</button>
+          <button type="button" data-map-viewer-my-location-orbit aria-pressed="false" disabled>Orbit follow</button>
           <label class="server-terrain-field">
             <span>Metric</span>
             <select data-map-viewer-heatmap-metric>

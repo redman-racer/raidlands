@@ -499,6 +499,8 @@ class TerrainViewer {
   private transitionStartedAt = 0;
   private transitionDuration = 1400;
   private selfLocation: PlayerLocation | null = null;
+  private selfLocationOrbitEnabled = false;
+  private selfLocationOrbitStartedAt = performance.now();
 
   public constructor(
     root: HTMLElement,
@@ -711,14 +713,27 @@ class TerrainViewer {
   }
 
   public frameSelfLocation(): boolean {
-    return this.focusSelfLocation(false);
+    return this.focusSelfLocation(false, false);
   }
 
   public followSelfLocation(): boolean {
-    return this.focusSelfLocation(true);
+    return this.focusSelfLocation(true, false);
   }
 
-  private focusSelfLocation(immediate: boolean): boolean {
+  public setSelfLocationOrbitEnabled(enabled: boolean): void {
+    if (this.selfLocationOrbitEnabled === enabled) {
+      return;
+    }
+
+    this.selfLocationOrbitEnabled = enabled;
+    this.selfLocationOrbitStartedAt = performance.now();
+
+    if (enabled) {
+      this.focusSelfLocation(true, true);
+    }
+  }
+
+  private focusSelfLocation(immediate: boolean, orbit: boolean): boolean {
     const player = this.selfLocation;
 
     if (!player) {
@@ -736,10 +751,23 @@ class TerrainViewer {
     const worldSize = this.terrain.worldSize || 4500;
     const playerPosition = rustWorldToViewerPosition(x, Number(player.y) || 0, z);
     const ground = Math.max(playerPosition.y, sampleTerrainHeight(this.terrain, playerPosition.x, playerPosition.z));
-    const target = new Vector3(playerPosition.x, ground + 42, playerPosition.z);
     const cameraOffset = MathUtils.clamp(worldSize * 0.085, 280, 560);
+    const elapsed = Math.max(0, performance.now() - this.selfLocationOrbitStartedAt);
+    const orbitProgress = (elapsed / 18000) % 1;
+    const orbitWave = (Math.sin(orbitProgress * Math.PI * 2) + 1) * 0.5;
+    const orbitAngle = orbitProgress * Math.PI * 2 - Math.PI * 0.72;
+    const orbitRadius = cameraOffset * 1.08;
+    const target = orbit
+      ? new Vector3(playerPosition.x, ground + MathUtils.lerp(32, 78, (Math.cos(orbitProgress * Math.PI * 2) + 1) * 0.5), playerPosition.z)
+      : new Vector3(playerPosition.x, ground + 42, playerPosition.z);
     const pose = {
-      position: new Vector3(playerPosition.x - cameraOffset * 0.62, ground + cameraOffset * 0.72, playerPosition.z + cameraOffset * 0.78),
+      position: orbit
+        ? new Vector3(
+          playerPosition.x + Math.cos(orbitAngle) * orbitRadius,
+          ground + cameraOffset * MathUtils.lerp(0.56, 0.92, orbitWave),
+          playerPosition.z + Math.sin(orbitAngle) * orbitRadius,
+        )
+        : new Vector3(playerPosition.x - cameraOffset * 0.62, ground + cameraOffset * 0.72, playerPosition.z + cameraOffset * 0.78),
       target,
       up: new Vector3(0, 1, 0),
     };
@@ -755,6 +783,15 @@ class TerrainViewer {
     }
 
     return true;
+  }
+
+  private updateSelfLocationOrbit(now: number): void {
+    if (!this.selfLocationOrbitEnabled || !this.selfLocation) {
+      return;
+    }
+
+    this.focusUntil = now + 15000;
+    this.focusSelfLocation(true, true);
   }
 
   public addAirstrikePreview(profiles: RuntimeVisualProfile[]): void {
@@ -998,6 +1035,7 @@ class TerrainViewer {
   private animate(): void {
     this.animationFrame = window.requestAnimationFrame(() => this.animate());
     const now = performance.now();
+    this.updateSelfLocationOrbit(now);
     this.updateCameraTour(now);
     this.controls.update();
     this.updateOverlayLayerTransitions(now);
@@ -2334,6 +2372,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   const players = panel?.querySelector<HTMLInputElement>("[data-map-viewer-players]");
   const allPlayers = panel?.querySelector<HTMLInputElement>("[data-map-viewer-all-players]");
   const myLocation = panel?.querySelector<HTMLButtonElement>("[data-map-viewer-my-location]");
+  const myLocationOrbit = panel?.querySelector<HTMLButtonElement>("[data-map-viewer-my-location-orbit]");
   const metric = panel?.querySelector<HTMLSelectElement>("[data-map-viewer-heatmap-metric]");
   const range = panel?.querySelector<HTMLSelectElement>("[data-map-viewer-heatmap-range]");
   let heatmapHistory: HeatmapHistoryFrame[] = [];
@@ -2349,6 +2388,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   const playerLocationRefreshMs = 15_000;
   const disposers: Array<() => void> = [];
   let followMyLocation = false;
+  let orbitMyLocation = false;
   const dataFlag = (name: string, fallback = false): boolean => {
     const value = root.dataset[name];
     if (value === undefined) {
@@ -2377,29 +2417,53 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   disposers.push(bindMapViewButtons(buttons, viewer).dispose);
 
   const setFollowMyLocation = (enabled: boolean) => {
-    followMyLocation = enabled && viewer.hasSelfLocation();
+    followMyLocation = enabled;
+    if (!followMyLocation) {
+      orbitMyLocation = false;
+      viewer.setSelfLocationOrbitEnabled(false);
+    }
     if (myLocation) {
       myLocation.setAttribute("aria-pressed", String(followMyLocation));
+    }
+    if (myLocationOrbit) {
+      myLocationOrbit.setAttribute("aria-pressed", String(orbitMyLocation));
     }
     if (tour) {
       viewer.setTourEnabled(tour.checked && !followMyLocation);
     }
+    syncMyLocationControl();
+  };
+
+  const setOrbitMyLocation = (enabled: boolean) => {
+    orbitMyLocation = enabled && followMyLocation;
+    viewer.setSelfLocationOrbitEnabled(orbitMyLocation && viewer.hasSelfLocation());
+    if (myLocationOrbit) {
+      myLocationOrbit.setAttribute("aria-pressed", String(orbitMyLocation));
+    }
+    syncMyLocationControl();
   };
 
   const syncMyLocationControl = () => {
-    if (!myLocation) {
-      return;
-    }
-
     const available = viewer.hasSelfLocation();
-    myLocation.disabled = !available;
-    myLocation.setAttribute("aria-pressed", String(followMyLocation && available));
-    myLocation.title = available
-      ? "Toggle camera follow for your server location during playback"
-      : "Log in and join the server to show your location";
-    if (!available && followMyLocation) {
-      setFollowMyLocation(false);
+    if (myLocation) {
+      myLocation.disabled = !available && !followMyLocation;
+      myLocation.setAttribute("aria-pressed", String(followMyLocation));
+      myLocation.title = available
+        ? "Toggle camera follow for your server location during playback"
+        : followMyLocation
+          ? "Waiting for your server location to return"
+          : "Log in and join the server to show your location";
     }
+    if (myLocationOrbit) {
+      myLocationOrbit.disabled = !followMyLocation || !available;
+      myLocationOrbit.setAttribute("aria-pressed", String(orbitMyLocation));
+      myLocationOrbit.title = followMyLocation
+        ? available
+          ? "Orbit around your followed server location"
+          : "Waiting for your server location to return"
+        : "Turn on Follow my location first";
+    }
+    viewer.setSelfLocationOrbitEnabled(orbitMyLocation && followMyLocation && available);
   };
 
   bind(grid, "change", () => {
@@ -2657,7 +2721,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       });
       viewer.setPlayerLocationsVisible((frame.players || []).length > 0);
       syncMyLocationControl();
-      if (followMyLocation) {
+      if (followMyLocation && !orbitMyLocation) {
         viewer.followSelfLocation();
       }
     }
@@ -2880,7 +2944,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
 
     void loadPlayerLocations(root, viewer, myLocation, true, wantsAllPlayers()).then(() => {
       syncMyLocationControl();
-      if (followMyLocation) {
+      if (followMyLocation && !orbitMyLocation) {
         viewer.followSelfLocation();
       }
     });
@@ -2889,7 +2953,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
         if (players?.checked && !wantsTimelineOverlay()) {
           void loadPlayerLocations(root, viewer, myLocation, true, wantsAllPlayers()).then(() => {
             syncMyLocationControl();
-            if (followMyLocation) {
+            if (followMyLocation && !orbitMyLocation) {
               viewer.followSelfLocation();
             }
           });
@@ -2931,12 +2995,14 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       players.checked = true;
     }
 
+    const nextFollowState = !followMyLocation;
+    setFollowMyLocation(nextFollowState);
+
     if (wantsTimelineOverlay()) {
       const selectedFrame = currentPlaybackFrameIndex();
       if (heatmapHistory.length > 0) {
         showPlaybackFrame(selectedFrame);
-        setFollowMyLocation(!followMyLocation);
-        if (followMyLocation) {
+        if (followMyLocation && !orbitMyLocation) {
           viewer.followSelfLocation();
         }
       } else {
@@ -2945,9 +3011,8 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       return;
     }
 
-    if (viewer.frameSelfLocation()) {
-      setFollowMyLocation(!followMyLocation);
-      if (followMyLocation) {
+    if (viewer.hasSelfLocation()) {
+      if (followMyLocation && !orbitMyLocation) {
         viewer.followSelfLocation();
       }
       if (playerPollTimer === 0) {
@@ -2957,12 +3022,26 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     }
 
     void loadPlayerLocations(root, viewer, myLocation, true, wantsAllPlayers()).then(() => {
-      if (viewer.frameSelfLocation() && players) {
+      if (followMyLocation && viewer.hasSelfLocation() && players) {
         players.checked = true;
-        setFollowMyLocation(true);
+        if (!orbitMyLocation) {
+          viewer.followSelfLocation();
+        }
       }
       syncMyLocationControl();
     });
+  });
+
+  bind(myLocationOrbit, "click", () => {
+    if (!followMyLocation || !viewer.hasSelfLocation()) {
+      syncMyLocationControl();
+      return;
+    }
+
+    setOrbitMyLocation(!orbitMyLocation);
+    if (!orbitMyLocation && followMyLocation) {
+      viewer.followSelfLocation();
+    }
   });
 
   if (!wantsPlayback()) {
