@@ -35,12 +35,15 @@
 31. Run `database/migrations/041_animation_diagnostics.sql`.
 32. Run `database/migrations/042_public_lobby_chat.sql`.
 33. Run `database/migrations/046_monument_extraction.sql`.
-34. Run `database/migrations/049_rust_servers_vote_rewards.sql`.
-35. Run `database/migrations/050_server_map_terrain.sql`.
-36. Run `database/migrations/051_server_map_heatmap.sql`.
-35. Run `database/seeds/001_store_products.sql`.
-36. Copy the root `.env.example` file to `.env`.
-37. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
+34. Run `database/migrations/047_airstrike_animation_editor.sql`.
+35. Run `database/migrations/049_rust_servers_vote_rewards.sql`.
+36. Run `database/migrations/050_server_map_terrain.sql`.
+37. Run `database/migrations/051_server_map_heatmap.sql`.
+38. Run `database/migrations/056_seed_airstrike_animation_strike_profiles.sql`.
+39. Run `database/migrations/057_repair_airstrike_animation_column_widths.sql`.
+40. Run `database/seeds/001_store_products.sql`.
+41. Copy the root `.env.example` file to `.env`.
+42. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
 
 The root `.env` file is ignored by Git and protected from direct web access by the root `.htaccess`.
 
