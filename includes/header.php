@@ -276,7 +276,7 @@ $animation_diagnostics_json = json_encode($client_site_config['animationDiagnost
 
                   $nav_path = $path;
                   $nav_label = $label;
-                  $nav_active = $id === $page_id;
+                  $nav_active = $id === $page_id || ($id === 'store' && str_starts_with($page_id, 'store-'));
 
                   if ($id === 'link') {
                       $nav_path = $linked_player !== null ? 'profile' : 'link';

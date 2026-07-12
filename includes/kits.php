@@ -876,6 +876,51 @@ function raidlands_kits_permission_report(array $permissions, array $metadata, i
     return array_slice(array_values($reports), 0, $limit);
 }
 
+function raidlands_kits_public_match_key(string $value): string
+{
+    $value = strtolower(trim($value));
+    $value = preg_replace('/\bkits[._-]/', '', $value) ?? $value;
+    $value = preg_replace('/\b(claim|redeem|rank|kit|pack)\b/', '', $value) ?? $value;
+    $value = preg_replace('/[^a-z0-9]+/', '', $value) ?? '';
+
+    return $value;
+}
+
+function raidlands_kits_public_match_keys(array $kit): array
+{
+    $permission = (string) ($kit['required_permission'] ?? '');
+    $permission_suffix = str_starts_with($permission, 'kits.') ? substr($permission, 5) : $permission;
+    $keys = [
+        raidlands_kits_public_match_key((string) ($kit['kit_name'] ?? '')),
+        raidlands_kits_public_match_key((string) ($kit['reward_display_name'] ?? '')),
+        raidlands_kits_public_match_key($permission_suffix),
+    ];
+
+    foreach ($keys as $key) {
+        if (str_ends_with($key, 's')) {
+            $keys[] = rtrim($key, 's');
+        }
+    }
+
+    return array_values(array_unique(array_filter($keys)));
+}
+
+function raidlands_kits_product_match_keys(array $product): array
+{
+    $keys = [
+        raidlands_kits_public_match_key((string) ($product['slug'] ?? '')),
+        raidlands_kits_public_match_key((string) ($product['name'] ?? '')),
+    ];
+
+    foreach ($keys as $key) {
+        if (str_ends_with($key, 's')) {
+            $keys[] = rtrim($key, 's');
+        }
+    }
+
+    return array_values(array_unique(array_filter($keys)));
+}
+
 function raidlands_kits_item_catalog(bool $safe_only = true): array
 {
     static $catalog = null;
@@ -1996,6 +2041,13 @@ function raidlands_kits_attach_to_products(array $products): array
     $group_permissions = raidlands_kits_effective_group_permission_map();
     $kits_by_permission = raidlands_kits_active_by_permission();
     $permission_metadata = raidlands_kits_permission_metadata_map();
+    $kits_by_public_key = [];
+
+    foreach ($kits_by_permission as $kit) {
+        foreach (raidlands_kits_public_match_keys((array) $kit) as $key) {
+            $kits_by_public_key[$key] = $kit;
+        }
+    }
 
     foreach ($products as &$product) {
         $permissions = raidlands_kits_permissions_for_product($product, $group_permissions);
@@ -2004,6 +2056,15 @@ function raidlands_kits_attach_to_products(array $products): array
         foreach ($permissions as $permission) {
             if (isset($kits_by_permission[$permission])) {
                 $linked_kits[] = $kits_by_permission[$permission];
+            }
+        }
+
+        if ($linked_kits === [] && raidlands_store_normalize_product_type((string) ($product['product_type'] ?? '')) === 'kit_unlock') {
+            foreach (raidlands_kits_product_match_keys($product) as $key) {
+                if (isset($kits_by_public_key[$key])) {
+                    $linked_kits[] = $kits_by_public_key[$key];
+                    break;
+                }
             }
         }
 

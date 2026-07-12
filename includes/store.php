@@ -985,6 +985,122 @@ function raidlands_store_products_by_type(array $products, string $type): array
     ));
 }
 
+function raidlands_store_public_slug(string $value, string $fallback = 'item'): string
+{
+    $slug = strtolower(trim($value));
+    $slug = preg_replace('/[^a-z0-9]+/', '-', $slug) ?? '';
+    $slug = trim($slug, '-');
+
+    return $slug !== '' ? $slug : $fallback;
+}
+
+function raidlands_store_kit_public_slug(array $kit): string
+{
+    $id = (int) ($kit['id'] ?? 0);
+    $label = (string) ($kit['kit_name'] ?? $kit['reward_display_name'] ?? $kit['required_permission'] ?? 'kit');
+    $slug = raidlands_store_public_slug($label, 'kit');
+
+    return $id > 0 ? $id . '-' . $slug : $slug;
+}
+
+function raidlands_store_kit_public_url(array $kit): string
+{
+    return route_url('store/kit/' . raidlands_store_kit_public_slug($kit));
+}
+
+function raidlands_store_kit_slug_matches(array $kit, string $candidate): bool
+{
+    $candidate = raidlands_store_public_slug($candidate, '');
+
+    if ($candidate === '') {
+        return false;
+    }
+
+    $id = (int) ($kit['id'] ?? 0);
+    $canonical = raidlands_store_kit_public_slug($kit);
+    $name_slug = raidlands_store_public_slug((string) ($kit['kit_name'] ?? ''), '');
+    $permission = (string) ($kit['required_permission'] ?? '');
+    $permission_slug = raidlands_store_public_slug(str_starts_with($permission, 'kits.') ? substr($permission, 5) : $permission, '');
+
+    return $candidate === $canonical
+        || ($id > 0 && $candidate === (string) $id)
+        || ($name_slug !== '' && $candidate === $name_slug)
+        || ($permission_slug !== '' && $candidate === $permission_slug);
+}
+
+function raidlands_store_prepare_public_kit(array $kit): array
+{
+    $items = [];
+
+    if (!isset($kit['items_flat'])) {
+        foreach (['main', 'wear', 'belt'] as $container) {
+            foreach ((array) ($kit['items'][$container] ?? []) as $item) {
+                $item = (array) $item;
+                $item['container_name'] = (string) ($item['container_name'] ?? $container);
+                $items[] = $item;
+            }
+        }
+
+        $kit['items_flat'] = $items;
+    }
+
+    return $kit;
+}
+
+function raidlands_store_kit_focus_context(string $slug): ?array
+{
+    $catalog = raidlands_store_catalog(true);
+    $products = (array) ($catalog['products'] ?? []);
+
+    if (function_exists('raidlands_kits_attach_to_products')) {
+        $products = raidlands_kits_attach_to_products($products);
+    }
+
+    $matched_kit = null;
+    $related_products = [];
+    $seen_products = [];
+
+    foreach ($products as $product) {
+        foreach ((array) ($product['linked_kits'] ?? []) as $kit) {
+            $kit = raidlands_store_prepare_public_kit((array) $kit);
+
+            if (!raidlands_store_kit_slug_matches($kit, $slug)) {
+                continue;
+            }
+
+            $matched_kit ??= $kit;
+            $product_id = (int) ($product['id'] ?? 0);
+            $product_key = $product_id > 0 ? (string) $product_id : (string) ($product['slug'] ?? count($related_products));
+
+            if (!isset($seen_products[$product_key])) {
+                $related_products[] = $product;
+                $seen_products[$product_key] = true;
+            }
+        }
+    }
+
+    if ($matched_kit === null && function_exists('raidlands_kits_fetch_all')) {
+        foreach (raidlands_kits_fetch_all(true) as $kit) {
+            $kit = raidlands_store_prepare_public_kit((array) $kit);
+
+            if (raidlands_store_kit_slug_matches($kit, $slug)) {
+                $matched_kit = $kit;
+                break;
+            }
+        }
+    }
+
+    if ($matched_kit === null) {
+        return null;
+    }
+
+    return [
+        'kit' => $matched_kit,
+        'products' => $related_products,
+        'catalog' => $catalog,
+    ];
+}
+
 function raidlands_store_default_price(array $product): ?array
 {
     foreach ((array) ($product['prices'] ?? []) as $price) {

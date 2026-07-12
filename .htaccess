@@ -3,6 +3,11 @@ DirectoryIndex index.php index.html
 
 SetEnvIf Authorization "(.+)" HTTP_AUTHORIZATION=$1
 
+<IfModule mod_rewrite.c>
+  RewriteEngine On
+  RewriteRule ^store/kit/([^/]+)/?$ store/kit/index.php?kit=$1 [L,QSA]
+</IfModule>
+
 <FilesMatch "^\.env">
   Require all denied
 </FilesMatch>

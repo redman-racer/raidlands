@@ -103,6 +103,7 @@
     initRpGames();
     initClanManagement();
     initLeaderboards();
+    initStoreCatalog();
     initEffectsWhenLoaderReveals();
     bindServerHistoryControls();
     hydrateDates();
@@ -153,6 +154,103 @@
 
     window.addEventListener("raidlands:site-reveal", () => start("site-reveal"), { once: true });
     window.setTimeout(() => start("loader-timeout"), 9000);
+  }
+
+  function initStoreCatalog() {
+    const catalog = app.querySelector("[data-store-catalog]");
+
+    if (!catalog) return;
+
+    const grid = catalog.querySelector("[data-store-catalog-grid]");
+    const searchInput = catalog.querySelector("[data-store-search]");
+    const typeFilter = catalog.querySelector("[data-store-type-filter]");
+    const offerFilter = catalog.querySelector("[data-store-offer-filter]");
+    const sortSelect = catalog.querySelector("[data-store-sort]");
+    const resetButton = catalog.querySelector("[data-store-reset]");
+    const countNode = catalog.querySelector("[data-store-catalog-count]");
+    const emptyNode = catalog.querySelector("[data-store-catalog-empty]");
+    const cards = Array.from(catalog.querySelectorAll("[data-store-product]"));
+
+    if (!grid || !cards.length) return;
+
+    const readNumber = (card, key, fallback = 0) => {
+      const value = Number(card.dataset[key] || fallback);
+
+      return Number.isFinite(value) ? value : fallback;
+    };
+    const sortCards = () => {
+      const mode = sortSelect ? sortSelect.value : "featured";
+      const sorted = [...cards].sort((left, right) => {
+        if (mode === "name") {
+          return String(left.dataset.storeName || "").localeCompare(String(right.dataset.storeName || ""));
+        }
+
+        if (mode === "offers") {
+          return readNumber(right, "storeOffers") - readNumber(left, "storeOffers")
+            || String(left.dataset.storeName || "").localeCompare(String(right.dataset.storeName || ""));
+        }
+
+        if (mode === "kits") {
+          return readNumber(right, "storeKits") - readNumber(left, "storeKits")
+            || String(left.dataset.storeName || "").localeCompare(String(right.dataset.storeName || ""));
+        }
+
+        return readNumber(left, "storeSort", 100) - readNumber(right, "storeSort", 100)
+          || String(left.dataset.storeName || "").localeCompare(String(right.dataset.storeName || ""));
+      });
+
+      sorted.forEach(card => grid.appendChild(card));
+    };
+    const applyFilters = () => {
+      const query = searchInput ? searchInput.value.trim().toLowerCase() : "";
+      const type = typeFilter ? typeFilter.value : "all";
+      const offer = offerFilter ? offerFilter.value : "all";
+      let shown = 0;
+
+      sortCards();
+
+      cards.forEach(card => {
+        const matchesSearch = query === "" || String(card.dataset.storeSearch || "").includes(query);
+        const matchesType = type === "all" || card.dataset.storeType === type;
+        const matchesOffer = offer === "all"
+          || (offer === "available" && readNumber(card, "storeOffers") > 0)
+          || (offer === "rp" && card.dataset.storeRp === "1")
+          || (offer === "cash" && card.dataset.storeCash === "1");
+        const visible = matchesSearch && matchesType && matchesOffer;
+
+        card.hidden = !visible;
+        if (visible) {
+          shown += 1;
+        }
+      });
+
+      if (countNode) {
+        countNode.textContent = String(shown);
+      }
+
+      if (emptyNode) {
+        emptyNode.hidden = shown !== 0;
+      }
+    };
+
+    [searchInput, typeFilter, offerFilter, sortSelect].forEach(control => {
+      if (!control) return;
+
+      control.addEventListener(control === searchInput ? "input" : "change", applyFilters);
+    });
+
+    if (resetButton) {
+      resetButton.addEventListener("click", () => {
+        if (searchInput) searchInput.value = "";
+        if (typeFilter) typeFilter.value = "all";
+        if (offerFilter) offerFilter.value = "all";
+        if (sortSelect) sortSelect.value = "featured";
+        applyFilters();
+        if (searchInput) searchInput.focus();
+      });
+    }
+
+    applyFilters();
   }
 
   function initEffects() {

@@ -7,9 +7,6 @@ require_once $site_root . '/includes/permissions.php';
 $store_flash = raidlands_store_flash();
 $store_catalog = raidlands_store_catalog(true);
 $store_products = raidlands_kits_attach_to_products($store_catalog['products']);
-$bundle_products = raidlands_store_products_by_type($store_products, 'kit_bundle');
-$kit_products = raidlands_store_products_by_type($store_products, 'kit_unlock');
-$perk_products = raidlands_store_products_by_type($store_products, 'perk');
 $store_player = raidlands_store_current_player();
 $store_rp_balance = $store_player !== null && !empty($store_player['id'])
     ? raidlands_store_current_rp_balance((int) $store_player['id'])
@@ -223,6 +220,33 @@ function render_store_product_symbol(array $product, string $type, array $linked
         . '</span>';
 }
 
+function store_product_search_blob(array $product): string
+{
+    $parts = [
+        (string) ($product['name'] ?? ''),
+        (string) ($product['slug'] ?? ''),
+        (string) ($product['short_description'] ?? ''),
+        (string) ($product['description'] ?? ''),
+        raidlands_store_type_label((string) ($product['product_type'] ?? 'perk')),
+    ];
+
+    foreach ((array) ($product['linked_kits'] ?? []) as $kit) {
+        $parts[] = (string) ($kit['kit_name'] ?? '');
+        $parts[] = (string) ($kit['description'] ?? '');
+        $parts[] = (string) ($kit['required_permission'] ?? '');
+
+        foreach (raidlands_kits_item_summary((array) $kit, 8) as $item) {
+            $parts[] = $item;
+        }
+    }
+
+    foreach ((array) ($product['linked_perks'] ?? []) as $perk) {
+        $parts[] = (string) ($perk['label'] ?? $perk['permission'] ?? '');
+    }
+
+    return strtolower(trim(implode(' ', array_filter($parts))));
+}
+
 function render_store_product_card(array $product, ?array $player, string $csrf, bool $cash_ready): string
 {
     $rp_offers = raidlands_store_rp_offers($product, true);
@@ -239,12 +263,12 @@ function render_store_product_card(array $product, ?array $player, string $csrf,
     if ($linked_kits !== []) {
         $kit_html .= '<div class="store-kit-details">';
 
-        foreach (array_slice($linked_kits, 0, 3) as $kit) {
+        foreach (array_slice($linked_kits, 0, 4) as $kit) {
             $kit = (array) $kit;
             $image = store_linked_kit_image_url($kit);
             $uses = (int) ($kit['maximum_uses'] ?? 0);
             $cooldown = (int) ($kit['cooldown_seconds'] ?? 0);
-            $items = raidlands_kits_item_summary($kit, 5);
+            $items = raidlands_kits_item_summary($kit, 4);
             $meta = [$uses > 0 ? number_format($uses) . ' uses' : 'Unlimited uses'];
 
             if ($cooldown > 0) {
@@ -258,18 +282,19 @@ function render_store_product_card(array $product, ?array $player, string $csrf,
             }
 
             $kit_html .= '<div>'
-                . '<strong>' . e((string) ($kit['kit_name'] ?? 'Kit')) . '</strong>'
+                . '<strong><a href="' . e(raidlands_store_kit_public_url($kit)) . '">' . e((string) ($kit['kit_name'] ?? 'Kit')) . '</a></strong>'
                 . '<span>' . e(implode(' / ', $meta)) . '</span>';
 
             if ($items !== []) {
                 $kit_html .= '<small>' . e(implode(', ', $items)) . '</small>';
             }
 
-            $kit_html .= '</div></div>';
+            $kit_html .= '<a class="store-kit-detail-link" href="' . e(raidlands_store_kit_public_url($kit)) . '">Full kit page</a>'
+                . '</div></div>';
         }
 
-        if (count($linked_kits) > 3) {
-            $kit_html .= '<p class="store-muted">+' . e((string) (count($linked_kits) - 3)) . ' more kit options attached.</p>';
+        if (count($linked_kits) > 4) {
+            $kit_html .= '<p class="store-muted">+' . e((string) (count($linked_kits) - 4)) . ' more kit options attached. Use search to find the exact kit page.</p>';
         }
 
         $kit_html .= '</div>';
@@ -305,8 +330,21 @@ function render_store_product_card(array $product, ?array $player, string $csrf,
 
     $active_offer_count = count($rp_offers) + count($cash_passes) + count($cash_subscriptions);
     $type = raidlands_store_normalize_product_type((string) $product['product_type']);
+    $has_rp = count($rp_offers) > 0 ? '1' : '0';
+    $has_cash = count($cash_passes) + count($cash_subscriptions) > 0 ? '1' : '0';
+    $search = store_product_search_blob($product);
+    $sort_name = strtolower((string) ($product['name'] ?? ''));
 
-    return '<article class="metal-card store-product-card">'
+    return '<article class="metal-card store-product-card"'
+        . ' data-store-product'
+        . ' data-store-type="' . e($type) . '"'
+        . ' data-store-name="' . e($sort_name) . '"'
+        . ' data-store-sort="' . e((string) ((int) ($product['sort_order'] ?? 100))) . '"'
+        . ' data-store-offers="' . e((string) $active_offer_count) . '"'
+        . ' data-store-kits="' . e((string) count($linked_kits)) . '"'
+        . ' data-store-rp="' . e($has_rp) . '"'
+        . ' data-store-cash="' . e($has_cash) . '"'
+        . ' data-store-search="' . e($search) . '">'
         . '<div class="store-card-top">'
         . render_store_product_symbol($product, $type, $linked_kits)
         . '<span class="status-tag ' . e($type === 'kit_bundle' ? 'review' : 'planned') . '">' . e(raidlands_store_type_label($type)) . '</span>'
@@ -343,6 +381,60 @@ function render_store_section(string $kicker, string $title, string $copy, array
     }
 
     return $html . '</div></div></section>';
+}
+
+function render_store_catalog(array $products, ?array $player, string $csrf, bool $cash_ready): string
+{
+    if ($products === []) {
+        return '';
+    }
+
+    $counts = [
+        'all' => count($products),
+        'kit_bundle' => count(raidlands_store_products_by_type($products, 'kit_bundle')),
+        'kit_unlock' => count(raidlands_store_products_by_type($products, 'kit_unlock')),
+        'perk' => count(raidlands_store_products_by_type($products, 'perk')),
+    ];
+    $html = '<section class="section store-catalog-section" data-store-catalog>'
+        . '<div class="section-inner">'
+        . '<div class="section-header store-catalog-heading">'
+        . '<p class="section-kicker">Store catalog</p>'
+        . '<h2>Find the kit or perk you want</h2>'
+        . '<p class="section-lede">Search by kit name, item shortname, bundle, perk, or permission, then sort the results without leaving the page.</p>'
+        . '</div>'
+        . '<div class="store-catalog-toolbar" aria-label="Store filters">'
+        . '<label class="store-control-field"><span>Search</span><input type="search" placeholder="Search kits, perks, items..." data-store-search></label>'
+        . '<label class="store-control-field"><span>Category</span><select data-store-type-filter>'
+        . '<option value="all">All products (' . e((string) $counts['all']) . ')</option>'
+        . '<option value="kit_bundle">Kit bundles (' . e((string) $counts['kit_bundle']) . ')</option>'
+        . '<option value="kit_unlock">Individual kits (' . e((string) $counts['kit_unlock']) . ')</option>'
+        . '<option value="perk">Standalone perks (' . e((string) $counts['perk']) . ')</option>'
+        . '</select></label>'
+        . '<label class="store-control-field"><span>Offers</span><select data-store-offer-filter>'
+        . '<option value="all">All offers</option>'
+        . '<option value="available">Offers available</option>'
+        . '<option value="rp">RP offers</option>'
+        . '<option value="cash">Cash offers</option>'
+        . '</select></label>'
+        . '<label class="store-control-field"><span>Sort</span><select data-store-sort>'
+        . '<option value="featured">Featured order</option>'
+        . '<option value="name">Name A-Z</option>'
+        . '<option value="offers">Most offer options</option>'
+        . '<option value="kits">Most linked kits</option>'
+        . '</select></label>'
+        . '<button class="btn btn-secondary store-catalog-reset" type="button" data-store-reset>Reset</button>'
+        . '</div>'
+        . '<div class="store-catalog-summary" aria-live="polite"><strong data-store-catalog-count>' . e((string) $counts['all']) . '</strong><span>products shown</span></div>'
+        . '<div class="grid three store-grid" data-store-catalog-grid>';
+
+    foreach ($products as $product) {
+        $html .= render_store_product_card($product, $player, $csrf, $cash_ready);
+    }
+
+    return $html
+        . '</div>'
+        . '<p class="store-empty-state" data-store-catalog-empty hidden>No products match those filters.</p>'
+        . '</div></section>';
 }
 
 function raidlands_store_format_seconds(int $seconds): string
@@ -393,9 +485,7 @@ function raidlands_store_format_seconds(int $seconds): string
   </div>
 </section>
 
-<?= render_store_section('Main bundles', 'Kit bundles', 'Grouped kits and perks are the main store packages. Choose lifetime access, a timed pass, or a recurring subscription when offers are active.', $bundle_products, $store_player, $store_csrf, $cash_checkout_ready) ?>
-<?= render_store_section('Low tier shop kits', 'Individual kits', 'Single kit unlocks are available separately for players who want one specific kit without a full bundle.', $kit_products, $store_player, $store_csrf, $cash_checkout_ready) ?>
-<?= render_store_section('Standalone perks', 'Perks by themselves', 'Pick individual gameplay perks without bundling them into a kit package.', $perk_products, $store_player, $store_csrf, $cash_checkout_ready) ?>
+<?= render_store_catalog($store_products, $store_player, $store_csrf, $cash_checkout_ready) ?>
 
 <section class="section alt">
   <div class="section-inner split-panel">
