@@ -673,12 +673,28 @@ function raidlands_airstrike_animations_bundle_for_server(int $since = 0, ?int $
     }
 
     $canonical_json = (string) $row['bundle_json'];
+    $actual_sha256 = hash('sha256', $canonical_json);
 
-    if (!hash_equals($sha256, hash('sha256', $canonical_json))) {
-        throw new RuntimeException('Stored animation bundle failed its canonical SHA-256 check.');
+    if (!hash_equals($sha256, $actual_sha256)) {
+        $bundle = raidlands_airstrike_animations_decode_json($canonical_json, 'Published bundle');
+        $canonical_json = raidlands_airstrike_animation_canonical_json($bundle);
+        $sha256 = hash('sha256', $canonical_json);
+
+        raidlands_db_execute(
+            'UPDATE airstrike_animation_bundles
+             SET bundle_json = :bundle_json,
+                 sha256 = :sha256
+             WHERE revision = :revision',
+            [
+                'bundle_json' => $canonical_json,
+                'sha256' => $sha256,
+                'revision' => $current_revision,
+            ]
+        );
+    } else {
+        $bundle = raidlands_airstrike_animations_decode_json($canonical_json, 'Published bundle');
     }
 
-    $bundle = raidlands_airstrike_animations_decode_json($canonical_json, 'Published bundle');
     return [
         'ok' => true,
         'has_update' => true,
