@@ -132,6 +132,57 @@ function raidlands_airstrike_animations_decode_json(string $json, string $label)
     return $decoded;
 }
 
+function raidlands_airstrike_animations_decode_json_object(string $json, string $label): stdClass
+{
+    if ($json === '' || strlen($json) > RAIDLANDS_AIRSTRIKE_ANIMATION_MAX_BUNDLE_BYTES) {
+        throw new InvalidArgumentException($label . ' is empty or exceeds the configured size limit.');
+    }
+
+    try {
+        $decoded = json_decode($json, false, 512, JSON_THROW_ON_ERROR);
+    } catch (JsonException $error) {
+        throw new InvalidArgumentException($label . ' is not valid JSON: ' . $error->getMessage() . '.', 0, $error);
+    }
+
+    if (!$decoded instanceof stdClass) {
+        throw new InvalidArgumentException($label . ' must be a JSON object.');
+    }
+
+    return $decoded;
+}
+
+function raidlands_airstrike_animations_normalize_damage_scale_objects(&$value): bool
+{
+    $changed = false;
+
+    if ($value instanceof stdClass) {
+        foreach (get_object_vars($value) as $key => $entry) {
+            if ($key === 'DamageScales' && is_array($entry) && $entry === []) {
+                $value->{$key} = new stdClass();
+                $changed = true;
+                continue;
+            }
+
+            if (raidlands_airstrike_animations_normalize_damage_scale_objects($value->{$key})) {
+                $changed = true;
+            }
+        }
+
+        return $changed;
+    }
+
+    if (is_array($value)) {
+        foreach ($value as &$entry) {
+            if (raidlands_airstrike_animations_normalize_damage_scale_objects($entry)) {
+                $changed = true;
+            }
+        }
+        unset($entry);
+    }
+
+    return $changed;
+}
+
 function raidlands_airstrike_animations_source_json(array $source): string
 {
     $json = raidlands_airstrike_animation_canonical_json($source);
@@ -346,11 +397,12 @@ function raidlands_airstrike_animations_decode_bundle_row(array $row): array
     $sha256 = strtolower((string) ($row['sha256'] ?? ''));
     $canonical_json = (string) ($row['bundle_json'] ?? '');
 
-    $bundle = raidlands_airstrike_animations_decode_json($canonical_json, 'Published bundle');
+    $bundle_object = raidlands_airstrike_animations_decode_json_object($canonical_json, 'Published bundle');
+    $object_shape_changed = raidlands_airstrike_animations_normalize_damage_scale_objects($bundle_object);
     $actual_sha256 = hash('sha256', $canonical_json);
 
-    if (!hash_equals($sha256, $actual_sha256)) {
-        $canonical_json = raidlands_airstrike_animation_canonical_json($bundle);
+    if (!hash_equals($sha256, $actual_sha256) || $object_shape_changed) {
+        $canonical_json = raidlands_airstrike_animation_canonical_json($bundle_object);
         $sha256 = hash('sha256', $canonical_json);
 
         try {
@@ -372,9 +424,9 @@ function raidlands_airstrike_animations_decode_bundle_row(array $row): array
                 . ' Storage: ' . raidlands_airstrike_animations_storage_summary()
             );
         }
-
-        $bundle = raidlands_airstrike_animations_decode_json($canonical_json, 'Published bundle');
     }
+
+    $bundle = raidlands_airstrike_animations_decode_json($canonical_json, 'Published bundle');
 
     return [
         'row' => $row,
@@ -415,10 +467,12 @@ function raidlands_airstrike_animations_repair_bundle_from_revisions(int $revisi
     $profiles = [];
     foreach ($profile_rows as $profile_row) {
         $profile_key = raidlands_airstrike_animations_clean_key((string) ($profile_row['profile_key'] ?? ''));
-        $profiles[$profile_key] = raidlands_airstrike_animations_decode_json(
+        $runtime_profile = raidlands_airstrike_animations_decode_json_object(
             (string) ($profile_row['runtime_json'] ?? ''),
             'Runtime profile ' . $profile_key
         );
+        raidlands_airstrike_animations_normalize_damage_scale_objects($runtime_profile);
+        $profiles[$profile_key] = $runtime_profile;
     }
 
     $bundle = [
