@@ -37,7 +37,7 @@
       "prefabLabel": "assets/prefabs/npc/cargo plane/cargo_plane.prefab",
       "scale": 0.217,
       "positionCorrection": { "x": 0, "y": 0, "z": 0 },
-      "rotationCorrection": { "x": 0, "y": 0, "z": 0 },
+      "rotationCorrection": { "x": 0, "y": 0, "z": -90 },
       "visualOriginY": 0.24,
       "bounds": { "x": 51.8, "y": 16.8, "z": 53  },
       "proxy": "plane",
