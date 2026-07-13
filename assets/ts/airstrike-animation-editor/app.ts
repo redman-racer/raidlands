@@ -140,6 +140,8 @@ interface NumericControlRange {
   maximum: number;
 }
 
+type NumberInputCommitMode = "live" | "deferred";
+
 interface PaletteLayout {
   collapsed?: Record<string, boolean>;
   zones?: Record<string, string[]>;
@@ -466,10 +468,18 @@ class AirstrikeEditorApp {
       input.dataset.editorSliderEnhanced = "1";
 
       input.addEventListener("input", () => this.syncNumericControl(input));
+      const commitSlider = (): void => {
+        input.value = range.value;
+        input.dispatchEvent(new CustomEvent("airstrike-editor-number-commit", { bubbles: true, detail: { mode: "live" } }));
+        this.syncNumericControl(input);
+      };
       range.addEventListener("input", () => {
         input.value = range.value;
-        input.dispatchEvent(new Event("input", { bubbles: true }));
+        input.dispatchEvent(new CustomEvent("airstrike-editor-number-commit", { bubbles: true, detail: { mode: "deferred" } }));
       });
+      range.addEventListener("change", commitSlider);
+      range.addEventListener("pointerup", commitSlider);
+      range.addEventListener("pointercancel", commitSlider);
       stepDown.addEventListener("click", () => this.stepNumericInput(input, -1));
       stepUp.addEventListener("click", () => this.stepNumericInput(input, 1));
       this.syncNumericControl(input);
@@ -979,10 +989,14 @@ class AirstrikeEditorApp {
     title.textContent = event.Id;
     this.elements.manualReleaseEditor.appendChild(title);
 
-    const timeInput = this.createNumberInput(event.Time, 0.01, (value) => {
+    const timeInput = this.createNumberInput(event.Time, 0.01, (value, mode) => {
       const next = updateManualReleaseTime(profile, event.Id, value);
-      this.applyProfile(next, true);
-      this.selectRelease(event.Id);
+      if (mode === "deferred") {
+        this.previewProfileUpdate(next, true);
+      } else {
+        this.applyProfile(next, true);
+        this.selectRelease(event.Id);
+      }
     });
     this.elements.manualReleaseEditor.appendChild(this.fieldWrapper("Time", timeInput));
 
@@ -999,10 +1013,14 @@ class AirstrikeEditorApp {
     });
     this.elements.manualReleaseEditor.appendChild(this.fieldWrapper("Hardpoint", hardpointSelect));
 
-    this.renderPayloadFieldGroup(this.elements.manualReleaseEditor, event, PAYLOAD_COMMON_FIELDS, (field, value) => {
+    this.renderPayloadFieldGroup(this.elements.manualReleaseEditor, event, PAYLOAD_COMMON_FIELDS, (field, value, mode) => {
       const next = updateManualPayloadField(profile, event.Id, field, value);
-      this.applyProfile(next, true);
-      this.selectRelease(event.Id);
+      if (mode === "deferred") {
+        this.previewProfileUpdate(next, true);
+      } else {
+        this.applyProfile(next, true);
+        this.selectRelease(event.Id);
+      }
     });
 
     const advanced = document.createElement("details");
@@ -1010,10 +1028,14 @@ class AirstrikeEditorApp {
     const summary = document.createElement("summary");
     summary.textContent = "Advanced payload fields";
     advanced.appendChild(summary);
-    this.renderPayloadFieldGroup(advanced, event, PAYLOAD_ADVANCED_FIELDS, (field, value) => {
+    this.renderPayloadFieldGroup(advanced, event, PAYLOAD_ADVANCED_FIELDS, (field, value, mode) => {
       const next = updateManualPayloadField(profile, event.Id, field, value);
-      this.applyProfile(next, true);
-      this.selectRelease(event.Id);
+      if (mode === "deferred") {
+        this.previewProfileUpdate(next, true);
+      } else {
+        this.applyProfile(next, true);
+        this.selectRelease(event.Id);
+      }
     });
     this.elements.manualReleaseEditor.appendChild(advanced);
   }
@@ -1029,8 +1051,13 @@ class AirstrikeEditorApp {
       ["UnitsPerRelease", 1],
       ["MaximumUnits", 1],
     ] as const) {
-      const input = this.createNumberInput(release[field], step, (value) => {
-        this.applyProfile(updateRepeatedField(profile, field, value), true);
+      const input = this.createNumberInput(release[field], step, (value, mode) => {
+        const next = updateRepeatedField(profile, field, value);
+        if (mode === "deferred") {
+          this.previewProfileUpdate(next, true);
+        } else {
+          this.applyProfile(next, true);
+        }
       });
       this.elements.repeatedReleaseEditor.appendChild(this.fieldWrapper(field, input));
     }
@@ -1050,8 +1077,13 @@ class AirstrikeEditorApp {
     });
     this.elements.repeatedReleaseEditor.appendChild(this.fieldWrapper("Hardpoint sequence", sequence));
 
-    this.renderPayloadFieldGroup(this.elements.repeatedReleaseEditor, release.Template, PAYLOAD_COMMON_FIELDS, (field, value) => {
-      this.applyProfile(updateRepeatedTemplateField(profile, field, value), true);
+    this.renderPayloadFieldGroup(this.elements.repeatedReleaseEditor, release.Template, PAYLOAD_COMMON_FIELDS, (field, value, mode) => {
+      const next = updateRepeatedTemplateField(profile, field, value);
+      if (mode === "deferred") {
+        this.previewProfileUpdate(next, true);
+      } else {
+        this.applyProfile(next, true);
+      }
     });
 
     const advanced = document.createElement("details");
@@ -1059,8 +1091,13 @@ class AirstrikeEditorApp {
     const summary = document.createElement("summary");
     summary.textContent = "Advanced payload fields";
     advanced.appendChild(summary);
-    this.renderPayloadFieldGroup(advanced, release.Template, PAYLOAD_ADVANCED_FIELDS, (field, value) => {
-      this.applyProfile(updateRepeatedTemplateField(profile, field, value), true);
+    this.renderPayloadFieldGroup(advanced, release.Template, PAYLOAD_ADVANCED_FIELDS, (field, value, mode) => {
+      const next = updateRepeatedTemplateField(profile, field, value);
+      if (mode === "deferred") {
+        this.previewProfileUpdate(next, true);
+      } else {
+        this.applyProfile(next, true);
+      }
     });
     this.elements.repeatedReleaseEditor.appendChild(advanced);
   }
@@ -1069,7 +1106,7 @@ class AirstrikeEditorApp {
     parent: HTMLElement,
     fields: PayloadEventFields,
     fieldNames: readonly PayloadField[],
-    onChange: (field: PayloadField, value: string | number | Record<string, number>) => void,
+    onChange: (field: PayloadField, value: string | number | Record<string, number>, mode: NumberInputCommitMode) => void,
   ): void {
     const grid = document.createElement("div");
     grid.className = "airstrike-payload-field-grid";
@@ -1080,7 +1117,7 @@ class AirstrikeEditorApp {
           select.appendChild(new Option(payload, payload));
         }
         select.value = fields.Payload;
-        select.addEventListener("change", () => onChange(field, select.value));
+        select.addEventListener("change", () => onChange(field, select.value, "live"));
         grid.appendChild(this.fieldWrapper(field, select));
       } else if (field === "DamageScales") {
         const input = document.createElement("textarea");
@@ -1090,15 +1127,15 @@ class AirstrikeEditorApp {
         input.addEventListener("change", () => {
           try {
             const parsed = JSON.parse(input.value || "{}") as Record<string, number>;
-            onChange(field, parsed);
+            onChange(field, parsed, "live");
           } catch {
             this.showFeedback("DamageScales must be valid JSON.", "error");
           }
         });
         grid.appendChild(this.fieldWrapper(field, input));
       } else {
-        const input = this.createNumberInput(Number(fields[field]), field === "Count" ? 1 : 0.1, (value) => {
-          onChange(field, value);
+        const input = this.createNumberInput(Number(fields[field]), field === "Count" ? 1 : 0.1, (value, mode) => {
+          onChange(field, value, mode);
         });
         grid.appendChild(this.fieldWrapper(field, input));
       }
@@ -1106,16 +1143,23 @@ class AirstrikeEditorApp {
     parent.appendChild(grid);
   }
 
-  private createNumberInput(value: number, step: number, onInput: (value: number) => void): HTMLInputElement {
+  private createNumberInput(value: number, step: number, onInput: (value: number, mode: NumberInputCommitMode) => void): HTMLInputElement {
     const input = document.createElement("input");
     input.type = "number";
     input.step = String(step);
     input.value = String(value);
-    input.addEventListener("input", () => {
+    const commit = (mode: NumberInputCommitMode): void => {
       const next = Number(input.value);
       if (Number.isFinite(next)) {
-        onInput(next);
+        onInput(next, mode);
       }
+    };
+    input.addEventListener("input", () => {
+      commit("live");
+    });
+    input.addEventListener("airstrike-editor-number-commit", (event) => {
+      const mode = event instanceof CustomEvent && event.detail?.mode === "deferred" ? "deferred" : "live";
+      commit(mode);
     });
     return input;
   }
@@ -1854,6 +1898,25 @@ class AirstrikeEditorApp {
       this.viewport.updateWorldReference(reference);
     } catch {
       // Offline/local editor sessions keep the default deterministic terrain.
+    }
+  }
+
+  private previewProfileUpdate(source: EditorSourceProfile, dirty: boolean, refreshViewport = true): void {
+    this.state.profile = source;
+    this.state.selectedWaypointId = findWaypoint(source, this.state.selectedWaypointId)?.Id || firstWaypointId(source);
+    this.ensureSelectedRelease(source);
+    this.state.scrubTime = clamp(this.state.scrubTime, 0, Number(source.DurationSeconds || 0));
+    this.writeSource(source);
+    this.syncControlsFromSource(source);
+    this.renderWaypoints();
+    this.renderSpeedControls();
+    this.renderTimeControls();
+    if (refreshViewport) {
+      this.viewport.updateProfile(source, this.state.selectedWaypointId, this.state.scrubTime);
+      this.viewport.updateSelectedRelease(this.state.selectedReleaseId);
+    }
+    if (dirty) {
+      this.markEdited();
     }
   }
 
