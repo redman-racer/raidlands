@@ -35,6 +35,10 @@ import {
   WebGLRenderer,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
+import { SSAOPass } from "three/examples/jsm/postprocessing/SSAOPass.js";
+import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { unityPositionToThreeVector, unityQuaternionValueToThreeQuaternion } from "../airstrike-animation-editor/editor/coordinates";
 import { createVehicleProxy, loadVehiclePreview, metadataForVehicle } from "../airstrike-animation-editor/editor/vehicle-preview";
 import type { VehiclePreviewMetadataFile } from "../airstrike-animation-editor/types";
@@ -263,6 +267,54 @@ type NormalizedEnvironment = {
   cloudAttenuation: number;
   cloudScattering: number;
   cloudBrightness: number;
+};
+
+const RAIDLANDS_ENVIRONMENT_GRADE_SHADER = {
+  uniforms: {
+    tDiffuse: { value: null },
+    uSunColor: { value: new Color(0xffb072) },
+    uTwilight: { value: 0 },
+    uFogStrength: { value: 0 },
+    uCloudCoverage: { value: 0 },
+    uRainIntensity: { value: 0 },
+    uAtmosphereContrast: { value: 1 },
+  },
+  vertexShader: `
+    varying vec2 vUv;
+
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform sampler2D tDiffuse;
+    uniform vec3 uSunColor;
+    uniform float uTwilight;
+    uniform float uFogStrength;
+    uniform float uCloudCoverage;
+    uniform float uRainIntensity;
+    uniform float uAtmosphereContrast;
+
+    varying vec2 vUv;
+
+    void main() {
+      vec4 source = texture2D(tDiffuse, vUv);
+      vec3 color = source.rgb;
+      float luminance = dot(color, vec3(0.2126, 0.7152, 0.0722));
+      vec3 warmSun = uSunColor / max(max(uSunColor.r, uSunColor.g), max(uSunColor.b, 0.001));
+      float shadowWeight = 1.0 - smoothstep(0.22, 0.78, luminance);
+      float clearSky = 1.0 - clamp(uCloudCoverage * 0.62 + uRainIntensity * 0.48, 0.0, 0.82);
+      float warmth = uTwilight * clearSky * (0.028 + shadowWeight * 0.052);
+
+      color += warmSun * warmth;
+      float hazeDesaturation = clamp(uFogStrength * 0.1 + uRainIntensity * 0.055, 0.0, 0.13);
+      color = mix(color, vec3(dot(color, vec3(0.299, 0.587, 0.114))), hazeDesaturation);
+      color = mix(vec3(0.5), color, mix(0.94, 1.035, clamp(uAtmosphereContrast / 1.4, 0.0, 1.0)));
+
+      gl_FragColor = vec4(color, source.a);
+    }
+  `,
 };
 
 type ReplayDisplayMode = "ambient" | "timeline";
@@ -588,6 +640,9 @@ class TerrainViewer {
   private readonly scene = new Scene();
   private readonly camera = new PerspectiveCamera(48, 1, 1, 12000);
   private readonly renderer = new WebGLRenderer({ antialias: true, alpha: false });
+  private readonly composer: EffectComposer;
+  private readonly ambientOcclusionPass: SSAOPass;
+  private readonly environmentGradePass: ShaderPass;
   private readonly controls: OrbitControls;
   private readonly terrainMesh: Mesh;
   private readonly terrainMaterial: MeshStandardMaterial;
@@ -603,6 +658,12 @@ class TerrainViewer {
   private readonly rainSheetLayer = new Group();
   private readonly rainLayer = new Group();
   private readonly rainMaterial: LineBasicMaterial;
+  private readonly terrainLightUniforms = {
+    sunDirection: { value: new Vector3(0.5, 0.78, 0.36).normalize() },
+    sunColor: { value: new Color(0xfff1cf) },
+    twilight: { value: 0 },
+    cloudAttenuation: { value: 0.25 },
+  };
   private ambientLight: AmbientLight | null = null;
   private sunLight: DirectionalLight | null = null;
   private fillLight: DirectionalLight | null = null;
@@ -657,6 +718,16 @@ class TerrainViewer {
       backgroundIntensity: 1.02,
       environmentIntensity: 0.98,
     });
+    this.composer = new EffectComposer(this.renderer);
+    this.composer.setPixelRatio(Math.min(this.renderer.getPixelRatio(), 1.5));
+    this.ambientOcclusionPass = new SSAOPass(this.scene, this.camera, 1, 1, 24);
+    this.ambientOcclusionPass.kernelRadius = 18;
+    this.ambientOcclusionPass.minDistance = 0.0007;
+    this.ambientOcclusionPass.maxDistance = 0.022;
+    this.environmentGradePass = new ShaderPass(RAIDLANDS_ENVIRONMENT_GRADE_SHADER);
+    this.composer.addPass(new RenderPass(this.scene, this.camera));
+    this.composer.addPass(this.ambientOcclusionPass);
+    this.composer.addPass(this.environmentGradePass);
     this.renderer.domElement.dataset.serverMapViewerCanvas = "true";
     this.terrainMaterial = this.createTerrainMaterial();
     this.oceanFloorMesh = this.createOceanFloorMesh();
@@ -730,6 +801,9 @@ class TerrainViewer {
     window.cancelAnimationFrame(this.animationFrame);
     window.removeEventListener("resize", this.onResize);
     this.controls.dispose();
+    this.ambientOcclusionPass.dispose();
+    this.environmentGradePass.dispose();
+    this.composer.dispose();
     this.scene.traverse((object) => {
       if (object instanceof Mesh || object instanceof Sprite || object instanceof LineSegments) {
         disposeGeometryMaterial(object as Mesh | Sprite | LineSegments);
@@ -1072,13 +1146,38 @@ class TerrainViewer {
   }
 
   private createTerrainMaterial(): MeshStandardMaterial {
-    return new MeshStandardMaterial({
+    const material = new MeshStandardMaterial({
       color: 0xffffff,
       roughness: 0.94,
       metalness: 0,
       vertexColors: true,
       side: DoubleSide,
     });
+    material.onBeforeCompile = (shader) => {
+      shader.uniforms.raidlandsSunDirection = this.terrainLightUniforms.sunDirection;
+      shader.uniforms.raidlandsSunColor = this.terrainLightUniforms.sunColor;
+      shader.uniforms.raidlandsTwilight = this.terrainLightUniforms.twilight;
+      shader.uniforms.raidlandsCloudAttenuation = this.terrainLightUniforms.cloudAttenuation;
+      shader.fragmentShader = shader.fragmentShader
+        .replace(
+          "#include <common>",
+          `#include <common>
+uniform vec3 raidlandsSunDirection;
+uniform vec3 raidlandsSunColor;
+uniform float raidlandsTwilight;
+uniform float raidlandsCloudAttenuation;`,
+        )
+        .replace(
+          "#include <normal_fragment_begin>",
+          `#include <normal_fragment_begin>
+vec3 raidlandsSunDirectionView = normalize((viewMatrix * vec4(raidlandsSunDirection, 0.0)).xyz);
+float raidlandsSunFacing = max(dot(normal, raidlandsSunDirectionView), 0.0);
+float raidlandsWarmSlope = raidlandsTwilight * (0.22 + raidlandsSunFacing * 0.78) * (1.0 - raidlandsCloudAttenuation * 0.58);
+diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.115, raidlandsWarmSlope);`,
+        );
+    };
+    material.customProgramCacheKey = () => "raidlands-terrain-sun-wash-v1";
+    return material;
   }
 
   private createOceanFloorMesh(): Mesh {
@@ -1208,6 +1307,7 @@ class TerrainViewer {
     this.camera.aspect = width / height;
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height, false);
+    this.composer.setSize(width, height);
   }
 
   private animate(): void {
@@ -1221,7 +1321,7 @@ class TerrainViewer {
     this.updateOceanPlanes(now);
     this.updateEnvironment(now);
     this.airstrikeLayer.userData.tick?.((now - this.clockStart) / 1000);
-    this.renderer.render(this.scene, this.camera);
+    this.composer.render();
   }
 
   public setEnvironment(snapshot: EnvironmentSnapshot | null | undefined, durationMs = 900): void {
@@ -1287,6 +1387,19 @@ class TerrainViewer {
     this.sunLight.position.y = Math.max(this.sunLight.position.y, worldSize * -0.18);
     this.fillLight.color.set(0x88b7d6).lerp(new Color(0xff7f4e), twilight * 0.18);
     this.fillLight.intensity = MathUtils.lerp(0.12, 0.32, daylight) + twilight * 0.08;
+    this.terrainLightUniforms.sunDirection.value.copy(environment.sunDirection);
+    this.terrainLightUniforms.sunColor.value.copy(environment.sunColor);
+    this.terrainLightUniforms.twilight.value = twilight;
+    this.terrainLightUniforms.cloudAttenuation.value = MathUtils.clamp(
+      visualCloudCoverage * MathUtils.clamp(environment.cloudAttenuation, 0, 1),
+      0,
+      1,
+    );
+    const oceanMaterial = this.oceanSurfaceMesh.material as MeshStandardMaterial;
+    const waterSunReflection = twilight * MathUtils.lerp(0.06, 0.2, 1 - visualCloudCoverage);
+    oceanMaterial.color.set(0x0a4f63).lerp(environment.sunColor, waterSunReflection);
+    oceanMaterial.roughness = MathUtils.lerp(0.44, 0.3, waterSunReflection);
+    oceanMaterial.metalness = MathUtils.lerp(0.02, 0.1, waterSunReflection);
     const horizonDrama = MathUtils.clamp(1 - Math.abs(MathUtils.clamp(sunHeight, -0.1, 0.46) - 0.18) / 0.28, 0, 1);
     this.scene.backgroundIntensity = (MathUtils.lerp(0.72, 1.04, daylight) + horizonDrama * 0.08 - night * 0.18) * MathUtils.lerp(0.72, 1.2, atmosphereBrightness / 1.4);
     this.scene.environmentIntensity = (MathUtils.lerp(0.46, 0.96, daylight) + horizonDrama * 0.04) * MathUtils.lerp(0.82, 1.18, atmosphereContrast / 1.4);
@@ -1301,6 +1414,12 @@ class TerrainViewer {
     this.scene.fog = fogStrength > 0.02
       ? new FogExp2(fogColor, MathUtils.lerp(0.000035, 0.00028, Math.sqrt(fogStrength)))
       : null;
+    this.environmentGradePass.uniforms.uSunColor.value.copy(environment.sunColor);
+    this.environmentGradePass.uniforms.uTwilight.value = twilight;
+    this.environmentGradePass.uniforms.uFogStrength.value = fogStrength;
+    this.environmentGradePass.uniforms.uCloudCoverage.value = visualCloudCoverage;
+    this.environmentGradePass.uniforms.uRainIntensity.value = environment.rainIntensity;
+    this.environmentGradePass.uniforms.uAtmosphereContrast.value = atmosphereContrast;
     updateRaidlandsEnvironment(this.scene, {
       sunDirection: environment.sunDirection,
       sunColor: environment.sunColor,
