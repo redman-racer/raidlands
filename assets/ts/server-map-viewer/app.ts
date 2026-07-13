@@ -741,9 +741,9 @@ class TerrainViewer {
     this.composer = new EffectComposer(this.renderer);
     this.composer.setPixelRatio(Math.min(this.renderer.getPixelRatio(), 1.5));
     this.ambientOcclusionPass = new SSAOPass(this.scene, this.camera, 1, 1, 24);
-    this.ambientOcclusionPass.kernelRadius = 18;
-    this.ambientOcclusionPass.minDistance = 0.0007;
-    this.ambientOcclusionPass.maxDistance = 0.022;
+    this.ambientOcclusionPass.kernelRadius = 7;
+    this.ambientOcclusionPass.minDistance = 0.0005;
+    this.ambientOcclusionPass.maxDistance = 0.009;
     this.environmentGradePass = new ShaderPass(RAIDLANDS_ENVIRONMENT_GRADE_SHADER);
     this.composer.addPass(new RenderPass(this.scene, this.camera));
     this.composer.addPass(this.ambientOcclusionPass);
@@ -1149,7 +1149,11 @@ class TerrainViewer {
         const b = a + 1;
         const c = a + resolution;
         const d = c + 1;
-        indices.push(a, c, b, b, c, d);
+        // Keep the front-face winding counter-clockwise when viewed from above so
+        // computed normals point toward Rust's sky. The previous order produced
+        // downward normals; DoubleSide kept the map visible, but real sun light
+        // from the environment feed could not illuminate the terrain surface.
+        indices.push(a, b, c, b, d, c);
       }
     }
 
@@ -1390,15 +1394,22 @@ diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.115, raidla
     const visualCloudCoverage = visualCloudCoverageForEnvironment(environment);
     const atmosphereBrightness = MathUtils.clamp(environment.atmosphereBrightness, 0.15, 2.4);
     const atmosphereContrast = MathUtils.clamp(environment.atmosphereContrast, 0.15, 2.4);
+    const atmosphereBrightnessT = MathUtils.clamp(atmosphereBrightness / 1.5, 0, 1);
     const scatteringGlow = MathUtils.lerp(0.76, 1.26, MathUtils.clamp(environment.cloudScattering, 0, 1));
+    this.renderer.toneMappingExposure = MathUtils.lerp(0.92, 1.48, atmosphereBrightnessT)
+      * MathUtils.lerp(0.82, 1, daylight);
     this.ambientLight.color.copy(environment.ambientColor)
-      .lerp(new Color(0xddeaf0), MathUtils.lerp(0.16, 0.42, daylight))
+      .lerp(new Color(0xddeaf0), daylight * MathUtils.lerp(0.42, 0.72, atmosphereBrightnessT))
       .lerp(new Color(0xff9a62), twilight * 0.22)
       .lerp(new Color(0x101827), night * 0.52);
     this.ambientLight.intensity = MathUtils.clamp(
-      (environment.ambientIntensity * MathUtils.lerp(0.82, 1.18, daylight) + MathUtils.lerp(0.05, 0.18, twilight)) * MathUtils.lerp(0.72, 1.18, atmosphereBrightness / 1.4),
+      (
+        environment.ambientIntensity * MathUtils.lerp(0.82, 1.18, daylight)
+        + MathUtils.lerp(0.05, 0.18, twilight)
+        + daylight * MathUtils.lerp(0.24, 0.62, atmosphereBrightnessT)
+      ) * MathUtils.lerp(0.72, 1.18, atmosphereBrightness / 1.4),
       0.14,
-      0.86,
+      1.5,
     );
     this.sunLight.color.copy(environment.sunColor);
     this.sunLight.intensity = Math.max(0.08, environment.sunIntensity * MathUtils.lerp(0.82, 1.08, daylight) * scatteringGlow);
@@ -1428,9 +1439,13 @@ diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.115, raidla
       0,
       1,
     );
+    const daylightFogColor = new Color(0xc8dfe8)
+      .lerp(environment.sunColor, MathUtils.clamp(environment.atmosphereMie / 4, 0, 1) * 0.1)
+      .multiplyScalar(MathUtils.lerp(0.82, 1.08, atmosphereBrightnessT));
     const fogColor = new Color(0x172235)
+      .lerp(daylightFogColor, daylight)
       .lerp(new Color(0xff9d63), twilight * 0.42)
-      .lerp(environment.ambientColor, MathUtils.lerp(0.1, 0.34, daylight));
+      .lerp(environment.ambientColor, night * 0.24);
     this.scene.fog = fogStrength > 0.02
       ? new FogExp2(fogColor, MathUtils.lerp(0.000035, 0.00028, Math.sqrt(fogStrength)))
       : null;
@@ -3547,7 +3562,9 @@ function normalizeEnvironment(snapshot: EnvironmentSnapshot | null | undefined):
     return null;
   }
   const direction = new Vector3(
-    Number(snapshot.sunDirection?.x) || 0,
+    // The viewer mirrors Rust's world X axis for terrain and all overlays.
+    // Apply the same coordinate transform to directional environment data.
+    -(Number(snapshot.sunDirection?.x) || 0),
     Number(snapshot.sunDirection?.y) || 1,
     Number(snapshot.sunDirection?.z) || 0,
   );
