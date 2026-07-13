@@ -570,6 +570,7 @@ class TerrainViewer {
   private readonly overlayLayerTransitions: OverlayLayerTransition[] = [];
   private readonly airstrikeLayer = new Group();
   private readonly weatherCloudLayer = new Group();
+  private readonly rainSheetLayer = new Group();
   private readonly rainLayer = new Group();
   private readonly rainMaterial: LineBasicMaterial;
   private ambientLight: AmbientLight | null = null;
@@ -638,12 +639,16 @@ class TerrainViewer {
     this.weatherCloudLayer.name = "raidlands-floating-weather-clouds";
     this.weatherCloudLayer.add(createFloatingWeatherClouds(this.terrain));
     this.scene.add(this.weatherCloudLayer);
+    this.rainSheetLayer.name = "raidlands-rain-sheet-layer";
+    this.rainSheetLayer.add(createRainSheets(this.terrain));
+    this.rainSheetLayer.visible = false;
+    this.scene.add(this.rainSheetLayer);
     this.rainMaterial = new LineBasicMaterial({
       color: 0xb7d4e6,
       transparent: true,
       opacity: 0,
       depthWrite: false,
-      depthTest: true,
+      depthTest: false,
     });
     this.rainLayer.name = "raidlands-rain-streaks";
     this.rainLayer.add(createRainStreaks(this.terrain, this.rainMaterial));
@@ -1279,12 +1284,27 @@ class TerrainViewer {
     });
 
     const rainVisible = rain > 0.015;
+    this.rainSheetLayer.visible = rainVisible;
+    this.rainSheetLayer.position.x = this.controls.target.x;
+    this.rainSheetLayer.position.z = this.controls.target.z;
+    this.rainSheetLayer.position.y = this.controls.target.y + worldSize * 0.16;
+    this.rainSheetLayer.children.forEach((child, index) => {
+      if (!(child instanceof Sprite)) {
+        return;
+      }
+      const material = child.material as SpriteMaterial;
+      material.opacity = MathUtils.lerp(0.028, 0.14, Math.sqrt(rain)) * (Number(child.userData.opacityBias) || 1);
+      const drift = now * (0.00008 + index * 0.000016);
+      child.position.x = (Number(child.userData.baseX) || 0) + Math.sin(drift) * worldSize * 0.08;
+      child.position.y = (Number(child.userData.baseY) || 0) - ((now * MathUtils.lerp(0.035, 0.14, rain)) % (worldSize * 0.12));
+      child.position.z = (Number(child.userData.baseZ) || 0) + Math.cos(drift * 0.7) * worldSize * 0.05;
+    });
     this.rainLayer.visible = rainVisible;
-    this.rainLayer.position.x = this.camera.position.x;
-    this.rainLayer.position.z = this.camera.position.z;
+    this.rainLayer.position.x = this.controls.target.x;
+    this.rainLayer.position.z = this.controls.target.z;
     this.rainLayer.position.y = -((now * MathUtils.lerp(0.18, 0.72, rain)) % Math.max(160, worldSize * 0.22));
     this.rainLayer.rotation.z = -0.08;
-    this.rainMaterial.opacity = rainVisible ? MathUtils.lerp(0.14, 0.56, Math.sqrt(rain)) : 0;
+    this.rainMaterial.opacity = rainVisible ? MathUtils.lerp(0.08, 0.38, Math.sqrt(rain)) : 0;
   }
 
   private replaceOverlayLayer(parent: Group, incoming: Group, durationMs = 360): void {
@@ -3196,19 +3216,83 @@ function createWeatherCloudTexture(): CanvasTexture {
   });
 }
 
+function createRainSheets(terrain: TerrainPayload): Group {
+  const group = new Group();
+  const worldSize = terrain.worldSize || 4500;
+  const texture = createRainSheetTexture();
+  const sheetSize = MathUtils.clamp(worldSize * 1.18, 1800, 6200);
+
+  for (let index = 0; index < 4; index += 1) {
+    const material = new SpriteMaterial({
+      map: texture,
+      color: 0xc8dbea,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      depthTest: false,
+    });
+    const sprite = new Sprite(material);
+    const angle = (index / 4) * Math.PI * 2 + Math.PI * 0.25;
+    const radius = sheetSize * 0.18;
+    sprite.name = "raidlands-rain-sheet";
+    sprite.position.set(Math.cos(angle) * radius, index * sheetSize * 0.035, Math.sin(angle) * radius);
+    sprite.scale.set(sheetSize, sheetSize * 0.72, 1);
+    sprite.renderOrder = 24 + index;
+    sprite.userData.baseX = sprite.position.x;
+    sprite.userData.baseY = sprite.position.y;
+    sprite.userData.baseZ = sprite.position.z;
+    sprite.userData.opacityBias = MathUtils.lerp(0.72, 1.08, index / 3);
+    group.add(sprite);
+  }
+
+  return group;
+}
+
+function createRainSheetTexture(): CanvasTexture {
+  return getSharedCanvasTexture("server-map-rain-sheet", () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 256;
+    const context = canvas.getContext("2d");
+
+    if (context) {
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      for (let index = 0; index < 96; index += 1) {
+        const x = (index * 47) % canvas.width;
+        const y = (index * 89) % canvas.height;
+        const length = 16 + (index % 7) * 5;
+        const alpha = 0.08 + ((index * 13) % 9) * 0.012;
+        context.beginPath();
+        context.moveTo(x, y);
+        context.lineTo(x + 8 + (index % 5), y + length);
+        context.strokeStyle = `rgba(210, 230, 245, ${alpha})`;
+        context.lineWidth = index % 4 === 0 ? 1.2 : 0.72;
+        context.stroke();
+      }
+    }
+
+    const texture = new CanvasTexture(canvas);
+    texture.colorSpace = SRGBColorSpace;
+    texture.wrapS = RepeatWrapping;
+    texture.wrapT = RepeatWrapping;
+    texture.repeat.set(2.4, 2.4);
+    return texture;
+  });
+}
+
 function createRainStreaks(terrain: TerrainPayload, material: LineBasicMaterial): LineSegments {
   const worldSize = terrain.worldSize || 4500;
-  const width = MathUtils.clamp(worldSize * 0.34, 1000, 1700);
-  const height = MathUtils.clamp(worldSize * 0.34, 900, 1800);
-  const streakCount = 360;
+  const width = MathUtils.clamp(worldSize * 1.45, 1800, 7600);
+  const height = MathUtils.clamp(worldSize * 0.42, 900, 2400);
+  const streakCount = Math.round(MathUtils.clamp(worldSize * 0.42, 900, 2400));
   const positions: number[] = [];
 
   for (let index = 0; index < streakCount; index += 1) {
     const x = (((index * 97) % 997) / 996 - 0.5) * width;
     const z = (((index * 193) % 991) / 990 - 0.5) * width;
     const y = (((index * 389) % 983) / 982) * height + 120;
-    const length = MathUtils.lerp(48, 96, ((index * 23) % 11) / 10);
-    const slant = MathUtils.lerp(8, 26, ((index * 31) % 13) / 12);
+    const length = MathUtils.lerp(42, 86, ((index * 23) % 11) / 10);
+    const slant = MathUtils.lerp(6, 22, ((index * 31) % 13) / 12);
     positions.push(x, y, z, x + slant, y - length, z - slant * 0.38);
   }
 
@@ -3242,9 +3326,9 @@ function normalizeEnvironment(snapshot: EnvironmentSnapshot | null | undefined):
     sunColor: new Color(validHexColor(snapshot.sunColor) || "#ffc47a"),
     ambientIntensity: MathUtils.clamp(finiteNumber(snapshot.ambientIntensity, 0), 0, 2),
     ambientColor: new Color(validHexColor(snapshot.ambientColor) || "#ffead2"),
-    cloudCoverage: MathUtils.clamp(finiteNumber(snapshot.cloudCoverage, 0.28), 0, 1),
-    rainIntensity: MathUtils.clamp(finiteNumber(snapshot.rainIntensity, 0), 0, 1),
-    fogIntensity: MathUtils.clamp(finiteNumber(snapshot.fogIntensity, 0), 0, 1),
+    cloudCoverage: MathUtils.clamp(nullableFiniteNumber(snapshot.cloudCoverage, 0), 0, 1),
+    rainIntensity: MathUtils.clamp(nullableFiniteNumber(snapshot.rainIntensity, 0), 0, 1),
+    fogIntensity: MathUtils.clamp(nullableFiniteNumber(snapshot.fogIntensity, 0), 0, 1),
   };
 }
 
@@ -3265,6 +3349,14 @@ function interpolateEnvironment(from: NormalizedEnvironment, to: NormalizedEnvir
 function finiteNumber(value: unknown, fallback: number): number {
   const numeric = Number(value);
   return Number.isFinite(numeric) ? numeric : fallback;
+}
+
+function nullableFiniteNumber(value: unknown, fallback: number): number {
+  if (value === null || value === undefined || value === "") {
+    return fallback;
+  }
+
+  return finiteNumber(value, fallback);
 }
 
 function validHexColor(value: unknown): string {
