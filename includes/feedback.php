@@ -183,6 +183,118 @@ function raidlands_feedback_create_from_post(array $post): string
     return $public_id;
 }
 
+function raidlands_feedback_create_from_server_bug_report(array $payload, string $server_id = ''): string
+{
+    if (!raidlands_feedback_is_ready()) {
+        throw new RuntimeException('The feedback inbox is being set up.');
+    }
+
+    $player = is_array($payload['player'] ?? null) ? $payload['player'] : [];
+    $server = is_array($payload['server'] ?? null) ? $payload['server'] : [];
+    $local = is_array($payload['local'] ?? null) ? $payload['local'] : [];
+
+    $summary = raidlands_feedback_clean_text($payload['summary'] ?? '', 160);
+    $details = raidlands_feedback_clean_multiline($payload['details'] ?? '', 3000);
+    $incident_id = raidlands_feedback_clean_text($payload['incident_id'] ?? '', 80);
+    $source = raidlands_feedback_clean_text($payload['source'] ?? 'chat /bug', 80);
+    $steam_id64 = preg_replace('/\D+/', '', (string) ($player['steam_id64'] ?? '')) ?? '';
+    $display_name = raidlands_feedback_clean_text($player['display_name'] ?? '', 90);
+    $position = raidlands_feedback_clean_text($player['position'] ?? '', 80);
+
+    if ($summary === '' || strlen($summary) < 4) {
+        throw new InvalidArgumentException('Bug report summary is required.');
+    }
+
+    if ($details === '' || strlen($details) < 8) {
+        throw new InvalidArgumentException('Bug report details are required.');
+    }
+
+    if ($steam_id64 !== '' && !raidlands_store_validate_steam_id64($steam_id64)) {
+        throw new InvalidArgumentException('Invalid SteamID64.');
+    }
+
+    $server_label = raidlands_feedback_clean_text($server['name'] ?? $server_id, 160);
+    $server_address = raidlands_feedback_clean_text($server['address'] ?? '', 80);
+    $world_seed = raidlands_feedback_clean_text((string) ($server['seed'] ?? ''), 32);
+    $world_size = raidlands_feedback_clean_text((string) ($server['world_size'] ?? ''), 32);
+    $data_file = raidlands_feedback_clean_text($local['data_file'] ?? '', 220);
+    $plugin = raidlands_feedback_clean_text($local['plugin'] ?? 'RustReportDiscord', 80);
+    $plugin_version = raidlands_feedback_clean_text($local['plugin_version'] ?? '', 40);
+    $submitted_at = raidlands_feedback_clean_text($payload['submitted_at'] ?? '', 80);
+    $player_id = raidlands_feedback_player_id_from_steam_id64($steam_id64);
+
+    $metadata = array_filter([
+        'Source: ' . $source,
+        $incident_id !== '' ? 'Incident ID: ' . $incident_id : '',
+        $display_name !== '' ? 'Player: ' . $display_name . ($steam_id64 !== '' ? ' (' . $steam_id64 . ')' : '') : '',
+        $position !== '' ? 'Position: ' . $position : '',
+        $server_label !== '' ? 'Server: ' . $server_label : '',
+        $server_address !== '' ? 'Address: ' . $server_address : '',
+        $world_seed !== '' || $world_size !== '' ? 'World: seed ' . ($world_seed !== '' ? $world_seed : 'unknown') . ', size ' . ($world_size !== '' ? $world_size : 'unknown') : '',
+        $submitted_at !== '' ? 'Submitted UTC: ' . $submitted_at : '',
+        $data_file !== '' ? 'Local evidence: ' . $data_file : '',
+        trim($plugin . ' ' . $plugin_version) !== '' ? 'Plugin: ' . trim($plugin . ' ' . $plugin_version) : '',
+    ], static fn (string $line): bool => $line !== '');
+
+    $full_details = raidlands_feedback_clean_multiline($details . "\n\n---\n" . implode("\n", $metadata), 3000);
+    $public_id = $incident_id !== '' ? 'game-' . $incident_id : gmdate('YmdHis') . '-' . bin2hex(random_bytes(4));
+
+    $pdo = raidlands_db_required();
+    $statement = $pdo->prepare(
+        "INSERT INTO support_feedback (
+            public_id,
+            player_id,
+            steam_id64,
+            type,
+            status,
+            summary,
+            details,
+            contact_name,
+            contact_email,
+            linked_display_name,
+            page_url,
+            browser,
+            admin_note
+        ) VALUES (
+            :public_id,
+            :player_id,
+            :steam_id64,
+            'bug',
+            'open',
+            :summary,
+            :details,
+            '',
+            '',
+            :linked_display_name,
+            :page_url,
+            :browser,
+            ''
+        )
+        ON DUPLICATE KEY UPDATE
+            details = VALUES(details),
+            linked_display_name = VALUES(linked_display_name),
+            browser = VALUES(browser),
+            updated_at = CURRENT_TIMESTAMP"
+    );
+    $statement->execute([
+        'public_id' => $public_id,
+        'player_id' => $player_id,
+        'steam_id64' => $steam_id64,
+        'summary' => $summary,
+        'details' => $full_details,
+        'linked_display_name' => $display_name,
+        'page_url' => 'rust://' . ($server_id !== '' ? $server_id : 'server') . '/bug',
+        'browser' => trim($plugin . ' ' . $plugin_version),
+    ]);
+
+    $inserted_id = (int) $pdo->lastInsertId();
+    if ($inserted_id > 0) {
+        raidlands_ai_process_feedback_inline($inserted_id);
+    }
+
+    return $public_id;
+}
+
 function raidlands_feedback_is_ready(): bool
 {
     if (!raidlands_db_is_configured()) {
@@ -338,6 +450,24 @@ function raidlands_feedback_player_id_from_linked_player(array $linked_player, s
         return $player_id;
     }
 
+    if ($steam_id64 === '') {
+        return null;
+    }
+
+    try {
+        $row = raidlands_db_fetch_one(
+            'SELECT id FROM players WHERE steam_id64 = :steam_id64',
+            ['steam_id64' => $steam_id64]
+        );
+
+        return $row === null ? null : (int) $row['id'];
+    } catch (Throwable $error) {
+        return null;
+    }
+}
+
+function raidlands_feedback_player_id_from_steam_id64(string $steam_id64): ?int
+{
     if ($steam_id64 === '') {
         return null;
     }
