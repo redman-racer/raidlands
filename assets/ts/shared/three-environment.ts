@@ -87,10 +87,10 @@ function createRaidlandsSkyTexture(preset: RaidlandsEnvironmentPreset): Texture 
           sun: new Color(0xffc27a),
         }
       : {
-          zenith: new Color(0x0a1017),
-          horizon: new Color(0x59646a),
-          ground: new Color(0x1a1510),
-          sun: new Color(0xff8a28),
+          zenith: new Color(0x030812),
+          horizon: new Color(0x253748),
+          ground: new Color(0x090a0d),
+          sun: new Color(0xff7a24),
         };
 
     const image = context.createImageData(canvas.width, canvas.height);
@@ -107,9 +107,9 @@ function createRaidlandsSkyTexture(preset: RaidlandsEnvironmentPreset): Texture 
         const emberDistance = Math.hypot((u - 0.74) * 2.8, (v - 0.58) * 4.2);
         const sunGlow = Math.max(0, 1 - sunDistance) ** 2.85;
         const emberGlow = Math.max(0, 1 - emberDistance) ** 2.4;
-        const haze = Math.max(0, elevation) ** 1.72 * 0.085;
+        const haze = Math.max(0, elevation) ** 1.72 * (preset === "editor" ? 0.085 : 0.028);
         const color = base.clone()
-          .lerp(palette.sun, sunGlow * 0.58 + emberGlow * 0.18)
+          .lerp(palette.sun, sunGlow * (preset === "editor" ? 0.58 : 0.42) + emberGlow * (preset === "editor" ? 0.18 : 0.12))
           .offsetHSL(-0.012, -0.025, haze);
         const offset = (y * canvas.width + x) * 4;
         image.data[offset] = Math.round(color.r * 255);

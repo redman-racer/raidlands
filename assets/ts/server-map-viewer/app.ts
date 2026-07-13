@@ -612,10 +612,9 @@ class TerrainViewer {
     this.renderer.outputColorSpace = SRGBColorSpace;
     applyRaidlandsEnvironment(this.scene, this.renderer, {
       preset: "terrain",
-      exposure: 1.08,
-      backgroundIntensity: 0.9,
-      environmentIntensity: 0.76,
-      skyboxUrl: this.root.dataset.skyboxUrl || "",
+      exposure: 0.98,
+      backgroundIntensity: 0.54,
+      environmentIntensity: 0.68,
     });
     this.renderer.domElement.dataset.serverMapViewerCanvas = "true";
     this.terrainMaterial = this.createTerrainMaterial();
@@ -1208,6 +1207,11 @@ class TerrainViewer {
     this.sunLight.position.copy(environment.sunDirection).multiplyScalar(worldSize * 0.62);
     this.sunLight.position.y = Math.max(this.sunLight.position.y, worldSize * -0.18);
     this.fillLight.intensity = MathUtils.lerp(0.12, 0.28, 1 - MathUtils.clamp(environment.sunDirection.y, 0, 1));
+    const sunHeight = MathUtils.clamp(environment.sunDirection.y, -0.16, 0.9);
+    const daylight = MathUtils.smoothstep(sunHeight, -0.05, 0.55);
+    const horizonDrama = 1 - Math.abs(MathUtils.clamp(sunHeight, -0.1, 0.46) - 0.18) / 0.28;
+    this.scene.backgroundIntensity = MathUtils.lerp(0.2, 0.58, daylight) + Math.max(0, horizonDrama) * 0.08;
+    this.scene.environmentIntensity = MathUtils.lerp(0.26, 0.72, daylight);
   }
 
   private replaceOverlayLayer(parent: Group, incoming: Group, durationMs = 360): void {
