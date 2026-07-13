@@ -228,6 +228,20 @@ type WeatherParameter = {
 
 type WeatherSnapshot = {
   parameters?: Record<string, WeatherParameter>;
+  state?: WeatherState | null;
+};
+
+type WeatherState = {
+  previous?: string;
+  current?: string;
+  target?: string;
+  next?: string;
+  blend?: number | null;
+  seedPrevious?: string | number | null;
+  seedTarget?: string | number | null;
+  seedNext?: string | number | null;
+  rainGraceActive?: boolean | null;
+  source?: string;
 };
 
 type EnvironmentPayload = {

@@ -39,6 +39,7 @@ namespace Oxide.Plugins
         private bool publishInFlight;
         private string lastPublishedWipeKey = "";
         private string lastEnvironmentSyncAt = "";
+        private readonly Dictionary<string, MemberInfo> weatherConVarMemberCache = new Dictionary<string, MemberInfo>(StringComparer.OrdinalIgnoreCase);
 
         private class Configuration
         {
@@ -113,6 +114,21 @@ namespace Oxide.Plugins
         private class WeatherSnapshotPayload
         {
             public Dictionary<string, WeatherParameterPayload> parameters;
+            public WeatherStateDiagnosticsPayload state;
+        }
+
+        private class WeatherStateDiagnosticsPayload
+        {
+            public string previous;
+            public string current;
+            public string target;
+            public string next;
+            public float? blend;
+            public string seed_previous;
+            public string seed_target;
+            public string seed_next;
+            public bool? rain_grace_active;
+            public string source;
         }
 
         private class WeatherParameterPayload
@@ -566,25 +582,30 @@ namespace Oxide.Plugins
                 sunColor = ColorToHex(SunColorFromDirection(sunDirection));
             }
 
+            var samplePositions = EnvironmentSamplePositions();
+            var climate = ReadClimate();
+            var weatherPreset = ReadObjectProperty(climate, "WeatherState");
+
             var cloudSample = FirstValidSample(
-                SampleNativeClimate("Clouds", "Climate.GetClouds"),
+                SampleNativeClimate("Clouds", "Climate.GetClouds", samplePositions),
                 SampleFloat(atmosphere, "Cloudiness", "TOD.Atmosphere.Cloudiness"),
                 SampleFloat(atmosphere, "Clouds", "TOD.Atmosphere.Clouds"),
                 SampleFloat(weather, "Cloudiness", "TOD.Weather.Cloudiness"),
                 SampleFloat(weather, "CloudCoverage", "TOD.Weather.CloudCoverage")
             );
             var rainSample = FirstValidSample(
-                SampleNativeClimate("Rain", "Climate.GetRain"),
+                SampleNativeClimate("Rain", "Climate.GetRain", samplePositions),
                 SampleFloat(weather, "Rain", "TOD.Weather.Rain"),
                 SampleFloat(weather, "RainIntensity", "TOD.Weather.RainIntensity"),
                 SampleFloat(weather, "Precipitation", "TOD.Weather.Precipitation")
             );
             var fogSample = FirstValidSample(
-                SampleNativeClimate("Fog", "Climate.GetFog"),
+                SampleNativeClimate("Fog", "Climate.GetFog", samplePositions),
                 SampleRenderFogDensity()
             );
 
-            var weatherSnapshot = CreateWeatherSnapshot();
+            var weatherSnapshot = CreateWeatherSnapshot(samplePositions, weatherPreset);
+            weatherSnapshot.state = CreateWeatherStateDiagnostics(climate);
 
             return new EnvironmentSnapshotPayload
             {
@@ -606,7 +627,7 @@ namespace Oxide.Plugins
                 cloud_coverage = cloudSample.value,
                 rain_intensity = rainSample.value,
                 fog_intensity = fogSample.value,
-                weather_sample_summary = $"cloudSource={DescribeSample(cloudSample)}, rainSource={DescribeSample(rainSample)}, fogSource={DescribeSample(fogSample)}; {WeatherParameterSummary(weatherSnapshot)}",
+                weather_sample_summary = $"cloudSource={DescribeSample(cloudSample)}, rainSource={DescribeSample(rainSample)}, fogSource={DescribeSample(fogSample)}; {WeatherParameterSummary(weatherSnapshot)}; {WeatherStateSummary(weatherSnapshot.state)}",
                 weather = weatherSnapshot
             };
         }
@@ -625,7 +646,7 @@ namespace Oxide.Plugins
             }
         }
 
-        private WeatherSnapshotPayload CreateWeatherSnapshot()
+        private WeatherSnapshotPayload CreateWeatherSnapshot(List<Vector3> samplePositions, object weatherPreset)
         {
             var payload = new WeatherSnapshotPayload
             {
@@ -634,16 +655,16 @@ namespace Oxide.Plugins
 
             foreach (var definition in WeatherParameterDefinitions)
             {
-                payload.parameters[definition.name] = SampleWeatherParameter(definition);
+                payload.parameters[definition.name] = SampleWeatherParameter(definition, samplePositions, weatherPreset);
             }
 
             return payload;
         }
 
-        private WeatherParameterPayload SampleWeatherParameter(WeatherParameterDefinition definition)
+        private WeatherParameterPayload SampleWeatherParameter(WeatherParameterDefinition definition, List<Vector3> samplePositions, object weatherPreset)
         {
             var rawValue = ReadWeatherConVar(definition.member, out var rawSource);
-            var effectiveValue = ReadEffectiveWeatherValue(definition, out var effectiveSource);
+            var effectiveValue = ReadEffectiveWeatherValue(definition, samplePositions, weatherPreset, out var effectiveSource);
             var sample = new WeatherParameterPayload
             {
                 key = definition.key,
@@ -677,7 +698,7 @@ namespace Oxide.Plugins
             return sample;
         }
 
-        private float? ReadEffectiveWeatherValue(WeatherParameterDefinition definition, out string source)
+        private float? ReadEffectiveWeatherValue(WeatherParameterDefinition definition, List<Vector3> samplePositions, object weatherPreset, out string source)
         {
             source = "missing";
 
@@ -687,26 +708,25 @@ namespace Oxide.Plugins
                 {
                     case "rain":
                         source = "Climate.GetRain";
-                        return SampleNativeClimate("Rain", source).value;
+                        return SampleNativeClimate("Rain", source, samplePositions).value;
                     case "thunder":
                         source = "Climate.GetThunder";
-                        return SampleNativeClimate("Thunder", source).value;
+                        return SampleNativeClimate("Thunder", source, samplePositions).value;
                     case "rainbow":
                         source = "Climate.GetRainbow";
-                        return SampleNativeClimate("Rainbow", source).value;
+                        return SampleNativeClimate("Rainbow", source, samplePositions).value;
                     case "fog":
                         source = "Climate.GetFog";
-                        return SampleNativeClimate("Fog", source).value;
+                        return SampleNativeClimate("Fog", source, samplePositions).value;
                 }
 
-                var preset = ReadCurrentWeatherPreset();
-                if (preset == null || definition.effectivePath == null || definition.effectivePath.Length == 0)
+                if (weatherPreset == null || definition.effectivePath == null || definition.effectivePath.Length == 0)
                 {
                     source = "Climate.WeatherState missing";
                     return null;
                 }
 
-                object current = preset;
+                object current = weatherPreset;
                 foreach (var memberName in definition.effectivePath)
                 {
                     current = ReadObjectProperty(current, memberName);
@@ -733,12 +753,86 @@ namespace Oxide.Plugins
             }
         }
 
-        private object ReadCurrentWeatherPreset()
+        private WeatherStateDiagnosticsPayload CreateWeatherStateDiagnostics(object climate)
+        {
+            var diagnostics = new WeatherStateDiagnosticsPayload
+            {
+                source = climate == null ? "Climate missing" : "Climate"
+            };
+
+            if (climate == null)
+            {
+                return diagnostics;
+            }
+
+            diagnostics.previous = WeatherPresetLabel(ReadObjectProperty(climate, "WeatherStatePrevious"));
+            diagnostics.current = WeatherPresetLabel(ReadObjectProperty(climate, "WeatherState"));
+            diagnostics.target = WeatherPresetLabel(ReadObjectProperty(climate, "WeatherStateTarget"));
+            diagnostics.next = WeatherPresetLabel(ReadObjectProperty(climate, "WeatherStateNext"));
+            diagnostics.blend = ReadFloatProperty(climate, "WeatherStateBlend");
+            diagnostics.seed_previous = ReadDiagnosticMemberString(climate, "WeatherSeedPrevious");
+            diagnostics.seed_target = ReadDiagnosticMemberString(climate, "WeatherSeedTarget");
+            diagnostics.seed_next = ReadDiagnosticMemberString(climate, "WeatherSeedNext");
+            diagnostics.rain_grace_active = ReadBoolProperty(typeof(ConVar.Weather), "rain_grace_active");
+
+            return diagnostics;
+        }
+
+        private string WeatherPresetLabel(object preset)
+        {
+            if (preset == null)
+            {
+                return "";
+            }
+
+            var name = Convert.ToString(ReadObjectProperty(preset, "name"), CultureInfo.InvariantCulture);
+            if (!string.IsNullOrWhiteSpace(name))
+            {
+                return name;
+            }
+
+            var type = ReadObjectProperty(preset, "Type");
+            if (type != null)
+            {
+                var typeName = Convert.ToString(ReadObjectProperty(type, "name"), CultureInfo.InvariantCulture);
+                if (!string.IsNullOrWhiteSpace(typeName))
+                {
+                    return typeName;
+                }
+
+                var typeText = type.ToString();
+                if (!string.IsNullOrWhiteSpace(typeText))
+                {
+                    return typeText;
+                }
+            }
+
+            return preset.ToString();
+        }
+
+        private string WeatherStateSummary(WeatherStateDiagnosticsPayload state)
+        {
+            if (state == null)
+            {
+                return "weatherState=unset";
+            }
+
+            return string.Format(
+                CultureInfo.InvariantCulture,
+                "weatherState=previous={0},current={1},target={2},next={3},blend={4}",
+                string.IsNullOrWhiteSpace(state.previous) ? "unset" : state.previous,
+                string.IsNullOrWhiteSpace(state.current) ? "unset" : state.current,
+                string.IsNullOrWhiteSpace(state.target) ? "unset" : state.target,
+                string.IsNullOrWhiteSpace(state.next) ? "unset" : state.next,
+                state.blend == null ? "unset" : state.blend.Value.ToString("0.###", CultureInfo.InvariantCulture)
+            );
+        }
+
+        private object ReadClimate()
         {
             try
             {
-                var climate = UnityEngine.Object.FindFirstObjectByType<Climate>();
-                return climate == null ? null : climate.WeatherState;
+                return UnityEngine.Object.FindFirstObjectByType<Climate>();
             }
             catch
             {
@@ -752,47 +846,16 @@ namespace Oxide.Plugins
 
             try
             {
-                var weatherType = AppDomain.CurrentDomain
-                    .GetAssemblies()
-                    .Select(assembly => assembly.GetType("ConVar.Weather", false))
-                    .FirstOrDefault(type => type != null);
-
-                if (weatherType == null)
+                var member = GetWeatherConVarMember(memberName);
+                if (member is FieldInfo field && TryConvertFloat(field.GetValue(null), out var fieldValue))
                 {
-                    weatherType = AppDomain.CurrentDomain
-                        .GetAssemblies()
-                        .SelectMany(assembly =>
-                        {
-                            try
-                            {
-                                return assembly.GetTypes();
-                            }
-                            catch
-                            {
-                                return new Type[0];
-                            }
-                        })
-                        .FirstOrDefault(type => string.Equals(type.Name, "Weather", StringComparison.OrdinalIgnoreCase) && string.Equals(type.Namespace, "ConVar", StringComparison.OrdinalIgnoreCase));
-                }
-
-                if (weatherType == null)
-                {
-                    source = "ConVar.Weather missing";
-                    return null;
-                }
-
-                var flags = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.IgnoreCase;
-                var field = weatherType.GetField(memberName, flags);
-                if (field != null && TryConvertFloat(field.GetValue(null), out var fieldValue))
-                {
-                    source = "ConVar.Weather." + field.Name;
+                    source = "ConVar.Weather." + field.Name + " getter";
                     return fieldValue;
                 }
 
-                var property = weatherType.GetProperty(memberName, flags);
-                if (property != null && TryConvertFloat(property.GetValue(null, null), out var propertyValue))
+                if (member is PropertyInfo property && TryConvertFloat(property.GetValue(null, null), out var propertyValue))
                 {
-                    source = "ConVar.Weather." + property.Name;
+                    source = "ConVar.Weather." + property.Name + " getter";
                     return propertyValue;
                 }
 
@@ -804,6 +867,26 @@ namespace Oxide.Plugins
                 source = "ConVar.Weather." + memberName + " error " + ex.GetType().Name;
                 return null;
             }
+        }
+
+        private MemberInfo GetWeatherConVarMember(string memberName)
+        {
+            if (string.IsNullOrWhiteSpace(memberName))
+            {
+                return null;
+            }
+
+            MemberInfo member;
+            if (weatherConVarMemberCache.TryGetValue(memberName, out member))
+            {
+                return member;
+            }
+
+            var flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.Static | BindingFlags.IgnoreCase;
+            var weatherType = typeof(ConVar.Weather);
+            member = (MemberInfo)weatherType.GetField(memberName, flags) ?? weatherType.GetProperty(memberName, flags);
+            weatherConVarMemberCache[memberName] = member;
+            return member;
         }
 
         private string WeatherParameterSummary(WeatherSnapshotPayload payload)
@@ -863,13 +946,13 @@ namespace Oxide.Plugins
             return (float)Math.Round(value, 4);
         }
 
-        private SampledFloat SampleNativeClimate(string sampleName, string source)
+        private SampledFloat SampleNativeClimate(string sampleName, string source, List<Vector3> samplePositions = null)
         {
             try
             {
                 var values = new List<float>();
                 var rawValues = new List<float>();
-                foreach (var position in EnvironmentSamplePositions())
+                foreach (var position in samplePositions ?? EnvironmentSamplePositions())
                 {
                     float value;
                     switch (sampleName)
@@ -1008,21 +1091,10 @@ namespace Oxide.Plugins
 
             try
             {
-                var flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.IgnoreCase;
-                var type = instance.GetType();
-                var property = type.GetProperty(propertyName, flags);
-                if (property != null)
-                {
-                    return NormalizeSample(property.GetValue(instance, null), source);
-                }
-
-                var field = type.GetField(propertyName, flags);
-                if (field != null)
-                {
-                    return NormalizeSample(field.GetValue(instance), source);
-                }
-
-                return new SampledFloat(null, source, "missing");
+                var rawValue = ReadMemberValue(instance, propertyName);
+                return rawValue == null
+                    ? new SampledFloat(null, source, "missing")
+                    : NormalizeSample(rawValue, source);
             }
             catch (Exception ex)
             {
@@ -1121,10 +1193,57 @@ namespace Oxide.Plugins
 
         private float? ReadFloatProperty(object instance, string propertyName)
         {
-            return SampleFloat(instance, propertyName, propertyName).value;
+            var rawValue = ReadMemberValue(instance, propertyName);
+            if (TryConvertFloat(rawValue, out var value))
+            {
+                return RoundWeatherValue(value);
+            }
+
+            return null;
+        }
+
+        private bool? ReadBoolProperty(object instance, string propertyName)
+        {
+            var rawValue = ReadMemberValue(instance, propertyName);
+            if (rawValue == null)
+            {
+                return null;
+            }
+
+            try
+            {
+                return Convert.ToBoolean(rawValue, CultureInfo.InvariantCulture);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private string ReadDiagnosticMemberString(object instance, string propertyName)
+        {
+            var rawValue = ReadMemberValue(instance, propertyName);
+            if (rawValue == null)
+            {
+                return "";
+            }
+
+            try
+            {
+                return Convert.ToString(rawValue, CultureInfo.InvariantCulture) ?? "";
+            }
+            catch
+            {
+                return rawValue.ToString();
+            }
         }
 
         private object ReadObjectProperty(object instance, string propertyName)
+        {
+            return ReadMemberValue(instance, propertyName);
+        }
+
+        private object ReadMemberValue(object instance, string propertyName)
         {
             if (instance == null || string.IsNullOrWhiteSpace(propertyName))
             {
@@ -1133,16 +1252,26 @@ namespace Oxide.Plugins
 
             try
             {
-                var flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.IgnoreCase;
-                var type = instance.GetType();
+                var isStaticLookup = instance is Type;
+                var flags = BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.IgnoreCase | BindingFlags.FlattenHierarchy |
+                    (isStaticLookup ? BindingFlags.Static : BindingFlags.Instance);
+                var type = isStaticLookup ? (Type)instance : instance.GetType();
+                var target = isStaticLookup ? null : instance;
                 var property = type.GetProperty(propertyName, flags);
-                if (property != null)
+                if (property != null && property.GetIndexParameters().Length == 0)
                 {
-                    return property.GetValue(instance, null);
+                    return property.GetValue(target, null);
                 }
 
                 var field = type.GetField(propertyName, flags);
-                return field == null ? null : field.GetValue(instance);
+                if (field != null)
+                {
+                    return field.GetValue(target);
+                }
+
+                var method = type.GetMethod(propertyName, flags, null, Type.EmptyTypes, null)
+                    ?? type.GetMethod("get_" + propertyName, flags, null, Type.EmptyTypes, null);
+                return method == null ? null : method.Invoke(target, null);
             }
             catch
             {

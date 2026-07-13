@@ -1422,7 +1422,28 @@ function raidlands_server_environment_weather_public($value, ?array $row = null)
     }
 
     $source_parameters = is_array($value['parameters'] ?? null) ? $value['parameters'] : [];
+    $source_state = is_array($value['state'] ?? null) ? $value['state'] : [];
     $parameters = [];
+    $state = [
+        'previous' => raidlands_server_status_clean_text($source_state['previous'] ?? '', 80),
+        'current' => raidlands_server_status_clean_text($source_state['current'] ?? '', 80),
+        'target' => raidlands_server_status_clean_text($source_state['target'] ?? '', 80),
+        'next' => raidlands_server_status_clean_text($source_state['next'] ?? '', 80),
+        'blend' => is_numeric($source_state['blend'] ?? null) ? round((float) $source_state['blend'], 4) : null,
+        'seedPrevious' => raidlands_server_status_clean_text($source_state['seedPrevious'] ?? $source_state['seed_previous'] ?? '', 80),
+        'seedTarget' => raidlands_server_status_clean_text($source_state['seedTarget'] ?? $source_state['seed_target'] ?? '', 80),
+        'seedNext' => raidlands_server_status_clean_text($source_state['seedNext'] ?? $source_state['seed_next'] ?? '', 80),
+        'rainGraceActive' => null,
+        'source' => raidlands_server_status_clean_text($source_state['source'] ?? '', 120),
+    ];
+    $rain_grace_active = $source_state['rainGraceActive'] ?? $source_state['rain_grace_active'] ?? null;
+    if (is_bool($rain_grace_active)) {
+        $state['rainGraceActive'] = $rain_grace_active;
+    } elseif (is_numeric($rain_grace_active)) {
+        $state['rainGraceActive'] = ((int) $rain_grace_active) !== 0;
+    } elseif (is_string($rain_grace_active)) {
+        $state['rainGraceActive'] = filter_var($rain_grace_active, FILTER_VALIDATE_BOOLEAN, FILTER_NULL_ON_FAILURE);
+    }
 
     foreach ($source_parameters as $name => $parameter) {
         if (!is_array($parameter)) {
@@ -1466,7 +1487,7 @@ function raidlands_server_environment_weather_public($value, ?array $row = null)
         }
     }
 
-    return ['parameters' => $parameters];
+    return ['parameters' => $parameters, 'state' => $state];
 }
 
 function raidlands_server_environment_snapshot_public(?array $row): ?array
