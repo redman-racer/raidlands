@@ -326,9 +326,9 @@ const RAIDLANDS_ENVIRONMENT_GRADE_SHADER = {
       float shadowWeight = 1.0 - smoothstep(0.22, 0.78, luminance);
       float clearSky = 1.0 - clamp(uCloudCoverage * 0.62 + uRainIntensity * 0.48, 0.0, 0.82);
       float sunsetGrade = uTwilight * clearSky;
-      float warmth = sunsetGrade * (0.055 + shadowWeight * 0.13);
+      float warmth = sunsetGrade * (0.02 + shadowWeight * 0.055);
 
-      color *= mix(vec3(1.0), vec3(1.18, 0.93, 0.8), sunsetGrade * 0.55);
+      color *= mix(vec3(1.0), vec3(1.08, 0.98, 0.92), sunsetGrade * 0.24);
       color += warmSun * warmth;
       float hazeDesaturation = clamp(uFogStrength * 0.1 + uRainIntensity * 0.055, 0.0, 0.13);
       color = mix(color, vec3(dot(color, vec3(0.299, 0.587, 0.114))), hazeDesaturation);
@@ -677,6 +677,7 @@ class TerrainViewer {
   private readonly overlayLayerTransitions: OverlayLayerTransition[] = [];
   private readonly airstrikeLayer = new Group();
   private readonly weatherCloudLayer = new Group();
+  private readonly groundFogLayer: Group;
   private readonly rainSheetLayer = new Group();
   private readonly rainLayer = new Group();
   private readonly rainMaterial: LineBasicMaterial;
@@ -759,6 +760,9 @@ class TerrainViewer {
     this.oceanWaveTexture = createOceanWaveTexture();
     this.oceanSurfaceMesh = this.createOceanSurfaceMesh();
     this.scene.add(this.oceanSurfaceMesh);
+    this.groundFogLayer = createGroundFogBanks(this.terrain);
+    this.groundFogLayer.visible = false;
+    this.scene.add(this.groundFogLayer);
     this.weatherCloudLayer.name = "raidlands-floating-weather-clouds";
     this.weatherCloudLayer.add(createFloatingWeatherClouds(this.terrain));
     this.scene.add(this.weatherCloudLayer);
@@ -1198,8 +1202,8 @@ uniform float raidlandsCloudAttenuation;`,
           `#include <normal_fragment_begin>
 vec3 raidlandsSunDirectionView = normalize((viewMatrix * vec4(raidlandsSunDirection, 0.0)).xyz);
 float raidlandsSunFacing = max(dot(normal, raidlandsSunDirectionView), 0.0);
-float raidlandsWarmSlope = raidlandsTwilight * (0.22 + raidlandsSunFacing * 0.78) * (1.0 - raidlandsCloudAttenuation * 0.58);
-diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.32, raidlandsWarmSlope);`,
+float raidlandsWarmSlope = raidlandsTwilight * (0.18 + raidlandsSunFacing * 0.82) * (1.0 - raidlandsCloudAttenuation * 0.58);
+diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.22, raidlandsWarmSlope);`,
         );
     };
     material.customProgramCacheKey = () => "raidlands-terrain-sun-wash-v1";
@@ -1398,8 +1402,8 @@ diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.32, raidlan
     const atmosphereContrast = MathUtils.clamp(environment.atmosphereContrast, 0.15, 2.4);
     const atmosphereBrightnessT = MathUtils.clamp(atmosphereBrightness / 1.5, 0, 1);
     const atmosphereWarmColor = environment.sunColor.clone().lerp(
-      new Color(0xffc18c),
-      MathUtils.lerp(0.38, 0.64, MathUtils.clamp(environment.atmosphereMie / 4, 0, 1)),
+      new Color(0xffd0aa),
+      MathUtils.lerp(0.52, 0.7, MathUtils.clamp(environment.atmosphereMie / 4, 0, 1)),
     );
     const scatteringGlow = MathUtils.lerp(0.76, 1.26, MathUtils.clamp(environment.cloudScattering, 0, 1));
     this.renderer.toneMappingExposure = MathUtils.lerp(0.92, 1.48, atmosphereBrightnessT)
@@ -1407,7 +1411,7 @@ diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.32, raidlan
       * (1 + twilight * 0.22);
     this.ambientLight.color.copy(environment.ambientColor)
       .lerp(new Color(0xddeaf0), daylight * MathUtils.lerp(0.42, 0.72, atmosphereBrightnessT))
-      .lerp(atmosphereWarmColor, twilight * MathUtils.lerp(0.42, 0.58, atmosphereBrightnessT))
+      .lerp(atmosphereWarmColor, twilight * MathUtils.lerp(0.24, 0.38, atmosphereBrightnessT))
       .lerp(new Color(0x101827), night * 0.52);
     this.ambientLight.intensity = MathUtils.clamp(
       (
@@ -1424,7 +1428,7 @@ diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.32, raidlan
     const worldSize = this.terrain.worldSize || 4500;
     this.sunLight.position.copy(environment.sunDirection).multiplyScalar(worldSize * 0.62);
     this.sunLight.position.y = Math.max(this.sunLight.position.y, worldSize * -0.18);
-    this.fillLight.color.set(0x88b7d6).lerp(atmosphereWarmColor, twilight * 0.62);
+    this.fillLight.color.set(0x88b7d6).lerp(atmosphereWarmColor, twilight * 0.38);
     this.fillLight.intensity = MathUtils.lerp(0.12, 0.32, daylight) + twilight * 0.22;
     this.terrainLightUniforms.sunDirection.value.copy(environment.sunDirection);
     this.terrainLightUniforms.sunColor.value.copy(environment.sunColor);
@@ -1445,7 +1449,7 @@ diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.32, raidlan
     this.scene.backgroundIntensity = (MathUtils.lerp(0.72, 1.04, daylight) + horizonDrama * 0.08 - night * 0.18) * MathUtils.lerp(0.72, 1.2, atmosphereBrightness / 1.4);
     this.scene.environmentIntensity = (MathUtils.lerp(0.46, 0.96, daylight) + horizonDrama * 0.04) * MathUtils.lerp(0.82, 1.18, atmosphereContrast / 1.4);
     const fogStrength = MathUtils.clamp(
-      environment.fogIntensity * 0.74 + visualCloudCoverage * 0.08 + horizonDrama * 0.12 + MathUtils.clamp(environment.atmosphereMie / 4, 0, 1) * 0.04,
+      environment.fogIntensity * 0.58 + visualCloudCoverage * 0.05 + horizonDrama * 0.06 + MathUtils.clamp(environment.atmosphereMie / 4, 0, 1) * 0.025,
       0,
       1,
     );
@@ -1454,11 +1458,11 @@ diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.32, raidlan
       .multiplyScalar(MathUtils.lerp(0.82, 1.08, atmosphereBrightnessT));
     const fogColor = new Color(0x172235)
       .lerp(daylightFogColor, daylight)
-      .lerp(atmosphereWarmColor, twilight * 0.58)
-      .lerp(new Color(0xffc083), twilight * MathUtils.clamp(environment.atmosphereMie / 4, 0, 1) * 0.24)
+      .lerp(atmosphereWarmColor, twilight * 0.28)
+      .lerp(new Color(0xffd1aa), twilight * MathUtils.clamp(environment.atmosphereMie / 4, 0, 1) * 0.1)
       .lerp(environment.ambientColor, night * 0.24);
     this.scene.fog = fogStrength > 0.02
-      ? new FogExp2(fogColor, MathUtils.lerp(0.000025, 0.00017, Math.sqrt(fogStrength)))
+      ? new FogExp2(fogColor, MathUtils.lerp(0.000012, 0.00009, Math.sqrt(fogStrength)))
       : null;
     this.environmentGradePass.uniforms.uSunColor.value.copy(atmosphereWarmColor);
     this.environmentGradePass.uniforms.uTwilight.value = twilight;
@@ -1502,6 +1506,26 @@ diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.32, raidlan
     const cloudScale = MathUtils.lerp(0.82, 1.18, visibleCloudAmount)
       * MathUtils.lerp(0.72, 1.32, MathUtils.clamp(environment.cloudSize / 4, 0, 1));
     const cloudDarkening = MathUtils.clamp(environment.cloudAttenuation, 0, 1) * visibleCloudAmount * 0.36;
+
+    const groundFogAmount = Math.sqrt(MathUtils.clamp(environment.fogIntensity, 0, 1));
+    const groundFogColor = new Color(0xc7d4d8)
+      .lerp(environment.ambientColor, 0.2)
+      .lerp(environment.sunColor, twilight * 0.18);
+    this.groundFogLayer.visible = groundFogAmount > 0.015;
+    this.groundFogLayer.children.forEach((child, index) => {
+      if (!(child instanceof Sprite)) {
+        return;
+      }
+      const distance = this.camera.position.distanceTo(child.position);
+      const nearFade = MathUtils.smoothstep(distance, worldSize * 0.12, worldSize * 0.42);
+      const farFade = 1 - MathUtils.smoothstep(distance, worldSize * 1.08, worldSize * 1.65);
+      const material = child.material as SpriteMaterial;
+      material.color.copy(groundFogColor);
+      material.opacity = groundFogAmount * nearFade * farFade * (Number(child.userData.opacityBias) || 1) * 0.34;
+      child.visible = material.opacity > 0.003;
+      child.position.x = (Number(child.userData.baseX) || 0) + Math.sin(now * 0.000018 + index * 1.9) * worldSize * 0.008;
+      child.position.z = (Number(child.userData.baseZ) || 0) + Math.cos(now * 0.000014 + index * 1.3) * worldSize * 0.006;
+    });
 
     this.weatherCloudLayer.visible = visibleCloudAmount > 0.015;
     this.weatherCloudLayer.position.x = this.camera.position.x * 0.035;
@@ -2952,10 +2976,7 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
   }
 
   if (key.includes("launch")) {
-    addBox(group, size * 1.35, 9, size * 0.82, 0x353b3a, 0, 4, 0);
-    addCylinder(group, size * 0.12, size * 1.05, 0x9fafa8, -size * 0.15, size * 0.55, 0);
-    addCone(group, size * 0.2, size * 0.34, 0xb86f3f, -size * 0.15, size * 1.24, 0);
-    addBox(group, size * 0.2, size * 0.78, size * 0.2, 0x6f5f48, size * 0.28, size * 0.42, 0);
+    createLaunchSiteMonumentPrimitive(group, size);
     return addTitle();
   }
 
@@ -2989,9 +3010,7 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
   }
 
   if (key.includes("harbor")) {
-    addBox(group, size * 1.4, 7, size * 0.28, 0x3e484a, 0, 4, 0);
-    addBox(group, size * 0.24, size * 0.58, size * 0.24, 0x8b7044, -size * 0.42, size * 0.32, -size * 0.08);
-    addBox(group, size * 0.18, size * 0.46, size * 0.18, 0x8b7044, size * 0.36, size * 0.26, size * 0.12);
+    createHarborMonumentPrimitive(group, size);
     return addTitle();
   }
 
@@ -3041,6 +3060,181 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
   addBox(group, size * 0.68, size * 0.24, size * 0.5, 0x6a705e, 0, size * 0.12, 0);
   addCylinder(group, size * 0.08, size * 0.46, 0x8b7044, size * 0.28, size * 0.23, -size * 0.12);
   return addTitle();
+}
+
+function createLaunchSiteMonumentPrimitive(group: Group, size: number): void {
+  const concrete = 0x8e8a7d;
+  const stainedConcrete = 0x69695f;
+  const asphalt = 0x262b2d;
+  const trench = 0x15191a;
+  const rust = 0x9c4f2f;
+  const darkRust = 0x6e3526;
+  const steel = 0x687579;
+  const paleSteel = 0xa9b4ae;
+  const wall = 0x6f7064;
+  const roof = 0xb7ad95;
+
+  addBox(group, size * 1.72, 5, size * 0.98, concrete, -size * 0.04, 2.5, size * 0.02);
+  addBox(group, size * 1.02, 4, size * 0.82, stainedConcrete, -size * 0.5, 2, -size * 0.08);
+  addBox(group, size * 0.74, 4, size * 0.74, concrete, size * 0.58, 2, size * 0.1);
+  addBox(group, size * 1.28, 2.4, size * 0.12, asphalt, -size * 0.12, 6.1, -size * 0.34);
+  addBox(group, size * 0.18, 2.4, size * 0.82, asphalt, size * 0.38, 6.1, size * 0.04);
+
+  const flameTrench = addBox(group, size * 0.82, 3.2, size * 0.16, trench, -size * 0.26, 7.2, -size * 0.12);
+  flameTrench.rotation.y = MathUtils.degToRad(-14);
+  const railA = addBox(group, size * 0.72, 2.2, size * 0.028, darkRust, -size * 0.24, 10, -size * 0.2);
+  railA.rotation.y = MathUtils.degToRad(-14);
+  const railB = addBox(group, size * 0.72, 2.2, size * 0.028, darkRust, -size * 0.24, 10, -size * 0.04);
+  railB.rotation.y = MathUtils.degToRad(-14);
+
+  addBox(group, size * 0.42, size * 0.28, size * 0.34, wall, size * 0.54, size * 0.17, -size * 0.32);
+  addBox(group, size * 0.48, size * 0.06, size * 0.38, roof, size * 0.54, size * 0.34, -size * 0.32);
+  addBox(group, size * 0.34, size * 0.2, size * 0.26, wall, size * 0.16, size * 0.13, size * 0.43);
+  addBox(group, size * 0.22, size * 0.16, size * 0.22, wall, -size * 0.68, size * 0.11, size * 0.28);
+
+  addCylinder(group, size * 0.08, size * 0.82, paleSteel, -size * 0.22, size * 0.46, size * 0.07);
+  addCylinder(group, size * 0.1, size * 0.08, darkRust, -size * 0.22, size * 0.9, size * 0.07);
+  addCone(group, size * 0.13, size * 0.22, rust, -size * 0.22, size * 1.05, size * 0.07);
+
+  addLaunchScaffoldTower(group, size, -size * 0.42, size * 0.08, size * 0.88);
+  addLaunchScaffoldTower(group, size, size * 0.1, size * 0.18, size * 0.7);
+  addLaunchScaffoldTower(group, size, size * 0.7, size * 0.4, size * 0.58);
+  addLaunchScaffoldTower(group, size, -size * 0.72, -size * 0.44, size * 0.54);
+
+  addLaunchServiceArm(group, size, -size * 0.16, size * 0.17, size * 0.64, MathUtils.degToRad(-8));
+  addLaunchServiceArm(group, size, -size * 0.05, size * 0.02, size * 0.48, MathUtils.degToRad(8));
+
+  addCylinder(group, size * 0.08, size * 0.26, steel, size * 0.45, size * 0.15, size * 0.42);
+  addCylinder(group, size * 0.08, size * 0.26, steel, size * 0.58, size * 0.15, size * 0.42);
+  addCylinder(group, size * 0.08, size * 0.26, steel, size * 0.71, size * 0.15, size * 0.42);
+  addCylinder(group, size * 0.055, size * 0.18, steel, -size * 0.65, size * 0.12, -size * 0.18);
+  addCylinder(group, size * 0.055, size * 0.18, steel, -size * 0.52, size * 0.12, -size * 0.18);
+
+  addBox(group, size * 0.22, size * 0.08, size * 0.12, rust, size * 0.2, size * 0.1, -size * 0.52);
+  addBox(group, size * 0.18, size * 0.08, size * 0.12, darkRust, size * 0.46, size * 0.1, -size * 0.52);
+  addBox(group, size * 0.16, size * 0.07, size * 0.1, rust, -size * 0.04, size * 0.09, size * 0.45);
+}
+
+function addLaunchScaffoldTower(group: Group, size: number, x: number, z: number, height: number): void {
+  const rust = 0x9c4f2f;
+  const darkRust = 0x6e3526;
+  const width = size * 0.16;
+  const legRadius = size * 0.012;
+  const legHeight = height;
+  const y = legHeight / 2 + size * 0.06;
+
+  addBox(group, legRadius, legHeight, legRadius, rust, x - width / 2, y, z - width / 2);
+  addBox(group, legRadius, legHeight, legRadius, rust, x + width / 2, y, z - width / 2);
+  addBox(group, legRadius, legHeight, legRadius, rust, x - width / 2, y, z + width / 2);
+  addBox(group, legRadius, legHeight, legRadius, rust, x + width / 2, y, z + width / 2);
+
+  [0.26, 0.5, 0.74, 0.96].forEach((level) => {
+    const crossY = size * 0.06 + legHeight * level;
+    const front = addBox(group, width * 1.25, size * 0.014, size * 0.014, darkRust, x, crossY, z - width / 2);
+    front.rotation.z = MathUtils.degToRad(level > 0.5 ? -18 : 18);
+    const back = addBox(group, width * 1.25, size * 0.014, size * 0.014, darkRust, x, crossY, z + width / 2);
+    back.rotation.z = MathUtils.degToRad(level > 0.5 ? 18 : -18);
+    addBox(group, width, size * 0.012, size * 0.012, rust, x, crossY, z);
+  });
+}
+
+function addLaunchServiceArm(group: Group, size: number, x: number, z: number, y: number, rotationY: number): void {
+  const arm = addBox(group, size * 0.4, size * 0.026, size * 0.04, 0x9c4f2f, x, y, z);
+  arm.rotation.y = rotationY;
+  const brace = addBox(group, size * 0.24, size * 0.018, size * 0.028, 0x6e3526, x + size * 0.04, y - size * 0.06, z);
+  brace.rotation.y = rotationY;
+  brace.rotation.z = MathUtils.degToRad(-18);
+}
+
+function createHarborMonumentPrimitive(group: Group, size: number): void {
+  const concrete = 0x9b9886;
+  const stainedConcrete = 0x77786b;
+  const asphalt = 0x343b3d;
+  const rust = 0x8a5a38;
+  const steel = 0x59676b;
+  const darkSteel = 0x252d30;
+  const containerGreen = 0x4f694d;
+  const containerOrange = 0xa86a3a;
+  const containerBlue = 0x3d5f70;
+
+  addBox(group, size * 1.55, 5, size * 0.44, concrete, 0, 2.5, size * 0.22);
+  addBox(group, size * 1.38, 2.4, size * 0.18, asphalt, -size * 0.03, 6.3, size * 0.18);
+  addBox(group, size * 0.5, 4, size * 0.88, concrete, -size * 0.52, 2, -size * 0.26);
+  addBox(group, size * 0.38, 4, size * 0.7, concrete, size * 0.54, 2, -size * 0.18);
+  addBox(group, size * 1.34, 4.5, size * 0.24, stainedConcrete, size * 0.05, 2.25, -size * 0.72);
+  addBox(group, size * 0.1, 8, size * 0.88, darkSteel, -size * 0.82, 4, -size * 0.2);
+  addBox(group, size * 0.1, 8, size * 0.72, darkSteel, size * 0.78, 4, -size * 0.18);
+
+  addHarborWarehouse(group, size, -size * 0.36, size * 0.5, size * 0.48, 0);
+  addHarborWarehouse(group, size, size * 0.22, size * 0.48, size * 0.36, MathUtils.degToRad(90));
+
+  addHarborBridge(group, size, -size * 0.3, -size * 0.53, 0);
+  addHarborCrane(group, size, -size * 0.36, -size * 0.56, MathUtils.degToRad(-18));
+  addHarborCrane(group, size, size * 0.38, -size * 0.66, MathUtils.degToRad(18));
+  addHarborCrane(group, size, size * 0.62, -size * 0.04, MathUtils.degToRad(-44));
+
+  addCylinder(group, size * 0.07, size * 0.34, steel, size * 0.45, size * 0.18, size * 0.32);
+  addCylinder(group, size * 0.07, size * 0.34, steel, size * 0.58, size * 0.18, size * 0.32);
+  addCylinder(group, size * 0.07, size * 0.34, steel, size * 0.71, size * 0.18, size * 0.32);
+
+  addBox(group, size * 0.16, size * 0.1, size * 0.24, containerGreen, -size * 0.04, size * 0.12, -size * 0.72);
+  addBox(group, size * 0.16, size * 0.1, size * 0.24, containerOrange, size * 0.14, size * 0.12, -size * 0.72);
+  addBox(group, size * 0.16, size * 0.1, size * 0.24, containerBlue, size * 0.32, size * 0.12, -size * 0.72);
+  addBox(group, size * 0.15, size * 0.1, size * 0.22, containerGreen, size * 0.5, size * 0.12, -size * 0.58);
+  addBox(group, size * 0.15, size * 0.1, size * 0.22, containerOrange, size * 0.66, size * 0.12, -size * 0.58);
+  addBox(group, size * 0.12, size * 0.1, size * 0.18, containerBlue, -size * 0.62, size * 0.12, -size * 0.5);
+
+  const bollardPositions = [
+    [-0.68, -0.36],
+    [-0.38, -0.68],
+    [0.02, -0.82],
+    [0.42, -0.76],
+    [0.72, -0.44],
+    [0.66, 0.04],
+  ];
+  bollardPositions.forEach(([x, z]) => {
+    addCylinder(group, size * 0.018, size * 0.12, rust, size * x, size * 0.1, size * z);
+  });
+}
+
+function addHarborWarehouse(group: Group, size: number, x: number, z: number, width: number, rotationY: number): void {
+  const building = addBox(group, width, size * 0.18, size * 0.24, 0x727363, x, size * 0.12, z);
+  building.rotation.y = rotationY;
+
+  const roof = addBox(group, width * 1.08, size * 0.045, size * 0.28, 0xd9d0b7, x, size * 0.24, z);
+  roof.rotation.y = rotationY;
+  roof.rotation.z = MathUtils.degToRad(4);
+}
+
+function addHarborBridge(group: Group, size: number, x: number, z: number, rotationY: number): void {
+  const deck = addBox(group, size * 0.56, size * 0.04, size * 0.16, 0x50483f, x, size * 0.18, z);
+  deck.rotation.y = rotationY;
+
+  const railA = addBox(group, size * 0.58, size * 0.035, size * 0.025, 0x6f4e3a, x, size * 0.28, z - size * 0.07);
+  railA.rotation.y = rotationY;
+  const railB = addBox(group, size * 0.58, size * 0.035, size * 0.025, 0x6f4e3a, x, size * 0.28, z + size * 0.07);
+  railB.rotation.y = rotationY;
+
+  [-0.2, 0, 0.2].forEach((offset) => {
+    const truss = addBox(group, size * 0.24, size * 0.025, size * 0.025, 0x6f4e3a, x + size * offset, size * 0.26, z);
+    truss.rotation.y = rotationY;
+    truss.rotation.z = MathUtils.degToRad(28);
+  });
+}
+
+function addHarborCrane(group: Group, size: number, x: number, z: number, rotationY: number): void {
+  const base = addBox(group, size * 0.12, size * 0.08, size * 0.12, 0x394246, x, size * 0.08, z);
+  base.rotation.y = rotationY;
+
+  const tower = addBox(group, size * 0.055, size * 0.5, size * 0.055, 0x59676b, x, size * 0.34, z);
+  tower.rotation.y = rotationY;
+
+  const boom = addBox(group, size * 0.46, size * 0.035, size * 0.04, 0x8a5a38, x + Math.cos(rotationY) * size * 0.16, size * 0.62, z - Math.sin(rotationY) * size * 0.16);
+  boom.rotation.y = rotationY;
+  boom.rotation.z = MathUtils.degToRad(8);
+
+  const counterweight = addBox(group, size * 0.16, size * 0.06, size * 0.06, 0x303638, x - Math.cos(rotationY) * size * 0.13, size * 0.58, z + Math.sin(rotationY) * size * 0.13);
+  counterweight.rotation.y = rotationY;
 }
 
 function createMonumentTitleSprite(title: string, size: number): Sprite {
@@ -3441,6 +3635,79 @@ function createFloatingWeatherClouds(terrain: TerrainPayload): Group {
   }
 
   return group;
+}
+
+function createGroundFogBanks(terrain: TerrainPayload): Group {
+  const group = new Group();
+  group.name = "raidlands-distance-ground-fog";
+  const worldSize = terrain.worldSize || 4500;
+  const texture = createGroundFogTexture();
+  const bankCount = 18;
+
+  for (let index = 0; index < bankCount; index += 1) {
+    const angle = index * 2.399963229728653;
+    const radiusRank = ((index * 11) % bankCount) / Math.max(1, bankCount - 1);
+    const radius = worldSize * MathUtils.lerp(0.16, 0.58, radiusRank);
+    const x = Math.cos(angle) * radius;
+    const z = Math.sin(angle) * radius;
+    const terrainHeight = sampleTerrainHeight(terrain, x, z);
+    const bankWidth = worldSize * MathUtils.lerp(0.16, 0.3, ((index * 7) % 8) / 7);
+    const bankHeight = worldSize * MathUtils.lerp(0.032, 0.072, ((index * 5) % 7) / 6);
+    const material = new SpriteMaterial({
+      map: texture,
+      color: 0xc7d4d8,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      depthTest: true,
+    });
+    const sprite = new Sprite(material);
+    sprite.name = "raidlands-ground-fog-bank";
+    sprite.position.set(x, terrainHeight + bankHeight * 0.48 + 8, z);
+    sprite.scale.set(bankWidth, bankHeight, 1);
+    sprite.renderOrder = 3;
+    sprite.userData.baseX = x;
+    sprite.userData.baseZ = z;
+    sprite.userData.opacityBias = MathUtils.lerp(0.72, 1.08, ((index * 13) % 9) / 8);
+    group.add(sprite);
+  }
+
+  return group;
+}
+
+function createGroundFogTexture(): CanvasTexture {
+  return getSharedCanvasTexture("server-map-ground-fog-v1", () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 512;
+    canvas.height = 128;
+    const context = canvas.getContext("2d");
+
+    if (context) {
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      const verticalFade = context.createLinearGradient(0, 0, 0, canvas.height);
+      verticalFade.addColorStop(0, "rgba(255, 255, 255, 0)");
+      verticalFade.addColorStop(0.28, "rgba(255, 255, 255, 0.24)");
+      verticalFade.addColorStop(0.62, "rgba(255, 255, 255, 0.52)");
+      verticalFade.addColorStop(1, "rgba(255, 255, 255, 0)");
+      context.fillStyle = verticalFade;
+      context.fillRect(0, 0, canvas.width, canvas.height);
+
+      context.globalCompositeOperation = "destination-in";
+      const horizontalFade = context.createLinearGradient(0, 0, canvas.width, 0);
+      horizontalFade.addColorStop(0, "rgba(255, 255, 255, 0)");
+      horizontalFade.addColorStop(0.16, "rgba(255, 255, 255, 0.74)");
+      horizontalFade.addColorStop(0.48, "rgba(255, 255, 255, 1)");
+      horizontalFade.addColorStop(0.84, "rgba(255, 255, 255, 0.68)");
+      horizontalFade.addColorStop(1, "rgba(255, 255, 255, 0)");
+      context.fillStyle = horizontalFade;
+      context.fillRect(0, 0, canvas.width, canvas.height);
+      context.globalCompositeOperation = "source-over";
+    }
+
+    const texture = new CanvasTexture(canvas);
+    texture.colorSpace = SRGBColorSpace;
+    return texture;
+  });
 }
 
 function createWeatherCloudTexture(): CanvasTexture {
