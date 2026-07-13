@@ -223,6 +223,12 @@ function createRaidlandsSkyDome(preset: RaidlandsEnvironmentPreset): Mesh {
         return value;
       }
 
+      float celestialDisc(vec3 direction, vec3 targetDirection, float angularRadius, float softness) {
+        float targetDot = dot(direction, normalize(targetDirection));
+        float edge = cos(angularRadius);
+        return smoothstep(edge - softness, edge + softness, targetDot);
+      }
+
       void main() {
         vec3 direction = normalize(vDirection);
         float height = clamp(direction.y * 0.5 + 0.5, 0.0, 1.0);
@@ -232,10 +238,12 @@ function createRaidlandsSkyDome(preset: RaidlandsEnvironmentPreset): Mesh {
           : mix(uHorizonColor, uZenithColor, smoothstep(0.44, 1.0, height));
 
         float sunDot = max(dot(direction, normalize(uSunDirection)), 0.0);
-        float sunDisc = smoothstep(0.9991, 0.99982, sunDot) * uSunVisibility;
-        float sunGlow = pow(sunDot, 7.0) * 0.34 * uSunVisibility;
+        float sunDisc = celestialDisc(direction, uSunDirection, 0.038, 0.0018) * uSunVisibility;
+        float sunCore = celestialDisc(direction, uSunDirection, 0.025, 0.0012) * uSunVisibility;
+        float sunGlow = pow(sunDot, 8.0) * 0.34 * uSunVisibility;
+        float sunHalo = pow(sunDot, 64.0) * 0.58 * uSunVisibility;
         float twilight = smoothstep(0.54, -0.12, uSunDirection.y) * horizon;
-        skyColor += uSunColor * (sunDisc * 1.18 + sunGlow * 0.74 + twilight * 0.12);
+        skyColor += uSunColor * (sunDisc * 1.4 + sunCore * 0.84 + sunHalo + sunGlow * 0.74 + twilight * 0.12);
 
         vec2 cloudPosition = direction.xz / max(direction.y + 0.36, 0.42);
         cloudPosition = cloudPosition * 2.2 + vec2(uCloudPhase * 0.0018, uCloudPhase * 0.0007);
@@ -255,9 +263,25 @@ function createRaidlandsSkyDome(preset: RaidlandsEnvironmentPreset): Mesh {
         vec3 cloudColor = mix(vec3(0.18, 0.22, 0.28), vec3(0.82, 0.9, 0.96), uDaylight);
         skyColor = mix(skyColor, cloudColor, cloudMask * (0.1 + cloudCoverage * 0.66));
 
-        float starField = step(0.9972, hash(direction.xz * 180.0 + direction.y * 23.0));
-        float stars = starField * (1.0 - uDaylight) * smoothstep(0.18, 0.72, direction.y);
-        skyColor += vec3(0.56, 0.72, 1.0) * stars * 0.92;
+        vec3 moonDirection = normalize(vec3(-uSunDirection.x, max(-uSunDirection.y, 0.18), -uSunDirection.z));
+        float moonVisibility = smoothstep(0.34, -0.02, uSunDirection.y) * smoothstep(0.02, 0.24, moonDirection.y);
+        float moonDisc = celestialDisc(direction, moonDirection, 0.032, 0.0016) * moonVisibility;
+        float moonGlow = pow(max(dot(direction, moonDirection), 0.0), 44.0) * 0.34 * moonVisibility;
+        vec3 moonTangent = normalize(cross(moonDirection, vec3(0.0, 1.0, 0.0)) + vec3(0.001, 0.0, 0.0));
+        vec3 moonBitangent = normalize(cross(moonDirection, moonTangent));
+        vec2 moonUv = vec2(dot(direction, moonTangent), dot(direction, moonBitangent)) / 0.032;
+        float craterA = 1.0 - smoothstep(0.12, 0.3, length(moonUv - vec2(0.28, 0.18))) * 0.18;
+        float craterB = 1.0 - smoothstep(0.1, 0.24, length(moonUv + vec2(0.22, 0.08))) * 0.14;
+        float moonShade = clamp(0.72 + dot(moonUv, vec2(-0.2, 0.08)), 0.44, 1.0) * craterA * craterB;
+        skyColor += vec3(0.64, 0.72, 0.86) * moonGlow;
+        skyColor = mix(skyColor, vec3(0.86, 0.9, 0.98) * moonShade, moonDisc);
+
+        float starVisibility = smoothstep(0.74, 0.18, uDaylight) * smoothstep(0.12, 0.6, direction.y);
+        float starA = step(0.9948, hash(direction.xz * 180.0 + direction.y * 23.0));
+        float starB = step(0.9982, hash(direction.zx * 320.0 + direction.y * 67.0));
+        float starTwinkle = 0.72 + 0.28 * sin(uCloudPhase * 0.55 + hash(direction.xz * 36.0) * 6.28318);
+        float stars = (starA * 0.62 + starB * 1.15) * starVisibility * starTwinkle;
+        skyColor += vec3(0.62, 0.76, 1.0) * stars;
         skyColor += uHorizonColor * horizon * (0.06 + uDaylight * 0.08);
 
         gl_FragColor = vec4(max(skyColor, vec3(0.0)), 1.0);
