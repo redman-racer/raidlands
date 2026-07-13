@@ -241,19 +241,14 @@ function createRaidlandsSkyDome(preset: RaidlandsEnvironmentPreset): Mesh {
         cloudPosition = cloudPosition * 2.2 + vec2(uCloudPhase * 0.0018, uCloudPhase * 0.0007);
         float clouds = cloudNoise(cloudPosition);
         float cloudCoverage = clamp(uCloudCoverage, 0.0, 1.0);
-        float cloudAlpha = smoothstep(0.01, 0.16, cloudCoverage);
-        float cloudThreshold = mix(0.72, 0.22, cloudCoverage);
+        float cloudAlpha = smoothstep(0.005, 0.04, cloudCoverage);
+        float cloudThreshold = 1.0 - cloudCoverage;
         float cloudWave = 0.5 + 0.5 * sin(cloudPosition.x * 0.62 + sin(cloudPosition.y * 1.18) + clouds * 3.4);
         float cloudBand = 0.5 + 0.5 * sin(
           cloudPosition.x * 0.38 + cloudPosition.y * 0.24 + sin(cloudPosition.y * 0.7) * 1.8
         );
-        float cloudMask = max(
-          smoothstep(cloudThreshold - 0.08, cloudThreshold + 0.09, clouds),
-          max(
-            smoothstep(0.64, 0.86, cloudWave) * cloudCoverage,
-            smoothstep(0.63, 0.82, cloudBand) * cloudCoverage * 0.56
-          )
-        )
+        float cloudField = clamp(clouds * 0.72 + cloudWave * 0.18 + cloudBand * 0.1, 0.0, 1.0);
+        float cloudMask = smoothstep(cloudThreshold - 0.045, cloudThreshold + 0.045, cloudField)
           * cloudAlpha
           * smoothstep(-0.02, 0.32, direction.y)
           * (0.72 + height * 0.28);

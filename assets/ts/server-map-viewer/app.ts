@@ -1289,8 +1289,8 @@ class TerrainViewer {
     const visibleCloudAmount = cloudCoverage;
     const sunHeight = MathUtils.clamp(environment.sunDirection.y, -0.16, 0.9);
     const twilight = MathUtils.clamp(1 - Math.abs(sunHeight - 0.12) / 0.34, 0, 1);
-    const cloudOpacity = MathUtils.lerp(0.06, 0.5, Math.sqrt(visibleCloudAmount));
-    const cloudScale = MathUtils.lerp(0.76, 1.18, visibleCloudAmount);
+    const cloudOpacity = MathUtils.lerp(0.18, 0.5, visibleCloudAmount);
+    const cloudScale = MathUtils.lerp(0.82, 1.18, visibleCloudAmount);
 
     this.weatherCloudLayer.visible = visibleCloudAmount > 0.015;
     this.weatherCloudLayer.position.x = this.camera.position.x * 0.035;
@@ -1300,6 +1300,7 @@ class TerrainViewer {
       if (!(child instanceof Sprite)) {
         return;
       }
+      child.visible = (Number(child.userData.coverageRank) || 0) < visibleCloudAmount;
       const baseScale = Number(child.userData.baseScale) || worldSize * 0.18;
       const drift = now * (0.000006 + (index % 5) * 0.0000015);
       child.position.x = (Number(child.userData.baseX) || 0) + Math.sin(drift + index) * worldSize * 0.025;
@@ -3210,6 +3211,7 @@ function createFloatingWeatherClouds(terrain: TerrainPayload): Group {
     sprite.userData.scaleX = MathUtils.lerp(0.88, 1.34, ((index * 11) % 7) / 6);
     sprite.userData.scaleY = MathUtils.lerp(0.26, 0.44, ((index * 13) % 5) / 4);
     sprite.userData.opacityBias = MathUtils.lerp(0.72, 1.12, ((index * 19) % 8) / 7);
+    sprite.userData.coverageRank = ((index * 17) % cloudCount) / cloudCount;
     group.add(sprite);
   }
 
