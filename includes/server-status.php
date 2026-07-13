@@ -187,6 +187,20 @@ function raidlands_server_environment_is_ready(): bool
     }
 }
 
+function raidlands_server_environment_weather_columns_are_ready(): bool
+{
+    if (!raidlands_server_environment_is_ready()) {
+        return false;
+    }
+
+    try {
+        raidlands_db_fetch_one('SELECT weather_rain_raw, weather_cloud_brightness_value FROM server_environment_snapshots LIMIT 1');
+        return true;
+    } catch (Throwable $error) {
+        return false;
+    }
+}
+
 function raidlands_server_status_clean_text($value, int $max_length = 120): string
 {
     $text = trim(str_replace("\0", '', (string) $value));
@@ -1339,10 +1353,72 @@ function raidlands_server_environment_nullable_float($value, float $min, float $
     return round(min($max, $number), $precision);
 }
 
-function raidlands_server_environment_weather_public($value): array
+function raidlands_server_environment_weather_parameter_columns(): array
+{
+    return [
+        'rain' => ['prefix' => 'weather_rain', 'key' => 'weather.rain'],
+        'thunder' => ['prefix' => 'weather_thunder', 'key' => 'weather.thunder'],
+        'rainbow' => ['prefix' => 'weather_rainbow', 'key' => 'weather.rainbow'],
+        'fog' => ['prefix' => 'weather_fog', 'key' => 'weather.fog'],
+        'atmosphereRayleigh' => ['prefix' => 'weather_atmosphere_rayleigh', 'key' => 'weather.atmosphere_rayleigh'],
+        'atmosphereMie' => ['prefix' => 'weather_atmosphere_mie', 'key' => 'weather.atmosphere_mie'],
+        'atmosphereBrightness' => ['prefix' => 'weather_atmosphere_brightness', 'key' => 'weather.atmosphere_brightness'],
+        'atmosphereContrast' => ['prefix' => 'weather_atmosphere_contrast', 'key' => 'weather.atmosphere_contrast'],
+        'atmosphereDirectionality' => ['prefix' => 'weather_atmosphere_directionality', 'key' => 'weather.atmosphere_directionality'],
+        'cloudSize' => ['prefix' => 'weather_cloud_size', 'key' => 'weather.cloud_size'],
+        'cloudOpacity' => ['prefix' => 'weather_cloud_opacity', 'key' => 'weather.cloud_opacity'],
+        'cloudCoverage' => ['prefix' => 'weather_cloud_coverage', 'key' => 'weather.cloud_coverage'],
+        'cloudSharpness' => ['prefix' => 'weather_cloud_sharpness', 'key' => 'weather.cloud_sharpness'],
+        'cloudColoring' => ['prefix' => 'weather_cloud_coloring', 'key' => 'weather.cloud_coloring'],
+        'cloudAttenuation' => ['prefix' => 'weather_cloud_attenuation', 'key' => 'weather.cloud_attenuation'],
+        'cloudScattering' => ['prefix' => 'weather_cloud_scattering', 'key' => 'weather.cloud_scattering'],
+        'cloudBrightness' => ['prefix' => 'weather_cloud_brightness', 'key' => 'weather.cloud_brightness'],
+    ];
+}
+
+function raidlands_server_environment_weather_number($value): ?float
+{
+    if (!is_numeric($value)) {
+        return null;
+    }
+
+    $number = (float) $value;
+
+    return is_finite($number) ? round($number, 4) : null;
+}
+
+function raidlands_server_environment_weather_column_values(array $payload): array
+{
+    $weather = is_array($payload['weather'] ?? null) ? $payload['weather'] : [];
+    $parameters = is_array($weather['parameters'] ?? null) ? $weather['parameters'] : [];
+    $values = [];
+
+    foreach (raidlands_server_environment_weather_parameter_columns() as $name => $definition) {
+        $parameter = is_array($parameters[$name] ?? null) ? $parameters[$name] : [];
+        $raw = raidlands_server_environment_weather_number($parameter['raw'] ?? null);
+        $value = raidlands_server_environment_weather_number($parameter['value'] ?? null);
+
+        if ($raw === null && $value !== null) {
+            $raw = $value;
+        }
+
+        if ($raw !== null && ($raw < 0 || !empty($parameter['is_dynamic']) || !empty($parameter['isDynamic']))) {
+            $value = null;
+        } elseif ($value === null && $raw !== null) {
+            $value = $raw;
+        }
+
+        $values[$definition['prefix'] . '_raw'] = $raw;
+        $values[$definition['prefix'] . '_value'] = $value;
+    }
+
+    return $values;
+}
+
+function raidlands_server_environment_weather_public($value, ?array $row = null): array
 {
     if (!is_array($value)) {
-        return ['parameters' => []];
+        $value = [];
     }
 
     $source_parameters = is_array($value['parameters'] ?? null) ? $value['parameters'] : [];
@@ -1368,6 +1444,26 @@ function raidlands_server_environment_weather_public($value): array
             'isDynamic' => !empty($parameter['is_dynamic']) || !empty($parameter['isDynamic']),
             'source' => raidlands_server_status_clean_text($parameter['source'] ?? '', 120),
         ];
+    }
+
+    if ($row !== null) {
+        foreach (raidlands_server_environment_weather_parameter_columns() as $name => $definition) {
+            $raw = raidlands_server_environment_weather_number($row[$definition['prefix'] . '_raw'] ?? null);
+            $column_value = raidlands_server_environment_weather_number($row[$definition['prefix'] . '_value'] ?? null);
+
+            if ($raw === null && $column_value === null) {
+                continue;
+            }
+
+            $existing = $parameters[$name] ?? [];
+            $parameters[$name] = [
+                'key' => raidlands_server_status_clean_text($existing['key'] ?? $definition['key'], 80),
+                'value' => $column_value,
+                'raw' => $raw,
+                'isDynamic' => $raw !== null && $raw < 0,
+                'source' => raidlands_server_status_clean_text($existing['source'] ?? ('server_environment_snapshots.' . $definition['prefix']), 120),
+            ];
+        }
     }
 
     return ['parameters' => $parameters];
@@ -1403,7 +1499,7 @@ function raidlands_server_environment_snapshot_public(?array $row): ?array
         'rainIntensity' => $row['rain_intensity'] === null ? null : round((float) $row['rain_intensity'], 4),
         'fogIntensity' => $row['fog_intensity'] === null ? null : round((float) $row['fog_intensity'], 4),
         'weatherSampleSummary' => raidlands_server_status_clean_text($payload['weather_sample_summary'] ?? $payload['weatherSampleSummary'] ?? '', 240),
-        'weather' => raidlands_server_environment_weather_public($payload['weather'] ?? null),
+        'weather' => raidlands_server_environment_weather_public($payload['weather'] ?? null, $row),
     ];
 }
 
@@ -1440,34 +1536,25 @@ function raidlands_server_environment_ingest_snapshot(array $payload, string $he
         $sun_z = round($sun_z / $length, 6);
     }
 
-    $pdo = raidlands_db_required();
-    $statement = $pdo->prepare(
-        'INSERT INTO server_environment_snapshots
-            (server_id, wipe_key, sampled_at, rust_time, day_fraction, sun_x, sun_y, sun_z,
-             sun_intensity, sun_color, ambient_intensity, ambient_color, cloud_coverage,
-             rain_intensity, fog_intensity, payload_json)
-         VALUES
-            (:server_id, :wipe_key, :sampled_at, :rust_time, :day_fraction, :sun_x, :sun_y, :sun_z,
-             :sun_intensity, :sun_color, :ambient_intensity, :ambient_color, :cloud_coverage,
-             :rain_intensity, :fog_intensity, :payload_json)
-         ON DUPLICATE KEY UPDATE
-            wipe_key = VALUES(wipe_key),
-            rust_time = VALUES(rust_time),
-            day_fraction = VALUES(day_fraction),
-            sun_x = VALUES(sun_x),
-            sun_y = VALUES(sun_y),
-            sun_z = VALUES(sun_z),
-            sun_intensity = VALUES(sun_intensity),
-            sun_color = VALUES(sun_color),
-            ambient_intensity = VALUES(ambient_intensity),
-            ambient_color = VALUES(ambient_color),
-            cloud_coverage = VALUES(cloud_coverage),
-            rain_intensity = VALUES(rain_intensity),
-            fog_intensity = VALUES(fog_intensity),
-            payload_json = VALUES(payload_json)'
-    );
-
-    $statement->execute([
+    $columns = [
+        'server_id',
+        'wipe_key',
+        'sampled_at',
+        'rust_time',
+        'day_fraction',
+        'sun_x',
+        'sun_y',
+        'sun_z',
+        'sun_intensity',
+        'sun_color',
+        'ambient_intensity',
+        'ambient_color',
+        'cloud_coverage',
+        'rain_intensity',
+        'fog_intensity',
+        'payload_json',
+    ];
+    $params = [
         'server_id' => $server_id,
         'wipe_key' => $wipe_key,
         'sampled_at' => $sampled_at,
@@ -1490,7 +1577,36 @@ function raidlands_server_environment_ingest_snapshot(array $payload, string $he
             ? raidlands_server_environment_nullable_float($payload['fog_intensity'] ?? $payload['fogIntensity'], 0, 1, 4)
             : null,
         'payload_json' => json_encode($payload, JSON_UNESCAPED_SLASHES),
-    ]);
+    ];
+
+    if (raidlands_server_environment_weather_columns_are_ready()) {
+        foreach (raidlands_server_environment_weather_column_values($payload) as $column => $value) {
+            $columns[] = $column;
+            $params[$column] = $value;
+        }
+    }
+
+    $placeholders = array_map(static fn (string $column): string => ':' . $column, $columns);
+    $updates = [];
+    foreach ($columns as $column) {
+        if ($column === 'server_id' || $column === 'sampled_at') {
+            continue;
+        }
+
+        $updates[] = $column . ' = VALUES(' . $column . ')';
+    }
+
+    $pdo = raidlands_db_required();
+    $statement = $pdo->prepare(
+        'INSERT INTO server_environment_snapshots
+            (' . implode(', ', $columns) . ')
+         VALUES
+            (' . implode(', ', $placeholders) . ')
+         ON DUPLICATE KEY UPDATE
+            ' . implode(",\n            ", $updates)
+    );
+
+    $statement->execute($params);
 
     raidlands_db_execute(
         'DELETE FROM server_environment_snapshots
