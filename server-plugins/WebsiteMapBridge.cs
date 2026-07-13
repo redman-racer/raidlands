@@ -129,34 +129,36 @@ namespace Oxide.Plugins
             public string name;
             public string key;
             public string member;
+            public string[] effectivePath;
 
-            public WeatherParameterDefinition(string name, string key, string member)
+            public WeatherParameterDefinition(string name, string key, string member, params string[] effectivePath)
             {
                 this.name = name;
                 this.key = key;
                 this.member = member;
+                this.effectivePath = effectivePath ?? new string[0];
             }
         }
 
         private static readonly WeatherParameterDefinition[] WeatherParameterDefinitions =
         {
-            new WeatherParameterDefinition("rain", "weather.rain", "rain"),
-            new WeatherParameterDefinition("thunder", "weather.thunder", "thunder"),
-            new WeatherParameterDefinition("rainbow", "weather.rainbow", "rainbow"),
-            new WeatherParameterDefinition("fog", "weather.fog", "fog"),
-            new WeatherParameterDefinition("atmosphereRayleigh", "weather.atmosphere_rayleigh", "atmosphere_rayleigh"),
-            new WeatherParameterDefinition("atmosphereMie", "weather.atmosphere_mie", "atmosphere_mie"),
-            new WeatherParameterDefinition("atmosphereBrightness", "weather.atmosphere_brightness", "atmosphere_brightness"),
-            new WeatherParameterDefinition("atmosphereContrast", "weather.atmosphere_contrast", "atmosphere_contrast"),
-            new WeatherParameterDefinition("atmosphereDirectionality", "weather.atmosphere_directionality", "atmosphere_directionality"),
-            new WeatherParameterDefinition("cloudSize", "weather.cloud_size", "cloud_size"),
-            new WeatherParameterDefinition("cloudOpacity", "weather.cloud_opacity", "cloud_opacity"),
-            new WeatherParameterDefinition("cloudCoverage", "weather.cloud_coverage", "cloud_coverage"),
-            new WeatherParameterDefinition("cloudSharpness", "weather.cloud_sharpness", "cloud_sharpness"),
-            new WeatherParameterDefinition("cloudColoring", "weather.cloud_coloring", "cloud_coloring"),
-            new WeatherParameterDefinition("cloudAttenuation", "weather.cloud_attenuation", "cloud_attenuation"),
-            new WeatherParameterDefinition("cloudScattering", "weather.cloud_scattering", "cloud_scattering"),
-            new WeatherParameterDefinition("cloudBrightness", "weather.cloud_brightness", "cloud_brightness")
+            new WeatherParameterDefinition("rain", "weather.rain", "rain", "Rain"),
+            new WeatherParameterDefinition("thunder", "weather.thunder", "thunder", "Thunder"),
+            new WeatherParameterDefinition("rainbow", "weather.rainbow", "rainbow", "Rainbow"),
+            new WeatherParameterDefinition("fog", "weather.fog", "fog", "Atmosphere", "Fogginess"),
+            new WeatherParameterDefinition("atmosphereRayleigh", "weather.atmosphere_rayleigh", "atmosphere_rayleigh", "Atmosphere", "RayleighMultiplier"),
+            new WeatherParameterDefinition("atmosphereMie", "weather.atmosphere_mie", "atmosphere_mie", "Atmosphere", "MieMultiplier"),
+            new WeatherParameterDefinition("atmosphereBrightness", "weather.atmosphere_brightness", "atmosphere_brightness", "Atmosphere", "Brightness"),
+            new WeatherParameterDefinition("atmosphereContrast", "weather.atmosphere_contrast", "atmosphere_contrast", "Atmosphere", "Contrast"),
+            new WeatherParameterDefinition("atmosphereDirectionality", "weather.atmosphere_directionality", "atmosphere_directionality", "Atmosphere", "Directionality"),
+            new WeatherParameterDefinition("cloudSize", "weather.cloud_size", "cloud_size", "Clouds", "Size"),
+            new WeatherParameterDefinition("cloudOpacity", "weather.cloud_opacity", "cloud_opacity", "Clouds", "Opacity"),
+            new WeatherParameterDefinition("cloudCoverage", "weather.cloud_coverage", "cloud_coverage", "Clouds", "Coverage"),
+            new WeatherParameterDefinition("cloudSharpness", "weather.cloud_sharpness", "cloud_sharpness", "Clouds", "Sharpness"),
+            new WeatherParameterDefinition("cloudColoring", "weather.cloud_coloring", "cloud_coloring", "Clouds", "Coloring"),
+            new WeatherParameterDefinition("cloudAttenuation", "weather.cloud_attenuation", "cloud_attenuation", "Clouds", "Attenuation"),
+            new WeatherParameterDefinition("cloudScattering", "weather.cloud_scattering", "cloud_scattering", "Clouds", "Scattering"),
+            new WeatherParameterDefinition("cloudBrightness", "weather.cloud_brightness", "cloud_brightness", "Clouds", "Brightness")
         };
 
         private class EnvironmentVectorPayload
@@ -640,30 +642,108 @@ namespace Oxide.Plugins
 
         private WeatherParameterPayload SampleWeatherParameter(WeatherParameterDefinition definition)
         {
-            var value = ReadWeatherConVar(definition.member, out var source);
+            var rawValue = ReadWeatherConVar(definition.member, out var rawSource);
+            var effectiveValue = ReadEffectiveWeatherValue(definition, out var effectiveSource);
             var sample = new WeatherParameterPayload
             {
                 key = definition.key,
                 value = null,
                 raw = null,
                 is_dynamic = false,
-                source = source
+                source = FirstNonEmpty(effectiveSource, rawSource)
             };
 
-            if (value == null)
+            if (rawValue != null)
             {
+                sample.raw = RoundWeatherValue(rawValue.Value);
+                sample.is_dynamic = rawValue.Value < 0f;
+            }
+
+            if (effectiveValue != null)
+            {
+                sample.value = RoundWeatherValue(effectiveValue.Value);
+                if (!string.IsNullOrWhiteSpace(rawSource) && rawSource != effectiveSource)
+                {
+                    sample.source = effectiveSource + " raw=" + rawSource;
+                }
                 return sample;
             }
 
-            sample.raw = RoundWeatherValue(value.Value);
-            if (value.Value < 0f)
+            if (rawValue != null && rawValue.Value >= 0f)
             {
-                sample.is_dynamic = true;
-                return sample;
+                sample.value = RoundWeatherValue(rawValue.Value);
             }
 
-            sample.value = RoundWeatherValue(value.Value);
             return sample;
+        }
+
+        private float? ReadEffectiveWeatherValue(WeatherParameterDefinition definition, out string source)
+        {
+            source = "missing";
+
+            try
+            {
+                switch (definition.name)
+                {
+                    case "rain":
+                        source = "Climate.GetRain";
+                        return SampleNativeClimate("Rain", source).value;
+                    case "thunder":
+                        source = "Climate.GetThunder";
+                        return SampleNativeClimate("Thunder", source).value;
+                    case "rainbow":
+                        source = "Climate.GetRainbow";
+                        return SampleNativeClimate("Rainbow", source).value;
+                    case "fog":
+                        source = "Climate.GetFog";
+                        return SampleNativeClimate("Fog", source).value;
+                }
+
+                var preset = ReadCurrentWeatherPreset();
+                if (preset == null || definition.effectivePath == null || definition.effectivePath.Length == 0)
+                {
+                    source = "Climate.WeatherState missing";
+                    return null;
+                }
+
+                object current = preset;
+                foreach (var memberName in definition.effectivePath)
+                {
+                    current = ReadObjectProperty(current, memberName);
+                    if (current == null)
+                    {
+                        source = "Climate.WeatherState." + string.Join(".", definition.effectivePath) + " missing";
+                        return null;
+                    }
+                }
+
+                if (TryConvertFloat(current, out var value))
+                {
+                    source = "Climate.WeatherState." + string.Join(".", definition.effectivePath);
+                    return value;
+                }
+
+                source = "Climate.WeatherState." + string.Join(".", definition.effectivePath) + " nonnumeric";
+                return null;
+            }
+            catch (Exception ex)
+            {
+                source = "Climate.WeatherState." + definition.name + " error " + ex.GetType().Name;
+                return null;
+            }
+        }
+
+        private object ReadCurrentWeatherPreset()
+        {
+            try
+            {
+                var climate = UnityEngine.Object.FindFirstObjectByType<Climate>();
+                return climate == null ? null : climate.WeatherState;
+            }
+            catch
+            {
+                return null;
+            }
         }
 
         private float? ReadWeatherConVar(string memberName, out string source)
@@ -802,6 +882,12 @@ namespace Oxide.Plugins
                             break;
                         case "Fog":
                             value = Climate.GetFog(position);
+                            break;
+                        case "Thunder":
+                            value = Climate.GetThunder(position);
+                            break;
+                        case "Rainbow":
+                            value = Climate.GetRainbow(position);
                             break;
                         default:
                             return new SampledFloat(null, source, "unknown sample");
