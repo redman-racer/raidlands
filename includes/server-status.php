@@ -1398,13 +1398,9 @@ function raidlands_server_environment_weather_column_values(array $payload): arr
         $raw = raidlands_server_environment_weather_number($parameter['raw'] ?? null);
         $value = raidlands_server_environment_weather_number($parameter['value'] ?? null);
 
-        if ($raw === null && $value !== null) {
-            $raw = $value;
-        }
-
-        if ($raw !== null && ($raw < 0 || !empty($parameter['is_dynamic']) || !empty($parameter['isDynamic']))) {
-            $value = null;
-        } elseif ($value === null && $raw !== null) {
+        // Raw is the override/sentinel; value is Rust's effective weather output.
+        // Dynamic parameters legitimately have raw=-1 and a usable effective value.
+        if ($value === null && $raw !== null && $raw >= 0) {
             $value = $raw;
         }
 
@@ -1487,7 +1483,17 @@ function raidlands_server_environment_weather_public($value, ?array $row = null)
         }
     }
 
-    return ['parameters' => $parameters, 'state' => $state];
+    return [
+        'parameters' => $parameters,
+        'state' => $state,
+        'overrideMode' => raidlands_server_status_clean_text($value['overrideMode'] ?? $value['override_mode'] ?? '', 24),
+        'overrideCount' => is_numeric($value['overrideCount'] ?? $value['override_count'] ?? null)
+            ? max(0, (int) ($value['overrideCount'] ?? $value['override_count']))
+            : null,
+        'parameterCount' => is_numeric($value['parameterCount'] ?? $value['parameter_count'] ?? null)
+            ? max(0, (int) ($value['parameterCount'] ?? $value['parameter_count']))
+            : null,
+    ];
 }
 
 function raidlands_server_environment_snapshot_public(?array $row): ?array

@@ -229,6 +229,12 @@ type WeatherParameter = {
 type WeatherSnapshot = {
   parameters?: Record<string, WeatherParameter>;
   state?: WeatherState | null;
+  overrideMode?: string;
+  override_mode?: string;
+  overrideCount?: number | null;
+  override_count?: number | null;
+  parameterCount?: number | null;
+  parameter_count?: number | null;
 };
 
 type WeatherState = {
@@ -3622,12 +3628,17 @@ function visualCloudCoverageForEnvironment(environment: NormalizedEnvironment): 
 
 function weatherParameterValue(snapshot: EnvironmentSnapshot, name: string, fallback: number | null): number | null {
   const parameter = snapshot.weather?.parameters?.[name];
-  if (!parameter || parameter.isDynamic === true || parameter.is_dynamic === true) {
+  if (!parameter) {
     return fallback;
   }
 
   const value = nullableFiniteNumber(parameter.value, Number.NaN);
-  return Number.isFinite(value) ? value : fallback;
+  if (Number.isFinite(value)) {
+    return value;
+  }
+
+  const raw = nullableFiniteNumber(parameter.raw, Number.NaN);
+  return Number.isFinite(raw) && raw >= 0 ? raw : fallback;
 }
 
 function finiteNumber(value: unknown, fallback: number): number {

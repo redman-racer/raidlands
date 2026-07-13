@@ -17,7 +17,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteMapBridge", "Raidlands", "1.0.12")]
+    [Info("WebsiteMapBridge", "Raidlands", "1.0.13")]
     [Description("Publishes the current RustMapApi map image and sampled terrain to the Raidlands website.")]
     public class WebsiteMapBridge : CovalencePlugin
     {
@@ -39,6 +39,9 @@ namespace Oxide.Plugins
         private bool publishInFlight;
         private string lastPublishedWipeKey = "";
         private string lastEnvironmentSyncAt = "";
+        private string lastEnvironmentDiagnosticSummary = "awaiting first environment sample";
+        private long lastEnvironmentSampleMilliseconds;
+        private string lastWeatherOverrideSignature = "";
         private readonly Dictionary<string, MemberInfo> weatherConVarMemberCache = new Dictionary<string, MemberInfo>(StringComparer.OrdinalIgnoreCase);
 
         private class Configuration
@@ -116,6 +119,9 @@ namespace Oxide.Plugins
         {
             public Dictionary<string, WeatherParameterPayload> parameters;
             public WeatherStateDiagnosticsPayload state;
+            public string override_mode;
+            public int override_count;
+            public int parameter_count;
         }
 
         private class WeatherStateDiagnosticsPayload
@@ -395,16 +401,24 @@ namespace Oxide.Plugins
                 return;
             }
 
-            var secretState = string.IsNullOrWhiteSpace(ResolveBridgeSharedSecret()) ? "missing" : "configured";
-            var apiState = RustMapApi == null ? "missing" : RustMapApi.IsLoaded ? "loaded" : "not loaded";
-            var readyState = RustMapApi != null && RustMapApi.IsLoaded ? RustMapApi.Call<bool>("IsReady").ToString() : "false";
-            var heightMapState = TerrainMeta.HeightMap == null ? "missing" : "available";
-            var environmentSample = CreateEnvironmentPayload();
+            ReplyToCommand(arg, "WebsiteMapBridge v1.0.13 status requested; reading cached diagnostics.");
 
-            ReplyToCommand(
-                arg,
-                $"WebsiteMapBridge v1.0.12 status: server={ResolveServerId()}, api={apiState}, ready={readyState}, secret={secretState}, render={config.RenderName}, textureRender={config.TextureRenderName}, autoPublishReady={config.AutoPublishOnRustMapApiReady}, autoPublishInit={config.AutoPublishOnServerInitialized}, terrainEnabled={config.PublishTerrain}, terrainResolution={config.TerrainSampleResolution}, monumentsEnabled={config.IncludeMonuments}, skybox={config.PublishSkybox}/{config.SkyboxImagePath}, playerLocations={config.PublishPlayerLocations}/{config.PlayerLocationIntervalSeconds}s, environment={config.PublishEnvironment}/{config.EnvironmentIntervalSeconds}s last={FirstNonEmpty(lastEnvironmentSyncAt, "never")} sampled=[TOD {environmentSample.rust_time:0.00}, cloud {FormatSample(environmentSample.cloud_coverage)}, rain {FormatSample(environmentSample.rain_intensity)}, fog {FormatSample(environmentSample.fog_intensity)}; {environmentSample.weather_sample_summary}], replayEvents={config.PublishReplayEvents}, heightMap={heightMapState}, lastWipe={lastPublishedWipeKey}."
-            );
+            try
+            {
+                var secretState = string.IsNullOrWhiteSpace(ResolveBridgeSharedSecret()) ? "missing" : "configured";
+                var apiState = RustMapApi == null ? "missing" : RustMapApi.IsLoaded ? "loaded" : "not loaded";
+                var heightMapState = TerrainMeta.HeightMap == null ? "missing" : "available";
+
+                ReplyToCommand(
+                    arg,
+                    $"WebsiteMapBridge v1.0.13 status: server={ResolveServerId()}, api={apiState}, ready=not-probed, secret={secretState}, render={config.RenderName}, textureRender={config.TextureRenderName}, autoPublishReady={config.AutoPublishOnRustMapApiReady}, autoPublishInit={config.AutoPublishOnServerInitialized}, terrainEnabled={config.PublishTerrain}, terrainResolution={config.TerrainSampleResolution}, monumentsEnabled={config.IncludeMonuments}, skybox={config.PublishSkybox}/{config.SkyboxImagePath}, playerLocations={config.PublishPlayerLocations}/{config.PlayerLocationIntervalSeconds}s, environment={config.PublishEnvironment}/{config.EnvironmentIntervalSeconds}s last={FirstNonEmpty(lastEnvironmentSyncAt, "never")}, sampleMs={lastEnvironmentSampleMilliseconds}, sampled=[{lastEnvironmentDiagnosticSummary}], replayEvents={config.PublishReplayEvents}, heightMap={heightMapState}, lastWipe={lastPublishedWipeKey}."
+                );
+            }
+            catch (Exception ex)
+            {
+                PrintError($"rl_map_status failed: {ex}");
+                ReplyToCommand(arg, $"WebsiteMapBridge status failed: {ex.GetType().Name}: {ex.Message}");
+            }
         }
 
         [ConsoleCommand("rl_map_locations_sync")]
@@ -430,7 +444,15 @@ namespace Oxide.Plugins
             }
 
             ReplyToCommand(arg, "Website environment sync requested.");
-            PublishEnvironment(message => ReplyToCommand(arg, message), true);
+            try
+            {
+                PublishEnvironment(message => ReplyToCommand(arg, message), true);
+            }
+            catch (Exception ex)
+            {
+                PrintError($"rl_map_environment_sync failed: {ex}");
+                ReplyToCommand(arg, $"Website environment sync failed before enqueue: {ex.GetType().Name}: {ex.Message}");
+            }
         }
 
         private bool CanUsePublishCommand(ConsoleSystem.Arg arg)
@@ -445,8 +467,25 @@ namespace Oxide.Plugins
 
         private void ReplyToCommand(ConsoleSystem.Arg arg, string message)
         {
+            if (string.IsNullOrWhiteSpace(message))
+            {
+                return;
+            }
+
             Puts(message);
-            arg?.ReplyWith(message);
+            if (arg == null)
+            {
+                return;
+            }
+
+            try
+            {
+                arg.ReplyWith(message);
+            }
+            catch (Exception ex)
+            {
+                PrintWarning($"Could not send console command reply: {ex.GetType().Name}: {ex.Message}");
+            }
         }
 
         private void QueueAutoPublish(string reason)
@@ -506,7 +545,28 @@ namespace Oxide.Plugins
                 return;
             }
 
-            var payload = CreateEnvironmentPayload();
+            EnvironmentSnapshotPayload payload;
+            var sampleTimer = System.Diagnostics.Stopwatch.StartNew();
+            try
+            {
+                payload = CreateEnvironmentPayload();
+                sampleTimer.Stop();
+                lastEnvironmentSampleMilliseconds = sampleTimer.ElapsedMilliseconds;
+                lastEnvironmentDiagnosticSummary = $"TOD {payload.rust_time:0.00}, cloud {FormatSample(payload.cloud_coverage)}, rain {FormatSample(payload.rain_intensity)}, fog {FormatSample(payload.fog_intensity)}; {payload.weather_sample_summary}";
+                ReportWeatherOverrideMode(payload.weather);
+            }
+            catch (Exception ex)
+            {
+                sampleTimer.Stop();
+                lastEnvironmentSampleMilliseconds = sampleTimer.ElapsedMilliseconds;
+                PrintError($"Environment sampling failed after {lastEnvironmentSampleMilliseconds}ms: {ex}");
+                if (verbose)
+                {
+                    reply?.Invoke($"Website environment sampling failed: {ex.GetType().Name}: {ex.Message}");
+                }
+                return;
+            }
+
             var body = JsonConvert.SerializeObject(payload);
             var url = $"{TrimSlash(ResolveApiBaseUrl())}/api/server/environment-snapshot.php";
 
@@ -589,6 +649,7 @@ namespace Oxide.Plugins
             var samplePositions = EnvironmentSamplePositions();
             var climate = ReadClimate();
             var weatherPreset = ReadObjectProperty(climate, "WeatherState");
+            var weatherOverrides = ReadObjectProperty(climate, "WeatherOverrides");
 
             var cloudSample = FirstValidSample(
                 SampleNativeClimate("Clouds", "Climate.GetClouds", samplePositions),
@@ -608,7 +669,7 @@ namespace Oxide.Plugins
                 SampleRenderFogDensity()
             );
 
-            var weatherSnapshot = CreateWeatherSnapshot(samplePositions, weatherPreset);
+            var weatherSnapshot = CreateWeatherSnapshot(samplePositions, weatherPreset, weatherOverrides);
             weatherSnapshot.state = CreateWeatherStateDiagnostics(climate);
 
             return new EnvironmentSnapshotPayload
@@ -650,7 +711,7 @@ namespace Oxide.Plugins
             }
         }
 
-        private WeatherSnapshotPayload CreateWeatherSnapshot(List<Vector3> samplePositions, object weatherPreset)
+        private WeatherSnapshotPayload CreateWeatherSnapshot(List<Vector3> samplePositions, object weatherPreset, object weatherOverrides)
         {
             var payload = new WeatherSnapshotPayload
             {
@@ -659,15 +720,17 @@ namespace Oxide.Plugins
 
             foreach (var definition in WeatherParameterDefinitions)
             {
-                payload.parameters[definition.name] = SampleWeatherParameter(definition, samplePositions, weatherPreset);
+                payload.parameters[definition.name] = SampleWeatherParameter(definition, samplePositions, weatherPreset, weatherOverrides);
             }
+
+            PopulateWeatherOverrideDiagnostics(payload);
 
             return payload;
         }
 
-        private WeatherParameterPayload SampleWeatherParameter(WeatherParameterDefinition definition, List<Vector3> samplePositions, object weatherPreset)
+        private WeatherParameterPayload SampleWeatherParameter(WeatherParameterDefinition definition, List<Vector3> samplePositions, object weatherPreset, object weatherOverrides)
         {
-            var rawValue = ReadWeatherConVar(definition.member, out var rawSource);
+            var rawValue = ReadWeatherOverrideValue(definition, weatherOverrides, out var rawSource);
             var effectiveValue = ReadEffectiveWeatherValue(definition, samplePositions, weatherPreset, out var effectiveSource);
             var sample = new WeatherParameterPayload
             {
@@ -700,6 +763,128 @@ namespace Oxide.Plugins
             }
 
             return sample;
+        }
+
+        private float? ReadWeatherOverrideValue(WeatherParameterDefinition definition, object weatherOverrides, out string source)
+        {
+            source = "Climate.WeatherOverrides missing";
+            if (definition == null)
+            {
+                return null;
+            }
+
+            if (weatherOverrides == null)
+            {
+                return ReadWeatherConVar(definition.member, out source);
+            }
+
+            try
+            {
+                object current = weatherOverrides;
+                foreach (var memberName in definition.effectivePath)
+                {
+                    current = ReadObjectProperty(current, memberName);
+                    if (current == null)
+                    {
+                        source = "Climate.WeatherOverrides." + string.Join(".", definition.effectivePath) + " missing";
+                        return null;
+                    }
+                }
+
+                if (TryConvertFloat(current, out var value))
+                {
+                    source = "Climate.WeatherOverrides." + string.Join(".", definition.effectivePath);
+                    return value;
+                }
+
+                source = "Climate.WeatherOverrides." + string.Join(".", definition.effectivePath) + " nonnumeric";
+                return null;
+            }
+            catch (Exception ex)
+            {
+                source = "Climate.WeatherOverrides." + definition.name + " error " + ex.GetType().Name;
+                return null;
+            }
+        }
+
+        private void PopulateWeatherOverrideDiagnostics(WeatherSnapshotPayload payload)
+        {
+            if (payload == null || payload.parameters == null)
+            {
+                return;
+            }
+
+            payload.parameter_count = payload.parameters.Count;
+            var knownCount = 0;
+            var overrideCount = 0;
+            foreach (var parameter in payload.parameters.Values)
+            {
+                if (parameter?.raw == null)
+                {
+                    continue;
+                }
+
+                knownCount++;
+                if (parameter.raw.Value >= 0f)
+                {
+                    overrideCount++;
+                }
+            }
+
+            payload.override_count = overrideCount;
+            if (knownCount == 0)
+            {
+                payload.override_mode = "unknown";
+            }
+            else if (overrideCount == 0 && knownCount == payload.parameter_count)
+            {
+                payload.override_mode = "dynamic";
+            }
+            else if (overrideCount == knownCount && knownCount == payload.parameter_count)
+            {
+                payload.override_mode = "forced";
+            }
+            else
+            {
+                payload.override_mode = "partial";
+            }
+        }
+
+        private void ReportWeatherOverrideMode(WeatherSnapshotPayload weather)
+        {
+            if (weather == null)
+            {
+                return;
+            }
+
+            var signature = string.Format(
+                CultureInfo.InvariantCulture,
+                "{0}:{1}:{2}",
+                FirstNonEmpty(weather.override_mode, "unknown"),
+                weather.override_count,
+                weather.parameter_count
+            );
+            if (signature == lastWeatherOverrideSignature)
+            {
+                return;
+            }
+
+            lastWeatherOverrideSignature = signature;
+            var message = string.Format(
+                CultureInfo.InvariantCulture,
+                "Rust weather override mode is {0} ({1}/{2} tracked parameters overridden).",
+                FirstNonEmpty(weather.override_mode, "unknown"),
+                weather.override_count,
+                weather.parameter_count
+            );
+
+            if (weather.override_mode == "forced" || weather.override_mode == "partial")
+            {
+                PrintWarning(message + " Run weather.reset from the server console to restore dynamic weather; WebsiteMapBridge does not alter weather.");
+                return;
+            }
+
+            Puts(message);
         }
 
         private float? ReadEffectiveWeatherValue(WeatherParameterDefinition definition, List<Vector3> samplePositions, object weatherPreset, out string source)
@@ -916,7 +1101,7 @@ namespace Oxide.Plugins
                 }
                 else if (parameter.is_dynamic)
                 {
-                    parts.Add(name + "=dynamic(raw " + parameter.raw.Value.ToString("0.###") + ")");
+                    parts.Add(name + "=" + FormatSample(parameter.value) + "(dynamic raw " + parameter.raw.Value.ToString("0.###", CultureInfo.InvariantCulture) + ")");
                 }
                 else
                 {
@@ -924,7 +1109,14 @@ namespace Oxide.Plugins
                 }
             }
 
-            return "weatherParams=" + (parts.Count == 0 ? "unset" : string.Join(",", parts.ToArray()));
+            return string.Format(
+                CultureInfo.InvariantCulture,
+                "weatherOverrides={0}({1}/{2}); weatherParams={3}",
+                FirstNonEmpty(payload.override_mode, "unknown"),
+                payload.override_count,
+                payload.parameter_count,
+                parts.Count == 0 ? "unset" : string.Join(",", parts.ToArray())
+            );
         }
 
         private string FormatSample(float? value)
