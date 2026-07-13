@@ -1285,9 +1285,8 @@ class TerrainViewer {
   private updateWeatherEffects(environment: NormalizedEnvironment, now: number): void {
     const worldSize = this.terrain.worldSize || 4500;
     const rain = MathUtils.clamp(environment.rainIntensity, 0, 1);
-    const fog = MathUtils.clamp(environment.fogIntensity, 0, 1);
     const cloudCoverage = visualCloudCoverageForEnvironment(environment);
-    const visibleCloudAmount = MathUtils.clamp(Math.max(cloudCoverage, rain * 0.55, fog * 0.22), 0, 1);
+    const visibleCloudAmount = cloudCoverage;
     const sunHeight = MathUtils.clamp(environment.sunDirection.y, -0.16, 0.9);
     const twilight = MathUtils.clamp(1 - Math.abs(sunHeight - 0.12) / 0.34, 0, 1);
     const cloudOpacity = MathUtils.lerp(0.06, 0.5, Math.sqrt(visibleCloudAmount));
@@ -3384,12 +3383,7 @@ function interpolateEnvironment(from: NormalizedEnvironment, to: NormalizedEnvir
 }
 
 function visualCloudCoverageForEnvironment(environment: NormalizedEnvironment): number {
-  const sunHeight = MathUtils.clamp(environment.sunDirection.y, -0.16, 0.9);
-  const twilight = MathUtils.clamp(1 - Math.abs(sunHeight - 0.12) / 0.34, 0, 1);
-  const weatherLift = Math.max(environment.fogIntensity * 0.45, environment.rainIntensity * 0.72);
-  const cinematicFloor = MathUtils.lerp(0.14, 0.44, twilight) + weatherLift * 0.22;
-
-  return MathUtils.clamp(Math.max(environment.cloudCoverage, cinematicFloor), 0, 1);
+  return MathUtils.clamp(environment.cloudCoverage, 0, 1);
 }
 
 function finiteNumber(value: unknown, fallback: number): number {

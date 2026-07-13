@@ -136,11 +136,7 @@ export function updateRaidlandsEnvironment(scene: Scene, state: RaidlandsEnviron
     ? 0
     : Number(state.cloudCoverage);
   const rawCloudCoverage = MathUtils.clamp(Number.isFinite(cloudCoverageValue) ? cloudCoverageValue : 0, 0, 0.92);
-  const fogIntensity = MathUtils.clamp(Number(state.fogIntensity) || 0, 0, 1);
-  const rainIntensity = MathUtils.clamp(Number(state.rainIntensity) || 0, 0, 1);
-  const visualCloudFloor = MathUtils.lerp(0.16, 0.46, twilight)
-    + MathUtils.lerp(0, 0.18, Math.max(fogIntensity, rainIntensity * 0.8));
-  const cloudCoverage = MathUtils.clamp(Math.max(rawCloudCoverage, visualCloudFloor), 0, 0.92);
+  const cloudCoverage = rawCloudCoverage;
   const sunIntensityValue = Number(state.sunIntensity);
   const sunVisibility = MathUtils.smoothstep(sunHeight, -0.16, 0.12)
     * MathUtils.clamp((Number.isFinite(sunIntensityValue) ? sunIntensityValue : 0) / 1.7, 0.18, 1.2);
@@ -244,22 +240,25 @@ function createRaidlandsSkyDome(preset: RaidlandsEnvironmentPreset): Mesh {
         vec2 cloudPosition = direction.xz / max(direction.y + 0.36, 0.42);
         cloudPosition = cloudPosition * 2.2 + vec2(uCloudPhase * 0.0018, uCloudPhase * 0.0007);
         float clouds = cloudNoise(cloudPosition);
-        float cloudThreshold = mix(0.56, 0.22, uCloudCoverage);
+        float cloudCoverage = clamp(uCloudCoverage, 0.0, 1.0);
+        float cloudAlpha = smoothstep(0.01, 0.16, cloudCoverage);
+        float cloudThreshold = mix(0.72, 0.22, cloudCoverage);
         float cloudWave = 0.5 + 0.5 * sin(cloudPosition.x * 0.62 + sin(cloudPosition.y * 1.18) + clouds * 3.4);
         float cloudBand = 0.5 + 0.5 * sin(
           cloudPosition.x * 0.38 + cloudPosition.y * 0.24 + sin(cloudPosition.y * 0.7) * 1.8
         );
         float cloudMask = max(
-          smoothstep(cloudThreshold - 0.11, cloudThreshold + 0.08, clouds),
+          smoothstep(cloudThreshold - 0.08, cloudThreshold + 0.09, clouds),
           max(
-            smoothstep(0.64, 0.86, cloudWave) * uCloudCoverage,
-            smoothstep(0.63, 0.82, cloudBand) * 0.56
+            smoothstep(0.64, 0.86, cloudWave) * cloudCoverage,
+            smoothstep(0.63, 0.82, cloudBand) * cloudCoverage * 0.56
           )
         )
+          * cloudAlpha
           * smoothstep(-0.02, 0.32, direction.y)
           * (0.72 + height * 0.28);
         vec3 cloudColor = mix(vec3(0.18, 0.22, 0.28), vec3(0.82, 0.9, 0.96), uDaylight);
-        skyColor = mix(skyColor, cloudColor, cloudMask * (0.18 + uCloudCoverage * 0.58));
+        skyColor = mix(skyColor, cloudColor, cloudMask * (0.1 + cloudCoverage * 0.66));
 
         float starField = step(0.9972, hash(direction.xz * 180.0 + direction.y * 23.0));
         float stars = starField * (1.0 - uDaylight) * smoothstep(0.18, 0.72, direction.y);
