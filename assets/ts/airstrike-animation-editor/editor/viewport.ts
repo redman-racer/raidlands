@@ -29,7 +29,6 @@ import {
   SpriteMaterial,
   CylinderGeometry,
   RepeatWrapping,
-  TextureLoader,
   Uint32BufferAttribute,
   Vector2,
   Vector3,
@@ -40,6 +39,7 @@ import { TransformControls } from "three/examples/jsm/controls/TransformControls
 import { evaluateSourcePose } from "../math";
 import type { EditorSourceProfile, VehiclePreviewMetadataFile } from "../types";
 import { applyRaidlandsEnvironment } from "../../shared/three-environment";
+import { getSharedCanvasTexture, loadSharedTexture } from "../../shared/three-asset-cache";
 import { threeVectorToUnityPosition, unityPositionToThreeVector, unityQuaternionValueToThreeQuaternion } from "./coordinates";
 import { getReleasePreviewEvents, type ReleasePreviewEvent } from "./release-source";
 import { createVehicleProxy, loadVehiclePreview, metadataForVehicle } from "./vehicle-preview";
@@ -784,9 +784,7 @@ export class AirstrikeViewport {
     if (!material) {
       return;
     }
-    const loader = new TextureLoader();
-    loader.load(
-      url,
+    void loadSharedTexture(url).then(
       (texture) => {
         if (material !== this.terrainMaterial) {
           return;
@@ -796,7 +794,6 @@ export class AirstrikeViewport {
         material.vertexColors = false;
         material.needsUpdate = true;
       },
-      undefined,
       () => {
         // Vertex colors are the primary terrain texturing path; map image texture is optional.
       },
@@ -1767,11 +1764,12 @@ function rustGridColumnLabel(index: number): string {
 
 function createGridLabelSprite(label: string, size: number, x: number, z: number, y: number): Sprite {
   const fontSize = 42;
+  const texture = getSharedCanvasTexture(`editor:grid-label:${label}`, () => {
   const canvas = document.createElement("canvas");
   const context = canvas.getContext("2d");
 
   if (!context) {
-    return new Sprite(new SpriteMaterial({ color: 0x050607 }));
+    return new CanvasTexture(canvas);
   }
 
   canvas.width = 160;
@@ -1788,8 +1786,10 @@ function createGridLabelSprite(label: string, size: number, x: number, z: number
   context.fillStyle = "rgba(255, 246, 218, 0.96)";
   context.fillText(label, canvas.width / 2, 64);
 
-  const texture = new CanvasTexture(canvas);
-  texture.colorSpace = SRGBColorSpace;
+    const created = new CanvasTexture(canvas);
+    created.colorSpace = SRGBColorSpace;
+    return created;
+  });
   const sprite = new Sprite(new SpriteMaterial({ map: texture, transparent: true, depthTest: false, depthWrite: false }));
   sprite.name = `rust-grid-label-${label}`;
   sprite.position.set(x, y, z);
@@ -1899,41 +1899,44 @@ function createMonumentTitleSprite(title: string, size: number): Sprite {
   const fontSize = 34;
   const paddingX = 22;
   const paddingY = 14;
-  const canvas = document.createElement("canvas");
-  const context = canvas.getContext("2d");
+  const texture = getSharedCanvasTexture(`editor:monument-title:${label}`, () => {
+    const canvas = document.createElement("canvas");
+    const context = canvas.getContext("2d");
 
-  if (!context) {
-    return new Sprite(new SpriteMaterial({ color: 0xf8f0dc }));
-  }
+    if (!context) {
+      return new CanvasTexture(canvas);
+    }
 
-  context.font = `700 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-  const metrics = context.measureText(label);
-  const width = Math.ceil(metrics.width + paddingX * 2);
-  const height = fontSize + paddingY * 2;
-  canvas.width = nextPowerOfTwo(Math.max(128, width));
-  canvas.height = nextPowerOfTwo(Math.max(64, height));
+    context.font = `700 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+    const metrics = context.measureText(label);
+    const width = Math.ceil(metrics.width + paddingX * 2);
+    const height = fontSize + paddingY * 2;
+    canvas.width = nextPowerOfTwo(Math.max(128, width));
+    canvas.height = nextPowerOfTwo(Math.max(64, height));
 
-  context.font = `700 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
-  context.textAlign = "center";
-  context.textBaseline = "middle";
-  context.fillStyle = "rgba(18, 20, 18, 0.74)";
-  roundRect(context, (canvas.width - width) / 2, (canvas.height - height) / 2, width, height, 16);
-  context.fill();
-  context.strokeStyle = "rgba(248, 231, 172, 0.82)";
-  context.lineWidth = 3;
-  context.stroke();
-  context.fillStyle = "#fff5d7";
-  context.shadowColor = "rgba(0, 0, 0, 0.65)";
-  context.shadowBlur = 5;
-  context.fillText(label, canvas.width / 2, canvas.height / 2 + 1);
+    context.font = `700 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
+    context.textAlign = "center";
+    context.textBaseline = "middle";
+    context.fillStyle = "rgba(18, 20, 18, 0.74)";
+    roundRect(context, (canvas.width - width) / 2, (canvas.height - height) / 2, width, height, 16);
+    context.fill();
+    context.strokeStyle = "rgba(248, 231, 172, 0.82)";
+    context.lineWidth = 3;
+    context.stroke();
+    context.fillStyle = "#fff5d7";
+    context.shadowColor = "rgba(0, 0, 0, 0.65)";
+    context.shadowBlur = 5;
+    context.fillText(label, canvas.width / 2, canvas.height / 2 + 1);
 
-  const texture = new CanvasTexture(canvas);
-  texture.colorSpace = SRGBColorSpace;
+    const created = new CanvasTexture(canvas);
+    created.colorSpace = SRGBColorSpace;
+    return created;
+  });
   const sprite = new Sprite(new SpriteMaterial({ map: texture, transparent: true, depthTest: false, depthWrite: false }));
   const worldWidth = MathUtils.clamp(size * 1.35, 80, 230);
   sprite.name = "monument-title";
   sprite.position.set(0, Math.max(size * 1.48, 64), 0);
-  sprite.scale.set(worldWidth, worldWidth * (canvas.height / canvas.width), 1);
+  sprite.scale.set(worldWidth, worldWidth * textureAspectRatio(texture), 1);
   sprite.renderOrder = 20;
   return sprite;
 }
@@ -1976,6 +1979,13 @@ function addSphere(group: Group, radius: number, color: number, x: number, y: nu
 
 function nextPowerOfTwo(value: number): number {
   return 2 ** Math.ceil(Math.log2(Math.max(1, value)));
+}
+
+function textureAspectRatio(texture: CanvasTexture): number {
+  const image = texture.image as { width?: number; height?: number } | undefined;
+  const width = Math.max(1, Number(image?.width) || 1);
+  const height = Math.max(1, Number(image?.height) || 1);
+  return height / width;
 }
 
 function roundRect(context: CanvasRenderingContext2D, x: number, y: number, width: number, height: number, radius: number): void {
