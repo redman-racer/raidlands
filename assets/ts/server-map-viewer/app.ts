@@ -1335,8 +1335,11 @@ class TerrainViewer {
       child.position.z = (Number(child.userData.baseZ) || 0) + Math.cos(drift * 0.7) * worldSize * 0.05;
     });
     this.rainLayer.visible = rainVisible;
-    this.rainLayer.position.copy(rainAnchor).add(rainUp.multiplyScalar(-rainFallOffset));
+    this.rainLayer.position.copy(rainAnchor);
     this.rainLayer.quaternion.copy(this.camera.quaternion);
+    this.rainLayer.children.forEach((child) => {
+      child.position.y = -rainFallOffset * 0.42;
+    });
     this.rainMaterial.opacity = rainVisible ? MathUtils.lerp(0.08, 0.38, Math.sqrt(rain)) : 0;
   }
 
@@ -3316,17 +3319,18 @@ function createRainSheetTexture(): CanvasTexture {
 function createRainStreaks(terrain: TerrainPayload, material: LineBasicMaterial): LineSegments {
   const worldSize = terrain.worldSize || 4500;
   const width = MathUtils.clamp(worldSize * 1.45, 1800, 7600);
-  const height = MathUtils.clamp(worldSize * 0.42, 900, 2400);
+  const height = MathUtils.clamp(worldSize * 0.92, 1800, 5200);
   const streakCount = Math.round(MathUtils.clamp(worldSize * 0.42, 900, 2400));
   const positions: number[] = [];
 
   for (let index = 0; index < streakCount; index += 1) {
     const x = (((index * 97) % 997) / 996 - 0.5) * width;
-    const z = (((index * 193) % 991) / 990 - 0.5) * width;
-    const y = (((index * 389) % 983) / 982) * height + 120;
+    const z = ((((index * 193) % 991) / 990) - 0.5) * 36;
+    const y = ((((index * 389) % 983) / 982) - 0.5) * height;
     const length = MathUtils.lerp(42, 86, ((index * 23) % 11) / 10);
     const slant = MathUtils.lerp(-2, 5, ((index * 31) % 13) / 12);
     positions.push(x, y, z, x + slant, y - length, z - Math.abs(slant) * 0.18);
+    positions.push(x, y + height, z, x + slant, y + height - length, z - Math.abs(slant) * 0.18);
   }
 
   const geometry = new BufferGeometry();
