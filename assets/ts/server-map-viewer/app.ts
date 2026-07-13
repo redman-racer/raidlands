@@ -1337,7 +1337,6 @@ class TerrainViewer {
     this.rainLayer.visible = rainVisible;
     this.rainLayer.position.copy(rainAnchor).add(rainUp.multiplyScalar(-rainFallOffset));
     this.rainLayer.quaternion.copy(this.camera.quaternion);
-    this.rainLayer.rotateZ(-0.08);
     this.rainMaterial.opacity = rainVisible ? MathUtils.lerp(0.08, 0.38, Math.sqrt(rain)) : 0;
   }
 
@@ -3298,7 +3297,7 @@ function createRainSheetTexture(): CanvasTexture {
         const alpha = 0.08 + ((index * 13) % 9) * 0.012;
         context.beginPath();
         context.moveTo(x, y);
-        context.lineTo(x + 8 + (index % 5), y + length);
+        context.lineTo(x + 2 + (index % 3), y + length);
         context.strokeStyle = `rgba(210, 230, 245, ${alpha})`;
         context.lineWidth = index % 4 === 0 ? 1.2 : 0.72;
         context.stroke();
@@ -3326,8 +3325,8 @@ function createRainStreaks(terrain: TerrainPayload, material: LineBasicMaterial)
     const z = (((index * 193) % 991) / 990 - 0.5) * width;
     const y = (((index * 389) % 983) / 982) * height + 120;
     const length = MathUtils.lerp(42, 86, ((index * 23) % 11) / 10);
-    const slant = MathUtils.lerp(6, 22, ((index * 31) % 13) / 12);
-    positions.push(x, y, z, x + slant, y - length, z - slant * 0.38);
+    const slant = MathUtils.lerp(-2, 5, ((index * 31) % 13) / 12);
+    positions.push(x, y, z, x + slant, y - length, z - Math.abs(slant) * 0.18);
   }
 
   const geometry = new BufferGeometry();

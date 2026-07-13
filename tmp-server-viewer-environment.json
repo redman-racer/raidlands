@@ -1,0 +1,18 @@
+{
+  "ok": true,
+  "environment": {
+    "rustTime": 15,
+    "sunDirection": {
+      "x": -0.48,
+      "y": 0.77,
+      "z": 0.42
+    },
+    "sunIntensity": 1.4,
+    "sunColor": "#ffae6b",
+    "ambientIntensity": 0.4,
+    "ambientColor": "#1e1d2e",
+    "cloudCoverage": 0.52,
+    "rainIntensity": 0.85,
+    "fogIntensity": 0.28
+  }
+}
