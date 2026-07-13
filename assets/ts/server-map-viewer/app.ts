@@ -9,6 +9,7 @@ import {
   DirectionalLight,
   DoubleSide,
   Euler,
+  FogExp2,
   Float32BufferAttribute,
   Group,
   CanvasTexture,
@@ -208,6 +209,7 @@ type EnvironmentSnapshot = {
   cloudCoverage?: number | null;
   rainIntensity?: number | null;
   fogIntensity?: number | null;
+  weatherSampleSummary?: string;
 };
 
 type EnvironmentPayload = {
@@ -1235,22 +1237,46 @@ class TerrainViewer {
     }
     const sunHeight = MathUtils.clamp(environment.sunDirection.y, -0.16, 0.9);
     const daylight = MathUtils.smoothstep(sunHeight, -0.05, 0.55);
-    this.ambientLight.color.copy(environment.ambientColor).lerp(new Color(0xddeaf0), 0.5);
-    this.ambientLight.intensity = Math.max(0.42, environment.ambientIntensity * MathUtils.lerp(1.05, 1.22, daylight));
+    const twilight = MathUtils.clamp(1 - Math.abs(sunHeight - 0.12) / 0.34, 0, 1);
+    const night = 1 - MathUtils.smoothstep(sunHeight, -0.18, 0.08);
+    const visualCloudCoverage = visualCloudCoverageForEnvironment(environment);
+    this.ambientLight.color.copy(environment.ambientColor)
+      .lerp(new Color(0xddeaf0), MathUtils.lerp(0.16, 0.42, daylight))
+      .lerp(new Color(0xff9a62), twilight * 0.22)
+      .lerp(new Color(0x101827), night * 0.52);
+    this.ambientLight.intensity = MathUtils.clamp(
+      environment.ambientIntensity * MathUtils.lerp(0.82, 1.18, daylight) + MathUtils.lerp(0.05, 0.18, twilight),
+      0.14,
+      0.72,
+    );
     this.sunLight.color.copy(environment.sunColor);
-    this.sunLight.intensity = Math.max(0.62, environment.sunIntensity * 1.02);
+    this.sunLight.intensity = Math.max(0.08, environment.sunIntensity * MathUtils.lerp(0.82, 1.08, daylight));
     const worldSize = this.terrain.worldSize || 4500;
     this.sunLight.position.copy(environment.sunDirection).multiplyScalar(worldSize * 0.62);
     this.sunLight.position.y = Math.max(this.sunLight.position.y, worldSize * -0.18);
-    this.fillLight.intensity = MathUtils.lerp(0.26, 0.34, daylight);
-    const horizonDrama = 1 - Math.abs(MathUtils.clamp(sunHeight, -0.1, 0.46) - 0.18) / 0.28;
-    this.scene.backgroundIntensity = MathUtils.lerp(0.9, 1.08, daylight) + Math.max(0, horizonDrama) * 0.02;
-    this.scene.environmentIntensity = MathUtils.lerp(0.68, 0.98, daylight);
+    this.fillLight.color.set(0x88b7d6).lerp(new Color(0xff7f4e), twilight * 0.18);
+    this.fillLight.intensity = MathUtils.lerp(0.12, 0.32, daylight) + twilight * 0.08;
+    const horizonDrama = MathUtils.clamp(1 - Math.abs(MathUtils.clamp(sunHeight, -0.1, 0.46) - 0.18) / 0.28, 0, 1);
+    this.scene.backgroundIntensity = MathUtils.lerp(0.72, 1.04, daylight) + horizonDrama * 0.08 - night * 0.18;
+    this.scene.environmentIntensity = MathUtils.lerp(0.46, 0.96, daylight) + horizonDrama * 0.04;
+    const fogStrength = MathUtils.clamp(
+      environment.fogIntensity * 0.74 + visualCloudCoverage * 0.08 + horizonDrama * 0.12,
+      0,
+      1,
+    );
+    const fogColor = new Color(0x172235)
+      .lerp(new Color(0xff9d63), twilight * 0.42)
+      .lerp(environment.ambientColor, MathUtils.lerp(0.1, 0.34, daylight));
+    this.scene.fog = fogStrength > 0.02
+      ? new FogExp2(fogColor, MathUtils.lerp(0.000035, 0.00028, Math.sqrt(fogStrength)))
+      : null;
     updateRaidlandsEnvironment(this.scene, {
       sunDirection: environment.sunDirection,
       sunColor: environment.sunColor,
       sunIntensity: environment.sunIntensity,
-      cloudCoverage: environment.cloudCoverage,
+      cloudCoverage: visualCloudCoverage,
+      fogIntensity: environment.fogIntensity,
+      rainIntensity: environment.rainIntensity,
       timeSeconds: performance.now() / 1000,
       cameraPosition: this.camera.position,
     });
@@ -1260,10 +1286,12 @@ class TerrainViewer {
     const worldSize = this.terrain.worldSize || 4500;
     const rain = MathUtils.clamp(environment.rainIntensity, 0, 1);
     const fog = MathUtils.clamp(environment.fogIntensity, 0, 1);
-    const cloudCoverage = MathUtils.clamp(environment.cloudCoverage, 0, 1);
+    const cloudCoverage = visualCloudCoverageForEnvironment(environment);
     const visibleCloudAmount = MathUtils.clamp(Math.max(cloudCoverage, rain * 0.55, fog * 0.22), 0, 1);
-    const cloudOpacity = MathUtils.lerp(0.08, 0.42, Math.sqrt(visibleCloudAmount));
-    const cloudScale = MathUtils.lerp(0.72, 1.08, visibleCloudAmount);
+    const sunHeight = MathUtils.clamp(environment.sunDirection.y, -0.16, 0.9);
+    const twilight = MathUtils.clamp(1 - Math.abs(sunHeight - 0.12) / 0.34, 0, 1);
+    const cloudOpacity = MathUtils.lerp(0.06, 0.5, Math.sqrt(visibleCloudAmount));
+    const cloudScale = MathUtils.lerp(0.76, 1.18, visibleCloudAmount);
 
     this.weatherCloudLayer.visible = visibleCloudAmount > 0.015;
     this.weatherCloudLayer.position.x = this.camera.position.x * 0.035;
@@ -1280,7 +1308,9 @@ class TerrainViewer {
       child.scale.set(baseScale * cloudScale * (Number(child.userData.scaleX) || 1), baseScale * cloudScale * (Number(child.userData.scaleY) || 0.34), 1);
       const material = child.material as SpriteMaterial;
       material.opacity = cloudOpacity * (Number(child.userData.opacityBias) || 1);
-      material.color.copy(environment.ambientColor).lerp(new Color(0xe9f2f7), MathUtils.lerp(0.62, 0.86, MathUtils.smoothstep(environment.sunDirection.y, -0.05, 0.5)));
+      material.color.copy(environment.ambientColor)
+        .lerp(new Color(0xe9f2f7), MathUtils.lerp(0.54, 0.84, MathUtils.smoothstep(environment.sunDirection.y, -0.05, 0.5)))
+        .lerp(new Color(0xff8a5d), twilight * 0.28);
     });
 
     const rainVisible = rain > 0.015;
@@ -3348,6 +3378,15 @@ function interpolateEnvironment(from: NormalizedEnvironment, to: NormalizedEnvir
     rainIntensity: MathUtils.lerp(from.rainIntensity, to.rainIntensity, progress),
     fogIntensity: MathUtils.lerp(from.fogIntensity, to.fogIntensity, progress),
   };
+}
+
+function visualCloudCoverageForEnvironment(environment: NormalizedEnvironment): number {
+  const sunHeight = MathUtils.clamp(environment.sunDirection.y, -0.16, 0.9);
+  const twilight = MathUtils.clamp(1 - Math.abs(sunHeight - 0.12) / 0.34, 0, 1);
+  const weatherLift = Math.max(environment.fogIntensity * 0.45, environment.rainIntensity * 0.72);
+  const cinematicFloor = MathUtils.lerp(0.14, 0.44, twilight) + weatherLift * 0.22;
+
+  return MathUtils.clamp(Math.max(environment.cloudCoverage, cinematicFloor), 0, 1);
 }
 
 function finiteNumber(value: unknown, fallback: number): number {

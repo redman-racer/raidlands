@@ -33,6 +33,8 @@ export type RaidlandsEnvironmentState = {
   sunColor: Color;
   sunIntensity: number;
   cloudCoverage?: number | null;
+  fogIntensity?: number | null;
+  rainIntensity?: number | null;
   timeSeconds?: number;
   cameraPosition?: Vector3;
 };
@@ -133,7 +135,12 @@ export function updateRaidlandsEnvironment(scene: Scene, state: RaidlandsEnviron
   const cloudCoverageValue = state.cloudCoverage === null || state.cloudCoverage === undefined
     ? 0
     : Number(state.cloudCoverage);
-  const cloudCoverage = MathUtils.clamp(Number.isFinite(cloudCoverageValue) ? cloudCoverageValue : 0, 0, 0.92);
+  const rawCloudCoverage = MathUtils.clamp(Number.isFinite(cloudCoverageValue) ? cloudCoverageValue : 0, 0, 0.92);
+  const fogIntensity = MathUtils.clamp(Number(state.fogIntensity) || 0, 0, 1);
+  const rainIntensity = MathUtils.clamp(Number(state.rainIntensity) || 0, 0, 1);
+  const visualCloudFloor = MathUtils.lerp(0.16, 0.46, twilight)
+    + MathUtils.lerp(0, 0.18, Math.max(fogIntensity, rainIntensity * 0.8));
+  const cloudCoverage = MathUtils.clamp(Math.max(rawCloudCoverage, visualCloudFloor), 0, 0.92);
   const sunIntensityValue = Number(state.sunIntensity);
   const sunVisibility = MathUtils.smoothstep(sunHeight, -0.16, 0.12)
     * MathUtils.clamp((Number.isFinite(sunIntensityValue) ? sunIntensityValue : 0) / 1.7, 0.18, 1.2);

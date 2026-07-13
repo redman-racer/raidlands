@@ -15,7 +15,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteMapBridge", "Raidlands", "1.0.9")]
+    [Info("WebsiteMapBridge", "Raidlands", "1.0.10")]
     [Description("Publishes the current RustMapApi map image and sampled terrain to the Raidlands website.")]
     public class WebsiteMapBridge : CovalencePlugin
     {
@@ -104,6 +104,7 @@ namespace Oxide.Plugins
             public float? cloud_coverage;
             public float? rain_intensity;
             public float? fog_intensity;
+            public string weather_sample_summary;
         }
 
         private class EnvironmentVectorPayload
@@ -519,6 +520,20 @@ namespace Oxide.Plugins
                 sunColor = ColorToHex(SunColorFromDirection(sunDirection));
             }
 
+            var weatherSample = SampleWeatherAroundMapCenter();
+            if (weatherSample.HasClouds)
+            {
+                cloudCoverage = weatherSample.Clouds;
+            }
+            if (weatherSample.HasRain)
+            {
+                rainIntensity = weatherSample.Rain;
+            }
+            if (weatherSample.HasFog)
+            {
+                fogIntensity = weatherSample.Fog;
+            }
+
             return new EnvironmentSnapshotPayload
             {
                 server_id = ResolveServerId(),
@@ -538,8 +553,149 @@ namespace Oxide.Plugins
                 ambient_color = ambientColor,
                 cloud_coverage = cloudCoverage,
                 rain_intensity = rainIntensity,
-                fog_intensity = fogIntensity
+                fog_intensity = fogIntensity,
+                weather_sample_summary = weatherSample.Summary
             };
+        }
+
+        private class WeatherSample
+        {
+            public float Clouds;
+            public float Rain;
+            public float Fog;
+            public bool HasClouds;
+            public bool HasRain;
+            public bool HasFog;
+            public string Summary = "weather unavailable";
+        }
+
+        private WeatherSample SampleWeatherAroundMapCenter()
+        {
+            var sample = new WeatherSample();
+            var worldSize = Math.Max(1000f, ConVar.Server.worldsize);
+            var offset = worldSize * 0.23f;
+            var positions = new[]
+            {
+                Vector3.zero,
+                new Vector3(offset, 0f, offset),
+                new Vector3(-offset, 0f, offset),
+                new Vector3(offset, 0f, -offset),
+                new Vector3(-offset, 0f, -offset)
+            };
+
+            var clouds = SampleClimateMethod("GetClouds", positions, out var cloudSummary);
+            var rain = SampleClimateMethod("GetRain", positions, out var rainSummary);
+            var fog = SampleClimateMethod("GetFog", positions, out var fogSummary);
+
+            if (clouds.HasValue)
+            {
+                sample.Clouds = clouds.Value;
+                sample.HasClouds = true;
+            }
+            if (rain.HasValue)
+            {
+                sample.Rain = rain.Value;
+                sample.HasRain = true;
+            }
+            if (fog.HasValue)
+            {
+                sample.Fog = fog.Value;
+                sample.HasFog = true;
+            }
+
+            sample.Summary = $"cloudSource={cloudSummary}, rainSource={rainSummary}, fogSource={fogSummary}";
+            return sample;
+        }
+
+        private float? SampleClimateMethod(string methodName, Vector3[] positions, out string summary)
+        {
+            summary = "missing";
+
+            try
+            {
+                var climateType = AppDomain.CurrentDomain
+                    .GetAssemblies()
+                    .Select(assembly => assembly.GetType("Climate", false))
+                    .FirstOrDefault(type => type != null);
+
+                if (climateType == null)
+                {
+                    return null;
+                }
+
+                var methods = climateType
+                    .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
+                    .Where(method => method.Name.Equals(methodName, StringComparison.OrdinalIgnoreCase))
+                    .ToArray();
+
+                if (methods.Length == 0)
+                {
+                    return null;
+                }
+
+                var values = new List<float>();
+                foreach (var position in positions)
+                {
+                    foreach (var method in methods)
+                    {
+                        var parameters = method.GetParameters();
+                        object result;
+
+                        if (parameters.Length == 1 && parameters[0].ParameterType == typeof(Vector3))
+                        {
+                            result = method.Invoke(null, new object[] { position });
+                        }
+                        else if (parameters.Length == 0)
+                        {
+                            result = method.Invoke(null, null);
+                        }
+                        else
+                        {
+                            continue;
+                        }
+
+                        if (TryConvertFloat(result, out var value))
+                        {
+                            values.Add(Mathf.Clamp01(value));
+                            break;
+                        }
+                    }
+                }
+
+                if (values.Count == 0)
+                {
+                    summary = $"{methodName}:no numeric samples";
+                    return null;
+                }
+
+                var average = values.Average();
+                summary = $"{methodName}:{average:0.###} raw=avg={average:0.###} min={values.Min():0.###} max={values.Max():0.###} samples={values.Count}";
+                return (float)Math.Round(average, 4);
+            }
+            catch (Exception ex)
+            {
+                summary = $"{methodName}:error {ex.GetType().Name}";
+                return null;
+            }
+        }
+
+        private bool TryConvertFloat(object value, out float result)
+        {
+            result = 0f;
+            if (value == null)
+            {
+                return false;
+            }
+
+            try
+            {
+                result = Convert.ToSingle(value);
+                return !float.IsNaN(result) && !float.IsInfinity(result);
+            }
+            catch
+            {
+                return false;
+            }
         }
 
         private Vector3 SunDirectionFromHour(float hour)
@@ -1635,6 +1791,7 @@ namespace Oxide.Plugins
                 config.PublishSkybox = defaults.PublishSkybox;
             }
             config.PlayerLocationIntervalSeconds = Math.Max(5, config.PlayerLocationIntervalSeconds <= 0 ? defaults.PlayerLocationIntervalSeconds : config.PlayerLocationIntervalSeconds);
+            config.EnvironmentIntervalSeconds = Math.Max(5, config.EnvironmentIntervalSeconds <= 0 ? defaults.EnvironmentIntervalSeconds : config.EnvironmentIntervalSeconds);
         }
 
         private bool ConfigHasProperty(string propertyName)

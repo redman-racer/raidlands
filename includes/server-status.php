@@ -1331,6 +1331,11 @@ function raidlands_server_environment_snapshot_public(?array $row): ?array
         return null;
     }
 
+    $payload = json_decode((string) ($row['payload_json'] ?? '{}'), true);
+    if (!is_array($payload)) {
+        $payload = [];
+    }
+
     return [
         'serverId' => (string) ($row['server_id'] ?? ''),
         'wipeKey' => (string) ($row['wipe_key'] ?? ''),
@@ -1349,6 +1354,7 @@ function raidlands_server_environment_snapshot_public(?array $row): ?array
         'cloudCoverage' => $row['cloud_coverage'] === null ? null : round((float) $row['cloud_coverage'], 4),
         'rainIntensity' => $row['rain_intensity'] === null ? null : round((float) $row['rain_intensity'], 4),
         'fogIntensity' => $row['fog_intensity'] === null ? null : round((float) $row['fog_intensity'], 4),
+        'weatherSampleSummary' => raidlands_server_status_clean_text($payload['weather_sample_summary'] ?? $payload['weatherSampleSummary'] ?? '', 240),
     ];
 }
 
