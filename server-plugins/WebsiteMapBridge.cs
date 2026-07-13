@@ -17,7 +17,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteMapBridge", "Raidlands", "1.0.11")]
+    [Info("WebsiteMapBridge", "Raidlands", "1.0.12")]
     [Description("Publishes the current RustMapApi map image and sampled terrain to the Raidlands website.")]
     public class WebsiteMapBridge : CovalencePlugin
     {
@@ -53,6 +53,7 @@ namespace Oxide.Plugins
             public string FileType = "Jpg";
             public float ImageResolutionScale = 0.5f;
             public bool AutoPublishOnRustMapApiReady = true;
+            public bool AutoPublishOnServerInitialized = false;
             public int AutoPublishDelaySeconds = 10;
             public int WebRequestTimeoutMilliseconds = 60000;
             public bool PublishTerrain = true;
@@ -316,7 +317,10 @@ namespace Oxide.Plugins
         private void OnServerInitialized()
         {
             LogBridgeSecretDiagnostics();
-            QueueAutoPublish("server initialized");
+            if (config.AutoPublishOnServerInitialized)
+            {
+                QueueAutoPublish("server initialized");
+            }
             StartPlayerLocationPublisher();
             StartEnvironmentPublisher();
         }
@@ -399,7 +403,7 @@ namespace Oxide.Plugins
 
             ReplyToCommand(
                 arg,
-                $"WebsiteMapBridge v1.0.11 status: server={ResolveServerId()}, api={apiState}, ready={readyState}, secret={secretState}, render={config.RenderName}, textureRender={config.TextureRenderName}, terrainEnabled={config.PublishTerrain}, terrainResolution={config.TerrainSampleResolution}, monumentsEnabled={config.IncludeMonuments}, skybox={config.PublishSkybox}/{config.SkyboxImagePath}, playerLocations={config.PublishPlayerLocations}/{config.PlayerLocationIntervalSeconds}s, environment={config.PublishEnvironment}/{config.EnvironmentIntervalSeconds}s last={FirstNonEmpty(lastEnvironmentSyncAt, "never")} sampled=[TOD {environmentSample.rust_time:0.00}, cloud {FormatSample(environmentSample.cloud_coverage)}, rain {FormatSample(environmentSample.rain_intensity)}, fog {FormatSample(environmentSample.fog_intensity)}; {environmentSample.weather_sample_summary}], replayEvents={config.PublishReplayEvents}, heightMap={heightMapState}, lastWipe={lastPublishedWipeKey}."
+                $"WebsiteMapBridge v1.0.12 status: server={ResolveServerId()}, api={apiState}, ready={readyState}, secret={secretState}, render={config.RenderName}, textureRender={config.TextureRenderName}, autoPublishReady={config.AutoPublishOnRustMapApiReady}, autoPublishInit={config.AutoPublishOnServerInitialized}, terrainEnabled={config.PublishTerrain}, terrainResolution={config.TerrainSampleResolution}, monumentsEnabled={config.IncludeMonuments}, skybox={config.PublishSkybox}/{config.SkyboxImagePath}, playerLocations={config.PublishPlayerLocations}/{config.PlayerLocationIntervalSeconds}s, environment={config.PublishEnvironment}/{config.EnvironmentIntervalSeconds}s last={FirstNonEmpty(lastEnvironmentSyncAt, "never")} sampled=[TOD {environmentSample.rust_time:0.00}, cloud {FormatSample(environmentSample.cloud_coverage)}, rain {FormatSample(environmentSample.rain_intensity)}, fog {FormatSample(environmentSample.fog_intensity)}; {environmentSample.weather_sample_summary}], replayEvents={config.PublishReplayEvents}, heightMap={heightMapState}, lastWipe={lastPublishedWipeKey}."
             );
         }
 
@@ -1321,6 +1325,11 @@ namespace Oxide.Plugins
                 });
             }
 
+            if (players.Count == 0 && !verbose)
+            {
+                return;
+            }
+
             var payload = new PlayerLocationSnapshotPayload
             {
                 server_id = ResolveServerId(),
@@ -2034,9 +2043,27 @@ namespace Oxide.Plugins
 
         private void SendPost(string url, string body, Action<int, string> callback)
         {
-            var headers = BuildHeaders("POST", url, body);
-            headers["Content-Type"] = "application/json";
-            webrequest.Enqueue(url, body, (code, response) => callback(code, response ?? ""), this, RequestMethod.POST, headers, WebRequestTimeoutMilliseconds());
+            try
+            {
+                var headers = BuildHeaders("POST", url, body);
+                headers["Content-Type"] = "application/json";
+                webrequest.Enqueue(url, body, (code, response) =>
+                {
+                    try
+                    {
+                        callback?.Invoke(code, response ?? "");
+                    }
+                    catch (Exception ex)
+                    {
+                        PrintWarning($"Website POST callback failed for {url}: {ex.GetType().Name}: {ex.Message}");
+                    }
+                }, this, RequestMethod.POST, headers, WebRequestTimeoutMilliseconds());
+            }
+            catch (Exception ex)
+            {
+                PrintWarning($"Website POST enqueue failed for {url}: {ex.GetType().Name}: {ex.Message}");
+                callback?.Invoke(0, $"enqueue error {ex.GetType().Name}: {ex.Message}");
+            }
         }
 
         private float WebRequestTimeoutMilliseconds()

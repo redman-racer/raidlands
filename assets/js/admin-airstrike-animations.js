@@ -79,8 +79,12 @@
         });
         const publication = payload.publication || {};
         const rcon = publication.rcon || {};
+        const syncCommand = rcon.command || ('airanimsync.sync ' + publication.revision);
+        const suffix = sync
+          ? ' Run ' + syncCommand + ' from server console/RCON, then check /airanimsync.'
+          : ' Run ' + syncCommand + ' when you are ready to install it on the server.';
         showFeedback(
-          'Published revision ' + publication.revision + '. ' + (rcon.message || ''),
+          'Published revision ' + publication.revision + ' with ' + publication.profileCount + ' profile(s). ' + (rcon.message || suffix),
           rcon.ok ? 'success' : 'warning'
         );
         window.setTimeout(function () { window.location.reload(); }, 1200);

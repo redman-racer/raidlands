@@ -250,6 +250,7 @@ $admin_airstrike_animation_state = [
     'publishedBundle' => null,
     'server' => null,
     'snapshots' => [],
+    'summary' => [],
 ];
 
 try {
@@ -5533,6 +5534,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             : [];
                         $airstrike_profiles = (array) ($admin_airstrike_animation_state['profiles'] ?? []);
                         $airstrike_snapshots = (array) ($admin_airstrike_animation_state['snapshots'] ?? []);
+                        $airstrike_summary = (array) ($admin_airstrike_animation_state['summary'] ?? []);
                         $airstrike_active_profile_count = 0;
                         $airstrike_valid_profile_count = 0;
                         foreach ($airstrike_profiles as $profile_count_row) {
@@ -5565,6 +5567,9 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               <span>Published</span>
                               <strong><?= $airstrike_bundle === [] ? 'None' : e((string) ($airstrike_bundle['revision'] ?? 'None')) ?></strong>
                               <small><code><?= $airstrike_bundle === [] ? 'No immutable bundle yet' : e(substr((string) ($airstrike_bundle['sha256'] ?? ''), 0, 16) . '...') ?></code></small>
+                              <?php if ($airstrike_bundle !== []) : ?>
+                                <small><?= e((string) ($airstrike_bundle['profileCount'] ?? 0)) ?> profiles in bundle</small>
+                              <?php endif; ?>
                             </div>
                             <div class="airstrike-file-status-card">
                               <span>raidlands-main</span>
@@ -5582,6 +5587,11 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               <div>
                                 <p class="section-kicker">Recent files</p>
                                 <strong><?= e((string) $airstrike_active_profile_count) ?> active / <?= e((string) count($airstrike_profiles)) ?> total</strong>
+                                <?php if ((int) ($airstrike_summary['unpublishedProfileCount'] ?? 0) > 0) : ?>
+                                  <small><?= e((string) $airstrike_summary['unpublishedProfileCount']) ?> active drafts are not in the published bundle yet.</small>
+                                <?php elseif ($airstrike_bundle !== [] && (int) ($airstrike_summary['publishedBundleProfileCount'] ?? 0) !== $airstrike_active_profile_count) : ?>
+                                  <small>The published bundle has <?= e((string) ($airstrike_summary['publishedBundleProfileCount'] ?? 0)) ?> profiles; publish again before syncing.</small>
+                                <?php endif; ?>
                               </div>
                               <span class="status-pill"><?= e((string) $airstrike_valid_profile_count) ?> valid</span>
                             </div>

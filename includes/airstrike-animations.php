@@ -308,11 +308,92 @@ function raidlands_airstrike_animations_decode_bundle_row(array $row): array
     ];
 }
 
+function raidlands_airstrike_animations_repair_bundle_from_revisions(int $revision): array
+{
+    raidlands_airstrike_animations_require_schema();
+
+    if ($revision <= 0) {
+        throw new InvalidArgumentException('Bundle revision must be a positive integer.');
+    }
+
+    $row = raidlands_airstrike_animations_latest_bundle_row($revision);
+    if ($row === null) {
+        throw new OutOfBoundsException('Published bundle revision ' . $revision . ' was not found.');
+    }
+
+    $profile_rows = raidlands_db_fetch_all(
+        'SELECT p.profile_key, r.runtime_json
+         FROM airstrike_animation_profile_revisions r
+         INNER JOIN airstrike_animation_profiles p ON p.id = r.profile_id
+         WHERE r.bundle_revision = :revision
+         ORDER BY p.profile_key ASC',
+        ['revision' => $revision]
+    );
+
+    if ($profile_rows === []) {
+        throw new UnexpectedValueException(
+            'Published bundle revision ' . $revision . ' has no profile revision rows; publish a new bundle instead.'
+        );
+    }
+
+    $profiles = [];
+    foreach ($profile_rows as $profile_row) {
+        $profile_key = raidlands_airstrike_animations_clean_key((string) ($profile_row['profile_key'] ?? ''));
+        $profiles[$profile_key] = raidlands_airstrike_animations_decode_json(
+            (string) ($profile_row['runtime_json'] ?? ''),
+            'Runtime profile ' . $profile_key
+        );
+    }
+
+    $bundle = [
+        'AllowDangerousPayloadPreview' => false,
+        'CompilerVersion' => (string) ($row['compiler_version'] ?? RAIDLANDS_AIRSTRIKE_ANIMATION_COMPILER_VERSION),
+        'Profiles' => $profiles === [] ? new stdClass() : $profiles,
+        'PublishedRevision' => $revision,
+        'SchemaVersion' => (int) ($row['schema_version'] ?? 2) ?: 2,
+    ];
+    $canonical_json = raidlands_airstrike_animation_canonical_json($bundle);
+
+    if ($canonical_json === '' || strlen($canonical_json) > RAIDLANDS_AIRSTRIKE_ANIMATION_MAX_BUNDLE_BYTES) {
+        throw new RuntimeException('Rebuilt animation bundle is empty or exceeds the 20 MiB limit.');
+    }
+
+    $sha256 = hash('sha256', $canonical_json);
+    raidlands_db_execute(
+        'UPDATE airstrike_animation_bundles
+         SET bundle_json = :bundle_json,
+             sha256 = :sha256,
+             profile_count = :profile_count
+         WHERE revision = :revision',
+        [
+            'bundle_json' => $canonical_json,
+            'sha256' => $sha256,
+            'profile_count' => count($profiles),
+            'revision' => $revision,
+        ]
+    );
+
+    $repaired_row = raidlands_airstrike_animations_latest_bundle_row($revision);
+    if ($repaired_row === null) {
+        throw new RuntimeException('Repaired bundle revision ' . $revision . ' could not be reloaded.');
+    }
+
+    return raidlands_airstrike_animations_decode_bundle_row($repaired_row);
+}
+
 function raidlands_airstrike_animations_latest_valid_bundle(?int $revision = null): ?array
 {
     if ($revision !== null) {
         $row = raidlands_airstrike_animations_latest_bundle_row($revision);
-        return $row === null ? null : raidlands_airstrike_animations_decode_bundle_row($row);
+        if ($row === null) {
+            return null;
+        }
+
+        try {
+            return raidlands_airstrike_animations_decode_bundle_row($row);
+        } catch (InvalidArgumentException $error) {
+            return raidlands_airstrike_animations_repair_bundle_from_revisions($revision);
+        }
     }
 
     $rows = raidlands_db_fetch_all(
@@ -329,7 +410,11 @@ function raidlands_airstrike_animations_latest_valid_bundle(?int $revision = nul
                 return raidlands_airstrike_animations_decode_bundle_row($bundle_row);
             }
         } catch (InvalidArgumentException $error) {
-            continue;
+            try {
+                return raidlands_airstrike_animations_repair_bundle_from_revisions((int) ($row['revision'] ?? 0));
+            } catch (Throwable $repair_error) {
+                continue;
+            }
         }
     }
 
@@ -360,6 +445,19 @@ function raidlands_airstrike_animations_list(bool $include_archived = false): ar
     );
     $bundle = raidlands_airstrike_animations_latest_bundle_row();
     $server = raidlands_airstrike_animations_server_status();
+    $active_count = 0;
+    $unpublished_count = 0;
+
+    foreach ($profiles as $profile) {
+        if (!empty($profile['archived'])) {
+            continue;
+        }
+
+        $active_count++;
+        if (empty($profile['lastPublishedProfileRevision'])) {
+            $unpublished_count++;
+        }
+    }
 
     return [
         'ready' => true,
@@ -373,6 +471,11 @@ function raidlands_airstrike_animations_list(bool $include_archived = false): ar
             'publishedAt' => $bundle['published_at'],
         ],
         'server' => $server,
+        'summary' => [
+            'activeProfileCount' => $active_count,
+            'unpublishedProfileCount' => $unpublished_count,
+            'publishedBundleProfileCount' => $bundle === null ? 0 : (int) $bundle['profile_count'],
+        ],
     ];
 }
 
@@ -699,7 +802,8 @@ function raidlands_airstrike_animations_publish(string $notes = ''): array
         'rcon' => [
             'attempted' => false,
             'ok' => false,
-            'message' => 'Automatic RCON notification is not enabled in this milestone. Use the manual sync command after the bridge is installed.',
+            'command' => 'airanimsync.sync ' . $bundle_revision,
+            'message' => 'Automatic RCON notification is not enabled. Run airanimsync.sync ' . $bundle_revision . ' from server console/RCON to install this published bundle.',
         ],
     ];
 }
@@ -765,7 +869,12 @@ function raidlands_airstrike_animations_restore_revision(
     return $restored;
 }
 
-function raidlands_airstrike_animations_bundle_for_server(int $since = 0, ?int $revision = null): array
+function raidlands_airstrike_animations_bundle_for_server(
+    int $since = 0,
+    ?int $revision = null,
+    ?string $installed_hash = null,
+    ?string $local_hash = null
+): array
 {
     raidlands_airstrike_animations_require_schema();
 
@@ -773,16 +882,27 @@ function raidlands_airstrike_animations_bundle_for_server(int $since = 0, ?int $
         throw new InvalidArgumentException('since must be zero or a positive integer.');
     }
 
+    $installed_hash = strtolower(trim((string) $installed_hash));
+    if ($installed_hash !== '' && !preg_match('/^[a-f0-9]{64}$/', $installed_hash)) {
+        throw new InvalidArgumentException('installed_hash must be an SHA-256 hex value.');
+    }
+
+    $local_hash = strtolower(trim((string) $local_hash));
+    if ($local_hash !== '' && !preg_match('/^[a-f0-9]{64}$/', $local_hash)) {
+        throw new InvalidArgumentException('local_hash must be an SHA-256 hex value.');
+    }
+
     if ($revision === null) {
         $meta = raidlands_airstrike_animations_latest_bundle_meta_row();
         if ($meta !== null) {
             $current_revision = (int) ($meta['revision'] ?? 0);
-            if ($since >= $current_revision) {
+            $current_sha = strtolower((string) ($meta['sha256'] ?? ''));
+            if ($since >= $current_revision && ($installed_hash === '' || hash_equals($current_sha, $installed_hash))) {
                 return [
                     'ok' => true,
                     'has_update' => false,
                     'current_revision' => $current_revision,
-                    'sha256' => strtolower((string) ($meta['sha256'] ?? '')),
+                    'sha256' => $current_sha,
                 ];
             }
         }
@@ -803,7 +923,7 @@ function raidlands_airstrike_animations_bundle_for_server(int $since = 0, ?int $
     $current_revision = (int) $row['revision'];
     $sha256 = (string) $resolved['sha256'];
 
-    if ($revision === null && $since >= $current_revision) {
+    if ($revision === null && $since >= $current_revision && ($installed_hash === '' || hash_equals($sha256, $installed_hash))) {
         return [
             'ok' => true,
             'has_update' => false,

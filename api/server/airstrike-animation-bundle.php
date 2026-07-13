@@ -10,6 +10,7 @@ header('Cache-Control: no-store');
 try {
     $since_raw = (string) ($_GET['since'] ?? '0');
     $revision_raw = trim((string) ($_GET['revision'] ?? ''));
+    $installed_hash = strtolower(trim((string) ($_GET['installed_hash'] ?? '')));
     $local_hash = strtolower(trim((string) ($_GET['local_hash'] ?? '')));
 
     if (!ctype_digit($since_raw)) {
@@ -18,13 +19,18 @@ try {
     if ($revision_raw !== '' && (!ctype_digit($revision_raw) || (int) $revision_raw <= 0)) {
         throw new InvalidArgumentException('revision must be a positive integer.');
     }
+    if ($installed_hash !== '' && !preg_match('/^[a-f0-9]{64}$/', $installed_hash)) {
+        throw new InvalidArgumentException('installed_hash must be an SHA-256 hex value.');
+    }
     if ($local_hash !== '' && !preg_match('/^[a-f0-9]{64}$/', $local_hash)) {
         throw new InvalidArgumentException('local_hash must be an SHA-256 hex value.');
     }
 
     $result = raidlands_airstrike_animations_bundle_for_server(
         (int) $since_raw,
-        $revision_raw === '' ? null : (int) $revision_raw
+        $revision_raw === '' ? null : (int) $revision_raw,
+        $installed_hash === '' ? null : $installed_hash,
+        $local_hash === '' ? null : $local_hash
     );
 
     if (!empty($result['sha256'])) {
