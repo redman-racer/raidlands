@@ -69,6 +69,7 @@ $editor_config = [
             <div class="airstrike-editor-menu-list">
               <a class="airstrike-editor-menu-link" href="./?section=airstrike-animations">Open Profile Browser</a>
               <button type="button" data-editor-new>New Profile</button>
+              <button type="button" data-editor-duplicate>Duplicate Profile</button>
               <button type="button" data-editor-save>Save Draft</button>
               <button type="button" data-editor-compile>Compile Preview</button>
               <button type="button" data-editor-publish="publish">Publish</button>
@@ -127,6 +128,7 @@ $editor_config = [
           </div>
           <div class="airstrike-editor-panel-actions">
             <button class="airstrike-editor-action-button airstrike-editor-action-button-compact" type="button" data-editor-new>New</button>
+            <button class="airstrike-editor-action-button airstrike-editor-action-button-compact" type="button" data-editor-duplicate>Duplicate</button>
             <button class="airstrike-editor-panel-collapse airstrike-editor-panel-collapse-left" type="button" data-editor-toggle-panel="left" aria-label="Minimize profiles" title="Minimize profiles"></button>
           </div>
         </div>

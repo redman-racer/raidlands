@@ -403,6 +403,9 @@ class AirstrikeEditorApp {
     this.elements.root.querySelectorAll("[data-editor-new]").forEach((button) => {
       button.addEventListener("click", () => this.createNewProfile());
     });
+    this.elements.root.querySelectorAll("[data-editor-duplicate]").forEach((button) => {
+      button.addEventListener("click", () => void this.duplicateCurrentProfile());
+    });
     this.elements.root.querySelectorAll("[data-editor-save]").forEach((button) => {
       button.addEventListener("click", () => void this.saveDraft());
     });
@@ -1939,6 +1942,85 @@ class AirstrikeEditorApp {
     this.loadSource(starterSource(), "", 0);
     window.history.replaceState({}, "", "./airstrike-animation-editor.php");
     this.renderProfiles();
+  }
+
+  private async duplicateCurrentProfile(): Promise<void> {
+    if (!this.state.profileKey || this.state.baseVersion <= 0) {
+      this.showFeedback("Save this profile before duplicating it.", "error");
+      this.setStatus("Duplicate needs a saved profile");
+      return;
+    }
+    if (this.state.dirty) {
+      this.showFeedback("Save or discard local changes before duplicating this profile.", "error");
+      this.setStatus("Duplicate blocked by unsaved changes");
+      return;
+    }
+
+    const currentName = String(this.state.profile?.DisplayName || this.state.profileKey);
+    const defaultName = `${currentName} Copy`;
+    const displayName = window.prompt("Name for the duplicated airstrike profile:", defaultName);
+    if (displayName === null) {
+      return;
+    }
+
+    const defaultKey = this.nextCopyProfileKey(this.state.profileKey);
+    const enteredKey = window.prompt("ProfileKey for the duplicated airstrike profile:", defaultKey);
+    if (enteredKey === null) {
+      return;
+    }
+    const newProfileKey = this.cleanProfileKey(enteredKey);
+    if (!newProfileKey) {
+      this.showFeedback("ProfileKey must start with a letter or number and use only letters, numbers, dots, dashes, or underscores.", "error");
+      return;
+    }
+
+    const sourceProfileKey = this.state.profileKey;
+    this.setStatus(`Duplicating ${sourceProfileKey}...`);
+    try {
+      const payload = await this.request("duplicate.php", {
+        method: "POST",
+        body: JSON.stringify({
+          profileKey: sourceProfileKey,
+          newProfileKey,
+          displayName: displayName.trim() || defaultName,
+        }),
+      });
+      const profile = payload.profile as { source?: EditorSourceProfile; profileKey?: string; draftVersion?: number };
+      const loadedKey = String(profile.profileKey || newProfileKey);
+      this.loadSource(profile.source ?? starterSource(), loadedKey, Number(profile.draftVersion || 0));
+      await this.loadList();
+      window.history.replaceState({}, "", `./airstrike-animation-editor.php?profile=${encodeURIComponent(loadedKey)}`);
+      this.showFeedback(`Duplicated ${sourceProfileKey} as ${loadedKey}.`, "success");
+      this.setStatus(`Duplicated draft v${String(profile.draftVersion || 1)} loaded`);
+    } catch (error) {
+      this.showFeedback(error instanceof Error ? error.message : String(error), "error");
+      this.setStatus("Duplicate failed");
+    }
+  }
+
+  private nextCopyProfileKey(profileKey: string): string {
+    const base = this.cleanProfileKey(`${profileKey}-copy`) || "airstrike-copy";
+    const existing = new Set(this.state.profiles.map((profile) => profile.profileKey));
+    if (!existing.has(base)) {
+      return base;
+    }
+    for (let index = 2; index < 1000; index += 1) {
+      const candidate = `${base}-${index}`;
+      if (!existing.has(candidate)) {
+        return candidate;
+      }
+    }
+    return `${base}-${Date.now()}`;
+  }
+
+  private cleanProfileKey(value: string): string {
+    const key = value
+      .trim()
+      .toLowerCase()
+      .replace(/[^a-z0-9._-]+/g, "-")
+      .replace(/^[^a-z0-9]+/, "")
+      .slice(0, 100);
+    return /^[a-z0-9][a-z0-9._-]{0,99}$/.test(key) ? key : "";
   }
 
   private async saveDraft(): Promise<void> {
