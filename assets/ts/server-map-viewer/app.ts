@@ -8,6 +8,7 @@ import {
   CylinderGeometry,
   DirectionalLight,
   DoubleSide,
+  Euler,
   Float32BufferAttribute,
   Group,
   CanvasTexture,
@@ -1786,6 +1787,7 @@ class AirstrikeReplayRun implements MapReplayRun {
   private readonly duration: number;
   private readonly frames: RuntimeVisualFrame[];
   private readonly aircraft: Group;
+  private readonly vehicle: string;
   private readonly payloads: RuntimePayloadEvent[];
   private readonly firedPayloads = new Set<number>();
   private readonly projectiles: AirstrikeProjectile[] = [];
@@ -1814,8 +1816,9 @@ class AirstrikeReplayRun implements MapReplayRun {
     this.duration = Math.max(2, Number(profile?.CompiledTrack?.DurationSeconds || profile?.DurationSeconds || lastFrameTime(this.frames) || 8));
     this.payloads = profile ? normalizePayloadEvents(profile) : [];
     this.target = replayEventPosition(event, terrain);
-    this.group.name = `airstrike-replay-${String(profile?.Vehicle || event.vehicle || "aircraft")}`;
-    this.aircraft = createAircraftMarker(String(profile?.Vehicle || event.vehicle || "f15"), vehicleMetadata, assetBase);
+    this.vehicle = String(profile?.Vehicle || event.vehicle || "f15");
+    this.group.name = `airstrike-replay-${this.vehicle}`;
+    this.aircraft = createAircraftMarker(this.vehicle, vehicleMetadata, assetBase);
     this.group.add(this.aircraft);
   }
 
@@ -1843,7 +1846,7 @@ class AirstrikeReplayRun implements MapReplayRun {
     const world = this.toWorld(pose.position);
     world.y = Math.max(world.y, sampleTerrainHeight(this.terrain, world.x, world.z) + 10);
     this.aircraft.position.copy(world);
-    this.aircraft.quaternion.copy(pose.rotation);
+    this.aircraft.quaternion.copy(normalizeReplayAircraftRotation(this.vehicle, pose.rotation));
 
     this.payloads.forEach((payload, index) => {
       if (!this.firedPayloads.has(index) && profileTime >= Number(payload.Time || 0)) {
@@ -2341,6 +2344,16 @@ function frameQuaternion(frame: RuntimeVisualFrame): Quaternion {
     z: frame.Qz,
     w: frame.Qw,
   }).normalize();
+}
+
+const CARGO_PLANE_REPLAY_ROTATION_NORMALIZATION = new Quaternion().setFromEuler(new Euler(0, Math.PI / 2, -Math.PI / 2));
+
+function normalizeReplayAircraftRotation(vehicle: string, rotation: Quaternion): Quaternion {
+  const normalized = rotation.clone().normalize();
+  if (vehicle !== "cargo_plane") {
+    return normalized;
+  }
+  return normalized.multiply(CARGO_PLANE_REPLAY_ROTATION_NORMALIZATION).normalize();
 }
 
 function lastFrameTime(frames: RuntimeVisualFrame[]): number {
