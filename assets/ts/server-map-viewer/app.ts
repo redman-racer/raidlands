@@ -325,8 +325,10 @@ const RAIDLANDS_ENVIRONMENT_GRADE_SHADER = {
       vec3 warmSun = uSunColor / max(max(uSunColor.r, uSunColor.g), max(uSunColor.b, 0.001));
       float shadowWeight = 1.0 - smoothstep(0.22, 0.78, luminance);
       float clearSky = 1.0 - clamp(uCloudCoverage * 0.62 + uRainIntensity * 0.48, 0.0, 0.82);
-      float warmth = uTwilight * clearSky * (0.028 + shadowWeight * 0.052);
+      float sunsetGrade = uTwilight * clearSky;
+      float warmth = sunsetGrade * (0.055 + shadowWeight * 0.13);
 
+      color *= mix(vec3(1.0), vec3(1.18, 0.93, 0.8), sunsetGrade * 0.55);
       color += warmSun * warmth;
       float hazeDesaturation = clamp(uFogStrength * 0.1 + uRainIntensity * 0.055, 0.0, 0.13);
       color = mix(color, vec3(dot(color, vec3(0.299, 0.587, 0.114))), hazeDesaturation);
@@ -1197,7 +1199,7 @@ uniform float raidlandsCloudAttenuation;`,
 vec3 raidlandsSunDirectionView = normalize((viewMatrix * vec4(raidlandsSunDirection, 0.0)).xyz);
 float raidlandsSunFacing = max(dot(normal, raidlandsSunDirectionView), 0.0);
 float raidlandsWarmSlope = raidlandsTwilight * (0.22 + raidlandsSunFacing * 0.78) * (1.0 - raidlandsCloudAttenuation * 0.58);
-diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.115, raidlandsWarmSlope);`,
+diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.32, raidlandsWarmSlope);`,
         );
     };
     material.customProgramCacheKey = () => "raidlands-terrain-sun-wash-v1";
@@ -1395,18 +1397,24 @@ diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.115, raidla
     const atmosphereBrightness = MathUtils.clamp(environment.atmosphereBrightness, 0.15, 2.4);
     const atmosphereContrast = MathUtils.clamp(environment.atmosphereContrast, 0.15, 2.4);
     const atmosphereBrightnessT = MathUtils.clamp(atmosphereBrightness / 1.5, 0, 1);
+    const atmosphereWarmColor = environment.sunColor.clone().lerp(
+      new Color(0xffc18c),
+      MathUtils.lerp(0.38, 0.64, MathUtils.clamp(environment.atmosphereMie / 4, 0, 1)),
+    );
     const scatteringGlow = MathUtils.lerp(0.76, 1.26, MathUtils.clamp(environment.cloudScattering, 0, 1));
     this.renderer.toneMappingExposure = MathUtils.lerp(0.92, 1.48, atmosphereBrightnessT)
-      * MathUtils.lerp(0.82, 1, daylight);
+      * MathUtils.lerp(0.72, 1, Math.max(daylight, twilight * 0.9))
+      * (1 + twilight * 0.22);
     this.ambientLight.color.copy(environment.ambientColor)
       .lerp(new Color(0xddeaf0), daylight * MathUtils.lerp(0.42, 0.72, atmosphereBrightnessT))
-      .lerp(new Color(0xff9a62), twilight * 0.22)
+      .lerp(atmosphereWarmColor, twilight * MathUtils.lerp(0.42, 0.58, atmosphereBrightnessT))
       .lerp(new Color(0x101827), night * 0.52);
     this.ambientLight.intensity = MathUtils.clamp(
       (
         environment.ambientIntensity * MathUtils.lerp(0.82, 1.18, daylight)
         + MathUtils.lerp(0.05, 0.18, twilight)
         + daylight * MathUtils.lerp(0.24, 0.62, atmosphereBrightnessT)
+        + twilight * MathUtils.lerp(0.22, 0.5, atmosphereBrightnessT)
       ) * MathUtils.lerp(0.72, 1.18, atmosphereBrightness / 1.4),
       0.14,
       1.5,
@@ -1416,8 +1424,8 @@ diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.115, raidla
     const worldSize = this.terrain.worldSize || 4500;
     this.sunLight.position.copy(environment.sunDirection).multiplyScalar(worldSize * 0.62);
     this.sunLight.position.y = Math.max(this.sunLight.position.y, worldSize * -0.18);
-    this.fillLight.color.set(0x88b7d6).lerp(new Color(0xff7f4e), twilight * 0.18);
-    this.fillLight.intensity = MathUtils.lerp(0.12, 0.32, daylight) + twilight * 0.08;
+    this.fillLight.color.set(0x88b7d6).lerp(atmosphereWarmColor, twilight * 0.62);
+    this.fillLight.intensity = MathUtils.lerp(0.12, 0.32, daylight) + twilight * 0.22;
     this.terrainLightUniforms.sunDirection.value.copy(environment.sunDirection);
     this.terrainLightUniforms.sunColor.value.copy(environment.sunColor);
     this.terrainLightUniforms.twilight.value = twilight;
@@ -1427,10 +1435,12 @@ diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.115, raidla
       1,
     );
     const oceanMaterial = this.oceanSurfaceMesh.material as MeshStandardMaterial;
-    const waterSunReflection = twilight * MathUtils.lerp(0.06, 0.2, 1 - visualCloudCoverage);
-    oceanMaterial.color.set(0x0a4f63).lerp(environment.sunColor, waterSunReflection);
-    oceanMaterial.roughness = MathUtils.lerp(0.44, 0.3, waterSunReflection);
-    oceanMaterial.metalness = MathUtils.lerp(0.02, 0.1, waterSunReflection);
+    const waterSunReflection = twilight * MathUtils.lerp(0.14, 0.42, 1 - visualCloudCoverage);
+    oceanMaterial.color.set(0x0a4f63).lerp(atmosphereWarmColor, waterSunReflection);
+    oceanMaterial.roughness = MathUtils.lerp(0.44, 0.2, waterSunReflection);
+    oceanMaterial.metalness = MathUtils.lerp(0.02, 0.14, waterSunReflection);
+    oceanMaterial.emissive.copy(atmosphereWarmColor);
+    oceanMaterial.emissiveIntensity = twilight * MathUtils.lerp(0.025, 0.11, 1 - visualCloudCoverage);
     const horizonDrama = MathUtils.clamp(1 - Math.abs(MathUtils.clamp(sunHeight, -0.1, 0.46) - 0.18) / 0.28, 0, 1);
     this.scene.backgroundIntensity = (MathUtils.lerp(0.72, 1.04, daylight) + horizonDrama * 0.08 - night * 0.18) * MathUtils.lerp(0.72, 1.2, atmosphereBrightness / 1.4);
     this.scene.environmentIntensity = (MathUtils.lerp(0.46, 0.96, daylight) + horizonDrama * 0.04) * MathUtils.lerp(0.82, 1.18, atmosphereContrast / 1.4);
@@ -1440,16 +1450,17 @@ diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.115, raidla
       1,
     );
     const daylightFogColor = new Color(0xc8dfe8)
-      .lerp(environment.sunColor, MathUtils.clamp(environment.atmosphereMie / 4, 0, 1) * 0.1)
+      .lerp(atmosphereWarmColor, MathUtils.clamp(environment.atmosphereMie / 4, 0, 1) * 0.1)
       .multiplyScalar(MathUtils.lerp(0.82, 1.08, atmosphereBrightnessT));
     const fogColor = new Color(0x172235)
       .lerp(daylightFogColor, daylight)
-      .lerp(new Color(0xff9d63), twilight * 0.42)
+      .lerp(atmosphereWarmColor, twilight * 0.58)
+      .lerp(new Color(0xffc083), twilight * MathUtils.clamp(environment.atmosphereMie / 4, 0, 1) * 0.24)
       .lerp(environment.ambientColor, night * 0.24);
     this.scene.fog = fogStrength > 0.02
-      ? new FogExp2(fogColor, MathUtils.lerp(0.000035, 0.00028, Math.sqrt(fogStrength)))
+      ? new FogExp2(fogColor, MathUtils.lerp(0.000025, 0.00017, Math.sqrt(fogStrength)))
       : null;
-    this.environmentGradePass.uniforms.uSunColor.value.copy(environment.sunColor);
+    this.environmentGradePass.uniforms.uSunColor.value.copy(atmosphereWarmColor);
     this.environmentGradePass.uniforms.uTwilight.value = twilight;
     this.environmentGradePass.uniforms.uFogStrength.value = fogStrength;
     this.environmentGradePass.uniforms.uCloudCoverage.value = visualCloudCoverage;
@@ -1482,8 +1493,7 @@ diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.115, raidla
   private updateWeatherEffects(environment: NormalizedEnvironment, now: number): void {
     const worldSize = this.terrain.worldSize || 4500;
     const rain = MathUtils.clamp(environment.rainIntensity, 0, 1);
-    const cloudCoverage = visualCloudCoverageForEnvironment(environment);
-    const visibleCloudAmount = cloudCoverage;
+    const visibleCloudAmount = visualCloudCoverageForEnvironment(environment);
     const sunHeight = MathUtils.clamp(environment.sunDirection.y, -0.16, 0.9);
     const twilight = MathUtils.clamp(1 - Math.abs(sunHeight - 0.12) / 0.34, 0, 1);
     const cloudOpacity = MathUtils.lerp(0.18, 0.5, visibleCloudAmount)
@@ -1509,9 +1519,10 @@ diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.115, raidla
       child.scale.set(baseScale * cloudScale * (Number(child.userData.scaleX) || 1), baseScale * cloudScale * (Number(child.userData.scaleY) || 0.34), 1);
       const material = child.material as SpriteMaterial;
       material.opacity = cloudOpacity * (Number(child.userData.opacityBias) || 1);
+      const cloudWarmColor = environment.sunColor.clone().lerp(new Color(0xffcda2), 0.58);
       material.color.copy(environment.ambientColor)
         .lerp(new Color(0xe9f2f7), MathUtils.lerp(0.54, 0.84, MathUtils.smoothstep(environment.sunDirection.y, -0.05, 0.5)))
-        .lerp(new Color(0xff8a5d), twilight * 0.28)
+        .lerp(cloudWarmColor, twilight * 0.62)
         .lerp(new Color(0x1b222a), cloudDarkening);
     });
 

@@ -154,7 +154,14 @@ export function updateRaidlandsEnvironment(scene: Scene, state: RaidlandsEnviron
     : Number(state.cloudCoverage);
   const rawCloudCoverage = MathUtils.clamp(Number.isFinite(cloudCoverageValue) ? cloudCoverageValue : 0, 0, 0.92);
   const cloudOpacity = MathUtils.clamp(finiteEnvironmentValue(state.cloudOpacity, 1), 0, 1);
-  const cloudCoverage = MathUtils.clamp(rawCloudCoverage * MathUtils.lerp(0.25, 1, cloudOpacity), 0, 0.96);
+  const cloudCoverage = MathUtils.clamp(
+    Math.max(
+      rawCloudCoverage * MathUtils.lerp(0.25, 1, cloudOpacity),
+      cloudOpacity * 0.3,
+    ),
+    0,
+    0.96,
+  );
   const rayleigh = MathUtils.clamp(finiteEnvironmentValue(state.atmosphereRayleigh, 0.25), 0, 4);
   const mie = MathUtils.clamp(finiteEnvironmentValue(state.atmosphereMie, 1.55), 0, 4);
   const atmosphereBrightness = MathUtils.clamp(finiteEnvironmentValue(state.atmosphereBrightness, 0.95), 0.05, 3);
@@ -165,20 +172,23 @@ export function updateRaidlandsEnvironment(scene: Scene, state: RaidlandsEnviron
     * MathUtils.clamp((Number.isFinite(sunIntensityValue) ? sunIntensityValue : 0) / 1.7, 0.18, 1.2)
     * MathUtils.lerp(0.72, 1.28, directionality);
 
-  const twilightWarmth = twilight * 0.24;
+  const atmosphereSunColor = state.sunColor.clone().lerp(
+    new Color(0xffc18c),
+    MathUtils.lerp(0.38, 0.64, MathUtils.clamp(mie / 4, 0, 1)),
+  );
   const zenith = new Color(0x07101c)
     .lerp(new Color(0x78b6e6), daylight)
-    .lerp(new Color(0x29415f), twilight * 0.24)
+    .lerp(atmosphereSunColor, twilight * 0.3)
     .lerp(new Color(0x4f78b5), MathUtils.clamp(rayleigh / 4, 0, 1) * daylight * 0.18)
     .multiplyScalar(MathUtils.lerp(0.72, 1.18, atmosphereBrightness / 1.4));
   const horizon = new Color(0x132333)
     .lerp(new Color(0xd7edf4), daylight)
-    .lerp(new Color(0xf1a06b), twilightWarmth)
-    .lerp(new Color(0xffd0a0), MathUtils.clamp(mie / 4, 0, 1) * twilight * 0.22)
+    .lerp(atmosphereSunColor, twilight * 0.48)
+    .lerp(new Color(0xffd0a0), MathUtils.clamp(mie / 4, 0, 1) * twilight * 0.34)
     .multiplyScalar(MathUtils.lerp(0.72, 1.2, atmosphereBrightness / 1.4));
   const ground = new Color(0x05080c)
     .lerp(new Color(0x5b6d72), daylight)
-    .lerp(new Color(0x342827), twilight * 0.18)
+    .lerp(atmosphereSunColor, twilight * 0.22)
     .multiplyScalar(MathUtils.lerp(0.78, 1.12, atmosphereContrast / 1.4));
 
   uniforms.uZenithColor.value.copy(zenith);
@@ -292,7 +302,8 @@ function createRaidlandsSkyDome(preset: RaidlandsEnvironmentPreset): Mesh {
         float sunGlow = pow(sunDot, 8.0) * 0.34 * uSunVisibility;
         float sunHalo = pow(sunDot, 64.0) * 0.58 * uSunVisibility;
         float twilight = (1.0 - smoothstep(-0.12, 0.54, uSunDirection.y)) * horizon;
-        skyColor += uSunColor * (sunDisc * 1.4 + sunCore * 0.84 + sunHalo + sunGlow * 0.74 + twilight * 0.12);
+        skyColor += uSunColor * (sunDisc * 1.5 + sunHalo * 1.2 + sunGlow * 0.92 + twilight * 0.18);
+        skyColor += vec3(1.0, 0.94, 0.82) * sunCore * 1.75;
 
         vec2 cloudPosition = direction.xz / max(direction.y + 0.36, 0.42);
         cloudPosition = cloudPosition * 2.2 + vec2(uCloudPhase * 0.0018, uCloudPhase * 0.0007);
