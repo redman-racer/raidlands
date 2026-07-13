@@ -157,7 +157,7 @@ function addHelicopterProxy(group: Group, metadata: VehiclePreviewMetadata): voi
   group.add(nose);
 }
 
-export function createVehicleProxy(metadata: VehiclePreviewMetadata): Group {
+export function createVehicleProxy(metadata: VehiclePreviewMetadata, options: { showBounds?: boolean } = {}): Group {
   const group = new Group();
   group.name = `vehicle-proxy:${metadata.vehicle}`;
   const proxy = metadata.proxy ?? (metadata.vehicle === "drone" ? "drone" : metadata.vehicle === "attack_heli" ? "helicopter" : "plane");
@@ -169,7 +169,9 @@ export function createVehicleProxy(metadata: VehiclePreviewMetadata): Group {
     addPlaneProxy(group, metadata);
   }
   addHardpointMarkers(group, metadata);
-  addBounds(group);
+  if (options.showBounds) {
+    addBounds(group);
+  }
   return group;
 }
 
