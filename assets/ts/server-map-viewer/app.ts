@@ -1284,10 +1284,15 @@ class TerrainViewer {
     });
 
     const rainVisible = rain > 0.015;
+    const rainDistance = MathUtils.clamp(worldSize * 0.18, 340, 940);
+    const rainForward = new Vector3(0, 0, -1).applyQuaternion(this.camera.quaternion);
+    const rainUp = new Vector3(0, 1, 0).applyQuaternion(this.camera.quaternion);
+    const rainAnchor = this.camera.position.clone().add(rainForward.multiplyScalar(rainDistance));
+    const rainFallOffset = (now * MathUtils.lerp(0.12, 0.48, rain)) % Math.max(180, worldSize * 0.16);
+
     this.rainSheetLayer.visible = rainVisible;
-    this.rainSheetLayer.position.x = this.controls.target.x;
-    this.rainSheetLayer.position.z = this.controls.target.z;
-    this.rainSheetLayer.position.y = this.controls.target.y + worldSize * 0.16;
+    this.rainSheetLayer.position.copy(rainAnchor).add(rainUp.clone().multiplyScalar(worldSize * 0.08));
+    this.rainSheetLayer.quaternion.copy(this.camera.quaternion);
     this.rainSheetLayer.children.forEach((child, index) => {
       if (!(child instanceof Sprite)) {
         return;
@@ -1296,14 +1301,13 @@ class TerrainViewer {
       material.opacity = MathUtils.lerp(0.028, 0.14, Math.sqrt(rain)) * (Number(child.userData.opacityBias) || 1);
       const drift = now * (0.00008 + index * 0.000016);
       child.position.x = (Number(child.userData.baseX) || 0) + Math.sin(drift) * worldSize * 0.08;
-      child.position.y = (Number(child.userData.baseY) || 0) - ((now * MathUtils.lerp(0.035, 0.14, rain)) % (worldSize * 0.12));
+      child.position.y = (Number(child.userData.baseY) || 0) - rainFallOffset * 0.32;
       child.position.z = (Number(child.userData.baseZ) || 0) + Math.cos(drift * 0.7) * worldSize * 0.05;
     });
     this.rainLayer.visible = rainVisible;
-    this.rainLayer.position.x = this.controls.target.x;
-    this.rainLayer.position.z = this.controls.target.z;
-    this.rainLayer.position.y = -((now * MathUtils.lerp(0.18, 0.72, rain)) % Math.max(160, worldSize * 0.22));
-    this.rainLayer.rotation.z = -0.08;
+    this.rainLayer.position.copy(rainAnchor).add(rainUp.multiplyScalar(-rainFallOffset));
+    this.rainLayer.quaternion.copy(this.camera.quaternion);
+    this.rainLayer.rotateZ(-0.08);
     this.rainMaterial.opacity = rainVisible ? MathUtils.lerp(0.08, 0.38, Math.sqrt(rain)) : 0;
   }
 
