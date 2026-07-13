@@ -86,9 +86,9 @@ export function applyRaidlandsEnvironment(
 
   updateRaidlandsEnvironment(scene, {
     sunDirection: new Vector3(0.5, 0.78, 0.36).normalize(),
-    sunColor: preset === "editor" ? new Color(0xffc47a) : new Color(0xffb15e),
-    sunIntensity: 1.78,
-    cloudCoverage: preset === "editor" ? 0.24 : 0.32,
+    sunColor: preset === "editor" ? new Color(0xffc47a) : new Color(0xfff1cf),
+    sunIntensity: preset === "editor" ? 1.78 : 1.58,
+    cloudCoverage: preset === "editor" ? 0.24 : 0.22,
     timeSeconds: 0,
   });
 
@@ -138,15 +138,16 @@ export function updateRaidlandsEnvironment(scene: Scene, state: RaidlandsEnviron
   const sunVisibility = MathUtils.smoothstep(sunHeight, -0.16, 0.12)
     * MathUtils.clamp((Number.isFinite(sunIntensityValue) ? sunIntensityValue : 0) / 1.7, 0.18, 1.2);
 
-  const zenith = new Color(0x020713)
-    .lerp(new Color(0x3f8fd1), daylight)
-    .lerp(new Color(0x1e2c55), twilight * 0.42);
-  const horizon = new Color(0x091321)
-    .lerp(new Color(0xb8d8e4), daylight)
-    .lerp(new Color(0xe96b45), twilight * 0.72);
-  const ground = new Color(0x02050a)
-    .lerp(new Color(0x203344), daylight)
-    .lerp(new Color(0x311820), twilight * 0.32);
+  const twilightWarmth = twilight * 0.24;
+  const zenith = new Color(0x07101c)
+    .lerp(new Color(0x78b6e6), daylight)
+    .lerp(new Color(0x29415f), twilight * 0.24);
+  const horizon = new Color(0x132333)
+    .lerp(new Color(0xd7edf4), daylight)
+    .lerp(new Color(0xf1a06b), twilightWarmth);
+  const ground = new Color(0x05080c)
+    .lerp(new Color(0x5b6d72), daylight)
+    .lerp(new Color(0x342827), twilight * 0.18);
 
   uniforms.uZenithColor.value.copy(zenith);
   uniforms.uHorizonColor.value.copy(horizon);
@@ -162,10 +163,10 @@ export function updateRaidlandsEnvironment(scene: Scene, state: RaidlandsEnviron
 function createRaidlandsSkyDome(preset: RaidlandsEnvironmentPreset): Mesh {
   const material = new ShaderMaterial({
     uniforms: {
-      uZenithColor: { value: new Color(preset === "editor" ? 0x15253a : 0x020713) },
-      uHorizonColor: { value: new Color(preset === "editor" ? 0x7a9ba9 : 0x091321) },
-      uGroundColor: { value: new Color(preset === "editor" ? 0x211813 : 0x02050a) },
-      uSunColor: { value: new Color(preset === "editor" ? 0xffc47a : 0xffb15e) },
+      uZenithColor: { value: new Color(preset === "editor" ? 0x15253a : 0x78b6e6) },
+      uHorizonColor: { value: new Color(preset === "editor" ? 0x7a9ba9 : 0xd7edf4) },
+      uGroundColor: { value: new Color(preset === "editor" ? 0x211813 : 0x5b6d72) },
+      uSunColor: { value: new Color(preset === "editor" ? 0xffc47a : 0xfff1cf) },
       uSunDirection: { value: new Vector3(0.5, 0.78, 0.36).normalize() },
       uDaylight: { value: 1 },
       uCloudCoverage: { value: preset === "editor" ? 0.24 : 0.32 },
@@ -231,7 +232,7 @@ function createRaidlandsSkyDome(preset: RaidlandsEnvironmentPreset): Mesh {
         float sunDisc = smoothstep(0.9991, 0.99982, sunDot) * uSunVisibility;
         float sunGlow = pow(sunDot, 7.0) * 0.34 * uSunVisibility;
         float twilight = smoothstep(0.54, -0.12, uSunDirection.y) * horizon;
-        skyColor += uSunColor * (sunDisc * 1.55 + sunGlow + twilight * 0.3);
+        skyColor += uSunColor * (sunDisc * 1.18 + sunGlow * 0.74 + twilight * 0.12);
 
         vec2 cloudPosition = direction.xz / max(direction.y + 0.36, 0.42);
         cloudPosition = cloudPosition * 2.2 + vec2(uCloudPhase * 0.0018, uCloudPhase * 0.0007);
@@ -250,8 +251,8 @@ function createRaidlandsSkyDome(preset: RaidlandsEnvironmentPreset): Mesh {
         )
           * smoothstep(-0.02, 0.32, direction.y)
           * (0.72 + height * 0.28);
-        vec3 cloudColor = mix(vec3(0.14, 0.19, 0.29), vec3(0.62, 0.72, 0.82), uDaylight);
-        skyColor = mix(skyColor, cloudColor, cloudMask * (0.26 + uCloudCoverage * 0.82));
+        vec3 cloudColor = mix(vec3(0.18, 0.22, 0.28), vec3(0.82, 0.9, 0.96), uDaylight);
+        skyColor = mix(skyColor, cloudColor, cloudMask * (0.18 + uCloudCoverage * 0.58));
 
         float starField = step(0.9972, hash(direction.xz * 180.0 + direction.y * 23.0));
         float stars = starField * (1.0 - uDaylight) * smoothstep(0.18, 0.72, direction.y);
@@ -296,10 +297,10 @@ function createRaidlandsSkyTexture(preset: RaidlandsEnvironmentPreset): Texture 
           sun: new Color(0xffc27a),
         }
       : {
-          zenith: new Color(0x030812),
-          horizon: new Color(0x253748),
-          ground: new Color(0x090a0d),
-          sun: new Color(0xff7a24),
+          zenith: new Color(0x78b6e6),
+          horizon: new Color(0xd7edf4),
+          ground: new Color(0x5b6d72),
+          sun: new Color(0xfff1cf),
         };
 
     const image = context.createImageData(canvas.width, canvas.height);

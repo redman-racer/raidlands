@@ -623,9 +623,9 @@ class TerrainViewer {
     this.renderer.outputColorSpace = SRGBColorSpace;
     applyRaidlandsEnvironment(this.scene, this.renderer, {
       preset: "terrain",
-      exposure: 1.08,
-      backgroundIntensity: 0.94,
-      environmentIntensity: 0.9,
+      exposure: 1.16,
+      backgroundIntensity: 1.02,
+      environmentIntensity: 0.98,
     });
     this.renderer.domElement.dataset.serverMapViewerCanvas = "true";
     this.terrainMaterial = this.createTerrainMaterial();
@@ -812,14 +812,14 @@ class TerrainViewer {
 
       const isSelf = player.isSelf === true;
       const playerPosition = rustWorldToViewerPosition(x, Number(player.y) || 0, z);
-      const y = Math.max(playerPosition.y, sampleTerrainHeight(this.terrain, playerPosition.x, playerPosition.z)) + (isSelf ? 72 : 58);
+      const y = Math.max(playerPosition.y, sampleTerrainHeight(this.terrain, playerPosition.x, playerPosition.z)) + (isSelf ? 58 : 46);
       const sprite = new Sprite(new SpriteMaterial({
         map: createPlayerLocationTexture(player, isSelf),
         transparent: true,
         depthWrite: false,
         depthTest: true,
       }));
-      const size = isSelf ? 135 : 112;
+      const size = isSelf ? 96 : 78;
       sprite.name = isSelf ? "raidlands-player-location-self" : "raidlands-player-location-clan";
       sprite.position.set(playerPosition.x, y, playerPosition.z);
       sprite.scale.set(size, size, 1);
@@ -1116,8 +1116,8 @@ class TerrainViewer {
       (texture) => {
         texture.colorSpace = SRGBColorSpace;
         this.terrainMaterial.map = texture;
-        this.terrainMaterial.color.set(0xf2f0e7);
-        this.terrainMaterial.roughness = 0.82;
+        this.terrainMaterial.color.set(0xffffff);
+        this.terrainMaterial.roughness = 0.88;
         this.terrainMaterial.vertexColors = false;
         this.terrainMaterial.needsUpdate = true;
       },
@@ -1148,8 +1148,8 @@ class TerrainViewer {
   }
 
   private addLights(): void {
-    const ambient = new AmbientLight(0xffead2, 0.38);
-    const sun = new DirectionalLight(0xffc47a, 1.78);
+    const ambient = new AmbientLight(0xddeaf0, 0.5);
+    const sun = new DirectionalLight(0xfff1cf, 1.58);
     sun.position.set(900, 1400, 650);
     const fill = new DirectionalLight(0x9fc7dd, 0.18);
     fill.position.set(-500, 500, -800);
@@ -1159,11 +1159,11 @@ class TerrainViewer {
     const initialEnvironment = normalizeEnvironment({
       rustTime: 12,
       sunDirection: { x: 0.5, y: 0.78, z: 0.36 },
-      sunIntensity: 1.78,
-      sunColor: "#ffc47a",
-      ambientIntensity: 0.38,
-      ambientColor: "#ffead2",
-      cloudCoverage: 0.42,
+      sunIntensity: 1.58,
+      sunColor: "#fff1cf",
+      ambientIntensity: 0.5,
+      ambientColor: "#ddeaf0",
+      cloudCoverage: 0.22,
       rainIntensity: 0,
       fogIntensity: 0,
     });
@@ -1235,17 +1235,17 @@ class TerrainViewer {
     }
     const sunHeight = MathUtils.clamp(environment.sunDirection.y, -0.16, 0.9);
     const daylight = MathUtils.smoothstep(sunHeight, -0.05, 0.55);
-    this.ambientLight.color.copy(environment.ambientColor);
-    this.ambientLight.intensity = Math.max(0.26, environment.ambientIntensity * MathUtils.lerp(1.12, 1.36, daylight));
+    this.ambientLight.color.copy(environment.ambientColor).lerp(new Color(0xddeaf0), 0.5);
+    this.ambientLight.intensity = Math.max(0.42, environment.ambientIntensity * MathUtils.lerp(1.05, 1.22, daylight));
     this.sunLight.color.copy(environment.sunColor);
-    this.sunLight.intensity = Math.max(0.42, environment.sunIntensity * 1.18);
+    this.sunLight.intensity = Math.max(0.62, environment.sunIntensity * 1.02);
     const worldSize = this.terrain.worldSize || 4500;
     this.sunLight.position.copy(environment.sunDirection).multiplyScalar(worldSize * 0.62);
     this.sunLight.position.y = Math.max(this.sunLight.position.y, worldSize * -0.18);
-    this.fillLight.intensity = MathUtils.lerp(0.3, 0.36, daylight);
+    this.fillLight.intensity = MathUtils.lerp(0.26, 0.34, daylight);
     const horizonDrama = 1 - Math.abs(MathUtils.clamp(sunHeight, -0.1, 0.46) - 0.18) / 0.28;
-    this.scene.backgroundIntensity = MathUtils.lerp(0.78, 1.04, daylight) + Math.max(0, horizonDrama) * 0.08;
-    this.scene.environmentIntensity = MathUtils.lerp(0.54, 0.92, daylight);
+    this.scene.backgroundIntensity = MathUtils.lerp(0.9, 1.08, daylight) + Math.max(0, horizonDrama) * 0.02;
+    this.scene.environmentIntensity = MathUtils.lerp(0.68, 0.98, daylight);
     updateRaidlandsEnvironment(this.scene, {
       sunDirection: environment.sunDirection,
       sunColor: environment.sunColor,
@@ -1262,8 +1262,8 @@ class TerrainViewer {
     const fog = MathUtils.clamp(environment.fogIntensity, 0, 1);
     const cloudCoverage = MathUtils.clamp(environment.cloudCoverage, 0, 1);
     const visibleCloudAmount = MathUtils.clamp(Math.max(cloudCoverage, rain * 0.55, fog * 0.22), 0, 1);
-    const cloudOpacity = MathUtils.lerp(0.16, 0.62, Math.sqrt(visibleCloudAmount));
-    const cloudScale = MathUtils.lerp(0.82, 1.24, visibleCloudAmount);
+    const cloudOpacity = MathUtils.lerp(0.08, 0.42, Math.sqrt(visibleCloudAmount));
+    const cloudScale = MathUtils.lerp(0.72, 1.08, visibleCloudAmount);
 
     this.weatherCloudLayer.visible = visibleCloudAmount > 0.015;
     this.weatherCloudLayer.position.x = this.camera.position.x * 0.035;
@@ -1280,7 +1280,7 @@ class TerrainViewer {
       child.scale.set(baseScale * cloudScale * (Number(child.userData.scaleX) || 1), baseScale * cloudScale * (Number(child.userData.scaleY) || 0.34), 1);
       const material = child.material as SpriteMaterial;
       material.opacity = cloudOpacity * (Number(child.userData.opacityBias) || 1);
-      material.color.copy(environment.ambientColor).lerp(new Color(0xdce7ee), MathUtils.lerp(0.44, 0.76, MathUtils.smoothstep(environment.sunDirection.y, -0.05, 0.5)));
+      material.color.copy(environment.ambientColor).lerp(new Color(0xe9f2f7), MathUtils.lerp(0.62, 0.86, MathUtils.smoothstep(environment.sunDirection.y, -0.05, 0.5)));
     });
 
     const rainVisible = rain > 0.015;
@@ -2805,11 +2805,11 @@ function createMonumentTitleSprite(title: string, size: number): Sprite {
     context.font = `700 ${fontSize}px system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif`;
     context.textAlign = "center";
     context.textBaseline = "middle";
-    context.fillStyle = "rgba(18, 20, 18, 0.74)";
-    roundRect(context, (canvas.width - width) / 2, (canvas.height - height) / 2, width, height, 16);
+    context.fillStyle = "rgba(18, 20, 18, 0.58)";
+    roundRect(context, (canvas.width - width) / 2, (canvas.height - height) / 2, width, height, 12);
     context.fill();
-    context.strokeStyle = "rgba(248, 231, 172, 0.82)";
-    context.lineWidth = 3;
+    context.strokeStyle = "rgba(248, 231, 172, 0.58)";
+    context.lineWidth = 2;
     context.stroke();
     context.fillStyle = "#fff5d7";
     context.shadowColor = "rgba(0, 0, 0, 0.65)";
@@ -2827,9 +2827,9 @@ function createMonumentTitleSprite(title: string, size: number): Sprite {
     depthWrite: false,
   });
   const sprite = new Sprite(material);
-  const worldWidth = MathUtils.clamp(size * 1.35, 80, 230);
+  const worldWidth = MathUtils.clamp(size * 1.02, 58, 150);
   sprite.name = "monument-title";
-  sprite.position.set(0, Math.max(size * 1.48, 64), 0);
+  sprite.position.set(0, Math.max(size * 1.22, 48), 0);
   sprite.scale.set(worldWidth, worldWidth * textureAspectRatio(texture), 1);
   sprite.renderOrder = 20;
   return sprite;
@@ -2845,7 +2845,7 @@ function createRustMapGridOverlay(terrain: TerrainPayload): Group {
   const lineMaterialOptions = {
     color: 0x050607,
     transparent: true,
-    opacity: 0.48,
+    opacity: 0.24,
     depthTest: false,
     depthWrite: false,
   };
@@ -2856,7 +2856,7 @@ function createRustMapGridOverlay(terrain: TerrainPayload): Group {
     group.add(createGridLineSegment([-half, yOffset, coord, half, yOffset, coord], 0, coord, lineMaterialOptions));
   }
 
-  const labelSize = MathUtils.clamp(cellSize * 0.34, 54, 92);
+  const labelSize = MathUtils.clamp(cellSize * 0.22, 34, 58);
   for (let row = 0; row < cells; row += 1) {
     for (let col = 0; col < cells; col += 1) {
       const label = `${rustGridColumnLabel(col)}${row + 1}`;
@@ -2920,12 +2920,12 @@ function createGridLabelSprite(label: string, size: number, x: number, z: number
   context.textAlign = "center";
   context.textBaseline = "middle";
   context.lineJoin = "round";
-  context.shadowColor = "rgba(0, 0, 0, 0.62)";
-  context.shadowBlur = 6;
-  context.strokeStyle = "rgba(3, 5, 6, 0.88)";
-  context.lineWidth = 9;
+  context.shadowColor = "rgba(0, 0, 0, 0.42)";
+  context.shadowBlur = 4;
+  context.strokeStyle = "rgba(3, 5, 6, 0.56)";
+  context.lineWidth = 6;
   context.strokeText(label, canvas.width / 2, 64);
-  context.fillStyle = "rgba(255, 246, 218, 0.96)";
+  context.fillStyle = "rgba(255, 246, 218, 0.72)";
   context.fillText(label, canvas.width / 2, 64);
 
     const created = new CanvasTexture(canvas);
@@ -3323,9 +3323,9 @@ function normalizeEnvironment(snapshot: EnvironmentSnapshot | null | undefined):
     rustTime: MathUtils.clamp(finiteNumber(snapshot.rustTime, 0), 0, 24),
     sunDirection: direction,
     sunIntensity: MathUtils.clamp(finiteNumber(snapshot.sunIntensity, 0), 0, 4),
-    sunColor: new Color(validHexColor(snapshot.sunColor) || "#ffc47a"),
+    sunColor: new Color(validHexColor(snapshot.sunColor) || "#fff1cf"),
     ambientIntensity: MathUtils.clamp(finiteNumber(snapshot.ambientIntensity, 0), 0, 2),
-    ambientColor: new Color(validHexColor(snapshot.ambientColor) || "#ffead2"),
+    ambientColor: new Color(validHexColor(snapshot.ambientColor) || "#ddeaf0"),
     cloudCoverage: MathUtils.clamp(nullableFiniteNumber(snapshot.cloudCoverage, 0), 0, 1),
     rainIntensity: MathUtils.clamp(nullableFiniteNumber(snapshot.rainIntensity, 0), 0, 1),
     fogIntensity: MathUtils.clamp(nullableFiniteNumber(snapshot.fogIntensity, 0), 0, 1),
