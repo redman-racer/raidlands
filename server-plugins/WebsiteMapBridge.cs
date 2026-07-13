@@ -1,7 +1,9 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
+using System.Reflection;
 using System.Security.Cryptography;
 using System.Text;
 using Facepunch.Utility;
@@ -62,7 +64,7 @@ namespace Oxide.Plugins
             public int PlayerLocationIntervalSeconds = 15;
             public bool PublishReplayEvents = true;
             public bool PublishEnvironment = true;
-            public int EnvironmentIntervalSeconds = 15;
+            public int EnvironmentIntervalSeconds = 30;
         }
 
         private class MapUploadPayload
@@ -375,10 +377,11 @@ namespace Oxide.Plugins
             var apiState = RustMapApi == null ? "missing" : RustMapApi.IsLoaded ? "loaded" : "not loaded";
             var readyState = RustMapApi != null && RustMapApi.IsLoaded ? RustMapApi.Call<bool>("IsReady").ToString() : "false";
             var heightMapState = TerrainMeta.HeightMap == null ? "missing" : "available";
+            var environmentSample = CreateEnvironmentPayload();
 
             ReplyToCommand(
                 arg,
-                $"WebsiteMapBridge v1.0.11 status: server={ResolveServerId()}, api={apiState}, ready={readyState}, secret={secretState}, render={config.RenderName}, textureRender={config.TextureRenderName}, terrainEnabled={config.PublishTerrain}, terrainResolution={config.TerrainSampleResolution}, monumentsEnabled={config.IncludeMonuments}, skybox={config.PublishSkybox}/{config.SkyboxImagePath}, playerLocations={config.PublishPlayerLocations}/{config.PlayerLocationIntervalSeconds}s, environment={config.PublishEnvironment}/{config.EnvironmentIntervalSeconds}s last={FirstNonEmpty(lastEnvironmentSyncAt, "never")}, replayEvents={config.PublishReplayEvents}, heightMap={heightMapState}, lastWipe={lastPublishedWipeKey}."
+                $"WebsiteMapBridge v1.0.11 status: server={ResolveServerId()}, api={apiState}, ready={readyState}, secret={secretState}, render={config.RenderName}, textureRender={config.TextureRenderName}, terrainEnabled={config.PublishTerrain}, terrainResolution={config.TerrainSampleResolution}, monumentsEnabled={config.IncludeMonuments}, skybox={config.PublishSkybox}/{config.SkyboxImagePath}, playerLocations={config.PublishPlayerLocations}/{config.PlayerLocationIntervalSeconds}s, environment={config.PublishEnvironment}/{config.EnvironmentIntervalSeconds}s last={FirstNonEmpty(lastEnvironmentSyncAt, "never")} sampled=[TOD {environmentSample.rust_time:0.00}, cloud {FormatSample(environmentSample.cloud_coverage)}, rain {FormatSample(environmentSample.rain_intensity)}, fog {FormatSample(environmentSample.fog_intensity)}; {environmentSample.weather_sample_summary}], replayEvents={config.PublishReplayEvents}, heightMap={heightMapState}, lastWipe={lastPublishedWipeKey}."
             );
         }
 
@@ -463,7 +466,7 @@ namespace Oxide.Plugins
                 return;
             }
 
-            var interval = Math.Max(5, config.EnvironmentIntervalSeconds);
+            var interval = Math.Max(30, config.EnvironmentIntervalSeconds);
             environmentTimer = timer.Every(interval, () => PublishEnvironment(message => Puts(message), false));
             timer.Once(Math.Max(3, Math.Min(10, interval)), () => PublishEnvironment(message => Puts(message), false));
         }
@@ -523,7 +526,7 @@ namespace Oxide.Plugins
                 lastEnvironmentSyncAt = result.environment?.sampledAt ?? payload.sampled_at;
                 if (verbose)
                 {
-                    reply?.Invoke($"Website environment synced: TOD {payload.rust_time:0.00}, sun y {payload.sun_direction.y:0.###}, weather {payload.weather_sample_summary}.");
+                    reply?.Invoke($"Website environment synced: TOD {payload.rust_time:0.00}, sun y {payload.sun_direction.y:0.###}, cloud {FormatSample(payload.cloud_coverage)}, rain {FormatSample(payload.rain_intensity)}, fog {FormatSample(payload.fog_intensity)}; {payload.weather_sample_summary}.");
                 }
             });
         }
@@ -536,14 +539,15 @@ namespace Oxide.Plugins
             var ambientIntensity = 0.38f;
             var sunColor = "#ffc47a";
             var ambientColor = "#ffead2";
-            float? cloudCoverage = null;
-            float? rainIntensity = null;
-            float? fogIntensity = null;
+            object atmosphere = null;
+            object weather = null;
 
             var sky = TOD_Sky.Instance;
             if (sky != null)
             {
                 rustTime = Mathf.Clamp((float)sky.Cycle.Hour, 0f, 24f);
+                atmosphere = ReadObjectProperty(sky, "Atmosphere");
+                weather = ReadObjectProperty(sky, "Weather");
                 var components = ReadObjectProperty(sky, "Components");
                 var sunTransform = ReadObjectProperty(components, "SunTransform") as Transform;
                 var sunLight = ReadObjectProperty(components, "SunLight") as Light;
@@ -552,16 +556,6 @@ namespace Oxide.Plugins
                 ambientIntensity = Mathf.Clamp(Mathf.Lerp(0.14f, 0.48f, Mathf.Clamp01(sunDirection.y)), 0f, 2f);
                 sunColor = ColorToHex(sunLight != null ? sunLight.color : SunColorFromDirection(sunDirection));
                 ambientColor = ColorToHex(RenderSettings.ambientLight == default(Color) ? new Color(1f, 0.92f, 0.82f) : RenderSettings.ambientLight);
-                cloudCoverage = ReadFloatProperty(ReadObjectProperty(sky, "Atmosphere"), "Cloudiness");
-
-                try
-                {
-                    fogIntensity = Mathf.Clamp01(RenderSettings.fogDensity * 100f);
-                }
-                catch
-                {
-                    fogIntensity = null;
-                }
             }
             else
             {
@@ -570,19 +564,23 @@ namespace Oxide.Plugins
                 sunColor = ColorToHex(SunColorFromDirection(sunDirection));
             }
 
-            var weatherSample = SampleWeatherAroundMapCenter();
-            if (weatherSample.HasClouds)
-            {
-                cloudCoverage = weatherSample.Clouds;
-            }
-            if (weatherSample.HasRain)
-            {
-                rainIntensity = weatherSample.Rain;
-            }
-            if (weatherSample.HasFog)
-            {
-                fogIntensity = weatherSample.Fog;
-            }
+            var cloudSample = FirstValidSample(
+                SampleNativeClimate("Clouds", "Climate.GetClouds"),
+                SampleFloat(atmosphere, "Cloudiness", "TOD.Atmosphere.Cloudiness"),
+                SampleFloat(atmosphere, "Clouds", "TOD.Atmosphere.Clouds"),
+                SampleFloat(weather, "Cloudiness", "TOD.Weather.Cloudiness"),
+                SampleFloat(weather, "CloudCoverage", "TOD.Weather.CloudCoverage")
+            );
+            var rainSample = FirstValidSample(
+                SampleNativeClimate("Rain", "Climate.GetRain"),
+                SampleFloat(weather, "Rain", "TOD.Weather.Rain"),
+                SampleFloat(weather, "RainIntensity", "TOD.Weather.RainIntensity"),
+                SampleFloat(weather, "Precipitation", "TOD.Weather.Precipitation")
+            );
+            var fogSample = FirstValidSample(
+                SampleNativeClimate("Fog", "Climate.GetFog"),
+                SampleRenderFogDensity()
+            );
 
             var weatherSnapshot = CreateWeatherSnapshot();
 
@@ -603,61 +601,26 @@ namespace Oxide.Plugins
                 sun_color = sunColor,
                 ambient_intensity = (float)Math.Round(ambientIntensity, 4),
                 ambient_color = ambientColor,
-                cloud_coverage = cloudCoverage,
-                rain_intensity = rainIntensity,
-                fog_intensity = fogIntensity,
-                weather_sample_summary = weatherSample.Summary + "; " + WeatherParameterSummary(weatherSnapshot),
+                cloud_coverage = cloudSample.value,
+                rain_intensity = rainSample.value,
+                fog_intensity = fogSample.value,
+                weather_sample_summary = $"cloudSource={DescribeSample(cloudSample)}, rainSource={DescribeSample(rainSample)}, fogSource={DescribeSample(fogSample)}; {WeatherParameterSummary(weatherSnapshot)}",
                 weather = weatherSnapshot
             };
         }
 
-        private class WeatherSample
+        private class SampledFloat
         {
-            public float Clouds;
-            public float Rain;
-            public float Fog;
-            public bool HasClouds;
-            public bool HasRain;
-            public bool HasFog;
-            public string Summary = "weather unavailable";
-        }
+            public float? value;
+            public string source;
+            public string raw;
 
-        private WeatherSample SampleWeatherAroundMapCenter()
-        {
-            var sample = new WeatherSample();
-            var worldSize = Math.Max(1000f, ConVar.Server.worldsize);
-            var offset = worldSize * 0.23f;
-            var positions = new[]
+            public SampledFloat(float? value, string source, string raw = "")
             {
-                Vector3.zero,
-                new Vector3(offset, 0f, offset),
-                new Vector3(-offset, 0f, offset),
-                new Vector3(offset, 0f, -offset),
-                new Vector3(-offset, 0f, -offset)
-            };
-
-            var clouds = SampleClimateMethod("GetClouds", positions, out var cloudSummary);
-            var rain = SampleClimateMethod("GetRain", positions, out var rainSummary);
-            var fog = SampleClimateMethod("GetFog", positions, out var fogSummary);
-
-            if (clouds.HasValue)
-            {
-                sample.Clouds = clouds.Value;
-                sample.HasClouds = true;
+                this.value = value;
+                this.source = source;
+                this.raw = raw;
             }
-            if (rain.HasValue)
-            {
-                sample.Rain = rain.Value;
-                sample.HasRain = true;
-            }
-            if (fog.HasValue)
-            {
-                sample.Fog = fog.Value;
-                sample.HasFog = true;
-            }
-
-            sample.Summary = $"cloudSource={cloudSummary}, rainSource={rainSummary}, fogSource={fogSummary}";
-            return sample;
         }
 
         private WeatherSnapshotPayload CreateWeatherSnapshot()
@@ -797,107 +760,261 @@ namespace Oxide.Plugins
             return "weatherParams=" + (parts.Count == 0 ? "unset" : string.Join(",", parts.ToArray()));
         }
 
+        private string FormatSample(float? value)
+        {
+            return value == null ? "unset" : value.Value.ToString("0.###", CultureInfo.InvariantCulture);
+        }
+
+        private string DescribeSample(SampledFloat sample)
+        {
+            if (sample == null)
+            {
+                return "unset";
+            }
+
+            var value = sample.value == null ? "unset" : sample.value.Value.ToString("0.###", CultureInfo.InvariantCulture);
+            return string.IsNullOrWhiteSpace(sample.raw)
+                ? $"{sample.source}:{value}"
+                : $"{sample.source}:{value} {sample.raw}";
+        }
+
         private float RoundWeatherValue(float value)
         {
             return (float)Math.Round(value, 4);
         }
 
-        private float? SampleClimateMethod(string methodName, Vector3[] positions, out string summary)
+        private SampledFloat SampleNativeClimate(string sampleName, string source)
         {
-            summary = "missing";
-
             try
             {
-                var climateType = AppDomain.CurrentDomain
-                    .GetAssemblies()
-                    .Select(assembly => assembly.GetType("Climate", false))
-                    .FirstOrDefault(type => type != null);
-
-                if (climateType == null)
-                {
-                    return null;
-                }
-
-                var methods = climateType
-                    .GetMethods(System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static)
-                    .Where(method => method.Name.Equals(methodName, StringComparison.OrdinalIgnoreCase))
-                    .ToArray();
-
-                if (methods.Length == 0)
-                {
-                    return null;
-                }
-
                 var values = new List<float>();
                 var rawValues = new List<float>();
-                foreach (var position in positions)
+                foreach (var position in EnvironmentSamplePositions())
                 {
-                    foreach (var method in methods)
+                    float value;
+                    switch (sampleName)
                     {
-                        var parameters = method.GetParameters();
-                        object result;
-
-                        if (parameters.Length == 1 && parameters[0].ParameterType == typeof(Vector3))
-                        {
-                            result = method.Invoke(null, new object[] { position });
-                        }
-                        else if (parameters.Length == 0)
-                        {
-                            result = method.Invoke(null, null);
-                        }
-                        else
-                        {
-                            continue;
-                        }
-
-                        if (TryConvertFloat(result, out var value))
-                        {
-                            rawValues.Add(value);
-                            if (value >= 0f)
-                            {
-                                values.Add(Mathf.Clamp01(value));
-                            }
+                        case "Clouds":
+                            value = Climate.GetClouds(position);
                             break;
-                        }
+                        case "Rain":
+                            value = Climate.GetRain(position);
+                            break;
+                        case "Fog":
+                            value = Climate.GetFog(position);
+                            break;
+                        default:
+                            return new SampledFloat(null, source, "unknown sample");
                     }
+
+                    if (float.IsNaN(value) || float.IsInfinity(value))
+                    {
+                        continue;
+                    }
+
+                    rawValues.Add(value);
+                    if (value < 0f)
+                    {
+                        continue;
+                    }
+
+                    var normalizedValue = Mathf.Clamp01(value);
+                    values.Add(normalizedValue);
                 }
 
                 if (values.Count == 0)
                 {
-                    summary = rawValues.Count == 0
-                        ? $"{methodName}:no numeric samples"
-                        : $"{methodName}:dynamic raw=avg={rawValues.Average():0.###} min={rawValues.Min():0.###} max={rawValues.Max():0.###} samples={rawValues.Count}";
-                    return null;
+                    return rawValues.Count == 0
+                        ? new SampledFloat(null, source, "no numeric samples")
+                        : new SampledFloat(null, source, "dynamic " + FormatRawStats(rawValues));
                 }
 
                 var average = values.Average();
-                summary = $"{methodName}:{average:0.###} raw=avg={rawValues.Average():0.###} min={rawValues.Min():0.###} max={rawValues.Max():0.###} samples={rawValues.Count}";
-                return (float)Math.Round(average, 4);
+                return new SampledFloat(RoundWeatherValue(Mathf.Clamp01(average)), source, FormatRawStats(rawValues));
             }
             catch (Exception ex)
             {
-                summary = $"{methodName}:error {ex.GetType().Name}";
-                return null;
+                return new SampledFloat(null, source, "error " + ex.GetType().Name);
             }
         }
 
-        private bool TryConvertFloat(object value, out float result)
+        private List<Vector3> EnvironmentSamplePositions()
         {
-            result = 0f;
-            if (value == null)
+            var positions = new List<Vector3>();
+
+            try
             {
-                return false;
+                foreach (var player in BasePlayer.activePlayerList)
+                {
+                    if (positions.Count >= 24)
+                    {
+                        break;
+                    }
+
+                    if (player == null || !player.IsConnected || player.IsDead())
+                    {
+                        continue;
+                    }
+
+                    positions.Add(player.transform.position);
+                }
+            }
+            catch
+            {
+                positions.Clear();
+            }
+
+            if (positions.Count == 0)
+            {
+                positions.Add(Vector3.zero);
+            }
+
+            return positions;
+        }
+
+        private SampledFloat FirstValidSample(params SampledFloat[] samples)
+        {
+            if (samples == null || samples.Length == 0)
+            {
+                return new SampledFloat(null, "unset");
+            }
+
+            SampledFloat fallback = null;
+            foreach (var sample in samples)
+            {
+                if (sample == null)
+                {
+                    continue;
+                }
+
+                if (fallback == null)
+                {
+                    fallback = sample;
+                }
+
+                if (sample.value != null)
+                {
+                    return sample;
+                }
+            }
+
+            return fallback ?? new SampledFloat(null, "unset");
+        }
+
+        private SampledFloat SampleRenderFogDensity()
+        {
+            try
+            {
+                return NormalizeSample(RenderSettings.fogDensity * 100f, "RenderSettings.fogDensity");
+            }
+            catch (Exception ex)
+            {
+                return new SampledFloat(null, "RenderSettings.fogDensity", "error " + ex.GetType().Name);
+            }
+        }
+
+        private SampledFloat SampleFloat(object instance, string propertyName, string source)
+        {
+            if (instance == null || string.IsNullOrWhiteSpace(propertyName))
+            {
+                return new SampledFloat(null, source, "missing");
             }
 
             try
             {
-                result = Convert.ToSingle(value);
+                var flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.IgnoreCase;
+                var type = instance.GetType();
+                var property = type.GetProperty(propertyName, flags);
+                if (property != null)
+                {
+                    return NormalizeSample(property.GetValue(instance, null), source);
+                }
+
+                var field = type.GetField(propertyName, flags);
+                if (field != null)
+                {
+                    return NormalizeSample(field.GetValue(instance), source);
+                }
+
+                return new SampledFloat(null, source, "missing");
+            }
+            catch (Exception ex)
+            {
+                return new SampledFloat(null, source, "error " + ex.GetType().Name);
+            }
+        }
+
+        private SampledFloat NormalizeSample(object rawValue, string source)
+        {
+            if (!TryParseSampleFloat(rawValue, out var value, out var rawText))
+            {
+                return new SampledFloat(null, source, rawText);
+            }
+
+            if (float.IsNaN(value) || float.IsInfinity(value))
+            {
+                return new SampledFloat(null, source, rawText);
+            }
+
+            if (value < 0f)
+            {
+                return new SampledFloat(null, source, rawText);
+            }
+
+            return new SampledFloat(RoundWeatherValue(Mathf.Clamp01(value)), source, rawText);
+        }
+
+        private bool TryConvertFloat(object value, out float result)
+        {
+            return TryParseSampleFloat(value, out result, out _);
+        }
+
+        private bool TryParseSampleFloat(object value, out float result, out string rawText)
+        {
+            result = 0f;
+            rawText = value == null ? "null" : Convert.ToString(value, CultureInfo.InvariantCulture);
+            try
+            {
+                if (value == null)
+                {
+                    return false;
+                }
+
+                if (value is string stringValue)
+                {
+                    if (!float.TryParse(stringValue, NumberStyles.Float, CultureInfo.InvariantCulture, out result) &&
+                        !float.TryParse(stringValue, NumberStyles.Float, CultureInfo.CurrentCulture, out result))
+                    {
+                        return false;
+                    }
+
+                    return !float.IsNaN(result) && !float.IsInfinity(result);
+                }
+
+                result = Convert.ToSingle(value, CultureInfo.InvariantCulture);
                 return !float.IsNaN(result) && !float.IsInfinity(result);
             }
             catch
             {
                 return false;
             }
+        }
+
+        private string FormatRawStats(List<float> rawValues)
+        {
+            if (rawValues == null || rawValues.Count == 0)
+            {
+                return "raw=none";
+            }
+
+            return string.Format(
+                CultureInfo.InvariantCulture,
+                "raw=avg={0:0.###} min={1:0.###} max={2:0.###} samples={3}",
+                rawValues.Average(),
+                rawValues.Min(),
+                rawValues.Max(),
+                rawValues.Count
+            );
         }
 
         private Vector3 SunDirectionFromHour(float hour)
@@ -918,31 +1035,7 @@ namespace Oxide.Plugins
 
         private float? ReadFloatProperty(object instance, string propertyName)
         {
-            if (instance == null || string.IsNullOrWhiteSpace(propertyName))
-            {
-                return null;
-            }
-
-            try
-            {
-                var property = instance.GetType().GetProperty(propertyName);
-                if (property == null)
-                {
-                    return null;
-                }
-
-                var value = property.GetValue(instance, null);
-                if (value == null)
-                {
-                    return null;
-                }
-
-                return Mathf.Clamp01(Convert.ToSingle(value));
-            }
-            catch
-            {
-                return null;
-            }
+            return SampleFloat(instance, propertyName, propertyName).value;
         }
 
         private object ReadObjectProperty(object instance, string propertyName)
@@ -954,8 +1047,16 @@ namespace Oxide.Plugins
 
             try
             {
-                var property = instance.GetType().GetProperty(propertyName);
-                return property == null ? null : property.GetValue(instance, null);
+                var flags = BindingFlags.Instance | BindingFlags.Public | BindingFlags.NonPublic | BindingFlags.IgnoreCase;
+                var type = instance.GetType();
+                var property = type.GetProperty(propertyName, flags);
+                if (property != null)
+                {
+                    return property.GetValue(instance, null);
+                }
+
+                var field = type.GetField(propertyName, flags);
+                return field == null ? null : field.GetValue(instance);
             }
             catch
             {
@@ -1993,7 +2094,7 @@ namespace Oxide.Plugins
                 config.PublishSkybox = defaults.PublishSkybox;
             }
             config.PlayerLocationIntervalSeconds = Math.Max(5, config.PlayerLocationIntervalSeconds <= 0 ? defaults.PlayerLocationIntervalSeconds : config.PlayerLocationIntervalSeconds);
-            config.EnvironmentIntervalSeconds = Math.Max(5, config.EnvironmentIntervalSeconds <= 0 ? defaults.EnvironmentIntervalSeconds : config.EnvironmentIntervalSeconds);
+            config.EnvironmentIntervalSeconds = Math.Max(30, config.EnvironmentIntervalSeconds <= 0 ? defaults.EnvironmentIntervalSeconds : config.EnvironmentIntervalSeconds);
         }
 
         private bool ConfigHasProperty(string propertyName)
