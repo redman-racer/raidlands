@@ -16,6 +16,8 @@ import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { unityPositionToThreeVector } from "./coordinates";
 import type { VehiclePreviewMetadata, VehiclePreviewMetadataFile } from "../types";
 
+const vehiclePreviewCache = new Map<string, Promise<Object3D>>();
+
 const DEFAULT_METADATA: VehiclePreviewMetadata = {
   vehicle: "f15",
   modelUrl: "/assets/airstrike-animation-editor/models/f15/scene.gltf",
@@ -96,6 +98,25 @@ function centerLoadedScene(scene: Object3D): void {
   scene.position.sub(center);
 }
 
+function markSharedVehicleAssets(object: Object3D): void {
+  object.traverse((child) => {
+    child.userData.preserveSharedVehicleAsset = true;
+  });
+}
+
+async function loadVehiclePreviewTemplate(resolvedUrl: string): Promise<Object3D> {
+  let cached = vehiclePreviewCache.get(resolvedUrl);
+  if (!cached) {
+    cached = new GLTFLoader().loadAsync(resolvedUrl).then((gltf) => {
+      centerLoadedScene(gltf.scene);
+      markSharedVehicleAssets(gltf.scene);
+      return gltf.scene;
+    });
+    vehiclePreviewCache.set(resolvedUrl, cached);
+  }
+  return cached;
+}
+
 function alignVisualOrigin(group: Group, originY = 0.5): void {
   group.updateMatrixWorld(true);
   const box = new Box3().setFromObject(group);
@@ -172,6 +193,11 @@ export function createVehicleProxy(metadata: VehiclePreviewMetadata, options: { 
   if (options.showBounds) {
     addBounds(group);
   }
+  group.rotation.set(
+    (metadata.rotationCorrection.x * Math.PI) / 180,
+    (metadata.rotationCorrection.y * Math.PI) / 180,
+    (metadata.rotationCorrection.z * Math.PI) / 180,
+  );
   return group;
 }
 
@@ -185,12 +211,12 @@ export async function loadVehiclePreview(
   }
 
   try {
-    const loader = new GLTFLoader();
-    const gltf = await loader.loadAsync(resolvedUrl);
+    const template = await loadVehiclePreviewTemplate(resolvedUrl);
     const group = new Group();
     group.name = `vehicle-glb:${metadata.vehicle}`;
-    centerLoadedScene(gltf.scene);
-    group.add(gltf.scene);
+    const scene = template.clone(true);
+    markSharedVehicleAssets(scene);
+    group.add(scene);
     group.scale.setScalar(metadata.scale || 1);
     group.rotation.set(
       (metadata.rotationCorrection.x * Math.PI) / 180,

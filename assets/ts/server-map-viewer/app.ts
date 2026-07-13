@@ -2846,6 +2846,10 @@ function disposeObjectTree(object: Group | Mesh | Sprite | LineSegments): void {
 }
 
 function disposeGeometryMaterial(object: Mesh | Sprite | LineSegments): void {
+  if (object.userData.preserveSharedVehicleAsset === true) {
+    return;
+  }
+
   if ("geometry" in object) {
     object.geometry.dispose();
   }

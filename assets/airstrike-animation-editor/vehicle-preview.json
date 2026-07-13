@@ -20,7 +20,7 @@
       "vehicle": "attack_heli",
       "modelUrl": "/assets/airstrike-animation-editor/models/attack_heli/scene.gltf",
       "prefabLabel": "assets/prefabs/npc/patrol helicopter/patrolhelicopter.prefab",
-      "scale": 6.5,
+      "scale": 8.5,
       "positionCorrection": { "x": 0, "y": 0, "z": 0 },
       "rotationCorrection": { "x": 0, "y": 90, "z": 0 },
       "visualOriginY": 0.38,
