@@ -231,6 +231,8 @@ type NormalizedEnvironment = {
   ambientIntensity: number;
   ambientColor: Color;
   cloudCoverage: number;
+  rainIntensity: number;
+  fogIntensity: number;
 };
 
 type ReplayDisplayMode = "ambient" | "timeline";
@@ -567,6 +569,9 @@ class TerrainViewer {
   private readonly playerLocationLayer = new Group();
   private readonly overlayLayerTransitions: OverlayLayerTransition[] = [];
   private readonly airstrikeLayer = new Group();
+  private readonly weatherCloudLayer = new Group();
+  private readonly rainLayer = new Group();
+  private readonly rainMaterial: LineBasicMaterial;
   private ambientLight: AmbientLight | null = null;
   private sunLight: DirectionalLight | null = null;
   private fillLight: DirectionalLight | null = null;
@@ -630,6 +635,20 @@ class TerrainViewer {
     this.oceanWaveTexture = createOceanWaveTexture();
     this.oceanSurfaceMesh = this.createOceanSurfaceMesh();
     this.scene.add(this.oceanSurfaceMesh);
+    this.weatherCloudLayer.name = "raidlands-floating-weather-clouds";
+    this.weatherCloudLayer.add(createFloatingWeatherClouds(this.terrain));
+    this.scene.add(this.weatherCloudLayer);
+    this.rainMaterial = new LineBasicMaterial({
+      color: 0xb7d4e6,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      depthTest: true,
+    });
+    this.rainLayer.name = "raidlands-rain-streaks";
+    this.rainLayer.add(createRainStreaks(this.terrain, this.rainMaterial));
+    this.rainLayer.visible = false;
+    this.scene.add(this.rainLayer);
     this.gridLayer.name = "raidlands-rust-map-grid";
     this.gridLayer.add(createRustMapGridOverlay(this.terrain));
     this.gridLayer.visible = this.root.dataset.gridOverlay === "true";
@@ -1140,6 +1159,8 @@ class TerrainViewer {
       ambientIntensity: 0.38,
       ambientColor: "#ffead2",
       cloudCoverage: 0.42,
+      rainIntensity: 0,
+      fogIntensity: 0,
     });
     this.activeEnvironment = initialEnvironment;
     this.targetEnvironment = initialEnvironment;
@@ -1197,6 +1218,7 @@ class TerrainViewer {
       return;
     }
     this.applyEnvironment(environment);
+    this.updateWeatherEffects(environment, now);
     if (this.targetEnvironment && now - this.environmentBlendStartedAt >= this.environmentBlendDuration) {
       this.activeEnvironment = this.targetEnvironment;
     }
@@ -1227,6 +1249,42 @@ class TerrainViewer {
       timeSeconds: performance.now() / 1000,
       cameraPosition: this.camera.position,
     });
+  }
+
+  private updateWeatherEffects(environment: NormalizedEnvironment, now: number): void {
+    const worldSize = this.terrain.worldSize || 4500;
+    const rain = MathUtils.clamp(environment.rainIntensity, 0, 1);
+    const fog = MathUtils.clamp(environment.fogIntensity, 0, 1);
+    const cloudCoverage = MathUtils.clamp(environment.cloudCoverage, 0, 1);
+    const visibleCloudAmount = MathUtils.clamp(Math.max(cloudCoverage, rain * 0.55, fog * 0.22), 0, 1);
+    const cloudOpacity = MathUtils.lerp(0.16, 0.62, Math.sqrt(visibleCloudAmount));
+    const cloudScale = MathUtils.lerp(0.82, 1.24, visibleCloudAmount);
+
+    this.weatherCloudLayer.visible = visibleCloudAmount > 0.015;
+    this.weatherCloudLayer.position.x = this.camera.position.x * 0.035;
+    this.weatherCloudLayer.position.z = this.camera.position.z * 0.035;
+    this.weatherCloudLayer.rotation.y = now * 0.000012;
+    this.weatherCloudLayer.children.forEach((child, index) => {
+      if (!(child instanceof Sprite)) {
+        return;
+      }
+      const baseScale = Number(child.userData.baseScale) || worldSize * 0.18;
+      const drift = now * (0.000006 + (index % 5) * 0.0000015);
+      child.position.x = (Number(child.userData.baseX) || 0) + Math.sin(drift + index) * worldSize * 0.025;
+      child.position.z = (Number(child.userData.baseZ) || 0) + Math.cos(drift * 0.8 + index * 0.7) * worldSize * 0.018;
+      child.scale.set(baseScale * cloudScale * (Number(child.userData.scaleX) || 1), baseScale * cloudScale * (Number(child.userData.scaleY) || 0.34), 1);
+      const material = child.material as SpriteMaterial;
+      material.opacity = cloudOpacity * (Number(child.userData.opacityBias) || 1);
+      material.color.copy(environment.ambientColor).lerp(new Color(0xdce7ee), MathUtils.lerp(0.44, 0.76, MathUtils.smoothstep(environment.sunDirection.y, -0.05, 0.5)));
+    });
+
+    const rainVisible = rain > 0.015;
+    this.rainLayer.visible = rainVisible;
+    this.rainLayer.position.x = this.camera.position.x;
+    this.rainLayer.position.z = this.camera.position.z;
+    this.rainLayer.position.y = -((now * MathUtils.lerp(0.18, 0.72, rain)) % Math.max(160, worldSize * 0.22));
+    this.rainLayer.rotation.z = -0.08;
+    this.rainMaterial.opacity = rainVisible ? MathUtils.lerp(0.14, 0.56, Math.sqrt(rain)) : 0;
   }
 
   private replaceOverlayLayer(parent: Group, incoming: Group, durationMs = 360): void {
@@ -3064,6 +3122,105 @@ function createOceanWaveTexture(): CanvasTexture {
   return texture;
 }
 
+function createFloatingWeatherClouds(terrain: TerrainPayload): Group {
+  const group = new Group();
+  const worldSize = terrain.worldSize || 4500;
+  const texture = createWeatherCloudTexture();
+  const cloudCount = 24;
+  const height = MathUtils.clamp(worldSize * 0.19, 520, 980);
+
+  for (let index = 0; index < cloudCount; index += 1) {
+    const ring = index / cloudCount;
+    const angle = ring * Math.PI * 2 * 2.618;
+    const radius = worldSize * MathUtils.lerp(0.08, 0.46, ((index * 37) % cloudCount) / Math.max(1, cloudCount - 1));
+    const x = Math.cos(angle) * radius;
+    const z = Math.sin(angle) * radius;
+    const baseScale = worldSize * MathUtils.lerp(0.11, 0.24, ((index * 17) % 9) / 8);
+    const material = new SpriteMaterial({
+      map: texture,
+      color: 0xdce7ee,
+      transparent: true,
+      opacity: 0.24,
+      depthWrite: false,
+      depthTest: true,
+    });
+    const sprite = new Sprite(material);
+    sprite.name = "raidlands-floating-weather-cloud";
+    sprite.position.set(x, height + Math.sin(index * 1.7) * worldSize * 0.025, z);
+    sprite.scale.set(baseScale, baseScale * 0.34, 1);
+    sprite.renderOrder = 4;
+    sprite.userData.baseX = x;
+    sprite.userData.baseZ = z;
+    sprite.userData.baseScale = baseScale;
+    sprite.userData.scaleX = MathUtils.lerp(0.88, 1.34, ((index * 11) % 7) / 6);
+    sprite.userData.scaleY = MathUtils.lerp(0.26, 0.44, ((index * 13) % 5) / 4);
+    sprite.userData.opacityBias = MathUtils.lerp(0.72, 1.12, ((index * 19) % 8) / 7);
+    group.add(sprite);
+  }
+
+  return group;
+}
+
+function createWeatherCloudTexture(): CanvasTexture {
+  return getSharedCanvasTexture("server-map-weather-cloud", () => {
+    const canvas = document.createElement("canvas");
+    canvas.width = 256;
+    canvas.height = 128;
+    const context = canvas.getContext("2d");
+
+    if (context) {
+      context.clearRect(0, 0, canvas.width, canvas.height);
+      const lobes = [
+        [74, 70, 58, 29, 0.72],
+        [118, 56, 68, 36, 0.84],
+        [166, 69, 64, 28, 0.7],
+        [128, 78, 112, 30, 0.58],
+        [94, 84, 72, 22, 0.44],
+        [172, 86, 66, 20, 0.38],
+      ];
+      lobes.forEach(([x, y, radiusX, radiusY, opacity]) => {
+        const gradient = context.createRadialGradient(x, y, 0, x, y, Math.max(radiusX, radiusY));
+        gradient.addColorStop(0, `rgba(255, 255, 255, ${opacity})`);
+        gradient.addColorStop(0.56, `rgba(210, 226, 235, ${opacity * 0.64})`);
+        gradient.addColorStop(1, "rgba(190, 205, 216, 0)");
+        context.fillStyle = gradient;
+        context.beginPath();
+        context.ellipse(x, y, radiusX, radiusY, 0, 0, Math.PI * 2);
+        context.fill();
+      });
+    }
+
+    const texture = new CanvasTexture(canvas);
+    texture.colorSpace = SRGBColorSpace;
+    return texture;
+  });
+}
+
+function createRainStreaks(terrain: TerrainPayload, material: LineBasicMaterial): LineSegments {
+  const worldSize = terrain.worldSize || 4500;
+  const width = MathUtils.clamp(worldSize * 0.34, 1000, 1700);
+  const height = MathUtils.clamp(worldSize * 0.34, 900, 1800);
+  const streakCount = 360;
+  const positions: number[] = [];
+
+  for (let index = 0; index < streakCount; index += 1) {
+    const x = (((index * 97) % 997) / 996 - 0.5) * width;
+    const z = (((index * 193) % 991) / 990 - 0.5) * width;
+    const y = (((index * 389) % 983) / 982) * height + 120;
+    const length = MathUtils.lerp(48, 96, ((index * 23) % 11) / 10);
+    const slant = MathUtils.lerp(8, 26, ((index * 31) % 13) / 12);
+    positions.push(x, y, z, x + slant, y - length, z - slant * 0.38);
+  }
+
+  const geometry = new BufferGeometry();
+  geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+  const rain = new LineSegments(geometry, material);
+  rain.name = "raidlands-rain-streak-field";
+  rain.frustumCulled = false;
+  rain.renderOrder = 30;
+  return rain;
+}
+
 function normalizeEnvironment(snapshot: EnvironmentSnapshot | null | undefined): NormalizedEnvironment | null {
   if (!snapshot) {
     return null;
@@ -3079,13 +3236,15 @@ function normalizeEnvironment(snapshot: EnvironmentSnapshot | null | undefined):
   direction.normalize();
 
   return {
-    rustTime: MathUtils.clamp(Number(snapshot.rustTime) || 0, 0, 24),
+    rustTime: MathUtils.clamp(finiteNumber(snapshot.rustTime, 0), 0, 24),
     sunDirection: direction,
-    sunIntensity: MathUtils.clamp(Number(snapshot.sunIntensity) || 0, 0, 4),
+    sunIntensity: MathUtils.clamp(finiteNumber(snapshot.sunIntensity, 0), 0, 4),
     sunColor: new Color(validHexColor(snapshot.sunColor) || "#ffc47a"),
-    ambientIntensity: MathUtils.clamp(Number(snapshot.ambientIntensity) || 0, 0, 2),
+    ambientIntensity: MathUtils.clamp(finiteNumber(snapshot.ambientIntensity, 0), 0, 2),
     ambientColor: new Color(validHexColor(snapshot.ambientColor) || "#ffead2"),
-    cloudCoverage: MathUtils.clamp(Number(snapshot.cloudCoverage) || 0.28, 0.08, 0.92),
+    cloudCoverage: MathUtils.clamp(finiteNumber(snapshot.cloudCoverage, 0.28), 0, 1),
+    rainIntensity: MathUtils.clamp(finiteNumber(snapshot.rainIntensity, 0), 0, 1),
+    fogIntensity: MathUtils.clamp(finiteNumber(snapshot.fogIntensity, 0), 0, 1),
   };
 }
 
@@ -3098,7 +3257,14 @@ function interpolateEnvironment(from: NormalizedEnvironment, to: NormalizedEnvir
     ambientIntensity: MathUtils.lerp(from.ambientIntensity, to.ambientIntensity, progress),
     ambientColor: from.ambientColor.clone().lerp(to.ambientColor, progress),
     cloudCoverage: MathUtils.lerp(from.cloudCoverage, to.cloudCoverage, progress),
+    rainIntensity: MathUtils.lerp(from.rainIntensity, to.rainIntensity, progress),
+    fogIntensity: MathUtils.lerp(from.fogIntensity, to.fogIntensity, progress),
   };
+}
+
+function finiteNumber(value: unknown, fallback: number): number {
+  const numeric = Number(value);
+  return Number.isFinite(numeric) ? numeric : fallback;
 }
 
 function validHexColor(value: unknown): string {
