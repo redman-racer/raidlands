@@ -173,6 +173,20 @@ function raidlands_server_map_replay_events_are_ready(): bool
     }
 }
 
+function raidlands_server_environment_is_ready(): bool
+{
+    if (!raidlands_db_is_configured()) {
+        return false;
+    }
+
+    try {
+        raidlands_db_fetch_one('SELECT id FROM server_environment_snapshots LIMIT 1');
+        return true;
+    } catch (Throwable $error) {
+        return false;
+    }
+}
+
 function raidlands_server_status_clean_text($value, int $max_length = 120): string
 {
     $text = trim(str_replace("\0", '', (string) $value));
@@ -1293,6 +1307,285 @@ function raidlands_server_heatmap_timestamp($value, string $fallback = ''): stri
     }
 
     return gmdate('Y-m-d H:i:s', $timestamp);
+}
+
+function raidlands_server_environment_color($value, string $fallback): string
+{
+    $color = strtolower(trim((string) $value));
+
+    return preg_match('/^#[0-9a-f]{6}$/', $color) === 1 ? $color : $fallback;
+}
+
+function raidlands_server_environment_float($value, float $fallback, float $min, float $max, int $precision = 4): float
+{
+    if (!is_numeric($value)) {
+        return $fallback;
+    }
+
+    return round(max($min, min($max, (float) $value)), $precision);
+}
+
+function raidlands_server_environment_snapshot_public(?array $row): ?array
+{
+    if ($row === null) {
+        return null;
+    }
+
+    return [
+        'serverId' => (string) ($row['server_id'] ?? ''),
+        'wipeKey' => (string) ($row['wipe_key'] ?? ''),
+        'sampledAt' => raidlands_server_status_iso($row['sampled_at'] ?? ''),
+        'rustTime' => round((float) ($row['rust_time'] ?? 0), 3),
+        'dayFraction' => round((float) ($row['day_fraction'] ?? 0), 6),
+        'sunDirection' => [
+            'x' => round((float) ($row['sun_x'] ?? 0), 6),
+            'y' => round((float) ($row['sun_y'] ?? 1), 6),
+            'z' => round((float) ($row['sun_z'] ?? 0), 6),
+        ],
+        'sunIntensity' => round((float) ($row['sun_intensity'] ?? 1), 4),
+        'sunColor' => raidlands_server_environment_color($row['sun_color'] ?? '', '#ffc47a'),
+        'ambientIntensity' => round((float) ($row['ambient_intensity'] ?? 0.38), 4),
+        'ambientColor' => raidlands_server_environment_color($row['ambient_color'] ?? '', '#ffead2'),
+        'cloudCoverage' => $row['cloud_coverage'] === null ? null : round((float) $row['cloud_coverage'], 4),
+        'rainIntensity' => $row['rain_intensity'] === null ? null : round((float) $row['rain_intensity'], 4),
+        'fogIntensity' => $row['fog_intensity'] === null ? null : round((float) $row['fog_intensity'], 4),
+    ];
+}
+
+function raidlands_server_environment_ingest_snapshot(array $payload, string $header_server_id): array
+{
+    if (!raidlands_server_environment_is_ready()) {
+        throw new RuntimeException('Server environment table is not installed. Run database/migrations/059_server_environment_snapshots.sql.');
+    }
+
+    $header_server_id = raidlands_server_status_clean_text($header_server_id !== '' ? $header_server_id : raidlands_server_status_server_id(), 120);
+    $server_id = raidlands_server_status_clean_text($payload['server_id'] ?? $payload['serverId'] ?? $header_server_id, 120);
+
+    if ($server_id === '' || ($header_server_id !== '' && !hash_equals($header_server_id, $server_id))) {
+        throw new InvalidArgumentException('Environment server_id does not match the authenticated server.');
+    }
+
+    $wipe_key = raidlands_server_status_clean_text($payload['wipe_key'] ?? $payload['wipeKey'] ?? '', 160);
+    if ($wipe_key === '') {
+        $wipe_key = $server_id . '-current';
+    }
+
+    $sampled_at = raidlands_server_heatmap_timestamp($payload['sampled_at'] ?? $payload['sampledAt'] ?? '', 'now');
+    $direction = is_array($payload['sun_direction'] ?? null)
+        ? $payload['sun_direction']
+        : (is_array($payload['sunDirection'] ?? null) ? $payload['sunDirection'] : []);
+    $sun_x = raidlands_server_environment_float($direction['x'] ?? $payload['sun_x'] ?? $payload['sunX'] ?? 0, 0, -1, 1, 6);
+    $sun_y = raidlands_server_environment_float($direction['y'] ?? $payload['sun_y'] ?? $payload['sunY'] ?? 1, 1, -1, 1, 6);
+    $sun_z = raidlands_server_environment_float($direction['z'] ?? $payload['sun_z'] ?? $payload['sunZ'] ?? 0, 0, -1, 1, 6);
+    $length = sqrt(($sun_x * $sun_x) + ($sun_y * $sun_y) + ($sun_z * $sun_z));
+
+    if ($length > 0.0001) {
+        $sun_x = round($sun_x / $length, 6);
+        $sun_y = round($sun_y / $length, 6);
+        $sun_z = round($sun_z / $length, 6);
+    }
+
+    $pdo = raidlands_db_required();
+    $statement = $pdo->prepare(
+        'INSERT INTO server_environment_snapshots
+            (server_id, wipe_key, sampled_at, rust_time, day_fraction, sun_x, sun_y, sun_z,
+             sun_intensity, sun_color, ambient_intensity, ambient_color, cloud_coverage,
+             rain_intensity, fog_intensity, payload_json)
+         VALUES
+            (:server_id, :wipe_key, :sampled_at, :rust_time, :day_fraction, :sun_x, :sun_y, :sun_z,
+             :sun_intensity, :sun_color, :ambient_intensity, :ambient_color, :cloud_coverage,
+             :rain_intensity, :fog_intensity, :payload_json)
+         ON DUPLICATE KEY UPDATE
+            wipe_key = VALUES(wipe_key),
+            rust_time = VALUES(rust_time),
+            day_fraction = VALUES(day_fraction),
+            sun_x = VALUES(sun_x),
+            sun_y = VALUES(sun_y),
+            sun_z = VALUES(sun_z),
+            sun_intensity = VALUES(sun_intensity),
+            sun_color = VALUES(sun_color),
+            ambient_intensity = VALUES(ambient_intensity),
+            ambient_color = VALUES(ambient_color),
+            cloud_coverage = VALUES(cloud_coverage),
+            rain_intensity = VALUES(rain_intensity),
+            fog_intensity = VALUES(fog_intensity),
+            payload_json = VALUES(payload_json)'
+    );
+
+    $statement->execute([
+        'server_id' => $server_id,
+        'wipe_key' => $wipe_key,
+        'sampled_at' => $sampled_at,
+        'rust_time' => raidlands_server_environment_float($payload['rust_time'] ?? $payload['rustTime'] ?? 0, 0, 0, 24, 3),
+        'day_fraction' => raidlands_server_environment_float($payload['day_fraction'] ?? $payload['dayFraction'] ?? 0, 0, 0, 1, 6),
+        'sun_x' => $sun_x,
+        'sun_y' => $sun_y,
+        'sun_z' => $sun_z,
+        'sun_intensity' => raidlands_server_environment_float($payload['sun_intensity'] ?? $payload['sunIntensity'] ?? 1, 1, 0, 4, 4),
+        'sun_color' => raidlands_server_environment_color($payload['sun_color'] ?? $payload['sunColor'] ?? '', '#ffc47a'),
+        'ambient_intensity' => raidlands_server_environment_float($payload['ambient_intensity'] ?? $payload['ambientIntensity'] ?? 0.38, 0.38, 0, 2, 4),
+        'ambient_color' => raidlands_server_environment_color($payload['ambient_color'] ?? $payload['ambientColor'] ?? '', '#ffead2'),
+        'cloud_coverage' => isset($payload['cloud_coverage']) || isset($payload['cloudCoverage'])
+            ? raidlands_server_environment_float($payload['cloud_coverage'] ?? $payload['cloudCoverage'], 0, 0, 1, 4)
+            : null,
+        'rain_intensity' => isset($payload['rain_intensity']) || isset($payload['rainIntensity'])
+            ? raidlands_server_environment_float($payload['rain_intensity'] ?? $payload['rainIntensity'], 0, 0, 1, 4)
+            : null,
+        'fog_intensity' => isset($payload['fog_intensity']) || isset($payload['fogIntensity'])
+            ? raidlands_server_environment_float($payload['fog_intensity'] ?? $payload['fogIntensity'], 0, 0, 1, 4)
+            : null,
+        'payload_json' => json_encode($payload, JSON_UNESCAPED_SLASHES),
+    ]);
+
+    raidlands_db_execute(
+        'DELETE FROM server_environment_snapshots
+         WHERE server_id = :server_id AND sampled_at < :cutoff',
+        ['server_id' => $server_id, 'cutoff' => gmdate('Y-m-d H:i:s', time() - (31 * 24 * 60 * 60))]
+    );
+
+    return [
+        'serverId' => $server_id,
+        'wipeKey' => $wipe_key,
+        'sampledAt' => raidlands_server_status_iso($sampled_at),
+    ];
+}
+
+function raidlands_server_environment_public(): array
+{
+    if (!raidlands_server_environment_is_ready()) {
+        return ['ok' => false, 'error' => 'Server environment is not available yet.', 'environment' => null];
+    }
+
+    $server_id = raidlands_server_status_server_id();
+    $status = raidlands_server_status_latest();
+    if (is_array($status) && !empty($status['server_id'])) {
+        $server_id = (string) $status['server_id'];
+    }
+
+    $row = raidlands_db_fetch_one(
+        'SELECT *
+         FROM server_environment_snapshots
+         WHERE server_id = :server_id
+         ORDER BY sampled_at DESC
+         LIMIT 1',
+        ['server_id' => $server_id]
+    );
+
+    return [
+        'ok' => $row !== null,
+        'serverId' => $server_id,
+        'environment' => raidlands_server_environment_snapshot_public($row),
+        'error' => $row === null ? 'Waiting for the first server environment snapshot.' : '',
+    ];
+}
+
+function raidlands_server_environment_public_at(string $at): array
+{
+    if (!raidlands_server_environment_is_ready()) {
+        return ['ok' => false, 'error' => 'Server environment is not available yet.', 'environment' => null];
+    }
+
+    $target = strtotime($at);
+    if ($target === false) {
+        throw new InvalidArgumentException('Environment cursor time is invalid.');
+    }
+
+    $server_id = raidlands_server_status_server_id();
+    $row = raidlands_db_fetch_one(
+        'SELECT *
+         FROM server_environment_snapshots
+         WHERE server_id = :server_id
+           AND sampled_at BETWEEN :window_start AND :window_end
+         ORDER BY ABS(TIMESTAMPDIFF(SECOND, sampled_at, :target_time)) ASC
+         LIMIT 1',
+        [
+            'server_id' => $server_id,
+            'window_start' => gmdate('Y-m-d H:i:s', $target - 600),
+            'window_end' => gmdate('Y-m-d H:i:s', $target + 600),
+            'target_time' => gmdate('Y-m-d H:i:s', $target),
+        ]
+    );
+
+    return [
+        'ok' => $row !== null,
+        'serverId' => $server_id,
+        'environment' => raidlands_server_environment_snapshot_public($row),
+        'error' => $row === null ? 'No environment snapshot is near that cursor.' : '',
+    ];
+}
+
+function raidlands_server_environment_history_public(string $range, int $frames = 12): array
+{
+    $range_info = raidlands_server_heatmap_range($range);
+    $status = raidlands_server_status_latest();
+    $server_id = (string) ($status['server_id'] ?? raidlands_server_status_server_id());
+    $wipe_key = (string) ($status['wipe_key'] ?? ($server_id . '-current'));
+    $window_end_time = raidlands_server_history_window_end_time($server_id, $wipe_key, 0, true);
+    $window_start_time = $range_info['range'] === 'wipe'
+        ? max(0, $window_end_time - (60 * 60 * 24 * 31))
+        : $window_end_time - ((int) $range_info['minutes'] * 60);
+    $duration = max(1, $window_end_time - $window_start_time);
+    [$frames, $frame_seconds] = raidlands_server_history_frame_shape($duration, $frames);
+    $start_aligned = $window_end_time - ($frame_seconds * $frames);
+    $frames_payload = [];
+
+    for ($frame = 0; $frame < $frames; $frame += 1) {
+        $frame_start = $start_aligned + ($frame * $frame_seconds);
+        $frame_end = min($window_end_time, $frame_start + $frame_seconds);
+        $frames_payload[] = [
+            'index' => $frame,
+            'label' => gmdate('M j H:i', $frame_end),
+            'windowStart' => gmdate('c', $frame_start),
+            'windowEnd' => gmdate('c', $frame_end),
+            'environment' => null,
+        ];
+    }
+
+    if (!raidlands_server_environment_is_ready()) {
+        return [
+            'ok' => false,
+            'error' => 'Server environment is not available yet.',
+            'range' => $range_info['range'],
+            'rangeLabel' => $range_info['label'],
+            'windowEnd' => gmdate('c', $window_end_time),
+            'frameSeconds' => $frame_seconds,
+            'frames' => $frames_payload,
+        ];
+    }
+
+    foreach ($frames_payload as &$frame_payload) {
+        $frame_time = strtotime((string) ($frame_payload['windowEnd'] ?? ''));
+        if ($frame_time === false) {
+            continue;
+        }
+
+        $row = raidlands_db_fetch_one(
+            'SELECT *
+             FROM server_environment_snapshots
+             WHERE server_id = :server_id
+               AND sampled_at BETWEEN :window_start AND :window_end
+             ORDER BY ABS(TIMESTAMPDIFF(SECOND, sampled_at, :target_time)) ASC
+             LIMIT 1',
+            [
+                'server_id' => $server_id,
+                'window_start' => gmdate('Y-m-d H:i:s', $frame_time - max(300, $frame_seconds)),
+                'window_end' => gmdate('Y-m-d H:i:s', $frame_time + max(300, $frame_seconds)),
+                'target_time' => gmdate('Y-m-d H:i:s', $frame_time),
+            ]
+        );
+        $frame_payload['environment'] = raidlands_server_environment_snapshot_public($row);
+    }
+    unset($frame_payload);
+
+    return [
+        'ok' => true,
+        'serverId' => $server_id,
+        'range' => $range_info['range'],
+        'rangeLabel' => $range_info['label'],
+        'windowEnd' => gmdate('c', $window_end_time),
+        'frameSeconds' => $frame_seconds,
+        'frames' => $frames_payload,
+    ];
 }
 
 function raidlands_server_heatmap_ingest_snapshot(array $payload, string $header_server_id): array

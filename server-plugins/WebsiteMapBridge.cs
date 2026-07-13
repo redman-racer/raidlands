@@ -15,7 +15,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteMapBridge", "Raidlands", "1.0.8")]
+    [Info("WebsiteMapBridge", "Raidlands", "1.0.9")]
     [Description("Publishes the current RustMapApi map image and sampled terrain to the Raidlands website.")]
     public class WebsiteMapBridge : CovalencePlugin
     {
@@ -30,11 +30,13 @@ namespace Oxide.Plugins
         private Configuration config;
         private Timer autoPublishTimer;
         private Timer playerLocationTimer;
+        private Timer environmentTimer;
         private Dictionary<string, string> secrets;
         private string secretsConfigSource;
         private JObject vipBridgeConfig;
         private bool publishInFlight;
         private string lastPublishedWipeKey = "";
+        private string lastEnvironmentSyncAt = "";
 
         private class Configuration
         {
@@ -59,6 +61,8 @@ namespace Oxide.Plugins
             public bool PublishPlayerLocations = true;
             public int PlayerLocationIntervalSeconds = 15;
             public bool PublishReplayEvents = true;
+            public bool PublishEnvironment = true;
+            public int EnvironmentIntervalSeconds = 15;
         }
 
         private class MapUploadPayload
@@ -83,6 +87,42 @@ namespace Oxide.Plugins
             public int protocol;
             public string generated_at;
             public TerrainUploadPayload terrain;
+        }
+
+        private class EnvironmentSnapshotPayload
+        {
+            public string server_id;
+            public string wipe_key;
+            public string sampled_at;
+            public float rust_time;
+            public float day_fraction;
+            public EnvironmentVectorPayload sun_direction;
+            public float sun_intensity;
+            public string sun_color;
+            public float ambient_intensity;
+            public string ambient_color;
+            public float? cloud_coverage;
+            public float? rain_intensity;
+            public float? fog_intensity;
+        }
+
+        private class EnvironmentVectorPayload
+        {
+            public float x;
+            public float y;
+            public float z;
+        }
+
+        private class EnvironmentSnapshotResponse
+        {
+            public bool ok;
+            public string error;
+            public EnvironmentSnapshotResult environment;
+        }
+
+        private class EnvironmentSnapshotResult
+        {
+            public string sampledAt;
         }
 
         private class TerrainUploadPayload
@@ -207,6 +247,7 @@ namespace Oxide.Plugins
             LogBridgeSecretDiagnostics();
             QueueAutoPublish("server initialized");
             StartPlayerLocationPublisher();
+            StartEnvironmentPublisher();
         }
 
         private void OnEntitySpawned(BaseNetworkable entity)
@@ -232,6 +273,8 @@ namespace Oxide.Plugins
             autoPublishTimer = null;
             playerLocationTimer?.Destroy();
             playerLocationTimer = null;
+            environmentTimer?.Destroy();
+            environmentTimer = null;
         }
 
         private void OnRustMapApiReady()
@@ -284,7 +327,7 @@ namespace Oxide.Plugins
 
             ReplyToCommand(
                 arg,
-                $"WebsiteMapBridge v1.0.8 status: server={ResolveServerId()}, api={apiState}, ready={readyState}, secret={secretState}, render={config.RenderName}, textureRender={config.TextureRenderName}, terrainEnabled={config.PublishTerrain}, terrainResolution={config.TerrainSampleResolution}, monumentsEnabled={config.IncludeMonuments}, skybox={config.PublishSkybox}/{config.SkyboxImagePath}, playerLocations={config.PublishPlayerLocations}/{config.PlayerLocationIntervalSeconds}s, replayEvents={config.PublishReplayEvents}, heightMap={heightMapState}, lastWipe={lastPublishedWipeKey}."
+                $"WebsiteMapBridge v1.0.9 status: server={ResolveServerId()}, api={apiState}, ready={readyState}, secret={secretState}, render={config.RenderName}, textureRender={config.TextureRenderName}, terrainEnabled={config.PublishTerrain}, terrainResolution={config.TerrainSampleResolution}, monumentsEnabled={config.IncludeMonuments}, skybox={config.PublishSkybox}/{config.SkyboxImagePath}, playerLocations={config.PublishPlayerLocations}/{config.PlayerLocationIntervalSeconds}s, environment={config.PublishEnvironment}/{config.EnvironmentIntervalSeconds}s last={FirstNonEmpty(lastEnvironmentSyncAt, "never")}, replayEvents={config.PublishReplayEvents}, heightMap={heightMapState}, lastWipe={lastPublishedWipeKey}."
             );
         }
 
@@ -299,6 +342,19 @@ namespace Oxide.Plugins
 
             ReplyToCommand(arg, "Website player location sync requested.");
             PublishPlayerLocations(message => ReplyToCommand(arg, message), true);
+        }
+
+        [ConsoleCommand("rl_map_environment_sync")]
+        private void EnvironmentSyncCommand(ConsoleSystem.Arg arg)
+        {
+            if (!CanUsePublishCommand(arg))
+            {
+                ReplyToCommand(arg, "You must be server console, RCON, or auth level 2 to sync website environment.");
+                return;
+            }
+
+            ReplyToCommand(arg, "Website environment sync requested.");
+            PublishEnvironment(message => ReplyToCommand(arg, message), true);
         }
 
         private bool CanUsePublishCommand(ConsoleSystem.Arg arg)
@@ -344,6 +400,217 @@ namespace Oxide.Plugins
             var interval = Math.Max(5, config.PlayerLocationIntervalSeconds);
             playerLocationTimer = timer.Every(interval, () => PublishPlayerLocations(message => Puts(message), false));
             timer.Once(Math.Max(3, Math.Min(10, interval)), () => PublishPlayerLocations(message => Puts(message), false));
+        }
+
+        private void StartEnvironmentPublisher()
+        {
+            environmentTimer?.Destroy();
+            environmentTimer = null;
+
+            if (!config.PublishEnvironment)
+            {
+                return;
+            }
+
+            var interval = Math.Max(5, config.EnvironmentIntervalSeconds);
+            environmentTimer = timer.Every(interval, () => PublishEnvironment(message => Puts(message), false));
+            timer.Once(Math.Max(3, Math.Min(10, interval)), () => PublishEnvironment(message => Puts(message), false));
+        }
+
+        private void PublishEnvironment(Action<string> reply, bool verbose)
+        {
+            var secret = ResolveBridgeSharedSecret();
+
+            if (string.IsNullOrWhiteSpace(secret))
+            {
+                if (verbose)
+                {
+                    reply?.Invoke("Cannot sync environment because the bridge SharedSecret is empty after resolving secrets.");
+                }
+                return;
+            }
+
+            var payload = CreateEnvironmentPayload();
+            var body = JsonConvert.SerializeObject(payload);
+            var url = $"{TrimSlash(ResolveApiBaseUrl())}/api/server/environment-snapshot.php";
+
+            SendPost(url, body, (code, response) =>
+            {
+                if (!IsSuccess(code, response, out var requestError))
+                {
+                    if (verbose)
+                    {
+                        reply?.Invoke($"Website environment sync failed: {requestError}");
+                    }
+                    return;
+                }
+
+                EnvironmentSnapshotResponse result = null;
+
+                try
+                {
+                    result = JsonConvert.DeserializeObject<EnvironmentSnapshotResponse>(response);
+                }
+                catch (Exception ex)
+                {
+                    if (verbose)
+                    {
+                        reply?.Invoke($"Website environment sync returned invalid JSON: {ex.Message}");
+                    }
+                    return;
+                }
+
+                if (result == null || !result.ok)
+                {
+                    if (verbose)
+                    {
+                        reply?.Invoke($"Website environment sync failed: {result?.error ?? "invalid response"}");
+                    }
+                    return;
+                }
+
+                lastEnvironmentSyncAt = result.environment?.sampledAt ?? payload.sampled_at;
+                if (verbose)
+                {
+                    reply?.Invoke($"Website environment synced: TOD {payload.rust_time:0.00}, sun y {payload.sun_direction.y:0.###}.");
+                }
+            });
+        }
+
+        private EnvironmentSnapshotPayload CreateEnvironmentPayload()
+        {
+            var rustTime = 12f;
+            var sunDirection = new Vector3(0.5f, 0.78f, 0.36f).normalized;
+            var sunIntensity = 1.65f;
+            var ambientIntensity = 0.38f;
+            var sunColor = "#ffc47a";
+            var ambientColor = "#ffead2";
+            float? cloudCoverage = null;
+            float? rainIntensity = null;
+            float? fogIntensity = null;
+
+            var sky = TOD_Sky.Instance;
+            if (sky != null)
+            {
+                rustTime = Mathf.Clamp((float)sky.Cycle.Hour, 0f, 24f);
+                var components = ReadObjectProperty(sky, "Components");
+                var sunTransform = ReadObjectProperty(components, "SunTransform") as Transform;
+                var sunLight = ReadObjectProperty(components, "SunLight") as Light;
+                sunDirection = sunTransform != null ? (-sunTransform.forward).normalized : SunDirectionFromHour(rustTime);
+                sunIntensity = Mathf.Clamp(sunLight != null ? sunLight.intensity : SunIntensityFromDirection(sunDirection), 0f, 4f);
+                ambientIntensity = Mathf.Clamp(Mathf.Lerp(0.14f, 0.48f, Mathf.Clamp01(sunDirection.y)), 0f, 2f);
+                sunColor = ColorToHex(sunLight != null ? sunLight.color : SunColorFromDirection(sunDirection));
+                ambientColor = ColorToHex(RenderSettings.ambientLight == default(Color) ? new Color(1f, 0.92f, 0.82f) : RenderSettings.ambientLight);
+                cloudCoverage = ReadFloatProperty(ReadObjectProperty(sky, "Atmosphere"), "Cloudiness");
+
+                try
+                {
+                    fogIntensity = Mathf.Clamp01(RenderSettings.fogDensity * 100f);
+                }
+                catch
+                {
+                    fogIntensity = null;
+                }
+            }
+            else
+            {
+                sunDirection = SunDirectionFromHour(rustTime);
+                sunIntensity = SunIntensityFromDirection(sunDirection);
+                sunColor = ColorToHex(SunColorFromDirection(sunDirection));
+            }
+
+            return new EnvironmentSnapshotPayload
+            {
+                server_id = ResolveServerId(),
+                wipe_key = ResolveWipeKey(),
+                sampled_at = DateTime.UtcNow.ToString("o"),
+                rust_time = (float)Math.Round(rustTime, 3),
+                day_fraction = (float)Math.Round(Mathf.Repeat(rustTime / 24f, 1f), 6),
+                sun_direction = new EnvironmentVectorPayload
+                {
+                    x = (float)Math.Round(sunDirection.x, 6),
+                    y = (float)Math.Round(sunDirection.y, 6),
+                    z = (float)Math.Round(sunDirection.z, 6)
+                },
+                sun_intensity = (float)Math.Round(sunIntensity, 4),
+                sun_color = sunColor,
+                ambient_intensity = (float)Math.Round(ambientIntensity, 4),
+                ambient_color = ambientColor,
+                cloud_coverage = cloudCoverage,
+                rain_intensity = rainIntensity,
+                fog_intensity = fogIntensity
+            };
+        }
+
+        private Vector3 SunDirectionFromHour(float hour)
+        {
+            var angle = Mathf.Repeat((hour - 6f) / 24f, 1f) * Mathf.PI * 2f;
+            return new Vector3(Mathf.Cos(angle) * 0.42f, Mathf.Sin(angle), Mathf.Sin(angle) * 0.58f).normalized;
+        }
+
+        private float SunIntensityFromDirection(Vector3 direction)
+        {
+            return Mathf.Lerp(0.05f, 1.85f, Mathf.Clamp01(direction.y));
+        }
+
+        private Color SunColorFromDirection(Vector3 direction)
+        {
+            return Color.Lerp(new Color(1f, 0.36f, 0.22f), new Color(1f, 0.78f, 0.48f), Mathf.Clamp01(direction.y));
+        }
+
+        private float? ReadFloatProperty(object instance, string propertyName)
+        {
+            if (instance == null || string.IsNullOrWhiteSpace(propertyName))
+            {
+                return null;
+            }
+
+            try
+            {
+                var property = instance.GetType().GetProperty(propertyName);
+                if (property == null)
+                {
+                    return null;
+                }
+
+                var value = property.GetValue(instance, null);
+                if (value == null)
+                {
+                    return null;
+                }
+
+                return Mathf.Clamp01(Convert.ToSingle(value));
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private object ReadObjectProperty(object instance, string propertyName)
+        {
+            if (instance == null || string.IsNullOrWhiteSpace(propertyName))
+            {
+                return null;
+            }
+
+            try
+            {
+                var property = instance.GetType().GetProperty(propertyName);
+                return property == null ? null : property.GetValue(instance, null);
+            }
+            catch
+            {
+                return null;
+            }
+        }
+
+        private string ColorToHex(Color color)
+        {
+            color.r = Mathf.Clamp01(color.r);
+            color.g = Mathf.Clamp01(color.g);
+            color.b = Mathf.Clamp01(color.b);
+            return $"#{ColorUtility.ToHtmlStringRGB(color).ToLowerInvariant()}";
         }
 
         private void PublishPlayerLocations(Action<string> reply, bool verbose)

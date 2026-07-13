@@ -180,6 +180,7 @@ $home_is_linked = raidlands_has_linked_account();
             data-airstrike-profiles-url="<?= e($base_path . 'api/airstrike-animation-profiles.php') ?>"
             data-heatmap-url="<?= e($base_path . 'api/server/heatmap.php') ?>"
             data-player-locations-url="<?= e($base_path . 'api/server/player-locations.php') ?>"
+            data-environment-url="<?= e($base_path . 'api/server/environment.php') ?>"
             data-overlay-heatmap="true"
             data-overlay-playback="true"
             data-overlay-loop="true"

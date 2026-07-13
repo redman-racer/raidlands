@@ -144,6 +144,7 @@ type HeatmapHistoryFrame = HeatmapPayload & {
   windowEnd?: string;
   players?: PlayerLocation[];
   events?: MapReplayEvent[];
+  environment?: EnvironmentSnapshot | null;
 };
 
 type HeatmapHistoryPayload = HeatmapPayload & {
@@ -192,6 +193,38 @@ type MapReplayHistoryPayload = {
     windowEnd?: string;
     events?: MapReplayEvent[];
   }>;
+};
+
+type EnvironmentSnapshot = {
+  sampledAt?: string;
+  rustTime?: number;
+  dayFraction?: number;
+  sunDirection?: { x?: number; y?: number; z?: number };
+  sunIntensity?: number;
+  sunColor?: string;
+  ambientIntensity?: number;
+  ambientColor?: string;
+};
+
+type EnvironmentPayload = {
+  ok?: boolean;
+  environment?: EnvironmentSnapshot | null;
+  frames?: Array<{
+    index?: number;
+    windowStart?: string;
+    windowEnd?: string;
+    environment?: EnvironmentSnapshot | null;
+  }>;
+  frameSeconds?: number;
+  windowEnd?: string;
+};
+
+type NormalizedEnvironment = {
+  sunDirection: Vector3;
+  sunIntensity: number;
+  sunColor: Color;
+  ambientIntensity: number;
+  ambientColor: Color;
 };
 
 type ReplayDisplayMode = "ambient" | "timeline";
@@ -528,6 +561,13 @@ class TerrainViewer {
   private readonly playerLocationLayer = new Group();
   private readonly overlayLayerTransitions: OverlayLayerTransition[] = [];
   private readonly airstrikeLayer = new Group();
+  private ambientLight: AmbientLight | null = null;
+  private sunLight: DirectionalLight | null = null;
+  private fillLight: DirectionalLight | null = null;
+  private activeEnvironment: NormalizedEnvironment | null = null;
+  private targetEnvironment: NormalizedEnvironment | null = null;
+  private environmentBlendStartedAt = 0;
+  private environmentBlendDuration = 900;
   private airstrikeReplay: AirstrikeReplayPlayer | null = null;
   private latestReplayEvents: MapReplayEvent[] = [];
   private latestReplaySpeed = 1;
@@ -1084,6 +1124,18 @@ class TerrainViewer {
     sun.position.set(900, 1400, 650);
     const fill = new DirectionalLight(0x9fc7dd, 0.18);
     fill.position.set(-500, 500, -800);
+    this.ambientLight = ambient;
+    this.sunLight = sun;
+    this.fillLight = fill;
+    const initialEnvironment = normalizeEnvironment({
+      sunDirection: { x: 0.5, y: 0.78, z: 0.36 },
+      sunIntensity: 1.78,
+      sunColor: "#ffc47a",
+      ambientIntensity: 0.38,
+      ambientColor: "#ffead2",
+    });
+    this.activeEnvironment = initialEnvironment;
+    this.targetEnvironment = initialEnvironment;
     this.scene.add(ambient, sun, fill);
   }
 
@@ -1104,8 +1156,57 @@ class TerrainViewer {
     this.updateOverlayLayerTransitions(now);
     this.updateGridOpacity();
     this.updateOceanPlanes(now);
+    this.updateEnvironment(now);
     this.airstrikeLayer.userData.tick?.((now - this.clockStart) / 1000);
     this.renderer.render(this.scene, this.camera);
+  }
+
+  public setEnvironment(snapshot: EnvironmentSnapshot | null | undefined, durationMs = 900): void {
+    const next = normalizeEnvironment(snapshot);
+    if (!next) {
+      return;
+    }
+    this.activeEnvironment = this.currentEnvironment(performance.now());
+    this.targetEnvironment = next;
+    this.environmentBlendStartedAt = performance.now();
+    this.environmentBlendDuration = Math.max(0, durationMs);
+    if (this.environmentBlendDuration === 0) {
+      this.applyEnvironment(next);
+      this.activeEnvironment = next;
+    }
+  }
+
+  private currentEnvironment(now: number): NormalizedEnvironment | null {
+    if (!this.activeEnvironment || !this.targetEnvironment || this.environmentBlendDuration <= 0) {
+      return this.targetEnvironment || this.activeEnvironment;
+    }
+    const progress = MathUtils.clamp((now - this.environmentBlendStartedAt) / this.environmentBlendDuration, 0, 1);
+    return interpolateEnvironment(this.activeEnvironment, this.targetEnvironment, MathUtils.smoothstep(progress, 0, 1));
+  }
+
+  private updateEnvironment(now: number): void {
+    const environment = this.currentEnvironment(now);
+    if (!environment) {
+      return;
+    }
+    this.applyEnvironment(environment);
+    if (this.targetEnvironment && now - this.environmentBlendStartedAt >= this.environmentBlendDuration) {
+      this.activeEnvironment = this.targetEnvironment;
+    }
+  }
+
+  private applyEnvironment(environment: NormalizedEnvironment): void {
+    if (!this.ambientLight || !this.sunLight || !this.fillLight) {
+      return;
+    }
+    this.ambientLight.color.copy(environment.ambientColor);
+    this.ambientLight.intensity = environment.ambientIntensity;
+    this.sunLight.color.copy(environment.sunColor);
+    this.sunLight.intensity = environment.sunIntensity;
+    const worldSize = this.terrain.worldSize || 4500;
+    this.sunLight.position.copy(environment.sunDirection).multiplyScalar(worldSize * 0.62);
+    this.sunLight.position.y = Math.max(this.sunLight.position.y, worldSize * -0.18);
+    this.fillLight.intensity = MathUtils.lerp(0.12, 0.28, 1 - MathUtils.clamp(environment.sunDirection.y, 0, 1));
   }
 
   private replaceOverlayLayer(parent: Group, incoming: Group, durationMs = 360): void {
@@ -2931,6 +3032,44 @@ function createOceanWaveTexture(): CanvasTexture {
   return texture;
 }
 
+function normalizeEnvironment(snapshot: EnvironmentSnapshot | null | undefined): NormalizedEnvironment | null {
+  if (!snapshot) {
+    return null;
+  }
+  const direction = new Vector3(
+    Number(snapshot.sunDirection?.x) || 0,
+    Number(snapshot.sunDirection?.y) || 1,
+    Number(snapshot.sunDirection?.z) || 0,
+  );
+  if (direction.lengthSq() < 0.0001) {
+    direction.set(0.5, 0.78, 0.36);
+  }
+  direction.normalize();
+
+  return {
+    sunDirection: direction,
+    sunIntensity: MathUtils.clamp(Number(snapshot.sunIntensity) || 0, 0, 4),
+    sunColor: new Color(validHexColor(snapshot.sunColor) || "#ffc47a"),
+    ambientIntensity: MathUtils.clamp(Number(snapshot.ambientIntensity) || 0, 0, 2),
+    ambientColor: new Color(validHexColor(snapshot.ambientColor) || "#ffead2"),
+  };
+}
+
+function interpolateEnvironment(from: NormalizedEnvironment, to: NormalizedEnvironment, progress: number): NormalizedEnvironment {
+  return {
+    sunDirection: from.sunDirection.clone().lerp(to.sunDirection, progress).normalize(),
+    sunIntensity: MathUtils.lerp(from.sunIntensity, to.sunIntensity, progress),
+    sunColor: from.sunColor.clone().lerp(to.sunColor, progress),
+    ambientIntensity: MathUtils.lerp(from.ambientIntensity, to.ambientIntensity, progress),
+    ambientColor: from.ambientColor.clone().lerp(to.ambientColor, progress),
+  };
+}
+
+function validHexColor(value: unknown): string {
+  const color = String(value || "").trim();
+  return /^#[0-9a-f]{6}$/i.test(color) ? color : "";
+}
+
 function nextPowerOfTwo(value: number): number {
   return 2 ** Math.ceil(Math.log2(value));
 }
@@ -3041,6 +3180,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   let playbackShownFrame = -1;
   let playbackSpeedIndex = 2;
   let playerPollTimer = 0;
+  let environmentPollTimer = 0;
   let playbackHistoryPollTimer = 0;
   let playbackRequestId = 0;
   const playbackSpeeds = [0.25, 0.5, 1, 2, 4, 8];
@@ -3161,6 +3301,37 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   const stopLiveOverlayPolling = () => {
     window.clearInterval(playerPollTimer);
     playerPollTimer = 0;
+  };
+
+  const stopEnvironmentPolling = () => {
+    window.clearInterval(environmentPollTimer);
+    environmentPollTimer = 0;
+  };
+
+  const loadLiveEnvironment = () => {
+    void loadEnvironment(root).then((payload) => {
+      if (!wantsTimelineOverlay()) {
+        viewer.setEnvironment(payload.environment);
+      }
+    });
+  };
+
+  const startEnvironmentPolling = () => {
+    if (wantsTimelineOverlay()) {
+      stopEnvironmentPolling();
+      return;
+    }
+    loadLiveEnvironment();
+    if (environmentPollTimer !== 0) {
+      return;
+    }
+    environmentPollTimer = window.setInterval(() => {
+      if (wantsTimelineOverlay()) {
+        stopEnvironmentPolling();
+        return;
+      }
+      loadLiveEnvironment();
+    }, playerLocationRefreshMs);
   };
 
   const loadLiveOverlays = () => {
@@ -3469,6 +3640,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       }
     }
     syncTimelineReplay();
+    viewer.setEnvironment(frame.environment, 420);
     setTimelineLabel(frame);
   };
 
@@ -3505,6 +3677,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
 
     if (wantsPlayback()) {
       stopLiveOverlayPolling();
+      stopEnvironmentPolling();
       const requestId = playbackRequestId + 1;
       playbackRequestId = requestId;
       const requestRange = selectedRange();
@@ -3520,13 +3693,15 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       void Promise.all([
         loadOverlayHistory(root, heatmapEnabled, playersEnabled, wantsAllPlayers(), selectedMetric(), requestRange, requestFrameCount),
         loadReplayEventHistory(root, requestRange, requestFrameCount),
-      ]).then(([payload, replayPayload]) => {
+        loadEnvironmentHistory(root, requestRange, requestFrameCount),
+      ]).then(([payload, replayPayload, environmentPayload]) => {
         if (requestId !== playbackRequestId || selectedRange() !== requestRange) {
           return;
         }
 
         heatmapHistory = trimHistoryFramesToRange(Array.isArray(payload.frames) ? payload.frames : [], requestRange, payload.windowEnd);
         mergeReplayEventsIntoFrames(heatmapHistory, replayPayload);
+        mergeEnvironmentIntoFrames(heatmapHistory, environmentPayload);
         setFrameIntervalLabel(payload.frameSeconds);
         const latestFrame = preferredFrame !== undefined
           ? MathUtils.clamp(Math.round(preferredFrame), 0, Math.max(0, heatmapHistory.length - 1))
@@ -3565,14 +3740,18 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     }
     viewer.clearReplayEvents();
     startLiveOverlayPolling();
+    startEnvironmentPolling();
     updatePlaybackControlAvailability();
   };
 
   const startPlaybackHistoryPolling = () => {
     if (!wantsTimelineOverlay()) {
       stopPlaybackHistoryPolling();
+      startEnvironmentPolling();
       return;
     }
+
+    stopEnvironmentPolling();
 
     if (playbackHistoryPollTimer !== 0) {
       return;
@@ -3811,12 +3990,14 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   if (!wantsPlayback()) {
     startLiveOverlayPolling();
   }
+  startEnvironmentPolling();
 
   return {
     dispose: () => {
       window.cancelAnimationFrame(playbackAnimationFrame);
       stopLiveOverlayPolling();
       stopPlaybackHistoryPolling();
+      stopEnvironmentPolling();
       disposers.forEach((dispose) => dispose());
     },
   };
@@ -3855,6 +4036,63 @@ async function loadHeatmap(root: HTMLElement, viewer: TerrainViewer, metric: str
   } catch (error) {
     console.info("Raidlands heat map could not be loaded.", error);
     viewer.setHeatmapVisible(false);
+  }
+}
+
+async function loadEnvironment(root: HTMLElement): Promise<EnvironmentPayload> {
+  const baseUrl = root.dataset.environmentUrl || "";
+
+  if (!baseUrl) {
+    return { ok: false, environment: null };
+  }
+
+  const url = new URL(baseUrl, window.location.href);
+  url.searchParams.set("refresh", String(Date.now()));
+
+  try {
+    const response = await fetch(url.toString(), {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Environment request failed with HTTP ${response.status}.`);
+    }
+
+    return (await response.json()) as EnvironmentPayload;
+  } catch (error) {
+    console.info("Raidlands environment could not be loaded.", error);
+    return { ok: false, environment: null };
+  }
+}
+
+async function loadEnvironmentHistory(root: HTMLElement, range: string, frames = 24): Promise<EnvironmentPayload> {
+  const baseUrl = root.dataset.environmentUrl || "";
+
+  if (!baseUrl) {
+    return { ok: false, frames: [] };
+  }
+
+  const url = new URL(baseUrl, window.location.href);
+  url.searchParams.set("range", range);
+  url.searchParams.set("playback", "1");
+  url.searchParams.set("frames", String(Math.max(8, Math.min(72, Math.round(frames)))));
+  url.searchParams.set("refresh", String(Date.now()));
+
+  try {
+    const response = await fetch(url.toString(), {
+      cache: "no-store",
+      headers: { Accept: "application/json" },
+    });
+
+    if (!response.ok) {
+      throw new Error(`Environment history request failed with HTTP ${response.status}.`);
+    }
+
+    return (await response.json()) as EnvironmentPayload;
+  } catch (error) {
+    console.info("Raidlands environment history could not be loaded.", error);
+    return { ok: false, frames: [] };
   }
 }
 
@@ -4030,6 +4268,50 @@ function mergeReplayEventsIntoFrames(frames: HeatmapHistoryFrame[], replayPayloa
       ? replayFrame.events.map(normalizeReplayEvent).filter((event): event is MapReplayEvent => event !== null)
       : [];
   });
+}
+
+function mergeEnvironmentIntoFrames(frames: HeatmapHistoryFrame[], environmentPayload: EnvironmentPayload): void {
+  const environmentFrames = Array.isArray(environmentPayload.frames) ? environmentPayload.frames : [];
+  frames.forEach((frame, index) => {
+    const matching = environmentFrameFor(frame, environmentFrames, index, Math.max(60, Number(environmentPayload.frameSeconds) || 60));
+    frame.environment = matching?.environment ?? null;
+  });
+}
+
+function environmentFrameFor(
+  frame: HeatmapHistoryFrame,
+  environmentFrames: NonNullable<EnvironmentPayload["frames"]>,
+  fallbackIndex: number,
+  frameSeconds: number,
+): NonNullable<EnvironmentPayload["frames"]>[number] | null {
+  if (environmentFrames.length === 0) {
+    return null;
+  }
+
+  const frameTime = historyFrameTime(frame);
+  const fallbackFrame = environmentFrames[fallbackIndex] || null;
+  if (frameTime === null) {
+    return fallbackFrame;
+  }
+
+  let closest = fallbackFrame;
+  let closestDelta = closest ? environmentFrameDeltaMs(closest, frameTime) : Number.POSITIVE_INFINITY;
+  const toleranceMs = Math.max(90_000, frameSeconds * 1000 * 0.75);
+  for (const environmentFrame of environmentFrames) {
+    const delta = environmentFrameDeltaMs(environmentFrame, frameTime);
+    if (delta < closestDelta) {
+      closest = environmentFrame;
+      closestDelta = delta;
+    }
+  }
+
+  return closest && closestDelta <= toleranceMs ? closest : fallbackFrame;
+}
+
+function environmentFrameDeltaMs(frame: NonNullable<EnvironmentPayload["frames"]>[number], targetMs: number): number {
+  const raw = frame.windowEnd || frame.windowStart || "";
+  const time = Date.parse(raw);
+  return Number.isFinite(time) ? Math.abs(time - targetMs) : Number.POSITIVE_INFINITY;
 }
 
 function normalizeReplayEvent(event: MapReplayEvent): MapReplayEvent | null {
