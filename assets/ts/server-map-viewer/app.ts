@@ -1508,9 +1508,9 @@ diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.22, raidlan
     const cloudDarkening = MathUtils.clamp(environment.cloudAttenuation, 0, 1) * visibleCloudAmount * 0.36;
 
     const groundFogAmount = Math.sqrt(MathUtils.clamp(environment.fogIntensity, 0, 1));
-    const groundFogColor = new Color(0xc7d4d8)
-      .lerp(environment.ambientColor, 0.2)
-      .lerp(environment.sunColor, twilight * 0.18);
+    const ambientGroundFogColor = new Color(0xc7d4d8).lerp(environment.ambientColor, 0.34);
+    const sunlitGroundFogColor = environment.sunColor.clone().lerp(new Color(0xffdfbd), 0.58);
+    const horizontalSunLength = Math.max(0.0001, Math.hypot(environment.sunDirection.x, environment.sunDirection.z));
     this.groundFogLayer.visible = groundFogAmount > 0.015;
     this.groundFogLayer.children.forEach((child, index) => {
       if (!(child instanceof Sprite)) {
@@ -1519,8 +1519,20 @@ diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.22, raidlan
       const distance = this.camera.position.distanceTo(child.position);
       const nearFade = MathUtils.smoothstep(distance, worldSize * 0.12, worldSize * 0.42);
       const farFade = 1 - MathUtils.smoothstep(distance, worldSize * 1.08, worldSize * 1.65);
+      const horizontalBankLength = Math.max(0.0001, Math.hypot(child.position.x, child.position.z));
+      const sunFacing = MathUtils.clamp(
+        (
+          child.position.x * environment.sunDirection.x
+          + child.position.z * environment.sunDirection.z
+        ) / (horizontalBankLength * horizontalSunLength) * 0.5 + 0.5,
+        0,
+        1,
+      );
       const material = child.material as SpriteMaterial;
-      material.color.copy(groundFogColor);
+      material.color.copy(ambientGroundFogColor).lerp(
+        sunlitGroundFogColor,
+        twilight * MathUtils.lerp(0.32, 0.58, sunFacing),
+      );
       material.opacity = groundFogAmount * nearFade * farFade * (Number(child.userData.opacityBias) || 1) * 0.34;
       child.visible = material.opacity > 0.003;
       child.position.x = (Number(child.userData.baseX) || 0) + Math.sin(now * 0.000018 + index * 1.9) * worldSize * 0.008;
@@ -3023,11 +3035,7 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
   }
 
   if (key.includes("excavator")) {
-    addBox(group, size * 0.7, size * 0.26, size * 0.5, 0x6f5b35, -size * 0.15, size * 0.13, 0);
-    const arm = addBox(group, size * 0.92, size * 0.08, size * 0.12, 0xc59a4a, size * 0.32, size * 0.48, 0);
-    arm.rotation.z = MathUtils.degToRad(-24);
-    addCylinder(group, size * 0.18, size * 0.28, 0x2f3332, -size * 0.36, size * 0.15, -size * 0.18);
-    addCylinder(group, size * 0.18, size * 0.28, 0x2f3332, -size * 0.36, size * 0.15, size * 0.18);
+    createExcavatorMonumentPrimitive(group, size);
     return addTitle();
   }
 
@@ -3060,6 +3068,133 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
   addBox(group, size * 0.68, size * 0.24, size * 0.5, 0x6a705e, 0, size * 0.12, 0);
   addCylinder(group, size * 0.08, size * 0.46, 0x8b7044, size * 0.28, size * 0.23, -size * 0.12);
   return addTitle();
+}
+
+function createExcavatorMonumentPrimitive(group: Group, size: number): void {
+  const earth = 0x6d624c;
+  const darkEarth = 0x2e2a23;
+  const rust = 0x9a552d;
+  const darkRust = 0x5c3023;
+  const steel = 0x6a6760;
+  const darkSteel = 0x262a2b;
+  const deck = 0x4c4a42;
+  const cabin = 0x7b735c;
+
+  addCylinder(group, size * 0.52, 3.2, earth, 0, 1.6, 0);
+  addCylinder(group, size * 0.38, 3.8, darkEarth, 0, 3.4, 0);
+  addCylinder(group, size * 0.25, size * 0.1, deck, 0, size * 0.07, 0);
+  addCylinder(group, size * 0.17, size * 0.16, steel, 0, size * 0.16, 0);
+
+  addBox(group, size * 0.5, size * 0.12, size * 0.22, darkSteel, -size * 0.06, size * 0.11, size * 0.02);
+  addBox(group, size * 0.16, size * 0.2, size * 0.16, cabin, -size * 0.12, size * 0.28, size * 0.12);
+  addBox(group, size * 0.18, size * 0.16, size * 0.15, cabin, size * 0.18, size * 0.24, -size * 0.1);
+
+  addExcavatorMast(group, size, -size * 0.02, 0, size * 0.94);
+  addExcavatorBoom(group, size, -size * 0.05, 0, size * 0.9, MathUtils.degToRad(-18), size * 0.46, rust);
+  addExcavatorBoom(group, size, size * 0.04, 0, size * 0.74, MathUtils.degToRad(24), size * 0.38, rust);
+  addExcavatorBoom(group, size, -size * 0.04, -size * 0.04, size * 0.58, MathUtils.degToRad(178), size * 0.28, darkRust);
+
+  addExcavatorCable(group, size, -size * 0.02, 0, size * 0.88, MathUtils.degToRad(-18), size * 0.78);
+  addExcavatorCable(group, size, -size * 0.02, 0, size * 0.82, MathUtils.degToRad(24), size * 0.62);
+  addExcavatorCable(group, size, -size * 0.02, 0, size * 0.7, MathUtils.degToRad(178), size * 0.48);
+
+  addExcavatorBucketWheel(group, size, -size * 0.48, size * 0.16, MathUtils.degToRad(-18));
+  addExcavatorPulley(group, size, size * 0.48, size * 0.22, MathUtils.degToRad(24));
+
+  addCylinder(group, size * 0.07, size * 0.18, steel, size * 0.32, size * 0.14, -size * 0.3);
+  addCylinder(group, size * 0.07, size * 0.18, steel, size * 0.44, size * 0.14, -size * 0.3);
+  addBox(group, size * 0.2, size * 0.08, size * 0.12, rust, -size * 0.32, size * 0.1, -size * 0.36);
+  addBox(group, size * 0.18, size * 0.07, size * 0.1, darkRust, size * 0.12, size * 0.09, size * 0.36);
+  addBox(group, size * 0.12, size * 0.09, size * 0.12, cabin, size * 0.42, size * 0.1, size * 0.32);
+}
+
+function addExcavatorMast(group: Group, size: number, x: number, z: number, height: number): void {
+  const rust = 0x9a552d;
+  const darkRust = 0x5c3023;
+  const width = size * 0.22;
+  const leg = size * 0.018;
+  const y = height / 2 + size * 0.16;
+
+  const left = addBox(group, leg, height, leg, rust, x - width / 2, y, z);
+  left.rotation.z = MathUtils.degToRad(-6);
+  const right = addBox(group, leg, height, leg, rust, x + width / 2, y, z);
+  right.rotation.z = MathUtils.degToRad(6);
+  addBox(group, width * 1.1, size * 0.035, size * 0.05, darkRust, x, size * 0.16 + height, z);
+
+  [0.25, 0.46, 0.67, 0.88].forEach((level, index) => {
+    const crossY = size * 0.16 + height * level;
+    const cross = addBox(group, width * 1.18, size * 0.014, size * 0.018, darkRust, x, crossY, z);
+    cross.rotation.z = MathUtils.degToRad(index % 2 === 0 ? 24 : -24);
+  });
+}
+
+function addExcavatorBoom(group: Group, size: number, originX: number, originZ: number, length: number, rotationY: number, y: number, color: number): void {
+  const darkRust = 0x5c3023;
+  const width = size * 0.12;
+  const centerX = originX + Math.cos(rotationY) * length * 0.5;
+  const centerZ = originZ - Math.sin(rotationY) * length * 0.5;
+  const sideX = Math.sin(rotationY) * width * 0.5;
+  const sideZ = Math.cos(rotationY) * width * 0.5;
+
+  const beamA = addBox(group, length, size * 0.035, size * 0.025, color, centerX + sideX, y, centerZ + sideZ);
+  beamA.rotation.y = rotationY;
+  const beamB = addBox(group, length, size * 0.035, size * 0.025, color, centerX - sideX, y - size * 0.08, centerZ - sideZ);
+  beamB.rotation.y = rotationY;
+  const deck = addBox(group, length * 0.92, size * 0.02, size * 0.035, darkRust, centerX, y - size * 0.04, centerZ);
+  deck.rotation.y = rotationY;
+
+  [-0.32, -0.12, 0.08, 0.28].forEach((offset, index) => {
+    const brace = addBox(
+      group,
+      size * 0.18,
+      size * 0.018,
+      size * 0.018,
+      darkRust,
+      centerX + Math.cos(rotationY) * length * offset,
+      y - size * 0.03,
+      centerZ - Math.sin(rotationY) * length * offset,
+    );
+    brace.rotation.y = rotationY;
+    brace.rotation.z = MathUtils.degToRad(index % 2 === 0 ? 26 : -26);
+  });
+}
+
+function addExcavatorCable(group: Group, size: number, originX: number, originZ: number, y: number, rotationY: number, length: number): void {
+  const cable = addBox(
+    group,
+    length,
+    size * 0.01,
+    size * 0.01,
+    0x151718,
+    originX + Math.cos(rotationY) * length * 0.5,
+    y,
+    originZ - Math.sin(rotationY) * length * 0.5,
+  );
+  cable.rotation.y = rotationY;
+  cable.rotation.z = MathUtils.degToRad(-12);
+}
+
+function addExcavatorBucketWheel(group: Group, size: number, x: number, z: number, rotationY: number): void {
+  const wheel = addCylinder(group, size * 0.13, size * 0.06, 0x2b2e2d, x, size * 0.34, z);
+  wheel.rotation.x = MathUtils.degToRad(90);
+  wheel.rotation.y = rotationY;
+  addCylinder(group, size * 0.055, size * 0.08, 0x9a552d, x, size * 0.34, z);
+
+  [-45, 0, 45, 90].forEach((angle) => {
+    const bucket = addBox(group, size * 0.08, size * 0.035, size * 0.035, 0x9a552d, x, size * 0.34, z);
+    bucket.rotation.x = MathUtils.degToRad(angle);
+    bucket.rotation.y = rotationY;
+    bucket.position.x += Math.cos(rotationY) * Math.cos(MathUtils.degToRad(angle)) * size * 0.1;
+    bucket.position.y += Math.sin(MathUtils.degToRad(angle)) * size * 0.1;
+  });
+}
+
+function addExcavatorPulley(group: Group, size: number, x: number, z: number, rotationY: number): void {
+  const pulley = addCylinder(group, size * 0.09, size * 0.08, 0x2b2e2d, x, size * 0.5, z);
+  pulley.rotation.x = MathUtils.degToRad(90);
+  pulley.rotation.y = rotationY;
+  const housing = addBox(group, size * 0.18, size * 0.08, size * 0.12, 0x7b735c, x, size * 0.44, z);
+  housing.rotation.y = rotationY;
 }
 
 function createLaunchSiteMonumentPrimitive(group: Group, size: number): void {
