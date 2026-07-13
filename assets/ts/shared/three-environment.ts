@@ -1,13 +1,19 @@
 import {
   ACESFilmicToneMapping,
+  BackSide,
   CanvasTexture,
   Color,
   EquirectangularReflectionMapping,
   LinearSRGBColorSpace,
+  MathUtils,
+  Mesh,
   PMREMGenerator,
   Scene,
+  ShaderMaterial,
+  SphereGeometry,
   SRGBColorSpace,
   Texture,
+  Vector3,
   WebGLRenderer,
 } from "three";
 import { getSharedCanvasTexture, loadSharedTexture } from "./three-asset-cache";
@@ -21,6 +27,29 @@ type EnvironmentOptions = {
   exposure?: number;
   skyboxUrl?: string;
 };
+
+export type RaidlandsEnvironmentState = {
+  sunDirection: Vector3;
+  sunColor: Color;
+  sunIntensity: number;
+  cloudCoverage?: number | null;
+  timeSeconds?: number;
+  cameraPosition?: Vector3;
+};
+
+type RaidlandsSkyUniforms = {
+  uZenithColor: { value: Color };
+  uHorizonColor: { value: Color };
+  uGroundColor: { value: Color };
+  uSunColor: { value: Color };
+  uSunDirection: { value: Vector3 };
+  uDaylight: { value: number };
+  uCloudCoverage: { value: number };
+  uCloudPhase: { value: number };
+  uSunVisibility: { value: number };
+};
+
+const raidlandsSkyUserDataKey = "raidlandsSkyDome";
 
 export function applyRaidlandsEnvironment(
   scene: Scene,
@@ -40,10 +69,28 @@ export function applyRaidlandsEnvironment(
   const environment = pmrem.fromEquirectangular(skyTexture).texture;
   pmrem.dispose();
 
-  scene.background = skyTexture;
+  const previousSkyDome = scene.userData[raidlandsSkyUserDataKey] as Mesh | undefined;
+  if (previousSkyDome) {
+    scene.remove(previousSkyDome);
+    previousSkyDome.geometry.dispose();
+    (previousSkyDome.material as ShaderMaterial).dispose();
+  }
+
+  const skyDome = createRaidlandsSkyDome(preset);
+  scene.add(skyDome);
+  scene.userData[raidlandsSkyUserDataKey] = skyDome;
+  scene.background = new Color(0x040812);
   scene.backgroundIntensity = options.backgroundIntensity ?? (preset === "editor" ? 0.82 : 0.96);
   scene.environment = environment;
   scene.environmentIntensity = options.environmentIntensity ?? (preset === "editor" ? 0.72 : 0.9);
+
+  updateRaidlandsEnvironment(scene, {
+    sunDirection: new Vector3(0.5, 0.78, 0.36).normalize(),
+    sunColor: preset === "editor" ? new Color(0xffc47a) : new Color(0xffb15e),
+    sunIntensity: 1.78,
+    cloudCoverage: preset === "editor" ? 0.24 : 0.32,
+    timeSeconds: 0,
+  });
 
   if (options.skyboxUrl) {
     void loadSharedTexture(options.skyboxUrl).then(
@@ -64,6 +111,164 @@ export function applyRaidlandsEnvironment(
       },
     );
   }
+}
+
+export function updateRaidlandsEnvironment(scene: Scene, state: RaidlandsEnvironmentState): void {
+  const skyDome = scene.userData[raidlandsSkyUserDataKey] as Mesh | undefined;
+  const material = skyDome?.material as ShaderMaterial | undefined;
+  const uniforms = material?.uniforms as RaidlandsSkyUniforms | undefined;
+
+  if (!skyDome || !uniforms) {
+    return;
+  }
+
+  if (state.cameraPosition) {
+    skyDome.position.copy(state.cameraPosition);
+  }
+
+  const direction = state.sunDirection.clone().normalize();
+  const sunHeight = MathUtils.clamp(direction.y, -0.28, 0.92);
+  const daylight = MathUtils.smoothstep(sunHeight, -0.08, 0.5);
+  const twilight = MathUtils.clamp(1 - Math.abs(sunHeight - 0.12) / 0.34, 0, 1);
+  const cloudCoverage = MathUtils.clamp(Number(state.cloudCoverage) || 0.38, 0.08, 0.92);
+  const sunVisibility = MathUtils.smoothstep(sunHeight, -0.16, 0.12)
+    * MathUtils.clamp((Number(state.sunIntensity) || 0) / 1.7, 0.18, 1.2);
+
+  const zenith = new Color(0x020713)
+    .lerp(new Color(0x3f8fd1), daylight)
+    .lerp(new Color(0x1e2c55), twilight * 0.42);
+  const horizon = new Color(0x091321)
+    .lerp(new Color(0xb8d8e4), daylight)
+    .lerp(new Color(0xe96b45), twilight * 0.72);
+  const ground = new Color(0x02050a)
+    .lerp(new Color(0x203344), daylight)
+    .lerp(new Color(0x311820), twilight * 0.32);
+
+  uniforms.uZenithColor.value.copy(zenith);
+  uniforms.uHorizonColor.value.copy(horizon);
+  uniforms.uGroundColor.value.copy(ground);
+  uniforms.uSunColor.value.copy(state.sunColor);
+  uniforms.uSunDirection.value.copy(direction);
+  uniforms.uDaylight.value = daylight;
+  uniforms.uCloudCoverage.value = cloudCoverage;
+  uniforms.uCloudPhase.value = Number(state.timeSeconds) || 0;
+  uniforms.uSunVisibility.value = sunVisibility;
+}
+
+function createRaidlandsSkyDome(preset: RaidlandsEnvironmentPreset): Mesh {
+  const material = new ShaderMaterial({
+    uniforms: {
+      uZenithColor: { value: new Color(preset === "editor" ? 0x15253a : 0x020713) },
+      uHorizonColor: { value: new Color(preset === "editor" ? 0x7a9ba9 : 0x091321) },
+      uGroundColor: { value: new Color(preset === "editor" ? 0x211813 : 0x02050a) },
+      uSunColor: { value: new Color(preset === "editor" ? 0xffc47a : 0xffb15e) },
+      uSunDirection: { value: new Vector3(0.5, 0.78, 0.36).normalize() },
+      uDaylight: { value: 1 },
+      uCloudCoverage: { value: preset === "editor" ? 0.24 : 0.32 },
+      uCloudPhase: { value: 0 },
+      uSunVisibility: { value: 1 },
+    },
+    vertexShader: `
+      varying vec3 vDirection;
+
+      void main() {
+        vDirection = normalize(position);
+        gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+      }
+    `,
+    fragmentShader: `
+      precision highp float;
+
+      varying vec3 vDirection;
+
+      uniform vec3 uZenithColor;
+      uniform vec3 uHorizonColor;
+      uniform vec3 uGroundColor;
+      uniform vec3 uSunColor;
+      uniform vec3 uSunDirection;
+      uniform float uDaylight;
+      uniform float uCloudCoverage;
+      uniform float uCloudPhase;
+      uniform float uSunVisibility;
+
+      float hash(vec2 position) {
+        return fract(sin(dot(position, vec2(127.1, 311.7))) * 43758.5453123);
+      }
+
+      float noise(vec2 position) {
+        vec2 cell = floor(position);
+        vec2 local = fract(position);
+        local = local * local * (3.0 - 2.0 * local);
+        float lower = mix(hash(cell), hash(cell + vec2(1.0, 0.0)), local.x);
+        float upper = mix(hash(cell + vec2(0.0, 1.0)), hash(cell + vec2(1.0, 1.0)), local.x);
+        return mix(lower, upper, local.y);
+      }
+
+      float cloudNoise(vec2 position) {
+        float value = 0.0;
+        float amplitude = 0.55;
+        for (int octave = 0; octave < 4; octave += 1) {
+          value += noise(position) * amplitude;
+          position = position * 2.03 + vec2(11.7, 4.3);
+          amplitude *= 0.5;
+        }
+        return value;
+      }
+
+      void main() {
+        vec3 direction = normalize(vDirection);
+        float height = clamp(direction.y * 0.5 + 0.5, 0.0, 1.0);
+        float horizon = 1.0 - smoothstep(0.0, 0.34, abs(direction.y));
+        vec3 skyColor = direction.y < 0.0
+          ? mix(uGroundColor, uHorizonColor, smoothstep(0.0, 0.42, height))
+          : mix(uHorizonColor, uZenithColor, smoothstep(0.44, 1.0, height));
+
+        float sunDot = max(dot(direction, normalize(uSunDirection)), 0.0);
+        float sunDisc = smoothstep(0.9991, 0.99982, sunDot) * uSunVisibility;
+        float sunGlow = pow(sunDot, 7.0) * 0.34 * uSunVisibility;
+        float twilight = smoothstep(0.54, -0.12, uSunDirection.y) * horizon;
+        skyColor += uSunColor * (sunDisc * 1.55 + sunGlow + twilight * 0.3);
+
+        vec2 cloudPosition = direction.xz / max(direction.y + 0.36, 0.42);
+        cloudPosition = cloudPosition * 2.2 + vec2(uCloudPhase * 0.0018, uCloudPhase * 0.0007);
+        float clouds = cloudNoise(cloudPosition);
+        float cloudThreshold = mix(0.56, 0.22, uCloudCoverage);
+        float cloudWave = 0.5 + 0.5 * sin(cloudPosition.x * 0.62 + sin(cloudPosition.y * 1.18) + clouds * 3.4);
+        float cloudBand = 0.5 + 0.5 * sin(
+          cloudPosition.x * 0.38 + cloudPosition.y * 0.24 + sin(cloudPosition.y * 0.7) * 1.8
+        );
+        float cloudMask = max(
+          smoothstep(cloudThreshold - 0.11, cloudThreshold + 0.08, clouds),
+          max(
+            smoothstep(0.64, 0.86, cloudWave) * uCloudCoverage,
+            smoothstep(0.63, 0.82, cloudBand) * 0.56
+          )
+        )
+          * smoothstep(-0.02, 0.32, direction.y)
+          * (0.72 + height * 0.28);
+        vec3 cloudColor = mix(vec3(0.14, 0.19, 0.29), vec3(0.62, 0.72, 0.82), uDaylight);
+        skyColor = mix(skyColor, cloudColor, cloudMask * (0.26 + uCloudCoverage * 0.82));
+
+        float starField = step(0.9972, hash(direction.xz * 180.0 + direction.y * 23.0));
+        float stars = starField * (1.0 - uDaylight) * smoothstep(0.18, 0.72, direction.y);
+        skyColor += vec3(0.56, 0.72, 1.0) * stars * 0.92;
+        skyColor += uHorizonColor * horizon * (0.06 + uDaylight * 0.08);
+
+        gl_FragColor = vec4(max(skyColor, vec3(0.0)), 1.0);
+      }
+    `,
+    side: BackSide,
+    depthWrite: false,
+    depthTest: false,
+    fog: false,
+  });
+
+  const skyDome = new Mesh(new SphereGeometry(9000, 48, 24), material);
+  skyDome.name = "raidlands-dynamic-sky-dome";
+  skyDome.renderOrder = -1000;
+  skyDome.frustumCulled = false;
+  skyDome.userData[raidlandsSkyUserDataKey] = material;
+  return skyDome;
 }
 
 function createRaidlandsSkyTexture(preset: RaidlandsEnvironmentPreset): Texture {

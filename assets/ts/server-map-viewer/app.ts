@@ -38,7 +38,7 @@ import { unityPositionToThreeVector, unityQuaternionValueToThreeQuaternion } fro
 import { createVehicleProxy, loadVehiclePreview, metadataForVehicle } from "../airstrike-animation-editor/editor/vehicle-preview";
 import type { VehiclePreviewMetadataFile } from "../airstrike-animation-editor/types";
 import { getSharedCanvasTexture, isSharedThreeAsset, loadSharedTexture } from "../shared/three-asset-cache";
-import { applyRaidlandsEnvironment } from "../shared/three-environment";
+import { applyRaidlandsEnvironment, updateRaidlandsEnvironment } from "../shared/three-environment";
 
 type TerrainPayload = {
   version?: number;
@@ -205,6 +205,9 @@ type EnvironmentSnapshot = {
   sunColor?: string;
   ambientIntensity?: number;
   ambientColor?: string;
+  cloudCoverage?: number | null;
+  rainIntensity?: number | null;
+  fogIntensity?: number | null;
 };
 
 type EnvironmentPayload = {
@@ -221,11 +224,13 @@ type EnvironmentPayload = {
 };
 
 type NormalizedEnvironment = {
+  rustTime: number;
   sunDirection: Vector3;
   sunIntensity: number;
   sunColor: Color;
   ambientIntensity: number;
   ambientColor: Color;
+  cloudCoverage: number;
 };
 
 type ReplayDisplayMode = "ambient" | "timeline";
@@ -612,9 +617,9 @@ class TerrainViewer {
     this.renderer.outputColorSpace = SRGBColorSpace;
     applyRaidlandsEnvironment(this.scene, this.renderer, {
       preset: "terrain",
-      exposure: 0.98,
-      backgroundIntensity: 0.54,
-      environmentIntensity: 0.68,
+      exposure: 1.08,
+      backgroundIntensity: 0.94,
+      environmentIntensity: 0.9,
     });
     this.renderer.domElement.dataset.serverMapViewerCanvas = "true";
     this.terrainMaterial = this.createTerrainMaterial();
@@ -1128,11 +1133,13 @@ class TerrainViewer {
     this.sunLight = sun;
     this.fillLight = fill;
     const initialEnvironment = normalizeEnvironment({
+      rustTime: 12,
       sunDirection: { x: 0.5, y: 0.78, z: 0.36 },
       sunIntensity: 1.78,
       sunColor: "#ffc47a",
       ambientIntensity: 0.38,
       ambientColor: "#ffead2",
+      cloudCoverage: 0.42,
     });
     this.activeEnvironment = initialEnvironment;
     this.targetEnvironment = initialEnvironment;
@@ -1199,19 +1206,27 @@ class TerrainViewer {
     if (!this.ambientLight || !this.sunLight || !this.fillLight) {
       return;
     }
+    const sunHeight = MathUtils.clamp(environment.sunDirection.y, -0.16, 0.9);
+    const daylight = MathUtils.smoothstep(sunHeight, -0.05, 0.55);
     this.ambientLight.color.copy(environment.ambientColor);
-    this.ambientLight.intensity = environment.ambientIntensity;
+    this.ambientLight.intensity = Math.max(0.26, environment.ambientIntensity * MathUtils.lerp(1.12, 1.36, daylight));
     this.sunLight.color.copy(environment.sunColor);
-    this.sunLight.intensity = environment.sunIntensity;
+    this.sunLight.intensity = Math.max(0.42, environment.sunIntensity * 1.18);
     const worldSize = this.terrain.worldSize || 4500;
     this.sunLight.position.copy(environment.sunDirection).multiplyScalar(worldSize * 0.62);
     this.sunLight.position.y = Math.max(this.sunLight.position.y, worldSize * -0.18);
-    this.fillLight.intensity = MathUtils.lerp(0.12, 0.28, 1 - MathUtils.clamp(environment.sunDirection.y, 0, 1));
-    const sunHeight = MathUtils.clamp(environment.sunDirection.y, -0.16, 0.9);
-    const daylight = MathUtils.smoothstep(sunHeight, -0.05, 0.55);
+    this.fillLight.intensity = MathUtils.lerp(0.3, 0.36, daylight);
     const horizonDrama = 1 - Math.abs(MathUtils.clamp(sunHeight, -0.1, 0.46) - 0.18) / 0.28;
-    this.scene.backgroundIntensity = MathUtils.lerp(0.2, 0.58, daylight) + Math.max(0, horizonDrama) * 0.08;
-    this.scene.environmentIntensity = MathUtils.lerp(0.26, 0.72, daylight);
+    this.scene.backgroundIntensity = MathUtils.lerp(0.78, 1.04, daylight) + Math.max(0, horizonDrama) * 0.08;
+    this.scene.environmentIntensity = MathUtils.lerp(0.54, 0.92, daylight);
+    updateRaidlandsEnvironment(this.scene, {
+      sunDirection: environment.sunDirection,
+      sunColor: environment.sunColor,
+      sunIntensity: environment.sunIntensity,
+      cloudCoverage: environment.cloudCoverage,
+      timeSeconds: performance.now() / 1000,
+      cameraPosition: this.camera.position,
+    });
   }
 
   private replaceOverlayLayer(parent: Group, incoming: Group, durationMs = 360): void {
@@ -3064,21 +3079,25 @@ function normalizeEnvironment(snapshot: EnvironmentSnapshot | null | undefined):
   direction.normalize();
 
   return {
+    rustTime: MathUtils.clamp(Number(snapshot.rustTime) || 0, 0, 24),
     sunDirection: direction,
     sunIntensity: MathUtils.clamp(Number(snapshot.sunIntensity) || 0, 0, 4),
     sunColor: new Color(validHexColor(snapshot.sunColor) || "#ffc47a"),
     ambientIntensity: MathUtils.clamp(Number(snapshot.ambientIntensity) || 0, 0, 2),
     ambientColor: new Color(validHexColor(snapshot.ambientColor) || "#ffead2"),
+    cloudCoverage: MathUtils.clamp(Number(snapshot.cloudCoverage) || 0.28, 0.08, 0.92),
   };
 }
 
 function interpolateEnvironment(from: NormalizedEnvironment, to: NormalizedEnvironment, progress: number): NormalizedEnvironment {
   return {
+    rustTime: MathUtils.lerp(from.rustTime, to.rustTime, progress),
     sunDirection: from.sunDirection.clone().lerp(to.sunDirection, progress).normalize(),
     sunIntensity: MathUtils.lerp(from.sunIntensity, to.sunIntensity, progress),
     sunColor: from.sunColor.clone().lerp(to.sunColor, progress),
     ambientIntensity: MathUtils.lerp(from.ambientIntensity, to.ambientIntensity, progress),
     ambientColor: from.ambientColor.clone().lerp(to.ambientColor, progress),
+    cloudCoverage: MathUtils.lerp(from.cloudCoverage, to.cloudCoverage, progress),
   };
 }
 
