@@ -210,6 +210,20 @@ type EnvironmentSnapshot = {
   rainIntensity?: number | null;
   fogIntensity?: number | null;
   weatherSampleSummary?: string;
+  weather?: WeatherSnapshot | null;
+};
+
+type WeatherParameter = {
+  key?: string;
+  value?: number | null;
+  raw?: number | null;
+  isDynamic?: boolean;
+  is_dynamic?: boolean;
+  source?: string;
+};
+
+type WeatherSnapshot = {
+  parameters?: Record<string, WeatherParameter>;
 };
 
 type EnvironmentPayload = {
@@ -235,6 +249,20 @@ type NormalizedEnvironment = {
   cloudCoverage: number;
   rainIntensity: number;
   fogIntensity: number;
+  thunderIntensity: number;
+  rainbowIntensity: number;
+  atmosphereRayleigh: number;
+  atmosphereMie: number;
+  atmosphereBrightness: number;
+  atmosphereContrast: number;
+  atmosphereDirectionality: number;
+  cloudSize: number;
+  cloudOpacity: number;
+  cloudSharpness: number;
+  cloudColoring: number;
+  cloudAttenuation: number;
+  cloudScattering: number;
+  cloudBrightness: number;
 };
 
 type ReplayDisplayMode = "ambient" | "timeline";
@@ -1240,27 +1268,30 @@ class TerrainViewer {
     const twilight = MathUtils.clamp(1 - Math.abs(sunHeight - 0.12) / 0.34, 0, 1);
     const night = 1 - MathUtils.smoothstep(sunHeight, -0.18, 0.08);
     const visualCloudCoverage = visualCloudCoverageForEnvironment(environment);
+    const atmosphereBrightness = MathUtils.clamp(environment.atmosphereBrightness, 0.15, 2.4);
+    const atmosphereContrast = MathUtils.clamp(environment.atmosphereContrast, 0.15, 2.4);
+    const scatteringGlow = MathUtils.lerp(0.76, 1.26, MathUtils.clamp(environment.cloudScattering, 0, 1));
     this.ambientLight.color.copy(environment.ambientColor)
       .lerp(new Color(0xddeaf0), MathUtils.lerp(0.16, 0.42, daylight))
       .lerp(new Color(0xff9a62), twilight * 0.22)
       .lerp(new Color(0x101827), night * 0.52);
     this.ambientLight.intensity = MathUtils.clamp(
-      environment.ambientIntensity * MathUtils.lerp(0.82, 1.18, daylight) + MathUtils.lerp(0.05, 0.18, twilight),
+      (environment.ambientIntensity * MathUtils.lerp(0.82, 1.18, daylight) + MathUtils.lerp(0.05, 0.18, twilight)) * MathUtils.lerp(0.72, 1.18, atmosphereBrightness / 1.4),
       0.14,
-      0.72,
+      0.86,
     );
     this.sunLight.color.copy(environment.sunColor);
-    this.sunLight.intensity = Math.max(0.08, environment.sunIntensity * MathUtils.lerp(0.82, 1.08, daylight));
+    this.sunLight.intensity = Math.max(0.08, environment.sunIntensity * MathUtils.lerp(0.82, 1.08, daylight) * scatteringGlow);
     const worldSize = this.terrain.worldSize || 4500;
     this.sunLight.position.copy(environment.sunDirection).multiplyScalar(worldSize * 0.62);
     this.sunLight.position.y = Math.max(this.sunLight.position.y, worldSize * -0.18);
     this.fillLight.color.set(0x88b7d6).lerp(new Color(0xff7f4e), twilight * 0.18);
     this.fillLight.intensity = MathUtils.lerp(0.12, 0.32, daylight) + twilight * 0.08;
     const horizonDrama = MathUtils.clamp(1 - Math.abs(MathUtils.clamp(sunHeight, -0.1, 0.46) - 0.18) / 0.28, 0, 1);
-    this.scene.backgroundIntensity = MathUtils.lerp(0.72, 1.04, daylight) + horizonDrama * 0.08 - night * 0.18;
-    this.scene.environmentIntensity = MathUtils.lerp(0.46, 0.96, daylight) + horizonDrama * 0.04;
+    this.scene.backgroundIntensity = (MathUtils.lerp(0.72, 1.04, daylight) + horizonDrama * 0.08 - night * 0.18) * MathUtils.lerp(0.72, 1.2, atmosphereBrightness / 1.4);
+    this.scene.environmentIntensity = (MathUtils.lerp(0.46, 0.96, daylight) + horizonDrama * 0.04) * MathUtils.lerp(0.82, 1.18, atmosphereContrast / 1.4);
     const fogStrength = MathUtils.clamp(
-      environment.fogIntensity * 0.74 + visualCloudCoverage * 0.08 + horizonDrama * 0.12,
+      environment.fogIntensity * 0.74 + visualCloudCoverage * 0.08 + horizonDrama * 0.12 + MathUtils.clamp(environment.atmosphereMie / 4, 0, 1) * 0.04,
       0,
       1,
     );
@@ -1277,6 +1308,18 @@ class TerrainViewer {
       cloudCoverage: visualCloudCoverage,
       fogIntensity: environment.fogIntensity,
       rainIntensity: environment.rainIntensity,
+      thunderIntensity: environment.thunderIntensity,
+      rainbowIntensity: environment.rainbowIntensity,
+      atmosphereRayleigh: environment.atmosphereRayleigh,
+      atmosphereMie: environment.atmosphereMie,
+      atmosphereBrightness: environment.atmosphereBrightness,
+      atmosphereContrast: environment.atmosphereContrast,
+      atmosphereDirectionality: environment.atmosphereDirectionality,
+      cloudOpacity: environment.cloudOpacity,
+      cloudSharpness: environment.cloudSharpness,
+      cloudAttenuation: environment.cloudAttenuation,
+      cloudScattering: environment.cloudScattering,
+      cloudBrightness: environment.cloudBrightness,
       timeSeconds: performance.now() / 1000,
       cameraPosition: this.camera.position,
     });
@@ -1289,8 +1332,12 @@ class TerrainViewer {
     const visibleCloudAmount = cloudCoverage;
     const sunHeight = MathUtils.clamp(environment.sunDirection.y, -0.16, 0.9);
     const twilight = MathUtils.clamp(1 - Math.abs(sunHeight - 0.12) / 0.34, 0, 1);
-    const cloudOpacity = MathUtils.lerp(0.18, 0.5, visibleCloudAmount);
-    const cloudScale = MathUtils.lerp(0.82, 1.18, visibleCloudAmount);
+    const cloudOpacity = MathUtils.lerp(0.18, 0.5, visibleCloudAmount)
+      * MathUtils.clamp(environment.cloudOpacity, 0, 1)
+      * MathUtils.lerp(0.72, 1.24, MathUtils.clamp(environment.cloudBrightness, 0, 1.6));
+    const cloudScale = MathUtils.lerp(0.82, 1.18, visibleCloudAmount)
+      * MathUtils.lerp(0.72, 1.32, MathUtils.clamp(environment.cloudSize / 4, 0, 1));
+    const cloudDarkening = MathUtils.clamp(environment.cloudAttenuation, 0, 1) * visibleCloudAmount * 0.36;
 
     this.weatherCloudLayer.visible = visibleCloudAmount > 0.015;
     this.weatherCloudLayer.position.x = this.camera.position.x * 0.035;
@@ -1310,7 +1357,8 @@ class TerrainViewer {
       material.opacity = cloudOpacity * (Number(child.userData.opacityBias) || 1);
       material.color.copy(environment.ambientColor)
         .lerp(new Color(0xe9f2f7), MathUtils.lerp(0.54, 0.84, MathUtils.smoothstep(environment.sunDirection.y, -0.05, 0.5)))
-        .lerp(new Color(0xff8a5d), twilight * 0.28);
+        .lerp(new Color(0xff8a5d), twilight * 0.28)
+        .lerp(new Color(0x1b222a), cloudDarkening);
     });
 
     const rainVisible = rain > 0.015;
@@ -1341,6 +1389,18 @@ class TerrainViewer {
       child.position.y = -rainFallOffset * 0.42;
     });
     this.rainMaterial.opacity = rainVisible ? MathUtils.lerp(0.08, 0.38, Math.sqrt(rain)) : 0;
+
+    const thunder = MathUtils.clamp(environment.thunderIntensity, 0, 1);
+    if (thunder > 0.015 && this.ambientLight && this.sunLight) {
+      const flashSeed = Math.max(
+        0,
+        Math.sin(now * 0.0067) * 0.7 + Math.sin(now * 0.017 + 1.8) * 0.3,
+      );
+      const flash = Math.pow(flashSeed, 18) * thunder;
+      this.ambientLight.intensity += flash * 0.32;
+      this.sunLight.intensity += flash * 1.4;
+      this.scene.backgroundIntensity += flash * 0.22;
+    }
   }
 
   private replaceOverlayLayer(parent: Group, incoming: Group, durationMs = 360): void {
@@ -3356,6 +3416,12 @@ function normalizeEnvironment(snapshot: EnvironmentSnapshot | null | undefined):
     direction.set(0.5, 0.78, 0.36);
   }
   direction.normalize();
+  const weatherRain = weatherParameterValue(snapshot, "rain", null);
+  const weatherFog = weatherParameterValue(snapshot, "fog", null);
+  const weatherCloudCoverage = weatherParameterValue(snapshot, "cloudCoverage", null);
+  const cloudCoverage = nullableFiniteNumber(snapshot.cloudCoverage, Number.NaN);
+  const rainIntensity = nullableFiniteNumber(snapshot.rainIntensity, Number.NaN);
+  const fogIntensity = nullableFiniteNumber(snapshot.fogIntensity, Number.NaN);
 
   return {
     rustTime: MathUtils.clamp(finiteNumber(snapshot.rustTime, 0), 0, 24),
@@ -3364,9 +3430,23 @@ function normalizeEnvironment(snapshot: EnvironmentSnapshot | null | undefined):
     sunColor: new Color(validHexColor(snapshot.sunColor) || "#fff1cf"),
     ambientIntensity: MathUtils.clamp(finiteNumber(snapshot.ambientIntensity, 0), 0, 2),
     ambientColor: new Color(validHexColor(snapshot.ambientColor) || "#ddeaf0"),
-    cloudCoverage: MathUtils.clamp(nullableFiniteNumber(snapshot.cloudCoverage, 0), 0, 1),
-    rainIntensity: MathUtils.clamp(nullableFiniteNumber(snapshot.rainIntensity, 0), 0, 1),
-    fogIntensity: MathUtils.clamp(nullableFiniteNumber(snapshot.fogIntensity, 0), 0, 1),
+    cloudCoverage: MathUtils.clamp(Number.isFinite(cloudCoverage) ? cloudCoverage : weatherCloudCoverage ?? 0, 0, 1),
+    rainIntensity: MathUtils.clamp(Number.isFinite(rainIntensity) ? Math.max(rainIntensity, weatherRain ?? 0) : weatherRain ?? 0, 0, 1),
+    fogIntensity: MathUtils.clamp(Number.isFinite(fogIntensity) ? Math.max(fogIntensity, weatherFog ?? 0) : weatherFog ?? 0, 0, 1),
+    thunderIntensity: MathUtils.clamp(weatherParameterValue(snapshot, "thunder", 0) ?? 0, 0, 1),
+    rainbowIntensity: MathUtils.clamp(weatherParameterValue(snapshot, "rainbow", 0) ?? 0, 0, 1),
+    atmosphereRayleigh: MathUtils.clamp(weatherParameterValue(snapshot, "atmosphereRayleigh", 0.25) ?? 0.25, 0, 4),
+    atmosphereMie: MathUtils.clamp(weatherParameterValue(snapshot, "atmosphereMie", 1.55) ?? 1.55, 0, 4),
+    atmosphereBrightness: MathUtils.clamp(weatherParameterValue(snapshot, "atmosphereBrightness", 0.95) ?? 0.95, 0, 3),
+    atmosphereContrast: MathUtils.clamp(weatherParameterValue(snapshot, "atmosphereContrast", 0.65) ?? 0.65, 0, 3),
+    atmosphereDirectionality: MathUtils.clamp(weatherParameterValue(snapshot, "atmosphereDirectionality", 0.75) ?? 0.75, 0, 1),
+    cloudSize: MathUtils.clamp(weatherParameterValue(snapshot, "cloudSize", 3.35) ?? 3.35, 0.2, 8),
+    cloudOpacity: MathUtils.clamp(weatherParameterValue(snapshot, "cloudOpacity", 1) ?? 1, 0, 1),
+    cloudSharpness: MathUtils.clamp(weatherParameterValue(snapshot, "cloudSharpness", 1) ?? 1, 0, 1),
+    cloudColoring: MathUtils.clamp(weatherParameterValue(snapshot, "cloudColoring", 0.65) ?? 0.65, 0, 1),
+    cloudAttenuation: MathUtils.clamp(weatherParameterValue(snapshot, "cloudAttenuation", 0.25) ?? 0.25, 0, 1),
+    cloudScattering: MathUtils.clamp(weatherParameterValue(snapshot, "cloudScattering", 0.65) ?? 0.65, 0, 1),
+    cloudBrightness: MathUtils.clamp(weatherParameterValue(snapshot, "cloudBrightness", 0.55) ?? 0.55, 0, 2),
   };
 }
 
@@ -3381,11 +3461,40 @@ function interpolateEnvironment(from: NormalizedEnvironment, to: NormalizedEnvir
     cloudCoverage: MathUtils.lerp(from.cloudCoverage, to.cloudCoverage, progress),
     rainIntensity: MathUtils.lerp(from.rainIntensity, to.rainIntensity, progress),
     fogIntensity: MathUtils.lerp(from.fogIntensity, to.fogIntensity, progress),
+    thunderIntensity: MathUtils.lerp(from.thunderIntensity, to.thunderIntensity, progress),
+    rainbowIntensity: MathUtils.lerp(from.rainbowIntensity, to.rainbowIntensity, progress),
+    atmosphereRayleigh: MathUtils.lerp(from.atmosphereRayleigh, to.atmosphereRayleigh, progress),
+    atmosphereMie: MathUtils.lerp(from.atmosphereMie, to.atmosphereMie, progress),
+    atmosphereBrightness: MathUtils.lerp(from.atmosphereBrightness, to.atmosphereBrightness, progress),
+    atmosphereContrast: MathUtils.lerp(from.atmosphereContrast, to.atmosphereContrast, progress),
+    atmosphereDirectionality: MathUtils.lerp(from.atmosphereDirectionality, to.atmosphereDirectionality, progress),
+    cloudSize: MathUtils.lerp(from.cloudSize, to.cloudSize, progress),
+    cloudOpacity: MathUtils.lerp(from.cloudOpacity, to.cloudOpacity, progress),
+    cloudSharpness: MathUtils.lerp(from.cloudSharpness, to.cloudSharpness, progress),
+    cloudColoring: MathUtils.lerp(from.cloudColoring, to.cloudColoring, progress),
+    cloudAttenuation: MathUtils.lerp(from.cloudAttenuation, to.cloudAttenuation, progress),
+    cloudScattering: MathUtils.lerp(from.cloudScattering, to.cloudScattering, progress),
+    cloudBrightness: MathUtils.lerp(from.cloudBrightness, to.cloudBrightness, progress),
   };
 }
 
 function visualCloudCoverageForEnvironment(environment: NormalizedEnvironment): number {
-  return MathUtils.clamp(environment.cloudCoverage, 0, 1);
+  return MathUtils.clamp(
+    environment.cloudCoverage * MathUtils.lerp(0.22, 1, MathUtils.clamp(environment.cloudOpacity, 0, 1))
+      + environment.rainIntensity * 0.12,
+    0,
+    1,
+  );
+}
+
+function weatherParameterValue(snapshot: EnvironmentSnapshot, name: string, fallback: number | null): number | null {
+  const parameter = snapshot.weather?.parameters?.[name];
+  if (!parameter || parameter.isDynamic === true || parameter.is_dynamic === true) {
+    return fallback;
+  }
+
+  const value = nullableFiniteNumber(parameter.value, Number.NaN);
+  return Number.isFinite(value) ? value : fallback;
 }
 
 function finiteNumber(value: unknown, fallback: number): number {

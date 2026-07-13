@@ -1325,6 +1325,54 @@ function raidlands_server_environment_float($value, float $fallback, float $min,
     return round(max($min, min($max, (float) $value)), $precision);
 }
 
+function raidlands_server_environment_nullable_float($value, float $min, float $max, int $precision = 4): ?float
+{
+    if (!is_numeric($value)) {
+        return null;
+    }
+
+    $number = (float) $value;
+    if (!is_finite($number) || $number < $min) {
+        return null;
+    }
+
+    return round(min($max, $number), $precision);
+}
+
+function raidlands_server_environment_weather_public($value): array
+{
+    if (!is_array($value)) {
+        return ['parameters' => []];
+    }
+
+    $source_parameters = is_array($value['parameters'] ?? null) ? $value['parameters'] : [];
+    $parameters = [];
+
+    foreach ($source_parameters as $name => $parameter) {
+        if (!is_array($parameter)) {
+            continue;
+        }
+
+        $clean_name = preg_replace('/[^a-zA-Z0-9_]/', '', (string) $name);
+        if ($clean_name === '') {
+            continue;
+        }
+
+        $raw = is_numeric($parameter['raw'] ?? null) ? round((float) $parameter['raw'], 4) : null;
+        $parameter_value = is_numeric($parameter['value'] ?? null) ? round((float) $parameter['value'], 4) : null;
+
+        $parameters[$clean_name] = [
+            'key' => raidlands_server_status_clean_text($parameter['key'] ?? '', 80),
+            'value' => $parameter_value,
+            'raw' => $raw,
+            'isDynamic' => !empty($parameter['is_dynamic']) || !empty($parameter['isDynamic']),
+            'source' => raidlands_server_status_clean_text($parameter['source'] ?? '', 120),
+        ];
+    }
+
+    return ['parameters' => $parameters];
+}
+
 function raidlands_server_environment_snapshot_public(?array $row): ?array
 {
     if ($row === null) {
@@ -1355,6 +1403,7 @@ function raidlands_server_environment_snapshot_public(?array $row): ?array
         'rainIntensity' => $row['rain_intensity'] === null ? null : round((float) $row['rain_intensity'], 4),
         'fogIntensity' => $row['fog_intensity'] === null ? null : round((float) $row['fog_intensity'], 4),
         'weatherSampleSummary' => raidlands_server_status_clean_text($payload['weather_sample_summary'] ?? $payload['weatherSampleSummary'] ?? '', 240),
+        'weather' => raidlands_server_environment_weather_public($payload['weather'] ?? null),
     ];
 }
 
@@ -1432,13 +1481,13 @@ function raidlands_server_environment_ingest_snapshot(array $payload, string $he
         'ambient_intensity' => raidlands_server_environment_float($payload['ambient_intensity'] ?? $payload['ambientIntensity'] ?? 0.38, 0.38, 0, 2, 4),
         'ambient_color' => raidlands_server_environment_color($payload['ambient_color'] ?? $payload['ambientColor'] ?? '', '#ffead2'),
         'cloud_coverage' => isset($payload['cloud_coverage']) || isset($payload['cloudCoverage'])
-            ? raidlands_server_environment_float($payload['cloud_coverage'] ?? $payload['cloudCoverage'], 0, 0, 1, 4)
+            ? raidlands_server_environment_nullable_float($payload['cloud_coverage'] ?? $payload['cloudCoverage'], 0, 1, 4)
             : null,
         'rain_intensity' => isset($payload['rain_intensity']) || isset($payload['rainIntensity'])
-            ? raidlands_server_environment_float($payload['rain_intensity'] ?? $payload['rainIntensity'], 0, 0, 1, 4)
+            ? raidlands_server_environment_nullable_float($payload['rain_intensity'] ?? $payload['rainIntensity'], 0, 1, 4)
             : null,
         'fog_intensity' => isset($payload['fog_intensity']) || isset($payload['fogIntensity'])
-            ? raidlands_server_environment_float($payload['fog_intensity'] ?? $payload['fogIntensity'], 0, 0, 1, 4)
+            ? raidlands_server_environment_nullable_float($payload['fog_intensity'] ?? $payload['fogIntensity'], 0, 1, 4)
             : null,
         'payload_json' => json_encode($payload, JSON_UNESCAPED_SLASHES),
     ]);

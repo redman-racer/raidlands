@@ -15,7 +15,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteMapBridge", "Raidlands", "1.0.10")]
+    [Info("WebsiteMapBridge", "Raidlands", "1.0.11")]
     [Description("Publishes the current RustMapApi map image and sampled terrain to the Raidlands website.")]
     public class WebsiteMapBridge : CovalencePlugin
     {
@@ -105,7 +105,57 @@ namespace Oxide.Plugins
             public float? rain_intensity;
             public float? fog_intensity;
             public string weather_sample_summary;
+            public WeatherSnapshotPayload weather;
         }
+
+        private class WeatherSnapshotPayload
+        {
+            public Dictionary<string, WeatherParameterPayload> parameters;
+        }
+
+        private class WeatherParameterPayload
+        {
+            public string key;
+            public float? value;
+            public float? raw;
+            public bool is_dynamic;
+            public string source;
+        }
+
+        private class WeatherParameterDefinition
+        {
+            public string name;
+            public string key;
+            public string member;
+
+            public WeatherParameterDefinition(string name, string key, string member)
+            {
+                this.name = name;
+                this.key = key;
+                this.member = member;
+            }
+        }
+
+        private static readonly WeatherParameterDefinition[] WeatherParameterDefinitions =
+        {
+            new WeatherParameterDefinition("rain", "weather.rain", "rain"),
+            new WeatherParameterDefinition("thunder", "weather.thunder", "thunder"),
+            new WeatherParameterDefinition("rainbow", "weather.rainbow", "rainbow"),
+            new WeatherParameterDefinition("fog", "weather.fog", "fog"),
+            new WeatherParameterDefinition("atmosphereRayleigh", "weather.atmosphere_rayleigh", "atmosphere_rayleigh"),
+            new WeatherParameterDefinition("atmosphereMie", "weather.atmosphere_mie", "atmosphere_mie"),
+            new WeatherParameterDefinition("atmosphereBrightness", "weather.atmosphere_brightness", "atmosphere_brightness"),
+            new WeatherParameterDefinition("atmosphereContrast", "weather.atmosphere_contrast", "atmosphere_contrast"),
+            new WeatherParameterDefinition("atmosphereDirectionality", "weather.atmosphere_directionality", "atmosphere_directionality"),
+            new WeatherParameterDefinition("cloudSize", "weather.cloud_size", "cloud_size"),
+            new WeatherParameterDefinition("cloudOpacity", "weather.cloud_opacity", "cloud_opacity"),
+            new WeatherParameterDefinition("cloudCoverage", "weather.cloud_coverage", "cloud_coverage"),
+            new WeatherParameterDefinition("cloudSharpness", "weather.cloud_sharpness", "cloud_sharpness"),
+            new WeatherParameterDefinition("cloudColoring", "weather.cloud_coloring", "cloud_coloring"),
+            new WeatherParameterDefinition("cloudAttenuation", "weather.cloud_attenuation", "cloud_attenuation"),
+            new WeatherParameterDefinition("cloudScattering", "weather.cloud_scattering", "cloud_scattering"),
+            new WeatherParameterDefinition("cloudBrightness", "weather.cloud_brightness", "cloud_brightness")
+        };
 
         private class EnvironmentVectorPayload
         {
@@ -328,7 +378,7 @@ namespace Oxide.Plugins
 
             ReplyToCommand(
                 arg,
-                $"WebsiteMapBridge v1.0.9 status: server={ResolveServerId()}, api={apiState}, ready={readyState}, secret={secretState}, render={config.RenderName}, textureRender={config.TextureRenderName}, terrainEnabled={config.PublishTerrain}, terrainResolution={config.TerrainSampleResolution}, monumentsEnabled={config.IncludeMonuments}, skybox={config.PublishSkybox}/{config.SkyboxImagePath}, playerLocations={config.PublishPlayerLocations}/{config.PlayerLocationIntervalSeconds}s, environment={config.PublishEnvironment}/{config.EnvironmentIntervalSeconds}s last={FirstNonEmpty(lastEnvironmentSyncAt, "never")}, replayEvents={config.PublishReplayEvents}, heightMap={heightMapState}, lastWipe={lastPublishedWipeKey}."
+                $"WebsiteMapBridge v1.0.11 status: server={ResolveServerId()}, api={apiState}, ready={readyState}, secret={secretState}, render={config.RenderName}, textureRender={config.TextureRenderName}, terrainEnabled={config.PublishTerrain}, terrainResolution={config.TerrainSampleResolution}, monumentsEnabled={config.IncludeMonuments}, skybox={config.PublishSkybox}/{config.SkyboxImagePath}, playerLocations={config.PublishPlayerLocations}/{config.PlayerLocationIntervalSeconds}s, environment={config.PublishEnvironment}/{config.EnvironmentIntervalSeconds}s last={FirstNonEmpty(lastEnvironmentSyncAt, "never")}, replayEvents={config.PublishReplayEvents}, heightMap={heightMapState}, lastWipe={lastPublishedWipeKey}."
             );
         }
 
@@ -473,7 +523,7 @@ namespace Oxide.Plugins
                 lastEnvironmentSyncAt = result.environment?.sampledAt ?? payload.sampled_at;
                 if (verbose)
                 {
-                    reply?.Invoke($"Website environment synced: TOD {payload.rust_time:0.00}, sun y {payload.sun_direction.y:0.###}.");
+                    reply?.Invoke($"Website environment synced: TOD {payload.rust_time:0.00}, sun y {payload.sun_direction.y:0.###}, weather {payload.weather_sample_summary}.");
                 }
             });
         }
@@ -534,6 +584,8 @@ namespace Oxide.Plugins
                 fogIntensity = weatherSample.Fog;
             }
 
+            var weatherSnapshot = CreateWeatherSnapshot();
+
             return new EnvironmentSnapshotPayload
             {
                 server_id = ResolveServerId(),
@@ -554,7 +606,8 @@ namespace Oxide.Plugins
                 cloud_coverage = cloudCoverage,
                 rain_intensity = rainIntensity,
                 fog_intensity = fogIntensity,
-                weather_sample_summary = weatherSample.Summary
+                weather_sample_summary = weatherSample.Summary + "; " + WeatherParameterSummary(weatherSnapshot),
+                weather = weatherSnapshot
             };
         }
 
@@ -607,6 +660,148 @@ namespace Oxide.Plugins
             return sample;
         }
 
+        private WeatherSnapshotPayload CreateWeatherSnapshot()
+        {
+            var payload = new WeatherSnapshotPayload
+            {
+                parameters = new Dictionary<string, WeatherParameterPayload>()
+            };
+
+            foreach (var definition in WeatherParameterDefinitions)
+            {
+                payload.parameters[definition.name] = SampleWeatherParameter(definition);
+            }
+
+            return payload;
+        }
+
+        private WeatherParameterPayload SampleWeatherParameter(WeatherParameterDefinition definition)
+        {
+            var value = ReadWeatherConVar(definition.member, out var source);
+            var sample = new WeatherParameterPayload
+            {
+                key = definition.key,
+                value = null,
+                raw = null,
+                is_dynamic = false,
+                source = source
+            };
+
+            if (value == null)
+            {
+                return sample;
+            }
+
+            sample.raw = RoundWeatherValue(value.Value);
+            if (value.Value < 0f)
+            {
+                sample.is_dynamic = true;
+                return sample;
+            }
+
+            sample.value = RoundWeatherValue(value.Value);
+            return sample;
+        }
+
+        private float? ReadWeatherConVar(string memberName, out string source)
+        {
+            source = "missing";
+
+            try
+            {
+                var weatherType = AppDomain.CurrentDomain
+                    .GetAssemblies()
+                    .Select(assembly => assembly.GetType("ConVar.Weather", false))
+                    .FirstOrDefault(type => type != null);
+
+                if (weatherType == null)
+                {
+                    weatherType = AppDomain.CurrentDomain
+                        .GetAssemblies()
+                        .SelectMany(assembly =>
+                        {
+                            try
+                            {
+                                return assembly.GetTypes();
+                            }
+                            catch
+                            {
+                                return new Type[0];
+                            }
+                        })
+                        .FirstOrDefault(type => string.Equals(type.Name, "Weather", StringComparison.OrdinalIgnoreCase) && string.Equals(type.Namespace, "ConVar", StringComparison.OrdinalIgnoreCase));
+                }
+
+                if (weatherType == null)
+                {
+                    source = "ConVar.Weather missing";
+                    return null;
+                }
+
+                var flags = System.Reflection.BindingFlags.Public | System.Reflection.BindingFlags.NonPublic | System.Reflection.BindingFlags.Static | System.Reflection.BindingFlags.IgnoreCase;
+                var field = weatherType.GetField(memberName, flags);
+                if (field != null && TryConvertFloat(field.GetValue(null), out var fieldValue))
+                {
+                    source = "ConVar.Weather." + field.Name;
+                    return fieldValue;
+                }
+
+                var property = weatherType.GetProperty(memberName, flags);
+                if (property != null && TryConvertFloat(property.GetValue(null, null), out var propertyValue))
+                {
+                    source = "ConVar.Weather." + property.Name;
+                    return propertyValue;
+                }
+
+                source = "ConVar.Weather." + memberName + " missing";
+                return null;
+            }
+            catch (Exception ex)
+            {
+                source = "ConVar.Weather." + memberName + " error " + ex.GetType().Name;
+                return null;
+            }
+        }
+
+        private string WeatherParameterSummary(WeatherSnapshotPayload payload)
+        {
+            if (payload == null || payload.parameters == null || payload.parameters.Count == 0)
+            {
+                return "weatherParams=unset";
+            }
+
+            string[] names = { "rain", "thunder", "fog", "cloudCoverage", "atmosphereRayleigh", "atmosphereMie" };
+            var parts = new List<string>();
+            foreach (var name in names)
+            {
+                WeatherParameterPayload parameter;
+                if (!payload.parameters.TryGetValue(name, out parameter) || parameter == null)
+                {
+                    continue;
+                }
+
+                if (parameter.raw == null)
+                {
+                    parts.Add(name + "=unset");
+                }
+                else if (parameter.is_dynamic)
+                {
+                    parts.Add(name + "=dynamic(raw " + parameter.raw.Value.ToString("0.###") + ")");
+                }
+                else
+                {
+                    parts.Add(name + "=" + parameter.value.GetValueOrDefault().ToString("0.###"));
+                }
+            }
+
+            return "weatherParams=" + (parts.Count == 0 ? "unset" : string.Join(",", parts.ToArray()));
+        }
+
+        private float RoundWeatherValue(float value)
+        {
+            return (float)Math.Round(value, 4);
+        }
+
         private float? SampleClimateMethod(string methodName, Vector3[] positions, out string summary)
         {
             summary = "missing";
@@ -634,6 +829,7 @@ namespace Oxide.Plugins
                 }
 
                 var values = new List<float>();
+                var rawValues = new List<float>();
                 foreach (var position in positions)
                 {
                     foreach (var method in methods)
@@ -656,7 +852,11 @@ namespace Oxide.Plugins
 
                         if (TryConvertFloat(result, out var value))
                         {
-                            values.Add(Mathf.Clamp01(value));
+                            rawValues.Add(value);
+                            if (value >= 0f)
+                            {
+                                values.Add(Mathf.Clamp01(value));
+                            }
                             break;
                         }
                     }
@@ -664,12 +864,14 @@ namespace Oxide.Plugins
 
                 if (values.Count == 0)
                 {
-                    summary = $"{methodName}:no numeric samples";
+                    summary = rawValues.Count == 0
+                        ? $"{methodName}:no numeric samples"
+                        : $"{methodName}:dynamic raw=avg={rawValues.Average():0.###} min={rawValues.Min():0.###} max={rawValues.Max():0.###} samples={rawValues.Count}";
                     return null;
                 }
 
                 var average = values.Average();
-                summary = $"{methodName}:{average:0.###} raw=avg={average:0.###} min={values.Min():0.###} max={values.Max():0.###} samples={values.Count}";
+                summary = $"{methodName}:{average:0.###} raw=avg={rawValues.Average():0.###} min={rawValues.Min():0.###} max={rawValues.Max():0.###} samples={rawValues.Count}";
                 return (float)Math.Round(average, 4);
             }
             catch (Exception ex)
