@@ -241,15 +241,91 @@ function raidlands_airstrike_animations_latest_bundle_row(?int $revision = null)
             throw new InvalidArgumentException('Bundle revision must be a positive integer.');
         }
 
-        return raidlands_db_fetch_one(
-            'SELECT * FROM airstrike_animation_bundles WHERE revision = :revision LIMIT 1',
+        $row = raidlands_db_fetch_one(
+            'SELECT revision, schema_version, compiler_version, sha256, profile_count,
+                    publish_notes, published_by, published_at
+             FROM airstrike_animation_bundles
+             WHERE revision = :revision
+             LIMIT 1',
             ['revision' => $revision]
+        );
+    } else {
+        $row = raidlands_db_fetch_one(
+            'SELECT revision, schema_version, compiler_version, sha256, profile_count,
+                    publish_notes, published_by, published_at
+             FROM airstrike_animation_bundles
+             ORDER BY revision DESC
+             LIMIT 1'
         );
     }
 
-    return raidlands_db_fetch_one(
-        'SELECT * FROM airstrike_animation_bundles ORDER BY revision DESC LIMIT 1'
+    if ($row === null) {
+        return null;
+    }
+
+    $row['bundle_json'] = raidlands_airstrike_animations_read_bundle_json((int) $row['revision']);
+    return $row;
+}
+
+function raidlands_airstrike_animations_read_bundle_json(int $revision): string
+{
+    if ($revision <= 0) {
+        throw new InvalidArgumentException('Bundle revision must be a positive integer.');
+    }
+
+    $pdo = raidlands_db_required();
+    $size_statement = $pdo->prepare(
+        'SELECT OCTET_LENGTH(bundle_json)
+         FROM airstrike_animation_bundles
+         WHERE revision = :revision
+         LIMIT 1'
     );
+    $size_statement->execute(['revision' => $revision]);
+    $bundle_bytes = $size_statement->fetchColumn();
+
+    if ($bundle_bytes === false) {
+        throw new OutOfBoundsException('Published bundle revision ' . $revision . ' was not found.');
+    }
+
+    $bundle_bytes = (int) $bundle_bytes;
+    if ($bundle_bytes <= 0 || $bundle_bytes > RAIDLANDS_AIRSTRIKE_ANIMATION_MAX_BUNDLE_BYTES) {
+        throw new InvalidArgumentException('Published bundle is empty or exceeds the configured size limit.');
+    }
+
+    // Keep each PDO result safely below hosting-driver LONGTEXT buffer limits.
+    $chunk_bytes = 256 * 1024;
+    $chunk_statement = $pdo->prepare(
+        'SELECT SUBSTRING(CAST(bundle_json AS BINARY), :offset, :chunk_bytes)
+         FROM airstrike_animation_bundles
+         WHERE revision = :revision
+         LIMIT 1'
+    );
+    $bundle_json = '';
+
+    for ($offset = 1; $offset <= $bundle_bytes; $offset += $chunk_bytes) {
+        $chunk_statement->bindValue(':offset', $offset, PDO::PARAM_INT);
+        $chunk_statement->bindValue(':chunk_bytes', $chunk_bytes, PDO::PARAM_INT);
+        $chunk_statement->bindValue(':revision', $revision, PDO::PARAM_INT);
+        $chunk_statement->execute();
+        $chunk = $chunk_statement->fetchColumn();
+
+        if (!is_string($chunk) || $chunk === '') {
+            throw new RuntimeException(
+                'Published bundle revision ' . $revision . ' could not be read completely from storage.'
+            );
+        }
+
+        $bundle_json .= $chunk;
+    }
+
+    if (strlen($bundle_json) !== $bundle_bytes) {
+        throw new RuntimeException(
+            'Published bundle revision ' . $revision . ' read returned '
+            . strlen($bundle_json) . ' of ' . $bundle_bytes . ' bytes.'
+        );
+    }
+
+    return $bundle_json;
 }
 
 function raidlands_airstrike_animations_latest_bundle_meta_row(): ?array
