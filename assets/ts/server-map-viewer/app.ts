@@ -1904,6 +1904,11 @@ class AirdropReplayRun implements MapReplayRun {
   private readonly target: Vector3;
   private readonly startAt: number;
   private readonly duration: number;
+  private readonly flightStartX: number;
+  private readonly flightEndX: number;
+  private readonly releaseProgress: number;
+  private readonly releaseTime: number;
+  private readonly dropFallSeconds: number;
   private playbackSpeed: number;
   private readonly aircraft: Group;
   private readonly dropCount: number;
@@ -1925,7 +1930,20 @@ class AirdropReplayRun implements MapReplayRun {
     this.target = replayEventPosition(event, terrain);
     this.startAt = startAt;
     this.playbackSpeed = MathUtils.clamp(playbackSpeed || 1, 0.1, 12);
-    this.duration = 9;
+    const worldSize = this.terrain.worldSize || 4500;
+    const mapHalf = Math.max(worldSize / 2, 1200);
+    const margin = MathUtils.clamp(worldSize * 0.18, 650, 1250);
+    this.flightStartX = -mapHalf - margin;
+    this.flightEndX = mapHalf + margin;
+    const flightDistance = Math.abs(this.flightEndX - this.flightStartX);
+    this.duration = MathUtils.clamp(flightDistance / 305, 16, 28);
+    this.releaseProgress = MathUtils.clamp(
+      (this.target.x - this.flightStartX) / Math.max(1, this.flightEndX - this.flightStartX),
+      0.08,
+      0.92,
+    );
+    this.releaseTime = this.releaseProgress * this.duration;
+    this.dropFallSeconds = MathUtils.clamp(worldSize / 620, 5.5, 8.5);
     this.dropCount = Math.max(1, Number(event.payload?.dropCount || 1));
     const visualDropCount = MathUtils.clamp(Math.ceil(this.dropCount / 3), 1, 3);
     this.group.name = "airdrop-replay";
@@ -1962,31 +1980,30 @@ class AirdropReplayRun implements MapReplayRun {
     }
 
     this.group.visible = true;
-    if ((elapsed * this.playbackSpeed) > this.duration + 1.5) {
+    if ((elapsed * this.playbackSpeed) > this.duration + this.dropFallSeconds + 1.5) {
       return false;
     }
 
     const progress = MathUtils.clamp((elapsed * this.playbackSpeed) / Math.max(0.1, this.duration), 0, 1);
     const worldSize = this.terrain.worldSize || 4500;
-    const pass = MathUtils.clamp(worldSize * 0.42, 900, 2200);
-    const x = this.target.x + MathUtils.lerp(-pass, pass, progress);
+    const x = MathUtils.lerp(this.flightStartX, this.flightEndX, progress);
     const z = this.target.z;
     const ground = sampleTerrainHeight(this.terrain, this.target.x, this.target.z);
     const planeHeight = ground + MathUtils.clamp(worldSize * 0.09, 260, 520);
     this.aircraft.position.set(x, planeHeight, z);
     this.aircraft.rotation.set(0, Math.PI / 2, -Math.PI / 2);
 
-    const dropProgress = MathUtils.clamp((progress - 0.22) / 0.56, 0, 1);
-    const packageHeight = MathUtils.lerp(planeHeight - 42, ground + 20, easeInOutCubic(dropProgress));
-    const visibleDrop = progress > 0.2 && progress < 0.92;
+    const eventTime = elapsed * this.playbackSpeed;
+    const fallProgress = MathUtils.clamp((eventTime - this.releaseTime) / this.dropFallSeconds, 0, 1);
     this.packageVisuals.forEach((visual, index) => {
-      const stagger = index * 0.06;
-      const visualProgress = MathUtils.clamp((progress - 0.22 - stagger) / 0.56, 0, 1);
+      const staggerSeconds = index * 0.38;
+      const visualProgress = MathUtils.clamp((eventTime - this.releaseTime - staggerSeconds) / this.dropFallSeconds, 0, 1);
       const visualHeight = MathUtils.lerp(planeHeight - 42, ground + 20, easeInOutCubic(visualProgress));
-      visual.packageMesh.position.set(this.target.x + visual.offsetX, visualHeight, this.target.z + visual.offsetZ);
+      const releaseX = MathUtils.lerp(this.flightStartX, this.flightEndX, MathUtils.clamp((this.releaseTime + staggerSeconds) / this.duration, 0, 1));
+      visual.packageMesh.position.set(releaseX + visual.offsetX, visualHeight, this.target.z + visual.offsetZ);
       visual.parachute.position.set(visual.packageMesh.position.x, visualHeight + 34, visual.packageMesh.position.z);
-      visual.packageMesh.visible = progress > 0.2 + stagger;
-      visual.parachute.visible = visibleDrop && visualProgress < 0.98;
+      visual.packageMesh.visible = eventTime >= this.releaseTime + staggerSeconds;
+      visual.parachute.visible = fallProgress > 0 && visual.packageMesh.visible && visualProgress < 0.98;
     });
     return true;
   }
@@ -1998,7 +2015,7 @@ class AirdropReplayRun implements MapReplayRun {
       return;
     }
     this.playbackSpeed = MathUtils.clamp(playbackSpeed || 1, 0.1, 12);
-    this.timelineElapsed = (cursorMs - occurredMs) / 1000 / this.playbackSpeed;
+    this.timelineElapsed = (((cursorMs - occurredMs) / 1000) + this.releaseTime) / this.playbackSpeed;
   }
 }
 
