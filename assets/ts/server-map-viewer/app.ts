@@ -3177,7 +3177,7 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
   if (key.includes("apartment") || key.includes("apartments")) {
     // Apartment complexes occupy a full city block in-world; give the map proxy
     // enough footprint to read at the same zoom as the other large monuments.
-    createApartmentComplexMonumentPrimitive(group, size * 10);
+    createApartmentComplexMonumentPrimitive(group, size * 1.42);
     return addTitle();
   }
 
@@ -3219,6 +3219,11 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
 
   if (key.includes("abandoned") && (key.includes("military") || key.includes("military_base"))) {
     createAbandonedMilitaryBaseMonumentPrimitive(group, size);
+    return addTitle();
+  }
+
+  if (key.includes("missile") && key.includes("silo")) {
+    createMissileSiloMonumentPrimitive(group, size);
     return addTitle();
   }
 
@@ -3288,6 +3293,45 @@ function createAbandonedMilitaryBaseMonumentPrimitive(group: Group, size: number
   launcher.rotation.z = MathUtils.degToRad(-27);
   addBox(group, size * 0.13, size * 0.035, size * 0.39, dark, mlrsX + size * 0.29, size * 0.78, mlrsZ);
   [-0.11, 0, 0.11].forEach((z) => addCylinder(group, size * 0.025, size * 0.32, dark, mlrsX + size * 0.28, size * 0.82, mlrsZ + size * z));
+}
+
+function createMissileSiloMonumentPrimitive(group: Group, size: number): void {
+  const earth = 0x5c5547;
+  const concrete = 0x77756d;
+  const darkConcrete = 0x343733;
+  const steel = 0x5d5c57;
+  const rust = 0x704332;
+  const canvas = 0x76705d;
+
+  // Excavated security yard and concrete perimeter walls.
+  addBox(group, size * 1.72, size * 0.035, size * 1.3, earth, 0, size * 0.018, 0);
+  addBox(group, size * 1.85, size * 0.16, size * 0.045, concrete, 0, size * 0.08, -size * 0.65);
+  addBox(group, size * 1.85, size * 0.16, size * 0.045, concrete, 0, size * 0.08, size * 0.65);
+  addBox(group, size * 0.045, size * 0.16, size * 1.3, concrete, -size * 0.92, size * 0.08, 0);
+  addBox(group, size * 0.045, size * 0.16, size * 1.3, concrete, size * 0.92, size * 0.08, 0);
+
+  // Large circular silo cap is the key overhead landmark.
+  addCylinder(group, size * 0.48, size * 0.08, darkConcrete, 0, size * 0.08, -size * 0.08);
+  addCylinder(group, size * 0.39, size * 0.045, steel, 0, size * 0.13, -size * 0.08);
+  addCylinder(group, size * 0.2, size * 0.035, darkConcrete, 0, size * 0.16, -size * 0.08);
+  addCylinder(group, size * 0.08, size * 0.025, rust, 0, size * 0.19, -size * 0.08);
+
+  // Three ribbed access shelters in front of the silo.
+  [-0.52, 0, 0.52].forEach((x, index) => {
+    addBox(group, size * 0.38, size * 0.22, size * 0.3, canvas, size * x, size * 0.13, size * 0.4);
+    addBox(group, size * 0.42, size * 0.035, size * 0.34, rust, size * x, size * 0.28, size * 0.4);
+    for (let rib = -0.14; rib <= 0.14; rib += 0.07) {
+      addBox(group, size * 0.018, size * 0.25, size * 0.32, steel, size * (x + rib), size * 0.15, size * 0.4);
+    }
+    if (index === 1) addBox(group, size * 0.08, size * 0.14, size * 0.02, darkConcrete, size * x, size * 0.1, size * 0.24);
+  });
+
+  // Guard tower and communications mast distinguish the facility from an ordinary bunker.
+  addBox(group, size * 0.045, size * 0.7, size * 0.045, rust, size * 0.7, size * 0.36, size * 0.42);
+  addBox(group, size * 0.22, size * 0.06, size * 0.22, steel, size * 0.7, size * 0.7, size * 0.42);
+  addBox(group, size * 0.26, size * 0.04, size * 0.26, darkConcrete, size * 0.7, size * 0.76, size * 0.42);
+  addCylinder(group, size * 0.025, size * 0.42, rust, -size * 0.68, size * 0.3, -size * 0.38);
+  addBox(group, size * 0.16, size * 0.025, size * 0.025, rust, -size * 0.68, size * 0.48, -size * 0.38);
 }
 
 function createSubstationMonumentPrimitive(group: Group, size: number): void {
