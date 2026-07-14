@@ -242,6 +242,7 @@ export interface VehiclePreviewMetadata {
   positionCorrection: Vector3Value;
   rotationCorrection: Vector3Value;
   bounds: Vector3Value;
+  mapDisplaySize?: number;
   visualOriginY?: number;
   proxy?: "drone" | "plane" | "helicopter";
   hardpoints: VehicleHardpointMetadata[];

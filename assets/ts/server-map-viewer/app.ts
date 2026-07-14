@@ -8,7 +8,6 @@ import {
   CylinderGeometry,
   DirectionalLight,
   DoubleSide,
-  Euler,
   FogExp2,
   Float32BufferAttribute,
   Group,
@@ -2228,12 +2227,15 @@ class AirstrikeReplayPlayer {
       return this.profiles[key];
     }
 
-    const vehicle = String(event.vehicle || "").trim().toLowerCase();
+    const vehicle = replayVehicleForEvent(event);
     const fallback = Object.values(this.profiles).find((profile) => {
       return hasUsablePreviewTrack(profile) && String(profile.Vehicle || "").toLowerCase() === vehicle;
     });
 
-    return fallback || Object.values(this.profiles).find(hasUsablePreviewTrack) || null;
+    // Never substitute an unrelated vehicle profile. A missing profile can
+    // still use the event's vehicle proxy and fallback flyover, but choosing
+    // the first published profile can turn a jet event into a drone.
+    return fallback || null;
   }
 }
 
@@ -2288,7 +2290,7 @@ class AirstrikeReplayRun implements MapReplayRun {
     this.duration = Math.max(2, Number(profile?.CompiledTrack?.DurationSeconds || profile?.DurationSeconds || lastFrameTime(this.frames) || 8));
     this.payloads = profile ? normalizePayloadEvents(profile) : [];
     this.target = targetOverride?.clone() ?? replayEventPosition(event, terrain);
-    this.vehicle = String(profile?.Vehicle || event.vehicle || "f15");
+    this.vehicle = String(profile?.Vehicle || replayVehicleForEvent(event) || "f15");
     this.group.name = `airstrike-replay-${this.vehicle}`;
     this.aircraft = createAircraftMarker(this.vehicle, vehicleMetadata, assetBase);
     this.group.add(this.aircraft);
@@ -2318,7 +2320,7 @@ class AirstrikeReplayRun implements MapReplayRun {
     const world = this.toWorld(pose.position);
     world.y = Math.max(world.y, sampleTerrainHeight(this.terrain, world.x, world.z) + 10);
     this.aircraft.position.copy(world);
-    this.aircraft.quaternion.copy(normalizeReplayAircraftRotation(this.vehicle, pose.rotation));
+    this.aircraft.quaternion.copy(pose.rotation).normalize();
 
     this.payloads.forEach((payload, index) => {
       if (!this.firedPayloads.has(index) && profileTime >= Number(payload.Time || 0)) {
@@ -2568,7 +2570,9 @@ class AirdropReplayRun implements MapReplayRun {
     const ground = sampleTerrainHeight(this.terrain, this.target.x, this.target.z);
     const planeHeight = ground + MathUtils.clamp(worldSize * 0.09, 260, 520);
     this.aircraft.position.set(x, planeHeight, z);
-    this.aircraft.rotation.set(0, Math.PI / 2, -Math.PI / 2);
+    // The corrected cargo model points down local -Z. Rotate it toward the
+    // replay lane's +X direction without rolling it onto its side.
+    this.aircraft.rotation.set(0, -Math.PI / 2, 0);
 
     const eventTime = elapsed * this.playbackSpeed;
     const fallProgress = MathUtils.clamp((eventTime - this.releaseTime) / this.dropFallSeconds, 0, 1);
@@ -2820,14 +2824,26 @@ function frameQuaternion(frame: RuntimeVisualFrame): Quaternion {
   }).normalize();
 }
 
-const CARGO_PLANE_REPLAY_ROTATION_NORMALIZATION = new Quaternion().setFromEuler(new Euler(0, Math.PI / 2, -Math.PI / 2));
-
-function normalizeReplayAircraftRotation(vehicle: string, rotation: Quaternion): Quaternion {
-  const normalized = rotation.clone().normalize();
-  if (vehicle !== "cargo_plane") {
-    return normalized;
+function replayVehicleForEvent(event: MapReplayEvent): string {
+  const explicit = String(event.vehicle || "").trim().toLowerCase();
+  if (explicit) {
+    return explicit;
   }
-  return normalized.multiply(CARGO_PLANE_REPLAY_ROTATION_NORMALIZATION).normalize();
+
+  const delivery = String(event.payload?.delivery || "").trim().toLowerCase();
+  if (delivery === "cargo_plane_jet" || delivery === "jet" || delivery === "f15") {
+    return "f15";
+  }
+  if (delivery.includes("cargo_plane")) {
+    return "cargo_plane";
+  }
+  if (delivery.includes("attack_heli") || delivery.includes("helicopter")) {
+    return "attack_heli";
+  }
+  if (delivery.includes("drone")) {
+    return "drone";
+  }
+  return "";
 }
 
 function lastFrameTime(frames: RuntimeVisualFrame[]): number {
@@ -2952,7 +2968,8 @@ function createAircraftMarker(vehicle: string, metadataFile: VehiclePreviewMetad
   group.name = `airstrike-preview-aircraft-${vehicle}`;
   const metadata = metadataForVehicle(metadataFile, vehicle);
   const largestDimension = Math.max(metadata.bounds.x, metadata.bounds.y, metadata.bounds.z);
-  const mapVisualScale = Math.max(1, 48 / Math.max(1, largestDimension));
+  const mapDisplaySize = Number(metadata.mapDisplaySize || 48);
+  const mapVisualScale = Math.max(1, mapDisplaySize / Math.max(1, largestDimension));
   const displayedLargestDimension = largestDimension * mapVisualScale;
   group.scale.setScalar(mapVisualScale);
   group.userData.cameraSafetyRadius = MathUtils.clamp(displayedLargestDimension * 3.25, 72, 220);
@@ -3110,7 +3127,12 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
     return addTitle();
   }
 
-  if (key.includes("sphere") || key.includes("dome")) {
+  if (key.includes("dome")) {
+    createDomeMonumentPrimitive(group, size);
+    return addTitle();
+  }
+
+  if (key.includes("sphere")) {
     addSphere(group, size * 0.42, 0x9baaa0, 0, size * 0.42, 0);
     addCylinder(group, size * 0.08, size * 0.55, 0x7f6b45, size * 0.48, size * 0.28, -size * 0.12);
     return addTitle();
@@ -3208,6 +3230,61 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
   return addTitle();
 }
 
+function createDomeMonumentPrimitive(group: Group, size: number): void {
+  const rust = 0x793f2d;
+  const darkRust = 0x432b24;
+  const steel = 0x64615a;
+  const concrete = 0x89877d;
+  const catwalk = 0x9a5638;
+  const foliage = 0x4c633d;
+
+  // The Dome is an elevated industrial tank, not a ground-level smooth sphere.
+  addCylinder(group, size * 0.74, 4.5, concrete, 0, 2.25, 0);
+  const tank = addSphere(group, size * 0.56, rust, 0, size * 0.94, 0);
+  tank.scale.y = 0.96;
+
+  // Welded horizontal bands and a rim catwalk give the sphere its weathered steel read.
+  [0.63, 0.92, 1.2].forEach((height) => {
+    const band = addCylinder(group, size * 0.575, size * 0.025, darkRust, 0, size * height, 0);
+    band.scale.y = 1;
+  });
+  const rim = addCylinder(group, size * 0.5, size * 0.035, catwalk, 0, size * 1.42, 0);
+  rim.scale.y = 1;
+
+  // Raised top deck / hatch and its circular guardrail.
+  addCylinder(group, size * 0.28, size * 0.09, darkRust, 0, size * 1.54, 0);
+  addCylinder(group, size * 0.18, size * 0.05, steel, 0, size * 1.61, 0);
+  for (let index = 0; index < 12; index += 1) {
+    const angle = (Math.PI * 2 * index) / 12;
+    const x = Math.cos(angle) * size * 0.29;
+    const z = Math.sin(angle) * size * 0.29;
+    addCylinder(group, size * 0.012, size * 0.1, steel, x, size * 1.7, z);
+  }
+
+  // Four heavy support legs, diagonal braces, and the exterior access stair.
+  [[-0.38, -0.38], [0.38, -0.38], [-0.38, 0.38], [0.38, 0.38]].forEach(([x, z]) => {
+    addBox(group, size * 0.07, size * 0.78, size * 0.07, darkRust, size * x, size * 0.42, size * z);
+    addBox(group, size * 0.16, size * 0.05, size * 0.16, concrete, size * x, size * 0.04, size * z);
+  });
+  [-1, 1].forEach((sign) => {
+    const brace = addBox(group, size * 0.74, size * 0.026, size * 0.026, catwalk, 0, size * 0.42, size * sign * 0.38);
+    brace.rotation.z = MathUtils.degToRad(sign * 24);
+  });
+  const stair = addBox(group, size * 0.52, size * 0.05, size * 0.13, catwalk, size * 0.56, size * 0.42, -size * 0.16);
+  stair.rotation.z = MathUtils.degToRad(-28);
+
+  // The adjacent rusted silos make the monument recognizable from the map camera.
+  [[-0.72, -0.42, 0.24], [-0.62, -0.68, 0.2], [-0.4, -0.58, 0.17]].forEach(([x, z, radius]) => {
+    addCylinder(group, size * radius, size * 0.55, rust, size * x, size * 0.34, size * z);
+    addCylinder(group, size * (radius + 0.02), size * 0.035, catwalk, size * x, size * 0.63, size * z);
+  });
+
+  [[-0.48, 0.3], [0.42, -0.24], [0.54, 0.34], [-0.18, 0.52]].forEach(([x, z]) => {
+    addCylinder(group, size * 0.02, size * 0.22, 0x483a29, size * x, size * 0.14, size * z);
+    addSphere(group, size * 0.1, foliage, size * x, size * 0.31, size * z);
+  });
+}
+
 function createMiningOutpostMonumentPrimitive(group: Group, size: number): void {
   const concrete = 0x6b6a61;
   const darkConcrete = 0x41443f;
@@ -3224,19 +3301,19 @@ function createMiningOutpostMonumentPrimitive(group: Group, size: number): void 
   addBox(group, size * 0.94, size * 0.035, size * 0.62, darkConcrete, 0, size * 0.08, -size * 0.02);
 
   // Corrugated gable roof, visible from the map's top camera.
-  const roofLeft = addBox(group, size * 0.96, size * 0.05, size * 0.42, corrugatedRoof, 0, size * 0.47, -size * 0.13);
+  const roofLeft = addBox(group, size * 0.96, size * 0.05, size * 0.42, corrugatedRoof, 0, size * 0.35, -size * 0.13);
   roofLeft.rotation.x = MathUtils.degToRad(12);
-  const roofRight = addBox(group, size * 0.96, size * 0.05, size * 0.42, corrugatedRoof, 0, size * 0.47, size * 0.13);
+  const roofRight = addBox(group, size * 0.96, size * 0.05, size * 0.42, corrugatedRoof, 0, size * 0.35, size * 0.13);
   roofRight.rotation.x = MathUtils.degToRad(-12);
   for (let stripe = -0.38; stripe <= 0.38; stripe += 0.11) {
-    addBox(group, size * 0.014, size * 0.06, size * 0.84, darkRust, size * stripe, size * 0.49, 0);
+    addBox(group, size * 0.014, size * 0.06, size * 0.84, darkRust, size * stripe, size * 0.37, 0);
   }
 
   // Rear wall and red steel frame; the front remains open toward the viewer.
-  addBox(group, size * 0.96, size * 0.34, size * 0.045, darkConcrete, 0, size * 0.22, size * 0.3);
-  [-0.47, 0.47].forEach((x) => addBox(group, size * 0.04, size * 0.62, size * 0.04, rust, size * x, size * 0.32, -size * 0.3));
-  addBox(group, size * 1.02, size * 0.04, size * 0.04, rust, 0, size * 0.56, -size * 0.3);
-  addBox(group, size * 0.05, size * 0.62, size * 0.04, rust, 0, size * 0.32, size * 0.3);
+  addBox(group, size * 0.96, size * 0.24, size * 0.045, darkConcrete, 0, size * 0.17, size * 0.3);
+  [-0.47, 0.47].forEach((x) => addBox(group, size * 0.04, size * 0.46, size * 0.04, rust, size * x, size * 0.24, -size * 0.3));
+  addBox(group, size * 1.02, size * 0.04, size * 0.04, rust, 0, size * 0.42, -size * 0.3);
+  addBox(group, size * 0.05, size * 0.46, size * 0.04, rust, 0, size * 0.24, size * 0.3);
 
   // Workshop contents: shipping container, crate stacks, forklift silhouette, drums and tyres.
   addBox(group, size * 0.28, size * 0.17, size * 0.18, container, -size * 0.18, size * 0.15, size * 0.08);
@@ -3263,22 +3340,22 @@ function createApartmentComplexMonumentPrimitive(group: Group, size: number): vo
   const rubble = 0x766a5b;
 
   // Courtyard and perimeter pavement create the large, city-block footprint visible from TOP.
-  addBox(group, size * 1.36, 3.5, size * 1.16, pavement, 0, 1.75, 0);
-  addBox(group, size * 1.12, size * 0.03, size * 0.68, grass, 0, size * 0.07, size * 0.04);
-  addBox(group, size * 1.42, size * 0.04, size * 0.04, curb, 0, size * 0.09, -size * 0.58);
-  addBox(group, size * 1.42, size * 0.04, size * 0.04, curb, 0, size * 0.09, size * 0.58);
+  addBox(group, size * 1.78, 3.5, size * 1.52, pavement, 0, 1.75, 0);
+  addBox(group, size * 1.48, size * 0.03, size * 0.9, grass, 0, size * 0.07, size * 0.05);
+  addBox(group, size * 1.86, size * 0.04, size * 0.04, curb, 0, size * 0.09, -size * 0.76);
+  addBox(group, size * 1.86, size * 0.04, size * 0.04, curb, 0, size * 0.09, size * 0.76);
 
   // Three tall slabs surround the central yard, matching the apartment complex's unmistakable skyline.
-  addApartmentSlab(group, size, -size * 0.36, -size * 0.28, size * 0.42, size * 0.28, size * 0.46, concrete, roof, window, MathUtils.degToRad(90));
-  addApartmentSlab(group, size, size * 0.38, -size * 0.28, size * 0.42, size * 0.28, size * 0.42, weatheredConcrete, roof, window, MathUtils.degToRad(90));
-  addApartmentSlab(group, size, 0, size * 0.34, size * 0.72, size * 0.28, size * 0.4, concrete, roof, window, 0);
+  addApartmentSlab(group, size, -size * 0.48, -size * 0.37, size * 0.55, size * 0.37, size * 0.46, concrete, roof, window, MathUtils.degToRad(90));
+  addApartmentSlab(group, size, size * 0.5, -size * 0.37, size * 0.55, size * 0.37, size * 0.42, weatheredConcrete, roof, window, MathUtils.degToRad(90));
+  addApartmentSlab(group, size, 0, size * 0.45, size * 0.95, size * 0.37, size * 0.4, concrete, roof, window, 0);
 
   // Lower entrance block and roof helipad preserve the recognisable service/safe-zone side of the monument.
   addBox(group, size * 0.54, size * 0.18, size * 0.22, weatheredConcrete, 0, size * 0.13, -size * 0.05);
-  addCylinder(group, size * 0.14, size * 0.022, 0x424744, size * 0.38, size * 0.46, -size * 0.28);
-  addCylinder(group, size * 0.1, size * 0.026, 0xd6d0a9, size * 0.38, size * 0.485, -size * 0.28);
-  addBox(group, size * 0.038, size * 0.016, size * 0.18, 0x424744, size * 0.38, size * 0.51, -size * 0.28);
-  addBox(group, size * 0.18, size * 0.016, size * 0.038, 0x424744, size * 0.38, size * 0.515, -size * 0.28);
+  addCylinder(group, size * 0.14, size * 0.022, 0x424744, size * 0.5, size * 0.46, -size * 0.37);
+  addCylinder(group, size * 0.1, size * 0.026, 0xd6d0a9, size * 0.5, size * 0.485, -size * 0.37);
+  addBox(group, size * 0.038, size * 0.016, size * 0.18, 0x424744, size * 0.5, size * 0.51, -size * 0.37);
+  addBox(group, size * 0.18, size * 0.016, size * 0.038, 0x424744, size * 0.5, size * 0.515, -size * 0.37);
 
   [[-0.58, 0.04], [-0.36, 0.16], [0.05, 0.02], [0.62, 0.12], [-0.66, 0.58], [0.62, 0.56]].forEach(([x, z]) => {
     addCylinder(group, size * 0.018, size * 0.22, 0x4c4030, size * x, size * 0.15, size * z);
@@ -3421,12 +3498,12 @@ function createOutpostMonumentPrimitive(group: Group, size: number): void {
   addOutpostBuilding(group, size, size * 0.38, size * 0.26, size * 0.24, size * 0.2, brick, tarpTan, 0);
   addOutpostBuilding(group, size, size * 0.02, -size * 0.42, size * 0.28, size * 0.18, plaster, tarpTan, 0);
 
-  addOutpostTower(group, size, -size * 0.62, -size * 0.42, size * 0.42);
-  addOutpostTower(group, size, size * 0.62, -size * 0.42, size * 0.34);
-  addOutpostTower(group, size, -size * 0.62, size * 0.4, size * 0.3);
-  addOutpostTower(group, size, size * 0.62, size * 0.4, size * 0.38);
+  addOutpostTower(group, size, -size * 0.62, -size * 0.42, size * 0.27);
+  addOutpostTower(group, size, size * 0.62, -size * 0.42, size * 0.22);
+  addOutpostTower(group, size, -size * 0.62, size * 0.4, size * 0.2);
+  addOutpostTower(group, size, size * 0.62, size * 0.4, size * 0.24);
 
-  addOutpostRadioMast(group, size, size * 0.14, size * 0.14, size * 0.76);
+  addOutpostRadioMast(group, size, size * 0.14, size * 0.14, size * 0.48);
   addCylinder(group, size * 0.07, size * 0.18, steel, -size * 0.52, size * 0.14, size * 0.08);
   addCylinder(group, size * 0.07, size * 0.18, steel, -size * 0.4, size * 0.14, size * 0.08);
   addCylinder(group, size * 0.045, size * 0.16, steel, size * 0.54, size * 0.12, -size * 0.02);

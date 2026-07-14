@@ -13,6 +13,7 @@ import {
   Vector3,
 } from "three";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { clone as cloneSkinnedScene } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { unityPositionToThreeVector } from "./coordinates";
 import type { VehiclePreviewMetadata, VehiclePreviewMetadataFile } from "../types";
 
@@ -214,7 +215,11 @@ export async function loadVehiclePreview(
     const template = await loadVehiclePreviewTemplate(resolvedUrl);
     const group = new Group();
     group.name = `vehicle-glb:${metadata.vehicle}`;
-    const scene = template.clone(true);
+    // Object3D.clone() leaves SkinnedMesh instances bound to the template's
+    // skeleton. That tears the F-15/A-10 model apart as soon as the cached
+    // template is reused by another viewer. SkeletonUtils remaps every bone
+    // and skeleton to the cloned scene.
+    const scene = cloneSkinnedScene(template);
     markSharedVehicleAssets(scene);
     group.add(scene);
     group.scale.setScalar(metadata.scale || 1);
