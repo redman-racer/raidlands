@@ -1383,11 +1383,18 @@ outgoingLight += raidlandsWaterSunColor * raidlandsWaterSunPath;
       if (shouldHideMonumentPrimitive(monument)) {
         return;
       }
-      const group = createMonumentPrimitive(monument);
       const monumentPosition = rustWorldToViewerPosition(monument.x, monument.y, monument.z);
       const terrainHeight = sampleTerrainHeight(this.terrain, monumentPosition.x, monumentPosition.z);
-      group.position.set(monumentPosition.x, Math.max(monumentPosition.y, terrainHeight) + 5, monumentPosition.z);
-      group.rotation.y = -MathUtils.degToRad(monument.rotationY || 0);
+      const groupY = Math.max(monumentPosition.y, terrainHeight) + 5;
+      const rotationY = -MathUtils.degToRad(monument.rotationY || 0);
+      const group = createMonumentPrimitive(monument, {
+        terrain: this.terrain,
+        center: monumentPosition,
+        groupY,
+        rotationY,
+      });
+      group.position.set(monumentPosition.x, groupY, monumentPosition.z);
+      group.rotation.y = rotationY;
       layer.add(group);
     });
 
@@ -3218,7 +3225,14 @@ function createPayloadFlash(position: Vector3, startTime: number): Mesh {
   return mesh;
 }
 
-function createMonumentPrimitive(monument: MonumentPayload): Group {
+interface MonumentPrimitivePlacement {
+  terrain: TerrainPayload;
+  center: Vector3;
+  groupY: number;
+  rotationY: number;
+}
+
+function createMonumentPrimitive(monument: MonumentPayload, placement?: MonumentPrimitivePlacement): Group {
   const group = new Group();
   const key = monumentKey(monument);
   const size = MathUtils.clamp(monument.radius, 24, 180);
@@ -3280,6 +3294,11 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
 
   if (key.includes("harbor")) {
     createHarborMonumentPrimitive(group, size);
+    return addTitle();
+  }
+
+  if (key.includes("junkyard") || key.includes("junk_yard")) {
+    createJunkyardMonumentPrimitive(group, size, placement);
     return addTitle();
   }
 
@@ -3373,6 +3392,99 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
   addBox(group, size * 0.68, size * 0.24, size * 0.5, 0x6a705e, 0, size * 0.12, 0);
   addCylinder(group, size * 0.08, size * 0.46, 0x8b7044, size * 0.28, size * 0.23, -size * 0.12);
   return addTitle();
+}
+
+function createJunkyardMonumentPrimitive(group: Group, size: number, placement?: MonumentPrimitivePlacement): void {
+  const rust = 0x8f4b32;
+  const darkRust = 0x4b332b;
+  const steel = 0x697276;
+  const sheet = 0x596365;
+  const scrap = 0x7c6650;
+  const rubber = 0x252827;
+
+  // Junkyard's large earth piles are already present in the published Rust
+  // height map. Seat each proxy on that terrain instead of drawing duplicate
+  // mound geometry over it.
+  const groundY = (x: number, z: number): number => {
+    if (!placement) {
+      return 0;
+    }
+    const cos = Math.cos(placement.rotationY);
+    const sin = Math.sin(placement.rotationY);
+    const worldX = placement.center.x + x * cos + z * sin;
+    const worldZ = placement.center.z - x * sin + z * cos;
+    return sampleTerrainHeight(placement.terrain, worldX, worldZ) - placement.groupY + 1.5;
+  };
+  const boxOnGround = (width: number, height: number, depth: number, color: number, x: number, z: number, lift = 0): Mesh =>
+    addBox(group, width, height, depth, color, x, groundY(x, z) + height * 0.5 + lift, z);
+  const cylinderOnGround = (radius: number, height: number, color: number, x: number, z: number, lift = 0): Mesh =>
+    addCylinder(group, radius, height, color, x, groundY(x, z) + height * 0.5 + lift, z);
+
+  // Central sorting/crusher line crossing the saddle between the real mounds.
+  boxOnGround(size * 0.46, size * 0.12, size * 0.24, darkRust, -size * 0.03, size * 0.02);
+  boxOnGround(size * 0.34, size * 0.08, size * 0.12, rust, size * 0.27, -size * 0.02, size * 0.14).rotation.z = -0.28;
+  boxOnGround(size * 0.48, size * 0.07, size * 0.1, rust, -size * 0.34, size * 0.03, size * 0.1).rotation.z = 0.22;
+
+  // The broad, rusted crusher bowl is Junkyard's clearest silhouette.
+  const bowlX = -size * 0.48;
+  const bowlZ = size * 0.34;
+  const bowl = new Mesh(
+    new CylinderGeometry(size * 0.29, size * 0.19, size * 0.1, 24, 1, true),
+    monumentMaterial(rust),
+  );
+  bowl.position.set(bowlX, groundY(bowlX, bowlZ) + size * 0.12, bowlZ);
+  bowl.rotation.x = Math.PI;
+  group.add(bowl);
+  cylinderOnGround(size * 0.055, size * 0.22, darkRust, bowlX, bowlZ, size * 0.02);
+
+  // Elevated picking gantry and conveyor climbing the central mound.
+  const gantryX = size * 0.04;
+  const gantryZ = -size * 0.2;
+  const gantryBase = groundY(gantryX, gantryZ);
+  [-0.16, 0.16].forEach((xOffset) => {
+    [-0.12, 0.12].forEach((zOffset) => {
+      addBox(group, size * 0.025, size * 0.42, size * 0.025, darkRust, gantryX + size * xOffset, gantryBase + size * 0.21, gantryZ + size * zOffset);
+    });
+  });
+  addBox(group, size * 0.42, size * 0.045, size * 0.3, rust, gantryX, gantryBase + size * 0.43, gantryZ);
+  const craneBoom = addBox(group, size * 0.72, size * 0.035, size * 0.04, darkRust, gantryX + size * 0.12, gantryBase + size * 0.62, gantryZ);
+  craneBoom.rotation.z = 0.22;
+  addBox(group, size * 0.035, size * 0.28, size * 0.035, steel, gantryX + size * 0.43, gantryBase + size * 0.47, gantryZ);
+
+  // Patchwork sheds, scrap stacks and upright tanks distributed around the
+  // mound bases. Their individual terrain samples keep them out of the hills.
+  [
+    [-0.42, -0.32, 0.26, 0.18],
+    [0.43, -0.35, 0.3, 0.16],
+    [0.46, 0.29, 0.22, 0.2],
+  ].forEach(([x, z, width, depth], index) => {
+    const shed = boxOnGround(size * width, size * 0.16, size * depth, index === 1 ? sheet : scrap, size * x, size * z);
+    shed.rotation.y = index === 1 ? -0.18 : 0.12;
+    const roof = boxOnGround(size * (width + 0.04), size * 0.025, size * (depth + 0.04), rust, size * x, size * z, size * 0.17);
+    roof.rotation.y = shed.rotation.y;
+  });
+
+  [
+    [-0.68, -0.08], [-0.6, 0.02], [-0.56, -0.18],
+    [0.62, 0.08], [0.7, 0.17], [0.57, 0.2],
+    [0.12, 0.48], [0.23, 0.52], [-0.02, 0.54],
+  ].forEach(([x, z], index) => {
+    const stack = boxOnGround(size * 0.11, size * (0.06 + (index % 3) * 0.018), size * 0.075, index % 2 ? rust : scrap, size * x, size * z);
+    stack.rotation.y = (index % 4) * 0.36;
+  });
+
+  [
+    [0.66, -0.16], [0.73, -0.12], [-0.22, 0.58],
+  ].forEach(([x, z]) => cylinderOnGround(size * 0.055, size * 0.17, steel, size * x, size * z));
+
+  // A broken perimeter reads as the dense ring of vehicle panels in-game.
+  for (let index = 0; index < 22; index += 1) {
+    const angle = (index / 22) * Math.PI * 2;
+    const x = Math.cos(angle) * size * 0.82;
+    const z = Math.sin(angle) * size * 0.66;
+    const panel = boxOnGround(size * 0.11, size * (0.09 + (index % 3) * 0.018), size * 0.025, index % 4 === 0 ? rubber : rust, x, z);
+    panel.rotation.y = -angle;
+  }
 }
 
 function createOilRigMonumentPrimitive(group: Group, size: number): void {
