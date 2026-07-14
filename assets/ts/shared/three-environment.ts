@@ -152,16 +152,11 @@ export function updateRaidlandsEnvironment(scene: Scene, state: RaidlandsEnviron
   const cloudCoverageValue = state.cloudCoverage === null || state.cloudCoverage === undefined
     ? 0
     : Number(state.cloudCoverage);
-  const rawCloudCoverage = MathUtils.clamp(Number.isFinite(cloudCoverageValue) ? cloudCoverageValue : 0, 0, 0.92);
+  const rawCloudCoverage = MathUtils.clamp(Number.isFinite(cloudCoverageValue) ? cloudCoverageValue : 0, 0, 1);
   const cloudOpacity = MathUtils.clamp(finiteEnvironmentValue(state.cloudOpacity, 1), 0, 1);
-  const cloudCoverage = MathUtils.clamp(
-    Math.max(
-      rawCloudCoverage * MathUtils.lerp(0.25, 1, cloudOpacity),
-      cloudOpacity * 0.3,
-    ),
-    0,
-    0.96,
-  );
+  // Coverage is the fraction of sky Rust reports as covered. Opacity affects
+  // the rendered cloud material below, not how much sky is considered cloudy.
+  const cloudCoverage = rawCloudCoverage;
   const rayleigh = MathUtils.clamp(finiteEnvironmentValue(state.atmosphereRayleigh, 0.25), 0, 4);
   const mie = MathUtils.clamp(finiteEnvironmentValue(state.atmosphereMie, 1.55), 0, 4);
   const atmosphereBrightness = MathUtils.clamp(finiteEnvironmentValue(state.atmosphereBrightness, 0.95), 0.05, 3);

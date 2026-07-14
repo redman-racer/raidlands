@@ -273,6 +273,7 @@ type NormalizedEnvironment = {
   cloudCoverage: number;
   rainIntensity: number;
   fogIntensity: number;
+  fogPresetBlend: number;
   thunderIntensity: number;
   rainbowIntensity: number;
   atmosphereRayleigh: number;
@@ -1448,11 +1449,7 @@ diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.22, raidlan
     const horizonDrama = MathUtils.clamp(1 - Math.abs(MathUtils.clamp(sunHeight, -0.1, 0.46) - 0.18) / 0.28, 0, 1);
     this.scene.backgroundIntensity = (MathUtils.lerp(0.72, 1.04, daylight) + horizonDrama * 0.08 - night * 0.18) * MathUtils.lerp(0.72, 1.2, atmosphereBrightness / 1.4);
     this.scene.environmentIntensity = (MathUtils.lerp(0.46, 0.96, daylight) + horizonDrama * 0.04) * MathUtils.lerp(0.82, 1.18, atmosphereContrast / 1.4);
-    const fogStrength = MathUtils.clamp(
-      environment.fogIntensity * 0.58 + visualCloudCoverage * 0.05 + horizonDrama * 0.06 + MathUtils.clamp(environment.atmosphereMie / 4, 0, 1) * 0.025,
-      0,
-      1,
-    );
+    const fogStrength = visualFogStrengthForEnvironment(environment);
     const daylightFogColor = new Color(0xc8dfe8)
       .lerp(atmosphereWarmColor, MathUtils.clamp(environment.atmosphereMie / 4, 0, 1) * 0.1)
       .multiplyScalar(MathUtils.lerp(0.82, 1.08, atmosphereBrightnessT));
@@ -1462,7 +1459,7 @@ diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.22, raidlan
       .lerp(new Color(0xffd1aa), twilight * MathUtils.clamp(environment.atmosphereMie / 4, 0, 1) * 0.1)
       .lerp(environment.ambientColor, night * 0.24);
     this.scene.fog = fogStrength > 0.02
-      ? new FogExp2(fogColor, MathUtils.lerp(0.000012, 0.00009, Math.sqrt(fogStrength)))
+      ? new FogExp2(fogColor, MathUtils.lerp(0.00001, 0.00072, Math.pow(fogStrength, 1.3)))
       : null;
     this.environmentGradePass.uniforms.uSunColor.value.copy(atmosphereWarmColor);
     this.environmentGradePass.uniforms.uTwilight.value = twilight;
@@ -1507,7 +1504,7 @@ diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.22, raidlan
       * MathUtils.lerp(0.72, 1.32, MathUtils.clamp(environment.cloudSize / 4, 0, 1));
     const cloudDarkening = MathUtils.clamp(environment.cloudAttenuation, 0, 1) * visibleCloudAmount * 0.36;
 
-    const groundFogAmount = Math.sqrt(MathUtils.clamp(environment.fogIntensity, 0, 1));
+    const groundFogAmount = Math.sqrt(visualFogStrengthForEnvironment(environment));
     const ambientGroundFogColor = new Color(0xc7d4d8).lerp(environment.ambientColor, 0.34);
     const sunlitGroundFogColor = environment.sunColor.clone().lerp(new Color(0xffdfbd), 0.58);
     const horizontalSunLength = Math.max(0.0001, Math.hypot(environment.sunDirection.x, environment.sunDirection.z));
@@ -3036,6 +3033,11 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
     return addTitle();
   }
 
+  if (key.includes("mining_outpost") || key.includes("miningoutpost")) {
+    createMiningOutpostMonumentPrimitive(group, size);
+    return addTitle();
+  }
+
   if (key.includes("outpost") || key.includes("compound")) {
     createOutpostMonumentPrimitive(group, size);
     return addTitle();
@@ -3085,6 +3087,49 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
   return addTitle();
 }
 
+function createMiningOutpostMonumentPrimitive(group: Group, size: number): void {
+  const concrete = 0x6b6a61;
+  const darkConcrete = 0x41443f;
+  const corrugatedRoof = 0x74777a;
+  const rust = 0x914831;
+  const darkRust = 0x5a3028;
+  const container = 0x70743c;
+  const crate = 0xa88659;
+  const tire = 0x242626;
+  const shrub = 0x435737;
+
+  // Mining Outpost is a low, open-sided workshop, deliberately unlike the walled Outpost town.
+  addBox(group, size * 1.12, 3.5, size * 0.82, concrete, 0, 1.75, 0);
+  addBox(group, size * 0.94, size * 0.035, size * 0.62, darkConcrete, 0, size * 0.08, -size * 0.02);
+
+  // Corrugated gable roof, visible from the map's top camera.
+  const roofLeft = addBox(group, size * 0.96, size * 0.05, size * 0.42, corrugatedRoof, 0, size * 0.47, -size * 0.13);
+  roofLeft.rotation.x = MathUtils.degToRad(12);
+  const roofRight = addBox(group, size * 0.96, size * 0.05, size * 0.42, corrugatedRoof, 0, size * 0.47, size * 0.13);
+  roofRight.rotation.x = MathUtils.degToRad(-12);
+  for (let stripe = -0.38; stripe <= 0.38; stripe += 0.11) {
+    addBox(group, size * 0.014, size * 0.06, size * 0.84, darkRust, size * stripe, size * 0.49, 0);
+  }
+
+  // Rear wall and red steel frame; the front remains open toward the viewer.
+  addBox(group, size * 0.96, size * 0.34, size * 0.045, darkConcrete, 0, size * 0.22, size * 0.3);
+  [-0.47, 0.47].forEach((x) => addBox(group, size * 0.04, size * 0.62, size * 0.04, rust, size * x, size * 0.32, -size * 0.3));
+  addBox(group, size * 1.02, size * 0.04, size * 0.04, rust, 0, size * 0.56, -size * 0.3);
+  addBox(group, size * 0.05, size * 0.62, size * 0.04, rust, 0, size * 0.32, size * 0.3);
+
+  // Workshop contents: shipping container, crate stacks, forklift silhouette, drums and tyres.
+  addBox(group, size * 0.28, size * 0.17, size * 0.18, container, -size * 0.18, size * 0.15, size * 0.08);
+  [[0.2, -0.08, 0.1], [0.32, -0.1, 0.075], [0.2, 0.04, 0.07]].forEach(([x, z, scale]) => addBox(group, size * scale, size * scale, size * scale, crate, size * x, size * scale * 0.5 + size * 0.08, size * z));
+  addBox(group, size * 0.13, size * 0.1, size * 0.18, 0xc69835, size * 0.18, size * 0.12, size * 0.16);
+  addBox(group, size * 0.025, size * 0.22, size * 0.025, darkRust, size * 0.25, size * 0.25, size * 0.16);
+  [-0.08, 0.08].forEach((x) => addCylinder(group, size * 0.043, size * 0.06, tire, size * (0.18 + x), size * 0.07, size * 0.16));
+  [-0.34, -0.25].forEach((x) => addCylinder(group, size * 0.045, size * 0.12, 0x4b5960, size * x, size * 0.12, -size * 0.17));
+  [[-0.6, -0.32], [0.6, 0.28], [-0.56, 0.32]].forEach(([x, z]) => {
+    addCylinder(group, size * 0.02, size * 0.16, 0x4b4230, size * x, size * 0.12, size * z);
+    addSphere(group, size * 0.07, shrub, size * x, size * 0.24, size * z);
+  });
+}
+
 function createApartmentComplexMonumentPrimitive(group: Group, size: number): void {
   const concrete = 0x85837d;
   const weatheredConcrete = 0x656560;
@@ -3097,22 +3142,22 @@ function createApartmentComplexMonumentPrimitive(group: Group, size: number): vo
   const rubble = 0x766a5b;
 
   // Courtyard and perimeter pavement create the large, city-block footprint visible from TOP.
-  addBox(group, size * 1.58, 4, size * 1.38, pavement, 0, 2, 0);
-  addBox(group, size * 1.34, size * 0.035, size * 0.82, grass, 0, size * 0.08, size * 0.04);
-  addBox(group, size * 1.64, size * 0.045, size * 0.04, curb, 0, size * 0.1, -size * 0.69);
-  addBox(group, size * 1.64, size * 0.045, size * 0.04, curb, 0, size * 0.1, size * 0.69);
+  addBox(group, size * 1.36, 3.5, size * 1.16, pavement, 0, 1.75, 0);
+  addBox(group, size * 1.12, size * 0.03, size * 0.68, grass, 0, size * 0.07, size * 0.04);
+  addBox(group, size * 1.42, size * 0.04, size * 0.04, curb, 0, size * 0.09, -size * 0.58);
+  addBox(group, size * 1.42, size * 0.04, size * 0.04, curb, 0, size * 0.09, size * 0.58);
 
   // Three tall slabs surround the central yard, matching the apartment complex's unmistakable skyline.
-  addApartmentSlab(group, size, -size * 0.42, -size * 0.35, size * 0.38, size * 0.18, size * 0.78, concrete, roof, window, MathUtils.degToRad(90));
-  addApartmentSlab(group, size, size * 0.44, -size * 0.35, size * 0.38, size * 0.18, size * 0.72, weatheredConcrete, roof, window, MathUtils.degToRad(90));
-  addApartmentSlab(group, size, 0, size * 0.43, size * 0.8, size * 0.2, size * 0.68, concrete, roof, window, 0);
+  addApartmentSlab(group, size, -size * 0.36, -size * 0.28, size * 0.42, size * 0.28, size * 0.46, concrete, roof, window, MathUtils.degToRad(90));
+  addApartmentSlab(group, size, size * 0.38, -size * 0.28, size * 0.42, size * 0.28, size * 0.42, weatheredConcrete, roof, window, MathUtils.degToRad(90));
+  addApartmentSlab(group, size, 0, size * 0.34, size * 0.72, size * 0.28, size * 0.4, concrete, roof, window, 0);
 
   // Lower entrance block and roof helipad preserve the recognisable service/safe-zone side of the monument.
-  addBox(group, size * 0.62, size * 0.24, size * 0.24, weatheredConcrete, 0, size * 0.16, -size * 0.08);
-  addCylinder(group, size * 0.17, size * 0.025, 0x424744, size * 0.44, size * 0.76, -size * 0.35);
-  addCylinder(group, size * 0.12, size * 0.03, 0xd6d0a9, size * 0.44, size * 0.79, -size * 0.35);
-  addBox(group, size * 0.045, size * 0.018, size * 0.22, 0x424744, size * 0.44, size * 0.82, -size * 0.35);
-  addBox(group, size * 0.22, size * 0.018, size * 0.045, 0x424744, size * 0.44, size * 0.825, -size * 0.35);
+  addBox(group, size * 0.54, size * 0.18, size * 0.22, weatheredConcrete, 0, size * 0.13, -size * 0.05);
+  addCylinder(group, size * 0.14, size * 0.022, 0x424744, size * 0.38, size * 0.46, -size * 0.28);
+  addCylinder(group, size * 0.1, size * 0.026, 0xd6d0a9, size * 0.38, size * 0.485, -size * 0.28);
+  addBox(group, size * 0.038, size * 0.016, size * 0.18, 0x424744, size * 0.38, size * 0.51, -size * 0.28);
+  addBox(group, size * 0.18, size * 0.016, size * 0.038, 0x424744, size * 0.38, size * 0.515, -size * 0.28);
 
   [[-0.58, 0.04], [-0.36, 0.16], [0.05, 0.02], [0.62, 0.12], [-0.66, 0.58], [0.62, 0.56]].forEach(([x, z]) => {
     addCylinder(group, size * 0.018, size * 0.22, 0x4c4030, size * x, size * 0.15, size * z);
@@ -4252,6 +4297,7 @@ function normalizeEnvironment(snapshot: EnvironmentSnapshot | null | undefined):
     cloudCoverage: MathUtils.clamp(Number.isFinite(cloudCoverage) ? cloudCoverage : weatherCloudCoverage ?? 0, 0, 1),
     rainIntensity: MathUtils.clamp(Number.isFinite(rainIntensity) ? Math.max(rainIntensity, weatherRain ?? 0) : weatherRain ?? 0, 0, 1),
     fogIntensity: MathUtils.clamp(Number.isFinite(fogIntensity) ? Math.max(fogIntensity, weatherFog ?? 0) : weatherFog ?? 0, 0, 1),
+    fogPresetBlend: weatherPresetBlend(snapshot.weather?.state, "fog"),
     thunderIntensity: MathUtils.clamp(weatherParameterValue(snapshot, "thunder", 0) ?? 0, 0, 1),
     rainbowIntensity: MathUtils.clamp(weatherParameterValue(snapshot, "rainbow", 0) ?? 0, 0, 1),
     atmosphereRayleigh: MathUtils.clamp(weatherParameterValue(snapshot, "atmosphereRayleigh", 0.25) ?? 0.25, 0, 4),
@@ -4280,6 +4326,7 @@ function interpolateEnvironment(from: NormalizedEnvironment, to: NormalizedEnvir
     cloudCoverage: MathUtils.lerp(from.cloudCoverage, to.cloudCoverage, progress),
     rainIntensity: MathUtils.lerp(from.rainIntensity, to.rainIntensity, progress),
     fogIntensity: MathUtils.lerp(from.fogIntensity, to.fogIntensity, progress),
+    fogPresetBlend: MathUtils.lerp(from.fogPresetBlend, to.fogPresetBlend, progress),
     thunderIntensity: MathUtils.lerp(from.thunderIntensity, to.thunderIntensity, progress),
     rainbowIntensity: MathUtils.lerp(from.rainbowIntensity, to.rainbowIntensity, progress),
     atmosphereRayleigh: MathUtils.lerp(from.atmosphereRayleigh, to.atmosphereRayleigh, progress),
@@ -4298,12 +4345,36 @@ function interpolateEnvironment(from: NormalizedEnvironment, to: NormalizedEnvir
 }
 
 function visualCloudCoverageForEnvironment(environment: NormalizedEnvironment): number {
-  return MathUtils.clamp(
-    environment.cloudCoverage * MathUtils.lerp(0.22, 1, MathUtils.clamp(environment.cloudOpacity, 0, 1))
-      + environment.rainIntensity * 0.12,
-    0,
-    1,
-  );
+  // Rust already gives us effective cloud coverage. Opacity and rain style the
+  // visible clouds, but must not invent extra sky coverage.
+  return MathUtils.clamp(environment.cloudCoverage, 0, 1);
+}
+
+function visualFogStrengthForEnvironment(environment: NormalizedEnvironment): number {
+  const sampledHaze = MathUtils.clamp(environment.fogIntensity, 0, 1) * 0.45;
+  const weatherHaze = environment.cloudCoverage * 0.04
+    + environment.rainIntensity * 0.05
+    + MathUtils.clamp(environment.atmosphereMie / 4, 0, 1) * 0.025;
+
+  // Rust's native fog value is not a visual percentage. In the captured live
+  // data, the fully active Fog preset reports 0.25 while producing extremely
+  // short visibility in-game. Preserve the effective scalar for diagnostics,
+  // and use the authoritative preset transition to reproduce its visual impact.
+  return MathUtils.clamp(Math.max(environment.fogPresetBlend, sampledHaze + weatherHaze), 0, 1);
+}
+
+function weatherPresetBlend(state: WeatherState | null | undefined, presetName: string): number {
+  if (!state) {
+    return 0;
+  }
+
+  const normalizedPreset = presetName.trim().toLowerCase();
+  const isPreset = (value: unknown): number => String(value || "").trim().toLowerCase() === normalizedPreset ? 1 : 0;
+  const blend = MathUtils.clamp(nullableFiniteNumber(state.blend, 1), 0, 1);
+  const current = isPreset(state.current || state.previous);
+  const target = isPreset(state.target || state.current || state.previous);
+
+  return MathUtils.lerp(current, target, blend);
 }
 
 function weatherParameterValue(snapshot: EnvironmentSnapshot, name: string, fallback: number | null): number | null {
