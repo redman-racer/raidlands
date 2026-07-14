@@ -3026,6 +3026,11 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
     return addTitle();
   }
 
+  if (key.includes("outpost") || key.includes("compound")) {
+    createOutpostMonumentPrimitive(group, size);
+    return addTitle();
+  }
+
   if (key.includes("powerplant") || key.includes("power_plant")) {
     addBox(group, size * 0.92, size * 0.2, size * 0.62, 0x5b605c, 0, size * 0.1, 0);
     addCylinder(group, size * 0.09, size * 0.92, 0x9a9a90, -size * 0.24, size * 0.55, 0);
@@ -3068,6 +3073,102 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
   addBox(group, size * 0.68, size * 0.24, size * 0.5, 0x6a705e, 0, size * 0.12, 0);
   addCylinder(group, size * 0.08, size * 0.46, 0x8b7044, size * 0.28, size * 0.23, -size * 0.12);
   return addTitle();
+}
+
+function createOutpostMonumentPrimitive(group: Group, size: number): void {
+  const wall = 0x8f8878;
+  const darkWall = 0x5c5a51;
+  const street = 0x3b3b36;
+  const roof = 0xa86b3e;
+  const tarpBlue = 0x3e5f86;
+  const tarpTan = 0xc0aa7b;
+  const brick = 0x8d6650;
+  const plaster = 0xc0b7a7;
+  const steel = 0x616966;
+  const darkSteel = 0x2d3131;
+  const rust = 0x9b4f30;
+  const tree = 0x3f5e38;
+
+  addBox(group, size * 1.5, 4.5, size * 1.08, wall, 0, 2.25, 0);
+  addBox(group, size * 1.32, 3.2, size * 0.86, street, 0, 5.2, 0);
+  addBox(group, size * 1.38, size * 0.09, size * 0.06, darkWall, 0, size * 0.1, -size * 0.54);
+  addBox(group, size * 1.38, size * 0.09, size * 0.06, darkWall, 0, size * 0.1, size * 0.54);
+  addBox(group, size * 0.06, size * 0.09, size * 0.96, darkWall, -size * 0.75, size * 0.1, 0);
+  addBox(group, size * 0.06, size * 0.09, size * 0.96, darkWall, size * 0.75, size * 0.1, 0);
+
+  addBox(group, size * 0.3, size * 0.12, size * 0.12, rust, 0, size * 0.12, -size * 0.57);
+  addBox(group, size * 0.24, size * 0.1, size * 0.1, rust, -size * 0.3, size * 0.1, size * 0.58);
+  addBox(group, size * 0.24, size * 0.1, size * 0.1, rust, size * 0.3, size * 0.1, size * 0.58);
+
+  addOutpostBuilding(group, size, -size * 0.36, -size * 0.18, size * 0.36, size * 0.28, brick, roof, 0);
+  addOutpostBuilding(group, size, size * 0.26, -size * 0.18, size * 0.3, size * 0.26, plaster, roof, MathUtils.degToRad(90));
+  addOutpostBuilding(group, size, -size * 0.2, size * 0.24, size * 0.28, size * 0.24, plaster, tarpBlue, 0);
+  addOutpostBuilding(group, size, size * 0.38, size * 0.26, size * 0.24, size * 0.2, brick, tarpTan, 0);
+  addOutpostBuilding(group, size, size * 0.02, -size * 0.42, size * 0.28, size * 0.18, plaster, tarpTan, 0);
+
+  addOutpostTower(group, size, -size * 0.62, -size * 0.42, size * 0.42);
+  addOutpostTower(group, size, size * 0.62, -size * 0.42, size * 0.34);
+  addOutpostTower(group, size, -size * 0.62, size * 0.4, size * 0.3);
+  addOutpostTower(group, size, size * 0.62, size * 0.4, size * 0.38);
+
+  addOutpostRadioMast(group, size, size * 0.14, size * 0.14, size * 0.76);
+  addCylinder(group, size * 0.07, size * 0.18, steel, -size * 0.52, size * 0.14, size * 0.08);
+  addCylinder(group, size * 0.07, size * 0.18, steel, -size * 0.4, size * 0.14, size * 0.08);
+  addCylinder(group, size * 0.045, size * 0.16, steel, size * 0.54, size * 0.12, -size * 0.02);
+
+  addBox(group, size * 0.16, size * 0.07, size * 0.1, rust, -size * 0.08, size * 0.09, size * 0.42);
+  addBox(group, size * 0.14, size * 0.07, size * 0.1, rust, size * 0.1, size * 0.09, size * 0.42);
+  addBox(group, size * 0.12, size * 0.06, size * 0.08, darkSteel, size * 0.54, size * 0.08, -size * 0.28);
+
+  [
+    [-0.44, 0.42],
+    [-0.28, 0.5],
+    [0.22, 0.46],
+    [0.48, 0.02],
+    [-0.52, -0.02],
+  ].forEach(([x, z]) => {
+    addCylinder(group, size * 0.018, size * 0.16, 0x5f4831, size * x, size * 0.12, size * z);
+    addSphere(group, size * 0.055, tree, size * x, size * 0.23, size * z);
+  });
+}
+
+function addOutpostBuilding(group: Group, size: number, x: number, z: number, width: number, depth: number, wallColor: number, roofColor: number, rotationY: number): void {
+  const building = addBox(group, width, size * 0.18, depth, wallColor, x, size * 0.13, z);
+  building.rotation.y = rotationY;
+  const roof = addBox(group, width * 1.08, size * 0.045, depth * 1.08, roofColor, x, size * 0.24, z);
+  roof.rotation.y = rotationY;
+  roof.rotation.z = MathUtils.degToRad(3);
+}
+
+function addOutpostTower(group: Group, size: number, x: number, z: number, height: number): void {
+  const darkWood = 0x4c3828;
+  const platform = 0x7e6545;
+  const leg = size * 0.014;
+  const width = size * 0.12;
+  const y = height / 2 + size * 0.08;
+
+  addBox(group, leg, height, leg, darkWood, x - width / 2, y, z - width / 2);
+  addBox(group, leg, height, leg, darkWood, x + width / 2, y, z - width / 2);
+  addBox(group, leg, height, leg, darkWood, x - width / 2, y, z + width / 2);
+  addBox(group, leg, height, leg, darkWood, x + width / 2, y, z + width / 2);
+  addBox(group, width * 1.4, size * 0.04, width * 1.4, platform, x, size * 0.1 + height, z);
+  addCone(group, width * 0.72, size * 0.12, 0x31415a, x, size * 0.18 + height, z);
+
+  [0.38, 0.68].forEach((level, index) => {
+    const cross = addBox(group, width * 1.2, size * 0.012, size * 0.012, darkWood, x, size * 0.08 + height * level, z);
+    cross.rotation.z = MathUtils.degToRad(index % 2 === 0 ? 24 : -24);
+  });
+}
+
+function addOutpostRadioMast(group: Group, size: number, x: number, z: number, height: number): void {
+  const steel = 0x616966;
+  const rust = 0x9b4f30;
+  addBox(group, size * 0.018, height, size * 0.018, steel, x, height / 2 + size * 0.14, z);
+  addCylinder(group, size * 0.035, size * 0.035, rust, x, height + size * 0.16, z);
+  const armA = addBox(group, size * 0.22, size * 0.012, size * 0.012, rust, x, height + size * 0.08, z);
+  armA.rotation.y = MathUtils.degToRad(18);
+  const armB = addBox(group, size * 0.18, size * 0.012, size * 0.012, rust, x, height + size * 0.02, z);
+  armB.rotation.y = MathUtils.degToRad(-32);
 }
 
 function createExcavatorMonumentPrimitive(group: Group, size: number): void {
