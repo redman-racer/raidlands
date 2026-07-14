@@ -3031,6 +3031,11 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
     return addTitle();
   }
 
+  if (key.includes("apartment") || key.includes("apartments")) {
+    createApartmentComplexMonumentPrimitive(group, size);
+    return addTitle();
+  }
+
   if (key.includes("outpost") || key.includes("compound")) {
     createOutpostMonumentPrimitive(group, size);
     return addTitle();
@@ -3078,6 +3083,62 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
   addBox(group, size * 0.68, size * 0.24, size * 0.5, 0x6a705e, 0, size * 0.12, 0);
   addCylinder(group, size * 0.08, size * 0.46, 0x8b7044, size * 0.28, size * 0.23, -size * 0.12);
   return addTitle();
+}
+
+function createApartmentComplexMonumentPrimitive(group: Group, size: number): void {
+  const concrete = 0x85837d;
+  const weatheredConcrete = 0x656560;
+  const roof = 0x3e4140;
+  const window = 0x273a44;
+  const pavement = 0x5b5d59;
+  const curb = 0xb2afa2;
+  const grass = 0x526448;
+  const tree = 0x405937;
+  const rubble = 0x766a5b;
+
+  // Courtyard and perimeter pavement create the large, city-block footprint visible from TOP.
+  addBox(group, size * 1.58, 4, size * 1.38, pavement, 0, 2, 0);
+  addBox(group, size * 1.34, size * 0.035, size * 0.82, grass, 0, size * 0.08, size * 0.04);
+  addBox(group, size * 1.64, size * 0.045, size * 0.04, curb, 0, size * 0.1, -size * 0.69);
+  addBox(group, size * 1.64, size * 0.045, size * 0.04, curb, 0, size * 0.1, size * 0.69);
+
+  // Three tall slabs surround the central yard, matching the apartment complex's unmistakable skyline.
+  addApartmentSlab(group, size, -size * 0.42, -size * 0.35, size * 0.38, size * 0.18, size * 0.78, concrete, roof, window, MathUtils.degToRad(90));
+  addApartmentSlab(group, size, size * 0.44, -size * 0.35, size * 0.38, size * 0.18, size * 0.72, weatheredConcrete, roof, window, MathUtils.degToRad(90));
+  addApartmentSlab(group, size, 0, size * 0.43, size * 0.8, size * 0.2, size * 0.68, concrete, roof, window, 0);
+
+  // Lower entrance block and roof helipad preserve the recognisable service/safe-zone side of the monument.
+  addBox(group, size * 0.62, size * 0.24, size * 0.24, weatheredConcrete, 0, size * 0.16, -size * 0.08);
+  addCylinder(group, size * 0.17, size * 0.025, 0x424744, size * 0.44, size * 0.76, -size * 0.35);
+  addCylinder(group, size * 0.12, size * 0.03, 0xd6d0a9, size * 0.44, size * 0.79, -size * 0.35);
+  addBox(group, size * 0.045, size * 0.018, size * 0.22, 0x424744, size * 0.44, size * 0.82, -size * 0.35);
+  addBox(group, size * 0.22, size * 0.018, size * 0.045, 0x424744, size * 0.44, size * 0.825, -size * 0.35);
+
+  [[-0.58, 0.04], [-0.36, 0.16], [0.05, 0.02], [0.62, 0.12], [-0.66, 0.58], [0.62, 0.56]].forEach(([x, z]) => {
+    addCylinder(group, size * 0.018, size * 0.22, 0x4c4030, size * x, size * 0.15, size * z);
+    addSphere(group, size * 0.075, tree, size * x, size * 0.28, size * z);
+  });
+
+  [[-0.15, -0.05], [-0.04, -0.15], [0.1, -0.06]].forEach(([x, z], index) => {
+    addBox(group, size * (0.11 + index * 0.02), size * 0.08, size * 0.09, rubble, size * x, size * 0.12, size * z);
+  });
+}
+
+function addApartmentSlab(group: Group, size: number, x: number, z: number, width: number, depth: number, height: number, wallColor: number, roofColor: number, windowColor: number, rotationY: number): void {
+  const body = addBox(group, width, height, depth, wallColor, x, height / 2 + size * 0.1, z);
+  body.rotation.y = rotationY;
+  const roof = addBox(group, width * 1.06, size * 0.055, depth * 1.08, roofColor, x, height + size * 0.12, z);
+  roof.rotation.y = rotationY;
+
+  const longSide = Math.max(width, depth);
+  const narrowSide = Math.min(width, depth);
+  for (let level = 0; level < 5; level += 1) {
+    const windowBand = addBox(group, longSide * 0.76, size * 0.035, size * 0.012, windowColor, x, size * 0.22 + height * (0.18 + level * 0.15), z - narrowSide * 0.52);
+    windowBand.rotation.y = rotationY;
+  }
+
+  addBox(group, size * 0.055, size * 0.1, size * 0.07, roofColor, x - width * 0.2, height + size * 0.18, z);
+  addBox(group, size * 0.05, size * 0.08, size * 0.06, roofColor, x + width * 0.22, height + size * 0.17, z);
 }
 
 function createBanditCampMonumentPrimitive(group: Group, size: number): void {
