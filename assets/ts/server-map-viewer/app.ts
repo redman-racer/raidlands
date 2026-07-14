@@ -1047,8 +1047,20 @@ class TerrainViewer {
     this.focusSelfLocation(true, true);
   }
 
-  public setAirstrikeProfiles(profiles: Record<string, RuntimeVisualProfile>, vehicleMetadata: VehiclePreviewMetadataFile | null, assetBase: string): void {
-    this.airstrikeReplay = new AirstrikeReplayPlayer(this.airstrikeLayer, this.terrain, profiles, vehicleMetadata, assetBase);
+  public setAirstrikeProfiles(
+    profiles: Record<string, RuntimeVisualProfile>,
+    vehicleMetadata: VehiclePreviewMetadataFile | null,
+    assetBase: string,
+    ambientEnabled = false,
+  ): void {
+    this.airstrikeReplay = new AirstrikeReplayPlayer(
+      this.airstrikeLayer,
+      this.terrain,
+      profiles,
+      vehicleMetadata,
+      assetBase,
+      ambientEnabled,
+    );
     this.airstrikeReplay.start();
     if (this.latestReplayEvents.length > 0) {
       this.airstrikeReplay.showEvents(this.latestReplayEvents, this.latestReplaySpeed, this.latestReplayOptions);
@@ -1352,7 +1364,20 @@ diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.22, raidlan
     this.updateOceanPlanes(now);
     this.updateEnvironment(now);
     this.airstrikeLayer.userData.tick?.((now - this.clockStart) / 1000);
+    this.updateAircraftCameraSafety();
     this.composer.render();
+  }
+
+  private updateAircraftCameraSafety(): void {
+    const aircraftPosition = new Vector3();
+    this.airstrikeLayer.traverse((object) => {
+      const safetyRadius = Number(object.userData.cameraSafetyRadius || 0);
+      if (!(safetyRadius > 0)) {
+        return;
+      }
+      object.getWorldPosition(aircraftPosition);
+      object.visible = aircraftPosition.distanceTo(this.camera.position) >= safetyRadius;
+    });
   }
 
   public setEnvironment(snapshot: EnvironmentSnapshot | null | undefined, durationMs = 900): void {
@@ -2069,15 +2094,27 @@ class AirstrikeReplayPlayer {
   private readonly profiles: Record<string, RuntimeVisualProfile>;
   private readonly vehicleMetadata: VehiclePreviewMetadataFile | null;
   private readonly assetBase: string;
+  private readonly ambientEnabled: boolean;
   private readonly active = new Group();
   private runs: MapReplayRun[] = [];
+  private nextAmbientStartAt = 0;
+  private ambientSequence = 0;
+  private explicitEventsVisible = false;
 
-  public constructor(layer: Group, terrain: TerrainPayload, profiles: Record<string, RuntimeVisualProfile>, vehicleMetadata: VehiclePreviewMetadataFile | null, assetBase: string) {
+  public constructor(
+    layer: Group,
+    terrain: TerrainPayload,
+    profiles: Record<string, RuntimeVisualProfile>,
+    vehicleMetadata: VehiclePreviewMetadataFile | null,
+    assetBase: string,
+    ambientEnabled: boolean,
+  ) {
     this.layer = layer;
     this.terrain = terrain;
     this.profiles = profiles;
     this.vehicleMetadata = vehicleMetadata;
     this.assetBase = assetBase;
+    this.ambientEnabled = ambientEnabled;
     this.active.name = "active-map-replay-events";
     this.layer.add(this.active);
   }
@@ -2090,6 +2127,7 @@ class AirstrikeReplayPlayer {
     const mode = options.mode || "ambient";
     const cursorMs = Number(options.cursorMs);
     const visibleKeys = new Set<string>();
+    this.explicitEventsVisible = events.length > 0;
 
     events.slice(0, mode === "timeline" ? 80 : 8).forEach((event, index) => {
       const key = replayEventKey(event, index);
@@ -2117,7 +2155,7 @@ class AirstrikeReplayPlayer {
 
     if (mode === "timeline") {
       this.runs = this.runs.filter((run) => {
-        if (visibleKeys.has(run.key)) {
+        if (visibleKeys.has(run.key) || (run.source === "ambient" && this.ambientEnabled && visibleKeys.size === 0)) {
           return true;
         }
         this.active.remove(run.group);
@@ -2133,6 +2171,10 @@ class AirstrikeReplayPlayer {
       disposeObjectTree(run.group);
     });
     this.runs = [];
+    this.explicitEventsVisible = false;
+    if (this.ambientEnabled) {
+      this.nextAmbientStartAt = Number(this.layer.userData.lastTickTime || 0) + 0.6;
+    }
   }
 
   private tick(time: number): void {
@@ -2141,9 +2183,43 @@ class AirstrikeReplayPlayer {
       const alive = run.update(time);
       if (!alive) {
         this.active.remove(run.group);
+        disposeObjectTree(run.group);
       }
       return alive;
     });
+
+    if (!this.ambientEnabled || this.explicitEventsVisible || this.runs.length > 0 || time < this.nextAmbientStartAt) {
+      return;
+    }
+
+    const profiles = Object.values(this.profiles).filter(hasUsablePreviewTrack);
+    const count = Math.random() > 0.72 ? 2 : 1;
+    let longestDuration = 0;
+    for (let index = 0; index < count; index += 1) {
+      const profile = randomEntry(profiles);
+      if (!profile) {
+        continue;
+      }
+      const startAt = time + index * (0.35 + Math.random() * 0.55);
+      const target = ambientReplayTarget(profile, this.terrain, index);
+      const key = `ambient-${this.ambientSequence += 1}`;
+      const run = new AirstrikeReplayRun(
+        key,
+        { eventType: "airstrike", x: 0, y: target.y, z: 0, vehicle: String(profile.Vehicle || "f15") },
+        this.terrain,
+        profile,
+        startAt,
+        1,
+        this.vehicleMetadata,
+        this.assetBase,
+        "ambient",
+        target,
+      );
+      longestDuration = Math.max(longestDuration, Number(profile.CompiledTrack?.DurationSeconds || profile.DurationSeconds || 8));
+      this.runs.push(run);
+      this.active.add(run.group);
+    }
+    this.nextAmbientStartAt = time + longestDuration + 1.6 + Math.random() * 2.8;
   }
 
   private profileForEvent(event: MapReplayEvent): RuntimeVisualProfile | null {
@@ -2163,6 +2239,7 @@ class AirstrikeReplayPlayer {
 
 type MapReplayRun = {
   key: string;
+  source: "ambient" | "event";
   group: Group;
   update: (now: number) => boolean;
   syncToTimeline: (cursorMs: number, playbackSpeed: number) => void;
@@ -2170,6 +2247,7 @@ type MapReplayRun = {
 
 class AirstrikeReplayRun implements MapReplayRun {
   public readonly key: string;
+  public readonly source: "ambient" | "event";
   public readonly group = new Group();
   private readonly profile: RuntimeVisualProfile | null;
   private readonly terrain: TerrainPayload;
@@ -2196,8 +2274,11 @@ class AirstrikeReplayRun implements MapReplayRun {
     playbackSpeed: number,
     vehicleMetadata: VehiclePreviewMetadataFile | null,
     assetBase: string,
+    source: "ambient" | "event" = "event",
+    targetOverride: Vector3 | null = null,
   ) {
     this.key = key;
+    this.source = source;
     this.profile = profile;
     this.terrain = terrain;
     this.event = event;
@@ -2206,7 +2287,7 @@ class AirstrikeReplayRun implements MapReplayRun {
     this.frames = profile ? normalizePreviewFrames(profile) : [];
     this.duration = Math.max(2, Number(profile?.CompiledTrack?.DurationSeconds || profile?.DurationSeconds || lastFrameTime(this.frames) || 8));
     this.payloads = profile ? normalizePayloadEvents(profile) : [];
-    this.target = replayEventPosition(event, terrain);
+    this.target = targetOverride?.clone() ?? replayEventPosition(event, terrain);
     this.vehicle = String(profile?.Vehicle || event.vehicle || "f15");
     this.group.name = `airstrike-replay-${this.vehicle}`;
     this.aircraft = createAircraftMarker(this.vehicle, vehicleMetadata, assetBase);
@@ -2393,6 +2474,7 @@ class AirstrikeProjectile {
 
 class AirdropReplayRun implements MapReplayRun {
   public readonly key: string;
+  public readonly source = "event" as const;
   public readonly group = new Group();
   private readonly event: MapReplayEvent;
   private readonly terrain: TerrainPayload;
@@ -2443,7 +2525,7 @@ class AirdropReplayRun implements MapReplayRun {
     const visualDropCount = MathUtils.clamp(Math.ceil(this.dropCount / 3), 1, 3);
     this.group.name = "airdrop-replay";
     this.aircraft = createAircraftMarker("cargo_plane", vehicleMetadata, assetBase);
-    this.aircraft.scale.setScalar(1.35);
+    this.aircraft.scale.multiplyScalar(1.35);
     this.packageVisuals = Array.from({ length: visualDropCount }, (_, index) => {
       const packageMesh = new Mesh(
         new BoxGeometry(26, 20, 26),
@@ -2516,6 +2598,7 @@ class AirdropReplayRun implements MapReplayRun {
 
 class GenericMapEventReplayRun implements MapReplayRun {
   public readonly key: string;
+  public readonly source = "event" as const;
   public readonly group = new Group();
   private readonly event: MapReplayEvent;
   private readonly target: Vector3;
@@ -2605,7 +2688,7 @@ async function bindAirstrikePreview(root: HTMLElement, viewer: TerrainViewer): P
     }
 
     const payload = await response.json() as { profiles?: Record<string, RuntimeVisualProfile> };
-    viewer.setAirstrikeProfiles(payload.profiles || {}, vehicleMetadata, assetBase);
+    viewer.setAirstrikeProfiles(payload.profiles || {}, vehicleMetadata, assetBase, root.dataset.airstrikeAmbient === "true");
   } catch (error) {
     console.info("Raidlands airstrike map preview could not be loaded.", error);
   }
@@ -2834,10 +2917,45 @@ function randomMapOrigin(terrain: TerrainPayload, lane: number): Vector3 {
   return new Vector3(x, sampleTerrainHeight(terrain, x, z), z);
 }
 
+function ambientReplayTarget(profile: RuntimeVisualProfile, terrain: TerrainPayload, lane: number): Vector3 {
+  const frames = normalizePreviewFrames(profile);
+  const positions = frames.map(frameVector);
+  if (positions.length === 0) {
+    return randomMapOrigin(terrain, lane);
+  }
+
+  const xs = positions.map((position) => position.x);
+  const zs = positions.map((position) => position.z);
+  const minX = Math.min(...xs);
+  const maxX = Math.max(...xs);
+  const minZ = Math.min(...zs);
+  const maxZ = Math.max(...zs);
+  const pathCenterX = (minX + maxX) / 2;
+  const pathCenterZ = (minZ + maxZ) / 2;
+  const mapHalf = Math.max(600, (terrain.worldSize || 4500) * 0.47);
+  const availableX = Math.max(0, mapHalf - (maxX - minX) / 2);
+  const availableZ = Math.max(0, mapHalf - (maxZ - minZ) / 2);
+  const laneBias = lane === 0 ? -0.22 : 0.22;
+  const desiredCenterX = MathUtils.clamp(
+    ((Math.random() - 0.5) * 1.35 + laneBias) * availableX,
+    -availableX,
+    availableX,
+  );
+  const desiredCenterZ = (Math.random() - 0.5) * 1.5 * availableZ;
+  const targetX = desiredCenterX - pathCenterX;
+  const targetZ = desiredCenterZ - pathCenterZ;
+  return new Vector3(targetX, sampleTerrainHeight(terrain, desiredCenterX, desiredCenterZ), targetZ);
+}
+
 function createAircraftMarker(vehicle: string, metadataFile: VehiclePreviewMetadataFile | null, assetBase: string): Group {
   const group = new Group();
   group.name = `airstrike-preview-aircraft-${vehicle}`;
   const metadata = metadataForVehicle(metadataFile, vehicle);
+  const largestDimension = Math.max(metadata.bounds.x, metadata.bounds.y, metadata.bounds.z);
+  const mapVisualScale = Math.max(1, 48 / Math.max(1, largestDimension));
+  const displayedLargestDimension = largestDimension * mapVisualScale;
+  group.scale.setScalar(mapVisualScale);
+  group.userData.cameraSafetyRadius = MathUtils.clamp(displayedLargestDimension * 3.25, 72, 220);
   const fallback = createVehicleProxy(metadata);
   prepareLoadedAircraftForMap(fallback);
   group.add(fallback);
@@ -2858,6 +2976,9 @@ function createAircraftMarker(vehicle: string, metadataFile: VehiclePreviewMetad
 function prepareLoadedAircraftForMap(object: Object3D): void {
   object.name = `airstrike-preview-${object.name || "vehicle-asset"}`;
   object.traverse((child) => {
+    if (child.name.startsWith("hardpoint:")) {
+      child.visible = false;
+    }
     if (child instanceof Mesh) {
       child.castShadow = false;
       child.receiveShadow = false;
