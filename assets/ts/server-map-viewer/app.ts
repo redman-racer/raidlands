@@ -3026,6 +3026,11 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
     return addTitle();
   }
 
+  if (key.includes("bandit") || key.includes("banditcamp") || key.includes("bandit_camp")) {
+    createBanditCampMonumentPrimitive(group, size);
+    return addTitle();
+  }
+
   if (key.includes("outpost") || key.includes("compound")) {
     createOutpostMonumentPrimitive(group, size);
     return addTitle();
@@ -3073,6 +3078,89 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
   addBox(group, size * 0.68, size * 0.24, size * 0.5, 0x6a705e, 0, size * 0.12, 0);
   addCylinder(group, size * 0.08, size * 0.46, 0x8b7044, size * 0.28, size * 0.23, -size * 0.12);
   return addTitle();
+}
+
+function createBanditCampMonumentPrimitive(group: Group, size: number): void {
+  const mud = 0x49483a;
+  const water = 0x384c4b;
+  const wood = 0x604530;
+  const darkWood = 0x35271e;
+  const shack = 0x8d6c49;
+  const roof = 0x5d4936;
+  const rust = 0x93492f;
+  const steel = 0x62675d;
+  const tarp = 0x9d3f2c;
+  const marketTarp = 0xc2a45f;
+  const fire = 0xff8d31;
+  const swampTree = 0x425038;
+
+  // A shallow, irregular-looking wetland base keeps the camp distinct from Outpost's dry square compound.
+  addCylinder(group, size * 0.82, 3.5, water, size * 0.14, 1.75, -size * 0.03);
+  addCylinder(group, size * 0.68, 4.4, mud, -size * 0.08, 2.2, size * 0.02);
+
+  // Palisade ring, intentionally broken at the dock/gate side.
+  const palisadeRadius = size * 0.68;
+  for (let index = 0; index < 18; index += 1) {
+    const angle = (Math.PI * 2 * index) / 18;
+    if (Math.abs(Math.sin(angle)) < 0.22 && Math.cos(angle) > 0.45) continue;
+    const x = -size * 0.08 + Math.cos(angle) * palisadeRadius;
+    const z = size * 0.02 + Math.sin(angle) * palisadeRadius * 0.76;
+    const post = addCylinder(group, size * 0.028, size * (0.28 + (index % 3) * 0.025), wood, x, size * 0.17, z);
+    post.rotation.z = MathUtils.degToRad(index % 2 === 0 ? -3 : 3);
+  }
+
+  addBanditCampShack(group, size, -size * 0.3, -size * 0.24, size * 0.31, size * 0.22, shack, roof, 0);
+  addBanditCampShack(group, size, size * 0.26, -size * 0.25, size * 0.28, size * 0.2, 0x76644c, tarp, MathUtils.degToRad(-16));
+  addBanditCampShack(group, size, size * 0.28, size * 0.29, size * 0.25, size * 0.18, shack, roof, MathUtils.degToRad(22));
+  addBanditCampShack(group, size, -size * 0.34, size * 0.3, size * 0.26, size * 0.18, 0x796147, marketTarp, MathUtils.degToRad(-20));
+
+  // Central helicopter pad/service yard: the strongest overhead read from the real monument.
+  addCylinder(group, size * 0.24, size * 0.025, 0x303632, -size * 0.04, size * 0.08, size * 0.06);
+  addCylinder(group, size * 0.17, size * 0.03, 0xd8d2ba, -size * 0.04, size * 0.1, size * 0.06);
+  addBox(group, size * 0.06, size * 0.035, size * 0.33, 0x303632, -size * 0.04, size * 0.12, size * 0.06);
+  addBox(group, size * 0.33, size * 0.035, size * 0.06, 0x303632, -size * 0.04, size * 0.13, size * 0.06);
+
+  addBanditCampCrane(group, size, -size * 0.52, -size * 0.07, MathUtils.degToRad(-24));
+  addBanditCampTower(group, size, size * 0.49, -size * 0.34, size * 0.42);
+  addBanditCampTower(group, size, -size * 0.48, size * 0.4, size * 0.3);
+
+  // Open market awnings and a lit barrel make the landmark feel inhabited at low camera angles.
+  addBox(group, size * 0.34, size * 0.025, size * 0.18, marketTarp, size * 0.03, size * 0.27, -size * 0.48);
+  [-0.11, 0.17].forEach((offset) => addCylinder(group, size * 0.014, size * 0.24, darkWood, size * offset, size * 0.13, -size * 0.48));
+  addCylinder(group, size * 0.055, size * 0.1, steel, -size * 0.54, size * 0.07, size * 0.34);
+  addSphere(group, size * 0.045, fire, -size * 0.54, size * 0.15, size * 0.34);
+  addCylinder(group, size * 0.035, size * 0.18, rust, size * 0.54, size * 0.1, size * 0.16);
+
+  [[-0.83, -0.48], [-0.78, 0.42], [0.78, 0.44], [0.8, -0.48]].forEach(([x, z]) => {
+    addCylinder(group, size * 0.025, size * 0.22, darkWood, size * x, size * 0.14, size * z);
+    addSphere(group, size * 0.11, swampTree, size * x, size * 0.29, size * z);
+  });
+}
+
+function addBanditCampShack(group: Group, size: number, x: number, z: number, width: number, depth: number, wallColor: number, roofColor: number, rotationY: number): void {
+  const base = addBox(group, width, size * 0.16, depth, wallColor, x, size * 0.12, z);
+  base.rotation.y = rotationY;
+  const roof = addBox(group, width * 1.1, size * 0.045, depth * 1.12, roofColor, x, size * 0.23, z);
+  roof.rotation.y = rotationY;
+  roof.rotation.z = MathUtils.degToRad(5);
+}
+
+function addBanditCampTower(group: Group, size: number, x: number, z: number, height: number): void {
+  const leg = size * 0.015;
+  const width = size * 0.13;
+  const y = size * 0.09 + height / 2;
+  [[-1, -1], [1, -1], [-1, 1], [1, 1]].forEach(([dx, dz]) => addBox(group, leg, height, leg, 0x493326, x + dx * width, y, z + dz * width));
+  addBox(group, width * 2.35, size * 0.045, width * 2.35, 0x73543a, x, size * 0.1 + height, z);
+  addBox(group, width * 2.65, size * 0.03, width * 2.65, 0x563a29, x, size * 0.18 + height, z);
+}
+
+function addBanditCampCrane(group: Group, size: number, x: number, z: number, rotationY: number): void {
+  addBox(group, size * 0.08, size * 0.48, size * 0.08, 0x5d5041, x, size * 0.28, z);
+  const boom = addBox(group, size * 0.54, size * 0.045, size * 0.055, 0x94492f, x + Math.cos(rotationY) * size * 0.22, size * 0.53, z - Math.sin(rotationY) * size * 0.22);
+  boom.rotation.y = rotationY;
+  const cable = addBox(group, size * 0.012, size * 0.25, size * 0.012, 0x242524, x + Math.cos(rotationY) * size * 0.45, size * 0.39, z - Math.sin(rotationY) * size * 0.45);
+  cable.rotation.y = rotationY;
+  addBox(group, size * 0.09, size * 0.055, size * 0.09, 0x65422f, cable.position.x, size * 0.24, cable.position.z);
 }
 
 function createOutpostMonumentPrimitive(group: Group, size: number): void {
