@@ -248,6 +248,7 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
         class="server-terrain-viewer"
         data-server-map-viewer
         data-cloud-detail="max"
+        data-sun-detail="max"
         data-terrain-url="<?= e($server_terrain_url) ?>"
         data-texture-url="<?= e($server_texture_url) ?>"
         data-skybox-url="<?= e($server_skybox_url) ?>"

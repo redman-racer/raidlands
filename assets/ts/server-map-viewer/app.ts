@@ -65,6 +65,12 @@ import {
   type RaidlandsCloudDetail,
   type RaidlandsCloudProfile,
 } from "../shared/three-cloud-detail";
+import {
+  parseRaidlandsSunDetail,
+  raidlandsSunProfile,
+  type RaidlandsSunDetail,
+  type RaidlandsSunProfile,
+} from "../shared/three-sun-detail";
 
 type TerrainPayload = {
   version?: number;
@@ -857,6 +863,8 @@ class TerrainViewer {
   private readonly status: HTMLElement | null;
   private readonly cloudDetail: RaidlandsCloudDetail;
   private readonly cloudProfile: RaidlandsCloudProfile;
+  private readonly sunDetail: RaidlandsSunDetail;
+  private readonly sunProfile: RaidlandsSunProfile;
   private readonly fogDetail: FogDetail;
   private readonly scene = new Scene();
   private readonly camera = new PerspectiveCamera(48, 1, 1, 12000);
@@ -976,6 +984,9 @@ class TerrainViewer {
     this.status = options.status;
     this.cloudDetail = parseRaidlandsCloudDetail(this.root.dataset.cloudDetail, "max");
     this.cloudProfile = raidlandsCloudProfile(this.cloudDetail);
+    this.sunDetail = parseRaidlandsSunDetail(this.root.dataset.sunDetail, "max");
+    this.sunProfile = raidlandsSunProfile(this.sunDetail);
+    this.root.dataset.sunDetailResolved = this.sunDetail;
     this.tourEnabled = this.root.dataset.cameraTour === "true";
     this.tourStyle = this.root.dataset.cameraTourStyle === "orbit" ? "orbit" : "cinematic";
     this.lockCameraInput = this.root.dataset.cameraLocked === "true";
@@ -992,6 +1003,7 @@ class TerrainViewer {
       backgroundIntensity: 1.02,
       environmentIntensity: 0.98,
       cloudDetail: this.cloudDetail,
+      sunDetail: this.sunDetail,
       worldSize: this.terrain.worldSize || 4500,
     });
     this.composer = new EffectComposer(this.renderer);
@@ -1970,9 +1982,10 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
       MathUtils.lerp(0.52, 0.7, MathUtils.clamp(environment.atmosphereMie / 4, 0, 1)),
     );
     const scatteringGlow = MathUtils.lerp(0.76, 1.26, MathUtils.clamp(environment.cloudScattering, 0, 1));
+    const sunLightingResponse = this.sunProfile.lightingResponse;
     this.renderer.toneMappingExposure = MathUtils.lerp(0.9, 1.42, atmosphereBrightnessT)
       * MathUtils.lerp(0.72, 1, Math.max(daylight, twilight * 0.9))
-      * (1 + twilight * 0.14 + fogStrength * 0.1);
+      * (1 + twilight * (0.14 + sunLightingResponse * 0.035) + fogStrength * 0.1);
     this.ambientLight.color.copy(environment.ambientColor)
       .lerp(new Color(0xddeaf0), daylight * MathUtils.lerp(0.42, 0.72, atmosphereBrightnessT))
       .lerp(atmosphereWarmColor, twilight * MathUtils.lerp(0.24, 0.38, atmosphereBrightnessT))
@@ -1991,6 +2004,7 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     this.sunLight.color.copy(environment.sunColor);
     this.sunLight.intensity = Math.max(0, environment.sunIntensity * solarVisibility
       * MathUtils.lerp(0.78, 1.04, daylight) * scatteringGlow
+      * (1 + twilight * sunLightingResponse * 0.08)
       * MathUtils.lerp(1, 0.72, Math.max(environment.fogIntensity * 0.42, environment.rainIntensity * 0.28)));
     const worldSize = this.terrain.worldSize || 4500;
     this.sunLight.position.copy(environment.sunDirection).multiplyScalar(worldSize * 0.62);
@@ -2034,6 +2048,7 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     const waterSunReflection = (twilight * 0.82 + daylight * 0.16)
       * waterWeatherAttenuation
       * solarVisibility
+      * (1 + twilight * sunLightingResponse * 0.16)
       * MathUtils.clamp(environment.sunIntensity / 1.7, 0.2, 1.35);
     const waterBaseColor = new Color(0x071d2a)
       .lerp(new Color(0x176176), daylight)

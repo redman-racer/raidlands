@@ -23,8 +23,14 @@ import {
   raidlandsCloudProfile,
   type RaidlandsCloudDetail,
 } from "./three-cloud-detail";
+import {
+  parseRaidlandsSunDetail,
+  raidlandsSunProfile,
+  type RaidlandsSunDetail,
+} from "./three-sun-detail";
 
 export type { RaidlandsCloudDetail } from "./three-cloud-detail";
+export type { RaidlandsSunDetail } from "./three-sun-detail";
 
 export type RaidlandsEnvironmentPreset = "terrain" | "editor";
 
@@ -35,6 +41,7 @@ type EnvironmentOptions = {
   exposure?: number;
   skyboxUrl?: string;
   cloudDetail?: RaidlandsCloudDetail;
+  sunDetail?: RaidlandsSunDetail;
   worldSize?: number;
 };
 
@@ -102,6 +109,7 @@ export function applyRaidlandsEnvironment(
 
   const preset = options.preset ?? "terrain";
   const cloudDetail = parseRaidlandsCloudDetail(options.cloudDetail, "low");
+  const sunDetail = parseRaidlandsSunDetail(options.sunDetail, "low");
   const worldSize = Math.max(100, Number(options.worldSize) || 4500);
   const skyTexture = createRaidlandsSkyTexture(preset);
   skyTexture.mapping = EquirectangularReflectionMapping;
@@ -119,7 +127,7 @@ export function applyRaidlandsEnvironment(
     (previousSkyDome.material as ShaderMaterial).dispose();
   }
 
-  const skyDome = createRaidlandsSkyDome(preset, cloudDetail, worldSize);
+  const skyDome = createRaidlandsSkyDome(preset, cloudDetail, sunDetail, worldSize);
   scene.add(skyDome);
   scene.userData[raidlandsSkyUserDataKey] = skyDome;
   scene.background = new Color(0x040812);
@@ -248,14 +256,17 @@ function finiteEnvironmentValue(value: unknown, fallback: number): number {
 function createRaidlandsSkyDome(
   preset: RaidlandsEnvironmentPreset,
   cloudDetail: RaidlandsCloudDetail,
+  sunDetail: RaidlandsSunDetail,
   worldSize: number,
 ): Mesh {
   const cloudProfile = raidlandsCloudProfile(cloudDetail);
+  const sunProfile = raidlandsSunProfile(sunDetail);
   const material = new ShaderMaterial({
     defines: {
       RAIDLANDS_CLOUD_DETAIL: cloudProfile.useVolumetricClouds ? (cloudDetail === "max" ? 2 : 1) : 0,
       RAIDLANDS_CLOUD_VIEW_SAMPLES: Math.max(1, cloudProfile.viewSamples),
       RAIDLANDS_CLOUD_LIGHT_SAMPLES: Math.max(1, cloudProfile.lightSamples),
+      RAIDLANDS_SUN_DETAIL: sunProfile.shaderLevel,
     },
     uniforms: {
       uZenithColor: { value: new Color(preset === "editor" ? 0x15253a : 0x78b6e6) },
@@ -477,6 +488,16 @@ function createRaidlandsSkyDome(
         float directionality = mix(0.72, 1.34, clamp(uAtmosphereDirectionality, 0.0, 1.0));
         float sunDisc = celestialDisc(direction, uSunDirection, 0.03, 0.000022) * uSunVisibility;
         float sunCore = celestialDisc(direction, uSunDirection, 0.0255, 0.000014) * uSunVisibility;
+#if RAIDLANDS_SUN_DETAIL > 0
+        float solarElevation = smoothstep(-0.065, 0.28, uSunDirection.y);
+        float opticalAirMass = 1.0 / max(0.12, uSunDirection.y + 0.18);
+        float aerosolExtinction = exp(-opticalAirMass * (0.035 + mie * 0.16 + uFogIntensity * 0.2));
+        float atmosphericVisibility = mix(0.48, 1.0, solarElevation) * mix(0.74, 1.0, aerosolExtinction);
+        float limbCoordinate = clamp((sunDot - cos(0.03)) / max(0.000001, 1.0 - cos(0.03)), 0.0, 1.0);
+        float limbDarkening = 0.64 + 0.36 * sqrt(limbCoordinate);
+        sunDisc *= atmosphericVisibility;
+        sunCore *= limbDarkening * atmosphericVisibility;
+#endif
         float sunOuter = max(sunDisc - sunCore, 0.0);
         float sunGlow = pow(sunDot, mix(9.0, 15.0, directionality * 0.5))
           * (0.16 + lowSun * mix(0.32, 0.58, mie)) * uSunVisibility;
@@ -497,6 +518,33 @@ function createRaidlandsSkyDome(
         skyColor += peachScatter * horizonScatter * (horizonNear * (0.2 + mie * 0.34) + horizonWide * 0.12);
         skyColor += vec3(0.92, 0.17, 0.1) * horizonScatter * horizonNear * mie * 0.18;
         skyColor += peachScatter * twilight * (horizonNear * 0.1 + horizonWide * 0.045) * clearAtmosphere;
+#if RAIDLANDS_SUN_DETAIL > 0
+        float aureoleNear = pow(sunDot, mix(74.0, 118.0, directionality * 0.5));
+        float aureoleWide = pow(sunDot, mix(4.5, 8.5, directionality * 0.5));
+        float weatherTransmission = mix(0.18, 1.0, clearAtmosphere);
+        vec3 aureoleColor = mix(uSunColor, orangeScatter, lowSun * 0.72);
+        skyColor += aureoleColor
+          * (aureoleNear * (0.18 + mie * 0.28) + aureoleWide * (0.014 + mie * 0.035))
+          * uSunVisibility * weatherTransmission;
+#endif
+#if RAIDLANDS_SUN_DETAIL > 1
+        float coronaInner = pow(sunDot, 210.0) * 0.25;
+        float coronaMiddle = pow(sunDot, 82.0) * 0.12;
+        float coronaOuter = pow(sunDot, 18.0) * 0.032;
+        float cameraOpticsVisibility = uSunVisibility * smoothstep(-0.03, 0.09, uSunDirection.y)
+          * mix(0.08, 1.0, clearAtmosphere);
+        vec3 opticalTangent = normalize(cross(normalize(uSunDirection), vec3(0.0, 1.0, 0.001)));
+        vec3 opticalBitangent = normalize(cross(normalize(uSunDirection), opticalTangent));
+        float opticalAngle = atan(dot(direction, opticalBitangent), dot(direction, opticalTangent));
+        float diffraction = pow(abs(cos(opticalAngle * 2.0)), 18.0) * pow(sunDot, 92.0) * 0.055;
+        float lensRadius = acos(clamp(sunDot, 0.0, 1.0));
+        float ghostA = 1.0 - smoothstep(0.002, 0.008, abs(lensRadius - 0.072));
+        float ghostB = 1.0 - smoothstep(0.002, 0.006, abs(lensRadius - 0.112));
+        vec3 cinematicGlow = mix(uSunColor, vec3(1.0, 0.72, 0.48), lowSun * 0.7);
+        skyColor += cinematicGlow * (coronaInner + coronaMiddle + coronaOuter + diffraction) * cameraOpticsVisibility;
+        skyColor += vec3(1.0, 0.54, 0.3) * ghostA * 0.014 * cameraOpticsVisibility;
+        skyColor += vec3(0.34, 0.58, 1.0) * ghostB * 0.008 * cameraOpticsVisibility;
+#endif
 
         vec2 cloudPosition = direction.xz / max(direction.y + 0.34, 0.38);
         float cloudSizeFraction = clamp((uCloudSize - 0.2) / 7.8, 0.0, 1.0);
@@ -593,7 +641,7 @@ function createRaidlandsSkyDome(
     depthTest: false,
     fog: false,
   });
-  material.customProgramCacheKey = () => `raidlands-sky-cloud-${cloudDetail}-v3`;
+  material.customProgramCacheKey = () => `raidlands-sky-cloud-${cloudDetail}-sun-${sunDetail}-v4`;
 
   const skyDome = new Mesh(new SphereGeometry(9000, 48, 24), material);
   skyDome.name = "raidlands-dynamic-sky-dome";

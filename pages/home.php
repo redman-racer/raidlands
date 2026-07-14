@@ -175,6 +175,7 @@ $home_is_linked = raidlands_has_linked_account();
             class="server-terrain-viewer home-map-frame home-map-terrain"
             data-server-map-viewer
             data-cloud-detail="max"
+            data-sun-detail="max"
             data-terrain-url="<?= e($home_server_terrain_url) ?>"
             data-texture-url="<?= e($home_server_texture_url) ?>"
             data-skybox-url="<?= e($home_server_skybox_url) ?>"
