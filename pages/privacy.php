@@ -6,7 +6,7 @@
     <h2>Data We May Collect</h2>
     <p>Raidlands may collect website usage events, connect button clicks, copied command events, Steam account details, Discord account details, support ticket details, and moderation records when you use those systems.</p>
     <h2>Connected Accounts</h2>
-    <p>Steam connection may store your Steam account ID, display name, avatar, and profile link. Discord connection may store your Discord user ID, username, avatar, server membership status, and when it was connected.</p>
+    <p>Steam connection may store your Steam account ID, display name, avatar, and profile link. Discord connection may store your Discord user ID, username, avatar, server membership, Raidlands-managed role state, synchronization history, and when it was connected. OAuth access tokens are used during connection and are not retained after the callback.</p>
     <h2>Analytics</h2>
     <p>The website may track basic site events such as join clicks, copied commands, Discord joins, account connection starts, and page views. When you are signed in with Steam, Raidlands may also store first-party browser diagnostics for loader and animation troubleshooting, including page path, viewport size, reduced-motion status, mobile performance mode, loader state, user agent, and timing/error signals. Do not enable third-party analytics until the provider is named here.</p>
     <h2>Support and Moderation</h2>

@@ -793,6 +793,18 @@ main,
     linear-gradient(180deg, rgba(45, 48, 48, .98), rgba(10, 10, 10, .98));
 }
 
+.account-menu { position: relative; }
+.account-menu-trigger { display:flex; align-items:center; gap:.55rem; color:inherit; text-decoration:none; font-weight:800; }
+.account-menu-trigger .steam-avatar { width:34px; height:34px; border-radius:50%; overflow:hidden; }
+.account-menu-panel { display:none; position:absolute; right:0; top:calc(100% + .5rem); min-width:180px; padding:.55rem; z-index:80; background:#101416; border:1px solid rgba(150,255,60,.35); box-shadow:0 16px 36px rgba(0,0,0,.48); }
+.account-menu:hover .account-menu-panel, .account-menu:focus-within .account-menu-panel { display:grid; }
+.account-menu-panel a, .account-menu-panel button { display:block; width:100%; padding:.65rem .75rem; color:#fff; background:none; border:0; text-align:left; text-decoration:none; font:inherit; cursor:pointer; }
+.account-menu-panel a:hover, .account-menu-panel button:hover { background:rgba(150,255,60,.1); }
+.discord-account-card { margin-top:1.5rem; display:flex; justify-content:space-between; gap:1.5rem; align-items:center; }
+.discord-account-avatar { width:72px; height:72px; border-radius:50%; object-fit:cover; float:left; margin:0 1rem .5rem 0; border:2px solid rgba(150,255,60,.55); }
+.btn.is-disabled { pointer-events:none; opacity:.5; }
+@media (max-width:900px) { .header-actions .account-menu { display:none; } .discord-account-card { display:block; } }
+
 .btn-steam {
   border-color: rgba(255, 209, 102, .45);
 }

@@ -54,11 +54,22 @@ over `.env` and stay ignored by Git.
 - `RAIDLANDS_SERVER_STATS_PROVIDER`, `RAIDLANDS_SERVER_STATUS_CACHE_SECONDS`, `RAIDLANDS_SERVER_STATUS_STALE_SECONDS`
 - `RAIDLANDS_SERVER_STATUS_SAMPLE_RETENTION_DAYS`, `RAIDLANDS_SERVER_STATUS_HOURLY_RETENTION_MONTHS`
 - `RAIDLANDS_WIPE_TIME`, `RAIDLANDS_WIPE_TIMEZONE`
-- `RAIDLANDS_AUTH_STEAM_URL`, `RAIDLANDS_AUTH_DISCORD_URL`
+- `RAIDLANDS_DISCORD_CLIENT_ID`, `RAIDLANDS_DISCORD_CLIENT_SECRET`, `RAIDLANDS_DISCORD_BOT_TOKEN`, `RAIDLANDS_DISCORD_REDIRECT_URI`
 
 Live server status is served by `api/server-status.php`. WebsiteVipBridge posts signed heartbeats to `/api/server/status-heartbeat.php`; the public endpoint uses the latest heartbeat, marks delayed data stale, and falls back to config values before the first heartbeat arrives. Recent player-safe samples and long-term hourly/daily rollups are exposed through `/api/server-status-history.php` for the `/server/` activity graph.
 
-Steam account linking uses native Steam OpenID only. Manual SteamID64 entry is intentionally disabled so users can only link accounts Steam has verified they own. Discord linking buttons remain ready for a future OAuth URL.
+Steam sign-in uses native Steam OpenID only. Manual SteamID64 entry is intentionally disabled. Discord linking starts only from a verified Steam session, uses Discord OAuth scopes `identify guilds.join`, and synchronizes the verified role plus configured Store/Groups role mappings.
+
+Discord setup:
+
+1. Create a Discord application and bot, then rotate any token that has been shared outside the live secret store.
+2. Register the exact `RAIDLANDS_DISCORD_REDIRECT_URI` in the Developer Portal.
+3. Add the bot to the Raidlands guild with Manage Roles and place its highest role above every website-managed role.
+4. Run `database/migrations/061_discord_identity_integration.sql`.
+5. Open Admin > Site Setup > Discord, enter the guild and verified-role IDs, add optional access-group mappings, verify readiness, then enable linking.
+6. Run `php tools/discord-role-sync.php 50` from cPanel cron every 15 minutes (or the interval configured in admin).
+
+Discord client secrets and bot tokens remain environment-only. Admin shows readiness but never exposes or stores those values.
 
 Steam avatars and profile links are only fetched when `RAIDLANDS_STEAM_API_KEY` is set in `.env`. Without that key, account and leaderboard pages render without Steam profile metadata.
 
@@ -101,7 +112,7 @@ The store uses MySQL as the source of truth, Stripe Checkout for cash purchases,
 29. Run `database/migrations/027_ai_feedback_triage.sql`.
 30. Run `database/migrations/028_ai_feedback_split_suggestions.sql`.
 31. Run `database/migrations/029_admin_todo_snapshots.sql`.
-32. Run any later numbered migrations in order through `database/migrations/051_server_map_heatmap.sql`.
+32. Run every later numbered migration in order through `database/migrations/061_discord_identity_integration.sql`.
 33. Run `database/seeds/001_store_products.sql`.
 34. Copy `.env.example` to `.env`.
 35. Fill in MySQL, Stripe, Steam API, OpenAI AI triage key if enabled, bridge secret, clan API limit values, and chat settings.

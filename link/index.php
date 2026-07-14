@@ -10,6 +10,9 @@ raidlands_store_boot();
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && (string) ($_GET['action'] ?? '') === 'steam') {
     try {
+        $return_path = strtolower(trim((string) ($_GET['return'] ?? ''), '/'));
+        $allowed_returns = ['', 'link', 'discord', 'profile', 'store', 'features', 'vote', 'rp-games', 'clans', 'support'];
+        $_SESSION['raidlands_steam_return'] = in_array($return_path, $allowed_returns, true) ? $return_path : 'link';
         header('Location: ' . raidlands_store_steam_openid_url());
         exit;
     } catch (Throwable $error) {
@@ -19,6 +22,8 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && (string) ($_GET['action'] ?? '') ===
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'GET' && raidlands_store_steam_openid_response_present()) {
+    $return_path = (string) ($_SESSION['raidlands_steam_return'] ?? 'link');
+    unset($_SESSION['raidlands_steam_return']);
     try {
         raidlands_store_steam_openid_verify();
         raidlands_store_flash('success', 'Steam account connected through Steam.');
@@ -26,7 +31,7 @@ if ($_SERVER['REQUEST_METHOD'] === 'GET' && raidlands_store_steam_openid_respons
         raidlands_store_flash('error', $error->getMessage());
     }
 
-    raidlands_store_redirect('link');
+    raidlands_store_redirect($return_path !== '' ? $return_path : 'link');
 }
 
 if ($_SERVER['REQUEST_METHOD'] === 'POST') {

@@ -99,10 +99,13 @@ function raidlands_has_linked_account(): bool
 
 function raidlands_account_url(): string
 {
-    return route_url(raidlands_has_linked_account() ? 'profile' : 'link');
+    global $page_id;
+    if (raidlands_has_linked_account()) return route_url('profile');
+    $return_path = trim((string) ($page_id ?? ''), '/');
+    return route_url('link') . ($return_path !== '' && $return_path !== 'link' ? '?return=' . rawurlencode($return_path) : '');
 }
 
-function raidlands_account_label(string $unlinked_label = 'Link Account', string $linked_label = 'View Account'): string
+function raidlands_account_label(string $unlinked_label = 'Sign in with Steam', string $linked_label = 'View Account'): string
 {
     return raidlands_has_linked_account() ? $linked_label : $unlinked_label;
 }
@@ -501,7 +504,7 @@ function render_auth_summary_card(string $provider): string
             ? 'Your Steam account is connected. Open your profile for stats, rewards, and active access.'
             : 'Your Raidlands account is ready. Discord connection can be added later.')
         : ($provider === 'steam'
-            ? 'Connect Steam for profiles, leaderboards, rewards, and store access.'
+            ? 'Sign in with Steam for profiles, leaderboards, rewards, and store access.'
             : 'Prepare for wipe alerts, support, and community roles.');
     $button_class = $provider === 'steam' ? 'btn-steam' : 'btn-discord';
     $title = $linked_player !== null

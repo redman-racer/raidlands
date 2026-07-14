@@ -351,10 +351,10 @@ function store_item_purchase_panel(array $product, ?array $player, string $csrf,
     if ($player === null || empty($player['steam_id64'])) {
         return '<div class="metal-panel store-item-purchase-panel" id="purchase-options">'
             . '<p class="section-kicker">Purchase options</p>'
-            . '<h2>Connect Steam first</h2>'
+            . '<h2>Sign in with Steam first</h2>'
             . '<p class="section-lede">Store access is attached to your SteamID64 so the game server can apply it correctly.</p>'
             . store_item_purchase_matrix_preview($product)
-            . '<a class="btn btn-primary" href="' . e(route_url('link')) . '">Connect Steam</a>'
+            . '<a class="btn btn-steam" href="' . e(raidlands_account_url()) . '">Sign in with Steam</a>'
             . '</div>';
     }
 
@@ -474,7 +474,7 @@ function store_item_render_perks(array $perks): string
   ?>
   <?= render_page_hero('store-item',
       '<a class="btn btn-primary" href="' . e(route_url('store')) . '">Back to Store</a>'
-      . '<a class="btn btn-secondary" href="' . e(raidlands_account_url()) . '">' . e(raidlands_account_label('Connect Steam', 'View Account')) . '</a>'
+      . '<a class="btn btn-steam" href="' . e(raidlands_account_url()) . '">' . e(raidlands_account_label('Sign in with Steam', 'View Account')) . '</a>'
   ) ?>
 
   <section class="section store-item-focus">

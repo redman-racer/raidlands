@@ -1,12 +1,15 @@
 <?php
 
 require_once $site_root . '/includes/store.php';
+require_once $site_root . '/includes/discord.php';
 
 $linked_player = raidlands_store_current_player();
 $link_flash = raidlands_store_flash();
 $link_csrf = raidlands_store_csrf_token();
 $database_ready = raidlands_db_is_configured() && raidlands_db() instanceof PDO;
-$steam_openid_url = route_url('link') . '?action=steam';
+$link_return_path = strtolower(trim((string) ($_GET['return'] ?? ''), '/'));
+$steam_openid_url = route_url('link') . '?action=steam' . ($link_return_path !== '' ? '&return=' . rawurlencode($link_return_path) : '');
+$linked_discord = $linked_player !== null ? raidlands_discord_identity_for_player((int) ($linked_player['id'] ?? 0)) : null;
 $linked_player_name = $linked_player !== null
     ? (string) ($linked_player['display_name'] ?: ($linked_player['steam_display_name'] ?? 'Raidlands Player'))
     : '';
@@ -56,6 +59,7 @@ $linked_player_profile_url = $linked_player !== null ? trim((string) ($linked_pl
           <div class="button-row">
             <a class="btn btn-primary" href="<?= e(route_url('profile')) ?>">View Account</a>
             <a class="btn btn-secondary" href="<?= e(route_url('store')) ?>">Open Store</a>
+            <a class="btn btn-discord" href="<?= e(route_url('discord')) ?>"><?= $linked_discord !== null ? 'Manage Discord' : 'Connect Discord' ?></a>
             <form method="post" action="<?= e(route_url('link')) ?>">
               <input type="hidden" name="csrf" value="<?= e($link_csrf) ?>">
               <input type="hidden" name="action" value="unlink_steam">
@@ -64,13 +68,13 @@ $linked_player_profile_url = $linked_player !== null ? trim((string) ($linked_pl
           </div>
         <?php else : ?>
           <div class="button-row">
-            <a class="btn btn-steam" href="<?= e($steam_openid_url) ?>">Continue with Steam</a>
+            <a class="btn btn-steam" href="<?= e($steam_openid_url) ?>">Sign in with Steam</a>
           </div>
           <div class="form-status warning">Steam sign-in is required so Raidlands can confirm account ownership.</div>
         <?php endif; ?>
 
         <?php if (!$database_ready) : ?>
-          <div class="form-status warning">Store opens soon. Connect Steam.</div>
+          <div class="form-status warning">Store opens soon. Sign in with Steam now so your account is ready.</div>
         <?php endif; ?>
       </div>
     </div>

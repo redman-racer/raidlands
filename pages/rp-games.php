@@ -139,7 +139,7 @@ $rp_game_tabs = [
 ];
 ?>
 <?= render_page_hero('rp-games',
-    '<a class="btn btn-primary" href="' . e(raidlands_account_url()) . '">' . e(raidlands_account_label('Connect Steam', 'View Account')) . '</a>'
+    '<a class="btn btn-steam" href="' . e(raidlands_account_url()) . '">' . e(raidlands_account_label('Sign in with Steam', 'View Account')) . '</a>'
     . '<a class="btn btn-secondary" href="' . e(route_url('vote')) . '">Vote Rewards</a>'
 ) ?>
 

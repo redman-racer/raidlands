@@ -9,6 +9,7 @@ require_once $site_root . '/includes/server-status.php';
 require_once $site_root . '/includes/stats.php';
 require_once $site_root . '/includes/clans.php';
 require_once $site_root . '/includes/airstrike-animations.php';
+require_once $site_root . '/includes/discord.php';
 
 raidlands_admin_handle_request();
 
@@ -34,7 +35,8 @@ $admin_weekdays = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Frid
 $admin_wipe_days = array_map('intval', $admin_site['wipe']['days'] ?? []);
 $admin_sections_all = [
     'identity' => ['label' => 'Identity', 'kicker' => 'Core', 'title' => 'Server Identity', 'summary' => 'Names, fallback status, map, region, and the numbers used when live status is unavailable.'],
-    'links' => ['label' => 'Links', 'kicker' => 'Launch', 'title' => 'Links and Integrations', 'summary' => 'Join buttons, Discord invites, live status settings, and future OAuth links.'],
+    'links' => ['label' => 'Links', 'kicker' => 'Launch', 'title' => 'Links and Integrations', 'summary' => 'Join buttons, Discord invites, and live status settings. Discord account behavior is managed in the Discord section.'],
+    'discord' => ['label' => 'Discord', 'kicker' => 'Identity', 'title' => 'Discord Connection', 'summary' => 'OAuth readiness, verified-player behavior, managed role mappings, linked players, and synchronization.'],
     'wipe' => ['label' => 'Wipe', 'kicker' => 'Schedule', 'title' => 'Wipe Settings', 'summary' => 'The wipe days and time used by countdowns and schedule text.'],
     'todo' => ['label' => 'TODO', 'kicker' => 'Priority', 'title' => 'Work Queue', 'summary' => 'Ranked next work from bug reports, pending suggestions, feature cards, and current vote signal.'],
     'features' => ['label' => 'Features', 'kicker' => 'Content', 'title' => 'Feature Lists', 'summary' => 'Public feature planning records, voting candidates, and suggestion review.'],
@@ -53,7 +55,7 @@ $admin_sections_all = [
     'animations' => ['label' => 'Animations', 'kicker' => 'Diagnostics', 'title' => 'Animation Diagnostics', 'summary' => 'Steam-linked browser diagnostics for loader, motion, and visual-effect startup issues.'],
 ];
 $admin_nav_groups = [
-    'site-setup' => ['label' => 'Site Setup', 'sections' => ['identity', 'links']],
+    'site-setup' => ['label' => 'Site Setup', 'sections' => ['identity', 'links', 'discord']],
     'content' => ['label' => 'Content', 'sections' => ['todo', 'features', 'pages', 'seo', 'feedback', 'chat']],
     'store-access' => ['label' => 'Store & Access', 'sections' => ['store', 'vote-rewards', 'rp-games', 'kits', 'groups', 'grants']],
     'server-ops' => ['label' => 'Server Ops', 'sections' => ['wipe', 'sync', 'airstrike-animations', 'animations']],
@@ -252,6 +254,7 @@ $admin_airstrike_animation_state = [
     'snapshots' => [],
     'summary' => [],
 ];
+$admin_discord_state = ['ready' => false, 'message' => '', 'settings' => [], 'readiness' => ['checks' => []], 'mappings' => [], 'identities' => [], 'events' => [], 'summary' => [], 'jobs' => []];
 
 try {
     $admin_store_ready = raidlands_db_is_configured() && raidlands_db() instanceof PDO;
@@ -261,6 +264,10 @@ try {
 
         $admin_permission_rows = raidlands_permissions_permission_rows();
         $admin_permission_options = raidlands_permissions_permission_names();
+    }
+
+    if ($active_section === 'discord') {
+        $admin_discord_state = raidlands_discord_admin_state();
     }
 
     if ($active_section === 'grants') {
@@ -1341,15 +1348,55 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                         <?= admin_field_head('Heartbeat stale seconds', 'How long the website waits before marking the latest server heartbeat delayed.') ?>
                         <input type="number" min="30" max="3600" name="site_config[serverStats][staleSeconds]" value="<?= e((string) ($admin_site['serverStats']['staleSeconds'] ?? 90)) ?>">
                       </label>
-                      <label class="admin-field">
-                        <?= admin_field_head('Steam OAuth URL', 'Legacy placeholder only. Native Steam sign-in now starts from /link/?action=steam.') ?>
-                        <input type="url" name="site_config[auth][steamUrl]" maxlength="240" placeholder="Leave blank unless a future custom Steam link needs it" value="<?= e((string) ($admin_site['auth']['steamUrl'] ?? '')) ?>">
-                      </label>
-                      <label class="admin-field">
-                        <?= admin_field_head('Discord OAuth URL', 'Future account-link button destination. Leave blank until the Discord login backend exists.') ?>
-                        <input type="url" name="site_config[auth][discordUrl]" maxlength="240" placeholder="Leave blank until Discord login exists" value="<?= e((string) ($admin_site['auth']['discordUrl'] ?? '')) ?>">
-                      </label>
+                      <div class="admin-alert success admin-span-all">Steam sign-in is handled natively at <code>/link/</code>. Configure Discord OAuth, guild behavior, and role mappings in Site Setup → Discord.</div>
                     </div>
+                  </section>
+                <?php endif; ?>
+
+                <?php if ($active_section === 'discord') : ?>
+                  <?php
+                    $discord_settings = (array) ($admin_discord_state['settings'] ?? []);
+                    $discord_readiness = (array) ($admin_discord_state['readiness'] ?? []);
+                    $discord_checks = (array) ($discord_readiness['checks'] ?? []);
+                    $discord_mappings = array_values((array) ($admin_discord_state['mappings'] ?? []));
+                    while (count($discord_mappings) < 8) $discord_mappings[] = ['oxide_group'=>'','discord_role_id'=>'','label'=>'','is_enabled'=>1,'remove_when_inactive'=>1,'sort_order'=>100];
+                    $discord_can_manage = raidlands_admin_can('admin.discord.manage');
+                  ?>
+                  <section class="admin-section">
+                    <?php if (empty($admin_discord_state['ready'])) : ?>
+                      <div class="admin-alert warning"><?= e((string) ($admin_discord_state['message'] ?? 'Discord integration tables are not ready.')) ?></div>
+                    <?php else : ?>
+                      <div class="admin-grid three">
+                        <article class="admin-stat-card"><p class="section-kicker">OAuth</p><h3><?= !empty($discord_readiness['ready']) ? 'Ready' : 'Needs setup' ?></h3><p>Callback: <code><?= e((string) ($discord_readiness['callback_url'] ?? '')) ?></code></p></article>
+                        <article class="admin-stat-card"><p class="section-kicker">Linked players</p><h3><?= e((string) ($admin_discord_state['summary']['total'] ?? 0)) ?></h3><p><?= e((string) ($admin_discord_state['summary']['synced'] ?? 0)) ?> synchronized</p></article>
+                        <article class="admin-stat-card"><p class="section-kicker">Queue</p><h3><?= e((string) ($admin_discord_state['jobs']['pending'] ?? 0)) ?> pending</h3><p><?= e((string) ($admin_discord_state['jobs']['failed'] ?? 0)) ?> failed</p></article>
+                      </div>
+                      <div class="admin-alert <?= in_array(false, $discord_checks, true) ? 'warning' : 'success' ?>">Secrets remain environment-only. Client ID: <?= !empty($discord_checks['client_id'])?'set':'missing' ?> · Client secret: <?= !empty($discord_checks['client_secret'])?'set':'missing' ?> · Bot token: <?= !empty($discord_checks['bot_token'])?'set':'missing' ?> · Guild: <?= !empty($discord_checks['guild_id'])?'set':'missing' ?> · Verified role: <?= !empty($discord_checks['verified_role_id'])?'set':'missing' ?>.</div>
+                      <?php $discord_diagnostics = (array)($admin_discord_state['diagnostics'] ?? []); ?>
+                      <div class="admin-alert <?= !empty($discord_diagnostics['ok']) ? 'success' : 'warning' ?>"><?= e((string)($discord_diagnostics['message'] ?? 'Live Discord diagnostics have not run.')) ?><?php if(!empty($discord_diagnostics['bot_name'])):?> Bot: <strong><?= e((string)$discord_diagnostics['bot_name']) ?></strong> · Guild: <strong><?= e((string)$discord_diagnostics['guild_name']) ?></strong>.<?php endif;?></div>
+
+                      <div class="admin-workbench-heading"><div><p class="section-kicker">Behavior</p><h2>Connection settings</h2><p>Safe identifiers and behavior live in the database. Rotate credentials in the live environment, never here.</p></div></div>
+                      <div class="admin-grid two">
+                        <label class="admin-check admin-check-field"><input type="checkbox" name="discord_settings[enabled]" value="1" <?= ($discord_settings['enabled']??'0')==='1'?'checked':'' ?> <?= !$discord_can_manage?'disabled':'' ?>><?= admin_check_copy('Enable Discord linking','Players can start OAuth only when every readiness check also passes.') ?></label>
+                        <label class="admin-field"><?= admin_field_head('Guild ID','Numeric Raidlands Discord guild ID.') ?><input type="text" name="discord_settings[guild_id]" pattern="[0-9]{17,20}" value="<?= e((string)($discord_settings['guild_id']??'')) ?>" <?= !$discord_can_manage?'disabled':'' ?>></label>
+                        <label class="admin-field"><?= admin_field_head('Verified-player role ID','Base role assigned to every verified Steam and Discord association.') ?><input type="text" name="discord_settings[verified_role_id]" pattern="[0-9]{17,20}" value="<?= e((string)($discord_settings['verified_role_id']??'')) ?>" <?= !$discord_can_manage?'disabled':'' ?>></label>
+                        <label class="admin-field"><?= admin_field_head('Player button label','Primary action shown after Steam sign-in.') ?><input type="text" name="discord_settings[connection_label]" maxlength="120" value="<?= e((string)($discord_settings['connection_label']??'Connect Discord')) ?>" <?= !$discord_can_manage?'disabled':'' ?>></label>
+                        <label class="admin-field admin-span-all"><?= admin_field_head('Player guidance','Explains why Discord authorization is requested.') ?><textarea name="discord_settings[connection_guidance]" rows="3" maxlength="1000" <?= !$discord_can_manage?'disabled':'' ?>><?= e((string)($discord_settings['connection_guidance']??'')) ?></textarea></label>
+                        <?php foreach ([['auto_join_guild','Automatically join guild'],['assign_verified_role','Assign verified role'],['remove_roles_on_unlink','Remove managed roles on unlink']] as [$key,$label]) : ?><label class="admin-check admin-check-field"><input type="checkbox" name="discord_settings[<?= e($key) ?>]" value="1" <?= ($discord_settings[$key]??'0')==='1'?'checked':'' ?> <?= !$discord_can_manage?'disabled':'' ?>><?= admin_check_copy($label,'Applies only to roles and membership managed by this website.') ?></label><?php endforeach; ?>
+                        <label class="admin-field"><?= admin_field_head('Sync interval minutes','Recommended cPanel cron frequency.') ?><input type="number" min="5" max="1440" name="discord_settings[sync_interval_minutes]" value="<?= e((string)($discord_settings['sync_interval_minutes']??15)) ?>" <?= !$discord_can_manage?'disabled':'' ?>></label>
+                        <label class="admin-field"><?= admin_field_head('Retry limit','Failed queue attempts before staff intervention.') ?><input type="number" min="1" max="20" name="discord_settings[retry_limit]" value="<?= e((string)($discord_settings['retry_limit']??5)) ?>" <?= !$discord_can_manage?'disabled':'' ?>></label>
+                        <label class="admin-field"><?= admin_field_head('Failure threshold','Diagnostic threshold for repeated failures.') ?><input type="number" min="1" max="100" name="discord_settings[failure_notification_threshold]" value="<?= e((string)($discord_settings['failure_notification_threshold']??3)) ?>" <?= !$discord_can_manage?'disabled':'' ?>></label>
+                      </div>
+
+                      <div class="admin-workbench-heading"><div><p class="section-kicker">Role mappings</p><h2>Website access → Discord roles</h2><p>The verified role is separate. These rows extend Discord roles from active Store/Groups access.</p></div></div>
+                      <div class="store-table-wrap"><table class="store-table"><thead><tr><th>Access group</th><th>Discord role ID</th><th>Label</th><th>Order</th><th>Enabled</th><th>Remove</th></tr></thead><tbody><?php foreach($discord_mappings as $index=>$mapping):?><tr><td><input type="text" name="discord_mappings[<?= $index ?>][oxide_group]" value="<?= e((string)$mapping['oxide_group']) ?>" <?= !$discord_can_manage?'disabled':'' ?>></td><td><input type="text" pattern="[0-9]{17,20}" name="discord_mappings[<?= $index ?>][discord_role_id]" value="<?= e((string)$mapping['discord_role_id']) ?>" <?= !$discord_can_manage?'disabled':'' ?>></td><td><input type="text" name="discord_mappings[<?= $index ?>][label]" value="<?= e((string)$mapping['label']) ?>" <?= !$discord_can_manage?'disabled':'' ?>></td><td><input type="number" name="discord_mappings[<?= $index ?>][sort_order]" value="<?= e((string)$mapping['sort_order']) ?>" <?= !$discord_can_manage?'disabled':'' ?>></td><td><input type="checkbox" name="discord_mappings[<?= $index ?>][is_enabled]" value="1" <?= !empty($mapping['is_enabled'])?'checked':'' ?> <?= !$discord_can_manage?'disabled':'' ?>></td><td><input type="checkbox" name="discord_mappings[<?= $index ?>][remove_when_inactive]" value="1" <?= !empty($mapping['remove_when_inactive'])?'checked':'' ?> <?= !$discord_can_manage?'disabled':'' ?>></td></tr><?php endforeach;?></tbody></table></div>
+
+                      <div class="admin-workbench-heading"><div><p class="section-kicker">Players</p><h2>Linked identity directory</h2><p>Inspect expected state, resynchronize, or force unlink without changing unrelated Discord roles.</p></div><div class="button-row"><?php if($discord_can_manage):?><button class="btn btn-secondary" type="submit" name="discord_action" value="bulk_dry_run">Dry Run (25)</button><button class="btn btn-primary" type="submit" name="discord_action" value="bulk_queue" onclick="return confirm('Queue up to 25 linked players for Discord reconciliation?')">Queue Bulk Sync</button><?php endif;?></div></div>
+                      <div class="store-table-wrap"><table class="store-table"><thead><tr><th>Steam</th><th>Discord</th><th>Status</th><th>Last sync</th><th>Error</th><th>Actions</th></tr></thead><tbody><?php foreach((array)$admin_discord_state['identities'] as $identity):?><tr><td><?= e((string)($identity['display_name']?:$identity['steam_id64'])) ?><br><code><?= e((string)$identity['steam_id64']) ?></code></td><td><?= e((string)($identity['global_name']?:$identity['username'])) ?><br><code><?= e((string)$identity['discord_user_id']) ?></code></td><td><span class="status-pill <?= e((string)$identity['status']) ?>"><?= e((string)$identity['status']) ?></span></td><td><?= e((string)($identity['last_synced_at']?:'Never')) ?></td><td><?= e((string)$identity['last_error']) ?></td><td><?php if($discord_can_manage&&$identity['status']!=='unlinked'):?><button class="btn btn-secondary" type="submit" name="discord_action" value="resync:<?= e((string)$identity['player_id']) ?>">Resync</button><button class="btn btn-ghost" type="submit" name="discord_action" value="unlink:<?= e((string)$identity['player_id']) ?>" onclick="return confirm('Force unlink this Discord identity and remove managed roles?')">Unlink</button><?php endif;?></td></tr><?php endforeach;?></tbody></table></div>
+
+                      <div class="admin-workbench-heading"><div><p class="section-kicker">Audit</p><h2>Recent connection events</h2></div></div>
+                      <div class="store-table-wrap"><table class="store-table"><thead><tr><th>Time</th><th>Event</th><th>Status</th><th>Actor</th><th>Discord ID</th></tr></thead><tbody><?php foreach((array)$admin_discord_state['events'] as $event):?><tr><td><?= e((string)$event['created_at']) ?></td><td><?= e((string)$event['event_type']) ?></td><td><?= e((string)$event['status']) ?></td><td><?= e((string)$event['actor']) ?></td><td><code><?= e((string)$event['discord_user_id']) ?></code></td></tr><?php endforeach;?></tbody></table></div>
+                    <?php endif; ?>
                   </section>
                 <?php endif; ?>
 

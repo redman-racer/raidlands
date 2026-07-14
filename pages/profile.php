@@ -2,6 +2,7 @@
 
 require_once $site_root . '/includes/store.php';
 require_once $site_root . '/includes/stats.php';
+require_once $site_root . '/includes/discord.php';
 
 $profile_player = raidlands_store_current_player();
 $profile_entitlements = [];
@@ -12,8 +13,10 @@ $profile_rp_requests = [];
 $profile_rp_subscriptions = [];
 $profile_cash_subscriptions = [];
 $profile_flash = raidlands_store_flash();
+$profile_discord = null;
 
 if ($profile_player !== null && !empty($profile_player['id'])) {
+    $profile_discord = raidlands_discord_identity_for_player((int) $profile_player['id']);
     $profile_entitlements = raidlands_store_entitlements_for_player((int) $profile_player['id']);
     $state = raidlands_store_active_groups_for_steam((string) $profile_player['steam_id64']);
     $profile_active_groups = $state['groups'];
@@ -40,7 +43,7 @@ $profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_
 <?= render_page_hero('profile',
     '<a class="btn btn-primary" href="' . e(route_url('store')) . '">Open Store</a>'
     . '<a class="btn btn-secondary" href="' . e(route_url('clans')) . '">Manage Clan</a>'
-    . '<a class="btn btn-secondary" href="' . e(raidlands_account_url()) . '">' . e(raidlands_account_label('Connect Steam', 'Account')) . '</a>'
+    . '<a class="btn btn-steam" href="' . e(raidlands_account_url()) . '">' . e(raidlands_account_label('Sign in with Steam', 'Account')) . '</a>'
 ) ?>
 
 <section class="section">
@@ -52,10 +55,10 @@ $profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_
     <?php if ($profile_player === null) : ?>
       <div class="metal-panel">
         <p class="section-kicker">Profile locked</p>
-        <h2>Connect Steam to view store access</h2>
+        <h2>Sign in with Steam to view your account</h2>
         <p class="section-lede">Your profile uses your Steam account so purchases, refunds, subscriptions, and in-game access all point at the same Rust player.</p>
         <div class="button-row">
-          <a class="btn btn-primary" href="<?= e(route_url('link')) ?>">Connect Steam</a>
+          <a class="btn btn-steam" href="<?= e(route_url('link')) ?>">Sign in with Steam</a>
           <a class="btn btn-secondary" href="<?= e(route_url('store')) ?>">Preview Store</a>
         </div>
       </div>
@@ -76,6 +79,7 @@ $profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_
             <?php endif; ?>
           </div>
           <div class="tag-row">
+            <span class="tag"><?= $profile_discord !== null ? 'Discord connected' : 'Discord not connected' ?></span>
             <?php if ($profile_active_groups === []) : ?>
               <span class="tag">No active store access yet</span>
             <?php else : ?>
@@ -84,6 +88,7 @@ $profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_
               <?php endforeach; ?>
             <?php endif; ?>
           </div>
+          <div class="button-row"><a class="btn btn-discord" href="<?= e(route_url('discord')) ?>"><?= $profile_discord !== null ? 'Manage Discord' : 'Connect Discord' ?></a></div>
         </div>
 
         <div class="metal-panel">

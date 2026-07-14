@@ -7,7 +7,7 @@ $vote_claims = (array) ($vote_state['claims'] ?? []);
 $vote_balance = is_array($vote_state['balance'] ?? null) ? $vote_state['balance'] : null;
 ?>
 <?= render_page_hero('vote',
-    '<a class="btn btn-primary" href="' . e(raidlands_account_url()) . '">' . e(raidlands_account_label('Connect Steam', 'View Account')) . '</a>'
+    '<a class="btn btn-steam" href="' . e(raidlands_account_url()) . '">' . e(raidlands_account_label('Sign in with Steam', 'View Account')) . '</a>'
     . '<a class="btn btn-secondary" href="' . e(route_url('rp-games')) . '">Open RP Games</a>'
 ) ?>
 
@@ -73,7 +73,7 @@ $vote_balance = is_array($vote_state['balance'] ?? null) ? $vote_state['balance'
                 <a class="btn btn-secondary" href="<?= e($vote_url) ?>" target="_blank" rel="noopener noreferrer">Open Vote Site</a>
               <?php endif; ?>
               <?php if ($vote_player === null || empty($vote_player['id'])) : ?>
-                <a class="btn btn-primary" href="<?= e(route_url('link')) ?>">Link Steam</a>
+                <a class="btn btn-steam" href="<?= e(route_url('link')) ?>">Sign in with Steam</a>
               <?php else : ?>
                 <form method="post" action="<?= e(route_url('vote')) ?>">
                   <input type="hidden" name="csrf" value="<?= e($vote_csrf) ?>">

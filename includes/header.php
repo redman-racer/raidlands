@@ -280,7 +280,7 @@ $animation_diagnostics_json = json_encode($client_site_config['animationDiagnost
 
                   if ($id === 'link') {
                       $nav_path = $linked_player !== null ? 'profile' : 'link';
-                      $nav_label = $linked_player !== null ? 'Account' : 'Link Account';
+                      $nav_label = $linked_player !== null ? 'Account' : 'Sign in with Steam';
                       $nav_active = in_array($page_id, ['link', 'profile'], true);
                   }
                 ?>
@@ -288,6 +288,21 @@ $animation_diagnostics_json = json_encode($client_site_config['animationDiagnost
               <?php endforeach; ?>
             </nav>
             <div class="header-actions">
+              <?php if ($linked_player !== null) : ?>
+                <div class="account-menu">
+                  <a class="account-menu-trigger" href="<?= e(route_url('profile')) ?>">
+                    <?php if (trim((string) ($linked_player['steam_avatar_url'] ?? '')) !== '') : ?><img class="steam-avatar steam-avatar-sm" src="<?= e((string) $linked_player['steam_avatar_url']) ?>" alt="" referrerpolicy="no-referrer"><?php endif; ?>
+                    <span><?= e(trim((string) ($linked_player['display_name'] ?? '')) ?: 'Account') ?></span>
+                  </a>
+                  <div class="account-menu-panel">
+                    <a href="<?= e(route_url('profile')) ?>">Profile</a>
+                    <a href="<?= e(route_url('discord')) ?>">Discord</a>
+                    <form method="post" action="<?= e(route_url('link')) ?>"><input type="hidden" name="csrf" value="<?= e(raidlands_store_csrf_token()) ?>"><input type="hidden" name="action" value="unlink_steam"><button type="submit">Sign out</button></form>
+                  </div>
+                </div>
+              <?php else : ?>
+                <a class="btn btn-steam" href="<?= e(raidlands_account_url()) ?>">Sign in with Steam</a>
+              <?php endif; ?>
               <a class="btn btn-primary" href="<?= e($site_config['steamConnectUrl']) ?>" data-track="join_server_clicked">
                 Join Server
                 <span class="btn-icon" aria-hidden="true"><?= action_icon('arrow') ?></span>

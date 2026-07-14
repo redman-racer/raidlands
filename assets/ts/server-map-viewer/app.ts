@@ -3172,7 +3172,9 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
   }
 
   if (key.includes("apartment") || key.includes("apartments")) {
-    createApartmentComplexMonumentPrimitive(group, size);
+    // Apartment complexes occupy a full city block in-world; give the map proxy
+    // enough footprint to read at the same zoom as the other large monuments.
+    createApartmentComplexMonumentPrimitive(group, size * 1.42);
     return addTitle();
   }
 
@@ -3191,6 +3193,11 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
     addCylinder(group, size * 0.09, size * 0.92, 0x9a9a90, -size * 0.24, size * 0.55, 0);
     addCylinder(group, size * 0.09, size * 0.72, 0x9a9a90, 0, size * 0.45, 0);
     addCylinder(group, size * 0.09, size * 0.82, 0x9a9a90, size * 0.24, size * 0.5, 0);
+    return addTitle();
+  }
+
+  if (key.includes("substation") || key.includes("sub_station")) {
+    createSubstationMonumentPrimitive(group, size);
     return addTitle();
   }
 
@@ -3228,6 +3235,47 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
   addBox(group, size * 0.68, size * 0.24, size * 0.5, 0x6a705e, 0, size * 0.12, 0);
   addCylinder(group, size * 0.08, size * 0.46, 0x8b7044, size * 0.28, size * 0.23, -size * 0.12);
   return addTitle();
+}
+
+function createSubstationMonumentPrimitive(group: Group, size: number): void {
+  const rust = 0x784535;
+  const darkRust = 0x4a3029;
+  const steel = 0x68716d;
+  const corrugated = 0x65706d;
+  const concrete = 0x9b9788;
+  const insulator = 0xc8d0c6;
+
+  // Broken concrete yard and low corrugated perimeter fence.
+  addBox(group, size * 1.2, size * 0.035, size * 0.82, concrete, 0, size * 0.018, 0);
+  addBox(group, size * 1.46, size * 0.18, size * 0.035, rust, 0, size * 0.09, -size * 0.5);
+  addBox(group, size * 1.46, size * 0.18, size * 0.035, rust, 0, size * 0.09, size * 0.5);
+  addBox(group, size * 0.035, size * 0.18, size * 0.9, rust, -size * 0.72, size * 0.09, 0);
+  addBox(group, size * 0.035, size * 0.18, size * 0.9, rust, size * 0.72, size * 0.09, 0);
+
+  // Transformer banks: horizontal weathered tanks on concrete feet.
+  [-0.31, 0.02, 0.35].forEach((x, index) => {
+    addBox(group, size * 0.2, size * 0.08, size * 0.18, concrete, size * x, size * 0.08, size * 0.18);
+    const tank = addCylinder(group, size * 0.13, size * 0.38, index === 1 ? rust : corrugated, size * x, size * 0.31, size * 0.18);
+    tank.rotation.z = Math.PI / 2;
+    addCylinder(group, size * 0.035, size * 0.08, steel, size * (x - 0.12), size * 0.31, size * 0.18);
+    addCylinder(group, size * 0.035, size * 0.08, steel, size * (x + 0.12), size * 0.31, size * 0.18);
+  });
+
+  // Tall busbar gantry with three pale insulators and a suspended crossbar.
+  [-0.48, 0.48].forEach((x) => {
+    addBox(group, size * 0.045, size * 0.95, size * 0.045, darkRust, size * x, size * 0.5, -size * 0.2);
+    addBox(group, size * 0.07, size * 0.06, size * 0.07, concrete, size * x, size * 0.045, -size * 0.2);
+  });
+  addBox(group, size * 1.02, size * 0.045, size * 0.045, rust, 0, size * 0.92, -size * 0.2);
+  [-0.3, 0, 0.3].forEach((x) => {
+    addCylinder(group, size * 0.035, size * 0.2, insulator, size * x, size * 0.81, -size * 0.2);
+    addCylinder(group, size * 0.05, size * 0.025, steel, size * x, size * 0.7, -size * 0.2);
+  });
+
+  // Corrugated control hut and a couple of smaller switchgear cabinets.
+  addBox(group, size * 0.58, size * 0.34, size * 0.4, corrugated, -size * 0.35, size * 0.2, size * 0.3);
+  addBox(group, size * 0.62, size * 0.045, size * 0.44, rust, -size * 0.35, size * 0.4, size * 0.3);
+  [-0.08, 0.18].forEach((x) => addBox(group, size * 0.13, size * 0.25, size * 0.18, steel, size * x, size * 0.14, -size * 0.28));
 }
 
 function createDomeMonumentPrimitive(group: Group, size: number): void {

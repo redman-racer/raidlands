@@ -1810,7 +1810,6 @@ function raidlands_store_refresh_reported_rp_balance(int $player_id): bool
         if ($owns_transaction) {
             $pdo->commit();
         }
-
         return $synced;
     } catch (Throwable $error) {
         if ($pdo instanceof PDO && $owns_transaction && $pdo->inTransaction()) {
@@ -2345,7 +2344,6 @@ function raidlands_store_record_rp_purchase_result(array $payload): array
         if ($owns_transaction) {
             $pdo->commit();
         }
-
         return ['ok' => true, 'request_id' => $token, 'status' => $status];
     } catch (Throwable $error) {
         if ($owns_transaction) {
@@ -3682,6 +3680,9 @@ function raidlands_store_grant_entitlement(
         if ($owns_transaction) {
             $pdo->commit();
         }
+        if (function_exists('raidlands_discord_queue_player')) {
+            raidlands_discord_queue_player($player_id, 'entitlement_granted');
+        }
     } catch (Throwable $error) {
         if ($owns_transaction) {
             $pdo->rollBack();
@@ -3692,6 +3693,10 @@ function raidlands_store_grant_entitlement(
 
 function raidlands_store_revoke_entitlements(string $source_type, string $source_id): void
 {
+    $player_ids = raidlands_db_fetch_all(
+        'SELECT DISTINCT player_id FROM entitlements WHERE source_type = :source_type AND source_id = :source_id AND status IN ("pending", "active")',
+        ['source_type' => $source_type, 'source_id' => $source_id]
+    );
     raidlands_db_execute(
         "UPDATE entitlements
          SET status = 'revoked', changed_at = NOW(), updated_at = NOW()
@@ -3701,6 +3706,9 @@ function raidlands_store_revoke_entitlements(string $source_type, string $source
             'source_id' => $source_id,
         ]
     );
+    if (function_exists('raidlands_discord_queue_player')) {
+        foreach ($player_ids as $row) raidlands_discord_queue_player((int) $row['player_id'], 'entitlement_revoked');
+    }
 }
 
 function raidlands_store_expire_stale_player_group_assignments(): void
@@ -3902,6 +3910,8 @@ function raidlands_store_admin_revoke_manual_entitlement(int $entitlement_id, st
         ['id' => $entitlement_id]
     );
 
+    if (function_exists('raidlands_discord_queue_player')) raidlands_discord_queue_player((int) $row['player_id'], 'manual_entitlement_revoked');
+
     return $row;
 }
 
@@ -3965,6 +3975,8 @@ function raidlands_store_admin_grant_direct_groups(
         ]);
     }
 
+    if (function_exists('raidlands_discord_queue_player')) raidlands_discord_queue_player($player_id, 'direct_group_granted');
+
     return [
         'player' => $player,
         'groups' => $groups,
@@ -4024,6 +4036,8 @@ function raidlands_store_admin_revoke_direct_group(
             'revoked_by_steam_id64' => $actor_steam_id64,
         ]
     );
+
+    if (function_exists('raidlands_discord_queue_player')) raidlands_discord_queue_player((int) $row['player_id'], 'direct_group_revoked');
 
     return $row;
 }

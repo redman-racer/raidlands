@@ -555,7 +555,7 @@ function raidlands_rewards_vote_eligibility(array $site, ?array $player): array
     if (!raidlands_rewards_player_ready($player)) {
         return [
             'can_claim' => false,
-            'label' => 'Link Steam',
+            'label' => 'Sign in with Steam',
             'next_available_at' => '',
             'last_claim' => null,
         ];

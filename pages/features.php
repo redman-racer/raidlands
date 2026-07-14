@@ -218,10 +218,10 @@
       <div class="feature-vote-meta">
         <div class="tag-row">
           <span class="tag"><span class="tag-label">Current window</span><span class="tag-value"><?= e((string) ($feature_window['label'] ?? 'Current wipe')) ?></span></span>
-          <span class="tag"><span class="tag-label">Votes left</span><span class="tag-value"><?= $feature_identity !== null ? e((string) $feature_votes_remaining) : 'Link Steam' ?></span></span>
+          <span class="tag"><span class="tag-label">Votes left</span><span class="tag-value"><?= $feature_identity !== null ? e((string) $feature_votes_remaining) : 'Sign in' ?></span></span>
         </div>
         <?php if ($feature_identity === null) : ?>
-          <a class="btn btn-primary" href="<?= e(route_url('link')) ?>">Link Steam to Vote</a>
+          <a class="btn btn-steam" href="<?= e(route_url('link')) ?>">Sign in with Steam to Vote</a>
         <?php endif; ?>
       </div>
 
@@ -252,7 +252,7 @@
                 <input type="hidden" name="feature_id" value="<?= e((string) $feature_id) ?>">
                 <?= $feature_filter_hidden_inputs($feature_filters) ?>
                 <button class="btn <?= $has_vote ? 'btn-secondary' : 'btn-primary' ?>" type="submit" name="action" value="<?= $has_vote ? 'unvote_feature' : 'vote_feature' ?>" <?= $can_vote ? '' : 'disabled' ?>>
-                  <?= $has_vote ? 'Remove Vote' : ($feature_identity === null ? 'Link Steam First' : ($feature_votes_remaining > 0 ? 'Vote' : 'Votes Used')) ?>
+                  <?= $has_vote ? 'Remove Vote' : ($feature_identity === null ? 'Sign In First' : ($feature_votes_remaining > 0 ? 'Vote' : 'Votes Used')) ?>
                 </button>
               </form>
             </article>
@@ -271,7 +271,7 @@
 
         <?php if ($feature_identity === null) : ?>
           <div class="form-status warning">Link your Steam account before submitting a feature suggestion.</div>
-          <a class="btn btn-primary" href="<?= e(route_url('link')) ?>">Link Steam</a>
+          <a class="btn btn-steam" href="<?= e(route_url('link')) ?>">Sign in with Steam</a>
         <?php else : ?>
           <form class="feedback-form" method="post" action="<?= e($feature_post_action) ?>#feature-voting">
             <input type="hidden" name="action" value="submit_feature_suggestion">

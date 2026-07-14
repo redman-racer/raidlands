@@ -2,6 +2,7 @@
 
 require dirname(__DIR__) . '/includes/bootstrap.php';
 require_once $site_root . '/includes/store.php';
+require_once $site_root . '/includes/discord.php';
 
 $payload = (string) file_get_contents('php://input');
 $signature = (string) ($_SERVER['HTTP_STRIPE_SIGNATURE'] ?? '');

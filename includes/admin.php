@@ -9,6 +9,7 @@ require_once __DIR__ . '/permissions.php';
 require_once __DIR__ . '/rewards.php';
 require_once __DIR__ . '/animation-diagnostics.php';
 require_once __DIR__ . '/chat.php';
+require_once __DIR__ . '/discord.php';
 
 function raidlands_admin_boot(): void
 {
@@ -97,6 +98,42 @@ function raidlands_admin_handle_request(): void
                     raidlands_admin_set_flash('warning', 'Store products saved, but some Stripe catalog rows need attention. ' . $stripe_summary . $error_suffix);
                 } else {
                     raidlands_admin_set_flash('success', 'Store products saved. ' . $stripe_summary);
+                }
+            } elseif ($section === 'discord') {
+                $admin_user = raidlands_admin_current_user();
+                $actor = (string) ($admin_user['steam_id64'] ?? 'admin');
+                $discord_action = (string) ($_POST['discord_action'] ?? 'save');
+                if (str_starts_with($discord_action, 'resync:')) {
+                    $player_id = (int) substr($discord_action, 7);
+                    $result = raidlands_discord_reconcile_player($player_id, 'admin');
+                    raidlands_admin_audit('discord_resync', 'player', (string) $player_id, $result);
+                    raidlands_admin_set_flash('success', 'Discord roles synchronized for the selected player.');
+                } elseif (str_starts_with($discord_action, 'unlink:')) {
+                    $player_id = (int) substr($discord_action, 7);
+                    raidlands_discord_unlink($player_id, $actor);
+                    raidlands_admin_audit('discord_force_unlink', 'player', (string) $player_id);
+                    raidlands_admin_set_flash('success', 'Discord identity unlinked and managed roles removed.');
+                } elseif ($discord_action === 'bulk_dry_run') {
+                    $rows = raidlands_db_fetch_all('SELECT player_id FROM discord_identities WHERE status <> "unlinked" ORDER BY player_id LIMIT 25');
+                    $changed = 0;
+                    foreach ($rows as $row) {
+                        $preview = raidlands_discord_reconcile_player((int) $row['player_id'], 'admin_dry_run', true);
+                        if ($preview['add'] !== [] || $preview['remove'] !== []) $changed++;
+                    }
+                    raidlands_admin_set_flash('success', 'Dry run checked ' . count($rows) . ' linked players; ' . $changed . ' need role changes.');
+                } elseif ($discord_action === 'bulk_queue') {
+                    $rows = raidlands_db_fetch_all('SELECT player_id FROM discord_identities WHERE status <> "unlinked" ORDER BY player_id LIMIT 25');
+                    foreach ($rows as $row) raidlands_discord_queue_player((int) $row['player_id'], 'admin_bulk');
+                    raidlands_admin_audit('discord_bulk_queue', 'discord_integration', '', ['players' => count($rows)]);
+                    raidlands_admin_set_flash('success', count($rows) . ' linked players queued for reconciliation.');
+                } else {
+                    $before = ['settings' => raidlands_discord_settings(), 'mappings' => raidlands_discord_role_mappings(false)];
+                    raidlands_discord_admin_save($_POST, $actor);
+                    raidlands_admin_audit('discord_configuration_updated', 'discord_integration', '', [
+                        'before' => $before,
+                        'after' => ['settings' => raidlands_discord_settings(true), 'mappings' => raidlands_discord_role_mappings(false)],
+                    ]);
+                    raidlands_admin_set_flash('success', 'Discord integration settings and role mappings saved.');
                 }
             } elseif ($section === 'todo') {
                 $result = raidlands_todo_admin_handle_action($_POST);
@@ -456,7 +493,7 @@ function raidlands_admin_redirect(?string $section = null, array $params = []): 
 
 function raidlands_admin_section_keys(): array
 {
-    return ['identity', 'links', 'wipe', 'todo', 'features', 'pages', 'seo', 'feedback', 'chat', 'store', 'vote-rewards', 'rp-games', 'kits', 'groups', 'grants', 'sync', 'airstrike-animations', 'animations'];
+    return ['identity', 'links', 'discord', 'wipe', 'todo', 'features', 'pages', 'seo', 'feedback', 'chat', 'store', 'vote-rewards', 'rp-games', 'kits', 'groups', 'grants', 'sync', 'airstrike-animations', 'animations'];
 }
 
 function raidlands_admin_allowed_section_keys(): array
@@ -470,6 +507,7 @@ function raidlands_admin_allowed_section_keys(): array
 function raidlands_admin_section_permission(string $section): string
 {
     return match (raidlands_admin_clean_section($section)) {
+        'discord' => 'admin.discord.manage',
         'chat' => 'admin.chat.manage',
         'feedback' => 'admin.feedback.manage',
         'store' => 'admin.store.manage',
@@ -485,6 +523,9 @@ function raidlands_admin_section_permission(string $section): string
 
 function raidlands_admin_can_view_section(string $section): bool
 {
+    if (raidlands_admin_clean_section($section) === 'discord') {
+        return raidlands_admin_can('admin.discord.view') || raidlands_admin_can('admin.discord.manage');
+    }
     if (raidlands_admin_clean_section($section) === 'todo') {
         return raidlands_admin_can('admin.feedback.manage') || raidlands_admin_can('admin.content.manage');
     }

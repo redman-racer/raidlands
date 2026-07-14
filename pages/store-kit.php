@@ -192,7 +192,7 @@ function store_kit_render_container(string $label, array $items): string
   ?>
   <?= render_page_hero('store-kit',
       '<a class="btn btn-primary" href="' . e(route_url('store')) . '">Back to Store</a>'
-      . '<a class="btn btn-secondary" href="' . e(raidlands_account_url()) . '">' . e(raidlands_account_label('Connect Steam', 'View Account')) . '</a>'
+      . '<a class="btn btn-steam" href="' . e(raidlands_account_url()) . '">' . e(raidlands_account_label('Sign in with Steam', 'View Account')) . '</a>'
   ) ?>
 
   <section class="section store-kit-focus">

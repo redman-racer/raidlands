@@ -778,8 +778,8 @@ function render_raidlands_chat_widget(?array $player = null): string
                 . '<button class="btn btn-primary" type="submit" data-chat-submit>Send</button>'
               . '</form>'
             : '<div class="chat-auth-callout">'
-                . '<p>Anyone can read the lobby. Link Steam to send messages.</p>'
-                . '<a class="btn btn-primary" href="' . e(route_url('link')) . '">Link Steam</a>'
+                . '<p>Anyone can read the lobby. Sign in with Steam to send messages.</p>'
+                . '<a class="btn btn-steam" href="' . e(route_url('link')) . '">Sign in with Steam</a>'
               . '</div>')
         . '</section>'
         . '</div>';

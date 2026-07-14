@@ -28,7 +28,7 @@
 
                   if ($id === 'link') {
                       $path = $footer_linked_player !== null ? 'profile' : 'link';
-                      $label = $footer_linked_player !== null ? 'Account' : 'Link Account';
+                      $label = $footer_linked_player !== null ? 'Account' : 'Sign in with Steam';
                   }
 
                   $href = $id === 'feedback' ? route_url('support') . '#feedback-form' : route_url($path);

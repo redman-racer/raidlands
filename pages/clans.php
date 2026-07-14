@@ -90,7 +90,7 @@ function raidlands_clans_page_action_item(array $action_row): string
 }
 ?>
 <?= render_page_hero('clans',
-    '<a class="btn btn-primary" href="' . e(raidlands_account_url()) . '">' . e(raidlands_account_label('Connect Steam', 'View Account')) . '</a>'
+    '<a class="btn btn-steam" href="' . e(raidlands_account_url()) . '">' . e(raidlands_account_label('Sign in with Steam', 'View Account')) . '</a>'
     . '<a class="btn btn-secondary" href="' . e(route_url('api-docs')) . '">API Docs</a>'
 ) ?>
 
@@ -111,7 +111,7 @@ function raidlands_clans_page_action_item(array $action_row): string
     <?php if ($clan_player === null) : ?>
       <div class="metal-panel">
         <p class="section-kicker">Steam required</p>
-        <h2>Connect Steam to manage clans</h2>
+        <h2>Sign in with Steam to manage clans</h2>
         <p class="section-lede">Clan access is resolved from the Steam account signed in on this browser. Once the game server syncs your role, management tools unlock here.</p>
         <div class="button-row">
           <a class="btn btn-primary" href="<?= e(route_url('link') . '?action=steam') ?>">Continue with Steam</a>

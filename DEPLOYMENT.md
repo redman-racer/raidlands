@@ -54,6 +54,16 @@ the host or upload it through a private channel.
 
 ## Pre-Deployment Checklist
 
+### Discord identity rollout
+
+1. Revoke and replace any bridge secret, Discord bot token/webhook, RustMaps key, or OpenAI key that was exposed during setup. Never reuse pasted values.
+2. Register the exact production `RAIDLANDS_DISCORD_REDIRECT_URI` in the Discord Developer Portal and request `identify guilds.join`.
+3. Apply `database/migrations/061_discord_identity_integration.sql`.
+4. Place the bot above the verified and mapped roles and grant Manage Roles.
+5. Configure fresh environment credentials, then use Admin > Site Setup > Discord to set guild/role IDs, review live diagnostics, and enable linking.
+6. Add a cPanel cron entry for `php /home/ACCOUNT/public_html/tools/discord-role-sync.php 50` at the configured interval.
+7. Run a controlled Steam sign-in, Discord connect, role sync, unlink, and relink test before announcing the workflow.
+
 1. Preview the site locally.
 
    With WAMP running, open:
@@ -82,7 +92,10 @@ the host or upload it through a private channel.
    - `RAIDLANDS_WIPE_TIME`
    - `RAIDLANDS_WIPE_TIMEZONE`
    - `RAIDLANDS_AUTH_STEAM_URL` (legacy placeholder; Steam linking uses native Steam OpenID)
-   - `RAIDLANDS_AUTH_DISCORD_URL`
+   - `RAIDLANDS_DISCORD_CLIENT_ID`
+   - `RAIDLANDS_DISCORD_CLIENT_SECRET`
+   - `RAIDLANDS_DISCORD_BOT_TOKEN`
+   - `RAIDLANDS_DISCORD_REDIRECT_URI`
    - `RAIDLANDS_DB_DSN`
    - `RAIDLANDS_STRIPE_PUBLISHABLE_KEY`
    - `RAIDLANDS_STRIPE_SECRET_KEY`
@@ -158,7 +171,7 @@ the host or upload it through a private channel.
 5. Click through the local site.
 
    Verify the homepage, navigation links, mobile menu, images, favicon, manifest,
-   Steam link, Discord link, store, profile, copy-to-clipboard behavior, and
+   Steam sign-in, Discord OAuth link/role sync, store, profile, copy-to-clipboard behavior, and
    direct page loads.
 
 6. Confirm `.htaccess` is included.

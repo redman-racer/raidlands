@@ -41,10 +41,6 @@ $site_config = [
         'time' => raidlands_env('RAIDLANDS_WIPE_TIME', '19:00'),
         'timezone' => raidlands_env('RAIDLANDS_WIPE_TIMEZONE', 'Europe/London'),
     ],
-    'auth' => [
-        'steamUrl' => raidlands_env('RAIDLANDS_AUTH_STEAM_URL', ''),
-        'discordUrl' => raidlands_env('RAIDLANDS_AUTH_DISCORD_URL', ''),
-    ],
 ];
 
 $admin_panel = [
@@ -72,6 +68,15 @@ $steam_api_config = [
     'apiKey' => raidlands_env('RAIDLANDS_STEAM_API_KEY', ''),
     'baseUrl' => raidlands_env('RAIDLANDS_STEAM_API_BASE_URL', 'https://api.steampowered.com'),
     'cacheSeconds' => raidlands_env_int('RAIDLANDS_STEAM_API_CACHE_SECONDS', 86400),
+];
+
+$discord_config = [
+    'clientId' => raidlands_env('RAIDLANDS_DISCORD_CLIENT_ID', ''),
+    'clientSecret' => raidlands_env('RAIDLANDS_DISCORD_CLIENT_SECRET', ''),
+    'botToken' => raidlands_env('RAIDLANDS_DISCORD_BOT_TOKEN', ''),
+    'redirectUri' => raidlands_env('RAIDLANDS_DISCORD_REDIRECT_URI', ''),
+    'apiBaseUrl' => raidlands_env('RAIDLANDS_DISCORD_API_BASE_URL', 'https://discord.com/api/v10'),
+    'timeoutSeconds' => raidlands_env_int('RAIDLANDS_DISCORD_TIMEOUT_SECONDS', 8),
 ];
 
 $openai_config = [
@@ -135,7 +140,7 @@ $primary_nav = [
     ['rules', 'rules', 'Rules'],
     ['discord', 'discord', 'Discord'],
     ['clans', 'clans', 'Clans'],
-    ['link', 'link', 'Link Account'],
+    ['link', 'link', 'Sign in with Steam'],
     ['store', 'store', 'Store'],
     ['vote', 'vote', 'Vote'],
     ['rp-games', 'rp-games', 'RP Games'],
@@ -349,8 +354,8 @@ $page_copy = [
         'lede' => 'Get wipe alerts, find teammates, report bugs, open tickets, appeal bans, and vote on what the server becomes next.',
     ],
     'link' => [
-        'title' => 'Link Account',
-        'lede' => 'Connect Steam once so wipe stats, rewards, roles, and store access follow the right Rust player.',
+        'title' => 'Sign in with Steam',
+        'lede' => 'Sign in with Steam so wipe stats, rewards, roles, and store access follow the right Rust player.',
     ],
     'support' => [
         'title' => 'Support',
@@ -441,9 +446,9 @@ $seo_pages = [
     ],
     'link' => [
         'title' => 'Link Raidlands Account | Steam and Discord',
-        'description' => 'Connect Steam for Raidlands leaderboards, rewards, roles, store access, and player profiles.',
+        'description' => 'Sign in with Steam for Raidlands leaderboards, rewards, roles, store access, and player profiles.',
         'ogTitle' => 'Link Raidlands Account',
-        'ogDescription' => 'Connect Steam once for Raidlands profiles, rewards, store access, and wipe stats.',
+        'ogDescription' => 'Sign in with Steam for Raidlands profiles, rewards, store access, and wipe stats.',
     ],
     'support' => [
         'title' => 'Raidlands Support | Tickets, Bugs, Connection Help',

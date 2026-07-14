@@ -471,14 +471,14 @@ $home_is_linked = raidlands_has_linked_account();
     <div class="section-header center">
       <p class="section-kicker">Stay connected</p>
       <h2>Your account, access, and squad</h2>
-      <p class="section-lede">Link Steam once, keep perks tied to the right player, and use Discord for wipe alerts and support.</p>
+      <p class="section-lede">Sign in with Steam, keep perks tied to the right player, and connect Discord for verified community roles.</p>
     </div>
     <div class="home-connected-grid">
       <article class="metal-panel">
-        <p class="section-kicker"><?= $home_is_linked ? 'Account linked' : 'Link Steam' ?></p>
+        <p class="section-kicker"><?= $home_is_linked ? 'Signed in' : 'Steam sign-in' ?></p>
         <h3><?= $home_is_linked ? 'Your profile is ready' : 'Keep progress with you' ?></h3>
-        <p class="store-muted"><?= $home_is_linked ? 'Open your profile for stats, RP, rewards, and active access.' : 'Connect Steam so rankings, rewards, roles, and purchases reach the right player.' ?></p>
-        <a class="btn btn-primary" href="<?= e(raidlands_account_url()) ?>"><?= e(raidlands_account_label('Link Account', 'Open Profile')) ?></a>
+        <p class="store-muted"><?= $home_is_linked ? 'Open your profile for stats, RP, rewards, and active access.' : 'Sign in with Steam so rankings, rewards, roles, and purchases reach the right player.' ?></p>
+        <a class="btn btn-primary" href="<?= e(raidlands_account_url()) ?>"><?= e(raidlands_account_label('Sign in with Steam', 'Open Profile')) ?></a>
       </article>
       <article class="metal-panel">
         <p class="section-kicker">Store access</p>
