@@ -44,6 +44,12 @@ import { createVehicleProxy, loadVehiclePreview, metadataForVehicle } from "../a
 import type { VehiclePreviewMetadataFile } from "../airstrike-animation-editor/types";
 import { getSharedCanvasTexture, isSharedThreeAsset, loadSharedTexture } from "../shared/three-asset-cache";
 import { applyRaidlandsEnvironment, updateRaidlandsEnvironment } from "../shared/three-environment";
+import {
+  parseRaidlandsCloudDetail,
+  raidlandsCloudProfile,
+  type RaidlandsCloudDetail,
+  type RaidlandsCloudProfile,
+} from "../shared/three-cloud-detail";
 
 type TerrainPayload = {
   version?: number;
@@ -403,6 +409,61 @@ const isoViewDirections = [
   new Vector3(-0.48, 0.34, 0.58),
 ];
 
+function cloudShadowShaderSource(octaves: number): string {
+  if (octaves <= 0) {
+    return `
+uniform float raidlandsCloudShadowStrength;
+float raidlandsCloudShadowAt(vec2 worldPosition) { return 0.0; }`;
+  }
+  const weights = [0.54, 0.27, 0.13, 0.06];
+  const noiseLines = weights.slice(0, octaves).map((weight, index) => {
+    const scale = (2.03 ** index).toFixed(5);
+    const offsetX = (index * 7.13).toFixed(3);
+    const offsetY = (index * -4.27).toFixed(3);
+    return `field += raidlandsCloudShadowNoise(position * ${scale} + vec2(${offsetX}, ${offsetY})) * ${weight.toFixed(3)};`;
+  }).join("\n");
+  const totalWeight = weights.slice(0, octaves).reduce((sum, value) => sum + value, 0).toFixed(3);
+  return `
+uniform float raidlandsCloudCoverage;
+uniform float raidlandsCloudOpacity;
+uniform float raidlandsCloudSize;
+uniform float raidlandsCloudSharpness;
+uniform float raidlandsCloudPhase;
+uniform float raidlandsCloudShadowStrength;
+uniform float raidlandsCloudWorldSize;
+
+float raidlandsCloudShadowHash(vec2 position) {
+  return fract(sin(dot(position, vec2(127.1, 311.7))) * 43758.5453123);
+}
+
+float raidlandsCloudShadowNoise(vec2 position) {
+  vec2 cell = floor(position);
+  vec2 local = fract(position);
+  local = local * local * (3.0 - 2.0 * local);
+  float lower = mix(raidlandsCloudShadowHash(cell), raidlandsCloudShadowHash(cell + vec2(1.0, 0.0)), local.x);
+  float upper = mix(raidlandsCloudShadowHash(cell + vec2(0.0, 1.0)), raidlandsCloudShadowHash(cell + vec2(1.0, 1.0)), local.x);
+  return mix(lower, upper, local.y);
+}
+
+float raidlandsCloudShadowAt(vec2 worldPosition) {
+  float coverage = clamp(raidlandsCloudCoverage, 0.0, 1.0);
+  if (coverage <= 0.001) return 0.0;
+  float sizeFraction = clamp((raidlandsCloudSize - 0.2) / 7.8, 0.0, 1.0);
+  float scale = raidlandsCloudWorldSize * mix(0.035, 0.13, sizeFraction);
+  vec2 position = worldPosition / max(scale, 1.0)
+    + vec2(raidlandsCloudPhase * 0.0032, raidlandsCloudPhase * 0.00135);
+  float field = 0.0;
+  ${noiseLines}
+  field /= ${totalWeight};
+  float threshold = mix(0.82, 0.27, sqrt(coverage));
+  float edge = mix(0.095, 0.028, clamp(raidlandsCloudSharpness, 0.0, 1.0));
+  return smoothstep(threshold - edge, threshold + edge, field)
+    * smoothstep(0.005, 0.04, coverage)
+    * clamp(raidlandsCloudOpacity, 0.0, 1.0)
+    * raidlandsCloudShadowStrength;
+}`;
+}
+
 const roots = Array.from(document.querySelectorAll<HTMLElement>("[data-server-map-viewer]"));
 
 for (const root of roots) {
@@ -665,6 +726,8 @@ class TerrainViewer {
   private readonly terrain: TerrainPayload;
   private readonly textureUrl: string;
   private readonly status: HTMLElement | null;
+  private readonly cloudDetail: RaidlandsCloudDetail;
+  private readonly cloudProfile: RaidlandsCloudProfile;
   private readonly scene = new Scene();
   private readonly camera = new PerspectiveCamera(48, 1, 1, 12000);
   private readonly renderer = new WebGLRenderer({ antialias: true, alpha: false });
@@ -696,6 +759,12 @@ class TerrainViewer {
     fogColor: { value: new Color(0xc8dfe8) },
     distantLift: { value: 0 },
     worldSize: { value: 4500 },
+    cloudCoverage: { value: 0 },
+    cloudOpacity: { value: 1 },
+    cloudSize: { value: 3.35 },
+    cloudSharpness: { value: 1 },
+    cloudPhase: { value: 0 },
+    cloudShadowStrength: { value: 0 },
   };
   private readonly waterLightUniforms = {
     sunDirection: { value: new Vector3(0.5, 0.78, 0.36).normalize() },
@@ -706,6 +775,13 @@ class TerrainViewer {
     time: { value: 0 },
     fogColor: { value: new Color(0xc8dfe8) },
     fogDensity: { value: 0 },
+    worldSize: { value: 4500 },
+    cloudCoverage: { value: 0 },
+    cloudOpacity: { value: 1 },
+    cloudSize: { value: 3.35 },
+    cloudSharpness: { value: 1 },
+    cloudPhase: { value: 0 },
+    cloudShadowStrength: { value: 0 },
   };
   private ambientLight: AmbientLight | null = null;
   private sunLight: DirectionalLight | null = null;
@@ -750,6 +826,8 @@ class TerrainViewer {
     this.terrain = terrain;
     this.textureUrl = options.textureUrl;
     this.status = options.status;
+    this.cloudDetail = parseRaidlandsCloudDetail(this.root.dataset.cloudDetail, "max");
+    this.cloudProfile = raidlandsCloudProfile(this.cloudDetail);
     this.tourEnabled = this.root.dataset.cameraTour === "true";
     this.tourStyle = this.root.dataset.cameraTourStyle === "orbit" ? "orbit" : "cinematic";
     this.lockCameraInput = this.root.dataset.cameraLocked === "true";
@@ -760,6 +838,8 @@ class TerrainViewer {
       exposure: 1.16,
       backgroundIntensity: 1.02,
       environmentIntensity: 0.98,
+      cloudDetail: this.cloudDetail,
+      worldSize: this.terrain.worldSize || 4500,
     });
     this.composer = new EffectComposer(this.renderer);
     this.composer.setPixelRatio(Math.min(this.renderer.getPixelRatio(), 1.5));
@@ -785,6 +865,7 @@ class TerrainViewer {
     this.scene.add(this.groundFogLayer);
     this.weatherCloudLayer.name = "raidlands-floating-weather-clouds";
     this.weatherCloudLayer.add(createFloatingWeatherClouds(this.terrain));
+    this.weatherCloudLayer.visible = false;
     this.scene.add(this.weatherCloudLayer);
     this.rainSheetLayer.name = "raidlands-rain-sheet-layer";
     this.rainSheetLayer.add(createRainSheets(this.terrain));
@@ -1223,6 +1304,24 @@ class TerrainViewer {
       shader.uniforms.raidlandsFogColor = this.terrainLightUniforms.fogColor;
       shader.uniforms.raidlandsDistantLift = this.terrainLightUniforms.distantLift;
       shader.uniforms.raidlandsWorldSize = this.terrainLightUniforms.worldSize;
+      shader.uniforms.raidlandsCloudCoverage = this.terrainLightUniforms.cloudCoverage;
+      shader.uniforms.raidlandsCloudOpacity = this.terrainLightUniforms.cloudOpacity;
+      shader.uniforms.raidlandsCloudSize = this.terrainLightUniforms.cloudSize;
+      shader.uniforms.raidlandsCloudSharpness = this.terrainLightUniforms.cloudSharpness;
+      shader.uniforms.raidlandsCloudPhase = this.terrainLightUniforms.cloudPhase;
+      shader.uniforms.raidlandsCloudShadowStrength = this.terrainLightUniforms.cloudShadowStrength;
+      shader.uniforms.raidlandsCloudWorldSize = this.terrainLightUniforms.worldSize;
+      shader.vertexShader = shader.vertexShader
+        .replace(
+          "#include <common>",
+          `#include <common>
+varying vec3 raidlandsTerrainWorldPosition;`,
+        )
+        .replace(
+          "#include <worldpos_vertex>",
+          `#include <worldpos_vertex>
+raidlandsTerrainWorldPosition = (modelMatrix * vec4(transformed, 1.0)).xyz;`,
+        );
       shader.fragmentShader = shader.fragmentShader
         .replace(
           "#include <common>",
@@ -1233,7 +1332,9 @@ uniform float raidlandsTwilight;
 uniform float raidlandsCloudAttenuation;
 uniform vec3 raidlandsFogColor;
 uniform float raidlandsDistantLift;
-uniform float raidlandsWorldSize;`,
+uniform float raidlandsWorldSize;
+varying vec3 raidlandsTerrainWorldPosition;
+${cloudShadowShaderSource(this.cloudProfile.shadowOctaves)}`,
         )
         .replace(
           "#include <normal_fragment_begin>",
@@ -1241,6 +1342,8 @@ uniform float raidlandsWorldSize;`,
 vec3 raidlandsSunDirectionView = normalize((viewMatrix * vec4(raidlandsSunDirection, 0.0)).xyz);
 float raidlandsSunFacing = max(dot(normal, raidlandsSunDirectionView), 0.0);
 float raidlandsWarmSlope = raidlandsTwilight * (0.18 + raidlandsSunFacing * 0.82) * (1.0 - raidlandsCloudAttenuation * 0.58);
+float raidlandsCloudShadow = raidlandsCloudShadowAt(raidlandsTerrainWorldPosition.xz);
+diffuseColor.rgb *= 1.0 - raidlandsCloudShadow * 0.34;
 diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.22, raidlandsWarmSlope);`,
         )
         .replace(
@@ -1251,7 +1354,7 @@ outgoingLight = mix(outgoingLight, raidlandsFogColor, raidlandsTerrainHorizon * 
 #include <opaque_fragment>`,
         );
     };
-    material.customProgramCacheKey = () => "raidlands-terrain-sun-wash-v2";
+    material.customProgramCacheKey = () => `raidlands-terrain-cloud-${this.cloudDetail}-v3`;
     return material;
   }
 
@@ -1304,6 +1407,13 @@ outgoingLight = mix(outgoingLight, raidlandsFogColor, raidlandsTerrainHorizon * 
       shader.uniforms.raidlandsWaterTime = this.waterLightUniforms.time;
       shader.uniforms.raidlandsWaterFogColor = this.waterLightUniforms.fogColor;
       shader.uniforms.raidlandsWaterFogDensity = this.waterLightUniforms.fogDensity;
+      shader.uniforms.raidlandsCloudCoverage = this.waterLightUniforms.cloudCoverage;
+      shader.uniforms.raidlandsCloudOpacity = this.waterLightUniforms.cloudOpacity;
+      shader.uniforms.raidlandsCloudSize = this.waterLightUniforms.cloudSize;
+      shader.uniforms.raidlandsCloudSharpness = this.waterLightUniforms.cloudSharpness;
+      shader.uniforms.raidlandsCloudPhase = this.waterLightUniforms.cloudPhase;
+      shader.uniforms.raidlandsCloudShadowStrength = this.waterLightUniforms.cloudShadowStrength;
+      shader.uniforms.raidlandsCloudWorldSize = this.waterLightUniforms.worldSize;
       shader.vertexShader = shader.vertexShader
         .replace(
           "#include <common>",
@@ -1327,11 +1437,13 @@ uniform float raidlandsWaterDaylight;
 uniform float raidlandsWaterTime;
 uniform vec3 raidlandsWaterFogColor;
 uniform float raidlandsWaterFogDensity;
-varying vec3 raidlandsWaterWorldPosition;`,
+varying vec3 raidlandsWaterWorldPosition;
+${cloudShadowShaderSource(this.cloudProfile.shadowOctaves)}`,
         )
         .replace(
           "#include <opaque_fragment>",
           `vec3 raidlandsWaterViewDirection = normalize(cameraPosition - raidlandsWaterWorldPosition);
+float raidlandsWaterCloudShadow = raidlandsCloudShadowAt(raidlandsWaterWorldPosition.xz);
 float raidlandsWaterWaveA = sin(raidlandsWaterWorldPosition.x * 0.038 + raidlandsWaterWorldPosition.z * 0.021 + raidlandsWaterTime * 0.55);
 float raidlandsWaterWaveB = cos(raidlandsWaterWorldPosition.x * -0.019 + raidlandsWaterWorldPosition.z * 0.044 - raidlandsWaterTime * 0.37);
 vec3 raidlandsWaterNormal = normalize(vec3(raidlandsWaterWaveA * 0.04, 1.0, raidlandsWaterWaveB * 0.04));
@@ -1349,7 +1461,7 @@ float raidlandsWaterRipples = 0.88 + 0.12 * sin(
 float raidlandsWaterFresnel = pow(1.0 - clamp(dot(raidlandsWaterViewDirection, raidlandsWaterNormal), 0.0, 1.0), 3.0);
 float raidlandsWaterSkyReflection = mix(0.055, 0.34, raidlandsWaterFresnel) * mix(0.56, 1.0, raidlandsWaterDaylight);
 float raidlandsWaterSurfaceVariation = 0.97 + (raidlandsWaterWaveA + raidlandsWaterWaveB) * 0.015;
-outgoingLight *= raidlandsWaterSurfaceVariation;
+outgoingLight *= raidlandsWaterSurfaceVariation * (1.0 - raidlandsWaterCloudShadow * 0.3);
 outgoingLight = mix(outgoingLight, raidlandsWaterSkyColor, raidlandsWaterSkyReflection);
 float raidlandsWaterSunPath = (raidlandsWaterGlare * 0.95 + raidlandsWaterStreak * 0.3)
   * raidlandsWaterReflectionStrength * raidlandsWaterRipples;
@@ -1362,7 +1474,7 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
 #include <opaque_fragment>`,
         );
     };
-    material.customProgramCacheKey = () => "raidlands-water-surface-v3";
+    material.customProgramCacheKey = () => `raidlands-water-cloud-${this.cloudDetail}-v4`;
     const mesh = new Mesh(geometry, material);
     mesh.name = "raidlands-infinite-ocean-surface";
     mesh.rotation.x = -Math.PI / 2;
@@ -1597,6 +1709,15 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
       0.14,
     );
     this.terrainLightUniforms.worldSize.value = worldSize;
+    this.terrainLightUniforms.cloudCoverage.value = visualCloudCoverage;
+    this.terrainLightUniforms.cloudOpacity.value = environment.cloudOpacity;
+    this.terrainLightUniforms.cloudSize.value = environment.cloudSize;
+    this.terrainLightUniforms.cloudSharpness.value = environment.cloudSharpness;
+    this.terrainLightUniforms.cloudPhase.value = performance.now() / 1000;
+    this.terrainLightUniforms.cloudShadowStrength.value = this.cloudProfile.useVolumetricClouds
+      ? MathUtils.clamp(environment.cloudOpacity * (0.28 + environment.cloudAttenuation * 0.48 + environment.rainIntensity * 0.16), 0, 0.92)
+        * (1 - MathUtils.smoothstep(cameraTopDownAmount(this.camera, this.controls.target), 0.72, 0.94))
+      : 0;
     const oceanMaterial = this.oceanSurfaceMesh.material as MeshStandardMaterial;
     const waterWeatherAttenuation = 1 - MathUtils.clamp(
       visualCloudCoverage * MathUtils.lerp(0.4, 0.72, environment.cloudAttenuation)
@@ -1630,6 +1751,13 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     this.waterLightUniforms.fogDensity.value = fogStrength > 0.02
       ? visualFogDensityForCamera(fogStrength, this.camera.position, this.terrain)
       : 0;
+    this.waterLightUniforms.worldSize.value = worldSize;
+    this.waterLightUniforms.cloudCoverage.value = visualCloudCoverage;
+    this.waterLightUniforms.cloudOpacity.value = environment.cloudOpacity;
+    this.waterLightUniforms.cloudSize.value = environment.cloudSize;
+    this.waterLightUniforms.cloudSharpness.value = environment.cloudSharpness;
+    this.waterLightUniforms.cloudPhase.value = performance.now() / 1000;
+    this.waterLightUniforms.cloudShadowStrength.value = this.terrainLightUniforms.cloudShadowStrength.value;
     const horizonDrama = MathUtils.clamp(1 - Math.abs(MathUtils.clamp(sunHeight, -0.1, 0.46) - 0.18) / 0.28, 0, 1);
     this.scene.backgroundIntensity = (MathUtils.lerp(0.7, 1.02, daylight) + horizonDrama * 0.11 - night * 0.18) * MathUtils.lerp(0.72, 1.16, atmosphereBrightness / 1.4);
     this.scene.environmentIntensity = (MathUtils.lerp(0.46, 0.96, daylight) + horizonDrama * 0.04) * MathUtils.lerp(0.82, 1.18, atmosphereContrast / 1.4);
@@ -1657,6 +1785,8 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
       atmosphereContrast: environment.atmosphereContrast,
       atmosphereDirectionality: environment.atmosphereDirectionality,
       cloudOpacity: environment.cloudOpacity,
+      cloudSize: environment.cloudSize,
+      cloudColoring: environment.cloudColoring,
       cloudSharpness: environment.cloudSharpness,
       cloudAttenuation: environment.cloudAttenuation,
       cloudScattering: environment.cloudScattering,
@@ -1718,11 +1848,11 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
       child.position.z = (Number(child.userData.baseZ) || 0) + Math.cos(now * 0.000014 + index * 1.3) * worldSize * 0.006;
     });
 
-    this.weatherCloudLayer.visible = visibleCloudAmount > 0.015;
+    this.weatherCloudLayer.visible = this.cloudProfile.useSpriteClouds && visibleCloudAmount > 0.015;
     this.weatherCloudLayer.position.x = this.camera.position.x * 0.035;
     this.weatherCloudLayer.position.z = this.camera.position.z * 0.035;
     this.weatherCloudLayer.rotation.y = now * 0.000012;
-    this.weatherCloudLayer.children.forEach((child, index) => {
+    if (this.cloudProfile.useSpriteClouds) this.weatherCloudLayer.children.forEach((child, index) => {
       if (!(child instanceof Sprite)) {
         return;
       }
@@ -5168,6 +5298,10 @@ function horizontalDirectionalFacing(direction: Vector3, sunDirection: Vector3):
     0,
     1,
   );
+}
+
+function cameraTopDownAmount(camera: PerspectiveCamera, target: Vector3): number {
+  return MathUtils.clamp(camera.position.clone().sub(target).normalize().dot(new Vector3(0, 1, 0)), 0, 1);
 }
 
 function environmentFogColor(environment: NormalizedEnvironment, sunFacing: number): Color {

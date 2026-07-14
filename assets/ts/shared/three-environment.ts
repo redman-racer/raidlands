@@ -17,6 +17,14 @@ import {
   WebGLRenderer,
 } from "three";
 import { getSharedCanvasTexture, loadSharedTexture } from "./three-asset-cache";
+import {
+  normalizeRaidlandsCloudCoverage,
+  parseRaidlandsCloudDetail,
+  raidlandsCloudProfile,
+  type RaidlandsCloudDetail,
+} from "./three-cloud-detail";
+
+export type { RaidlandsCloudDetail } from "./three-cloud-detail";
 
 export type RaidlandsEnvironmentPreset = "terrain" | "editor";
 
@@ -26,6 +34,8 @@ type EnvironmentOptions = {
   environmentIntensity?: number;
   exposure?: number;
   skyboxUrl?: string;
+  cloudDetail?: RaidlandsCloudDetail;
+  worldSize?: number;
 };
 
 export type RaidlandsEnvironmentState = {
@@ -43,6 +53,8 @@ export type RaidlandsEnvironmentState = {
   atmosphereContrast?: number | null;
   atmosphereDirectionality?: number | null;
   cloudOpacity?: number | null;
+  cloudSize?: number | null;
+  cloudColoring?: number | null;
   cloudSharpness?: number | null;
   cloudAttenuation?: number | null;
   cloudScattering?: number | null;
@@ -62,6 +74,8 @@ type RaidlandsSkyUniforms = {
   uCloudPhase: { value: number };
   uSunVisibility: { value: number };
   uCloudOpacity: { value: number };
+  uCloudSize: { value: number };
+  uCloudColoring: { value: number };
   uCloudSharpness: { value: number };
   uCloudAttenuation: { value: number };
   uCloudScattering: { value: number };
@@ -72,6 +86,8 @@ type RaidlandsSkyUniforms = {
   uRainbowIntensity: { value: number };
   uFogIntensity: { value: number };
   uRainIntensity: { value: number };
+  uCameraPosition: { value: Vector3 };
+  uWorldSize: { value: number };
 };
 
 const raidlandsSkyUserDataKey = "raidlandsSkyDome";
@@ -85,6 +101,8 @@ export function applyRaidlandsEnvironment(
   renderer.toneMappingExposure = options.exposure ?? 1.08;
 
   const preset = options.preset ?? "terrain";
+  const cloudDetail = parseRaidlandsCloudDetail(options.cloudDetail, "low");
+  const worldSize = Math.max(100, Number(options.worldSize) || 4500);
   const skyTexture = createRaidlandsSkyTexture(preset);
   skyTexture.mapping = EquirectangularReflectionMapping;
   skyTexture.colorSpace = SRGBColorSpace;
@@ -101,7 +119,7 @@ export function applyRaidlandsEnvironment(
     (previousSkyDome.material as ShaderMaterial).dispose();
   }
 
-  const skyDome = createRaidlandsSkyDome(preset);
+  const skyDome = createRaidlandsSkyDome(preset, cloudDetail, worldSize);
   scene.add(skyDome);
   scene.userData[raidlandsSkyUserDataKey] = skyDome;
   scene.background = new Color(0x040812);
@@ -159,7 +177,7 @@ export function updateRaidlandsEnvironment(scene: Scene, state: RaidlandsEnviron
   const cloudCoverageValue = state.cloudCoverage === null || state.cloudCoverage === undefined
     ? 0
     : Number(state.cloudCoverage);
-  const rawCloudCoverage = MathUtils.clamp(Number.isFinite(cloudCoverageValue) ? cloudCoverageValue : 0, 0, 1);
+  const rawCloudCoverage = normalizeRaidlandsCloudCoverage(cloudCoverageValue);
   const cloudOpacity = MathUtils.clamp(finiteEnvironmentValue(state.cloudOpacity, 1), 0, 1);
   // Coverage is the fraction of sky Rust reports as covered. Opacity affects
   // the rendered cloud material below, not how much sky is considered cloudy.
@@ -207,6 +225,8 @@ export function updateRaidlandsEnvironment(scene: Scene, state: RaidlandsEnviron
   uniforms.uCloudPhase.value = Number(state.timeSeconds) || 0;
   uniforms.uSunVisibility.value = sunVisibility;
   uniforms.uCloudOpacity.value = cloudOpacity;
+  uniforms.uCloudSize.value = MathUtils.clamp(finiteEnvironmentValue(state.cloudSize, 3.35), 0.2, 8);
+  uniforms.uCloudColoring.value = MathUtils.clamp(finiteEnvironmentValue(state.cloudColoring, 0.65), 0, 1);
   uniforms.uCloudSharpness.value = MathUtils.clamp(finiteEnvironmentValue(state.cloudSharpness, 1), 0, 1);
   uniforms.uCloudAttenuation.value = MathUtils.clamp(finiteEnvironmentValue(state.cloudAttenuation, 0.25), 0, 1);
   uniforms.uCloudScattering.value = MathUtils.clamp(finiteEnvironmentValue(state.cloudScattering, 0.65), 0, 1);
@@ -217,6 +237,7 @@ export function updateRaidlandsEnvironment(scene: Scene, state: RaidlandsEnviron
   uniforms.uRainbowIntensity.value = MathUtils.clamp(finiteEnvironmentValue(state.rainbowIntensity, 0), 0, 1);
   uniforms.uFogIntensity.value = fogIntensity;
   uniforms.uRainIntensity.value = rainIntensity;
+  uniforms.uCameraPosition.value.copy(state.cameraPosition || skyDome.position);
 }
 
 function finiteEnvironmentValue(value: unknown, fallback: number): number {
@@ -224,8 +245,18 @@ function finiteEnvironmentValue(value: unknown, fallback: number): number {
   return Number.isFinite(numeric) ? numeric : fallback;
 }
 
-function createRaidlandsSkyDome(preset: RaidlandsEnvironmentPreset): Mesh {
+function createRaidlandsSkyDome(
+  preset: RaidlandsEnvironmentPreset,
+  cloudDetail: RaidlandsCloudDetail,
+  worldSize: number,
+): Mesh {
+  const cloudProfile = raidlandsCloudProfile(cloudDetail);
   const material = new ShaderMaterial({
+    defines: {
+      RAIDLANDS_CLOUD_DETAIL: cloudProfile.useVolumetricClouds ? (cloudDetail === "max" ? 2 : 1) : 0,
+      RAIDLANDS_CLOUD_VIEW_SAMPLES: Math.max(1, cloudProfile.viewSamples),
+      RAIDLANDS_CLOUD_LIGHT_SAMPLES: Math.max(1, cloudProfile.lightSamples),
+    },
     uniforms: {
       uZenithColor: { value: new Color(preset === "editor" ? 0x15253a : 0x78b6e6) },
       uHorizonColor: { value: new Color(preset === "editor" ? 0x7a9ba9 : 0xd7edf4) },
@@ -237,6 +268,8 @@ function createRaidlandsSkyDome(preset: RaidlandsEnvironmentPreset): Mesh {
       uCloudPhase: { value: 0 },
       uSunVisibility: { value: 1 },
       uCloudOpacity: { value: 1 },
+      uCloudSize: { value: 3.35 },
+      uCloudColoring: { value: 0.65 },
       uCloudSharpness: { value: 1 },
       uCloudAttenuation: { value: 0.25 },
       uCloudScattering: { value: 0.65 },
@@ -247,6 +280,8 @@ function createRaidlandsSkyDome(preset: RaidlandsEnvironmentPreset): Mesh {
       uRainbowIntensity: { value: 0 },
       uFogIntensity: { value: 0 },
       uRainIntensity: { value: 0 },
+      uCameraPosition: { value: new Vector3() },
+      uWorldSize: { value: worldSize },
     },
     vertexShader: `
       varying vec3 vDirection;
@@ -271,6 +306,8 @@ function createRaidlandsSkyDome(preset: RaidlandsEnvironmentPreset): Mesh {
       uniform float uCloudPhase;
       uniform float uSunVisibility;
       uniform float uCloudOpacity;
+      uniform float uCloudSize;
+      uniform float uCloudColoring;
       uniform float uCloudSharpness;
       uniform float uCloudAttenuation;
       uniform float uCloudScattering;
@@ -281,6 +318,8 @@ function createRaidlandsSkyDome(preset: RaidlandsEnvironmentPreset): Mesh {
       uniform float uRainbowIntensity;
       uniform float uFogIntensity;
       uniform float uRainIntensity;
+      uniform vec3 uCameraPosition;
+      uniform float uWorldSize;
 
       float hash(vec2 position) {
         return fract(sin(dot(position, vec2(127.1, 311.7))) * 43758.5453123);
@@ -304,6 +343,109 @@ function createRaidlandsSkyDome(preset: RaidlandsEnvironmentPreset): Mesh {
           amplitude *= 0.5;
         }
         return value;
+      }
+
+      float hash3(vec3 position) {
+        return fract(sin(dot(position, vec3(127.1, 311.7, 74.7))) * 43758.5453123);
+      }
+
+      float noise3(vec3 position) {
+        vec3 cell = floor(position);
+        vec3 local = fract(position);
+        local = local * local * (3.0 - 2.0 * local);
+        float lowerA = mix(hash3(cell), hash3(cell + vec3(1.0, 0.0, 0.0)), local.x);
+        float lowerB = mix(hash3(cell + vec3(0.0, 1.0, 0.0)), hash3(cell + vec3(1.0, 1.0, 0.0)), local.x);
+        float upperA = mix(hash3(cell + vec3(0.0, 0.0, 1.0)), hash3(cell + vec3(1.0, 0.0, 1.0)), local.x);
+        float upperB = mix(hash3(cell + vec3(0.0, 1.0, 1.0)), hash3(cell + vec3(1.0, 1.0, 1.0)), local.x);
+        return mix(mix(lowerA, lowerB, local.y), mix(upperA, upperB, local.y), local.z);
+      }
+
+      float cloudVolumeNoise(vec3 position) {
+        float value = noise3(position) * 0.56;
+        value += noise3(position * 2.03 + vec3(7.1, 3.7, 11.3)) * 0.28;
+        value += noise3(position * 4.11 + vec3(-5.4, 9.2, 2.8)) * 0.12;
+#if RAIDLANDS_CLOUD_DETAIL > 1
+        value += noise3(position * 8.23 + vec3(13.7, -4.1, 8.6)) * 0.06;
+#endif
+        return value;
+      }
+
+      float cloudDensityAt(vec3 worldPosition, float cloudBase, float cloudTop, float cloudCoverage) {
+        float layerHeight = max(cloudTop - cloudBase, 1.0);
+        float heightFraction = (worldPosition.y - cloudBase) / layerHeight;
+        float verticalShape = smoothstep(0.0, 0.16, heightFraction)
+          * (1.0 - smoothstep(0.66, 1.0, heightFraction));
+        float sizeFraction = clamp((uCloudSize - 0.2) / 7.8, 0.0, 1.0);
+        float cloudScale = uWorldSize * mix(0.035, 0.13, sizeFraction);
+        vec3 samplePosition = vec3(
+          worldPosition.x / cloudScale + uCloudPhase * 0.0032,
+          heightFraction * mix(2.8, 1.65, sizeFraction),
+          worldPosition.z / cloudScale + uCloudPhase * 0.00135
+        );
+        float field = cloudVolumeNoise(samplePosition);
+        float threshold = mix(0.82, 0.27, sqrt(clamp(cloudCoverage, 0.0, 1.0)));
+        float edge = mix(0.085, 0.018, clamp(uCloudSharpness, 0.0, 1.0));
+        float density = smoothstep(threshold - edge, threshold + edge, field) * verticalShape;
+#if RAIDLANDS_CLOUD_DETAIL > 1
+        float erosion = noise3(samplePosition * 5.7 + vec3(4.2, -7.6, 2.1));
+        density *= smoothstep(0.08, 0.72, density + erosion * 0.22);
+#endif
+        return density * smoothstep(0.005, 0.04, cloudCoverage) * clamp(uCloudOpacity, 0.0, 1.0);
+      }
+
+      vec4 raymarchCloudVolume(vec3 rayDirection, float cloudCoverage, float daylight) {
+#if RAIDLANDS_CLOUD_DETAIL > 0
+        if (cloudCoverage <= 0.001 || rayDirection.y <= 0.004) {
+          return vec4(0.0);
+        }
+        float sizeFraction = clamp((uCloudSize - 0.2) / 7.8, 0.0, 1.0);
+        float cloudBase = uWorldSize * (0.115 - uRainIntensity * 0.016);
+        float cloudTop = cloudBase + uWorldSize * mix(0.055, 0.105, sizeFraction);
+        float enterDistance = max(0.0, (cloudBase - uCameraPosition.y) / rayDirection.y);
+        float exitDistance = min(uWorldSize * 2.4, (cloudTop - uCameraPosition.y) / rayDirection.y);
+        if (exitDistance <= enterDistance) {
+          return vec4(0.0);
+        }
+        float stepLength = (exitDistance - enterDistance) / float(RAIDLANDS_CLOUD_VIEW_SAMPLES);
+        float transmittance = 1.0;
+        vec3 accumulatedColor = vec3(0.0);
+        float jitter = hash(gl_FragCoord.xy + vec2(uCloudPhase * 0.07));
+        vec3 sunDirection = normalize(uSunDirection);
+
+        for (int sampleIndex = 0; sampleIndex < RAIDLANDS_CLOUD_VIEW_SAMPLES; sampleIndex += 1) {
+          float sampleDistance = enterDistance + (float(sampleIndex) + jitter) * stepLength;
+          vec3 samplePosition = uCameraPosition + rayDirection * sampleDistance;
+          float density = cloudDensityAt(samplePosition, cloudBase, cloudTop, cloudCoverage);
+          if (density > 0.002) {
+            float lightTransmittance = 1.0;
+            float lightStep = (cloudTop - cloudBase) * 0.16 / float(RAIDLANDS_CLOUD_LIGHT_SAMPLES);
+            for (int lightIndex = 0; lightIndex < RAIDLANDS_CLOUD_LIGHT_SAMPLES; lightIndex += 1) {
+              vec3 lightPosition = samplePosition + sunDirection * lightStep * (float(lightIndex) + 1.0);
+              lightTransmittance *= exp(-cloudDensityAt(lightPosition, cloudBase, cloudTop, cloudCoverage)
+                * mix(0.72, 1.48, clamp(uCloudAttenuation, 0.0, 1.0)));
+            }
+            float viewSun = clamp(dot(rayDirection, sunDirection), -1.0, 1.0);
+            float forwardScatter = pow(max(viewSun, 0.0), mix(3.0, 11.0, clamp(uCloudScattering, 0.0, 1.0)));
+            float powder = 1.0 - exp(-density * 2.4);
+            vec3 ambientCloud = mix(vec3(0.16, 0.19, 0.24), vec3(0.7, 0.79, 0.86), daylight);
+            vec3 sunCloud = mix(vec3(1.0), uSunColor, clamp(uCloudColoring, 0.0, 1.0));
+            vec3 sampleColor = ambientCloud * mix(0.42, 1.2, clamp(uCloudBrightness, 0.0, 2.0) * 0.5);
+            sampleColor += sunCloud * lightTransmittance
+              * (0.22 + powder * 0.5 + forwardScatter * mix(0.25, 1.05, uCloudScattering))
+              * mix(0.2, 1.0, daylight);
+            sampleColor = mix(sampleColor, vec3(0.045, 0.052, 0.07), uRainIntensity * density * 0.58);
+            float extinction = 1.0 - exp(-density * stepLength / max(uWorldSize * 0.022, 1.0));
+            accumulatedColor += transmittance * sampleColor * extinction;
+            transmittance *= 1.0 - extinction;
+            if (transmittance < 0.02) {
+              break;
+            }
+          }
+        }
+        return vec4(accumulatedColor, 1.0 - transmittance);
+#else
+        return vec4(0.0);
+#endif
       }
 
       float celestialDisc(vec3 direction, vec3 targetDirection, float angularRadius, float softness) {
@@ -354,19 +496,21 @@ function createRaidlandsSkyDome(preset: RaidlandsEnvironmentPreset): Mesh {
         skyColor += vec3(0.92, 0.17, 0.1) * horizonScatter * horizonNear * mie * 0.18;
         skyColor += peachScatter * twilight * (horizonNear * 0.1 + horizonWide * 0.045) * clearAtmosphere;
 
-        vec2 cloudPosition = direction.xz / max(direction.y + 0.36, 0.42);
-        cloudPosition = cloudPosition * 2.2 + vec2(uCloudPhase * 0.0018, uCloudPhase * 0.0007);
+        vec2 cloudPosition = direction.xz / max(direction.y + 0.34, 0.38);
+        float cloudSizeFraction = clamp((uCloudSize - 0.2) / 7.8, 0.0, 1.0);
+        cloudPosition = cloudPosition * mix(3.1, 1.55, cloudSizeFraction)
+          + vec2(uCloudPhase * 0.0018, uCloudPhase * 0.0007);
         float clouds = cloudNoise(cloudPosition);
-        float broadClouds = cloudNoise(cloudPosition * 0.46 + vec2(3.7, -2.1));
-        float cloudDetail = cloudNoise(cloudPosition * 1.84 + vec2(-5.2, 4.6));
+        float broadClouds = cloudNoise(cloudPosition * 0.42 + vec2(3.7, -2.1));
+        float cloudDetail = cloudNoise(cloudPosition * 2.18 + vec2(-5.2, 4.6));
         float cloudCoverage = clamp(uCloudCoverage, 0.0, 1.0);
         float cloudAlpha = smoothstep(0.005, 0.04, cloudCoverage);
-        float cloudThreshold = mix(0.78, 0.34, sqrt(cloudCoverage));
-        float cloudWave = 0.5 + 0.5 * sin(cloudPosition.x * 0.62 + sin(cloudPosition.y * 1.18) + clouds * 3.4);
+        float cloudThreshold = mix(0.82, 0.27, sqrt(cloudCoverage));
+        float cloudWave = 0.5 + 0.5 * sin(cloudPosition.x * 0.54 + sin(cloudPosition.y * 1.04) + clouds * 3.8);
         float cloudBand = 0.5 + 0.5 * sin(
-          cloudPosition.x * 0.38 + cloudPosition.y * 0.24 + sin(cloudPosition.y * 0.7) * 1.8
+          cloudPosition.x * 0.31 + cloudPosition.y * 0.22 + sin(cloudPosition.y * 0.64) * 1.9
         );
-        float cloudField = clamp(clouds * 0.48 + broadClouds * 0.28 + cloudDetail * 0.1 + cloudWave * 0.08 + cloudBand * 0.06, 0.0, 1.0);
+        float cloudField = clamp(clouds * 0.45 + broadClouds * 0.3 + cloudDetail * 0.11 + cloudWave * 0.075 + cloudBand * 0.065, 0.0, 1.0);
         float cloudEdge = mix(0.08, 0.018, clamp(uCloudSharpness, 0.0, 1.0));
         float cloudMask = smoothstep(cloudThreshold - cloudEdge, cloudThreshold + cloudEdge, cloudField)
           * cloudAlpha
@@ -385,15 +529,22 @@ function createRaidlandsSkyDome(preset: RaidlandsEnvironmentPreset): Mesh {
           * mix(0.62, 1.0, clamp(uCloudAttenuation, 0.0, 1.0));
         cloudColor = mix(cloudColor, vec3(0.065, 0.07, 0.085), cloudUnderside * (0.42 + uRainIntensity * 0.38));
         cloudColor = mix(cloudColor, vec3(0.035, 0.045, 0.065), stormBase * (0.34 + cloudDetail * 0.28));
-        vec3 warmCloudEdge = mix(uSunColor, vec3(1.0, 0.38, 0.2), 0.48 + mie * 0.28);
+        vec3 warmCloudEdge = mix(vec3(1.0), mix(uSunColor, vec3(1.0, 0.38, 0.2), 0.48 + mie * 0.28), uCloudColoring);
         cloudColor = mix(
           cloudColor,
           warmCloudEdge,
           (cloudRim * 0.82 + cloudMask * cloudSunFacing * 0.18)
             * cloudTwilight * (0.28 + cloudSunFacing * 0.68) * mix(0.58, 1.0, uCloudScattering)
         );
-        skyColor = mix(skyColor, cloudColor, cloudMask * (0.12 + cloudCoverage * 0.7 + uRainIntensity * 0.12));
-        float sunTransmission = max(0.78, 1.0 - cloudMask * mix(0.72, 0.98, cloudInterior));
+        float distantCloudMask = cloudMask * (0.12 + cloudCoverage * 0.7 + uRainIntensity * 0.12);
+#if RAIDLANDS_CLOUD_DETAIL > 0
+        distantCloudMask *= 1.0 - smoothstep(0.08, 0.5, direction.y);
+#endif
+        skyColor = mix(skyColor, cloudColor, distantCloudMask);
+        vec4 volumeCloud = raymarchCloudVolume(direction, cloudCoverage, uDaylight);
+        skyColor = skyColor * (1.0 - volumeCloud.a) + volumeCloud.rgb;
+        float combinedCloudMask = max(distantCloudMask, volumeCloud.a);
+        float sunTransmission = max(0.72, 1.0 - combinedCloudMask * mix(0.72, 0.98, cloudInterior));
         skyColor = mix(
           skyColor,
           vec3(1.0),
@@ -440,6 +591,7 @@ function createRaidlandsSkyDome(preset: RaidlandsEnvironmentPreset): Mesh {
     depthTest: false,
     fog: false,
   });
+  material.customProgramCacheKey = () => `raidlands-sky-cloud-${cloudDetail}-v3`;
 
   const skyDome = new Mesh(new SphereGeometry(9000, 48, 24), material);
   skyDome.name = "raidlands-dynamic-sky-dome";
