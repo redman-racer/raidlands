@@ -6706,14 +6706,20 @@ function syncMapViewButtons(source: HTMLElement, view: MapView): void {
 
 function resolveOceanWaterLevel(terrain: TerrainPayload): number {
   const exportedLevel = Number(terrain.waterLevel);
+  const inferredLevel = inferOceanWaterLevel(terrain);
+
   if (Number.isFinite(exportedLevel)) {
-    // The Rust terrain export already knows the gameplay water plane. Do not
-    // replace it with a percentile of the heightmap: the lowest samples are
-    // ocean-floor elevations, not the visible water surface.
-    return exportedLevel;
+    // Some published terrain payloads contain an absolute/runtime water value
+    // that is not in the same vertical coordinate space as the height grid.
+    // Reject it when it disagrees with the shoreline represented by the map;
+    // otherwise the visible water plane cuts through the terrain and the
+    // reflection appears below the map.
+    if (Math.abs(exportedLevel - inferredLevel) <= 8) {
+      return exportedLevel;
+    }
   }
 
-  return inferOceanWaterLevel(terrain);
+  return inferredLevel;
 }
 
 function inferOceanWaterLevel(terrain: TerrainPayload): number {
