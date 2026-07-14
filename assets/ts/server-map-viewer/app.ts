@@ -3310,7 +3310,7 @@ function createMonumentPrimitive(monument: MonumentPayload, placement?: Monument
   if (key.includes("apartment") || key.includes("apartments")) {
     // Apartment complexes occupy a full city block in-world; give the map proxy
     // enough footprint to read at the same zoom as the other large monuments.
-    createApartmentComplexMonumentPrimitive(group, size * 1.42);
+    createApartmentComplexMonumentPrimitive(group, size * 2);
     return addTitle();
   }
 
