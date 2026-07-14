@@ -1307,6 +1307,9 @@ diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.22, raidlan
     layer.name = "raidlands-monument-primitives";
 
     monuments.forEach((monument) => {
+      if (shouldHideMonumentPrimitive(monument)) {
+        return;
+      }
       const group = createMonumentPrimitive(monument);
       const monumentPosition = rustWorldToViewerPosition(monument.x, monument.y, monument.z);
       const terrainHeight = sampleTerrainHeight(this.terrain, monumentPosition.x, monumentPosition.z);
@@ -3198,7 +3201,7 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
 
   if (key.includes("substation") || key.includes("sub_station")) {
     createSubstationMonumentPrimitive(group, size);
-    return addTitle();
+    return group;
   }
 
   if (key.includes("excavator")) {
@@ -4698,6 +4701,11 @@ function roundRect(context: CanvasRenderingContext2D, x: number, y: number, widt
 
 function monumentKey(monument: MonumentPayload): string {
   return `${monument.kind} ${monument.name} ${monument.prefab}`.toLowerCase().replace(/[^a-z0-9_]+/g, "_");
+}
+
+function shouldHideMonumentPrimitive(monument: MonumentPayload): boolean {
+  const key = monumentKey(monument);
+  return key.includes("ice_lake") || key.includes("ice_lakes") || key.includes("wild_swamp");
 }
 
 function sampleTerrainHeight(terrain: TerrainPayload, x: number, z: number): number {
