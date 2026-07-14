@@ -1459,7 +1459,7 @@ diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.22, raidlan
       .lerp(new Color(0xffd1aa), twilight * MathUtils.clamp(environment.atmosphereMie / 4, 0, 1) * 0.1)
       .lerp(environment.ambientColor, night * 0.24);
     this.scene.fog = fogStrength > 0.02
-      ? new FogExp2(fogColor, MathUtils.lerp(0.00001, 0.00072, Math.pow(fogStrength, 1.3)))
+      ? new FogExp2(fogColor, visualFogDensityForCamera(fogStrength, this.camera.position, this.terrain))
       : null;
     this.environmentGradePass.uniforms.uSunColor.value.copy(atmosphereWarmColor);
     this.environmentGradePass.uniforms.uTwilight.value = twilight;
@@ -4361,6 +4361,20 @@ function visualFogStrengthForEnvironment(environment: NormalizedEnvironment): nu
   // short visibility in-game. Preserve the effective scalar for diagnostics,
   // and use the authoritative preset transition to reproduce its visual impact.
   return MathUtils.clamp(Math.max(environment.fogPresetBlend, sampledHaze + weatherHaze), 0, 1);
+}
+
+function visualFogDensityForCamera(fogStrength: number, cameraPosition: Vector3, terrain: TerrainPayload): number {
+  const worldSize = terrain.worldSize || 4500;
+  const terrainHeight = sampleTerrainHeight(terrain, cameraPosition.x, cameraPosition.z);
+  const cameraAltitude = Math.max(0, cameraPosition.y - terrainHeight);
+  const altitudeTaper = MathUtils.smoothstep(cameraAltitude, worldSize * 0.08, worldSize * 0.55);
+  const altitudeScale = MathUtils.lerp(1, 0.55, altitudeTaper);
+  const baseDensity = MathUtils.lerp(0.00001, 0.00072, Math.pow(MathUtils.clamp(fogStrength, 0, 1), 1.3));
+
+  // Rust's fog reads strongly near the terrain but thins from aerial views.
+  // Keep the ground-level match while preventing the map-scale cameras from
+  // accumulating exponential fog across several kilometres of empty air.
+  return baseDensity * altitudeScale;
 }
 
 function weatherPresetBlend(state: WeatherState | null | undefined, presetName: string): number {
