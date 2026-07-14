@@ -1264,6 +1264,7 @@ outgoingLight = mix(outgoingLight, raidlandsFogColor, raidlandsTerrainHorizon * 
       metalness: 0,
       transparent: true,
       opacity: 0.94,
+      fog: false,
       side: DoubleSide,
     });
     const mesh = new Mesh(geometry, material);
@@ -1336,8 +1337,11 @@ outgoingLight += raidlandsWaterSunColor * raidlandsWaterSunPath;
     const mesh = new Mesh(geometry, material);
     mesh.name = "raidlands-infinite-ocean-surface";
     mesh.rotation.x = -Math.PI / 2;
-    mesh.position.y = waterLevel + 0.08;
-    mesh.renderOrder = -8;
+    mesh.position.y = waterLevel + 0.12;
+    // The surface must win over the deep ocean floor when the transparent
+    // layer and scene fog overlap at the horizon.
+    mesh.renderOrder = 8;
+    material.depthWrite = false;
     return mesh;
   }
 
