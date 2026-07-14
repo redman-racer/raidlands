@@ -26,6 +26,7 @@ import {
   RingGeometry,
   RepeatWrapping,
   Scene,
+  ShaderMaterial,
   SRGBColorSpace,
   SphereGeometry,
   Sprite,
@@ -740,6 +741,7 @@ class TerrainViewer {
   private readonly oceanSurfaceMesh: Mesh;
   private readonly oceanFloorMesh: Mesh;
   private readonly oceanWaveTexture: CanvasTexture;
+  private readonly aerialCloudLayer: Mesh;
   private readonly gridLayer = new Group();
   private readonly heatmapLayer = new Group();
   private readonly playerLocationLayer = new Group();
@@ -782,6 +784,21 @@ class TerrainViewer {
     cloudSharpness: { value: 1 },
     cloudPhase: { value: 0 },
     cloudShadowStrength: { value: 0 },
+  };
+  private readonly aerialCloudUniforms = {
+    coverage: { value: 0 },
+    opacity: { value: 1 },
+    size: { value: 3.35 },
+    sharpness: { value: 1 },
+    attenuation: { value: 0.25 },
+    brightness: { value: 0.55 },
+    coloring: { value: 0.65 },
+    rain: { value: 0 },
+    phase: { value: 0 },
+    visibility: { value: 0 },
+    worldSize: { value: 4500 },
+    sunColor: { value: new Color(0xfff1cf) },
+    ambientColor: { value: new Color(0xddeaf0) },
   };
   private ambientLight: AmbientLight | null = null;
   private sunLight: DirectionalLight | null = null;
@@ -860,6 +877,8 @@ class TerrainViewer {
     this.oceanWaveTexture = createOceanWaveTexture();
     this.oceanSurfaceMesh = this.createOceanSurfaceMesh();
     this.scene.add(this.oceanSurfaceMesh);
+    this.aerialCloudLayer = this.createAerialCloudLayer();
+    this.scene.add(this.aerialCloudLayer);
     this.groundFogLayer = createGroundFogBanks(this.terrain);
     this.groundFogLayer.visible = false;
     this.scene.add(this.groundFogLayer);
@@ -1486,6 +1505,105 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     return mesh;
   }
 
+  private createAerialCloudLayer(): Mesh {
+    const worldSize = this.terrain.worldSize || 4500;
+    const uniforms = this.aerialCloudUniforms;
+    uniforms.worldSize.value = worldSize;
+    const material = new ShaderMaterial({
+      uniforms: {
+        uCoverage: uniforms.coverage,
+        uOpacity: uniforms.opacity,
+        uCloudSize: uniforms.size,
+        uSharpness: uniforms.sharpness,
+        uAttenuation: uniforms.attenuation,
+        uBrightness: uniforms.brightness,
+        uColoring: uniforms.coloring,
+        uRain: uniforms.rain,
+        uPhase: uniforms.phase,
+        uVisibility: uniforms.visibility,
+        uWorldSize: uniforms.worldSize,
+        uSunColor: uniforms.sunColor,
+        uAmbientColor: uniforms.ambientColor,
+      },
+      vertexShader: `
+        varying vec3 vWorldPosition;
+        void main() {
+          vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+          vWorldPosition = worldPosition.xyz;
+          gl_Position = projectionMatrix * viewMatrix * worldPosition;
+        }
+      `,
+      fragmentShader: `
+        precision highp float;
+        varying vec3 vWorldPosition;
+        uniform float uCoverage;
+        uniform float uOpacity;
+        uniform float uCloudSize;
+        uniform float uSharpness;
+        uniform float uAttenuation;
+        uniform float uBrightness;
+        uniform float uColoring;
+        uniform float uRain;
+        uniform float uPhase;
+        uniform float uVisibility;
+        uniform float uWorldSize;
+        uniform vec3 uSunColor;
+        uniform vec3 uAmbientColor;
+
+        float hash(vec2 position) {
+          return fract(sin(dot(position, vec2(127.1, 311.7))) * 43758.5453123);
+        }
+
+        float noise(vec2 position) {
+          vec2 cell = floor(position);
+          vec2 local = fract(position);
+          local = local * local * (3.0 - 2.0 * local);
+          float lower = mix(hash(cell), hash(cell + vec2(1.0, 0.0)), local.x);
+          float upper = mix(hash(cell + vec2(0.0, 1.0)), hash(cell + vec2(1.0, 1.0)), local.x);
+          return mix(lower, upper, local.y);
+        }
+
+        void main() {
+          float coverage = clamp(uCoverage, 0.0, 1.0);
+          if (coverage <= 0.001 || uVisibility <= 0.001) discard;
+          float sizeFraction = clamp((uCloudSize - 0.2) / 7.8, 0.0, 1.0);
+          float scale = uWorldSize * mix(0.035, 0.13, sizeFraction);
+          vec2 position = vWorldPosition.xz / max(scale, 1.0)
+            + vec2(uPhase * 0.0032, uPhase * 0.00135);
+          float broad = noise(position * 0.51 + vec2(3.7, -2.1));
+          float field = noise(position) * 0.54
+            + broad * 0.25
+            + noise(position * 2.03 + vec2(7.13, -4.27)) * 0.14
+            + noise(position * 4.11 + vec2(-5.2, 8.4)) * 0.07;
+          float threshold = mix(0.82, 0.27, sqrt(coverage));
+          float edge = mix(0.09, 0.022, clamp(uSharpness, 0.0, 1.0));
+          float density = smoothstep(threshold - edge, threshold + edge, field)
+            * smoothstep(0.005, 0.04, coverage);
+          float topLight = smoothstep(threshold, threshold + edge * 3.2, field);
+          vec3 neutralTop = mix(uAmbientColor, vec3(0.92, 0.96, 1.0), 0.58);
+          vec3 sunTop = mix(vec3(1.0), uSunColor, clamp(uColoring, 0.0, 1.0));
+          vec3 color = mix(neutralTop, sunTop, topLight * mix(0.22, 0.64, uColoring));
+          color *= mix(0.72, 1.2, clamp(uBrightness, 0.0, 2.0) * 0.5);
+          color = mix(color, vec3(0.08, 0.095, 0.12), clamp(uAttenuation * 0.22 + uRain * 0.48, 0.0, 0.72));
+          float alpha = density * clamp(uOpacity, 0.0, 1.0) * uVisibility;
+          gl_FragColor = vec4(color, alpha);
+        }
+      `,
+      transparent: true,
+      depthTest: true,
+      depthWrite: false,
+      side: DoubleSide,
+      fog: false,
+    });
+    material.customProgramCacheKey = () => `raidlands-aerial-cloud-${this.cloudDetail}-v1`;
+    const mesh = new Mesh(new PlaneGeometry(worldSize * 6, worldSize * 6, 1, 1), material);
+    mesh.name = "raidlands-aerial-cloud-tops";
+    mesh.rotation.x = -Math.PI / 2;
+    mesh.renderOrder = 2;
+    mesh.visible = false;
+    return mesh;
+  }
+
   private updateOceanPlanes(now: number): void {
     const anchorX = this.camera.position.x;
     const anchorZ = this.camera.position.z;
@@ -1493,6 +1611,8 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     this.oceanSurfaceMesh.position.z = anchorZ;
     this.oceanFloorMesh.position.x = anchorX;
     this.oceanFloorMesh.position.z = anchorZ;
+    this.aerialCloudLayer.position.x = anchorX;
+    this.aerialCloudLayer.position.z = anchorZ;
     this.oceanWaveTexture.offset.set((now * 0.000018) % 1, (now * 0.000011) % 1);
     this.waterLightUniforms.time.value = now / 1000;
   }
@@ -1716,7 +1836,11 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     this.terrainLightUniforms.cloudPhase.value = performance.now() / 1000;
     this.terrainLightUniforms.cloudShadowStrength.value = this.cloudProfile.useVolumetricClouds
       ? MathUtils.clamp(environment.cloudOpacity * (0.28 + environment.cloudAttenuation * 0.48 + environment.rainIntensity * 0.16), 0, 0.92)
-        * (1 - MathUtils.smoothstep(cameraTopDownAmount(this.camera, this.controls.target), 0.72, 0.94))
+        * MathUtils.lerp(
+          1,
+          0.28,
+          MathUtils.smoothstep(cameraTopDownAmount(this.camera, this.controls.target), 0.72, 0.94),
+        )
       : 0;
     const oceanMaterial = this.oceanSurfaceMesh.material as MeshStandardMaterial;
     const waterWeatherAttenuation = 1 - MathUtils.clamp(
@@ -1758,6 +1882,29 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     this.waterLightUniforms.cloudSharpness.value = environment.cloudSharpness;
     this.waterLightUniforms.cloudPhase.value = performance.now() / 1000;
     this.waterLightUniforms.cloudShadowStrength.value = this.terrainLightUniforms.cloudShadowStrength.value;
+    const cloudSizeFraction = MathUtils.clamp((environment.cloudSize - 0.2) / 7.8, 0, 1);
+    const cloudBase = worldSize * (0.115 - environment.rainIntensity * 0.016);
+    const cloudTop = cloudBase + worldSize * MathUtils.lerp(0.055, 0.105, cloudSizeFraction);
+    const aboveCloudDeck = MathUtils.smoothstep(this.camera.position.y, cloudTop - worldSize * 0.015, cloudTop + worldSize * 0.08);
+    const aerialViewAmount = MathUtils.smoothstep(cameraTopDownAmount(this.camera, this.controls.target), 0.42, 0.9);
+    const aerialOpacityLimit = this.cloudDetail === "max" ? 0.28 : 0.2;
+    this.aerialCloudUniforms.coverage.value = visualCloudCoverage;
+    this.aerialCloudUniforms.opacity.value = environment.cloudOpacity;
+    this.aerialCloudUniforms.size.value = environment.cloudSize;
+    this.aerialCloudUniforms.sharpness.value = environment.cloudSharpness;
+    this.aerialCloudUniforms.attenuation.value = environment.cloudAttenuation;
+    this.aerialCloudUniforms.brightness.value = environment.cloudBrightness;
+    this.aerialCloudUniforms.coloring.value = environment.cloudColoring;
+    this.aerialCloudUniforms.rain.value = environment.rainIntensity;
+    this.aerialCloudUniforms.phase.value = performance.now() / 1000;
+    this.aerialCloudUniforms.visibility.value = this.cloudProfile.useVolumetricClouds
+      ? aboveCloudDeck * aerialViewAmount * aerialOpacityLimit
+      : 0;
+    this.aerialCloudUniforms.worldSize.value = worldSize;
+    this.aerialCloudUniforms.sunColor.value.copy(environment.sunColor);
+    this.aerialCloudUniforms.ambientColor.value.copy(environment.ambientColor);
+    this.aerialCloudLayer.position.y = cloudTop - worldSize * 0.008;
+    this.aerialCloudLayer.visible = this.aerialCloudUniforms.visibility.value > 0.002 && visualCloudCoverage > 0.015;
     const horizonDrama = MathUtils.clamp(1 - Math.abs(MathUtils.clamp(sunHeight, -0.1, 0.46) - 0.18) / 0.28, 0, 1);
     this.scene.backgroundIntensity = (MathUtils.lerp(0.7, 1.02, daylight) + horizonDrama * 0.11 - night * 0.18) * MathUtils.lerp(0.72, 1.16, atmosphereBrightness / 1.4);
     this.scene.environmentIntensity = (MathUtils.lerp(0.46, 0.96, daylight) + horizonDrama * 0.04) * MathUtils.lerp(0.82, 1.18, atmosphereContrast / 1.4);

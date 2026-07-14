@@ -395,14 +395,16 @@ function createRaidlandsSkyDome(
 
       vec4 raymarchCloudVolume(vec3 rayDirection, float cloudCoverage, float daylight) {
 #if RAIDLANDS_CLOUD_DETAIL > 0
-        if (cloudCoverage <= 0.001 || rayDirection.y <= 0.004) {
+        if (cloudCoverage <= 0.001 || abs(rayDirection.y) <= 0.004) {
           return vec4(0.0);
         }
         float sizeFraction = clamp((uCloudSize - 0.2) / 7.8, 0.0, 1.0);
         float cloudBase = uWorldSize * (0.115 - uRainIntensity * 0.016);
         float cloudTop = cloudBase + uWorldSize * mix(0.055, 0.105, sizeFraction);
-        float enterDistance = max(0.0, (cloudBase - uCameraPosition.y) / rayDirection.y);
-        float exitDistance = min(uWorldSize * 2.4, (cloudTop - uCameraPosition.y) / rayDirection.y);
+        float baseDistance = (cloudBase - uCameraPosition.y) / rayDirection.y;
+        float topDistance = (cloudTop - uCameraPosition.y) / rayDirection.y;
+        float enterDistance = max(0.0, min(baseDistance, topDistance));
+        float exitDistance = min(uWorldSize * 2.4, max(baseDistance, topDistance));
         if (exitDistance <= enterDistance) {
           return vec4(0.0);
         }
