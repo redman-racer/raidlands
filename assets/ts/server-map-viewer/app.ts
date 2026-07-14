@@ -8,7 +8,10 @@ import {
   CylinderGeometry,
   DirectionalLight,
   DoubleSide,
+  DataTexture,
+  DepthTexture,
   FogExp2,
+  FloatType,
   Float32BufferAttribute,
   Group,
   CanvasTexture,
@@ -16,6 +19,7 @@ import {
   LineSegments,
   Material,
   MathUtils,
+  Matrix4,
   Mesh,
   MeshStandardMaterial,
   Object3D,
@@ -25,6 +29,7 @@ import {
   Quaternion,
   RingGeometry,
   RepeatWrapping,
+  RedFormat,
   Scene,
   ShaderMaterial,
   SRGBColorSpace,
@@ -32,6 +37,7 @@ import {
   Sprite,
   SpriteMaterial,
   Uint32BufferAttribute,
+  UnsignedIntType,
   Vector3,
   WebGLRenderer,
 } from "three";
@@ -43,6 +49,14 @@ import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
 import { unityPositionToThreeVector, unityQuaternionValueToThreeQuaternion } from "../airstrike-animation-editor/editor/coordinates";
 import { createVehicleProxy, loadVehiclePreview, metadataForVehicle } from "../airstrike-animation-editor/editor/vehicle-preview";
 import type { VehiclePreviewMetadataFile } from "../airstrike-animation-editor/types";
+import {
+  fogRayMarchSamples,
+  lowDetailFogNearVisibility,
+  parseFogDetail,
+  resolveFogDetail,
+  type FogCapabilities,
+  type FogDetail,
+} from "./fog-detail";
 import { getSharedCanvasTexture, isSharedThreeAsset, loadSharedTexture } from "../shared/three-asset-cache";
 import { applyRaidlandsEnvironment, updateRaidlandsEnvironment } from "../shared/three-environment";
 import {
@@ -348,6 +362,120 @@ const RAIDLANDS_ENVIRONMENT_GRADE_SHADER = {
       color = mix(vec3(0.5), color, mix(0.955, 1.028, clamp(uAtmosphereContrast / 1.4, 0.0, 1.0)));
 
       gl_FragColor = vec4(color, source.a);
+    }
+  `,
+};
+
+const RAIDLANDS_VOLUMETRIC_FOG_SHADER = {
+  uniforms: {
+    tDiffuse: { value: null },
+    tDepth: { value: null },
+    tTerrainHeight: { value: null },
+    uCameraNear: { value: 1 },
+    uCameraFar: { value: 12000 },
+    uInverseProjection: { value: new Matrix4() },
+    uCameraWorld: { value: new Matrix4() },
+    uCameraPosition: { value: new Vector3() },
+    uWorldSize: { value: 4500 },
+    uFogStrength: { value: 0 },
+    uFogIntensity: { value: 0 },
+    uFogColor: { value: new Color(0xc8dfe8) },
+    uSunColor: { value: new Color(0xfff1cf) },
+    uSunDirection: { value: new Vector3(0.5, 0.78, 0.36).normalize() },
+    uRainIntensity: { value: 0 },
+    uMie: { value: 0.4 },
+    uTime: { value: 0 },
+    uSampleCount: { value: 44 },
+    uMaxDetail: { value: 1 },
+  },
+  vertexShader: `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform sampler2D tDiffuse;
+    uniform sampler2D tDepth;
+    uniform sampler2D tTerrainHeight;
+    uniform mat4 uInverseProjection;
+    uniform mat4 uCameraWorld;
+    uniform vec3 uCameraPosition;
+    uniform float uWorldSize;
+    uniform float uFogStrength;
+    uniform float uFogIntensity;
+    uniform vec3 uFogColor;
+    uniform vec3 uSunColor;
+    uniform vec3 uSunDirection;
+    uniform float uRainIntensity;
+    uniform float uMie;
+    uniform float uTime;
+    uniform float uSampleCount;
+    uniform float uMaxDetail;
+    varying vec2 vUv;
+
+    float hash21(vec2 p) {
+      p = fract(p * vec2(123.34, 456.21));
+      p += dot(p, p + 45.32);
+      return fract(p.x * p.y);
+    }
+
+    float noise2(vec2 p) {
+      vec2 i = floor(p);
+      vec2 f = fract(p);
+      f = f * f * (3.0 - 2.0 * f);
+      return mix(mix(hash21(i), hash21(i + vec2(1.0, 0.0)), f.x),
+        mix(hash21(i + vec2(0.0, 1.0)), hash21(i + vec2(1.0)), f.x), f.y);
+    }
+
+    float terrainHeight(vec2 worldXZ) {
+      vec2 uv = clamp(vec2(0.5 - worldXZ.x / uWorldSize, 0.5 - worldXZ.y / uWorldSize), 0.0, 1.0);
+      return texture2D(tTerrainHeight, uv).r;
+    }
+
+    float fogDensity(vec3 worldPosition) {
+      float ground = terrainHeight(worldPosition.xz);
+      float fogTop = uWorldSize * mix(0.035, 0.09, uFogIntensity);
+      float heightShape = 1.0 - smoothstep(ground - 12.0, ground + fogTop, worldPosition.y);
+      float broad = noise2(worldPosition.xz / (uWorldSize * 0.17) + vec2(uTime * 0.0032, -uTime * 0.0021));
+      float detail = noise2(worldPosition.xz / (uWorldSize * 0.055) + vec2(-uTime * 0.006, uTime * 0.004));
+      float structure = mix(0.5, 1.08, broad) * mix(0.82, 1.18, detail * uMaxDetail);
+      return max(0.0, heightShape * structure * uFogStrength);
+    }
+
+    void main() {
+      vec4 source = texture2D(tDiffuse, vUv);
+      float depth = texture2D(tDepth, vUv).x;
+      if (uFogStrength <= 0.001 || depth >= 0.999999) {
+        gl_FragColor = source;
+        return;
+      }
+
+      vec4 viewPosition = uInverseProjection * vec4(vUv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+      viewPosition /= max(viewPosition.w, 0.00001);
+      vec3 worldEnd = (uCameraWorld * viewPosition).xyz;
+      vec3 ray = worldEnd - uCameraPosition;
+      float rayLength = length(ray);
+      vec3 rayDirection = ray / max(rayLength, 0.0001);
+      float stepLength = rayLength / max(uSampleCount, 1.0);
+      float jitter = hash21(gl_FragCoord.xy) - 0.5;
+      float transmittance = 1.0;
+      vec3 scattering = vec3(0.0);
+      float sunFacing = pow(max(dot(rayDirection, normalize(uSunDirection)), 0.0), mix(3.0, 9.0, uMie));
+      vec3 litFog = mix(uFogColor, uSunColor, sunFacing * mix(0.05, 0.22, uMaxDetail) * (1.0 - uRainIntensity * 0.55));
+
+      for (int index = 0; index < 44; index++) {
+        if (float(index) >= uSampleCount || transmittance < 0.025) break;
+        float alongRay = (float(index) + 0.5 + jitter * 0.35) * stepLength;
+        vec3 samplePosition = uCameraPosition + rayDirection * alongRay;
+        float density = fogDensity(samplePosition);
+        float extinction = 1.0 - exp(-density * stepLength / max(uWorldSize * 0.085, 1.0));
+        scattering += transmittance * extinction * litFog;
+        transmittance *= 1.0 - extinction;
+      }
+
+      gl_FragColor = vec4(source.rgb * transmittance + scattering, source.a);
     }
   `,
 };
@@ -729,11 +857,13 @@ class TerrainViewer {
   private readonly status: HTMLElement | null;
   private readonly cloudDetail: RaidlandsCloudDetail;
   private readonly cloudProfile: RaidlandsCloudProfile;
+  private readonly fogDetail: FogDetail;
   private readonly scene = new Scene();
   private readonly camera = new PerspectiveCamera(48, 1, 1, 12000);
   private readonly renderer = new WebGLRenderer({ antialias: true, alpha: false });
   private readonly composer: EffectComposer;
   private readonly ambientOcclusionPass: SSAOPass;
+  private readonly volumetricFogPass: ShaderPass | null;
   private readonly environmentGradePass: ShaderPass;
   private readonly controls: OrbitControls;
   private readonly terrainMesh: Mesh;
@@ -750,6 +880,7 @@ class TerrainViewer {
   private readonly monumentLayer = new Group();
   private readonly weatherCloudLayer = new Group();
   private readonly groundFogLayer: Group;
+  private readonly terrainHeightTexture: DataTexture | null;
   private readonly rainSheetLayer = new Group();
   private readonly rainLayer = new Group();
   private readonly rainMaterial: LineBasicMaterial;
@@ -850,6 +981,11 @@ class TerrainViewer {
     this.lockCameraInput = this.root.dataset.cameraLocked === "true";
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
     this.renderer.outputColorSpace = SRGBColorSpace;
+    this.fogDetail = resolveFogDetail(
+      parseFogDetail(this.root.dataset.fogDetail, "max"),
+      fogCapabilities(this.renderer),
+    );
+    this.root.dataset.fogDetailResolved = this.fogDetail;
     applyRaidlandsEnvironment(this.scene, this.renderer, {
       preset: "terrain",
       exposure: 1.16,
@@ -860,13 +996,26 @@ class TerrainViewer {
     });
     this.composer = new EffectComposer(this.renderer);
     this.composer.setPixelRatio(Math.min(this.renderer.getPixelRatio(), 1.5));
+    if (this.fogDetail !== "low") {
+      this.composer.renderTarget1.depthTexture = new DepthTexture(1, 1, UnsignedIntType);
+      this.composer.renderTarget2.depthTexture = new DepthTexture(1, 1, UnsignedIntType);
+    }
     this.ambientOcclusionPass = new SSAOPass(this.scene, this.camera, 1, 1, 24);
     this.ambientOcclusionPass.kernelRadius = 7;
     this.ambientOcclusionPass.minDistance = 0.0005;
     this.ambientOcclusionPass.maxDistance = 0.009;
     this.environmentGradePass = new ShaderPass(RAIDLANDS_ENVIRONMENT_GRADE_SHADER);
+    this.terrainHeightTexture = this.fogDetail === "low" ? null : createTerrainHeightTexture(this.terrain);
+    this.volumetricFogPass = this.fogDetail === "low" ? null : new ShaderPass(RAIDLANDS_VOLUMETRIC_FOG_SHADER);
+    if (this.volumetricFogPass && this.terrainHeightTexture) {
+      this.volumetricFogPass.uniforms.tDepth.value = this.composer.readBuffer.depthTexture;
+      this.volumetricFogPass.uniforms.tTerrainHeight.value = this.terrainHeightTexture;
+      this.volumetricFogPass.uniforms.uSampleCount.value = fogRayMarchSamples(this.fogDetail);
+      this.volumetricFogPass.uniforms.uMaxDetail.value = this.fogDetail === "max" ? 1 : 0;
+    }
     this.composer.addPass(new RenderPass(this.scene, this.camera));
     this.composer.addPass(this.ambientOcclusionPass);
+    if (this.volumetricFogPass) this.composer.addPass(this.volumetricFogPass);
     this.composer.addPass(this.environmentGradePass);
     this.renderer.domElement.dataset.serverMapViewerCanvas = "true";
     this.terrainMaterial = this.createTerrainMaterial();
@@ -948,7 +1097,9 @@ class TerrainViewer {
     window.removeEventListener("resize", this.onResize);
     this.controls.dispose();
     this.ambientOcclusionPass.dispose();
+    this.volumetricFogPass?.dispose();
     this.environmentGradePass.dispose();
+    this.terrainHeightTexture?.dispose();
     this.composer.dispose();
     this.scene.traverse((object) => {
       if (object instanceof Mesh || object instanceof Sprite || object instanceof LineSegments) {
@@ -1714,6 +1865,7 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     this.updateSelfLocationOrbit(now);
     this.updateCameraTour(now);
     this.controls.update();
+    this.camera.updateMatrixWorld();
     this.updateOverlayLayerTransitions(now);
     this.updateGridOpacity();
     this.updateOceanPlanes(now);
@@ -1911,8 +2063,26 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     this.scene.backgroundIntensity = (MathUtils.lerp(0.7, 1.02, daylight) + horizonDrama * 0.11 - night * 0.18) * MathUtils.lerp(0.72, 1.16, atmosphereBrightness / 1.4);
     this.scene.environmentIntensity = (MathUtils.lerp(0.46, 0.96, daylight) + horizonDrama * 0.04) * MathUtils.lerp(0.82, 1.18, atmosphereContrast / 1.4);
     this.scene.fog = fogStrength > 0.02
-      ? new FogExp2(fogColor, visualFogDensityForCamera(fogStrength, this.camera.position, this.terrain))
+      ? new FogExp2(
+        fogColor,
+        visualFogDensityForCamera(fogStrength, this.camera.position, this.terrain) * (this.fogDetail === "low" ? 1 : 0.18),
+      )
       : null;
+    if (this.volumetricFogPass) {
+      const uniforms = this.volumetricFogPass.uniforms;
+      uniforms.uInverseProjection.value.copy(this.camera.projectionMatrixInverse);
+      uniforms.uCameraWorld.value.copy(this.camera.matrixWorld);
+      uniforms.uCameraPosition.value.copy(this.camera.position);
+      uniforms.uWorldSize.value = worldSize;
+      uniforms.uFogStrength.value = fogStrength;
+      uniforms.uFogIntensity.value = environment.fogIntensity;
+      uniforms.uFogColor.value.copy(fogColor);
+      uniforms.uSunColor.value.copy(environment.sunColor);
+      uniforms.uSunDirection.value.copy(environment.sunDirection);
+      uniforms.uRainIntensity.value = environment.rainIntensity;
+      uniforms.uMie.value = MathUtils.clamp(environment.atmosphereMie / 4, 0, 1);
+      uniforms.uTime.value = performance.now() / 1000;
+    }
     this.environmentGradePass.uniforms.uSunColor.value.copy(atmosphereWarmColor);
     this.environmentGradePass.uniforms.uTwilight.value = twilight;
     this.environmentGradePass.uniforms.uFogStrength.value = fogStrength;
@@ -1972,13 +2142,13 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
 
     const groundFogAmount = Math.sqrt(visualFogStrengthForEnvironment(environment));
     const horizontalSunLength = Math.max(0.0001, Math.hypot(environment.sunDirection.x, environment.sunDirection.z));
-    this.groundFogLayer.visible = groundFogAmount > 0.015;
+    this.groundFogLayer.visible = this.fogDetail === "low" && groundFogAmount > 0.015;
     this.groundFogLayer.children.forEach((child, index) => {
       if (!(child instanceof Sprite)) {
         return;
       }
       const distance = this.camera.position.distanceTo(child.position);
-      const nearFade = MathUtils.smoothstep(distance, worldSize * 0.12, worldSize * 0.42);
+      const nearFade = lowDetailFogNearVisibility(groundFogAmount, distance / worldSize);
       const farFade = 1 - MathUtils.smoothstep(distance, worldSize * 1.08, worldSize * 1.65);
       const horizontalBankLength = Math.max(0.0001, Math.hypot(child.position.x, child.position.z));
       const sunFacing = MathUtils.clamp(
@@ -5507,6 +5677,29 @@ function visualFogDensityForCamera(fogStrength: number, cameraPosition: Vector3,
   // Keep the ground-level match while preventing the map-scale cameras from
   // accumulating exponential fog across several kilometres of empty air.
   return baseDensity * altitudeScale;
+}
+
+function fogCapabilities(renderer: WebGLRenderer): FogCapabilities {
+  const webgl2 = renderer.capabilities.isWebGL2;
+  return {
+    webgl2,
+    depthTexture: webgl2 || renderer.extensions.has("WEBGL_depth_texture"),
+    floatTexture: webgl2 || renderer.extensions.has("OES_texture_float"),
+    highPrecisionFragment: renderer.capabilities.getMaxPrecision("highp") === "highp",
+  };
+}
+
+function createTerrainHeightTexture(terrain: TerrainPayload): DataTexture {
+  const resolution = Math.max(1, terrain.resolution);
+  const expectedLength = resolution * resolution;
+  const data = new Float32Array(expectedLength);
+  for (let index = 0; index < expectedLength; index += 1) {
+    data[index] = Number.isFinite(terrain.heights[index]) ? terrain.heights[index] : 0;
+  }
+  const texture = new DataTexture(data, resolution, resolution, RedFormat, FloatType);
+  texture.flipY = false;
+  texture.needsUpdate = true;
+  return texture;
 }
 
 function weatherPresetBlend(state: WeatherState | null | undefined, presetName: string): number {
