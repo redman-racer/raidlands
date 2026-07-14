@@ -21,6 +21,7 @@ import {
   Object3D,
   PerspectiveCamera,
   PlaneGeometry,
+  PointLight,
   Quaternion,
   RingGeometry,
   RepeatWrapping,
@@ -678,6 +679,7 @@ class TerrainViewer {
   private readonly playerLocationLayer = new Group();
   private readonly overlayLayerTransitions: OverlayLayerTransition[] = [];
   private readonly airstrikeLayer = new Group();
+  private readonly monumentLayer = new Group();
   private readonly weatherCloudLayer = new Group();
   private readonly groundFogLayer: Group;
   private readonly rainSheetLayer = new Group();
@@ -1305,7 +1307,7 @@ diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.22, raidlan
       return;
     }
 
-    const layer = new Group();
+    const layer = this.monumentLayer;
     layer.name = "raidlands-monument-primitives";
 
     monuments.forEach((monument) => {
@@ -1368,6 +1370,7 @@ diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.22, raidlan
     this.updateOceanPlanes(now);
     this.updateEnvironment(now);
     this.airstrikeLayer.userData.tick?.((now - this.clockStart) / 1000);
+    this.monumentLayer.traverse((object) => object.userData.tick?.((now - this.clockStart) / 1000));
     this.updateAircraftCameraSafety();
     this.composer.render();
   }
@@ -3161,10 +3164,7 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
   }
 
   if (key.includes("oilrig") || key.includes("oil_rig")) {
-    addBox(group, size * 1.1, 10, size * 0.86, 0x3d4546, 0, 6, 0);
-    addBox(group, size * 0.18, size * 0.8, size * 0.18, 0x808783, -size * 0.36, size * 0.45, -size * 0.22);
-    addBox(group, size * 0.18, size * 0.65, size * 0.18, 0x808783, size * 0.34, size * 0.38, size * 0.2);
-    addCylinder(group, size * 0.05, size * 0.88, 0xe0b35f, 0, size * 0.5, 0);
+    createOilRigMonumentPrimitive(group, size);
     return addTitle();
   }
 
@@ -3192,6 +3192,11 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
 
   if (key.includes("outpost") || key.includes("compound")) {
     createOutpostMonumentPrimitive(group, size);
+    return addTitle();
+  }
+
+  if (key.includes("water_treatment") || key.includes("watertreatment") || key.includes("water_treatment_plant")) {
+    createWaterTreatmentPlantMonumentPrimitive(group, size);
     return addTitle();
   }
 
@@ -3252,6 +3257,163 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
   addBox(group, size * 0.68, size * 0.24, size * 0.5, 0x6a705e, 0, size * 0.12, 0);
   addCylinder(group, size * 0.08, size * 0.46, 0x8b7044, size * 0.28, size * 0.23, -size * 0.12);
   return addTitle();
+}
+
+function createOilRigMonumentPrimitive(group: Group, size: number): void {
+  const deck = 0xc19b45;
+  const rust = 0x8b4a35;
+  const steel = 0x748086;
+  const dark = 0x394348;
+
+  // Broad multi-level deck with four tapered support legs and cross-bracing.
+  addBox(group, size * 1.18, 5, size * 0.86, dark, 0, size * 0.72, 0);
+  [
+    [-0.46, -0.32], [0.46, -0.32], [-0.46, 0.32], [0.46, 0.32],
+  ].forEach(([x, z]) => addCylinder(group, size * 0.055, size * 1.18, deck, size * x, size * 0.08, size * z));
+  for (const z of [-0.32, 0.32]) {
+    const brace = addBox(group, size * 0.98, size * 0.025, size * 0.025, rust, 0, size * 0.38, size * z);
+    brace.rotation.z = z < 0 ? MathUtils.degToRad(16) : MathUtils.degToRad(-16);
+  }
+
+  // Stacked container modules, process pipework, and tanks.
+  const modules = [
+    [-0.42, 0.82, 0x9b4b35], [0.02, 0.82, 0x7f7770], [0.42, 0.82, 0xb1853b],
+    [-0.3, 1.02, 0x768078], [0.24, 1.02, 0x984a36],
+  ];
+  modules.forEach(([x, y, color]) => addBox(group, size * 0.38, size * 0.12, size * 0.3, color, size * (x as number), size * (y as number), 0));
+  for (const x of [-0.22, -0.08, 0.06, 0.2]) {
+    addCylinder(group, size * 0.018, size * 0.42, steel, size * x, size * 1.16, -size * 0.34);
+  }
+
+  // Communications tower, flare stack, cranes, and helipad are the key skyline cues.
+  addCylinder(group, size * 0.018, size * 1.3, rust, 0, size * 1.42, -size * 0.1);
+  addCylinder(group, size * 0.12, size * 0.08, steel, 0, size * 2.1, -size * 0.1);
+  addSphere(group, size * 0.11, 0xd2d0bd, 0, size * 2.2, -size * 0.1);
+  addCylinder(group, size * 0.025, size * 0.62, rust, -size * 0.42, size * 1.45, size * 0.2);
+  addCone(group, size * 0.06, size * 0.14, 0xe2a24b, -size * 0.42, size * 1.83, size * 0.2);
+  addBox(group, size * 0.72, 2, size * 0.06, rust, 0, size * 1.58, size * 0.48);
+  addBox(group, size * 0.06, 2, size * 0.52, rust, 0, size * 1.58, size * 0.48);
+  addOilRigCrane(group, size, -size * 0.55, size * 1.35, -size * 0.28, MathUtils.degToRad(-18));
+  addOilRigCrane(group, size, size * 0.56, size * 1.35, size * 0.2, MathUtils.degToRad(18));
+  addOilRigLighting(group, size);
+
+  const boats = new Group();
+  boats.name = "oil-rig-npc-boat-patrol";
+  const routes = [[-1.7, -0.9, 0.35], [1.55, -0.55, -0.25], [0.2, 1.7, 1.6]];
+  routes.forEach(([x, z, phase], index) => {
+    const boat = createNpcBoat(size * 0.11);
+    boat.userData.radius = size * (0.95 + index * 0.18);
+    boat.userData.phase = phase;
+    boat.userData.speed = 0.16 + index * 0.025;
+    boat.position.set(size * x, -size * 0.02, size * z);
+    boats.add(boat);
+  });
+  boats.userData.tick = (seconds: number) => {
+    boats.children.forEach((boat) => {
+      const radius = Number(boat.userData.radius);
+      const angle = seconds * Number(boat.userData.speed) + Number(boat.userData.phase);
+      boat.position.x = Math.cos(angle) * radius;
+      boat.position.z = Math.sin(angle) * radius * 0.72;
+      boat.rotation.y = -angle + Math.PI / 2;
+    });
+  };
+  group.add(boats);
+}
+
+function addOilRigLighting(group: Group, size: number): void {
+  const lighting = new Group();
+  lighting.name = "oil-rig-night-lighting";
+
+  const addLamp = (x: number, y: number, z: number, color: number, intensity: number, distance: number, sizePx = size * 0.018) => {
+    const lamp = addSphere(lighting, sizePx, color, x, y, z);
+    (lamp.material as MeshStandardMaterial).emissive.set(color);
+    (lamp.material as MeshStandardMaterial).emissiveIntensity = 3.4;
+    const light = new PointLight(color, intensity, distance, 2);
+    light.position.set(x, y, z);
+    lighting.add(light);
+  };
+
+  // Warm cabin and container lights across the stacked living/work decks.
+  [-0.46, -0.18, 0.12, 0.42].forEach((x) => {
+    [0.73, 0.92, 1.1].forEach((y) => addLamp(size * x, size * y, size * 0.44, 0xffb43d, 0.7, size * 0.6));
+  });
+  // Cool task lights mark the exterior catwalks and lower service level.
+  [-0.52, -0.17, 0.2, 0.54].forEach((x) => addLamp(size * x, size * 0.62, -size * 0.45, 0x9fdcff, 0.42, size * 0.42, size * 0.014));
+  // Red obstruction beacons on the communications tower and crane tips.
+  [[0, 2.12, -0.1], [-0.82, 1.58, -0.3], [0.84, 1.58, 0.2]].forEach(([x, y, z]) => addLamp(size * x, size * y, size * z, 0xff1d22, 0.9, size * 0.42, size * 0.022));
+
+  // Flare stack: a bright emissive core, a tapered flame, and a localized orange glow.
+  const flare = addCone(lighting, size * 0.075, size * 0.18, 0xffa52e, -size * 0.42, size * 1.88, size * 0.2);
+  const flareMaterial = flare.material as MeshStandardMaterial;
+  flareMaterial.emissive.set(0xff4d16);
+  flareMaterial.emissiveIntensity = 5;
+  const flareLight = new PointLight(0xff7a22, 2.6, size * 1.4, 2);
+  flareLight.position.set(-size * 0.42, size * 1.92, size * 0.2);
+  lighting.add(flareLight);
+  lighting.userData.tick = (seconds: number) => {
+    const pulse = 0.88 + Math.sin(seconds * 11.5) * 0.08 + Math.sin(seconds * 23.1) * 0.04;
+    flare.scale.set(0.92 + pulse * 0.08, pulse, 0.92 + pulse * 0.08);
+    flareLight.intensity = 2.2 + pulse * 0.8;
+  };
+  group.add(lighting);
+}
+
+function addOilRigCrane(group: Group, size: number, x: number, y: number, z: number, rotationY: number): void {
+  const boom = addBox(group, size * 0.52, size * 0.035, size * 0.035, 0x9d5837, x, y, z);
+  boom.rotation.y = rotationY;
+  const base = addBox(group, size * 0.12, size * 0.24, size * 0.12, 0x6b4d36, x, y - size * 0.1, z);
+  base.rotation.y = rotationY;
+}
+
+function createNpcBoat(size: number): Group {
+  const boat = new Group();
+  addBox(boat, size * 1.8, size * 0.18, size * 0.42, 0x252d30, 0, 0, 0);
+  addBox(boat, size * 0.42, size * 0.26, size * 0.28, 0x3b4648, -size * 0.12, size * 0.16, 0);
+  addBox(boat, size * 0.08, size * 0.34, size * 0.08, 0x171d1e, -size * 0.12, size * 0.4, 0);
+  addBox(boat, size * 0.24, size * 0.05, size * 0.05, 0x171d1e, -size * 0.12, size * 0.48, 0);
+  const wake = addBox(boat, size * 0.65, size * 0.025, size * 0.08, 0xb4d4d8, size * 0.92, -size * 0.02, 0);
+  (wake.material as MeshStandardMaterial).transparent = true;
+  (wake.material as MeshStandardMaterial).opacity = 0.6;
+  return boat;
+}
+
+function createWaterTreatmentPlantMonumentPrimitive(group: Group, size: number): void {
+  const concrete = 0x777b76;
+  const concreteDark = 0x4d5550;
+  const rust = 0x8d4b35;
+  const roof = 0x514841;
+  const water = 0x426b70;
+  const pipe = 0x9b5b3e;
+
+  // The monument is a long, walled industrial yard rather than a single block.
+  addBox(group, size * 1.72, 3, size * 1.18, concreteDark, 0, 1.5, 0);
+  addBox(group, size * 1.55, 2.2, size * 0.96, 0x6b706b, 0, 3, 0);
+
+  // Four circular settling/clarifier basins are the most useful overhead read.
+  const basinRadius = size * 0.22;
+  for (const [x, z] of [[-0.48, -0.28], [0.48, -0.28], [-0.48, 0.34], [0.48, 0.34]]) {
+    addCylinder(group, basinRadius, 4, concrete, size * x, 5, size * z);
+    addCylinder(group, basinRadius * 0.78, 0.8, water, size * x, 7.15, size * z);
+    addCylinder(group, basinRadius * 0.08, 6, rust, size * x, 10, size * z);
+    addBox(group, basinRadius * 1.65, 1.2, basinRadius * 0.07, rust, size * x, 10.2, size * z);
+  }
+
+  // Central process hall and the long side warehouse.
+  addBox(group, size * 0.48, size * 0.28, size * 0.3, concreteDark, 0, size * 0.2, -size * 0.04);
+  addBox(group, size * 0.82, size * 0.2, size * 0.22, roof, -size * 0.25, size * 0.16, size * 0.6);
+  addBox(group, size * 0.25, size * 0.24, size * 0.74, roof, size * 0.68, size * 0.18, 0);
+
+  // Elevated trunk pipes connect the tanks and make the plant legible at low zoom.
+  addBox(group, size * 1.3, 3, size * 0.055, pipe, 0, size * 0.42, size * 0.02);
+  addBox(group, size * 0.055, 3, size * 0.9, pipe, -size * 0.72, size * 0.42, 0);
+  addBox(group, size * 0.055, 3, size * 0.9, pipe, size * 0.72, size * 0.42, 0);
+
+  // Rear utility tanks and the tall water tower visible in the approach views.
+  addCylinder(group, size * 0.13, size * 0.72, rust, -size * 0.65, size * 0.48, -size * 0.55);
+  addCylinder(group, size * 0.18, size * 0.82, rust, size * 0.65, size * 0.54, -size * 0.58);
+  addCylinder(group, size * 0.16, size * 1.35, 0x646b65, 0, size * 0.74, -size * 0.58);
+  addCylinder(group, size * 0.24, size * 0.24, rust, 0, size * 1.45, -size * 0.58);
+  addBox(group, size * 0.62, 2.5, size * 0.05, concreteDark, 0, 1.25, -size * 0.61);
 }
 
 function createAbandonedMilitaryBaseMonumentPrimitive(group: Group, size: number): void {
