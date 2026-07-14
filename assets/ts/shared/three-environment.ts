@@ -66,6 +66,8 @@ type RaidlandsSkyUniforms = {
   uCloudAttenuation: { value: number };
   uCloudBrightness: { value: number };
   uRainbowIntensity: { value: number };
+  uFogIntensity: { value: number };
+  uRainIntensity: { value: number };
 };
 
 const raidlandsSkyUserDataKey = "raidlandsSkyDome";
@@ -162,10 +164,13 @@ export function updateRaidlandsEnvironment(scene: Scene, state: RaidlandsEnviron
   const atmosphereBrightness = MathUtils.clamp(finiteEnvironmentValue(state.atmosphereBrightness, 0.95), 0.05, 3);
   const atmosphereContrast = MathUtils.clamp(finiteEnvironmentValue(state.atmosphereContrast, 0.65), 0.05, 3);
   const directionality = MathUtils.clamp(finiteEnvironmentValue(state.atmosphereDirectionality, 0.75), 0, 1);
+  const fogIntensity = MathUtils.clamp(finiteEnvironmentValue(state.fogIntensity, 0), 0, 1);
+  const rainIntensity = MathUtils.clamp(finiteEnvironmentValue(state.rainIntensity, 0), 0, 1);
   const sunIntensityValue = Number(state.sunIntensity);
   const sunVisibility = MathUtils.smoothstep(sunHeight, -0.16, 0.12)
     * MathUtils.clamp((Number.isFinite(sunIntensityValue) ? sunIntensityValue : 0) / 1.7, 0.18, 1.2)
-    * MathUtils.lerp(0.72, 1.28, directionality);
+    * MathUtils.lerp(0.72, 1.28, directionality)
+    * MathUtils.lerp(1, 0.54, Math.max(fogIntensity * 0.65, rainIntensity * 0.42));
 
   const atmosphereSunColor = state.sunColor.clone().lerp(
     new Color(0xffc18c),
@@ -178,8 +183,9 @@ export function updateRaidlandsEnvironment(scene: Scene, state: RaidlandsEnviron
     .multiplyScalar(MathUtils.lerp(0.72, 1.18, atmosphereBrightness / 1.4));
   const horizon = new Color(0x132333)
     .lerp(new Color(0xd7edf4), daylight)
-    .lerp(atmosphereSunColor, twilight * 0.48)
-    .lerp(new Color(0xffd0a0), MathUtils.clamp(mie / 4, 0, 1) * twilight * 0.34)
+    .lerp(atmosphereSunColor, twilight * 0.36)
+    .lerp(new Color(0xffb28f), MathUtils.clamp(mie / 4, 0, 1) * twilight * 0.48)
+    .lerp(new Color(0xf28b78), twilight * MathUtils.clamp(mie / 4, 0, 1) * 0.16)
     .multiplyScalar(MathUtils.lerp(0.72, 1.2, atmosphereBrightness / 1.4));
   const ground = new Color(0x05080c)
     .lerp(new Color(0x5b6d72), daylight)
@@ -200,6 +206,8 @@ export function updateRaidlandsEnvironment(scene: Scene, state: RaidlandsEnviron
   uniforms.uCloudAttenuation.value = MathUtils.clamp(finiteEnvironmentValue(state.cloudAttenuation, 0.25), 0, 1);
   uniforms.uCloudBrightness.value = MathUtils.clamp(finiteEnvironmentValue(state.cloudBrightness, 0.55), 0, 2);
   uniforms.uRainbowIntensity.value = MathUtils.clamp(finiteEnvironmentValue(state.rainbowIntensity, 0), 0, 1);
+  uniforms.uFogIntensity.value = fogIntensity;
+  uniforms.uRainIntensity.value = rainIntensity;
 }
 
 function finiteEnvironmentValue(value: unknown, fallback: number): number {
@@ -224,6 +232,8 @@ function createRaidlandsSkyDome(preset: RaidlandsEnvironmentPreset): Mesh {
       uCloudAttenuation: { value: 0.25 },
       uCloudBrightness: { value: 0.55 },
       uRainbowIntensity: { value: 0 },
+      uFogIntensity: { value: 0 },
+      uRainIntensity: { value: 0 },
     },
     vertexShader: `
       varying vec3 vDirection;
@@ -252,6 +262,8 @@ function createRaidlandsSkyDome(preset: RaidlandsEnvironmentPreset): Mesh {
       uniform float uCloudAttenuation;
       uniform float uCloudBrightness;
       uniform float uRainbowIntensity;
+      uniform float uFogIntensity;
+      uniform float uRainIntensity;
 
       float hash(vec2 position) {
         return fract(sin(dot(position, vec2(127.1, 311.7))) * 43758.5453123);
@@ -292,13 +304,19 @@ function createRaidlandsSkyDome(preset: RaidlandsEnvironmentPreset): Mesh {
           : mix(uHorizonColor, uZenithColor, smoothstep(0.44, 1.0, height));
 
         float sunDot = max(dot(direction, normalize(uSunDirection)), 0.0);
-        float sunDisc = celestialDisc(direction, uSunDirection, 0.038, 0.0018) * uSunVisibility;
-        float sunCore = celestialDisc(direction, uSunDirection, 0.025, 0.0012) * uSunVisibility;
-        float sunGlow = pow(sunDot, 8.0) * 0.34 * uSunVisibility;
-        float sunHalo = pow(sunDot, 64.0) * 0.58 * uSunVisibility;
+        float lowSun = 1.0 - smoothstep(-0.08, 0.42, uSunDirection.y);
+        float clearAtmosphere = 1.0 - clamp(uCloudCoverage * 0.55 + uFogIntensity * 0.52 + uRainIntensity * 0.34, 0.0, 0.9);
+        float sunDisc = celestialDisc(direction, uSunDirection, 0.026, 0.00135) * uSunVisibility;
+        float sunCore = celestialDisc(direction, uSunDirection, 0.015, 0.0009) * uSunVisibility;
+        float sunGlow = pow(sunDot, 12.0) * (0.22 + lowSun * 0.32) * uSunVisibility;
+        float sunHalo = pow(sunDot, 42.0) * (0.22 + lowSun * 0.48) * uSunVisibility;
+        float horizonScatter = pow(max(dot(direction, normalize(vec3(uSunDirection.x, 0.08, uSunDirection.z))), 0.0), 5.0)
+          * horizon * lowSun * clearAtmosphere;
         float twilight = (1.0 - smoothstep(-0.12, 0.54, uSunDirection.y)) * horizon;
-        skyColor += uSunColor * (sunDisc * 1.5 + sunHalo * 1.2 + sunGlow * 0.92 + twilight * 0.18);
-        skyColor += vec3(1.0, 0.94, 0.82) * sunCore * 1.75;
+        vec3 warmHorizon = mix(vec3(1.0, 0.42, 0.28), vec3(1.0, 0.72, 0.52), uDaylight);
+        skyColor += uSunColor * (sunDisc * 0.82 + sunHalo * 0.9 + sunGlow * 0.7);
+        skyColor += warmHorizon * (horizonScatter * 0.34 + twilight * 0.1);
+        skyColor += vec3(1.0, 0.97, 0.88) * sunCore * 2.15;
 
         vec2 cloudPosition = direction.xz / max(direction.y + 0.36, 0.42);
         cloudPosition = cloudPosition * 2.2 + vec2(uCloudPhase * 0.0018, uCloudPhase * 0.0007);

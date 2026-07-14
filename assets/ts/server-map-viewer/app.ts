@@ -326,13 +326,15 @@ const RAIDLANDS_ENVIRONMENT_GRADE_SHADER = {
       float shadowWeight = 1.0 - smoothstep(0.22, 0.78, luminance);
       float clearSky = 1.0 - clamp(uCloudCoverage * 0.62 + uRainIntensity * 0.48, 0.0, 0.82);
       float sunsetGrade = uTwilight * clearSky;
-      float warmth = sunsetGrade * (0.02 + shadowWeight * 0.055);
+      float warmth = sunsetGrade * (0.018 + shadowWeight * 0.048);
 
-      color *= mix(vec3(1.0), vec3(1.08, 0.98, 0.92), sunsetGrade * 0.24);
+      color *= mix(vec3(1.0), vec3(1.075, 0.965, 0.91), sunsetGrade * 0.32);
       color += warmSun * warmth;
-      float hazeDesaturation = clamp(uFogStrength * 0.1 + uRainIntensity * 0.055, 0.0, 0.13);
+      float horizonWarmth = sunsetGrade * (1.0 - smoothstep(0.18, 0.78, vUv.y));
+      color += vec3(1.0, 0.34, 0.2) * horizonWarmth * 0.018;
+      float hazeDesaturation = clamp(uFogStrength * 0.085 + uRainIntensity * 0.05, 0.0, 0.12);
       color = mix(color, vec3(dot(color, vec3(0.299, 0.587, 0.114))), hazeDesaturation);
-      color = mix(vec3(0.5), color, mix(0.94, 1.035, clamp(uAtmosphereContrast / 1.4, 0.0, 1.0)));
+      color = mix(vec3(0.5), color, mix(0.955, 1.028, clamp(uAtmosphereContrast / 1.4, 0.0, 1.0)));
 
       gl_FragColor = vec4(color, source.a);
     }
@@ -1434,9 +1436,9 @@ diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.22, raidlan
       MathUtils.lerp(0.52, 0.7, MathUtils.clamp(environment.atmosphereMie / 4, 0, 1)),
     );
     const scatteringGlow = MathUtils.lerp(0.76, 1.26, MathUtils.clamp(environment.cloudScattering, 0, 1));
-    this.renderer.toneMappingExposure = MathUtils.lerp(0.92, 1.48, atmosphereBrightnessT)
+    this.renderer.toneMappingExposure = MathUtils.lerp(0.9, 1.42, atmosphereBrightnessT)
       * MathUtils.lerp(0.72, 1, Math.max(daylight, twilight * 0.9))
-      * (1 + twilight * 0.22);
+      * (1 + twilight * 0.16);
     this.ambientLight.color.copy(environment.ambientColor)
       .lerp(new Color(0xddeaf0), daylight * MathUtils.lerp(0.42, 0.72, atmosphereBrightnessT))
       .lerp(atmosphereWarmColor, twilight * MathUtils.lerp(0.24, 0.38, atmosphereBrightnessT))
@@ -1452,7 +1454,8 @@ diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.22, raidlan
       1.5,
     );
     this.sunLight.color.copy(environment.sunColor);
-    this.sunLight.intensity = Math.max(0.08, environment.sunIntensity * MathUtils.lerp(0.82, 1.08, daylight) * scatteringGlow);
+    this.sunLight.intensity = Math.max(0.08, environment.sunIntensity * MathUtils.lerp(0.78, 1.04, daylight) * scatteringGlow
+      * MathUtils.lerp(1, 0.72, Math.max(environment.fogIntensity * 0.42, environment.rainIntensity * 0.28)));
     const worldSize = this.terrain.worldSize || 4500;
     this.sunLight.position.copy(environment.sunDirection).multiplyScalar(worldSize * 0.62);
     this.sunLight.position.y = Math.max(this.sunLight.position.y, worldSize * -0.18);
@@ -1467,14 +1470,15 @@ diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.22, raidlan
       1,
     );
     const oceanMaterial = this.oceanSurfaceMesh.material as MeshStandardMaterial;
-    const waterSunReflection = twilight * MathUtils.lerp(0.14, 0.42, 1 - visualCloudCoverage);
+    const waterSunReflection = twilight * MathUtils.lerp(0.12, 0.5, 1 - visualCloudCoverage)
+      * MathUtils.lerp(1, 0.72, environment.fogIntensity * 0.5 + environment.rainIntensity * 0.24);
     oceanMaterial.color.set(0x0a4f63).lerp(atmosphereWarmColor, waterSunReflection);
     oceanMaterial.roughness = MathUtils.lerp(0.44, 0.2, waterSunReflection);
     oceanMaterial.metalness = MathUtils.lerp(0.02, 0.14, waterSunReflection);
     oceanMaterial.emissive.copy(atmosphereWarmColor);
     oceanMaterial.emissiveIntensity = twilight * MathUtils.lerp(0.025, 0.11, 1 - visualCloudCoverage);
     const horizonDrama = MathUtils.clamp(1 - Math.abs(MathUtils.clamp(sunHeight, -0.1, 0.46) - 0.18) / 0.28, 0, 1);
-    this.scene.backgroundIntensity = (MathUtils.lerp(0.72, 1.04, daylight) + horizonDrama * 0.08 - night * 0.18) * MathUtils.lerp(0.72, 1.2, atmosphereBrightness / 1.4);
+    this.scene.backgroundIntensity = (MathUtils.lerp(0.7, 1.02, daylight) + horizonDrama * 0.11 - night * 0.18) * MathUtils.lerp(0.72, 1.16, atmosphereBrightness / 1.4);
     this.scene.environmentIntensity = (MathUtils.lerp(0.46, 0.96, daylight) + horizonDrama * 0.04) * MathUtils.lerp(0.82, 1.18, atmosphereContrast / 1.4);
     const fogStrength = visualFogStrengthForEnvironment(environment);
     const daylightFogColor = new Color(0xc8dfe8)
@@ -3311,10 +3315,17 @@ function createMissileSiloMonumentPrimitive(group: Group, size: number): void {
   addBox(group, size * 0.045, size * 0.16, size * 1.3, concrete, size * 0.92, size * 0.08, 0);
 
   // Large circular silo cap is the key overhead landmark.
-  addCylinder(group, size * 0.48, size * 0.08, darkConcrete, 0, size * 0.08, -size * 0.08);
-  addCylinder(group, size * 0.39, size * 0.045, steel, 0, size * 0.13, -size * 0.08);
-  addCylinder(group, size * 0.2, size * 0.035, darkConcrete, 0, size * 0.16, -size * 0.08);
-  addCylinder(group, size * 0.08, size * 0.025, rust, 0, size * 0.19, -size * 0.08);
+  const siloX = 0;
+  const siloZ = -size * 0.08;
+  // The shaft is intentionally below the terrain anchor. The raised collar and
+  // dark opening keep its underground construction readable in the map viewer.
+  addCylinder(group, size * 0.43, size * 0.5, darkConcrete, siloX, -size * 0.18, siloZ);
+  addCylinder(group, size * 0.37, size * 0.42, 0x202522, siloX, -size * 0.16, siloZ);
+  addCylinder(group, size * 0.49, size * 0.08, darkConcrete, siloX, size * 0.08, siloZ);
+  addCylinder(group, size * 0.42, size * 0.055, steel, siloX, size * 0.14, siloZ);
+  addCylinder(group, size * 0.31, size * 0.025, 0x171b19, siloX, size * 0.18, siloZ);
+  addCylinder(group, size * 0.2, size * 0.035, darkConcrete, siloX, size * 0.2, siloZ);
+  addCylinder(group, size * 0.08, size * 0.025, rust, siloX, size * 0.23, siloZ);
 
   // Three ribbed access shelters in front of the silo.
   [-0.52, 0, 0.52].forEach((x, index) => {
