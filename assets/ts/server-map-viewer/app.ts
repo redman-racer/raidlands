@@ -3217,6 +3217,11 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
     return addTitle();
   }
 
+  if (key.includes("abandoned") && (key.includes("military") || key.includes("military_base"))) {
+    createAbandonedMilitaryBaseMonumentPrimitive(group, size);
+    return addTitle();
+  }
+
   if (key.includes("military") || key.includes("tunnel") || key.includes("bunker")) {
     addBox(group, size * 0.94, size * 0.26, size * 0.62, 0x59645b, 0, size * 0.13, 0);
     addBox(group, size * 0.24, size * 0.32, size * 0.28, 0x303635, -size * 0.38, size * 0.16, 0);
@@ -3238,6 +3243,51 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
   addBox(group, size * 0.68, size * 0.24, size * 0.5, 0x6a705e, 0, size * 0.12, 0);
   addCylinder(group, size * 0.08, size * 0.46, 0x8b7044, size * 0.28, size * 0.23, -size * 0.12);
   return addTitle();
+}
+
+function createAbandonedMilitaryBaseMonumentPrimitive(group: Group, size: number): void {
+  const concrete = 0x8b887b;
+  const earth = 0x656052;
+  const canvas = 0x9b9379;
+  const rust = 0x624638;
+  const vehicle = 0x5b4939;
+  const track = 0x292c2a;
+  const dark = 0x30302c;
+
+  // Broad fortified footprint: the real monument reads as a walled military yard.
+  addBox(group, size * 1.65, size * 0.035, size * 1.22, earth, 0, size * 0.02, 0);
+  addBox(group, size * 1.82, size * 0.2, size * 0.055, concrete, 0, size * 0.1, -size * 0.62);
+  addBox(group, size * 1.82, size * 0.2, size * 0.055, concrete, 0, size * 0.1, size * 0.62);
+  addBox(group, size * 0.055, size * 0.2, size * 1.18, concrete, -size * 0.88, size * 0.1, 0);
+  addBox(group, size * 0.055, size * 0.2, size * 1.18, concrete, size * 0.88, size * 0.1, 0);
+
+  // Three damaged canvas/quonset shelters visible from overhead.
+  [-0.52, 0.02, 0.55].forEach((x, index) => {
+    addBox(group, size * 0.38, size * 0.2, size * 0.32, canvas, size * x, size * 0.12, size * 0.31);
+    addBox(group, size * 0.42, size * 0.035, size * 0.36, rust, size * x, size * 0.33, size * 0.31);
+    if (index === 1) addBox(group, size * 0.08, size * 0.18, size * 0.02, dark, size * x, size * 0.11, size * 0.14);
+  });
+  addBox(group, size * 0.46, size * 0.24, size * 0.3, concrete, -size * 0.55, size * 0.14, -size * 0.32);
+
+  // Water tanks and a ruined utility tower anchor the rear service area.
+  [-0.26, 0.02].forEach((x) => {
+    addCylinder(group, size * 0.13, size * 0.42, 0x72736c, size * x, size * 0.27, -size * 0.34);
+    addCylinder(group, size * 0.15, size * 0.025, rust, size * x, size * 0.49, -size * 0.34);
+    addBox(group, size * 0.035, size * 0.15, size * 0.035, rust, size * x, size * 0.58, -size * 0.34);
+  });
+
+  // Tracked MLRS vehicle: this is the future map-event launch origin.
+  const mlrsX = size * 0.38;
+  const mlrsZ = -size * 0.2;
+  addBox(group, size * 0.52, size * 0.12, size * 0.22, track, mlrsX, size * 0.09, mlrsZ - size * 0.13);
+  addBox(group, size * 0.52, size * 0.12, size * 0.22, track, mlrsX, size * 0.09, mlrsZ + size * 0.13);
+  addBox(group, size * 0.4, size * 0.22, size * 0.28, vehicle, mlrsX, size * 0.22, mlrsZ);
+  addBox(group, size * 0.22, size * 0.16, size * 0.25, vehicle, mlrsX - size * 0.12, size * 0.36, mlrsZ);
+  addBox(group, size * 0.06, size * 0.06, size * 0.34, dark, mlrsX - size * 0.27, size * 0.36, mlrsZ);
+  const launcher = addBox(group, size * 0.11, size * 0.5, size * 0.36, vehicle, mlrsX + size * 0.17, size * 0.55, mlrsZ);
+  launcher.rotation.z = MathUtils.degToRad(-27);
+  addBox(group, size * 0.13, size * 0.035, size * 0.39, dark, mlrsX + size * 0.29, size * 0.78, mlrsZ);
+  [-0.11, 0, 0.11].forEach((z) => addCylinder(group, size * 0.025, size * 0.32, dark, mlrsX + size * 0.28, size * 0.82, mlrsZ + size * z));
 }
 
 function createSubstationMonumentPrimitive(group: Group, size: number): void {
