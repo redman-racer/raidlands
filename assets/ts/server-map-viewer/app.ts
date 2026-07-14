@@ -326,13 +326,16 @@ const RAIDLANDS_ENVIRONMENT_GRADE_SHADER = {
       vec3 warmSun = uSunColor / max(max(uSunColor.r, uSunColor.g), max(uSunColor.b, 0.001));
       float shadowWeight = 1.0 - smoothstep(0.22, 0.78, luminance);
       float clearSky = 1.0 - clamp(uCloudCoverage * 0.62 + uRainIntensity * 0.48, 0.0, 0.82);
-      float sunsetGrade = uTwilight * clearSky;
+      float sunsetGrade = uTwilight * mix(0.48, 1.0, clearSky);
       float warmth = sunsetGrade * (0.018 + shadowWeight * 0.048);
 
       color *= mix(vec3(1.0), vec3(1.075, 0.965, 0.91), sunsetGrade * 0.32);
       color += warmSun * warmth;
       float horizonWarmth = sunsetGrade * (1.0 - smoothstep(0.18, 0.78, vUv.y));
       color += vec3(1.0, 0.34, 0.2) * horizonWarmth * 0.018;
+      float atmosphericShadowLift = shadowWeight * (uTwilight * 0.026 + uFogStrength * 0.052)
+        * (1.0 - uRainIntensity * 0.34);
+      color += mix(vec3(0.2, 0.3, 0.42), warmSun, uTwilight * 0.72) * atmosphericShadowLift;
       float hazeDesaturation = clamp(uFogStrength * 0.085 + uRainIntensity * 0.05, 0.0, 0.12);
       color = mix(color, vec3(dot(color, vec3(0.299, 0.587, 0.114))), hazeDesaturation);
       color = mix(vec3(0.5), color, mix(0.955, 1.028, clamp(uAtmosphereContrast / 1.4, 0.0, 1.0)));
@@ -1313,17 +1316,23 @@ varying vec3 raidlandsWaterWorldPosition;`,
           "#include <opaque_fragment>",
           `vec3 raidlandsWaterViewDirection = normalize(cameraPosition - raidlandsWaterWorldPosition);
 vec3 raidlandsWaterReflectionDirection = reflect(-normalize(raidlandsWaterSunDirection), vec3(0.0, 1.0, 0.0));
-float raidlandsWaterGlare = pow(max(dot(raidlandsWaterViewDirection, raidlandsWaterReflectionDirection), 0.0), 42.0);
+float raidlandsWaterAlignment = max(dot(raidlandsWaterViewDirection, raidlandsWaterReflectionDirection), 0.0);
+float raidlandsWaterGlare = pow(raidlandsWaterAlignment, 90.0);
 vec2 raidlandsWaterViewHorizontal = raidlandsWaterViewDirection.xz / max(length(raidlandsWaterViewDirection.xz), 0.0001);
 vec2 raidlandsWaterReflectionHorizontal = raidlandsWaterReflectionDirection.xz / max(length(raidlandsWaterReflectionDirection.xz), 0.0001);
-float raidlandsWaterStreak = pow(max(dot(raidlandsWaterViewHorizontal, raidlandsWaterReflectionHorizontal), 0.0), 16.0)
-  * pow(1.0 - clamp(abs(raidlandsWaterViewDirection.y - raidlandsWaterReflectionDirection.y), 0.0, 1.0), 5.0);
-float raidlandsWaterSunPath = (raidlandsWaterGlare * 1.2 + raidlandsWaterStreak * 0.34) * raidlandsWaterReflectionStrength;
+float raidlandsWaterElevationMatch = exp(-abs(raidlandsWaterViewDirection.y - raidlandsWaterReflectionDirection.y) * 6.0);
+float raidlandsWaterStreak = pow(max(dot(raidlandsWaterViewHorizontal, raidlandsWaterReflectionHorizontal), 0.0), 10.0)
+  * raidlandsWaterElevationMatch;
+float raidlandsWaterRipples = 0.88 + 0.12 * sin(
+  raidlandsWaterWorldPosition.x * 0.045 + sin(raidlandsWaterWorldPosition.z * 0.031) * 2.4
+);
+float raidlandsWaterSunPath = (raidlandsWaterGlare * 0.95 + raidlandsWaterStreak * 0.3)
+  * raidlandsWaterReflectionStrength * raidlandsWaterRipples;
 outgoingLight += raidlandsWaterSunColor * raidlandsWaterSunPath;
 #include <opaque_fragment>`,
         );
     };
-    material.customProgramCacheKey = () => "raidlands-water-sun-reflection-v1";
+    material.customProgramCacheKey = () => "raidlands-water-sun-reflection-v2";
     const mesh = new Mesh(geometry, material);
     mesh.name = "raidlands-infinite-ocean-surface";
     mesh.rotation.x = -Math.PI / 2;
@@ -1491,6 +1500,7 @@ outgoingLight += raidlandsWaterSunColor * raidlandsWaterSunPath;
     const twilight = MathUtils.clamp(1 - Math.abs(sunHeight - 0.12) / 0.34, 0, 1);
     const night = 1 - MathUtils.smoothstep(sunHeight, -0.18, 0.08);
     const visualCloudCoverage = visualCloudCoverageForEnvironment(environment);
+    const fogStrength = visualFogStrengthForEnvironment(environment);
     const atmosphereBrightness = MathUtils.clamp(environment.atmosphereBrightness, 0.15, 2.4);
     const atmosphereContrast = MathUtils.clamp(environment.atmosphereContrast, 0.15, 2.4);
     const atmosphereBrightnessT = MathUtils.clamp(atmosphereBrightness / 1.5, 0, 1);
@@ -1501,7 +1511,7 @@ outgoingLight += raidlandsWaterSunColor * raidlandsWaterSunPath;
     const scatteringGlow = MathUtils.lerp(0.76, 1.26, MathUtils.clamp(environment.cloudScattering, 0, 1));
     this.renderer.toneMappingExposure = MathUtils.lerp(0.9, 1.42, atmosphereBrightnessT)
       * MathUtils.lerp(0.72, 1, Math.max(daylight, twilight * 0.9))
-      * (1 + twilight * 0.16);
+      * (1 + twilight * 0.14 + fogStrength * 0.1);
     this.ambientLight.color.copy(environment.ambientColor)
       .lerp(new Color(0xddeaf0), daylight * MathUtils.lerp(0.42, 0.72, atmosphereBrightnessT))
       .lerp(atmosphereWarmColor, twilight * MathUtils.lerp(0.24, 0.38, atmosphereBrightnessT))
@@ -1512,6 +1522,7 @@ outgoingLight += raidlandsWaterSunColor * raidlandsWaterSunPath;
         + MathUtils.lerp(0.05, 0.18, twilight)
         + daylight * MathUtils.lerp(0.24, 0.62, atmosphereBrightnessT)
         + twilight * MathUtils.lerp(0.22, 0.5, atmosphereBrightnessT)
+        + fogStrength * MathUtils.lerp(0.08, 0.2, Math.max(daylight, twilight))
       ) * MathUtils.lerp(0.72, 1.18, atmosphereBrightness / 1.4),
       0.14,
       1.5,
@@ -1523,7 +1534,7 @@ outgoingLight += raidlandsWaterSunColor * raidlandsWaterSunPath;
     this.sunLight.position.copy(environment.sunDirection).multiplyScalar(worldSize * 0.62);
     this.sunLight.position.y = Math.max(this.sunLight.position.y, worldSize * -0.18);
     this.fillLight.color.set(0x88b7d6).lerp(atmosphereWarmColor, twilight * 0.38);
-    this.fillLight.intensity = MathUtils.lerp(0.12, 0.32, daylight) + twilight * 0.22;
+    this.fillLight.intensity = MathUtils.lerp(0.12, 0.32, daylight) + twilight * 0.3 + fogStrength * 0.08;
     this.terrainLightUniforms.sunDirection.value.copy(environment.sunDirection);
     this.terrainLightUniforms.sunColor.value.copy(environment.sunColor);
     this.terrainLightUniforms.twilight.value = twilight;
@@ -1532,7 +1543,6 @@ outgoingLight += raidlandsWaterSunColor * raidlandsWaterSunPath;
       0,
       1,
     );
-    const fogStrength = visualFogStrengthForEnvironment(environment);
     const cameraViewDirection = this.controls.target.clone().sub(this.camera.position);
     const sceneFogSunFacing = horizontalDirectionalFacing(cameraViewDirection, environment.sunDirection);
     const fogColor = environmentFogColor(environment, sceneFogSunFacing);
@@ -1555,11 +1565,11 @@ outgoingLight += raidlandsWaterSunColor * raidlandsWaterSunPath;
       * waterWeatherAttenuation
       * MathUtils.smoothstep(sunHeight, -0.08, 0.16)
       * MathUtils.clamp(environment.sunIntensity / 1.7, 0.2, 1.35);
-    oceanMaterial.color.set(0x0a4f63).lerp(atmosphereWarmColor, waterSunReflection);
-    oceanMaterial.roughness = MathUtils.lerp(0.44, 0.2, waterSunReflection);
-    oceanMaterial.metalness = MathUtils.lerp(0.02, 0.14, waterSunReflection);
+    oceanMaterial.color.set(0x155365).lerp(atmosphereWarmColor, waterSunReflection * 0.32);
+    oceanMaterial.roughness = MathUtils.lerp(0.4, 0.16, waterSunReflection);
+    oceanMaterial.metalness = MathUtils.lerp(0.02, 0.18, waterSunReflection);
     oceanMaterial.emissive.copy(atmosphereWarmColor);
-    oceanMaterial.emissiveIntensity = waterSunReflection * 0.09;
+    oceanMaterial.emissiveIntensity = 0.012 + waterSunReflection * 0.065;
     this.waterLightUniforms.sunDirection.value.copy(environment.sunDirection);
     this.waterLightUniforms.sunColor.value.copy(atmosphereWarmColor);
     this.waterLightUniforms.reflectionStrength.value = waterSunReflection;
@@ -1609,8 +1619,19 @@ outgoingLight += raidlandsWaterSunColor * raidlandsWaterSunPath;
       * MathUtils.clamp(environment.cloudOpacity, 0, 1)
       * MathUtils.lerp(0.72, 1.24, MathUtils.clamp(environment.cloudBrightness, 0, 1.6));
     const cloudScale = MathUtils.lerp(0.82, 1.18, visibleCloudAmount)
-      * MathUtils.lerp(0.72, 1.32, MathUtils.clamp(environment.cloudSize / 4, 0, 1));
-    const cloudDarkening = MathUtils.clamp(environment.cloudAttenuation, 0, 1) * visibleCloudAmount * 0.36;
+      * MathUtils.lerp(0.72, 1.32, MathUtils.clamp(environment.cloudSize / 4, 0, 1))
+      * MathUtils.lerp(1, 1.22, rain);
+    const cloudDarkening = MathUtils.clamp(
+      MathUtils.clamp(environment.cloudAttenuation, 0, 1) * visibleCloudAmount * 0.42 + rain * 0.46,
+      0,
+      0.78,
+    );
+    const cameraTopDownAmount = MathUtils.clamp(
+      this.camera.position.clone().sub(this.controls.target).normalize().dot(new Vector3(0, 1, 0)),
+      0,
+      1,
+    );
+    const floatingCloudViewOpacity = 1 - MathUtils.smoothstep(cameraTopDownAmount, 0.58, 0.9);
 
     const groundFogAmount = Math.sqrt(visualFogStrengthForEnvironment(environment));
     const horizontalSunLength = Math.max(0.0001, Math.hypot(environment.sunDirection.x, environment.sunDirection.z));
@@ -1649,12 +1670,21 @@ outgoingLight += raidlandsWaterSunColor * raidlandsWaterSunPath;
       }
       child.visible = (Number(child.userData.coverageRank) || 0) < visibleCloudAmount;
       const baseScale = Number(child.userData.baseScale) || worldSize * 0.18;
+      const layerDepth = Number(child.userData.layerDepth) || 0;
       const drift = now * (0.000006 + (index % 5) * 0.0000015);
       child.position.x = (Number(child.userData.baseX) || 0) + Math.sin(drift + index) * worldSize * 0.025;
+      child.position.y = (Number(child.userData.baseY) || worldSize * 0.19)
+        - rain * layerDepth * worldSize * 0.018
+        + Math.sin(drift * 0.7 + index * 0.91) * worldSize * 0.006;
       child.position.z = (Number(child.userData.baseZ) || 0) + Math.cos(drift * 0.8 + index * 0.7) * worldSize * 0.018;
-      child.scale.set(baseScale * cloudScale * (Number(child.userData.scaleX) || 1), baseScale * cloudScale * (Number(child.userData.scaleY) || 0.34), 1);
+      child.scale.set(
+        baseScale * cloudScale * (Number(child.userData.scaleX) || 1),
+        baseScale * cloudScale * (Number(child.userData.scaleY) || 0.34) * MathUtils.lerp(1, 1.36, rain),
+        1,
+      );
       const material = child.material as SpriteMaterial;
-      material.opacity = cloudOpacity * (Number(child.userData.opacityBias) || 1);
+      material.opacity = Math.min(0.86, cloudOpacity * (Number(child.userData.opacityBias) || 1) * MathUtils.lerp(1, 1.42, rain))
+        * floatingCloudViewOpacity;
       const cloudWarmColor = environment.sunColor.clone().lerp(new Color(0xffcda2), 0.58);
       const cloudSunFacing = horizontalDirectionalFacing(child.position, environment.sunDirection);
       const cloudEdgeWarmth = twilight
@@ -1664,7 +1694,7 @@ outgoingLight += raidlandsWaterSunColor * raidlandsWaterSunPath;
       material.color.copy(environment.ambientColor)
         .lerp(new Color(0xe9f2f7), MathUtils.lerp(0.54, 0.84, MathUtils.smoothstep(environment.sunDirection.y, -0.05, 0.5)))
         .lerp(cloudWarmColor, cloudEdgeWarmth)
-        .lerp(new Color(0x151a21), cloudDarkening * MathUtils.lerp(0.72, 1.18, rain));
+        .lerp(new Color(0x111722), cloudDarkening * MathUtils.lerp(0.72, 1.12, layerDepth));
     });
 
     const rainVisible = rain > 0.015;
@@ -3475,9 +3505,10 @@ function createWaterTreatmentPlantMonumentPrimitive(group: Group, size: number):
   addBox(group, size * 1.72, 3, size * 1.18, concreteDark, 0, 1.5, 0);
   addBox(group, size * 1.55, 2.2, size * 0.96, 0x6b706b, 0, 3, 0);
 
-  // Four circular settling/clarifier basins are the most useful overhead read.
-  const basinRadius = size * 0.22;
-  for (const [x, z] of [[-0.48, -0.28], [0.48, -0.28], [-0.48, 0.34], [0.48, 0.34]]) {
+  // Two broad rows of circular settling/clarifier basins match the monument's
+  // long industrial footprint and keep the overhead silhouette legible.
+  const basinRadius = size * 0.17;
+  for (const [x, z] of [[-0.7, -0.42], [-0.23, -0.42], [0.32, -0.42], [0.72, -0.42], [-0.7, 0.34], [-0.23, 0.34], [0.32, 0.34], [0.72, 0.34]]) {
     addCylinder(group, basinRadius, 4, concrete, size * x, 5, size * z);
     addCylinder(group, basinRadius * 0.78, 0.8, water, size * x, 7.15, size * z);
     addCylinder(group, basinRadius * 0.08, 6, rust, size * x, 10, size * z);
@@ -3494,13 +3525,17 @@ function createWaterTreatmentPlantMonumentPrimitive(group: Group, size: number):
   addBox(group, size * 0.055, 3, size * 0.9, pipe, -size * 0.72, size * 0.42, 0);
   addBox(group, size * 0.055, 3, size * 0.9, pipe, size * 0.72, size * 0.42, 0);
 
-  // Rear utility tanks and the tall water tower visible in the approach views.
-  addCylinder(group, size * 0.13, size * 0.72, rust, -size * 0.65, size * 0.48, -size * 0.55);
-  addCylinder(group, size * 0.18, size * 0.82, rust, size * 0.65, size * 0.54, -size * 0.58);
-  addCylinder(group, size * 0.105, size * 0.92, 0x646b65, size * 0.68, size * 0.55, -size * 0.62);
-  addCylinder(group, size * 0.16, size * 0.18, rust, size * 0.68, size * 1.04, -size * 0.62);
-  addSphere(group, size * 0.13, 0x77766b, size * 0.68, size * 1.16, -size * 0.62);
-  addBox(group, size * 0.42, 2.5, size * 0.05, concreteDark, size * 0.68, 1.25, -size * 0.65);
+  // Two modest ground storage tanks sit together on the service side.
+  [-0.78, -0.57].forEach((x) => {
+    addCylinder(group, size * 0.075, size * 0.36, rust, size * x, size * 0.22, -size * 0.52);
+    addCylinder(group, size * 0.09, size * 0.04, concreteDark, size * x, size * 0.42, -size * 0.52);
+  });
+
+  // The recurring hill behind the plant carries a smaller, centered water tower.
+  addCone(group, size * 0.24, size * 0.22, 0x625b4e, 0, size * 0.11, -size * 0.78);
+  addCylinder(group, size * 0.055, size * 0.68, 0x646b65, 0, size * 0.52, -size * 0.78);
+  addCylinder(group, size * 0.105, size * 0.11, rust, 0, size * 0.89, -size * 0.78);
+  addSphere(group, size * 0.085, 0x77766b, 0, size * 0.99, -size * 0.78);
 }
 
 function createAbandonedMilitaryBaseMonumentPrimitive(group: Group, size: number): void {
@@ -4634,16 +4669,17 @@ function createFloatingWeatherClouds(terrain: TerrainPayload): Group {
   const group = new Group();
   const worldSize = terrain.worldSize || 4500;
   const texture = createWeatherCloudTexture();
-  const cloudCount = 24;
+  const cloudCount = 42;
   const height = MathUtils.clamp(worldSize * 0.19, 520, 980);
 
   for (let index = 0; index < cloudCount; index += 1) {
     const ring = index / cloudCount;
     const angle = ring * Math.PI * 2 * 2.618;
-    const radius = worldSize * MathUtils.lerp(0.08, 0.46, ((index * 37) % cloudCount) / Math.max(1, cloudCount - 1));
+    const layerDepth = ((index * 13) % 11) / 10;
+    const radius = worldSize * MathUtils.lerp(0.04, 0.54, ((index * 37) % cloudCount) / Math.max(1, cloudCount - 1));
     const x = Math.cos(angle) * radius;
     const z = Math.sin(angle) * radius;
-    const baseScale = worldSize * MathUtils.lerp(0.11, 0.24, ((index * 17) % 9) / 8);
+    const baseScale = worldSize * MathUtils.lerp(0.14, 0.29, ((index * 17) % 9) / 8);
     const material = new SpriteMaterial({
       map: texture,
       color: 0xdce7ee,
@@ -4654,11 +4690,14 @@ function createFloatingWeatherClouds(terrain: TerrainPayload): Group {
     });
     const sprite = new Sprite(material);
     sprite.name = "raidlands-floating-weather-cloud";
-    sprite.position.set(x, height + Math.sin(index * 1.7) * worldSize * 0.025, z);
+    const baseY = height + Math.sin(index * 1.7) * worldSize * 0.022 + layerDepth * worldSize * 0.035;
+    sprite.position.set(x, baseY, z);
     sprite.scale.set(baseScale, baseScale * 0.34, 1);
     sprite.renderOrder = 4;
     sprite.userData.baseX = x;
+    sprite.userData.baseY = baseY;
     sprite.userData.baseZ = z;
+    sprite.userData.layerDepth = layerDepth;
     sprite.userData.baseScale = baseScale;
     sprite.userData.scaleX = MathUtils.lerp(0.88, 1.34, ((index * 11) % 7) / 6);
     sprite.userData.scaleY = MathUtils.lerp(0.26, 0.44, ((index * 13) % 5) / 4);
@@ -4744,7 +4783,7 @@ function createGroundFogTexture(): CanvasTexture {
 }
 
 function createWeatherCloudTexture(): CanvasTexture {
-  return getSharedCanvasTexture("server-map-weather-cloud", () => {
+  return getSharedCanvasTexture("server-map-weather-cloud-v2", () => {
     const canvas = document.createElement("canvas");
     canvas.width = 256;
     canvas.height = 128;
@@ -4753,12 +4792,14 @@ function createWeatherCloudTexture(): CanvasTexture {
     if (context) {
       context.clearRect(0, 0, canvas.width, canvas.height);
       const lobes = [
-        [74, 70, 58, 29, 0.72],
-        [118, 56, 68, 36, 0.84],
-        [166, 69, 64, 28, 0.7],
-        [128, 78, 112, 30, 0.58],
-        [94, 84, 72, 22, 0.44],
-        [172, 86, 66, 20, 0.38],
+        [42, 72, 48, 25, 0.58],
+        [76, 58, 62, 34, 0.78],
+        [118, 48, 72, 40, 0.9],
+        [166, 56, 70, 36, 0.82],
+        [211, 70, 55, 28, 0.62],
+        [128, 79, 126, 35, 0.76],
+        [82, 88, 78, 23, 0.5],
+        [178, 89, 76, 22, 0.48],
       ];
       lobes.forEach(([x, y, radiusX, radiusY, opacity]) => {
         const gradient = context.createRadialGradient(x, y, 0, x, y, Math.max(radiusX, radiusY));
