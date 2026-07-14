@@ -618,7 +618,7 @@ function normalizeTerrain(value: unknown, root: HTMLElement): TerrainPayload {
     resolution,
     worldSize: Math.max(100, worldSize),
     seed: Number(payload.seed) || 0,
-    waterLevel: Number(payload.waterLevel) || 0,
+    waterLevel: Number.isFinite(Number(payload.waterLevel)) ? Number(payload.waterLevel) : undefined,
     minHeight: Number.isFinite(Number(payload.minHeight)) ? Number(payload.minHeight) : Math.min(...heights),
     maxHeight: Number.isFinite(Number(payload.maxHeight)) ? Number(payload.maxHeight) : Math.max(...heights),
     heights,
@@ -6706,17 +6706,14 @@ function syncMapViewButtons(source: HTMLElement, view: MapView): void {
 
 function resolveOceanWaterLevel(terrain: TerrainPayload): number {
   const exportedLevel = Number(terrain.waterLevel);
-  const inferredLevel = inferOceanWaterLevel(terrain);
-
-  if (!Number.isFinite(exportedLevel)) {
-    return inferredLevel;
+  if (Number.isFinite(exportedLevel)) {
+    // The Rust terrain export already knows the gameplay water plane. Do not
+    // replace it with a percentile of the heightmap: the lowest samples are
+    // ocean-floor elevations, not the visible water surface.
+    return exportedLevel;
   }
 
-  if (exportedLevel > inferredLevel + 8) {
-    return inferredLevel;
-  }
-
-  return exportedLevel;
+  return inferOceanWaterLevel(terrain);
 }
 
 function inferOceanWaterLevel(terrain: TerrainPayload): number {
