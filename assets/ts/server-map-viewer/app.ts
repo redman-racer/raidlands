@@ -700,7 +700,10 @@ class TerrainViewer {
   private readonly waterLightUniforms = {
     sunDirection: { value: new Vector3(0.5, 0.78, 0.36).normalize() },
     sunColor: { value: new Color(0xffc18c) },
+    skyColor: { value: new Color(0x8bb5c5) },
     reflectionStrength: { value: 0 },
+    daylight: { value: 1 },
+    time: { value: 0 },
     fogColor: { value: new Color(0xc8dfe8) },
     fogDensity: { value: 0 },
   };
@@ -1287,7 +1290,7 @@ outgoingLight = mix(outgoingLight, raidlandsFogColor, raidlandsTerrainHorizon * 
       roughness: 0.42,
       metalness: 0.02,
       transparent: true,
-      opacity: 0.72,
+      opacity: 0.68,
       map: this.oceanWaveTexture,
       fog: false,
       side: DoubleSide,
@@ -1295,7 +1298,10 @@ outgoingLight = mix(outgoingLight, raidlandsFogColor, raidlandsTerrainHorizon * 
     material.onBeforeCompile = (shader) => {
       shader.uniforms.raidlandsWaterSunDirection = this.waterLightUniforms.sunDirection;
       shader.uniforms.raidlandsWaterSunColor = this.waterLightUniforms.sunColor;
+      shader.uniforms.raidlandsWaterSkyColor = this.waterLightUniforms.skyColor;
       shader.uniforms.raidlandsWaterReflectionStrength = this.waterLightUniforms.reflectionStrength;
+      shader.uniforms.raidlandsWaterDaylight = this.waterLightUniforms.daylight;
+      shader.uniforms.raidlandsWaterTime = this.waterLightUniforms.time;
       shader.uniforms.raidlandsWaterFogColor = this.waterLightUniforms.fogColor;
       shader.uniforms.raidlandsWaterFogDensity = this.waterLightUniforms.fogDensity;
       shader.vertexShader = shader.vertexShader
@@ -1315,7 +1321,10 @@ raidlandsWaterWorldPosition = (modelMatrix * vec4(transformed, 1.0)).xyz;`,
           `#include <common>
 uniform vec3 raidlandsWaterSunDirection;
 uniform vec3 raidlandsWaterSunColor;
+uniform vec3 raidlandsWaterSkyColor;
 uniform float raidlandsWaterReflectionStrength;
+uniform float raidlandsWaterDaylight;
+uniform float raidlandsWaterTime;
 uniform vec3 raidlandsWaterFogColor;
 uniform float raidlandsWaterFogDensity;
 varying vec3 raidlandsWaterWorldPosition;`,
@@ -1323,7 +1332,10 @@ varying vec3 raidlandsWaterWorldPosition;`,
         .replace(
           "#include <opaque_fragment>",
           `vec3 raidlandsWaterViewDirection = normalize(cameraPosition - raidlandsWaterWorldPosition);
-vec3 raidlandsWaterReflectionDirection = reflect(-normalize(raidlandsWaterSunDirection), vec3(0.0, 1.0, 0.0));
+float raidlandsWaterWaveA = sin(raidlandsWaterWorldPosition.x * 0.038 + raidlandsWaterWorldPosition.z * 0.021 + raidlandsWaterTime * 0.55);
+float raidlandsWaterWaveB = cos(raidlandsWaterWorldPosition.x * -0.019 + raidlandsWaterWorldPosition.z * 0.044 - raidlandsWaterTime * 0.37);
+vec3 raidlandsWaterNormal = normalize(vec3(raidlandsWaterWaveA * 0.04, 1.0, raidlandsWaterWaveB * 0.04));
+vec3 raidlandsWaterReflectionDirection = reflect(-normalize(raidlandsWaterSunDirection), raidlandsWaterNormal);
 float raidlandsWaterAlignment = max(dot(raidlandsWaterViewDirection, raidlandsWaterReflectionDirection), 0.0);
 float raidlandsWaterGlare = pow(raidlandsWaterAlignment, 90.0);
 vec2 raidlandsWaterViewHorizontal = raidlandsWaterViewDirection.xz / max(length(raidlandsWaterViewDirection.xz), 0.0001);
@@ -1332,18 +1344,25 @@ float raidlandsWaterElevationMatch = exp(-abs(raidlandsWaterViewDirection.y - ra
 float raidlandsWaterStreak = pow(max(dot(raidlandsWaterViewHorizontal, raidlandsWaterReflectionHorizontal), 0.0), 10.0)
   * raidlandsWaterElevationMatch;
 float raidlandsWaterRipples = 0.88 + 0.12 * sin(
-  raidlandsWaterWorldPosition.x * 0.045 + sin(raidlandsWaterWorldPosition.z * 0.031) * 2.4
+  raidlandsWaterWorldPosition.x * 0.045 + sin(raidlandsWaterWorldPosition.z * 0.031 + raidlandsWaterTime * 0.24) * 2.4
 );
+float raidlandsWaterFresnel = pow(1.0 - clamp(dot(raidlandsWaterViewDirection, raidlandsWaterNormal), 0.0, 1.0), 3.0);
+float raidlandsWaterSkyReflection = mix(0.055, 0.34, raidlandsWaterFresnel) * mix(0.56, 1.0, raidlandsWaterDaylight);
+float raidlandsWaterSurfaceVariation = 0.97 + (raidlandsWaterWaveA + raidlandsWaterWaveB) * 0.015;
+outgoingLight *= raidlandsWaterSurfaceVariation;
+outgoingLight = mix(outgoingLight, raidlandsWaterSkyColor, raidlandsWaterSkyReflection);
 float raidlandsWaterSunPath = (raidlandsWaterGlare * 0.95 + raidlandsWaterStreak * 0.3)
   * raidlandsWaterReflectionStrength * raidlandsWaterRipples;
 outgoingLight += raidlandsWaterSunColor * raidlandsWaterSunPath;
 float raidlandsWaterFogDistance = length(vViewPosition);
-float raidlandsWaterFogFactor = 1.0 - exp(-raidlandsWaterFogDensity * raidlandsWaterFogDistance * raidlandsWaterFogDistance);
-outgoingLight = mix(outgoingLight, raidlandsWaterFogColor, clamp(raidlandsWaterFogFactor, 0.0, 0.94));
+float raidlandsWaterFogDistanceScaled = raidlandsWaterFogDensity * raidlandsWaterFogDistance;
+float raidlandsWaterFogFactor = 1.0 - exp(-raidlandsWaterFogDistanceScaled * raidlandsWaterFogDistanceScaled);
+outgoingLight = mix(outgoingLight, raidlandsWaterFogColor, clamp(raidlandsWaterFogFactor, 0.0, 0.86));
+diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
 #include <opaque_fragment>`,
         );
     };
-    material.customProgramCacheKey = () => "raidlands-water-sun-reflection-v2";
+    material.customProgramCacheKey = () => "raidlands-water-surface-v3";
     const mesh = new Mesh(geometry, material);
     mesh.name = "raidlands-infinite-ocean-surface";
     mesh.rotation.x = -Math.PI / 2;
@@ -1363,6 +1382,7 @@ outgoingLight = mix(outgoingLight, raidlandsWaterFogColor, clamp(raidlandsWaterF
     this.oceanFloorMesh.position.x = anchorX;
     this.oceanFloorMesh.position.z = anchorZ;
     this.oceanWaveTexture.offset.set((now * 0.000018) % 1, (now * 0.000011) % 1);
+    this.waterLightUniforms.time.value = now / 1000;
   }
 
   private loadTexture(): void {
@@ -1516,10 +1536,12 @@ outgoingLight = mix(outgoingLight, raidlandsWaterFogColor, clamp(raidlandsWaterF
     if (!this.ambientLight || !this.sunLight || !this.fillLight) {
       return;
     }
-    const sunHeight = MathUtils.clamp(environment.sunDirection.y, -0.16, 0.9);
+    const sunHeight = MathUtils.clamp(environment.sunDirection.y, -0.32, 0.9);
     const daylight = MathUtils.smoothstep(sunHeight, -0.05, 0.55);
-    const twilight = MathUtils.clamp(1 - Math.abs(sunHeight - 0.12) / 0.34, 0, 1);
-    const night = 1 - MathUtils.smoothstep(sunHeight, -0.18, 0.08);
+    const twilight = MathUtils.smoothstep(sunHeight, -0.2, -0.04)
+      * (1 - MathUtils.smoothstep(sunHeight, 0.3, 0.56));
+    const night = 1 - MathUtils.smoothstep(sunHeight, -0.14, 0.03);
+    const solarVisibility = MathUtils.smoothstep(sunHeight, -0.055, 0.018);
     const visualCloudCoverage = visualCloudCoverageForEnvironment(environment);
     const fogStrength = visualFogStrengthForEnvironment(environment);
     const atmosphereBrightness = MathUtils.clamp(environment.atmosphereBrightness, 0.15, 2.4);
@@ -1549,7 +1571,8 @@ outgoingLight = mix(outgoingLight, raidlandsWaterFogColor, clamp(raidlandsWaterF
       1.5,
     );
     this.sunLight.color.copy(environment.sunColor);
-    this.sunLight.intensity = Math.max(0.08, environment.sunIntensity * MathUtils.lerp(0.78, 1.04, daylight) * scatteringGlow
+    this.sunLight.intensity = Math.max(0, environment.sunIntensity * solarVisibility
+      * MathUtils.lerp(0.78, 1.04, daylight) * scatteringGlow
       * MathUtils.lerp(1, 0.72, Math.max(environment.fogIntensity * 0.42, environment.rainIntensity * 0.28)));
     const worldSize = this.terrain.worldSize || 4500;
     this.sunLight.position.copy(environment.sunDirection).multiplyScalar(worldSize * 0.62);
@@ -1582,18 +1605,27 @@ outgoingLight = mix(outgoingLight, raidlandsWaterFogColor, clamp(raidlandsWaterF
       0,
       0.92,
     );
-    const waterSunReflection = (twilight * 0.9 + daylight * 0.1)
+    const waterSunReflection = (twilight * 0.82 + daylight * 0.16)
       * waterWeatherAttenuation
-      * MathUtils.smoothstep(sunHeight, -0.08, 0.16)
+      * solarVisibility
       * MathUtils.clamp(environment.sunIntensity / 1.7, 0.2, 1.35);
-    oceanMaterial.color.set(0x155365).lerp(atmosphereWarmColor, waterSunReflection * 0.32);
-    oceanMaterial.roughness = MathUtils.lerp(0.4, 0.16, waterSunReflection);
-    oceanMaterial.metalness = MathUtils.lerp(0.02, 0.18, waterSunReflection);
-    oceanMaterial.emissive.copy(atmosphereWarmColor);
-    oceanMaterial.emissiveIntensity = 0.012 + waterSunReflection * 0.065;
+    const waterBaseColor = new Color(0x071d2a)
+      .lerp(new Color(0x176176), daylight)
+      .lerp(new Color(0x273640), environment.rainIntensity * 0.32);
+    const waterSkyColor = new Color(0x091323)
+      .lerp(new Color(0x8bb5c5), daylight * 0.86)
+      .lerp(atmosphereWarmColor, twilight * solarVisibility * 0.18)
+      .lerp(new Color(0x35424e), environment.rainIntensity * 0.34);
+    oceanMaterial.color.copy(waterBaseColor);
+    oceanMaterial.roughness = MathUtils.clamp(MathUtils.lerp(0.46, 0.24, waterSunReflection) + environment.rainIntensity * 0.16, 0.18, 0.62);
+    oceanMaterial.metalness = MathUtils.lerp(0.01, 0.1, waterSunReflection);
+    oceanMaterial.emissive.copy(waterBaseColor);
+    oceanMaterial.emissiveIntensity = 0.008 + night * 0.006;
     this.waterLightUniforms.sunDirection.value.copy(environment.sunDirection);
     this.waterLightUniforms.sunColor.value.copy(atmosphereWarmColor);
+    this.waterLightUniforms.skyColor.value.copy(waterSkyColor);
     this.waterLightUniforms.reflectionStrength.value = waterSunReflection;
+    this.waterLightUniforms.daylight.value = daylight;
     this.waterLightUniforms.fogColor.value.copy(fogColor);
     this.waterLightUniforms.fogDensity.value = fogStrength > 0.02
       ? visualFogDensityForCamera(fogStrength, this.camera.position, this.terrain)
@@ -1638,8 +1670,9 @@ outgoingLight = mix(outgoingLight, raidlandsWaterFogColor, clamp(raidlandsWaterF
     const worldSize = this.terrain.worldSize || 4500;
     const rain = MathUtils.clamp(environment.rainIntensity, 0, 1);
     const visibleCloudAmount = visualCloudCoverageForEnvironment(environment);
-    const sunHeight = MathUtils.clamp(environment.sunDirection.y, -0.16, 0.9);
-    const twilight = MathUtils.clamp(1 - Math.abs(sunHeight - 0.12) / 0.34, 0, 1);
+    const sunHeight = MathUtils.clamp(environment.sunDirection.y, -0.32, 0.9);
+    const twilight = MathUtils.smoothstep(sunHeight, -0.2, -0.04)
+      * (1 - MathUtils.smoothstep(sunHeight, 0.3, 0.56));
     const cloudOpacity = MathUtils.lerp(0.18, 0.5, visibleCloudAmount)
       * MathUtils.clamp(environment.cloudOpacity, 0, 1)
       * MathUtils.lerp(0.72, 1.24, MathUtils.clamp(environment.cloudBrightness, 0, 1.6));
@@ -5138,10 +5171,11 @@ function horizontalDirectionalFacing(direction: Vector3, sunDirection: Vector3):
 }
 
 function environmentFogColor(environment: NormalizedEnvironment, sunFacing: number): Color {
-  const sunHeight = MathUtils.clamp(environment.sunDirection.y, -0.18, 0.9);
+  const sunHeight = MathUtils.clamp(environment.sunDirection.y, -0.32, 0.9);
   const daylight = MathUtils.smoothstep(sunHeight, -0.05, 0.55);
-  const twilight = MathUtils.clamp(1 - Math.abs(sunHeight - 0.1) / 0.34, 0, 1);
-  const night = 1 - MathUtils.smoothstep(sunHeight, -0.18, 0.08);
+  const twilight = MathUtils.smoothstep(sunHeight, -0.2, -0.04)
+    * (1 - MathUtils.smoothstep(sunHeight, 0.3, 0.56));
+  const night = 1 - MathUtils.smoothstep(sunHeight, -0.14, 0.03);
   const mie = MathUtils.clamp(environment.atmosphereMie / 4, 0, 1);
   const atmosphereBrightness = MathUtils.clamp(environment.atmosphereBrightness / 1.5, 0, 1);
   const cloudShade = environment.cloudCoverage * MathUtils.lerp(0.36, 0.7, environment.cloudAttenuation);
