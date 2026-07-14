@@ -64,7 +64,11 @@ type RaidlandsSkyUniforms = {
   uCloudOpacity: { value: number };
   uCloudSharpness: { value: number };
   uCloudAttenuation: { value: number };
+  uCloudScattering: { value: number };
   uCloudBrightness: { value: number };
+  uAtmosphereRayleigh: { value: number };
+  uAtmosphereMie: { value: number };
+  uAtmosphereDirectionality: { value: number };
   uRainbowIntensity: { value: number };
   uFogIntensity: { value: number };
   uRainIntensity: { value: number };
@@ -204,7 +208,11 @@ export function updateRaidlandsEnvironment(scene: Scene, state: RaidlandsEnviron
   uniforms.uCloudOpacity.value = cloudOpacity;
   uniforms.uCloudSharpness.value = MathUtils.clamp(finiteEnvironmentValue(state.cloudSharpness, 1), 0, 1);
   uniforms.uCloudAttenuation.value = MathUtils.clamp(finiteEnvironmentValue(state.cloudAttenuation, 0.25), 0, 1);
+  uniforms.uCloudScattering.value = MathUtils.clamp(finiteEnvironmentValue(state.cloudScattering, 0.65), 0, 1);
   uniforms.uCloudBrightness.value = MathUtils.clamp(finiteEnvironmentValue(state.cloudBrightness, 0.55), 0, 2);
+  uniforms.uAtmosphereRayleigh.value = rayleigh;
+  uniforms.uAtmosphereMie.value = mie;
+  uniforms.uAtmosphereDirectionality.value = directionality;
   uniforms.uRainbowIntensity.value = MathUtils.clamp(finiteEnvironmentValue(state.rainbowIntensity, 0), 0, 1);
   uniforms.uFogIntensity.value = fogIntensity;
   uniforms.uRainIntensity.value = rainIntensity;
@@ -230,7 +238,11 @@ function createRaidlandsSkyDome(preset: RaidlandsEnvironmentPreset): Mesh {
       uCloudOpacity: { value: 1 },
       uCloudSharpness: { value: 1 },
       uCloudAttenuation: { value: 0.25 },
+      uCloudScattering: { value: 0.65 },
       uCloudBrightness: { value: 0.55 },
+      uAtmosphereRayleigh: { value: 0.25 },
+      uAtmosphereMie: { value: 1.55 },
+      uAtmosphereDirectionality: { value: 0.75 },
       uRainbowIntensity: { value: 0 },
       uFogIntensity: { value: 0 },
       uRainIntensity: { value: 0 },
@@ -260,7 +272,11 @@ function createRaidlandsSkyDome(preset: RaidlandsEnvironmentPreset): Mesh {
       uniform float uCloudOpacity;
       uniform float uCloudSharpness;
       uniform float uCloudAttenuation;
+      uniform float uCloudScattering;
       uniform float uCloudBrightness;
+      uniform float uAtmosphereRayleigh;
+      uniform float uAtmosphereMie;
+      uniform float uAtmosphereDirectionality;
       uniform float uRainbowIntensity;
       uniform float uFogIntensity;
       uniform float uRainIntensity;
@@ -305,18 +321,35 @@ function createRaidlandsSkyDome(preset: RaidlandsEnvironmentPreset): Mesh {
 
         float sunDot = max(dot(direction, normalize(uSunDirection)), 0.0);
         float lowSun = 1.0 - smoothstep(-0.08, 0.42, uSunDirection.y);
-        float clearAtmosphere = 1.0 - clamp(uCloudCoverage * 0.55 + uFogIntensity * 0.52 + uRainIntensity * 0.34, 0.0, 0.9);
-        float sunDisc = celestialDisc(direction, uSunDirection, 0.026, 0.00135) * uSunVisibility;
-        float sunCore = celestialDisc(direction, uSunDirection, 0.015, 0.0009) * uSunVisibility;
-        float sunGlow = pow(sunDot, 12.0) * (0.22 + lowSun * 0.32) * uSunVisibility;
-        float sunHalo = pow(sunDot, 42.0) * (0.22 + lowSun * 0.48) * uSunVisibility;
-        float horizonScatter = pow(max(dot(direction, normalize(vec3(uSunDirection.x, 0.08, uSunDirection.z))), 0.0), 5.0)
+        float mie = clamp(uAtmosphereMie * 0.25, 0.0, 1.0);
+        float rayleigh = clamp(uAtmosphereRayleigh * 0.25, 0.0, 1.0);
+        float cloudWeather = clamp(
+          uCloudCoverage * mix(0.42, 0.7, uCloudAttenuation) + uRainIntensity * 0.48 + uFogIntensity * 0.42,
+          0.0,
+          0.92
+        );
+        float clearAtmosphere = 1.0 - cloudWeather;
+        float directionality = mix(0.72, 1.34, clamp(uAtmosphereDirectionality, 0.0, 1.0));
+        float sunDisc = celestialDisc(direction, uSunDirection, 0.025, 0.00115) * uSunVisibility;
+        float sunCore = celestialDisc(direction, uSunDirection, 0.0125, 0.00055) * uSunVisibility;
+        float sunGlow = pow(sunDot, mix(9.0, 15.0, directionality * 0.5))
+          * (0.16 + lowSun * mix(0.32, 0.58, mie)) * uSunVisibility;
+        float sunHalo = pow(sunDot, mix(28.0, 56.0, directionality * 0.5))
+          * (0.2 + lowSun * mix(0.42, 0.76, mie)) * uSunVisibility;
+        vec3 horizonSunDirection = normalize(vec3(uSunDirection.x, 0.075, uSunDirection.z));
+        float horizonSunDot = max(dot(direction, horizonSunDirection), 0.0);
+        float horizonScatter = pow(horizonSunDot, mix(3.0, 7.0, directionality * 0.5))
           * horizon * lowSun * clearAtmosphere;
+        float horizonNear = exp(-abs(direction.y) * mix(13.0, 21.0, mie));
+        float horizonWide = exp(-abs(direction.y) * mix(4.0, 8.0, rayleigh));
         float twilight = (1.0 - smoothstep(-0.12, 0.54, uSunDirection.y)) * horizon;
-        vec3 warmHorizon = mix(vec3(1.0, 0.42, 0.28), vec3(1.0, 0.72, 0.52), uDaylight);
-        skyColor += uSunColor * (sunDisc * 0.82 + sunHalo * 0.9 + sunGlow * 0.7);
-        skyColor += warmHorizon * (horizonScatter * 0.34 + twilight * 0.1);
-        skyColor += vec3(1.0, 0.97, 0.88) * sunCore * 2.15;
+        vec3 orangeScatter = mix(uSunColor, vec3(1.0, 0.34, 0.18), 0.58 + mie * 0.24);
+        vec3 peachScatter = mix(vec3(1.0, 0.34, 0.2), vec3(1.0, 0.7, 0.48), uDaylight);
+        skyColor += orangeScatter * (sunDisc * 0.96 + sunHalo * 0.82 + sunGlow * 0.56) * clearAtmosphere;
+        skyColor += peachScatter * horizonScatter * (horizonNear * (0.2 + mie * 0.34) + horizonWide * 0.12);
+        skyColor += vec3(0.92, 0.17, 0.1) * horizonScatter * horizonNear * mie * 0.18;
+        skyColor += peachScatter * twilight * (horizonNear * 0.1 + horizonWide * 0.045) * clearAtmosphere;
+        skyColor += vec3(1.0) * sunCore * 3.0 * mix(0.72, 1.0, clearAtmosphere);
 
         vec2 cloudPosition = direction.xz / max(direction.y + 0.36, 0.42);
         cloudPosition = cloudPosition * 2.2 + vec2(uCloudPhase * 0.0018, uCloudPhase * 0.0007);
@@ -335,9 +368,21 @@ function createRaidlandsSkyDome(preset: RaidlandsEnvironmentPreset): Mesh {
           * clamp(uCloudOpacity, 0.0, 1.0)
           * smoothstep(-0.02, 0.32, direction.y)
           * (0.72 + height * 0.28);
+        float cloudInterior = smoothstep(cloudThreshold + cloudEdge * 0.2, cloudThreshold + cloudEdge * 2.4, cloudField);
+        float cloudRim = clamp(cloudMask - cloudInterior * cloudMask, 0.0, 1.0);
+        float cloudSunFacing = pow(max(dot(direction, normalize(uSunDirection)), 0.0), 3.0);
+        float cloudTwilight = lowSun * smoothstep(-0.16, 0.16, uSunDirection.y);
         vec3 cloudColor = mix(vec3(0.18, 0.22, 0.28), vec3(0.82, 0.9, 0.96), uDaylight)
           * mix(0.76, 1.32, clamp(uCloudBrightness, 0.0, 2.0) * 0.5);
-        cloudColor = mix(cloudColor, vec3(0.08, 0.09, 0.11), clamp(uCloudAttenuation, 0.0, 1.0) * cloudCoverage * 0.42);
+        float cloudUnderside = cloudInterior * (0.28 + cloudCoverage * 0.34)
+          * mix(0.62, 1.0, clamp(uCloudAttenuation, 0.0, 1.0));
+        cloudColor = mix(cloudColor, vec3(0.065, 0.07, 0.085), cloudUnderside * (0.42 + uRainIntensity * 0.24));
+        vec3 warmCloudEdge = mix(uSunColor, vec3(1.0, 0.38, 0.2), 0.48 + mie * 0.28);
+        cloudColor = mix(
+          cloudColor,
+          warmCloudEdge,
+          cloudRim * cloudTwilight * (0.24 + cloudSunFacing * 0.62) * mix(0.58, 1.0, uCloudScattering)
+        );
         skyColor = mix(skyColor, cloudColor, cloudMask * (0.1 + cloudCoverage * 0.66));
 
         float rainbowBand = (1.0 - smoothstep(0.0, 0.012, abs(length(direction.xz - vec2(0.08, -0.24)) - 0.64)))
