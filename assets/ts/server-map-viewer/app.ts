@@ -701,6 +701,8 @@ class TerrainViewer {
     sunDirection: { value: new Vector3(0.5, 0.78, 0.36).normalize() },
     sunColor: { value: new Color(0xffc18c) },
     reflectionStrength: { value: 0 },
+    fogColor: { value: new Color(0xc8dfe8) },
+    fogDensity: { value: 0 },
   };
   private ambientLight: AmbientLight | null = null;
   private sunLight: DirectionalLight | null = null;
@@ -1287,12 +1289,15 @@ outgoingLight = mix(outgoingLight, raidlandsFogColor, raidlandsTerrainHorizon * 
       transparent: true,
       opacity: 0.72,
       map: this.oceanWaveTexture,
+      fog: false,
       side: DoubleSide,
     });
     material.onBeforeCompile = (shader) => {
       shader.uniforms.raidlandsWaterSunDirection = this.waterLightUniforms.sunDirection;
       shader.uniforms.raidlandsWaterSunColor = this.waterLightUniforms.sunColor;
       shader.uniforms.raidlandsWaterReflectionStrength = this.waterLightUniforms.reflectionStrength;
+      shader.uniforms.raidlandsWaterFogColor = this.waterLightUniforms.fogColor;
+      shader.uniforms.raidlandsWaterFogDensity = this.waterLightUniforms.fogDensity;
       shader.vertexShader = shader.vertexShader
         .replace(
           "#include <common>",
@@ -1311,6 +1316,8 @@ raidlandsWaterWorldPosition = (modelMatrix * vec4(transformed, 1.0)).xyz;`,
 uniform vec3 raidlandsWaterSunDirection;
 uniform vec3 raidlandsWaterSunColor;
 uniform float raidlandsWaterReflectionStrength;
+uniform vec3 raidlandsWaterFogColor;
+uniform float raidlandsWaterFogDensity;
 varying vec3 raidlandsWaterWorldPosition;`,
         )
         .replace(
@@ -1330,6 +1337,9 @@ float raidlandsWaterRipples = 0.88 + 0.12 * sin(
 float raidlandsWaterSunPath = (raidlandsWaterGlare * 0.95 + raidlandsWaterStreak * 0.3)
   * raidlandsWaterReflectionStrength * raidlandsWaterRipples;
 outgoingLight += raidlandsWaterSunColor * raidlandsWaterSunPath;
+float raidlandsWaterFogDistance = length(vViewPosition);
+float raidlandsWaterFogFactor = 1.0 - exp(-raidlandsWaterFogDensity * raidlandsWaterFogDistance * raidlandsWaterFogDistance);
+outgoingLight = mix(outgoingLight, raidlandsWaterFogColor, clamp(raidlandsWaterFogFactor, 0.0, 0.94));
 #include <opaque_fragment>`,
         );
     };
@@ -1584,6 +1594,10 @@ outgoingLight += raidlandsWaterSunColor * raidlandsWaterSunPath;
     this.waterLightUniforms.sunDirection.value.copy(environment.sunDirection);
     this.waterLightUniforms.sunColor.value.copy(atmosphereWarmColor);
     this.waterLightUniforms.reflectionStrength.value = waterSunReflection;
+    this.waterLightUniforms.fogColor.value.copy(fogColor);
+    this.waterLightUniforms.fogDensity.value = fogStrength > 0.02
+      ? visualFogDensityForCamera(fogStrength, this.camera.position, this.terrain)
+      : 0;
     const horizonDrama = MathUtils.clamp(1 - Math.abs(MathUtils.clamp(sunHeight, -0.1, 0.46) - 0.18) / 0.28, 0, 1);
     this.scene.backgroundIntensity = (MathUtils.lerp(0.7, 1.02, daylight) + horizonDrama * 0.11 - night * 0.18) * MathUtils.lerp(0.72, 1.16, atmosphereBrightness / 1.4);
     this.scene.environmentIntensity = (MathUtils.lerp(0.46, 0.96, daylight) + horizonDrama * 0.04) * MathUtils.lerp(0.82, 1.18, atmosphereContrast / 1.4);
