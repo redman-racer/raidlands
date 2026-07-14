@@ -1575,17 +1575,24 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
             + broad * 0.25
             + noise(position * 2.03 + vec2(7.13, -4.27)) * 0.14
             + noise(position * 4.11 + vec2(-5.2, 8.4)) * 0.07;
-          float threshold = mix(0.82, 0.27, sqrt(coverage));
-          float edge = mix(0.09, 0.022, clamp(uSharpness, 0.0, 1.0));
-          float density = smoothstep(threshold - edge, threshold + edge, field)
+          float erosion = noise(position * 8.17 + vec2(11.3, -6.8));
+          float wisps = noise(position * 13.71 + vec2(-3.4, 14.2));
+          float shapedField = field + (erosion - 0.5) * 0.13 + (wisps - 0.5) * 0.045;
+          float threshold = mix(0.73, 0.27, coverage);
+          float edge = mix(0.075, 0.018, clamp(uSharpness, 0.0, 1.0));
+          float density = smoothstep(threshold - edge, threshold + edge, shapedField)
             * smoothstep(0.005, 0.04, coverage);
-          float topLight = smoothstep(threshold, threshold + edge * 3.2, field);
-          vec3 neutralTop = mix(uAmbientColor, vec3(0.92, 0.96, 1.0), 0.58);
+          float interior = smoothstep(threshold + edge * 0.35, threshold + edge * 5.5, shapedField);
+          float topLight = clamp(interior * 0.72 + erosion * 0.2 + wisps * 0.08, 0.0, 1.0);
+          float pocketShade = (1.0 - broad) * interior * mix(0.18, 0.42, uAttenuation);
+          vec3 neutralTop = mix(uAmbientColor, vec3(0.76, 0.83, 0.88), 0.48);
           vec3 sunTop = mix(vec3(1.0), uSunColor, clamp(uColoring, 0.0, 1.0));
-          vec3 color = mix(neutralTop, sunTop, topLight * mix(0.22, 0.64, uColoring));
-          color *= mix(0.72, 1.2, clamp(uBrightness, 0.0, 2.0) * 0.5);
+          vec3 color = mix(neutralTop, sunTop, topLight * mix(0.14, 0.48, uColoring));
+          color *= mix(0.68, 1.12, clamp(uBrightness, 0.0, 2.0) * 0.5);
+          color = mix(color, vec3(0.16, 0.19, 0.23), pocketShade);
           color = mix(color, vec3(0.08, 0.095, 0.12), clamp(uAttenuation * 0.22 + uRain * 0.48, 0.0, 0.72));
-          float alpha = density * clamp(uOpacity, 0.0, 1.0) * uVisibility;
+          float depthOpacity = mix(0.34, 1.0, interior) * mix(0.78, 1.0, erosion);
+          float alpha = density * depthOpacity * clamp(uOpacity, 0.0, 1.0) * uVisibility;
           gl_FragColor = vec4(color, alpha);
         }
       `,
@@ -1836,11 +1843,6 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     this.terrainLightUniforms.cloudPhase.value = performance.now() / 1000;
     this.terrainLightUniforms.cloudShadowStrength.value = this.cloudProfile.useVolumetricClouds
       ? MathUtils.clamp(environment.cloudOpacity * (0.28 + environment.cloudAttenuation * 0.48 + environment.rainIntensity * 0.16), 0, 0.92)
-        * MathUtils.lerp(
-          1,
-          0.28,
-          MathUtils.smoothstep(cameraTopDownAmount(this.camera, this.controls.target), 0.72, 0.94),
-        )
       : 0;
     const oceanMaterial = this.oceanSurfaceMesh.material as MeshStandardMaterial;
     const waterWeatherAttenuation = 1 - MathUtils.clamp(
@@ -1886,8 +1888,8 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     const cloudBase = worldSize * (0.115 - environment.rainIntensity * 0.016);
     const cloudTop = cloudBase + worldSize * MathUtils.lerp(0.055, 0.105, cloudSizeFraction);
     const aboveCloudDeck = MathUtils.smoothstep(this.camera.position.y, cloudTop - worldSize * 0.015, cloudTop + worldSize * 0.08);
-    const aerialViewAmount = MathUtils.smoothstep(cameraTopDownAmount(this.camera, this.controls.target), 0.42, 0.9);
-    const aerialOpacityLimit = this.cloudDetail === "max" ? 0.28 : 0.2;
+    const aerialViewAmount = MathUtils.smoothstep(cameraTopDownAmount(this.camera, this.controls.target), 0.04, 0.58);
+    const aerialOpacityLimit = this.cloudDetail === "max" ? 1 : 0.78;
     this.aerialCloudUniforms.coverage.value = visualCloudCoverage;
     this.aerialCloudUniforms.opacity.value = environment.cloudOpacity;
     this.aerialCloudUniforms.size.value = environment.cloudSize;
