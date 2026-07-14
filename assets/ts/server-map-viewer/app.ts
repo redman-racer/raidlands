@@ -3502,13 +3502,13 @@ function createWaterTreatmentPlantMonumentPrimitive(group: Group, size: number):
   const pipe = 0x9b5b3e;
 
   // The monument is a long, walled industrial yard rather than a single block.
-  addBox(group, size * 1.72, 3, size * 1.18, concreteDark, 0, 1.5, 0);
-  addBox(group, size * 1.55, 2.2, size * 0.96, 0x6b706b, 0, 3, 0);
+  addBox(group, size * 1.42, 3, size * 1.48, concreteDark, 0, 1.5, 0);
+  addBox(group, size * 1.28, 2.2, size * 1.28, 0x6b706b, 0, 3, 0);
 
   // Two broad rows of circular settling/clarifier basins match the monument's
   // long industrial footprint and keep the overhead silhouette legible.
   const basinRadius = size * 0.17;
-  for (const [x, z] of [[-0.7, -0.42], [-0.23, -0.42], [0.32, -0.42], [0.72, -0.42], [-0.7, 0.34], [-0.23, 0.34], [0.32, 0.34], [0.72, 0.34]]) {
+  for (const [x, z] of [[-0.42, -0.56], [0.42, -0.56], [-0.42, 0], [0.42, 0], [-0.42, 0.56], [0.42, 0.56]]) {
     addCylinder(group, basinRadius, 4, concrete, size * x, 5, size * z);
     addCylinder(group, basinRadius * 0.78, 0.8, water, size * x, 7.15, size * z);
     addCylinder(group, basinRadius * 0.08, 6, rust, size * x, 10, size * z);
