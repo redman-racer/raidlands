@@ -871,7 +871,7 @@ class TerrainViewer {
   private readonly oceanSurfaceMesh: Mesh;
   private readonly oceanFloorMesh: Mesh;
   private readonly oceanWaveTexture: CanvasTexture;
-  private readonly aerialCloudLayer: Mesh;
+  private readonly aerialCloudLayer: Group;
   private readonly gridLayer = new Group();
   private readonly heatmapLayer = new Group();
   private readonly playerLocationLayer = new Group();
@@ -1656,27 +1656,37 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     return mesh;
   }
 
-  private createAerialCloudLayer(): Mesh {
+  private createAerialCloudLayer(): Group {
     const worldSize = this.terrain.worldSize || 4500;
     const uniforms = this.aerialCloudUniforms;
     uniforms.worldSize.value = worldSize;
-    const material = new ShaderMaterial({
-      uniforms: {
-        uCoverage: uniforms.coverage,
-        uOpacity: uniforms.opacity,
-        uCloudSize: uniforms.size,
-        uSharpness: uniforms.sharpness,
-        uAttenuation: uniforms.attenuation,
-        uBrightness: uniforms.brightness,
-        uColoring: uniforms.coloring,
-        uRain: uniforms.rain,
-        uPhase: uniforms.phase,
-        uVisibility: uniforms.visibility,
-        uWorldSize: uniforms.worldSize,
-        uSunColor: uniforms.sunColor,
-        uAmbientColor: uniforms.ambientColor,
-      },
-      vertexShader: `
+    const group = new Group();
+    group.name = "raidlands-volumetric-cloud-slices";
+    group.visible = false;
+    const sliceCount = this.cloudDetail === "max" ? 9 : this.cloudDetail === "medium" ? 6 : 0;
+    const sliceOpacity = sliceCount > 0 ? 1 - Math.exp(-1.8 / sliceCount) : 0;
+
+    for (let sliceIndex = 0; sliceIndex < sliceCount; sliceIndex += 1) {
+      const layerFraction = sliceCount <= 1 ? 0.5 : sliceIndex / (sliceCount - 1);
+      const material = new ShaderMaterial({
+        uniforms: {
+          uCoverage: uniforms.coverage,
+          uOpacity: uniforms.opacity,
+          uCloudSize: uniforms.size,
+          uSharpness: uniforms.sharpness,
+          uAttenuation: uniforms.attenuation,
+          uBrightness: uniforms.brightness,
+          uColoring: uniforms.coloring,
+          uRain: uniforms.rain,
+          uPhase: uniforms.phase,
+          uVisibility: uniforms.visibility,
+          uWorldSize: uniforms.worldSize,
+          uSunColor: uniforms.sunColor,
+          uAmbientColor: uniforms.ambientColor,
+          uLayerFraction: { value: layerFraction },
+          uSliceOpacity: { value: sliceOpacity },
+        },
+        vertexShader: `
         varying vec3 vWorldPosition;
         void main() {
           vec4 worldPosition = modelMatrix * vec4(position, 1.0);
@@ -1684,7 +1694,7 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
           gl_Position = projectionMatrix * viewMatrix * worldPosition;
         }
       `,
-      fragmentShader: `
+        fragmentShader: `
         precision highp float;
         varying vec3 vWorldPosition;
         uniform float uCoverage;
@@ -1700,6 +1710,8 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
         uniform float uWorldSize;
         uniform vec3 uSunColor;
         uniform vec3 uAmbientColor;
+        uniform float uLayerFraction;
+        uniform float uSliceOpacity;
 
         float hash(vec2 position) {
           return fract(sin(dot(position, vec2(127.1, 311.7))) * 43758.5453123);
@@ -1720,15 +1732,22 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
           float sizeFraction = clamp((uCloudSize - 0.2) / 7.8, 0.0, 1.0);
           float scale = uWorldSize * mix(0.035, 0.13, sizeFraction);
           vec2 position = vWorldPosition.xz / max(scale, 1.0)
-            + vec2(uPhase * 0.0032, uPhase * 0.00135);
+            + vec2(uPhase * 0.0032, uPhase * 0.00135)
+            + vec2(uLayerFraction * 0.38, -uLayerFraction * 0.27);
           float broad = noise(position * 0.51 + vec2(3.7, -2.1));
           float field = noise(position) * 0.54
             + broad * 0.25
             + noise(position * 2.03 + vec2(7.13, -4.27)) * 0.14
             + noise(position * 4.11 + vec2(-5.2, 8.4)) * 0.07;
-          float erosion = noise(position * 8.17 + vec2(11.3, -6.8));
-          float wisps = noise(position * 13.71 + vec2(-3.4, 14.2));
-          float shapedField = field + (erosion - 0.5) * 0.13 + (wisps - 0.5) * 0.045;
+          float layerShape = noise(position * 0.73 + vec2(uLayerFraction * 4.7, -uLayerFraction * 3.1));
+          float erosion = noise(position * 8.17 + vec2(11.3 + uLayerFraction * 2.8, -6.8));
+          float wisps = noise(position * 13.71 + vec2(-3.4, 14.2 - uLayerFraction * 3.6));
+          float verticalEdge = abs(uLayerFraction * 2.0 - 1.0);
+          float shapedField = field
+            + (layerShape - 0.5) * 0.18
+            + (erosion - 0.5) * 0.13
+            + (wisps - 0.5) * 0.045
+            - verticalEdge * 0.055;
           float threshold = mix(0.73, 0.27, coverage);
           float edge = mix(0.075, 0.018, clamp(uSharpness, 0.0, 1.0));
           float density = smoothstep(threshold - edge, threshold + edge, shapedField)
@@ -1736,30 +1755,38 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
           float interior = smoothstep(threshold + edge * 0.35, threshold + edge * 5.5, shapedField);
           float topLight = clamp(interior * 0.72 + erosion * 0.2 + wisps * 0.08, 0.0, 1.0);
           float pocketShade = (1.0 - broad) * interior * mix(0.18, 0.42, uAttenuation);
-          vec3 neutralTop = mix(uAmbientColor, vec3(0.76, 0.83, 0.88), 0.48);
+          float layerLight = smoothstep(0.0, 1.0, uLayerFraction);
+          vec3 neutralTop = mix(
+            mix(vec3(0.12, 0.15, 0.2), uAmbientColor, 0.55),
+            mix(uAmbientColor, vec3(0.76, 0.83, 0.88), 0.48),
+            layerLight
+          );
           vec3 sunTop = mix(vec3(1.0), uSunColor, clamp(uColoring, 0.0, 1.0));
-          vec3 color = mix(neutralTop, sunTop, topLight * mix(0.14, 0.48, uColoring));
+          vec3 color = mix(neutralTop, sunTop, topLight * layerLight * mix(0.14, 0.48, uColoring));
           color *= mix(0.68, 1.12, clamp(uBrightness, 0.0, 2.0) * 0.5);
           color = mix(color, vec3(0.16, 0.19, 0.23), pocketShade);
           color = mix(color, vec3(0.08, 0.095, 0.12), clamp(uAttenuation * 0.22 + uRain * 0.48, 0.0, 0.72));
           float depthOpacity = mix(0.34, 1.0, interior) * mix(0.78, 1.0, erosion);
-          float alpha = density * depthOpacity * clamp(uOpacity, 0.0, 1.0) * uVisibility;
+          float alpha = density * depthOpacity * clamp(uOpacity, 0.0, 1.0) * uVisibility * uSliceOpacity;
           gl_FragColor = vec4(color, alpha);
         }
       `,
-      transparent: true,
-      depthTest: true,
-      depthWrite: false,
-      side: DoubleSide,
-      fog: false,
-    });
-    material.customProgramCacheKey = () => `raidlands-aerial-cloud-${this.cloudDetail}-v1`;
-    const mesh = new Mesh(new PlaneGeometry(worldSize * 6, worldSize * 6, 1, 1), material);
-    mesh.name = "raidlands-aerial-cloud-tops";
-    mesh.rotation.x = -Math.PI / 2;
-    mesh.renderOrder = 2;
-    mesh.visible = false;
-    return mesh;
+        transparent: true,
+        depthTest: true,
+        depthWrite: false,
+        side: DoubleSide,
+        fog: false,
+      });
+      material.customProgramCacheKey = () => `raidlands-cloud-slice-${this.cloudDetail}-${sliceIndex}-v2`;
+      const mesh = new Mesh(new PlaneGeometry(worldSize * 6, worldSize * 6, 1, 1), material);
+      mesh.name = `raidlands-cloud-volume-slice-${sliceIndex + 1}`;
+      mesh.rotation.x = -Math.PI / 2;
+      mesh.renderOrder = 2;
+      mesh.userData.layerFraction = layerFraction;
+      group.add(mesh);
+    }
+
+    return group;
   }
 
   private updateOceanPlanes(now: number): void {
@@ -2039,9 +2066,6 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     const cloudSizeFraction = MathUtils.clamp((environment.cloudSize - 0.2) / 7.8, 0, 1);
     const cloudBase = worldSize * (0.115 - environment.rainIntensity * 0.016);
     const cloudTop = cloudBase + worldSize * MathUtils.lerp(0.055, 0.105, cloudSizeFraction);
-    const aboveCloudDeck = MathUtils.smoothstep(this.camera.position.y, cloudTop - worldSize * 0.015, cloudTop + worldSize * 0.08);
-    const aerialViewAmount = MathUtils.smoothstep(cameraTopDownAmount(this.camera, this.controls.target), 0.04, 0.58);
-    const aerialOpacityLimit = this.cloudDetail === "max" ? 1 : 0.78;
     this.aerialCloudUniforms.coverage.value = visualCloudCoverage;
     this.aerialCloudUniforms.opacity.value = environment.cloudOpacity;
     this.aerialCloudUniforms.size.value = environment.cloudSize;
@@ -2051,13 +2075,13 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     this.aerialCloudUniforms.coloring.value = environment.cloudColoring;
     this.aerialCloudUniforms.rain.value = environment.rainIntensity;
     this.aerialCloudUniforms.phase.value = performance.now() / 1000;
-    this.aerialCloudUniforms.visibility.value = this.cloudProfile.useVolumetricClouds
-      ? aboveCloudDeck * aerialViewAmount * aerialOpacityLimit
-      : 0;
+    this.aerialCloudUniforms.visibility.value = this.cloudProfile.useVolumetricClouds ? 1 : 0;
     this.aerialCloudUniforms.worldSize.value = worldSize;
     this.aerialCloudUniforms.sunColor.value.copy(environment.sunColor);
     this.aerialCloudUniforms.ambientColor.value.copy(environment.ambientColor);
-    this.aerialCloudLayer.position.y = cloudTop - worldSize * 0.008;
+    this.aerialCloudLayer.children.forEach((child) => {
+      child.position.y = cloudBase + (Number(child.userData.layerFraction) || 0) * (cloudTop - cloudBase);
+    });
     this.aerialCloudLayer.visible = this.aerialCloudUniforms.visibility.value > 0.002 && visualCloudCoverage > 0.015;
     const horizonDrama = MathUtils.clamp(1 - Math.abs(MathUtils.clamp(sunHeight, -0.1, 0.46) - 0.18) / 0.28, 0, 1);
     this.scene.backgroundIntensity = (MathUtils.lerp(0.7, 1.02, daylight) + horizonDrama * 0.11 - night * 0.18) * MathUtils.lerp(0.72, 1.16, atmosphereBrightness / 1.4);
@@ -5617,10 +5641,6 @@ function horizontalDirectionalFacing(direction: Vector3, sunDirection: Vector3):
     0,
     1,
   );
-}
-
-function cameraTopDownAmount(camera: PerspectiveCamera, target: Vector3): number {
-  return MathUtils.clamp(camera.position.clone().sub(target).normalize().dot(new Vector3(0, 1, 0)), 0, 1);
 }
 
 function environmentFogColor(environment: NormalizedEnvironment, sunFacing: number): Color {
