@@ -3165,7 +3165,13 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
 
   if (key.includes("oilrig") || key.includes("oil_rig")) {
     createOilRigMonumentPrimitive(group, size);
-    return addTitle();
+    group.scale.y = 0.58;
+    const titledGroup = addTitle();
+    const title = titledGroup.getObjectByName("monument-title");
+    if (title) {
+      title.scale.y *= 1 / 0.58;
+    }
+    return titledGroup;
   }
 
   if (key.includes("harbor")) {
@@ -3335,12 +3341,12 @@ function addOilRigLighting(group: Group, size: number): void {
 
   // Warm cabin and container lights across the stacked living/work decks.
   [-0.46, -0.18, 0.12, 0.42].forEach((x) => {
-    [0.73, 0.92, 1.1].forEach((y) => addLamp(size * x, size * y, size * 0.44, 0xffb43d, 0.7, size * 0.6));
+    [0.73, 0.92, 1.1].forEach((y) => addLamp(size * x, size * y, size * 0.44, 0xffb43d, 0.2, size * 0.24));
   });
   // Cool task lights mark the exterior catwalks and lower service level.
-  [-0.52, -0.17, 0.2, 0.54].forEach((x) => addLamp(size * x, size * 0.62, -size * 0.45, 0x9fdcff, 0.42, size * 0.42, size * 0.014));
+  [-0.52, -0.17, 0.2, 0.54].forEach((x) => addLamp(size * x, size * 0.62, -size * 0.45, 0x9fdcff, 0.14, size * 0.2, size * 0.014));
   // Red obstruction beacons on the communications tower and crane tips.
-  [[0, 2.12, -0.1], [-0.82, 1.58, -0.3], [0.84, 1.58, 0.2]].forEach(([x, y, z]) => addLamp(size * x, size * y, size * z, 0xff1d22, 0.9, size * 0.42, size * 0.022));
+  [[0, 2.12, -0.1], [-0.82, 1.58, -0.3], [0.84, 1.58, 0.2]].forEach(([x, y, z]) => addLamp(size * x, size * y, size * z, 0xff1d22, 0.3, size * 0.18, size * 0.022));
 
   // Flare stack: a bright emissive core, a tapered flame, and a localized orange glow.
   const flare = addCone(lighting, size * 0.075, size * 0.18, 0xffa52e, -size * 0.42, size * 1.88, size * 0.2);
