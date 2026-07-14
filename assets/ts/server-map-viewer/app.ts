@@ -3277,7 +3277,13 @@ function createMonumentPrimitive(monument: MonumentPayload): Group {
 
   if (key.includes("water_treatment") || key.includes("watertreatment") || key.includes("water_treatment_plant")) {
     createWaterTreatmentPlantMonumentPrimitive(group, size);
-    return addTitle();
+    group.scale.set(0.72, 0.72, 0.72);
+    const titledGroup = addTitle();
+    const title = titledGroup.getObjectByName("monument-title");
+    if (title) {
+      title.scale.multiplyScalar(1 / 0.72);
+    }
+    return titledGroup;
   }
 
   if (key.includes("powerplant") || key.includes("power_plant")) {
@@ -3491,9 +3497,10 @@ function createWaterTreatmentPlantMonumentPrimitive(group: Group, size: number):
   // Rear utility tanks and the tall water tower visible in the approach views.
   addCylinder(group, size * 0.13, size * 0.72, rust, -size * 0.65, size * 0.48, -size * 0.55);
   addCylinder(group, size * 0.18, size * 0.82, rust, size * 0.65, size * 0.54, -size * 0.58);
-  addCylinder(group, size * 0.16, size * 1.35, 0x646b65, 0, size * 0.74, -size * 0.58);
-  addCylinder(group, size * 0.24, size * 0.24, rust, 0, size * 1.45, -size * 0.58);
-  addBox(group, size * 0.62, 2.5, size * 0.05, concreteDark, 0, 1.25, -size * 0.61);
+  addCylinder(group, size * 0.105, size * 0.92, 0x646b65, size * 0.68, size * 0.55, -size * 0.62);
+  addCylinder(group, size * 0.16, size * 0.18, rust, size * 0.68, size * 1.04, -size * 0.62);
+  addSphere(group, size * 0.13, 0x77766b, size * 0.68, size * 1.16, -size * 0.62);
+  addBox(group, size * 0.42, 2.5, size * 0.05, concreteDark, size * 0.68, 1.25, -size * 0.65);
 }
 
 function createAbandonedMilitaryBaseMonumentPrimitive(group: Group, size: number): void {
