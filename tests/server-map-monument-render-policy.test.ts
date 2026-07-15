@@ -3,7 +3,7 @@ import { monumentRenderClass, monumentUsesMapProxyInAuto } from "../assets/ts/se
 
 describe("monument render policy", () => {
   it("keeps large landmarks on compact map silhouettes in Auto mode", () => {
-    for (const id of ["compound", "launch_site_1", "harbor_1", "oilrig_1", "radtown_small_3", "desert_military_base_d"]) {
+    for (const id of ["compound", "launch_site_1", "harbor_1", "oilrig_1", "radtown_small_3"]) {
       expect(monumentRenderClass(id)).toBe("landmark-map");
       expect(monumentUsesMapProxyInAuto(id)).toBe(true);
     }
@@ -17,5 +17,13 @@ describe("monument render policy", () => {
   it("allows small repeated assets to share detail models", () => {
     expect(monumentRenderClass("power_sub_big_1")).toBe("shared-detail");
     expect(monumentRenderClass("water_well_a")).toBe("shared-detail");
+  });
+
+  it("promotes every abandoned military base variant into close detail automatically", () => {
+    for (const variant of ["a", "b", "c", "d"]) {
+      const id = `desert_military_base_${variant}`;
+      expect(monumentRenderClass(id)).toBe("shared-detail");
+      expect(monumentUsesMapProxyInAuto(id)).toBe(false);
+    }
   });
 });

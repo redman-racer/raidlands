@@ -9,12 +9,14 @@ describe("monument quality policy", () => {
     expect(parseMonumentMode("map")).toBe("primitives");
   });
 
-  it("enforces map LOD on low and applies preset budgets", () => {
-    expect(resolveMonumentQuality("detailed", "low").activeDetailLimit).toBe(0);
+  it("keeps one close-detail slot on low and applies preset budgets", () => {
+    expect(resolveMonumentQuality("detailed", "low").activeDetailLimit).toBe(1);
+    expect(resolveMonumentQuality("auto", "low").activeDetailLimit).toBe(1);
     expect(resolveMonumentQuality("auto", "medium").activeDetailLimit).toBe(1);
     expect(resolveMonumentQuality("auto", "high").activeDetailLimit).toBe(2);
     expect(resolveMonumentQuality("auto", "ultra").activeDetailLimit).toBe(3);
     expect(resolveMonumentQuality("primitives", "ultra").activeDetailLimit).toBe(0);
+    expect(resolveMonumentQuality("primitives", "low").activeDetailLimit).toBe(0);
     expect(resolveMonumentQuality("auto", "low").activeMapLimit).toBeGreaterThanOrEqual(96);
   });
 

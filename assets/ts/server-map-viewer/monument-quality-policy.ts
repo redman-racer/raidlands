@@ -25,8 +25,11 @@ export function parseMonumentMode(value: unknown, fallback: MonumentMode = "auto
 }
 
 export function resolveMonumentQuality(mode: MonumentMode, quality: EnvironmentQuality): MonumentQualityPolicy {
-  const limits: Record<EnvironmentQuality, number> = { low: 0, medium: 1, high: 2, ultra: 3 };
-  const activeDetailLimit = mode === "primitives" || quality === "low" ? 0 : limits[quality];
+  // Auto keeps one close monument detailed even on Low. This preserves the
+  // visible LOD transition while bounding decode/GPU cost to a single asset.
+  // Explicit Map LOD mode remains the zero-detail performance escape hatch.
+  const limits: Record<EnvironmentQuality, number> = { low: 1, medium: 1, high: 2, ultra: 3 };
+  const activeDetailLimit = mode === "primitives" ? 0 : limits[quality];
   return {
     requested: mode,
     resolved: activeDetailLimit > 0 ? "detailed" : "primitives",
