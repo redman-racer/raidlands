@@ -1,6 +1,7 @@
 import {
   AmbientLight,
   AdditiveBlending,
+  Box3,
   BoxGeometry,
   BufferGeometry,
   Color,
@@ -44,6 +45,8 @@ import {
   WebGLRenderer,
 } from "three";
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
+import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
+import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { SSAOPass } from "three/examples/jsm/postprocessing/SSAOPass.js";
@@ -102,6 +105,9 @@ import { monumentPrimitiveKind, monumentPrimitiveSearchKey } from "./monument-pr
 
 const ENVIRONMENT_QUALITY_STORAGE_KEY = "raidlands:map-environment-quality";
 const CAMERA_PREFERENCES_STORAGE_KEY = "raidlands:map-camera-preferences";
+const OUTPOST_MODEL_URL = new URL(/* @vite-ignore */ "../../media/models/monuments/outpost.glb", import.meta.url).href;
+const DRACO_DECODER_URL = new URL(/* @vite-ignore */ "../../media/models/draco/", import.meta.url).href;
+let outpostModelPromise: Promise<Group> | null = null;
 
 type TerrainPayload = {
   version?: number;
@@ -2387,6 +2393,9 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
         }
       });
       layer.add(group);
+      if (monumentKey(monument).includes("outpost") || monumentKey(monument).includes("compound")) {
+        void replaceOutpostPrimitiveWithReferenceModel(group, sizeForMonumentModel(monument), this.renderer.shadowMap.enabled);
+      }
     });
 
     this.scene.add(layer);
@@ -4632,6 +4641,61 @@ interface MonumentPrimitivePlacement {
   center: Vector3;
   groupY: number;
   rotationY: number;
+}
+
+function sizeForMonumentModel(monument: MonumentPayload): number {
+  return MathUtils.clamp(monument.radius, 24, 180);
+}
+
+function loadOutpostReferenceModel(): Promise<Group> {
+  if (!outpostModelPromise) {
+    const draco = new DRACOLoader();
+    draco.setDecoderPath(DRACO_DECODER_URL);
+    const loader = new GLTFLoader();
+    loader.setDRACOLoader(draco);
+    outpostModelPromise = loader.loadAsync(OUTPOST_MODEL_URL).then((gltf) => gltf.scene);
+  }
+  return outpostModelPromise;
+}
+
+async function replaceOutpostPrimitiveWithReferenceModel(group: Group, size: number, shadowsEnabled: boolean): Promise<void> {
+  const fallback = group.children.filter((child) => child.name !== "monument-title");
+
+  try {
+    const model = (await loadOutpostReferenceModel()).clone(true);
+    const bounds = new Box3().setFromObject(model);
+    const extent = bounds.getSize(new Vector3());
+    const center = bounds.getCenter(new Vector3());
+    const footprint = Math.max(extent.x, extent.z, 1);
+    const scale = (size * 2) / footprint;
+
+    model.name = "outpost-reference-model";
+    model.position.set(-center.x * scale, -bounds.min.y * scale, -center.z * scale);
+    model.scale.setScalar(scale);
+    model.traverse((object) => {
+      if (object instanceof Mesh) {
+        object.castShadow = shadowsEnabled;
+        object.receiveShadow = shadowsEnabled;
+        // Clones share the cached glTF geometry/materials. Keep them alive across
+        // terrain refreshes rather than disposing the cache through one clone.
+        object.userData.preserveSharedVehicleAsset = true;
+      } else if ((object as Object3D & { isLight?: boolean }).isLight) {
+        // The map viewer owns its Rust-fed lighting; embedded monument lights
+        // would otherwise change the lighting of the entire shared scene.
+        object.visible = false;
+      }
+    });
+    group.add(model);
+    fallback.forEach((child) => {
+      group.remove(child);
+      if (child instanceof Group || child instanceof Mesh || child instanceof Sprite || child instanceof LineSegments) {
+        disposeObjectTree(child);
+      }
+    });
+    group.userData.primitiveKind = "reference-model";
+  } catch (error) {
+    console.warn("Raidlands map viewer could not load the Outpost reference model; keeping the procedural fallback.", error);
+  }
 }
 
 function createMonumentPrimitive(monument: MonumentPayload, placement?: MonumentPrimitivePlacement): Group {
