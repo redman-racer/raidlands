@@ -13,6 +13,30 @@ function raidlands_store_preview_asset_registry(): array
         'largemedkit' => ['file' => 'large-medkit.glb', 'scale' => 0.8, 'category' => 'medical'],
         'autoturret' => ['file' => 'auto-turret.glb', 'scale' => 1.0, 'category' => 'sentry'],
         'samsite' => ['file' => 'sam-site.glb', 'scale' => 0.85, 'category' => 'deployable'],
+        'ammo.rocket.basic' => ['file' => 'rocket-basic.glb', 'scale' => 0.8, 'category' => 'ammo'],
+        'ammo.rocket.hv' => ['file' => 'rocket-hv.glb', 'scale' => 0.8, 'category' => 'ammo'],
+        'ammo.rocket.sam' => ['file' => 'rocket-sam.glb', 'scale' => 0.8, 'category' => 'ammo'],
+        'ammo.rifle' => ['file' => 'rifle-ammo.glb', 'scale' => 0.85, 'category' => 'ammo'],
+        'ammo.rifle.explosive' => ['file' => 'rifle-ammo-explosive.glb', 'scale' => 0.85, 'category' => 'ammo'],
+        'ammo.pistol' => ['file' => 'pistol-ammo.glb', 'scale' => 0.85, 'category' => 'ammo'],
+        'rocket.launcher' => ['file' => 'rocket-launcher.glb', 'scale' => 1.0, 'category' => 'weapon'],
+        'multiplegrenadelauncher' => ['file' => 'grenade-launcher.glb', 'scale' => 1.0, 'category' => 'weapon'],
+        'weapon.mod.holosight' => ['file' => 'holosight.glb', 'scale' => 0.75, 'category' => 'attachment'],
+        'weapon.mod.lasersight' => ['file' => 'laser-sight.glb', 'scale' => 0.75, 'category' => 'attachment'],
+        'weapon.mod.flashlight' => ['file' => 'weapon-flashlight.glb', 'scale' => 0.75, 'category' => 'attachment'],
+        'weapon.mod.silencer' => ['file' => 'silencer.glb', 'scale' => 0.75, 'category' => 'attachment'],
+        'weapon.mod.small.scope' => ['file' => 'small-scope.glb', 'scale' => 0.75, 'category' => 'attachment'],
+        'weapon.mod.8x.scope' => ['file' => '8x-scope.glb', 'scale' => 0.75, 'category' => 'attachment'],
+        'metal.facemask' => ['file' => 'metal-facemask.glb', 'scale' => 0.85, 'category' => 'armor'],
+        'metal.plate.torso' => ['file' => 'metal-chestplate.glb', 'scale' => 0.85, 'category' => 'armor'],
+        'roadsign.kilt' => ['file' => 'roadsign-kilt.glb', 'scale' => 0.85, 'category' => 'armor'],
+        'hoodie' => ['file' => 'hoodie.glb', 'scale' => 0.85, 'category' => 'armor'],
+        'pants' => ['file' => 'pants.glb', 'scale' => 0.85, 'category' => 'armor'],
+        'shoes.boots' => ['file' => 'boots.glb', 'scale' => 0.85, 'category' => 'armor'],
+        'tactical.gloves' => ['file' => 'tactical-gloves.glb', 'scale' => 0.85, 'category' => 'armor'],
+        'electric.generator.small' => ['file' => 'small-generator.glb', 'scale' => 0.8, 'category' => 'deployable'],
+        'supply.signal' => ['file' => 'supply-signal.glb', 'scale' => 0.8, 'category' => 'explosive'],
+        'scrap' => ['file' => 'scrap.glb', 'scale' => 0.8, 'category' => 'resource'],
     ];
 }
 
@@ -96,10 +120,6 @@ function raidlands_store_preview_payload(array $kits, ?array $product = null): a
         'version' => 1,
         'title' => (string) ($product['name'] ?? ($kits[0]['kit_name'] ?? 'Kit preview')),
         'items' => raidlands_store_preview_items($kits),
-        'ranks' => $product !== null && raidlands_store_normalize_product_type((string) ($product['product_type'] ?? '')) === 'kit_bundle'
-            ? raidlands_store_preview_rank_ladder()
-            : [],
-        'activeRankSlug' => (string) ($product['slug'] ?? ''),
         'decoderPath' => asset_url('media/store-preview/draco/'),
         'labels' => [
             'unavailable' => '3D preview unavailable — full kit contents are shown below.',
@@ -116,37 +136,18 @@ function raidlands_store_preview_json(array $payload): string
 
 function raidlands_store_preview_markup(array $payload, string $inventory_target_id): string
 {
-    if ((array) ($payload['items'] ?? []) === [] && (array) ($payload['ranks'] ?? []) === []) {
+    if ((array) ($payload['items'] ?? []) === []) {
         return '';
     }
 
-    $ranks = (array) ($payload['ranks'] ?? []);
-    $request_path = (string) (parse_url((string) ($_SERVER['REQUEST_URI'] ?? ''), PHP_URL_PATH) ?: '');
-    $retry_url = $request_path !== '' ? $request_path . '?preview3d=1' : '?preview3d=1';
-    $active_slug = (string) ($payload['activeRankSlug'] ?? '');
-    $options = '';
-    foreach ($ranks as $rank) {
-        $selected = (string) ($rank['slug'] ?? '') === $active_slug ? ' selected' : '';
-        $options .= '<option value="' . e((string) ($rank['slug'] ?? '')) . '"' . $selected . '>' . e((string) ($rank['name'] ?? 'Rank')) . '</option>';
-    }
-
-    $comparison = $ranks === [] ? '' : '<div class="store-preview-comparison" aria-label="Rank comparison">'
-        . '<label>Current rank<select data-store-preview-base>' . $options . '</select></label>'
-        . '<label>Compare with<select data-store-preview-target>' . $options . '</select></label>'
-        . '<div><strong>Equipment gained</strong><ul data-store-preview-gains><li>Select two ranks to compare their equipment.</li></ul></div>'
-        . '</div>';
-
     return '<section class="store-preview-shell" data-store-preview data-preview-state="loading">'
-        . '<div class="store-preview-head"><div><p class="section-kicker">Interactive preview</p><h2>Stage the full loadout</h2></div>'
-        . '<div class="button-row"><button class="btn btn-secondary" type="button" data-store-preview-list data-target="' . e($inventory_target_id) . '">View accessible item list</button>'
-        . '<button class="btn btn-ghost" type="button" data-store-preview-html>Use HTML preview</button></div></div>'
-        . $comparison
+        . '<div class="store-preview-head"><div><p class="section-kicker">Interactive preview</p><h2>' . e((string) ($payload['title'] ?? 'Kit')) . ' loadout</h2><p>Choose an item to inspect it on the center pedestal.</p></div></div>'
         . '<div class="store-preview-stage"><div class="store-preview-canvas" data-store-preview-canvas></div>'
-        . '<div class="store-preview-fallback"><p><strong>Full HTML preview available.</strong></p><p>3D preview unavailable — full kit contents are shown below.</p><a class="btn btn-secondary" href="' . e($retry_url) . '" data-store-preview-retry>Try 3D again</a></div>'
+        . '<div class="store-preview-hud" data-store-preview-hud><strong data-store-preview-hud-title>Explore the kit</strong><span data-store-preview-hud-meta>Hover an item for its quantity. Click to inspect.</span></div>'
         . '<aside class="store-preview-drawer" data-store-preview-drawer hidden role="dialog" aria-modal="false" aria-labelledby="store-preview-detail-title">'
-        . '<button type="button" class="store-preview-drawer-close" data-store-preview-close aria-label="Close item details">×</button>'
+        . '<button type="button" class="store-preview-drawer-close" data-store-preview-close aria-label="Return to full kit">×</button>'
         . '<img data-store-preview-detail-image alt="" hidden><p class="section-kicker">Item details</p><h3 id="store-preview-detail-title" data-store-preview-detail-title></h3>'
         . '<p data-store-preview-detail-meta></p><p data-store-preview-detail-extra></p></aside></div>'
-        . '<p class="store-preview-status" data-store-preview-status role="status" aria-live="polite">Loading interactive kit preview.</p>'
+        . '<p class="store-preview-status" data-store-preview-status role="status" aria-live="polite">Preparing interactive kit preview.</p>'
         . '<script type="application/json" data-store-preview-payload>' . raidlands_store_preview_json($payload) . '</script></section>';
 }

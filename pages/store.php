@@ -399,7 +399,7 @@ function render_store_product_card(array $product, ?array $player, string $csrf,
         . '<span>' . e((string) count($linked_perks)) . ' perk' . (count($linked_perks) === 1 ? '' : 's') . '</span>'
         . '<span>' . e((string) $active_offer_count) . ' offer' . ($active_offer_count === 1 ? '' : 's') . '</span>'
         . '</div>'
-        . (($linked_kits !== [] || $type === 'kit_bundle') ? '<span class="store-3d-preview-badge">Interactive 3D preview</span>' : '')
+        . (count($linked_kits) === 1 ? '<span class="store-3d-preview-badge">3D kit preview available</span>' : '')
         . $kit_html
         . $perk_html
         . render_store_offer_matrix_preview($product)
