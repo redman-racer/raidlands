@@ -2438,11 +2438,11 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     const pitch = MathUtils.clamp(Math.asin(direction.y) - lookY * deltaSeconds * 1.5, -1.35, 1.35);
     direction.set(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch)).normalize();
     const horizontalForward = new Vector3(direction.x, 0, direction.z).normalize();
-    const right = new Vector3(horizontalForward.z, 0, -horizontalForward.x);
+    const right = new Vector3(-horizontalForward.z, 0, horizontalForward.x);
     const ground = sampleTerrainHeight(this.terrain, this.camera.position.x, this.camera.position.z);
     const altitude = Math.max(12, this.camera.position.y - ground);
     const speed = MathUtils.clamp(altitude * 0.85, 90, (this.terrain.worldSize || 4500) * 0.38);
-    const movement = horizontalForward.multiplyScalar(forwardInput)
+    const movement = direction.clone().multiplyScalar(forwardInput)
       .add(right.multiplyScalar(strafeInput))
       .add(new Vector3(0, riseInput, 0));
     if (movement.lengthSq() > 1) movement.normalize();
