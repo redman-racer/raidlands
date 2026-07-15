@@ -49,7 +49,15 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
-import { attachMilitaryBaseMlrs, MILITARY_BASE_MLRS_ASSET, MILITARY_BASE_MLRS_SHA256, militaryBaseMlrsPlacement } from "./monument-mlrs-policy";
+import {
+  attachMilitaryBaseMlrs,
+  attachMilitaryBaseCompositeAsset,
+  MILITARY_BASE_COMPOSITE_ASSETS,
+  MILITARY_BASE_MLRS_ASSET,
+  MILITARY_BASE_MLRS_SHA256,
+  militaryBaseMlrsPlacement,
+  usesEnhancedMilitaryBaseMapModel,
+} from "./monument-mlrs-policy";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { SSAOPass } from "three/examples/jsm/postprocessing/SSAOPass.js";
@@ -1541,6 +1549,7 @@ class TerrainViewer {
         depthTest: true,
         fog: false,
         blending: AdditiveBlending,
+        side: DoubleSide,
       });
 
       for (let layer = 0; layer < 3; layer += 1) {
@@ -4895,7 +4904,8 @@ class MonumentModelController {
       focused: now < this.focusedUntil && binding.monument === this.focused,
     })));
     const detailSet = new Set(ranked.filter((item) => {
-      const eligible = item.binding.renderClass !== "surface-entrance"
+      const eligible = !usesEnhancedMilitaryBaseMapModel(item.binding.metadata.id)
+        && item.binding.renderClass !== "surface-entrance"
         && (this.policy.requested === "detailed" || item.binding.renderClass === "shared-detail");
       const threshold = item.binding.desired === "detail"
         ? monumentUnloadDistance(item.binding.monument.radius, this.policy)
@@ -4976,16 +4986,30 @@ class MonumentModelController {
     const pending = this.pending.get(key);
     if (pending) return pending;
     const base = new URL(this.options.assetBase, window.location.href);
-    const path = tier === "map" ? `media/models/monuments-map/${binding.metadata.map}` : `media/models/monuments/${binding.metadata.id}.glb`;
+    const enhancedMilitaryMap = tier === "map" && usesEnhancedMilitaryBaseMapModel(binding.metadata.id);
+    const path = tier === "map" && !enhancedMilitaryMap
+      ? `media/models/monuments-map/${binding.metadata.map}`
+      : `media/models/monuments/${binding.metadata.id}.glb`;
     const url = new URL(path, base);
-    url.searchParams.set("v", (tier === "map" ? binding.metadata.outputSha256 : binding.metadata.sourceSha256).slice(0, 12));
+    url.searchParams.set("v", (tier === "map" && !enhancedMilitaryMap ? binding.metadata.outputSha256 : binding.metadata.sourceSha256).slice(0, 12));
     const promise = this.loader.loadAsync(url.href).then(async (gltf) => {
       const source = gltf.scene;
-      if (tier === "detail" && militaryBaseMlrsPlacement(binding.metadata.id)) {
+      if ((tier === "detail" || enhancedMilitaryMap) && militaryBaseMlrsPlacement(binding.metadata.id)) {
         const mlrsUrl = new URL(MILITARY_BASE_MLRS_ASSET, base);
         mlrsUrl.searchParams.set("v", MILITARY_BASE_MLRS_SHA256.slice(0, 12));
-        const mlrs = await this.loader.loadAsync(mlrsUrl.href);
+        const [mlrs, ...compositeModels] = await Promise.all([
+          this.loader.loadAsync(mlrsUrl.href),
+          ...MILITARY_BASE_COMPOSITE_ASSETS.map((asset) => {
+            const assetUrl = new URL(asset.path, base);
+            assetUrl.searchParams.set("v", asset.sha256.slice(0, 12));
+            return this.loader.loadAsync(assetUrl.href);
+          }),
+        ]);
         attachMilitaryBaseMlrs(source, mlrs.scene, binding.metadata.id);
+        MILITARY_BASE_COMPOSITE_ASSETS.forEach((asset, index) => {
+          const model = compositeModels[index];
+          if (model) attachMilitaryBaseCompositeAsset(source, model.scene, asset);
+        });
       }
       if (!this.disposed) this.cache.set(key, { source, active: 0, lastUsed: performance.now() });
       return source;
@@ -6789,6 +6813,7 @@ function createMonumentTitleSprite(title: string, size: number): Sprite {
     depthTest: false,
     depthWrite: false,
     fog: false,
+    side: DoubleSide,
   });
   const sprite = new Sprite(material);
   const worldWidth = MathUtils.clamp(size * 1.02, 58, 150);
@@ -6901,6 +6926,7 @@ function createGridLabelSprite(label: string, size: number, x: number, z: number
     alphaTest: 0.02,
     depthTest: false,
     depthWrite: false,
+    side: DoubleSide,
   });
   const sprite = new Sprite(material);
   sprite.name = `rust-grid-label-${label}`;
