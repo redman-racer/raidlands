@@ -9,7 +9,6 @@ import {
   DirectionalLight,
   DoubleSide,
   DataTexture,
-  DepthTexture,
   FogExp2,
   FloatType,
   Float32BufferAttribute,
@@ -39,7 +38,6 @@ import {
   Sprite,
   SpriteMaterial,
   Uint32BufferAttribute,
-  UnsignedIntType,
   Vector2,
   Vector3,
   WebGLRenderer,
@@ -1151,10 +1149,6 @@ class TerrainViewer {
     });
     this.composer = new EffectComposer(this.renderer);
     this.composer.setPixelRatio(Math.min(this.renderer.getPixelRatio(), this.qualityProfile.composerPixelRatioCap));
-    if (this.fogDetail !== "low") {
-      this.composer.renderTarget1.depthTexture = new DepthTexture(1, 1, UnsignedIntType);
-      this.composer.renderTarget2.depthTexture = new DepthTexture(1, 1, UnsignedIntType);
-    }
     this.ambientOcclusionPass = new SSAOPass(this.scene, this.camera, 1, 1, 24);
     this.ambientOcclusionPass.kernelRadius = this.qualityProfile.ambientOcclusionRadius;
     this.ambientOcclusionPass.minDistance = 0.0005;
@@ -1163,7 +1157,10 @@ class TerrainViewer {
     this.terrainHeightTexture = this.fogDetail === "low" ? null : createTerrainHeightTexture(this.terrain);
     this.volumetricFogPass = this.fogDetail === "low" ? null : new ShaderPass(RAIDLANDS_VOLUMETRIC_FOG_SHADER);
     if (this.volumetricFogPass && this.terrainHeightTexture) {
-      this.volumetricFogPass.uniforms.tDepth.value = this.composer.readBuffer.depthTexture;
+      // SSAO renders this dedicated normal/depth target immediately before the
+      // fog pass. Unlike the composer's ping-pong targets, it is never also the
+      // fog pass output, so sampling it cannot create a WebGL feedback loop.
+      this.volumetricFogPass.uniforms.tDepth.value = this.ambientOcclusionPass.normalRenderTarget.depthTexture;
       this.volumetricFogPass.uniforms.tTerrainHeight.value = this.terrainHeightTexture;
       this.volumetricFogPass.uniforms.uSampleCount.value = fogRayMarchSamples(this.fogDetail);
       this.volumetricFogPass.uniforms.uMaxDetail.value = this.fogDetail === "max" ? 1 : 0;
