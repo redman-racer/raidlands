@@ -286,11 +286,36 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
         data-camera-profile="full"
         data-camera-mode="director"
         data-camera-locked="false"
+        data-navigation-panel="true"
         data-grid-overlay="true"
         data-world-size="<?= e((string) ($server_map_image['worldSize'] ?? $server_status['worldSize'] ?? 0)) ?>"
         data-min-height="<?= e((string) ($server_map_image['terrainMinHeight'] ?? 0)) ?>"
         data-max-height="<?= e((string) ($server_map_image['terrainMaxHeight'] ?? 0)) ?>"
         aria-label="Current Raidlands wipe 3D terrain viewer">
+        <button type="button" class="server-map-navigation-launcher" data-map-navigation-toggle aria-expanded="false" aria-controls="server-map-navigation">Navigate</button>
+        <aside class="server-map-navigation" id="server-map-navigation" data-map-navigation aria-label="Map navigation" aria-hidden="true">
+          <div class="server-map-navigation-head">
+            <div><small>Map navigator</small><strong data-map-navigation-target>Whole map</strong></div>
+            <button type="button" data-map-navigation-close aria-label="Close map navigation">Close</button>
+          </div>
+          <label class="server-map-navigation-search">
+            <span class="sr-only">Search map destinations</span>
+            <input type="search" data-map-navigation-search placeholder="Search monuments, players, events…" autocomplete="off">
+          </label>
+          <nav class="server-map-navigation-tabs" aria-label="Navigation categories">
+            <button type="button" data-map-navigation-tab="monuments" aria-pressed="true">Monuments</button>
+            <button type="button" data-map-navigation-tab="players" aria-pressed="false">Players</button>
+            <button type="button" data-map-navigation-tab="events" aria-pressed="false">Events</button>
+            <button type="button" data-map-navigation-tab="views" aria-pressed="false">Views</button>
+            <button type="button" data-map-navigation-tab="goto" aria-pressed="false">Go to</button>
+          </nav>
+          <div class="server-map-navigation-body" data-map-navigation-list aria-live="polite"></div>
+          <div class="server-map-navigation-actions">
+            <button type="button" data-map-navigation-previous disabled>Previous</button>
+            <button type="button" data-map-navigation-clear>Whole map</button>
+            <button type="button" data-map-navigation-next disabled>Next</button>
+          </div>
+        </aside>
         <p class="server-terrain-status" data-map-viewer-status>Loading terrain.</p>
       </div>
     </div>

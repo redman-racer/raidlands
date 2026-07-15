@@ -93,6 +93,7 @@ import {
   type CameraMode,
   type ManualCameraStyle,
 } from "./camera-policy";
+import { monumentNavigationLabels, recentUniqueNavigationEvents, validNavigationCoordinate } from "./navigation-policy";
 
 const ENVIRONMENT_QUALITY_STORAGE_KEY = "raidlands:map-environment-quality";
 const CAMERA_PREFERENCES_STORAGE_KEY = "raidlands:map-camera-preferences";
@@ -1595,6 +1596,48 @@ class TerrainViewer {
 
   public frameTop(): void {
     this.focusCamera(this.topPose());
+  }
+
+  public navigationMonuments(): MonumentPayload[] {
+    return [...(this.terrain.monuments || [])];
+  }
+
+  public focusWorldPoint(x: number, y: number, z: number, label: string, radius = 90): boolean {
+    if (!Number.isFinite(x) || !Number.isFinite(z)) return false;
+    const point = rustWorldToViewerPosition(x, Number.isFinite(y) ? y : 0, z);
+    const ground = Math.max(point.y, sampleTerrainHeight(this.terrain, point.x, point.z));
+    const distance = MathUtils.clamp(Math.max(radius * 3.2, (this.terrain.worldSize || 4500) * 0.055), 210, 900);
+    this.setCameraMode("manual");
+    this.focusCamera({
+      position: new Vector3(point.x - distance * 0.62, ground + distance * 0.72, point.z + distance * 0.78),
+      target: new Vector3(point.x, ground + MathUtils.clamp(radius * 0.18, 18, 90), point.z),
+      up: new Vector3(0, 1, 0),
+    });
+    this.root.dataset.cameraTarget = label;
+    this.root.dispatchEvent(new CustomEvent("raidlands:camera-target", { detail: { label } }));
+    return true;
+  }
+
+  public focusMonument(monument: MonumentPayload): boolean {
+    return this.focusWorldPoint(monument.x, monument.y, monument.z, monument.name || "Monument", monument.radius || 90);
+  }
+
+  public focusPreset(key: string): void {
+    const size = this.terrain.worldSize || 4500;
+    const height = Math.max(180, this.terrain.maxHeight || 220);
+    const poses: Record<string, CameraPose> = {
+      overview: this.isoPose(false),
+      top: this.topPose(),
+      north: { position: new Vector3(0, size * .42, size * .72), target: new Vector3(0, height * .18, 0), up: new Vector3(0, 1, 0) },
+      south: { position: new Vector3(0, size * .42, -size * .72), target: new Vector3(0, height * .18, 0), up: new Vector3(0, 1, 0) },
+      east: { position: new Vector3(-size * .72, size * .42, 0), target: new Vector3(0, height * .18, 0), up: new Vector3(0, 1, 0) },
+      west: { position: new Vector3(size * .72, size * .42, 0), target: new Vector3(0, height * .18, 0), up: new Vector3(0, 1, 0) },
+    };
+    const pose = poses[key] || poses.overview!;
+    this.setCameraMode(key === "top" ? "top" : "manual");
+    this.focusCamera(pose);
+    const label = key === "top" ? "Top down" : key.charAt(0).toUpperCase() + key.slice(1);
+    this.root.dispatchEvent(new CustomEvent("raidlands:camera-target", { detail: { label } }));
   }
 
   private topPose(): CameraPose {
@@ -6641,6 +6684,9 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   };
   let followMyLocation = false;
   let orbitMyLocation = false;
+  let navigationPlayers: PlayerLocation[] = [];
+  let navigationEvents: MapReplayEvent[] = [];
+  let pendingNavigationEvent: MapReplayEvent | null = null;
   const dataFlag = (name: string, fallback = false): boolean => {
     const value = root.dataset[name];
     if (value === undefined) {
@@ -6667,6 +6713,160 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   };
 
   disposers.push(bindMapViewButtons(buttons, viewer).dispose);
+
+  const navigation = root.querySelector<HTMLElement>("[data-map-navigation]");
+  const navigationToggle = root.querySelector<HTMLButtonElement>("[data-map-navigation-toggle]");
+  const navigationClose = root.querySelector<HTMLButtonElement>("[data-map-navigation-close]");
+  const navigationSearch = root.querySelector<HTMLInputElement>("[data-map-navigation-search]");
+  const navigationList = root.querySelector<HTMLElement>("[data-map-navigation-list]");
+  const navigationTarget = root.querySelector<HTMLElement>("[data-map-navigation-target]");
+  const navigationPrevious = root.querySelector<HTMLButtonElement>("[data-map-navigation-previous]");
+  const navigationNext = root.querySelector<HTMLButtonElement>("[data-map-navigation-next]");
+  const navigationClear = root.querySelector<HTMLButtonElement>("[data-map-navigation-clear]");
+  const navigationTabs = Array.from(root.querySelectorAll<HTMLButtonElement>("[data-map-navigation-tab]"));
+  let navigationTab = window.localStorage.getItem("raidlands:map-navigation-tab") || "monuments";
+  let navigationItems: Array<{ label: string; run: () => void }> = [];
+  let navigationIndex = -1;
+
+  const setNavigationOpen = (open: boolean) => {
+    if (!navigation || !navigationToggle) return;
+    navigation.dataset.open = String(open);
+    navigation.setAttribute("aria-hidden", String(!open));
+    navigationToggle.setAttribute("aria-expanded", String(open));
+    if (open) window.setTimeout(() => navigationSearch?.focus(), 0);
+  };
+  const addNavigationButton = (label: string, meta: string, run: () => void) => {
+    if (!navigationList) return;
+    const button = document.createElement("button");
+    button.type = "button";
+    button.className = "server-map-navigation-item";
+    const strong = document.createElement("strong");
+    strong.textContent = label;
+    const small = document.createElement("small");
+    small.textContent = meta;
+    button.append(strong, small);
+    const index = navigationItems.push({ label, run }) - 1;
+    button.addEventListener("click", () => {
+      navigationIndex = index;
+      run();
+      if (navigationTarget) navigationTarget.textContent = label;
+      if (navigationPrevious) navigationPrevious.disabled = navigationIndex <= 0;
+      if (navigationNext) navigationNext.disabled = navigationIndex >= navigationItems.length - 1;
+    });
+    navigationList.append(button);
+  };
+  const renderNavigation = () => {
+    if (!navigationList || !navigation) return;
+    navigationList.replaceChildren();
+    navigationItems = [];
+    navigationIndex = -1;
+    const query = (navigationSearch?.value || "").trim().toLowerCase();
+    const matches = (...parts: unknown[]) => !query || parts.some((part) => String(part || "").toLowerCase().includes(query));
+    navigationTabs.forEach((tab) => tab.setAttribute("aria-pressed", String(tab.dataset.mapNavigationTab === navigationTab)));
+
+    if (navigationTab === "monuments") {
+      const monuments = viewer.navigationMonuments();
+      const labels = monumentNavigationLabels(monuments);
+      monuments.filter((monument) => matches(monument.name, monument.kind)).sort((a, b) => a.name.localeCompare(b.name)).forEach((monument) => {
+        addNavigationButton(labels.get(monument) || monument.name, `${monument.kind || "Monument"} · X ${Math.round(monument.x)} Z ${Math.round(monument.z)}`, () => viewer.focusMonument(monument));
+      });
+    } else if (navigationTab === "players") {
+      navigationPlayers.filter((player) => matches(player.displayName, player.clanTag, player.steamId64)).sort((a, b) => Number(b.isSelf) - Number(a.isSelf) || String(a.displayName).localeCompare(String(b.displayName))).forEach((player) => {
+        const name = player.isSelf ? `${player.displayName || "You"} (You)` : player.displayName || "Teammate";
+        addNavigationButton(name, `${player.clanTag ? `[${player.clanTag}] · ` : ""}X ${Math.round(player.x)} Z ${Math.round(player.z)}`, () => viewer.focusWorldPoint(player.x, Number(player.y) || 0, player.z, name, 70));
+      });
+    } else if (navigationTab === "events") {
+      recentUniqueNavigationEvents(navigationEvents.filter((event) => matches(event.eventType, event.vehicle, event.profileKey))).forEach((event) => {
+        const label = String(event.eventType || "server_event").replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+        const when = event.occurredAt ? new Date(event.occurredAt).toLocaleString() : "Recent";
+        addNavigationButton(label, `${when} · X ${Math.round(event.x)} Z ${Math.round(event.z)}`, () => {
+          if (heatmapPlayback) heatmapPlayback.checked = true;
+          if (!wantsHeatmap() && players) players.checked = true;
+          if (heatmapHistory.length === 0) {
+            pendingNavigationEvent = event;
+            viewer.focusWorldPoint(event.x, Number(event.y) || 0, event.z, label, 110);
+            reloadPlayback(undefined, false, true);
+            return;
+          }
+          const occurred = Date.parse(String(event.occurredAt || ""));
+          const frameIndex = nearestPlaybackFrameIndexForTime(occurred);
+          playbackVirtualFrame = frameIndex;
+          stopHeatmapPlayback();
+          showPlaybackFrame(frameIndex);
+          viewer.focusWorldPoint(event.x, Number(event.y) || 0, event.z, label, 110);
+          viewer.clearReplayEvents();
+          viewer.showReplayEvents([event], 1);
+        });
+      });
+    } else if (navigationTab === "views") {
+      [["Overview", "overview"], ["Top down", "top"], ["North approach", "north"], ["South approach", "south"], ["East approach", "east"], ["West approach", "west"]].filter(([label]) => matches(label)).forEach(([label, key]) => addNavigationButton(label, "Camera placement", () => viewer.focusPreset(key)));
+      viewer.navigationMonuments().filter((monument) => matches(monument.name, "featured monument")).slice(0, 8).forEach((monument) => addNavigationButton(`${monument.name} orbit`, "Wipe-generated view", () => viewer.focusMonument(monument)));
+    } else {
+      const form = document.createElement("form");
+      form.className = "server-map-navigation-goto";
+      form.innerHTML = '<label><span>Rust X</span><input name="x" type="number" step="any" required></label><label><span>Rust Z</span><input name="z" type="number" step="any" required></label><button type="submit">Focus coordinates</button>';
+      form.addEventListener("submit", (event) => {
+        event.preventDefault();
+        const data = new FormData(form);
+        const x = validNavigationCoordinate(data.get("x"));
+        const z = validNavigationCoordinate(data.get("z"));
+        if (x !== null && z !== null && viewer.focusWorldPoint(x, 0, z, `X ${Math.round(x)} Z ${Math.round(z)}`, 80) && navigationTarget) navigationTarget.textContent = `X ${Math.round(x)} Z ${Math.round(z)}`;
+      });
+      navigationList.append(form);
+    }
+    if (navigationItems.length === 0 && navigationTab !== "goto") {
+      const empty = document.createElement("p");
+      empty.className = "server-map-navigation-empty";
+      empty.textContent = query ? "No matching destinations." : navigationTab === "players" ? "No permitted player locations are available in this frame." : navigationTab === "events" ? "No events are available in this range." : "No destinations are available.";
+      navigationList.append(empty);
+    }
+    if (navigationPrevious) navigationPrevious.disabled = true;
+    if (navigationNext) navigationNext.disabled = navigationItems.length < 2;
+  };
+  bind(navigationToggle, "click", () => setNavigationOpen(navigation?.dataset.open !== "true"));
+  bind(navigationClose, "click", () => setNavigationOpen(false));
+  bind(navigationSearch, "input", renderNavigation);
+  navigationTabs.forEach((tab) => bind(tab, "click", () => {
+    navigationTab = tab.dataset.mapNavigationTab || "monuments";
+    window.localStorage.setItem("raidlands:map-navigation-tab", navigationTab);
+    if (navigationSearch) navigationSearch.value = "";
+    renderNavigation();
+  }));
+  const stepNavigation = (offset: number) => {
+    if (navigationItems.length === 0) return;
+    navigationIndex = MathUtils.clamp(navigationIndex + offset, 0, navigationItems.length - 1);
+    const item = navigationItems[navigationIndex];
+    item?.run();
+    if (navigationTarget && item) navigationTarget.textContent = item.label;
+    if (navigationPrevious) navigationPrevious.disabled = navigationIndex <= 0;
+    if (navigationNext) navigationNext.disabled = navigationIndex >= navigationItems.length - 1;
+  };
+  bind(navigationPrevious, "click", () => stepNavigation(-1));
+  bind(navigationNext, "click", () => stepNavigation(1));
+  bind(navigationClear, "click", () => {
+    viewer.clearCameraTarget();
+    viewer.focusPreset("overview");
+    if (navigationTarget) navigationTarget.textContent = "Whole map";
+  });
+  bind(root, "raidlands:camera-target", ((event: CustomEvent<{ label?: string }>) => {
+    if (navigationTarget) navigationTarget.textContent = event.detail?.label || "Whole map";
+  }) as EventListener);
+  bind(document, "keydown", ((event: KeyboardEvent) => {
+    if (navigation?.dataset.open !== "true") return;
+    if (event.key === "Escape") {
+      setNavigationOpen(false);
+      navigationToggle?.focus();
+      return;
+    }
+    if (event.key === "Tab" && navigation) {
+      const focusable = Array.from(navigation.querySelectorAll<HTMLElement>('button:not(:disabled), input:not(:disabled)'));
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+      if (event.shiftKey && document.activeElement === first) { event.preventDefault(); last?.focus(); }
+      else if (!event.shiftKey && document.activeElement === last) { event.preventDefault(); first?.focus(); }
+    }
+  }) as EventListener);
+  if (root.dataset.navigationPanel === "true") renderNavigation();
 
   const setFollowMyLocation = (enabled: boolean) => {
     followMyLocation = enabled;
@@ -6817,7 +7017,9 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     }
 
     if (playersEnabled) {
-      void loadPlayerLocations(root, viewer, myLocation, true, wantsAllPlayers()).then(() => {
+      void loadPlayerLocations(root, viewer, myLocation, true, wantsAllPlayers()).then((payload) => {
+        navigationPlayers = Array.isArray(payload?.players) ? payload.players : [];
+        if (navigationTab === "players") renderNavigation();
         syncMyLocationControl();
         if (followMyLocation && !orbitMyLocation) {
           viewer.followSelfLocation();
@@ -6828,6 +7030,8 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     }
 
     void loadLiveReplayEvents(root).then((events) => {
+      navigationEvents = events;
+      if (navigationTab === "events") renderNavigation();
       if (!wantsTimelineOverlay() && events.length > 0) {
         viewer.showReplayEvents(events, 1);
       }
@@ -7096,6 +7300,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     }
 
     if (wantsPlayers()) {
+      navigationPlayers = Array.isArray(frame.players) ? frame.players : [];
       viewer.setPlayerLocations({
         ok: true,
         authenticated: true,
@@ -7106,7 +7311,10 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       if (followMyLocation && !orbitMyLocation) {
         viewer.followSelfLocation();
       }
+      if (navigationTab === "players") renderNavigation();
     }
+    navigationEvents = Array.from(new Map(heatmapHistory.flatMap((historyFrame) => historyFrame.events || []).map((event, index) => [replayEventKey(event, index), event])).values());
+    if (navigationTab === "events") renderNavigation();
     syncTimelineReplay();
     viewer.setEnvironment(frame.environment, 420);
     setTimelineLabel(frame);
@@ -7185,6 +7393,18 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
         }
         playbackVirtualFrame = latestFrame;
         showPlaybackFrame(latestFrame);
+        if (pendingNavigationEvent) {
+          const event = pendingNavigationEvent;
+          pendingNavigationEvent = null;
+          const eventFrame = nearestPlaybackFrameIndexForTime(Date.parse(String(event.occurredAt || "")));
+          playbackVirtualFrame = eventFrame;
+          if (heatmapFrame) heatmapFrame.value = String(eventFrame);
+          showPlaybackFrame(eventFrame);
+          const label = String(event.eventType || "server_event").replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+          viewer.focusWorldPoint(event.x, Number(event.y) || 0, event.z, label, 110);
+          viewer.clearReplayEvents();
+          viewer.showReplayEvents([event], 1);
+        }
         startPlaybackHistoryPolling();
         updatePlaybackControlAvailability();
         if (restartPlayback && wantsPlayback() && heatmapHistory.length > 1) {
@@ -7441,7 +7661,9 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       return;
     }
 
-    void loadPlayerLocations(root, viewer, myLocation, true, wantsAllPlayers()).then(() => {
+    void loadPlayerLocations(root, viewer, myLocation, true, wantsAllPlayers()).then((payload) => {
+      navigationPlayers = Array.isArray(payload?.players) ? payload.players : [];
+      if (navigationTab === "players") renderNavigation();
       if (followMyLocation && viewer.hasSelfLocation() && players) {
         players.checked = true;
         if (!orbitMyLocation) {
@@ -7940,7 +8162,7 @@ function formatDurationLabel(seconds: number): string {
   return `${Math.round(hours / 24)} days`;
 }
 
-async function loadPlayerLocations(root: HTMLElement, viewer: TerrainViewer, myLocation?: HTMLButtonElement | null, showLayer = true, allPlayers = false): Promise<void> {
+async function loadPlayerLocations(root: HTMLElement, viewer: TerrainViewer, myLocation?: HTMLButtonElement | null, showLayer = true, allPlayers = false): Promise<PlayerLocationPayload | null> {
   const baseUrl = root.dataset.playerLocationsUrl || "";
 
   if (!baseUrl) {
@@ -7948,7 +8170,7 @@ async function loadPlayerLocations(root: HTMLElement, viewer: TerrainViewer, myL
     if (myLocation) {
       myLocation.disabled = true;
     }
-    return;
+    return null;
   }
 
   try {
@@ -7973,12 +8195,14 @@ async function loadPlayerLocations(root: HTMLElement, viewer: TerrainViewer, myL
       myLocation.disabled = !viewer.hasSelfLocation();
       myLocation.title = viewer.hasSelfLocation() ? "Move camera to your latest server location" : "Log in and join the server to show your location";
     }
+    return payload;
   } catch (error) {
     console.info("Raidlands player locations could not be loaded.", error);
     viewer.setPlayerLocationsVisible(false);
     if (myLocation) {
       myLocation.disabled = true;
     }
+    return null;
   }
 }
 
