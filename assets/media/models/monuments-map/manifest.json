@@ -12,6 +12,7 @@
       "map": "airfield_1.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "dbb7f76836ba3efb70b0a1814d7087a9b0f8239e89e45b5cc9b998bf422a4321",
       "outputSha256": "245fa89091aa7377909fccd90364e51db34a636d99501e99d2704e5f49759e66",
       "sourceBytes": 13346560,
@@ -57,6 +58,7 @@
       "sourceNodes": [
         "HLOD_apartment_complex_1"
       ],
+      "generatedInstances": 0,
       "sourceSha256": "34ab86baa23a40784358d2a0238018696fe471bfc8ed5d597b82e0a63d1f262c",
       "outputSha256": "c10b0bcd3c773167ae48d56c408a43f984e98f9a313dd98a59f66028032fbdde",
       "sourceBytes": 25262008,
@@ -102,6 +104,7 @@
       "sourceNodes": [
         "arctic_reasearch_base_a_hlod"
       ],
+      "generatedInstances": 0,
       "sourceSha256": "e0aa2e0df68760a1e8d197b673710080ae426c5a16104b43aa71da67a565c7cf",
       "outputSha256": "ffbbb1330e1324ed5c1e4de968b2b32daedbbcfdcbd2e1cefb504e49506cac2d",
       "sourceBytes": 10092424,
@@ -145,6 +148,7 @@
       "map": "bandit_town.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "dcf26bc49a392ffb28ad7fa8cef97093795ef1314f8d96f4ec8f3c342f2e7935",
       "outputSha256": "9eed81a895b9b56b0960fc44d727a411685be6c0161a2772a583d374e831fda7",
       "sourceBytes": 7996632,
@@ -188,6 +192,7 @@
       "map": "cave_large_hard.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "92a8eb0b904b02e4307c0e632dbe289a2ac2dfa387d0603cd516fae5c8e0ebc5",
       "outputSha256": "a023f8a8ca80f36c35894ed5558ab6e27b865c7aa12fd49beb079848f0a4a33e",
       "sourceBytes": 3658100,
@@ -231,6 +236,7 @@
       "map": "cave_large_medium.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "fa361f706900b16a677f9be9dfe8c60f599e6b490f20c4e2494e10a27cf8f622",
       "outputSha256": "dda85f2a1fd6d86c9cc69ecad6bdbde5cdf33ec201059c0532876bab72a926c5",
       "sourceBytes": 3241608,
@@ -274,6 +280,7 @@
       "map": "cave_large_sewers_hard.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "c96714c23260787e84764aa392f4063178b476972d92f6065b9804b9ac8633ae",
       "outputSha256": "5d553db0b521fc8068576296b7a6eb1e78ad991d7a0d33cdd396cc311f61c53a",
       "sourceBytes": 4272996,
@@ -317,6 +324,7 @@
       "map": "cave_medium_easy.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "674f9ff27200959ccd121a73765e3ccedccd621fa3de61fbd5d0689f53f99848",
       "outputSha256": "285b394826286cefb467f3c1537c4e530e57f7704b4094bc3fa42377a604a394",
       "sourceBytes": 1830928,
@@ -360,6 +368,7 @@
       "map": "cave_medium_hard.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "2773dafcfcfdd76fadfbbe41640647331e49a7d028b644f6f8cfb01a26801fee",
       "outputSha256": "b63067e352b16d35548bbd788ce2993cfbe5b0db9741e8f4e2a1df8cb8702f0b",
       "sourceBytes": 2215080,
@@ -403,6 +412,7 @@
       "map": "cave_medium_medium.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "acfa8658f4aafed56ac925a6e4d32bf1db379804d02eeede1a3b77435e21d943",
       "outputSha256": "cecbbda8713113ccba74a6180478652f0cbc39e70987c1207038c09ad41a7c0c",
       "sourceBytes": 2660236,
@@ -446,6 +456,7 @@
       "map": "cave_small_easy.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "b1dd4a053b2b546be801f490d0ff3a416d4add7243c8c7320c25eacaecb29424",
       "outputSha256": "f7f4cb8fcdef679df16979e505845f809bbe6542b78ec31d17c88c96ad8de2b8",
       "sourceBytes": 2610148,
@@ -489,6 +500,7 @@
       "map": "cave_small_hard.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "e2c2489c91660c68321cf6e56e5391bde96b0974061b91b54e8538bbee5f0bef",
       "outputSha256": "c1489805ca600fe3b23b6dafcb25befe995ab94fa63bcd1cc802457bd94cec82",
       "sourceBytes": 2105120,
@@ -532,6 +544,7 @@
       "map": "cave_small_medium.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "b9adc61be1cf8a5f77dac849ac7b3163f206a1c7ccc1691972b46009446f24e4",
       "outputSha256": "8eabb8ffbbbc23ec6d9ad6a734033a9c299defa3799b1b1028c049c2bf5064e6",
       "sourceBytes": 2524120,
@@ -601,10 +614,11 @@
         "watch_tower_c_LOD0",
         "watch_tower_d_LOD0"
       ],
+      "generatedInstances": 56,
       "sourceSha256": "3cae5ca3a7e53a876fd9134ddbbcad799b11abd25872e4f7ff3c7ace4e492991",
-      "outputSha256": "1293175ce198462c73da0a51cc32ad9d6df813863d0955e480da4278d514beae",
+      "outputSha256": "c5eaf3ac4fad78eb7dce47d028156c00200d4467161b90b020f18f62223ec137",
       "sourceBytes": 13301848,
-      "outputBytes": 112004,
+      "outputBytes": 223808,
       "sourceTriangles": 527297,
       "sourceDrawCalls": 714,
       "sourceBounds": {
@@ -619,21 +633,21 @@
           91.64177715691909
         ]
       },
-      "triangles": 17947,
+      "triangles": 43107,
       "drawCalls": 6,
-      "triangleRatio": 0.034036,
+      "triangleRatio": 0.081751,
       "overTriangleTarget": true,
       "textureBytes": 0,
       "bounds": {
         "min": [
-          -66.82405611523063,
-          -1.3750019073486328,
-          -88.46621415657339
+          -72.69953918457031,
+          -1.3750017881393433,
+          -96.01034545898438
         ],
         "max": [
-          65.75333788981965,
-          23.973936080932617,
-          77.21785736083984
+          84.00978088378906,
+          23.97568702697754,
+          84.5867919921875
         ]
       },
       "overBudget": false
@@ -644,6 +658,7 @@
       "map": "desert_military_base_a.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "2efd5185a22040a67eba0655acdb2bc6507458f8782b69fe892b6d33faffbc54",
       "outputSha256": "be18860208af7be3a281b844a03c095bb7ed232e7d8ad189a3d1ffd0770e463f",
       "sourceBytes": 2051652,
@@ -687,6 +702,7 @@
       "map": "desert_military_base_b.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "077079da1b3a6303c76c6c823c58bbe48730958874151ca385cbc116cc98e09d",
       "outputSha256": "2d3e5e34e35f333a949d3ceda58b4b826126e9f6c85e7c7e50521e31cfdbcd0c",
       "sourceBytes": 2053696,
@@ -730,6 +746,7 @@
       "map": "desert_military_base_c.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "3eb585960525828226ef5162d6ebc19bfef0e4165350dc4e9df0145b92718c55",
       "outputSha256": "76c3d5c0c03ae2a3706109bf096eb73a6548151260a4a924564b54978213986d",
       "sourceBytes": 2001852,
@@ -773,6 +790,7 @@
       "map": "desert_military_base_d.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "cbc5b14a391675515c3e4dfaad543e04eed21e8c56e33dcda3bbbbc0f4ab16d5",
       "outputSha256": "2a2b6aede8f9f85a70ca5b5e433ab8f69d365c7a905379b63dbd587d6a8362dd",
       "sourceBytes": 1983016,
@@ -816,6 +834,7 @@
       "map": "entrance_bunker_a.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "87ec4c993b9b8d042ef8c350351a59bc02f646be602f763b81419337e22d69dc",
       "outputSha256": "25c11b3cc37283ef81c75fd5b1a086350acfb52541ba6ff06309da7289143c06",
       "sourceBytes": 2887432,
@@ -859,6 +878,7 @@
       "map": "entrance_bunker_b.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "56f454970bb6e8283a3e6a3bd8cce3a170023862c8e86bb2e8107b3f649d61f8",
       "outputSha256": "fe4a825a160b162433cd4fbab978dcd7b8150df0ab6075cd81b84cb6daa1e26e",
       "sourceBytes": 3567804,
@@ -902,6 +922,7 @@
       "map": "entrance_bunker_c.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "cda87904715db7f715c2660297e3946d0c251d69124e7dc90af70e0513788e52",
       "outputSha256": "4989243eda9f9db2866b91e5760109008dc8222d61561b7228c0d33b1083b584",
       "sourceBytes": 3646944,
@@ -945,6 +966,7 @@
       "map": "entrance_bunker_d.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "ceba2284fb36d3e49f6279af36807afc6bbd0984c922946e37b05ac87bea41c9",
       "outputSha256": "75476d09e01c83fb85424f64840d84e6f396c8ded212c510f0608ef1fb28a7ec",
       "sourceBytes": 2262384,
@@ -988,6 +1010,7 @@
       "map": "excavator_1.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "66e010436a01771092cde869c3c8cad8f3510b303098936e2e25149a2a8e5f01",
       "outputSha256": "6635fce5f5c2341afe4b0613551bf9df6743e03b5cb60fba68eef76beb61fcbd",
       "sourceBytes": 9479132,
@@ -1033,6 +1056,7 @@
       "sourceNodes": [
         "ferry_terminal_hlod"
       ],
+      "generatedInstances": 0,
       "sourceSha256": "4a0b596f97aeca0051a6ac3dbaa895fe2a1d3fad803c36d345cbb50a4369bad2",
       "outputSha256": "cb5ce92660d48cd15517e0354f91e594f3db2d2840ace04059aa746b7c1e022e",
       "sourceBytes": 13501868,
@@ -1078,6 +1102,7 @@
       "sourceNodes": [
         "fishing_village_a_hlod"
       ],
+      "generatedInstances": 0,
       "sourceSha256": "3e86b65fada7248522a54d4787be30e32d8c8e7d53049b2e693a19703c9303f5",
       "outputSha256": "a6f6ded9402f1b059acc90e131b71836f59083094a3035fd8cb72b33f0be75fd",
       "sourceBytes": 4875668,
@@ -1123,6 +1148,7 @@
       "sourceNodes": [
         "fishing_village_b_hlod"
       ],
+      "generatedInstances": 0,
       "sourceSha256": "cb8e20f740f085c6791fa5210532a8d8d5d96ee9bb1e331c87fc9d109554068e",
       "outputSha256": "b93623def95c2f1ce5fc191c864603320bb05add2d4a3718619993c9647379ee",
       "sourceBytes": 3999572,
@@ -1168,6 +1194,7 @@
       "sourceNodes": [
         "fishing_village_c_hlod"
       ],
+      "generatedInstances": 0,
       "sourceSha256": "96a3d7b23f4550b32c96350644369729d21dc0552d34a88ba829b38b2b545c83",
       "outputSha256": "3eefb9f1860d691a857a6b5f3ab0a11a40130513527f6198e4ab4c5655c966ae",
       "sourceBytes": 4342260,
@@ -1211,6 +1238,7 @@
       "map": "gas_station_1.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "f04db5e8fcd67ef0f2be1e8675acb16d597612ffb8eeb4c25dfc5a3d85e291a3",
       "outputSha256": "bc1edf7d92895b925a666fc761304a712f2098f05283d55cd13d8508344bea94",
       "sourceBytes": 6080532,
@@ -1256,6 +1284,7 @@
       "sourceNodes": [
         "harbor_1_hlod"
       ],
+      "generatedInstances": 0,
       "sourceSha256": "3e2e658ffd4f31b8ba3434af20df9220ec3bbd04897c811c858f79dc08f03d32",
       "outputSha256": "79330922a14811080be5aea6672765e5829ef102e638be674d75bc6196e30790",
       "sourceBytes": 14802572,
@@ -1299,6 +1328,7 @@
       "map": "harbor_2.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "a659a25dcbc48b2019c9c4c733991c0b420d581a6914460e5069abb7fb136ee6",
       "outputSha256": "2c5faf23a735dd93fb80a10af79e5470ec432907eb771142f8d8fb51f6c7bd70",
       "sourceBytes": 13296112,
@@ -1342,6 +1372,7 @@
       "map": "ice_lake_1.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "ffb39666b93c27bcbf23ca764386538f6707718409ec6e4a20c33abb1d1f925d",
       "outputSha256": "173cd825091d5c83799a7fcdd5606616701ab57811b15fffc4ddbdb12f6c3d4a",
       "sourceBytes": 824068,
@@ -1385,6 +1416,7 @@
       "map": "ice_lake_2.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "4fe728695de2fafee66a33547c866e6218e6d62f4553bf0c34bb02b1aefadc44",
       "outputSha256": "96c8aeda83df4327a857fe7f0112e7761b046d37af57ce37c1086956bcc961ef",
       "sourceBytes": 326156,
@@ -1428,6 +1460,7 @@
       "map": "ice_lake_3.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "056633e02569c8808abfe0990ac850d6b1b7c2ae517c0f25183998f6f7d28a9c",
       "outputSha256": "aafc8199653eeef36bedcb1b22899bafd96f33465f9b5c8ce093b76100739dc4",
       "sourceBytes": 647980,
@@ -1471,6 +1504,7 @@
       "map": "ice_lake_4.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "c01c5f6b6391deeee4030de50eefa1bb2acc085455900b6232bcb77ca53dfa30",
       "outputSha256": "b90eda8300e41db1cd061340566978263315a59f38ba4a6858ba5029da0356e1",
       "sourceBytes": 315516,
@@ -1516,6 +1550,7 @@
       "sourceNodes": [
         "jungle_ruins_a_HLOD"
       ],
+      "generatedInstances": 0,
       "sourceSha256": "6c59667a2e5a7b34cf6c47d9f08611839bffd0153a8b8132c73e75039bdf9744",
       "outputSha256": "d2300ed601465ee60b1cfa40facd41cbe3778c789f9898eae2a99b610840acd6",
       "sourceBytes": 3057012,
@@ -1561,6 +1596,7 @@
       "sourceNodes": [
         "jungle_ruins_b_HLOD"
       ],
+      "generatedInstances": 0,
       "sourceSha256": "528e085f5e6dadf9ced95e02eb3f04d29002c9cf3b73d73115b04fa344cd5d31",
       "outputSha256": "22a64ed58d3d48a2d67d33f1e9e89f2e28d4d3b972ea28b1b2c6bf010f948752",
       "sourceBytes": 3597500,
@@ -1606,6 +1642,7 @@
       "sourceNodes": [
         "jungle_ruins_c_HLOD"
       ],
+      "generatedInstances": 0,
       "sourceSha256": "8f866eef58f340cd3e9f4e74ddaaa8ab0e79f7b7675fdd47e64f838223ca2733",
       "outputSha256": "7c1de30f435a06db3c5c1c3af01bb13c2ee356bb745d4ef36408cfc8a364d42e",
       "sourceBytes": 3359984,
@@ -1651,6 +1688,7 @@
       "sourceNodes": [
         "jungle_ruins_d_HLOD"
       ],
+      "generatedInstances": 0,
       "sourceSha256": "f820c815d68fd8abc4d52c9705290d1a6662489e5aec23b24a7ca9b2ed64cc80",
       "outputSha256": "5cc5c4f1e611032049e054b6901ec51869ff5fe676048d9846d9d5fef3c49212",
       "sourceBytes": 3108680,
@@ -1696,6 +1734,7 @@
       "sourceNodes": [
         "jungle_ruins_e_HLOD"
       ],
+      "generatedInstances": 0,
       "sourceSha256": "7bea0eefbf5bb14af531c168ef004599725226dc49ce0214c133a1b7ab223cbb",
       "outputSha256": "f5e375a1a675403f069d37236b71fe32b2f7b713f83e76b1041b4aee5321f0e7",
       "sourceBytes": 4490780,
@@ -1741,6 +1780,7 @@
       "sourceNodes": [
         "jungle_ziggurat_a_HLOD"
       ],
+      "generatedInstances": 0,
       "sourceSha256": "8755d336d700a7febe25183e1f491e7830e331203f93c56fc51fb39466860a6a",
       "outputSha256": "737ce19d5bf4b6b2f70937c1d0d691eea9e765e6fe67b79d4a42016fbbc65c82",
       "sourceBytes": 7815404,
@@ -1784,6 +1824,7 @@
       "map": "junkyard_1.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "2909eaeeae9f92fb23bf0a76595846aa3703f989f50be85e5d605b1ddeb59973",
       "outputSha256": "343a43f92426b94291303a64bd34b9d709f462586f1523343ce4089724712610",
       "sourceBytes": 7243192,
@@ -1852,6 +1893,7 @@
         "warehouse_launch_site_a_awning_LOD0",
         "watch_tower_b_LOD0"
       ],
+      "generatedInstances": 0,
       "sourceSha256": "1b25c4233f5731671d49d351103cc83795b8b61e2afb71c388c0d729d037f445",
       "outputSha256": "c7bdd7b6a54ea43844ed11f35ab1e88fd097158a119ee7dadee74eeec31e2b13",
       "sourceBytes": 14592916,
@@ -1895,6 +1937,7 @@
       "map": "lighthouse.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "bb9a8a5164cfff4bbd72fa40d7740b6c88f7a648c2c0362abf99a415ddafd695",
       "outputSha256": "b69b243e94f3ed988b050cd140380ef90abbfc79e164d4904431586ae8fe1495",
       "sourceBytes": 4404284,
@@ -1940,6 +1983,7 @@
       "sourceNodes": [
         "military_tunnel_1_hlod"
       ],
+      "generatedInstances": 0,
       "sourceSha256": "0954bd16ce42875efe7f7722304fc97d748082916bc19aae0febdab95b14f401",
       "outputSha256": "d37e4efcddcff0c010e116e8d071dcd2fe130aa9e306a7bc55fbd4b94fc26c84",
       "sourceBytes": 12682800,
@@ -1983,6 +2027,7 @@
       "map": "mining_quarry_a.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "6b49aaf0d1240201b97574785e3f501a8e93d3e4a49b64fa64333a8c48856742",
       "outputSha256": "ee897c82381ead33550ffb4f38738671517c9920426b486d59a4104436d29a92",
       "sourceBytes": 1981120,
@@ -2026,6 +2071,7 @@
       "map": "mining_quarry_b.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "6a135c111ccd8b05b5c8f1facb372c29fdca01d7b5ab0baf8498e1a86011d260",
       "outputSha256": "a7170531a5c68c761ba722419fcb34d5fe73d595e5a82af81265a6d4f9ebca24",
       "sourceBytes": 2046216,
@@ -2069,6 +2115,7 @@
       "map": "mining_quarry_c.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "fe558d9bb46281248a468652e4dc18a0071c7f3e03a64ada1402591e7d6954fb",
       "outputSha256": "112f4f431710baaaa7e4e5bf9d9d00e9e6bcff9401aad1425f5dd0f09830810a",
       "sourceBytes": 1872268,
@@ -2114,6 +2161,7 @@
       "sourceNodes": [
         "NMS_hlod"
       ],
+      "generatedInstances": 0,
       "sourceSha256": "3eb1bc55ed32683ed105599364bf36e6538b1aa8cc4189cf3df65f99219ea2d1",
       "outputSha256": "73127d90cbf0142e395411230c6b0c77f2161a2f9b54cbf1b8220aa4a1e50176",
       "sourceBytes": 12368196,
@@ -2157,6 +2205,7 @@
       "map": "oilrig_1.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "05077866304db9066a11e4b42d3d8d5e3e05564ae18e56d1c3175d3f8d967be0",
       "outputSha256": "b294dd6656e32c8d806797529adaabaa2061fe1e8ef0c0612886d50bde2132ad",
       "sourceBytes": 8912244,
@@ -2200,6 +2249,7 @@
       "map": "oilrig_2.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "3bfa4f93241f0e0fa838d23bc8fd64e080b7dd7b8591858caefc71dfdd36e6ab",
       "outputSha256": "71d1152802dfa1826d996d46d82f07a94e9ebefc51fbc86f25b0dced9002218e",
       "sourceBytes": 6916860,
@@ -2245,6 +2295,7 @@
       "sourceNodes": [
         "substation_big_1_hlod"
       ],
+      "generatedInstances": 0,
       "sourceSha256": "f275a5f433b4498b1da84ef611a6d903571c3dce7f1111c19498e0759ad7fa19",
       "outputSha256": "499a4056f57b66b97594cc6cf097699a9ec00181a9e84f06e139fe200d0faf55",
       "sourceBytes": 1028184,
@@ -2290,6 +2341,7 @@
       "sourceNodes": [
         "power_sub_big_2_hlod"
       ],
+      "generatedInstances": 0,
       "sourceSha256": "7d6003133dec03dacbc583b29312605484389e2641b77d46f679c9cdb29971e9",
       "outputSha256": "739e24172e4f1f810d58fb1243d855965c6e04f2d4d2f13b9b71bcfbc4a965d8",
       "sourceBytes": 1110764,
@@ -2335,6 +2387,7 @@
       "sourceNodes": [
         "power_sub_small_1_hlod"
       ],
+      "generatedInstances": 0,
       "sourceSha256": "b21c77eabc596dd25371e285aaa485a727ae8ae4d3e349f285c0ffde691ddb60",
       "outputSha256": "ab4d87d38cd140a39576d56020359924b626301a1843d828e8388df9d01d5cbd",
       "sourceBytes": 831676,
@@ -2380,6 +2433,7 @@
       "sourceNodes": [
         "power_sub_small_2"
       ],
+      "generatedInstances": 0,
       "sourceSha256": "4dd0114320fc20f821697c41e1b9c753ad377abf7dc61aeea7a1988f0da21590",
       "outputSha256": "941ec616e5d6e83bb15a60d4b6b4c92c6c0a121f75db5b1bd00518afd36db431",
       "sourceBytes": 636816,
@@ -2425,6 +2479,7 @@
       "sourceNodes": [
         "powerplant_hlod"
       ],
+      "generatedInstances": 0,
       "sourceSha256": "06b4e9676ae7beda4ee6718499d8b44bd0fbebdf39a2339fdfd870c3f7a8f268",
       "outputSha256": "67eb2463f5fee6e869e70b34597c3e2da60f26f2c8ef8126aa5217523b724f9f",
       "sourceBytes": 13485804,
@@ -2470,6 +2525,7 @@
       "sourceNodes": [
         "HLOD"
       ],
+      "generatedInstances": 0,
       "sourceSha256": "41c72c5395ff9749f897713a41eb271a11883c6aab51cebeb2466e906a392f6d",
       "outputSha256": "02d1b48338df22d34cc1925bd4ea066e564f6bf8a2a3f6ed554961017bcbdb85",
       "sourceBytes": 14758380,
@@ -2515,6 +2571,7 @@
       "sourceNodes": [
         "sewer_branch_hlod"
       ],
+      "generatedInstances": 0,
       "sourceSha256": "3c7db2b1cc3d9df962feee5e7d31ebf790b4dea8128e071a39ea2c4c35705628",
       "outputSha256": "8d1c52c453ba4a7d51bca924123531491f6617f418959432aebab07e79f94f0e",
       "sourceBytes": 7885844,
@@ -2560,6 +2617,7 @@
       "sourceNodes": [
         "satellite_dish_hlod"
       ],
+      "generatedInstances": 0,
       "sourceSha256": "580b5c6974b12b5826b26f4f25203bccd06449dfc82abd8e76a99b1f1ba48038",
       "outputSha256": "6a13521fecc114395f65bd0c71e7fc48c02bbdeb82c231cf1284c550c08360ce",
       "sourceBytes": 6337468,
@@ -2603,6 +2661,7 @@
       "map": "sphere_tank.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "862ee2130dc2823eb2138dfc92bb0ea3964976dfd942f4a9704568bdd62731a7",
       "outputSha256": "d1061f2ec528df35db5ed8df26755a84dbebb05503b38bd29f9d21d9507e3fec",
       "sourceBytes": 5034120,
@@ -2648,6 +2707,7 @@
       "sourceNodes": [
         "stables_a_hlod"
       ],
+      "generatedInstances": 0,
       "sourceSha256": "83d3f0493bdc819be5d06b1211ed9ff285dde6dffe9feadcd68917f93b35aea1",
       "outputSha256": "1f8252eb0d710374cbbe47c719a8822c3918b3aad7ab8eee767ac3a429654c4d",
       "sourceBytes": 4258340,
@@ -2693,6 +2753,7 @@
       "sourceNodes": [
         "stables_b_hlod"
       ],
+      "generatedInstances": 0,
       "sourceSha256": "776f130deb0a11d3a38c9b98667ae3adff417d583a488c3fce0b93b8dc5c72cb",
       "outputSha256": "0e53168581044f06d0e456e4e12bcdad237d89644436aa3264212ee277b51ec1",
       "sourceBytes": 3812728,
@@ -2738,6 +2799,7 @@
       "sourceNodes": [
         "supermarket_hlod"
       ],
+      "generatedInstances": 0,
       "sourceSha256": "cd8b021ad9cdf35ad6b6b09e82d676dbf1b3adec6dee7e3fc67654bec6e56445",
       "outputSha256": "8fd62b3dc47ab3c77597bbc73172e5217d02aec6bb408f368e72e219e8b35152",
       "sourceBytes": 4142740,
@@ -2781,6 +2843,7 @@
       "map": "swamp_a.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "1a788d39d66a6dbdb8ca318015dfb6f1adfc2e2785e0977050e0445acfd49f85",
       "outputSha256": "8bdc8f2c04369685b470a099d74d4f22e0ba610e0aaddb97b36054592a180da7",
       "sourceBytes": 1351044,
@@ -2824,6 +2887,7 @@
       "map": "swamp_b.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "72d38f7971c3bea64de024eb047034b6c4294c105df6e045b0743c810f25d854",
       "outputSha256": "2dbad5584928fad0fcc0d277e73df84cd0a63a5c5c5f1a6d56b7bdb91836b9a3",
       "sourceBytes": 640912,
@@ -2867,6 +2931,7 @@
       "map": "swamp_c.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "1e8b385448d094d76a89ee84dba78cd2a6b8c64de3fb7dd9e5412cc1592ab042",
       "outputSha256": "198171243b085f003c22ac39aea68ff77f39c5d43703a24d0e5689721d15cf7d",
       "sourceBytes": 3201680,
@@ -2910,6 +2975,7 @@
       "map": "trainyard_1.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "4e708307ca739632a286e77913e68fa298e55fd183ae0c234cac42c5aada863e",
       "outputSha256": "dfeef56fb85d4fc5ff4d386d8c8145982b946c255719eefd171fb524802f1d87",
       "sourceBytes": 14919636,
@@ -2953,6 +3019,7 @@
       "map": "ue_jungle_swamp_a.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "034034f39e588ded8e611acfead60293906b9e1559c04d4494987cac7c8f3f9a",
       "outputSha256": "544b8dd1e3b4996f7ea5ea388139118d97bc8fd8e6c4e270a523e29fc5c2f2f6",
       "sourceBytes": 2292,
@@ -2996,6 +3063,7 @@
       "map": "underwater_lab_a.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "6913a54ba35066c04d8bc4656a3912694cd613dc7c7c3d81294774cf26261259",
       "outputSha256": "71ab6c8b94f50372d59195225a308cbbb6136b2394029d54cf001bdfbb8d3477",
       "sourceBytes": 722632,
@@ -3039,6 +3107,7 @@
       "map": "underwater_lab_b.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "7b93037a400c98dcbfa152669b13cbae2bbed51a9b4aeee08f9b346d33d0059a",
       "outputSha256": "56c891b69c6d9e0e1fd9e45d799abae7364f05106a23da974128814baa0c760f",
       "sourceBytes": 846376,
@@ -3082,6 +3151,7 @@
       "map": "underwater_lab_c.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "48585167a9aadcd180dff50a62e4f6517ecba533eecf08bbcc4d031a99df51cc",
       "outputSha256": "eb231642c3303927d80f8f700d34078ce3733736f7cca4bab608ab8b227a8d01",
       "sourceBytes": 705828,
@@ -3125,6 +3195,7 @@
       "map": "underwater_lab_d.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "2dbd0b3dc805209fc08c8f5ab881ac93ad217a3829a834979512a2edc00f66e8",
       "outputSha256": "90117f3d9399337be052edab9326aaac0028205dc0517b168c428b1fb0c6b94d",
       "sourceBytes": 1020884,
@@ -3170,6 +3241,7 @@
       "sourceNodes": [
         "warehouse_hlod"
       ],
+      "generatedInstances": 0,
       "sourceSha256": "b5e69f701da92f592dfb0a73337883fda6b7ad4b7073e6a265fe8d687883495d",
       "outputSha256": "03cc764cf8daf909d7d57157354e233293afac27b505d885f4fd873a44f717d5",
       "sourceBytes": 2518320,
@@ -3213,6 +3285,7 @@
       "map": "water_treatment_plant_1.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "84e5afe57e4ccfeae0f22618251e166d40213e11a44aa0718af7c48c1eab24b0",
       "outputSha256": "f4cc49c1a462a52a64a6bbad72910d2b343cdaf847d309fe559af5956bb5bd96",
       "sourceBytes": 12853912,
@@ -3256,6 +3329,7 @@
       "map": "water_well_a.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "db2ace2b85711bfdb4eba5b17aaffcd70b252684a3aa9d34d4dc73c110da58b8",
       "outputSha256": "0ebfcebeca1ac260d47d1b54053e163d8ace3673896ff19b5b381613b425024e",
       "sourceBytes": 1839648,
@@ -3299,6 +3373,7 @@
       "map": "water_well_b.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "c89c0d6020208e6c2f3fc1330ccd691c04f059b5999048d16066be057271bde4",
       "outputSha256": "e8893fa32647d64a39235f55adc54382d6cca970105e7906af4ca536c7f10df5",
       "sourceBytes": 2757924,
@@ -3342,6 +3417,7 @@
       "map": "water_well_c.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "3dd1d91ae6fd080e9debd1aeea18f180934cdd4aadbde4646ba46004487d2467",
       "outputSha256": "786d2343cbb91410bc4a5bdbf7eb7ee11c78ebd1d72bfa3812f9380d3fffb7b0",
       "sourceBytes": 2092168,
@@ -3385,6 +3461,7 @@
       "map": "water_well_d.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "ab3f7c472f009802fc808750919e2e00f53e5cdf558c46f6d9dc0e5da850d9c6",
       "outputSha256": "be4f6e2ca7941ddc9f12a55464fde93134c2f2abf9a4720a20f0e7e0d4810c35",
       "sourceBytes": 2415580,
@@ -3428,6 +3505,7 @@
       "map": "water_well_e.glb",
       "mapKind": "generated-proxy",
       "sourceNodes": [],
+      "generatedInstances": 0,
       "sourceSha256": "aca9ac5418c165dd594d740e0cacb49778b492cfc3ab121e399a71dbcca401c3",
       "outputSha256": "7f73d670e29e9c9bd0d6db078ecd6215db4aa3f2d2827af2722f5b4046c25bcb",
       "sourceBytes": 2202012,

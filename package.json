@@ -6,6 +6,7 @@
     "build": "vite build",
     "monuments:lod": "tsx scripts/generate-monument-lods.ts",
     "monuments:lod:check": "tsx scripts/generate-monument-lods.ts --check",
+    "monuments:lod:preview": "tsx scripts/render-monument-preview.ts",
     "compiler": "tsx assets/ts/airstrike-animation-editor/cli.ts",
     "fixtures:update": "tsx assets/ts/airstrike-animation-editor/cli.ts fixtures tests/fixtures/airstrike-animations --update",
     "test": "vitest run",

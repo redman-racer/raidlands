@@ -6,6 +6,7 @@ export type MonumentModelManifestEntry = {
   map: string;
   mapKind: "authored-hlod" | "generated-proxy";
   sourceNodes: string[];
+  generatedInstances: number;
   sourceSha256: string;
   outputSha256: string;
   sourceBytes: number;

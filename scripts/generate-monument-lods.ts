@@ -2,7 +2,7 @@ import { createHash } from "node:crypto";
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from "node:fs";
 import { basename, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
-import { Document, NodeIO, type Material, type Node, type Texture } from "@gltf-transform/core";
+import { Document, NodeIO, type Material, type Node, type Scene, type Texture } from "@gltf-transform/core";
 import { ALL_EXTENSIONS } from "@gltf-transform/extensions";
 import { copyToDocument, flatten, getBounds, join, normals, prune, simplify, simplifyPrimitive, weld } from "@gltf-transform/functions";
 import draco3d from "draco3dgltf";
@@ -38,6 +38,24 @@ function explicitMapShell(id: string): RegExp | null {
   if (id === "launch_site_1") return LAUNCH_SITE_MAP_SHELL;
   if (id === "compound") return COMPOUND_MAP_SHELL;
   return null;
+}
+
+function addCompoundPerimeter(document: Document, scene: Scene): void {
+  const straight = document.getRoot().listMeshes().find((mesh) => mesh.getName() === "compound_wall_straight_LOD0");
+  if (!straight) return;
+  const addWall = (name: string, x: number, z: number, quarterTurn = false): void => {
+    const node = document.createNode(name).setMesh(straight).setTranslation([x, 0, z]);
+    if (quarterTurn) node.setRotation([0, Math.SQRT1_2, 0, Math.SQRT1_2]);
+    scene.addChild(node);
+  };
+  for (let x = -72; x <= 72; x += 12) {
+    addWall(`map-perimeter-north-${x}`, x, -84);
+    addWall(`map-perimeter-south-${x}`, x, 84);
+  }
+  for (let z = -84; z <= 84; z += 12) {
+    addWall(`map-perimeter-west-${z}`, -72, z, true);
+    addWall(`map-perimeter-east-${z}`, 72, z, true);
+  }
 }
 
 type Bounds = { min: number[]; max: number[] };
@@ -145,6 +163,7 @@ async function generateGeometryProxy(source: Document, id: string, sourceStats: 
     const invisibleDecoration = MAP_INVISIBLE_NAME.test(name) || (id !== "junkyard_1" && /junk/i.test(name));
     if (extent < minimumExtent || invisibleDecoration) node.setMesh(null);
   }
+  if (id === "compound") addCompoundPerimeter(target, scene);
 
   const paletteMaterials = MAP_PALETTE.map((color, index) => target.createMaterial(`map-palette-${index}`).setBaseColorFactor([...color, 1]));
   const textureCache = new Map<Texture, Promise<number[]>>();
@@ -162,7 +181,13 @@ async function generateGeometryProxy(source: Document, id: string, sourceStats: 
   if (mapShell) {
     await target.transform(weld({ overwrite: true }), prune());
     for (const mesh of target.getRoot().listMeshes()) for (const primitive of mesh.listPrimitives()) {
-      simplifyPrimitive(primitive, { simplifier: MeshoptSimplifier, ratio: id === "launch_site_1" ? 0.04 : 0.08, error: 0.02, lockBorder: false });
+      const protectedCompoundPerimeter = id === "compound" && /compound_(?:wall|gate)/i.test(mesh.getName());
+      simplifyPrimitive(primitive, {
+        simplifier: MeshoptSimplifier,
+        ratio: id === "launch_site_1" ? 0.04 : protectedCompoundPerimeter ? 0.3 : 0.08,
+        error: protectedCompoundPerimeter ? 0.01 : 0.02,
+        lockBorder: false,
+      });
     }
     await target.transform(normals({ overwrite: true }), flatten(), join({ keepNamed: false }), prune());
     return target;
@@ -226,6 +251,7 @@ async function main(): Promise<void> {
     entries.push({
       id, detail: `../monuments/${name}`, map: name, mapKind,
       sourceNodes,
+      generatedInstances: id === "compound" ? 56 : 0,
       sourceSha256: createHash("sha256").update(readFileSync(sourcePath)).digest("hex"),
       outputSha256: createHash("sha256").update(readFileSync(outputPath)).digest("hex"),
       sourceBytes: statSync(sourcePath).size, outputBytes,

@@ -47,6 +47,7 @@ describe("RustRelay monument model registry", () => {
       expect(metadata.sourceBounds.min).toHaveLength(3);
       expect(metadata.sourceBounds.max).toHaveLength(3);
       expect(metadata.outputSha256).toMatch(/^[a-f0-9]{64}$/);
+      expect(metadata.generatedInstances).toBeGreaterThanOrEqual(0);
       expect(metadata.sourceDrawCalls).toBeGreaterThan(0);
       const sourceFootprint = Math.max(
         metadata.sourceBounds.max[0]! - metadata.sourceBounds.min[0]!,
@@ -81,7 +82,8 @@ describe("RustRelay monument model registry", () => {
     expect(outpost!.sourceNodes).toContain("rowhouse_3st_9x12_LOD0");
     expect(outpost!.sourceNodes).toContain("compound_wall_straight_LOD0");
     expect(outpost!.sourceNodes.some((name) => /sewer|tunnel|floor|interior/i.test(name))).toBe(false);
-    expect(outpost!.triangles).toBeLessThan(30_000);
+    expect(outpost!.generatedInstances).toBe(56);
+    expect(outpost!.triangles).toBeLessThan(50_000);
   });
 
   it("covers every monument instance in the current terrain export", () => {
