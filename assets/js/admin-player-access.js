@@ -230,5 +230,29 @@
     });
   });
 
+  root.querySelectorAll('[data-admin-access-no-expiry]').forEach(function (checkbox) {
+    var targetName = checkbox.getAttribute('data-admin-access-expiry-target');
+    var input = targetName
+      ? root.querySelector('[name="' + targetName + '"]')
+      : null;
+
+    if (!input) {
+      return;
+    }
+
+    function applyNoExpiryState() {
+      if (checkbox.checked) {
+        input.value = '';
+        input.setCustomValidity('');
+      }
+
+      input.disabled = checkbox.checked;
+      input.setAttribute('aria-disabled', checkbox.checked ? 'true' : 'false');
+    }
+
+    checkbox.addEventListener('change', applyNoExpiryState);
+    applyNoExpiryState();
+  });
+
   applyPlayerFilters();
 })();

@@ -238,7 +238,10 @@ function raidlands_admin_handle_grants_action(array $post): array
     }
 
     if ($grant_action === 'grant_product') {
-        $ends_at = raidlands_store_normalize_admin_datetime($post['product_ends_at'] ?? ($post['ends_at'] ?? ''), 'Product grant end date');
+        $does_not_expire = !empty($post['product_does_not_expire']);
+        $ends_at = $does_not_expire
+            ? null
+            : raidlands_store_normalize_admin_datetime($post['product_ends_at'] ?? ($post['ends_at'] ?? ''), 'Product grant end date');
         $note = raidlands_store_clean_admin_note($post['product_admin_note'] ?? '');
         $result = raidlands_store_admin_grant_product_access(
             $steam_id64,
@@ -254,6 +257,7 @@ function raidlands_admin_handle_grants_action(array $post): array
             'entitlement_id' => (int) ($result['entitlement_id'] ?? 0),
             'groups' => $groups,
             'ends_at' => $ends_at,
+            'does_not_expire' => $does_not_expire,
             'note' => $note,
         ]);
 
@@ -264,7 +268,10 @@ function raidlands_admin_handle_grants_action(array $post): array
     }
 
     if ($grant_action === 'grant_direct_groups') {
-        $ends_at = raidlands_store_normalize_admin_datetime($post['group_ends_at'] ?? '', 'Group grant end date');
+        $does_not_expire = !empty($post['group_does_not_expire']);
+        $ends_at = $does_not_expire
+            ? null
+            : raidlands_store_normalize_admin_datetime($post['group_ends_at'] ?? '', 'Group grant end date');
         $note = raidlands_store_clean_admin_note($post['group_admin_note'] ?? '');
         $result = raidlands_store_admin_grant_direct_groups(
             $steam_id64,
@@ -278,6 +285,7 @@ function raidlands_admin_handle_grants_action(array $post): array
         raidlands_admin_audit('grant_direct_groups', 'player', $steam_id64, [
             'groups' => $groups,
             'ends_at' => $ends_at,
+            'does_not_expire' => $does_not_expire,
             'note' => $note,
         ]);
 

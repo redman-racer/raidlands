@@ -2967,6 +2967,9 @@ function raidlands_rewards_sync_poll_seconds(): int
 function raidlands_rewards_player_sync_state(int $player_id): array
 {
     $poll_seconds = raidlands_rewards_sync_poll_seconds();
+    $checked_at_timestamp = time();
+    $checked_at = gmdate(DATE_ATOM, $checked_at_timestamp);
+    $next_check_at = gmdate(DATE_ATOM, $checked_at_timestamp + $poll_seconds);
     $empty = [
         'pending_count' => 0,
         'has_pending' => false,
@@ -2975,7 +2978,8 @@ function raidlands_rewards_player_sync_state(int $player_id): array
         'latest_created_at' => '',
         'latest_updated_at' => '',
         'poll_seconds' => $poll_seconds,
-        'checked_at' => gmdate(DATE_ATOM),
+        'checked_at' => $checked_at,
+        'next_check_at' => $next_check_at,
     ];
 
     if ($player_id <= 0 || !raidlands_rewards_is_ready()) {
@@ -3013,7 +3017,8 @@ function raidlands_rewards_player_sync_state(int $player_id): array
         'latest_created_at' => (string) ($latest['created_at'] ?? ''),
         'latest_updated_at' => (string) ($latest['updated_at'] ?? ''),
         'poll_seconds' => $poll_seconds,
-        'checked_at' => gmdate(DATE_ATOM),
+        'checked_at' => $checked_at,
+        'next_check_at' => $next_check_at,
     ];
 }
 

@@ -23,6 +23,7 @@ $rp_leaders = $rp_leaderboard_scope === 'all-time'
 $sync_pending_count = max(0, (int) ($sync_state['pending_count'] ?? 0));
 $sync_poll_seconds = max(10, (int) ($sync_state['poll_seconds'] ?? 30));
 $sync_countdown_label = (string) floor($sync_poll_seconds / 60) . ':' . str_pad((string) ($sync_poll_seconds % 60), 2, '0', STR_PAD_LEFT);
+$sync_next_check_at = (string) ($sync_state['next_check_at'] ?? '');
 $can_play = $games_ready && $games_player !== null && !empty($games_player['id']) && !empty($settings['games_enabled']);
 $min_stake = (int) ($settings['min_stake_rp'] ?? 200);
 $max_stake = (int) ($settings['max_stake_rp'] ?? 2000);
@@ -212,6 +213,7 @@ $rp_game_tabs = [
       data-rp-sync-guide
       data-state-url="<?= e(route_url('rp-games') . '?action=state') ?>"
       data-poll-seconds="<?= e((string) $sync_poll_seconds) ?>"
+      data-next-check-at="<?= e($sync_next_check_at) ?>"
       data-pending-count="<?= e((string) $sync_pending_count) ?>"
       aria-live="polite">
       <div class="rp-sync-guide-main">
@@ -284,6 +286,13 @@ $rp_game_tabs = [
           </a>
         <?php endforeach; ?>
         </nav>
+      </div>
+
+      <div class="rp-sync-playing" data-rp-sync-playing <?= $sync_pending_count > 0 ? '' : 'hidden' ?> aria-live="polite">
+        <span class="rp-sync-playing-dot" aria-hidden="true"></span>
+        <span><strong>RP update pending</strong><small>Next real status check in</small></span>
+        <b data-rp-sync-countdown><?= e($sync_countdown_label) ?></b>
+        <button type="button" data-rp-sync-check>Check now</button>
       </div>
 
       <div class="rp-game-stage">

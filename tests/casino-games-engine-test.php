@@ -31,6 +31,8 @@ $grid = array_fill(0, 5, ['scrap','blank','blank']);
 $slot = raidlands_casino_evaluate_slots($grid, 100, 'balanced');
 $scrapFive = raidlands_casino_slot_config('balanced')['symbols']['scrap']['pays'][5];
 casino_assert($slot['payout_rp'] === 10 * $scrapFive && count($slot['winning_lines']) === 1, 'Five-scrap top line payout is wrong.');
+$maxBetSlot = raidlands_casino_evaluate_slots($grid, 2000, 'balanced');
+casino_assert($maxBetSlot['payout_rp'] === $slot['payout_rp'] * 20, 'Max betting must scale payouts linearly without a hidden bonus.');
 $blank = array_fill(0, 5, ['blank','blank','blank']);
 casino_assert(raidlands_casino_evaluate_slots($blank, 100)['payout_rp'] === 0, 'Blank symbols must never pay.');
 
@@ -48,6 +50,8 @@ foreach (['safe','balanced','generous'] as $preset) {
     $rtps[$preset] = $expected;
 }
 casino_assert($rtps['safe'] < $rtps['balanced'] && $rtps['balanced'] < $rtps['generous'], 'Slots presets must increase monotonically.');
-casino_assert($rtps['safe'] > .84 && $rtps['generous'] < 1.0, 'Slots RTP presets must remain in the audited 84%-100% band.');
+casino_assert($rtps['safe'] > .80 && $rtps['safe'] < .82, 'Safe Slots RTP must remain in the audited 80%-82% band.');
+casino_assert($rtps['balanced'] > .85 && $rtps['balanced'] < .86, 'Balanced Slots RTP must remain in the audited 85%-86% band.');
+casino_assert($rtps['generous'] > .89 && $rtps['generous'] < .91, 'Generous Slots RTP must remain in the audited 89%-91% band.');
 
 echo "Casino engine tests passed.\n";

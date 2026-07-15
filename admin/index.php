@@ -3784,7 +3784,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                         <label class="admin-field">
                           <?= admin_field_head('Casino RTP preset', 'Controls the audited Slots paytable. Roulette and Blackjack retain their published table rules.') ?>
                           <select name="casino_rtp_preset" <?= raidlands_store_table_has_columns('rp_game_settings', ['casino_rtp_preset']) ? '' : 'disabled' ?>>
-                            <?php foreach (['safe' => 'Safe', 'balanced' => 'Balanced', 'generous' => 'Generous'] as $preset_key => $preset_label) : ?>
+                            <?php foreach (['safe' => 'Safe (~80.75% RTP)', 'balanced' => 'Balanced (~85.39% RTP)', 'generous' => 'Generous (~90.06% RTP)'] as $preset_key => $preset_label) : ?>
                               <option value="<?= e($preset_key) ?>" <?= (string) ($game_settings['casino_rtp_preset'] ?? 'balanced') === $preset_key ? 'selected' : '' ?>><?= e($preset_label) ?></option>
                             <?php endforeach; ?>
                           </select>
@@ -5440,8 +5440,12 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               </select>
                             </label>
                             <label class="admin-field">
-                              <?= admin_field_head('Ends at', 'Optional. Leave blank for permanent access, or pick a future date and time for temporary access.') ?>
+                              <?= admin_field_head('Ends at', 'Pick a future date and time for temporary access, or select Does not expire below.') ?>
                               <input type="datetime-local" name="product_ends_at" step="60" autocomplete="off" data-admin-access-datetime>
+                            </label>
+                            <label class="admin-check">
+                              <input type="checkbox" name="product_does_not_expire" value="1" data-admin-access-no-expiry data-admin-access-expiry-target="product_ends_at">
+                              <span>Does not expire</span>
                             </label>
                             <label class="admin-field">
                               <?= admin_field_head('Admin note', 'Optional note recorded in the admin audit log for this product grant.') ?>
@@ -5475,8 +5479,12 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               <?php endforeach; ?>
                             </div>
                             <label class="admin-field">
-                              <?= admin_field_head('Ends at', 'Optional. Leave blank for permanent access, or pick a future date and time for temporary access.') ?>
+                              <?= admin_field_head('Ends at', 'Pick a future date and time for temporary access, or select Does not expire below.') ?>
                               <input type="datetime-local" name="group_ends_at" step="60" autocomplete="off" data-admin-access-datetime>
+                            </label>
+                            <label class="admin-check">
+                              <input type="checkbox" name="group_does_not_expire" value="1" data-admin-access-no-expiry data-admin-access-expiry-target="group_ends_at">
+                              <span>Does not expire</span>
                             </label>
                             <label class="admin-field">
                               <?= admin_field_head('Admin note', 'Optional note stored with the direct group assignment.') ?>

@@ -12277,6 +12277,81 @@ button.admin-permission-chip:focus-visible {
     rgba(0, 0, 0, .22);
 }
 
+.rp-sync-playing {
+  position: sticky;
+  top: 12px;
+  z-index: 18;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  width: fit-content;
+  max-width: calc(100% - 24px);
+  margin: -4px 12px -6px auto;
+  padding: 9px 11px;
+  border: 1px solid rgba(255, 209, 102, .5);
+  border-radius: 999px;
+  background: rgba(8, 11, 12, .96);
+  box-shadow: 0 12px 30px rgba(0, 0, 0, .42), inset 0 0 0 1px rgba(255, 255, 255, .035);
+  backdrop-filter: blur(8px);
+}
+
+.rp-sync-playing[hidden] {
+  display: none;
+}
+
+.rp-sync-playing-dot {
+  width: 9px;
+  height: 9px;
+  flex: 0 0 auto;
+  border-radius: 50%;
+  background: var(--yellow);
+  box-shadow: 0 0 0 5px rgba(255, 209, 102, .1), 0 0 16px rgba(255, 209, 102, .55);
+  animation: rp-sync-pulse 1.4s ease-in-out infinite;
+}
+
+.rp-sync-playing span,
+.rp-sync-playing strong,
+.rp-sync-playing small {
+  display: block;
+}
+
+.rp-sync-playing strong {
+  color: var(--white);
+  font-size: .78rem;
+}
+
+.rp-sync-playing small {
+  color: var(--muted);
+  font-size: .64rem;
+  font-weight: 800;
+}
+
+.rp-sync-playing b {
+  min-width: 3.15rem;
+  color: var(--yellow);
+  font-family: var(--font-countdown);
+  font-size: 1.15rem;
+  font-variant-numeric: tabular-nums;
+  text-align: center;
+}
+
+.rp-sync-playing button {
+  padding: 5px 8px;
+  border: 1px solid rgba(255, 209, 102, .3);
+  border-radius: 999px;
+  color: var(--white);
+  background: rgba(255, 209, 102, .08);
+  font: inherit;
+  font-size: .68rem;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.rp-sync-playing button:disabled {
+  cursor: wait;
+  opacity: .7;
+}
+
 .rp-game-picker-heading {
   display: flex;
   justify-content: space-between;
@@ -13029,10 +13104,13 @@ button.admin-permission-chip:focus-visible {
 }
 
 .rp-game-result.is-visible {
+  cursor: pointer;
+  pointer-events: auto;
   animation: rp-result-reveal .46s cubic-bezier(.2, .8, .2, 1) both;
 }
 
 .rp-game-result.is-hiding {
+  pointer-events: auto;
   animation: rp-result-hide .28s ease both;
 }
 
@@ -13365,6 +13443,21 @@ button.admin-permission-chip:focus-visible {
 
   .rp-sync-countdown {
     text-align: center;
+  }
+
+  .rp-sync-playing {
+    top: 8px;
+    max-width: 100%;
+    margin: -4px 0 -6px;
+    border-radius: 12px;
+  }
+
+  .rp-sync-playing span {
+    min-width: 0;
+  }
+
+  .rp-sync-playing small {
+    white-space: nowrap;
   }
 
   .rp-sync-steps {

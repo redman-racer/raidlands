@@ -1040,6 +1040,7 @@
     overlay.hidden = true;
     overlay.setAttribute("role", "status");
     overlay.setAttribute("aria-live", "polite");
+    overlay.setAttribute("aria-label", "Game result. Click to dismiss.");
     overlay.innerHTML = `
       <div class="rp-game-result-inner">
         <span data-rp-result-eyebrow></span>
@@ -1048,6 +1049,11 @@
         <small data-rp-result-detail></small>
       </div>
     `;
+    overlay.addEventListener("click", event => {
+      event.preventDefault();
+      event.stopPropagation();
+      clearRpGameOutcome(panel);
+    });
     panel.appendChild(overlay);
 
     return overlay;
@@ -1192,8 +1198,8 @@
 
     if (!guide) return;
 
-    guide.querySelector("[data-rp-sync-check]")?.addEventListener("click", () => {
-      checkRpSyncStatus(root, true);
+    root.querySelectorAll("[data-rp-sync-check]").forEach(button => {
+      button.addEventListener("click", () => checkRpSyncStatus(root, true));
     });
 
     if (Number(guide.dataset.pendingCount || 0) > 0) {
@@ -1201,14 +1207,28 @@
     }
   }
 
-  function startRpSyncCountdown(root) {
+  function rpSyncDeadlineFromState(guide) {
+    const nextCheckAt = Date.parse(String(guide.dataset.nextCheckAt || ""));
+
+    return Number.isFinite(nextCheckAt)
+      ? nextCheckAt
+      : Date.now() + Math.max(10, Number(guide.dataset.pollSeconds || 30)) * 1000;
+  }
+
+  function startRpSyncCountdown(root, preserveEarlierDeadline = true) {
     const guide = root.querySelector("[data-rp-sync-guide]");
 
     if (!guide || Number(guide.dataset.pendingCount || 0) <= 0) return;
 
-    stopRpSyncCountdown(guide);
-    const seconds = Math.max(10, Number(guide.dataset.pollSeconds || 30));
-    guide.dataset.rpSyncDeadline = String(Date.now() + seconds * 1000);
+    const existingDeadline = Number(guide.dataset.rpSyncDeadline || 0);
+    const stateDeadline = rpSyncDeadlineFromState(guide);
+    const deadline = preserveEarlierDeadline && existingDeadline > Date.now()
+      ? Math.min(existingDeadline, stateDeadline)
+      : stateDeadline;
+
+    const timer = Number(guide.dataset.rpSyncTimer || 0);
+    if (timer) window.clearInterval(timer);
+    guide.dataset.rpSyncDeadline = String(deadline);
     updateRpSyncCountdown(guide);
     guide.dataset.rpSyncTimer = String(window.setInterval(() => updateRpSyncCountdown(guide, root), 250));
   }
@@ -1227,13 +1247,13 @@
   }
 
   function updateRpSyncCountdown(guide, root) {
-    const countdown = guide.querySelector("[data-rp-sync-countdown]");
+    const countdowns = guide.parentElement?.querySelectorAll("[data-rp-sync-countdown]") || [];
     const deadline = Number(guide.dataset.rpSyncDeadline || Date.now());
     const remaining = Math.max(0, Math.ceil((deadline - Date.now()) / 1000));
 
-    if (countdown) {
+    countdowns.forEach(countdown => {
       countdown.textContent = `${Math.floor(remaining / 60)}:${String(remaining % 60).padStart(2, "0")}`;
-    }
+    });
 
     if (remaining <= 0 && root) {
       stopRpSyncCountdown(guide);
@@ -1243,16 +1263,17 @@
 
   async function checkRpSyncStatus(root, requestedByPlayer) {
     const guide = root.querySelector("[data-rp-sync-guide]");
-    const button = guide?.querySelector("[data-rp-sync-check]");
+    const buttons = guide ? Array.from(guide.parentElement?.querySelectorAll("[data-rp-sync-check]") || []) : [];
 
     if (!guide || guide.dataset.rpSyncChecking === "1" || !window.fetch) return;
 
     guide.dataset.rpSyncChecking = "1";
     guide.classList.add("is-checking");
-    if (button) {
+    buttons.forEach(button => {
       button.disabled = true;
+      button.dataset.originalText = button.textContent || "Check now";
       button.textContent = "Checking...";
-    }
+    });
 
     try {
       const response = await fetch(guide.dataset.stateUrl || window.location.href, {
@@ -1286,10 +1307,11 @@
     } finally {
       delete guide.dataset.rpSyncChecking;
       guide.classList.remove("is-checking");
-      if (button) {
+      buttons.forEach(button => {
         button.disabled = false;
-        button.textContent = "Check now";
-      }
+        button.textContent = button.dataset.originalText || "Check now";
+        delete button.dataset.originalText;
+      });
     }
   }
 
@@ -1305,6 +1327,7 @@
     const title = guide.querySelector("[data-rp-sync-title]");
     const message = guide.querySelector("[data-rp-sync-message]");
     const countdownWrap = guide.querySelector("[data-rp-sync-countdown-wrap]");
+    const playingStatus = root.querySelector("[data-rp-sync-playing]");
     const savedStep = guide.querySelector('[data-rp-sync-step="saved"]');
     const serverStep = guide.querySelector('[data-rp-sync-step="server"]');
     const balanceStep = guide.querySelector('[data-rp-sync-step="balance"]');
@@ -1312,6 +1335,7 @@
 
     guide.dataset.pendingCount = String(pending);
     guide.dataset.pollSeconds = String(Math.max(10, Number(sync.poll_seconds || guide.dataset.pollSeconds || 30)));
+    if (sync.next_check_at) guide.dataset.nextCheckAt = String(sync.next_check_at);
     guide.classList.remove("is-ready", "is-waiting", "is-complete", "is-error");
     [savedStep, serverStep, balanceStep].forEach(step => step?.classList.remove("is-active", "is-complete", "is-error"));
 
@@ -1322,12 +1346,14 @@
       if (title) title.textContent = latestStatus === "processing" ? "The server is updating your RP" : "Your game is saved";
       if (message) message.textContent = `Nothing failed. The game server is applying ${pending} RP change${pending === 1 ? "" : "s"}, and this page will update itself.`;
       if (countdownWrap) countdownWrap.hidden = false;
+      if (playingStatus) playingStatus.hidden = false;
       startRpSyncCountdown(root);
       return;
     }
 
     stopRpSyncCountdown(guide);
     if (countdownWrap) countdownWrap.hidden = true;
+    if (playingStatus) playingStatus.hidden = true;
 
     if (previousPending > 0 && failed) {
       guide.classList.add("is-error");
