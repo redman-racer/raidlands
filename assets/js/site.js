@@ -795,18 +795,31 @@
     const form=root.querySelector('.roulette-bet-builder'),canvas=root.querySelector('[data-roulette-canvas]');if(!form||!canvas)return;
     const bets=[],hidden=form.querySelector('[data-roulette-bets-json]'),slip=form.querySelector('[data-roulette-slip]'),total=form.querySelector('[data-roulette-total]'),help=root.querySelector('[data-roulette-help]');let chip=50;
     const reds=new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]),left=70,top=20,w=68,h=82;
+    const betId=bet=>bet.type==='outside'?`outside:${bet.key}`:`${bet.type}:${bet.numbers.join(',')}`;
+    const numberCenter=n=>n===0?{x:41,y:top+h*1.5}:{x:left+Math.floor((n-1)/3)*w+w/2,y:top+(2-((n-1)%3))*h+h/2};
+    const chipAnchor=bet=>{
+      if(bet.type==='straight')return numberCenter(bet.numbers[0]);
+      if(bet.type==='split'){if(bet.numbers[0]===0){const b=numberCenter(bet.numbers[1]);return{x:left,y:b.y};}const a=numberCenter(bet.numbers[0]),b=numberCenter(bet.numbers[1]);return{x:(a.x+b.x)/2,y:(a.y+b.y)/2};}
+      if(bet.type==='corner'){const points=bet.numbers.map(numberCenter);return{x:points.reduce((sum,p)=>sum+p.x,0)/4,y:points.reduce((sum,p)=>sum+p.y,0)/4};}
+      if(bet.type==='street'){if(bet.numbers[0]===0)return{x:left,y:bet.numbers.includes(1)?top+h*2:top+h};const col=Math.floor((bet.numbers[0]-1)/3);return{x:left+col*w+w/2,y:top+h*3+21};}
+      if(bet.type==='first_four')return{x:left,y:top+h*1.5};
+      if(bet.type==='six_line'){const col=Math.floor((bet.numbers[0]-1)/3);return{x:left+(col+1)*w,y:top+h*3+65};}
+      return null;
+    };
     const add=bet=>{bets.push({...bet,stake_rp:chip});render();};
-    const draw=()=>{const c=canvas.getContext('2d');c.clearRect(0,0,960,420);c.fillStyle='#0b5937';c.fillRect(0,0,960,420);c.strokeStyle='rgba(255,255,255,.72)';c.lineWidth=2;c.fillStyle='#08703f';c.fillRect(12,top,left-12,h*3);c.strokeRect(12,top,left-12,h*3);c.fillStyle='#fff';c.font='bold 24px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText('0',41,top+h*1.5);for(let col=0;col<12;col++)for(let row=0;row<3;row++){const n=col*3+(3-row),x=left+col*w,y=top+row*h;c.fillStyle=reds.has(n)?'#8b2025':'#15191b';c.fillRect(x,y,w,h);c.strokeRect(x,y,w,h);c.fillStyle='#fff';c.fillText(String(n),x+w/2,y+h/2);}c.font='bold 12px sans-serif';for(let col=0;col<12;col++){const x=left+col*w;c.fillStyle='rgba(255,255,255,.07)';c.fillRect(x,top+h*3,w,42);c.strokeRect(x,top+h*3,w,42);c.fillStyle='#fff';c.fillText(`Street ${col+1}`,x+w/2,top+h*3+21);}for(let col=0;col<11;col++){const x=left+col*w+w/2;c.fillStyle='rgba(241,207,84,.12)';c.fillRect(x,top+h*3+47,w,36);c.strokeRect(x,top+h*3+47,w,36);c.fillStyle='#f1cf54';c.fillText('Six-line',x+w/2,top+h*3+65);}const counts=new Map();bets.filter(b=>b.type==='straight').forEach(b=>counts.set(b.numbers[0],(counts.get(b.numbers[0])||0)+1));counts.forEach((count,n)=>{let x,y;if(n===0){x=41;y=top+h*1.5;}else{const col=Math.floor((n-1)/3),row=2-((n-1)%3);x=left+col*w+w/2;y=top+row*h+h/2;}c.beginPath();c.fillStyle='#f1cf54';c.arc(x+18,y-20,13,0,Math.PI*2);c.fill();c.fillStyle='#19150a';c.fillText(String(count),x+18,y-20);});};
-    const render=()=>{hidden.value=JSON.stringify(bets);total.textContent=`${bets.reduce((sum,b)=>sum+b.stake_rp,0)} RP`;slip.innerHTML=bets.length?'':'<p>No bets placed.</p>';bets.forEach((bet,index)=>{const row=document.createElement('button');row.type='button';row.className='roulette-slip-row';row.textContent=`${bet.type==='outside'?bet.key.replaceAll('_',' '):`${bet.type}: ${bet.numbers.join('/')}`} - ${bet.stake_rp} RP (remove)`;row.addEventListener('click',()=>{bets.splice(index,1);render();});slip.appendChild(row);});root.querySelectorAll('[data-roulette-outside]').forEach(button=>button.classList.toggle('has-bet',bets.some(b=>b.key===button.dataset.rouletteOutside)));draw();};
+    const draw=()=>{const c=canvas.getContext('2d');c.clearRect(0,0,960,420);c.fillStyle='#0b5937';c.fillRect(0,0,960,420);c.strokeStyle='rgba(255,255,255,.72)';c.lineWidth=2;c.fillStyle='#08703f';c.fillRect(12,top,left-12,h*3);c.strokeRect(12,top,left-12,h*3);c.fillStyle='#fff';c.font='bold 24px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText('0',41,top+h*1.5);for(let col=0;col<12;col++)for(let row=0;row<3;row++){const n=col*3+(3-row),x=left+col*w,y=top+row*h;c.fillStyle=reds.has(n)?'#8b2025':'#15191b';c.fillRect(x,y,w,h);c.strokeRect(x,y,w,h);c.fillStyle='#fff';c.fillText(String(n),x+w/2,y+h/2);}c.font='bold 12px sans-serif';for(let col=0;col<12;col++){const x=left+col*w;c.fillStyle='rgba(255,255,255,.07)';c.fillRect(x,top+h*3,w,42);c.strokeRect(x,top+h*3,w,42);c.fillStyle='#fff';c.fillText(`Street ${col+1}`,x+w/2,top+h*3+21);}for(let col=0;col<11;col++){const x=left+(col+1)*w-34;c.fillStyle='rgba(241,207,84,.12)';c.fillRect(x,top+h*3+47,w,36);c.strokeRect(x,top+h*3+47,w,36);c.fillStyle='#f1cf54';c.fillText('Six-line',x+w/2,top+h*3+65);}const placed=new Map();bets.filter(b=>b.type!=='outside').forEach(b=>{const id=betId(b),entry=placed.get(id)||{bet:b,total:0,count:0};entry.total+=b.stake_rp;entry.count++;placed.set(id,entry);});placed.forEach(entry=>{const p=chipAnchor(entry.bet);if(!p)return;c.beginPath();c.fillStyle='#f1cf54';c.strokeStyle='rgba(255,255,255,.9)';c.lineWidth=3;c.setLineDash([4,3]);c.arc(p.x,p.y,16,0,Math.PI*2);c.fill();c.stroke();c.setLineDash([]);c.fillStyle='#19150a';c.font='bold 10px sans-serif';c.fillText(entry.count>1?`${entry.total}`:`${entry.bet.stake_rp}`,p.x,p.y);});};
+    const render=()=>{hidden.value=JSON.stringify(bets);total.textContent=`${bets.reduce((sum,b)=>sum+b.stake_rp,0)} RP`;slip.innerHTML=bets.length?'':'<p>No bets placed.</p>';bets.forEach((bet,index)=>{const row=document.createElement('button');row.type='button';row.className='roulette-slip-row';row.textContent=`${bet.type==='outside'?bet.key.replaceAll('_',' '):`${bet.type.replaceAll('_',' ')}: ${bet.numbers.join('/')}`} - ${bet.stake_rp} RP (remove)`;row.addEventListener('click',()=>{bets.splice(index,1);render();});slip.appendChild(row);});root.querySelectorAll('[data-roulette-bet-button]').forEach(button=>{const matching=bets.filter(b=>betId(b)===button.dataset.rouletteBetButton),amount=matching.reduce((sum,b)=>sum+b.stake_rp,0);button.classList.toggle('has-bet',amount>0);button.querySelector('.roulette-button-chip')?.remove();if(amount){const badge=document.createElement('span');badge.className='roulette-button-chip';badge.textContent=String(amount);button.appendChild(badge);}});draw();};
     form.querySelectorAll('[data-roulette-chip]').forEach(button=>button.addEventListener('click',()=>{chip=Number(button.dataset.rouletteChip)||50;form.querySelectorAll('[data-roulette-chip]').forEach(item=>item.classList.toggle('is-selected',item===button));help.textContent=`${chip} RP chip selected. Tap a center, edge, intersection, or rail.`;}));
-    root.querySelectorAll('[data-roulette-outside]').forEach(button=>button.addEventListener('click',()=>add({type:'outside',key:button.dataset.rouletteOutside})));
-    const outsideWrap=root.querySelector('.roulette-outside-bets');[['0-1-2 Trio',[0,1,2]],['0-2-3 Trio',[0,2,3]]].forEach(([label,numbers])=>{const button=document.createElement('button');button.type='button';button.className='roulette-outside';button.textContent=label;button.addEventListener('click',()=>add({type:'street',numbers}));outsideWrap.appendChild(button);});
+    root.querySelectorAll('[data-roulette-outside]').forEach(button=>{button.dataset.rouletteBetButton=`outside:${button.dataset.rouletteOutside}`;button.addEventListener('click',()=>add({type:'outside',key:button.dataset.rouletteOutside}));});
+    const outsideWrap=root.querySelector('.roulette-outside-bets');[['0-1-2 Trio',[0,1,2]],['0-2-3 Trio',[0,2,3]]].forEach(([label,numbers])=>{const button=document.createElement('button');button.type='button';button.className='roulette-outside';button.textContent=label;button.dataset.rouletteBetButton=`street:${numbers.join(',')}`;button.addEventListener('click',()=>add({type:'street',numbers}));outsideWrap.appendChild(button);});
+    const firstFour=document.createElement('button');firstFour.type='button';firstFour.className='roulette-outside';firstFour.textContent='0-1-2-3 First four';firstFour.dataset.rouletteBetButton='first_four:0,1,2,3';firstFour.addEventListener('click',()=>add({type:'first_four',numbers:[0,1,2,3]}));outsideWrap.appendChild(firstFour);
     form.querySelector('[data-roulette-clear]').addEventListener('click',()=>{bets.splice(0);render();});
-    canvas.addEventListener('click',event=>{const rect=canvas.getBoundingClientRect(),x=(event.clientX-rect.left)*960/rect.width,y=(event.clientY-rect.top)*420/rect.height;if(x>=12&&x<left&&y>=top&&y<top+h*3)return add({type:'straight',numbers:[0]});if(x<left||x>=left+w*12)return;
+    canvas.addEventListener('click',event=>{const rect=canvas.getBoundingClientRect(),x=(event.clientX-rect.left)*960/rect.width,y=(event.clientY-rect.top)*420/rect.height;if(x>=12&&x<left&&y>=top&&y<top+h*3){if(x>left-11){const row=Math.floor((y-top)/h),n=3-row;return add({type:'split',numbers:[0,n].sort((a,b)=>a-b)});}return add({type:'straight',numbers:[0]});}if(x<left||x>=left+w*12)return;
       const col=Math.floor((x-left)/w),localX=(x-left)-col*w;
       if(y>=top+h*3&&y<top+h*3+42){const s=col*3+1;return add({type:'street',numbers:[s,s+1,s+2]});}
       if(y>=top+h*3+47&&y<top+h*3+83){const boundary=Math.max(0,Math.min(10,Math.floor((x-left)/w)));const s=boundary*3+1;return add({type:'six_line',numbers:[s,s+1,s+2,s+3,s+4,s+5]});}
       if(y<top||y>=top+h*3)return;const row=Math.floor((y-top)/h),localY=(y-top)-row*h,n=col*3+(3-row),nearV=localX<11||localX>w-11,nearH=localY<11||localY>h-11;
+      if(col===0&&localX<11){if(nearH){if(row===0&&localY<11)return add({type:'first_four',numbers:[0,1,2,3]});return add({type:'street',numbers:localY<11?[0,n,n+1]:[0,n-1,n]});}return add({type:'split',numbers:[0,n]});}
       if(nearV&&nearH&&col<11){const nextCol=localX>w-11?col+1:col;if(nextCol<=0)return;const upperRow=localY>h-11?row+1:row;if(upperRow<=0||upperRow>2)return;const a=(nextCol-1)*3+(3-upperRow);return add({type:'corner',numbers:[a,a+1,a+3,a+4]});}
       if(nearH){const other=localY<11?n+1:n-1;if(other>=col*3+1&&other<=col*3+3)return add({type:'split',numbers:[n,other].sort((a,b)=>a-b)});}
       if(nearV){const other=localX<11?n-3:n+3;if(other>=1&&other<=36)return add({type:'split',numbers:[n,other].sort((a,b)=>a-b)});}
@@ -857,7 +870,13 @@
 
   function scheduleBlackjackPoll(table) {
     if(!table||table.dataset.blackjackPollTimer)return;
-    table.dataset.blackjackPollTimer=String(window.setTimeout(async()=>{delete table.dataset.blackjackPollTimer;const root=table.closest('[data-rp-games]');if(root)await checkRpSyncStatus(root,false);},2500));
+    table.dataset.blackjackPollTimer=String(window.setTimeout(async()=>{
+      delete table.dataset.blackjackPollTimer;
+      const root=table.closest('[data-rp-games]');
+      if(root)await checkRpSyncStatus(root,false);
+      let hand=null;try{hand=JSON.parse(table.dataset.hand||'null');}catch(_){}
+      if(hand&&['wager_queued','double_queued','payout_queued'].includes(hand.status))scheduleBlackjackPoll(table);
+    },2500));
   }
 
   function stopRpGameMotion(panel) {
@@ -1351,7 +1370,10 @@
     updateRpHistoryEmpty(state);
     applyRpSyncState(state.sync || {});
     const blackjackTable = app.querySelector("[data-blackjack-table]");
-    if (blackjackTable && state.active_blackjack) { blackjackTable.dataset.hand=JSON.stringify(state.active_blackjack);renderBlackjack(blackjackTable); }
+    if (blackjackTable && Object.prototype.hasOwnProperty.call(state, "active_blackjack")) {
+      blackjackTable.dataset.hand = JSON.stringify(state.active_blackjack || null);
+      renderBlackjack(blackjackTable);
+    }
   }
 
   function applyRpJackpotState(jackpot) {

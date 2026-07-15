@@ -21,6 +21,8 @@ $split = raidlands_casino_roulette_normalize_bet(['type'=>'split','numbers'=>[17
 casino_assert(raidlands_casino_roulette_bet_wins($split, 20) && $split['gross_multiplier'] === 18, 'Vertical split is wrong.');
 $corner = raidlands_casino_roulette_normalize_bet(['type'=>'corner','numbers'=>[1,2,4,5],'stake_rp'=>10]);
 casino_assert(raidlands_casino_roulette_bet_wins($corner, 4), 'Corner geometry is wrong.');
+$firstFour = raidlands_casino_roulette_normalize_bet(['type'=>'first_four','numbers'=>[0,1,2,3],'stake_rp'=>10]);
+casino_assert(raidlands_casino_roulette_bet_wins($firstFour, 0) && $firstFour['gross_multiplier'] === 9, 'First-four geometry or payout is wrong.');
 $red = raidlands_casino_roulette_normalize_bet(['type'=>'outside','key'=>'red','stake_rp'=>10]);
 casino_assert(!raidlands_casino_roulette_bet_wins($red, 0) && raidlands_casino_roulette_bet_wins($red, 1), 'Zero/red behavior is wrong.');
 try { raidlands_casino_roulette_normalize_bet(['type'=>'split','numbers'=>[3,4],'stake_rp'=>10]); casino_assert(false, 'Invalid row-crossing split was accepted.'); } catch (InvalidArgumentException $expected) {}

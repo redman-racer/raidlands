@@ -46,6 +46,7 @@ describe("RustRelay monument model registry", () => {
       expect(metadata.bounds.max).toHaveLength(3);
       expect(metadata.sourceBounds.min).toHaveLength(3);
       expect(metadata.sourceBounds.max).toHaveLength(3);
+      expect(metadata.outputSha256).toMatch(/^[a-f0-9]{64}$/);
       expect(metadata.sourceDrawCalls).toBeGreaterThan(0);
       const sourceFootprint = Math.max(
         metadata.sourceBounds.max[0]! - metadata.sourceBounds.min[0]!,
@@ -63,6 +64,15 @@ describe("RustRelay monument model registry", () => {
       totalBytes += metadata.outputBytes;
     }
     expect(totalBytes).toBeLessThan(20 * 1024 * 1024);
+  });
+
+  it("uses the authored exterior-shell recipe for Launch Site", () => {
+    const launchSite = monumentModelMetadata("launch_site_1");
+    expect(launchSite).not.toBeNull();
+    expect(launchSite!.sourceNodes).toContain("rocket_factory_exterior_LOD0");
+    expect(launchSite!.sourceNodes).toContain("space_center_office_bld_a_LOD0");
+    expect(launchSite!.sourceNodes.some((name) => /interior|office_[ab]_floor|rocket_crane_floor/i.test(name))).toBe(false);
+    expect(launchSite!.triangles).toBeLessThan(30_000);
   });
 
   it("covers every monument instance in the current terrain export", () => {

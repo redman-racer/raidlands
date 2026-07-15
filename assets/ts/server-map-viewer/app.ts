@@ -4976,7 +4976,9 @@ class MonumentModelController {
     if (pending) return pending;
     const base = new URL(this.options.assetBase, window.location.href);
     const path = tier === "map" ? `media/models/monuments-map/${binding.metadata.map}` : `media/models/monuments/${binding.metadata.id}.glb`;
-    const promise = this.loader.loadAsync(new URL(path, base).href).then((gltf) => {
+    const url = new URL(path, base);
+    url.searchParams.set("v", (tier === "map" ? binding.metadata.outputSha256 : binding.metadata.sourceSha256).slice(0, 12));
+    const promise = this.loader.loadAsync(url.href).then((gltf) => {
       const source = gltf.scene;
       if (!this.disposed) this.cache.set(key, { source, active: 0, lastUsed: performance.now() });
       return source;

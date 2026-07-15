@@ -1,6 +1,6 @@
 import {
   ACESFilmicToneMapping, AdditiveBlending, AmbientLight, Box3, BufferGeometry, Color,
-  CylinderGeometry, DirectionalLight, Float32BufferAttribute, Group, Mesh, MeshStandardMaterial, SphereGeometry,
+  CylinderGeometry, DirectionalLight, FogExp2, Float32BufferAttribute, Group, Mesh, MeshStandardMaterial, PlaneGeometry, SphereGeometry,
   Object3D, PerspectiveCamera, PointLight, Points, PointsMaterial, Scene, SkinnedMesh, SRGBColorSpace,
   TorusGeometry, Vector3, WebGLRenderer,
 } from "three";
@@ -130,20 +130,49 @@ class PodiumScene {
   }
 
   private buildStage() {
-    this.scene.background = new Color(0x08100f); this.scene.add(new AmbientLight(0x9ebbb3, 1.25));
-    const key = new DirectionalLight(0xffd6a8, 4.4); key.position.set(4, 9, 6); this.scene.add(key);
-    const rim = new DirectionalLight(0x39d98a, 2.7); rim.position.set(-6, 5, -4); this.scene.add(rim);
-    const floor = new Mesh(new CylinderGeometry(6.8, 7.2, 0.35, 48), new MeshStandardMaterial({ color: 0x15201e, metalness: 0.74, roughness: 0.43 }));
+    this.scene.background = new Color(0x100f0d); this.scene.fog = new FogExp2(0x17130f, .045);
+    this.scene.add(new AmbientLight(0x8d8171, 1.15));
+    const key = new DirectionalLight(0xffc184, 4.8); key.position.set(4, 9, 6); this.scene.add(key);
+    const rim = new DirectionalLight(0xd45a22, 2.4); rim.position.set(-6, 5, -4); this.scene.add(rim);
+    const ground = new Mesh(new PlaneGeometry(24, 11), new MeshStandardMaterial({ color: 0x161512, metalness: .12, roughness: .97 }));
+    ground.rotation.x = -Math.PI / 2; ground.position.set(0, -.23, -1.8); ground.receiveShadow = true; this.scene.add(ground);
+    const floor = new Mesh(new CylinderGeometry(7.5, 8.2, 0.34, 12), new MeshStandardMaterial({ color: 0x211e19, metalness: 0.52, roughness: 0.68 }));
     floor.position.y = -0.25; floor.receiveShadow = true; this.scene.add(floor);
+
+    // Industrial silhouettes and scattered rubble give the podium the depth of a Rust monument
+    // without inventing leaderboard state or requiring a separate environment payload.
+    const ruinMaterial = new MeshStandardMaterial({ color: 0x201d19, metalness: .58, roughness: .72 });
+    [-8.2, -6.9, -5.7, 5.8, 7.1, 8.35].forEach((x, index) => {
+      const height = [4.9, 3.1, 5.8, 3.8, 6.4, 4.5][index];
+      const tower = new Group();
+      const shaft = new Mesh(new CylinderGeometry(.075, .11, height, 6), ruinMaterial); shaft.position.y = height / 2;
+      const cap = new Mesh(new CylinderGeometry(.58, .72, .16, 8), ruinMaterial); cap.position.y = height * .72;
+      tower.add(shaft, cap);
+      for (let level = .5; level < height; level += .65) {
+        const brace = new Mesh(new CylinderGeometry(.025, .025, 1.05, 5), ruinMaterial);
+        brace.position.y = level; brace.rotation.z = Math.PI / 3; tower.add(brace);
+      }
+      tower.position.set(x, -.1, -4.6 - (index % 2) * .8); tower.rotation.z = (index % 3 - 1) * .035; this.scene.add(tower);
+    });
+    for (let index = 0; index < 28; index++) {
+      const rubble = new Mesh(new CylinderGeometry(.12 + Math.random() * .22, .18 + Math.random() * .3, .16 + Math.random() * .35, 5), ruinMaterial);
+      const side = index % 2 ? 1 : -1; rubble.position.set(side * (4.1 + Math.random() * 3.5), -.02, -2.7 + Math.random() * 3.2);
+      rubble.rotation.set(Math.random(), Math.random(), Math.random()); this.scene.add(rubble);
+    }
+    [[-6.1, -3.7], [5.35, -4.2], [1.8, -5.2]].forEach(([x, z], index) => {
+      const fire = new PointLight(0xff6b21, index === 2 ? 9 : 13, 6.5, 2.1); fire.position.set(x, .35, z); this.scene.add(fire);
+      const ember = new Mesh(new SphereGeometry(.13, 10, 8), new MeshStandardMaterial({ color: 0xff8a28, emissive: 0xff4a14, emissiveIntensity: 4 }));
+      ember.position.copy(fire.position); this.effectsRoot.add(ember);
+    });
     RANK_X.forEach((x, rank) => {
       const height = RANK_HEIGHTS[rank];
-      const pedestal = new Mesh(new CylinderGeometry(1.4, 1.6, height, 8), new MeshStandardMaterial({ color: [0x8c681f, 0x5d6967, 0x674531][rank], metalness: 0.77, roughness: 0.35 }));
+      const pedestal = new Mesh(new CylinderGeometry(1.4, 1.72, height, 8), new MeshStandardMaterial({ color: [0x59441f, 0x414541, 0x4d3327][rank], metalness: 0.72, roughness: 0.5 }));
       pedestal.position.set(x, height / 2, 0); pedestal.receiveShadow = true; this.scene.add(pedestal);
       const lip = new Mesh(new CylinderGeometry(1.46, 1.46, 0.1, 8), new MeshStandardMaterial({ color: RANK_COLORS[rank], emissive: RANK_COLORS[rank], emissiveIntensity: 0.07, metalness: 0.9, roughness: 0.24 }));
       lip.position.set(x, height + .02, 0); this.scene.add(lip);
       const ring = new Mesh(new TorusGeometry(1.23, .025, 8, 48), new MeshStandardMaterial({ color: RANK_COLORS[rank], emissive: RANK_COLORS[rank], emissiveIntensity: 1.2 }));
       ring.rotation.x = Math.PI / 2; ring.position.set(x, height + .085, 0); this.effectsRoot.add(ring);
-      const light = new PointLight(RANK_COLORS[rank], rank === 0 ? 8 : 5, 5.5, 2); light.position.set(x, height + 2.25, -1.1); this.scene.add(light);
+      const light = new PointLight(RANK_COLORS[rank], rank === 0 ? 11 : 6, 5.5, 2); light.position.set(x, height + 2.25, -1.1); this.scene.add(light);
     });
     const particles = new BufferGeometry(); const positions: number[] = [];
     for (let index = 0; index < 54; index++) positions.push((Math.random() - .5) * 12, .35 + Math.random() * 4.5, -1.8 + Math.random() * 2.5);

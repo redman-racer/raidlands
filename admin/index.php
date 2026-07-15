@@ -5440,7 +5440,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               </select>
                             </label>
                             <label class="admin-field">
-                              <?= admin_field_head('Ends at', 'Pick a future date and time. Defaults to one hour from now and cannot be set earlier.') ?>
+                              <?= admin_field_head('Ends at', 'Optional. Leave blank for permanent access, or pick a future date and time for temporary access.') ?>
                               <input type="datetime-local" name="product_ends_at" step="60" autocomplete="off" data-admin-access-datetime>
                             </label>
                             <label class="admin-field">
@@ -5475,7 +5475,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               <?php endforeach; ?>
                             </div>
                             <label class="admin-field">
-                              <?= admin_field_head('Ends at', 'Pick a future date and time. Defaults to one hour from now and cannot be set earlier.') ?>
+                              <?= admin_field_head('Ends at', 'Optional. Leave blank for permanent access, or pick a future date and time for temporary access.') ?>
                               <input type="datetime-local" name="group_ends_at" step="60" autocomplete="off" data-admin-access-datetime>
                             </label>
                             <label class="admin-field">

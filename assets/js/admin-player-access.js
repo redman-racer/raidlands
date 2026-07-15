@@ -155,13 +155,24 @@
 
   function normalizeDateField(input) {
     var minimum = minimumAccessDate();
-    var parsed = parseDateInput(input.value) || minimum;
+    var rawValue = String(input.value || '').trim();
 
-    if (parsed < minimum) {
+    input.min = formatPickerDate(minimum);
+
+    // An empty expiry means permanent access. Do not silently turn a blank
+    // optional field into a short-lived one-hour grant.
+    if (!rawValue) {
+      input.value = '';
+      input.setCustomValidity('');
+      return;
+    }
+
+    var parsed = parseDateInput(rawValue);
+
+    if (!parsed || parsed < minimum) {
       parsed = minimum;
     }
 
-    input.min = formatPickerDate(minimum);
     input.value = formatPickerDate(parsed);
     input.setCustomValidity('');
   }

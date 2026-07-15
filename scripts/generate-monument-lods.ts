@@ -4,7 +4,7 @@ import { basename, resolve } from "node:path";
 import { spawnSync } from "node:child_process";
 import { Document, NodeIO, type Material, type Node, type Texture } from "@gltf-transform/core";
 import { ALL_EXTENSIONS } from "@gltf-transform/extensions";
-import { copyToDocument, flatten, getBounds, join, normals, prune, simplify, weld } from "@gltf-transform/functions";
+import { copyToDocument, flatten, getBounds, join, normals, prune, simplify, simplifyPrimitive, weld } from "@gltf-transform/functions";
 import draco3d from "draco3dgltf";
 import { MeshoptDecoder, MeshoptEncoder, MeshoptSimplifier } from "meshoptimizer";
 import sharp from "sharp";
@@ -15,6 +15,7 @@ const outputDir = resolve(root, "assets/media/models/monuments-map");
 const manifestPath = resolve(outputDir, "manifest.json");
 const checkOnly = process.argv.includes("--check");
 const manifestOnly = process.argv.includes("--manifest-only");
+const onlyAsset = process.argv.find((argument) => argument.startsWith("--only="))?.slice("--only=".length) || "";
 const maxBytes = 250 * 1024;
 
 const MAP_PALETTE = [
@@ -25,6 +26,12 @@ const MAP_PALETTE = [
 ] as const;
 
 const MAP_INVISIBLE_NAME = /(?:grass|bush|fern|foliage|twig|debris|cardboard|loot|barrel|box|chair|desk|computer|telephone|poster|pallet|vehicle|sedan|truck|van|helicopter|forklift|road_cone|sandbag|fence|lamp|spotlight|fluorescent|switch|door_handle|powerline_pole)/i;
+
+// Launch Site is a compound prefab containing complete interiors and exteriors.
+// Generic whole-scene simplification favored its broad interior floors and
+// collapsed thin wall shells. At map distance the exterior silhouette is the
+// useful representation, so retain the authored shell assemblies explicitly.
+const LAUNCH_SITE_MAP_SHELL = /(?:rocket_factory_(?:exterior|silo|scaffolding|crane_beams|crane_arm|helipad|support_beam|tower_frame)|rocket_(?:boosters_stage|payload)|space_center_(?:office_bld|roof_module)|warehouse_launch_site|watch_tower|range_core_exterior|pipeline_bespoke_launchsite|floodlights_A)/i;
 
 type Bounds = { min: number[]; max: number[] };
 type Stats = { triangles: number; drawCalls: number; textureBytes: number; bounds: Bounds };
@@ -123,6 +130,10 @@ async function generateGeometryProxy(source: Document, id: string, sourceStats: 
     const nodeBounds = getBounds(node);
     const extent = Math.max(...[0, 1, 2].map((axis) => nodeBounds.max[axis]! - nodeBounds.min[axis]!));
     const name = `${node.getName()} ${node.getMesh()!.getName()}`;
+    if (id === "launch_site_1") {
+      if (!LAUNCH_SITE_MAP_SHELL.test(name)) node.setMesh(null);
+      continue;
+    }
     const invisibleDecoration = MAP_INVISIBLE_NAME.test(name) || (id !== "junkyard_1" && /junk/i.test(name));
     if (extent < minimumExtent || invisibleDecoration) node.setMesh(null);
   }
@@ -138,6 +149,15 @@ async function generateGeometryProxy(source: Document, id: string, sourceStats: 
     if (material) primitive.setMaterial(materialMap.get(material)!);
     for (const semantic of primitive.listSemantics()) if (semantic !== "POSITION") primitive.setAttribute(semantic, null);
     for (const morphTarget of primitive.listTargets()) primitive.removeTarget(morphTarget);
+  }
+
+  if (id === "launch_site_1") {
+    await target.transform(weld({ overwrite: true }), prune());
+    for (const mesh of target.getRoot().listMeshes()) for (const primitive of mesh.listPrimitives()) {
+      simplifyPrimitive(primitive, { simplifier: MeshoptSimplifier, ratio: 0.04, error: 0.02, lockBorder: false });
+    }
+    await target.transform(normals({ overwrite: true }), flatten(), join({ keepNamed: false }), prune());
+    return target;
   }
 
   await target.transform(flatten(), join({ keepNamed: false }), weld({ overwrite: true }), prune());
@@ -173,7 +193,7 @@ async function main(): Promise<void> {
     const id = basename(name, ".glb");
     const mapKind = candidates.length ? "authored-hlod" : "generated-proxy";
     const outputPath = resolve(outputDir, name);
-    if (!checkOnly && !manifestOnly) {
+    if (!checkOnly && !manifestOnly && (!onlyAsset || onlyAsset === id)) {
       const stagedPath = resolve(outputDir, `.${id}.staged.glb`);
       const mapDocument = candidates.length
         ? extractHlod(sourceDocument, candidates)
@@ -185,10 +205,19 @@ async function main(): Promise<void> {
     if (!existsSync(outputPath)) throw new Error(`${name}: map proxy is missing`);
     const outputStats = documentStats(await reader.read(outputPath));
     const outputBytes = statSync(outputPath).size;
+    const sourceNodes = candidates.length
+      ? candidates.map((node) => node.getName())
+      : id === "launch_site_1"
+        ? Array.from(new Set(sourceDocument.getRoot().listNodes().filter((node) => {
+          const mesh = node.getMesh();
+          return mesh && LAUNCH_SITE_MAP_SHELL.test(`${node.getName()} ${mesh.getName()}`);
+        }).map((node) => node.getMesh()!.getName() || node.getName()).filter(Boolean))).sort()
+        : [];
     entries.push({
       id, detail: `../monuments/${name}`, map: name, mapKind,
-      sourceNodes: candidates.map((node) => node.getName()),
+      sourceNodes,
       sourceSha256: createHash("sha256").update(readFileSync(sourcePath)).digest("hex"),
+      outputSha256: createHash("sha256").update(readFileSync(outputPath)).digest("hex"),
       sourceBytes: statSync(sourcePath).size, outputBytes,
       sourceTriangles: sourceStats.triangles, sourceDrawCalls: sourceStats.drawCalls,
       sourceBounds: sourceStats.bounds,

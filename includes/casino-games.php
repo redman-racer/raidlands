@@ -48,7 +48,7 @@ function raidlands_casino_roulette_normalize_bet(array $bet): array
     if ($stake <= 0) throw new InvalidArgumentException('Every roulette bet needs a positive RP stake.');
     if (array_filter($numbers, static fn(int $n): bool => $n < 0 || $n > 36)) throw new InvalidArgumentException('Roulette numbers must be between 0 and 36.');
 
-    $insideSizes = ['straight'=>1,'split'=>2,'street'=>3,'corner'=>4,'six_line'=>6];
+    $insideSizes = ['straight'=>1,'split'=>2,'street'=>3,'corner'=>4,'first_four'=>4,'six_line'=>6];
     if (isset($insideSizes[$type])) {
         if (count($numbers) !== $insideSizes[$type]) throw new InvalidArgumentException('Invalid ' . str_replace('_', '-', $type) . ' selection.');
         $valid = false;
@@ -60,11 +60,13 @@ function raidlands_casino_roulette_normalize_bet(array $bet): array
             $valid = in_array($numbers, [[0,1,2],[0,2,3]], true) || ($numbers[0] > 0 && $numbers === [$numbers[0],$numbers[0]+1,$numbers[0]+2] && (($numbers[0]-1)%3===0));
         } elseif ($type === 'corner') {
             [$a,$b,$c,$d] = $numbers; $valid = $a>0 && $b===$a+1 && $c===$a+3 && $d===$a+4 && intdiv($a-1,3)===intdiv($b-1,3);
+        } elseif ($type === 'first_four') {
+            $valid = $numbers === [0,1,2,3];
         } else {
             $a=$numbers[0]; $valid=$a>0 && (($a-1)%3===0) && $numbers===[$a,$a+1,$a+2,$a+3,$a+4,$a+5];
         }
         if (!$valid) throw new InvalidArgumentException('That roulette ' . str_replace('_', '-', $type) . ' is not on the European board.');
-        return ['type'=>$type,'numbers'=>$numbers,'stake_rp'=>$stake,'gross_multiplier'=>['straight'=>36,'split'=>18,'street'=>12,'corner'=>9,'six_line'=>6][$type]];
+        return ['type'=>$type,'numbers'=>$numbers,'stake_rp'=>$stake,'gross_multiplier'=>['straight'=>36,'split'=>18,'street'=>12,'corner'=>9,'first_four'=>9,'six_line'=>6][$type]];
     }
 
     $key = strtolower(trim((string) ($bet['key'] ?? '')));
