@@ -1062,15 +1062,96 @@ class TerrainViewer {
   private readonly onWindowBlur = () => this.pressedFlightKeys.clear();
   private readonly onPointerDown = (event: PointerEvent) => {
     this.pointerDownAt = { x: event.clientX, y: event.clientY };
+    if (this.cameraMode === "manual" && this.manualCameraStyle === "fly" && (event.button === 0 || event.button === 2)) {
+      event.preventDefault();
+      event.stopImmediatePropagation();
+      this.flightLookButtons.add(event.button);
+      if (document.pointerLockElement !== this.renderer.domElement) {
+        const lockRequest = this.renderer.domElement.requestPointerLock();
+        if (lockRequest) {
+          void lockRequest.catch(() => {
+            this.pointerDownAt = null;
+          });
+        }
+      }
+    }
   };
   private readonly onPointerMove = (event: PointerEvent) => {
+    if (document.pointerLockElement === this.renderer.domElement) return;
     if (this.cameraMode === "manual" && this.manualCameraStyle === "fly" && this.pointerDownAt && event.buttons !== 0) {
       this.pointerLookDelta.x += event.movementX * 0.035;
       this.pointerLookDelta.y += event.movementY * 0.035;
       this.pauseAutomaticCamera();
     }
   };
-  private readonly onPointerUp = (event: PointerEvent) => this.handleTargetPointer(event);
+  private readonly onLockedMouseMove = (event: MouseEvent) => {
+    if (document.pointerLockElement !== this.renderer.domElement) return;
+    this.pointerLookDelta.x += event.movementX * 0.035;
+    this.pointerLookDelta.y += event.movementY * 0.035;
+  };
+  private readonly onPointerUp = (event: PointerEvent) => {
+    this.flightLookButtons.delete(event.button);
+    if (document.pointerLockElement === this.renderer.domElement && (event.button === 0 || event.button === 2)) {
+      document.exitPointerLock();
+    }
+    this.handleTargetPointer(event);
+  };
+  private readonly onLockedMouseUp = (event: MouseEvent) => {
+    this.flightLookButtons.delete(event.button);
+    if (document.pointerLockElement === this.renderer.domElement && (event.button === 0 || event.button === 2)) {
+      document.exitPointerLock();
+    }
+  };
+  private readonly onPointerLockChange = () => {
+    const locked = document.pointerLockElement === this.renderer.domElement;
+    this.root.dataset.flightPointerLocked = String(locked);
+    if (locked && this.flightLookButtons.size === 0) {
+      document.exitPointerLock();
+      return;
+    }
+    if (!locked) {
+      this.pointerDownAt = null;
+      this.flightLookButtons.clear();
+    }
+  };
+  private readonly onContextMenu = (event: MouseEvent) => {
+    if (this.cameraMode === "manual" && this.manualCameraStyle === "fly") event.preventDefault();
+  };
+  private readonly onElevationPointerDown = (event: PointerEvent) => {
+    if (event.button !== 2 || !this.controls.enabled) return;
+    if (this.cameraMode === "manual" && this.manualCameraStyle === "fly") return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    this.pointerDownAt = null;
+    this.elevationPointerId = event.pointerId;
+    this.elevationPointerY = event.clientY;
+    this.renderer.domElement.setPointerCapture(event.pointerId);
+    this.pauseAutomaticCamera();
+  };
+  private readonly onElevationPointerMove = (event: PointerEvent) => {
+    if (event.pointerId !== this.elevationPointerId) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    const deltaY = this.elevationPointerY - event.clientY;
+    this.elevationPointerY = event.clientY;
+    const distance = Math.max(120, this.camera.position.distanceTo(this.controls.target));
+    const ground = sampleTerrainHeight(this.terrain, this.camera.position.x, this.camera.position.z);
+    const maxHeight = Math.max((this.terrain.worldSize || 4500) * 1.5, this.controls.target.y + 2000);
+    this.camera.position.y = MathUtils.clamp(
+      this.camera.position.y + deltaY * distance * 0.0025,
+      ground + 12,
+      maxHeight,
+    );
+  };
+  private readonly onElevationPointerEnd = (event: PointerEvent) => {
+    if (event.pointerId !== this.elevationPointerId) return;
+    event.preventDefault();
+    event.stopImmediatePropagation();
+    if (this.renderer.domElement.hasPointerCapture(event.pointerId)) {
+      this.renderer.domElement.releasePointerCapture(event.pointerId);
+    }
+    this.elevationPointerId = null;
+  };
   private animationFrame = 0;
   private readonly clockStart = performance.now();
   private isoViewIndex = -1;
@@ -1087,6 +1168,9 @@ class TerrainViewer {
   private readonly pressedFlightKeys = new Set<string>();
   private lastAnimationTick = performance.now();
   private pointerDownAt: { x: number; y: number } | null = null;
+  private readonly flightLookButtons = new Set<number>();
+  private elevationPointerId: number | null = null;
+  private elevationPointerY = 0;
   private mobileMove = new Vector2();
   private mobileLook = new Vector2();
   private pointerLookDelta = new Vector2();
@@ -1271,12 +1355,20 @@ class TerrainViewer {
       this.startNextTour(performance.now(), true);
     }
     this.bindFloatingViewSelect();
-    this.renderer.domElement.addEventListener("pointerdown", this.onPointerDown);
+    this.renderer.domElement.addEventListener("pointerdown", this.onPointerDown, true);
     this.renderer.domElement.addEventListener("pointerup", this.onPointerUp);
     this.renderer.domElement.addEventListener("pointermove", this.onPointerMove);
+    this.renderer.domElement.addEventListener("contextmenu", this.onContextMenu);
+    this.renderer.domElement.addEventListener("pointerdown", this.onElevationPointerDown, true);
+    this.renderer.domElement.addEventListener("pointermove", this.onElevationPointerMove, true);
+    this.renderer.domElement.addEventListener("pointerup", this.onElevationPointerEnd, true);
+    this.renderer.domElement.addEventListener("pointercancel", this.onElevationPointerEnd, true);
     window.addEventListener("keydown", this.onKeyDown);
     window.addEventListener("keyup", this.onKeyUp);
     window.addEventListener("blur", this.onWindowBlur);
+    window.addEventListener("mouseup", this.onLockedMouseUp);
+    document.addEventListener("mousemove", this.onLockedMouseMove);
+    document.addEventListener("pointerlockchange", this.onPointerLockChange);
     document.addEventListener("fullscreenchange", this.onFullscreenChange);
     this.resize();
     window.addEventListener("resize", this.onResize);
@@ -1288,13 +1380,22 @@ class TerrainViewer {
   public dispose(): void {
     window.cancelAnimationFrame(this.animationFrame);
     window.removeEventListener("resize", this.onResize);
-    this.renderer.domElement.removeEventListener("pointerdown", this.onPointerDown);
+    this.renderer.domElement.removeEventListener("pointerdown", this.onPointerDown, true);
     this.renderer.domElement.removeEventListener("pointerup", this.onPointerUp);
     this.renderer.domElement.removeEventListener("pointermove", this.onPointerMove);
+    this.renderer.domElement.removeEventListener("contextmenu", this.onContextMenu);
+    this.renderer.domElement.removeEventListener("pointerdown", this.onElevationPointerDown, true);
+    this.renderer.domElement.removeEventListener("pointermove", this.onElevationPointerMove, true);
+    this.renderer.domElement.removeEventListener("pointerup", this.onElevationPointerEnd, true);
+    this.renderer.domElement.removeEventListener("pointercancel", this.onElevationPointerEnd, true);
     window.removeEventListener("keydown", this.onKeyDown);
     window.removeEventListener("keyup", this.onKeyUp);
     window.removeEventListener("blur", this.onWindowBlur);
+    window.removeEventListener("mouseup", this.onLockedMouseUp);
+    document.removeEventListener("mousemove", this.onLockedMouseMove);
+    document.removeEventListener("pointerlockchange", this.onPointerLockChange);
     document.removeEventListener("fullscreenchange", this.onFullscreenChange);
+    if (document.pointerLockElement === this.renderer.domElement) document.exitPointerLock();
     this.setBrowserFill(false);
     this.controls.dispose();
     this.floatingControls?.remove();
@@ -1410,9 +1511,11 @@ class TerrainViewer {
         map: texture,
         color,
         transparent: true,
+        alphaTest: 0.01,
         opacity: MathUtils.lerp(0.18, 0.64, normalized),
         depthWrite: false,
         depthTest: true,
+        fog: false,
         blending: AdditiveBlending,
       });
 
@@ -2392,7 +2495,9 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     this.updateFreeFlight(deltaSeconds);
     this.updateSelfLocationOrbit(now);
     this.updateCameraTour(now);
-    this.controls.update();
+    if (this.cameraMode !== "manual" || this.manualCameraStyle !== "fly") {
+      this.controls.update();
+    }
     this.enforceCameraTerrainSafety();
     this.camera.updateMatrixWorld();
     this.updateOverlayLayerTransitions(now);
@@ -2451,7 +2556,12 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
 
     const direction = this.controls.target.clone().sub(this.camera.position).normalize();
     const yaw = Math.atan2(direction.x, direction.z) - lookX * deltaSeconds * 1.8;
-    const pitch = MathUtils.clamp(Math.asin(direction.y) - lookY * deltaSeconds * 1.5, -1.35, 1.35);
+    const maxFlightPitch = MathUtils.degToRad(89.5);
+    const pitch = MathUtils.clamp(
+      Math.asin(direction.y) - lookY * deltaSeconds * 1.5,
+      -maxFlightPitch,
+      maxFlightPitch,
+    );
     direction.set(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch)).normalize();
     const horizontalForward = new Vector3(direction.x, 0, direction.z).normalize();
     const right = new Vector3(-horizontalForward.z, 0, horizontalForward.x);
@@ -5770,8 +5880,10 @@ function createMonumentTitleSprite(title: string, size: number): Sprite {
   const material = new SpriteMaterial({
     map: texture,
     transparent: true,
+    alphaTest: 0.02,
     depthTest: false,
     depthWrite: false,
+    fog: false,
   });
   const sprite = new Sprite(material);
   const worldWidth = MathUtils.clamp(size * 1.02, 58, 150);
