@@ -24,6 +24,7 @@ import {
   MeshStandardMaterial,
   Object3D,
   PerspectiveCamera,
+  PCFSoftShadowMap,
   PlaneGeometry,
   PointLight,
   Quaternion,
@@ -38,6 +39,7 @@ import {
   SpriteMaterial,
   Uint32BufferAttribute,
   UnsignedIntType,
+  Vector2,
   Vector3,
   WebGLRenderer,
 } from "three";
@@ -46,6 +48,8 @@ import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { SSAOPass } from "three/examples/jsm/postprocessing/SSAOPass.js";
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
+import { TAARenderPass } from "three/examples/jsm/postprocessing/TAARenderPass.js";
+import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { unityPositionToThreeVector, unityQuaternionValueToThreeQuaternion } from "../airstrike-animation-editor/editor/coordinates";
 import { createVehicleProxy, loadVehiclePreview, metadataForVehicle } from "../airstrike-animation-editor/editor/vehicle-preview";
 import type { VehiclePreviewMetadataFile } from "../airstrike-animation-editor/types";
@@ -71,6 +75,11 @@ import {
   type RaidlandsSunDetail,
   type RaidlandsSunProfile,
 } from "../shared/three-sun-detail";
+import {
+  parseEnvironmentQuality,
+  resolveEnvironmentQuality,
+  type EnvironmentQualityProfile,
+} from "./environment-quality";
 
 type TerrainPayload = {
   version?: number;
@@ -442,11 +451,20 @@ const RAIDLANDS_VOLUMETRIC_FOG_SHADER = {
 
     float fogDensity(vec3 worldPosition) {
       float ground = terrainHeight(worldPosition.xz);
+      float valleyRadius = uWorldSize * 0.025;
+      float surroundingGround = (
+        terrainHeight(worldPosition.xz + vec2(valleyRadius, 0.0))
+        + terrainHeight(worldPosition.xz - vec2(valleyRadius, 0.0))
+        + terrainHeight(worldPosition.xz + vec2(0.0, valleyRadius))
+        + terrainHeight(worldPosition.xz - vec2(0.0, valleyRadius))
+      ) * 0.25;
+      float valleyDepth = clamp((surroundingGround - ground) / max(18.0, uWorldSize * 0.018), 0.0, 1.0);
       float fogTop = uWorldSize * mix(0.035, 0.09, uFogIntensity);
-      float heightShape = 1.0 - smoothstep(ground - 12.0, ground + fogTop, worldPosition.y);
+      float heightShape = 1.0 - smoothstep(ground - 12.0, ground + fogTop * mix(0.82, 1.34, valleyDepth), worldPosition.y);
       float broad = noise2(worldPosition.xz / (uWorldSize * 0.17) + vec2(uTime * 0.0032, -uTime * 0.0021));
       float detail = noise2(worldPosition.xz / (uWorldSize * 0.055) + vec2(-uTime * 0.006, uTime * 0.004));
-      float structure = mix(0.5, 1.08, broad) * mix(0.82, 1.18, detail * uMaxDetail);
+      float structure = mix(0.5, 1.08, broad) * mix(0.82, 1.18, detail * uMaxDetail)
+        * mix(0.86, 1.36, valleyDepth * uMaxDetail);
       return max(0.0, heightShape * structure * uFogStrength);
     }
 
@@ -870,6 +888,9 @@ class TerrainViewer {
   private readonly camera = new PerspectiveCamera(48, 1, 1, 12000);
   private readonly renderer = new WebGLRenderer({ antialias: true, alpha: false });
   private readonly composer: EffectComposer;
+  private readonly qualityProfile: EnvironmentQualityProfile;
+  private readonly temporalRenderPass: TAARenderPass | null;
+  private readonly bloomPass: UnrealBloomPass | null;
   private readonly ambientOcclusionPass: SSAOPass;
   private readonly volumetricFogPass: ShaderPass | null;
   private readonly environmentGradePass: ShaderPass;
@@ -891,6 +912,7 @@ class TerrainViewer {
   private readonly terrainHeightTexture: DataTexture | null;
   private readonly rainSheetLayer = new Group();
   private readonly rainLayer = new Group();
+  private readonly rainSplashLayer: Group;
   private readonly rainMaterial: LineBasicMaterial;
   private readonly terrainLightUniforms = {
     sunDirection: { value: new Vector3(0.5, 0.78, 0.36).normalize() },
@@ -906,6 +928,11 @@ class TerrainViewer {
     cloudSharpness: { value: 1 },
     cloudPhase: { value: 0 },
     cloudShadowStrength: { value: 0 },
+    wetness: { value: 0 },
+    waterLevel: { value: 0 },
+    minHeight: { value: 0 },
+    maxHeight: { value: 300 },
+    time: { value: 0 },
   };
   private readonly waterLightUniforms = {
     sunDirection: { value: new Vector3(0.5, 0.78, 0.36).normalize() },
@@ -923,6 +950,11 @@ class TerrainViewer {
     cloudSharpness: { value: 1 },
     cloudPhase: { value: 0 },
     cloudShadowStrength: { value: 0 },
+    rainIntensity: { value: 0 },
+    waterLevel: { value: 0 },
+    terrainHeight: { value: null as DataTexture | null },
+    hasTerrainHeight: { value: 0 },
+    detail: { value: 1 },
   };
   private readonly aerialCloudUniforms = {
     coverage: { value: 0 },
@@ -938,10 +970,12 @@ class TerrainViewer {
     worldSize: { value: 4500 },
     sunColor: { value: new Color(0xfff1cf) },
     ambientColor: { value: new Color(0xddeaf0) },
+    sunDirection: { value: new Vector3(0.5, 0.78, 0.36).normalize() },
   };
   private ambientLight: AmbientLight | null = null;
   private sunLight: DirectionalLight | null = null;
   private fillLight: DirectionalLight | null = null;
+  private lightningLight: PointLight | null = null;
   private activeEnvironment: NormalizedEnvironment | null = null;
   private targetEnvironment: NormalizedEnvironment | null = null;
   private environmentBlendStartedAt = 0;
@@ -972,6 +1006,11 @@ class TerrainViewer {
   private selfLocation: PlayerLocation | null = null;
   private selfLocationOrbitEnabled = false;
   private selfLocationOrbitStartedAt = performance.now();
+  private wetness = 0;
+  private lastWeatherTick = performance.now();
+  private lastCameraPosition = new Vector3(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY);
+  private lastCameraQuaternion = new Quaternion();
+  private temporalResetFrames = 2;
 
   public constructor(
     root: HTMLElement,
@@ -982,20 +1021,33 @@ class TerrainViewer {
     this.terrain = terrain;
     this.textureUrl = options.textureUrl;
     this.status = options.status;
-    this.cloudDetail = parseRaidlandsCloudDetail(this.root.dataset.cloudDetail, "max");
+    const capabilities = fogCapabilities(this.renderer);
+    this.qualityProfile = resolveEnvironmentQuality(
+      parseEnvironmentQuality(this.root.dataset.environmentQuality, "ultra"),
+      capabilities,
+    );
+    this.root.dataset.environmentQualityRequested = this.qualityProfile.requested;
+    this.root.dataset.environmentQualityResolved = this.qualityProfile.resolved;
+    this.root.dataset.environmentCapabilities = [
+      capabilities.webgl2 ? "webgl2" : "webgl1",
+      capabilities.depthTexture ? "depth" : "no-depth",
+      capabilities.floatTexture ? "float" : "no-float",
+      capabilities.highPrecisionFragment ? "highp" : "mediump",
+    ].join(" ");
+    this.cloudDetail = parseRaidlandsCloudDetail(this.qualityProfile.cloudDetail, "max");
     this.cloudProfile = raidlandsCloudProfile(this.cloudDetail);
-    this.sunDetail = parseRaidlandsSunDetail(this.root.dataset.sunDetail, "max");
+    this.root.dataset.cloudDetailResolved = this.cloudDetail;
+    this.sunDetail = parseRaidlandsSunDetail(this.qualityProfile.sunDetail, "max");
     this.sunProfile = raidlandsSunProfile(this.sunDetail);
     this.root.dataset.sunDetailResolved = this.sunDetail;
     this.tourEnabled = this.root.dataset.cameraTour === "true";
     this.tourStyle = this.root.dataset.cameraTourStyle === "orbit" ? "orbit" : "cinematic";
     this.lockCameraInput = this.root.dataset.cameraLocked === "true";
-    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, 2));
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.qualityProfile.pixelRatioCap));
     this.renderer.outputColorSpace = SRGBColorSpace;
-    this.fogDetail = resolveFogDetail(
-      parseFogDetail(this.root.dataset.fogDetail, "max"),
-      fogCapabilities(this.renderer),
-    );
+    this.renderer.shadowMap.enabled = this.qualityProfile.resolved === "ultra" || this.qualityProfile.resolved === "high";
+    this.renderer.shadowMap.type = PCFSoftShadowMap;
+    this.fogDetail = resolveFogDetail(parseFogDetail(this.qualityProfile.fogDetail, "max"), capabilities);
     this.root.dataset.fogDetailResolved = this.fogDetail;
     applyRaidlandsEnvironment(this.scene, this.renderer, {
       preset: "terrain",
@@ -1007,13 +1059,13 @@ class TerrainViewer {
       worldSize: this.terrain.worldSize || 4500,
     });
     this.composer = new EffectComposer(this.renderer);
-    this.composer.setPixelRatio(Math.min(this.renderer.getPixelRatio(), 1.5));
+    this.composer.setPixelRatio(Math.min(this.renderer.getPixelRatio(), this.qualityProfile.composerPixelRatioCap));
     if (this.fogDetail !== "low") {
       this.composer.renderTarget1.depthTexture = new DepthTexture(1, 1, UnsignedIntType);
       this.composer.renderTarget2.depthTexture = new DepthTexture(1, 1, UnsignedIntType);
     }
     this.ambientOcclusionPass = new SSAOPass(this.scene, this.camera, 1, 1, 24);
-    this.ambientOcclusionPass.kernelRadius = 7;
+    this.ambientOcclusionPass.kernelRadius = this.qualityProfile.ambientOcclusionRadius;
     this.ambientOcclusionPass.minDistance = 0.0005;
     this.ambientOcclusionPass.maxDistance = 0.009;
     this.environmentGradePass = new ShaderPass(RAIDLANDS_ENVIRONMENT_GRADE_SHADER);
@@ -1025,16 +1077,40 @@ class TerrainViewer {
       this.volumetricFogPass.uniforms.uSampleCount.value = fogRayMarchSamples(this.fogDetail);
       this.volumetricFogPass.uniforms.uMaxDetail.value = this.fogDetail === "max" ? 1 : 0;
     }
-    this.composer.addPass(new RenderPass(this.scene, this.camera));
+    this.temporalRenderPass = this.qualityProfile.temporalAccumulation
+      ? new TAARenderPass(this.scene, this.camera)
+      : null;
+    if (this.temporalRenderPass) {
+      this.temporalRenderPass.sampleLevel = this.qualityProfile.temporalSampleLevel;
+      this.temporalRenderPass.unbiased = true;
+      this.temporalRenderPass.accumulate = false;
+    }
+    this.composer.addPass(this.temporalRenderPass || new RenderPass(this.scene, this.camera));
     this.composer.addPass(this.ambientOcclusionPass);
     if (this.volumetricFogPass) this.composer.addPass(this.volumetricFogPass);
     this.composer.addPass(this.environmentGradePass);
+    this.bloomPass = this.qualityProfile.bloom
+      ? new UnrealBloomPass(
+        new Vector2(1, 1),
+        this.qualityProfile.bloomStrength,
+        this.qualityProfile.bloomRadius,
+        this.qualityProfile.bloomThreshold,
+      )
+      : null;
+    if (this.bloomPass) this.composer.addPass(this.bloomPass);
     this.renderer.domElement.dataset.serverMapViewerCanvas = "true";
     this.terrainMaterial = this.createTerrainMaterial();
     this.oceanFloorMesh = this.createOceanFloorMesh();
     this.scene.add(this.oceanFloorMesh);
     this.terrainMesh = this.createTerrainMesh();
     this.scene.add(this.terrainMesh);
+    this.terrainLightUniforms.waterLevel.value = resolveOceanWaterLevel(this.terrain);
+    this.terrainLightUniforms.minHeight.value = Number(this.terrain.minHeight) || 0;
+    this.terrainLightUniforms.maxHeight.value = Number(this.terrain.maxHeight) || 300;
+    this.waterLightUniforms.waterLevel.value = resolveOceanWaterLevel(this.terrain);
+    this.waterLightUniforms.terrainHeight.value = this.terrainHeightTexture;
+    this.waterLightUniforms.hasTerrainHeight.value = this.terrainHeightTexture ? 1 : 0;
+    this.waterLightUniforms.detail.value = this.qualityProfile.waterDetail;
     this.oceanWaveTexture = createOceanWaveTexture();
     this.oceanSurfaceMesh = this.createOceanSurfaceMesh();
     this.scene.add(this.oceanSurfaceMesh);
@@ -1048,7 +1124,7 @@ class TerrainViewer {
     this.weatherCloudLayer.visible = false;
     this.scene.add(this.weatherCloudLayer);
     this.rainSheetLayer.name = "raidlands-rain-sheet-layer";
-    this.rainSheetLayer.add(createRainSheets(this.terrain));
+    this.rainSheetLayer.add(createRainSheets(this.terrain, this.qualityProfile.rainDetail));
     this.rainSheetLayer.visible = false;
     this.scene.add(this.rainSheetLayer);
     this.rainMaterial = new LineBasicMaterial({
@@ -1056,12 +1132,15 @@ class TerrainViewer {
       transparent: true,
       opacity: 0,
       depthWrite: false,
-      depthTest: false,
+      depthTest: true,
     });
     this.rainLayer.name = "raidlands-rain-streaks";
-    this.rainLayer.add(createRainStreaks(this.terrain, this.rainMaterial));
+    this.rainLayer.add(createRainStreaks(this.terrain, this.rainMaterial, this.qualityProfile.rainDetail));
     this.rainLayer.visible = false;
     this.scene.add(this.rainLayer);
+    this.rainSplashLayer = createRainSplashes(this.terrain, this.qualityProfile.rainDetail);
+    this.rainSplashLayer.visible = false;
+    this.scene.add(this.rainSplashLayer);
     this.gridLayer.name = "raidlands-rust-map-grid";
     this.gridLayer.add(createRustMapGridOverlay(this.terrain));
     this.gridLayer.visible = this.root.dataset.gridOverlay === "true";
@@ -1108,9 +1187,11 @@ class TerrainViewer {
     window.cancelAnimationFrame(this.animationFrame);
     window.removeEventListener("resize", this.onResize);
     this.controls.dispose();
+    this.temporalRenderPass?.dispose();
     this.ambientOcclusionPass.dispose();
     this.volumetricFogPass?.dispose();
     this.environmentGradePass.dispose();
+    this.bloomPass?.dispose();
     this.terrainHeightTexture?.dispose();
     this.composer.dispose();
     this.scene.traverse((object) => {
@@ -1467,6 +1548,7 @@ class TerrainViewer {
 
     const mesh = new Mesh(geometry, this.terrainMaterial);
     mesh.name = "raidlands-current-wipe-terrain";
+    mesh.receiveShadow = this.renderer.shadowMap.enabled;
     return mesh;
   }
 
@@ -1493,6 +1575,11 @@ class TerrainViewer {
       shader.uniforms.raidlandsCloudPhase = this.terrainLightUniforms.cloudPhase;
       shader.uniforms.raidlandsCloudShadowStrength = this.terrainLightUniforms.cloudShadowStrength;
       shader.uniforms.raidlandsCloudWorldSize = this.terrainLightUniforms.worldSize;
+      shader.uniforms.raidlandsTerrainWetness = this.terrainLightUniforms.wetness;
+      shader.uniforms.raidlandsTerrainWaterLevel = this.terrainLightUniforms.waterLevel;
+      shader.uniforms.raidlandsTerrainMinHeight = this.terrainLightUniforms.minHeight;
+      shader.uniforms.raidlandsTerrainMaxHeight = this.terrainLightUniforms.maxHeight;
+      shader.uniforms.raidlandsTerrainTime = this.terrainLightUniforms.time;
       shader.vertexShader = shader.vertexShader
         .replace(
           "#include <common>",
@@ -1515,6 +1602,11 @@ uniform float raidlandsCloudAttenuation;
 uniform vec3 raidlandsFogColor;
 uniform float raidlandsDistantLift;
 uniform float raidlandsWorldSize;
+uniform float raidlandsTerrainWetness;
+uniform float raidlandsTerrainWaterLevel;
+uniform float raidlandsTerrainMinHeight;
+uniform float raidlandsTerrainMaxHeight;
+uniform float raidlandsTerrainTime;
 varying vec3 raidlandsTerrainWorldPosition;
 ${cloudShadowShaderSource(this.cloudProfile.shadowOctaves)}`,
         )
@@ -1525,8 +1617,35 @@ vec3 raidlandsSunDirectionView = normalize((viewMatrix * vec4(raidlandsSunDirect
 float raidlandsSunFacing = max(dot(normal, raidlandsSunDirectionView), 0.0);
 float raidlandsWarmSlope = raidlandsTwilight * (0.18 + raidlandsSunFacing * 0.82) * (1.0 - raidlandsCloudAttenuation * 0.58);
 float raidlandsCloudShadow = raidlandsCloudShadowAt(raidlandsTerrainWorldPosition.xz);
+vec3 raidlandsTerrainDx = dFdx(raidlandsTerrainWorldPosition);
+vec3 raidlandsTerrainDy = dFdy(raidlandsTerrainWorldPosition);
+vec3 raidlandsTerrainWorldNormal = normalize(cross(raidlandsTerrainDx, raidlandsTerrainDy));
+if (raidlandsTerrainWorldNormal.y < 0.0) raidlandsTerrainWorldNormal *= -1.0;
+float raidlandsTerrainSlope = 1.0 - clamp(raidlandsTerrainWorldNormal.y, 0.0, 1.0);
+float raidlandsTerrainHeightRange = max(1.0, raidlandsTerrainMaxHeight - raidlandsTerrainMinHeight);
+float raidlandsTerrainHeight = clamp((raidlandsTerrainWorldPosition.y - raidlandsTerrainMinHeight) / raidlandsTerrainHeightRange, 0.0, 1.0);
+float raidlandsTerrainMicro = sin(raidlandsTerrainWorldPosition.x * 0.31 + raidlandsTerrainTime * 0.006)
+  * cos(raidlandsTerrainWorldPosition.z * 0.27 - raidlandsTerrainTime * 0.004);
+float raidlandsTerrainMacro = sin(raidlandsTerrainWorldPosition.x * 0.018) * cos(raidlandsTerrainWorldPosition.z * 0.021);
+float raidlandsShoreContact = 1.0 - smoothstep(1.5, 11.0, abs(raidlandsTerrainWorldPosition.y - raidlandsTerrainWaterLevel));
+float raidlandsWetSurface = raidlandsTerrainWetness * (1.0 - raidlandsTerrainSlope * 0.42);
 diffuseColor.rgb *= 1.0 - raidlandsCloudShadow * 0.34;
+diffuseColor.rgb *= mix(0.86, 1.06, raidlandsTerrainHeight * 0.35 + raidlandsTerrainSlope * 0.42);
+diffuseColor.rgb *= 1.0 + raidlandsTerrainMicro * 0.018 + raidlandsTerrainMacro * 0.025;
+diffuseColor.rgb *= 1.0 - raidlandsShoreContact * 0.1;
+diffuseColor.rgb = mix(diffuseColor.rgb, diffuseColor.rgb * vec3(0.69, 0.76, 0.78), raidlandsWetSurface * 0.48);
 diffuseColor.rgb *= mix(vec3(1.0), vec3(1.0) + raidlandsSunColor * 0.22, raidlandsWarmSlope);`,
+        )
+        .replace(
+          "#include <roughnessmap_fragment>",
+          `#include <roughnessmap_fragment>
+vec3 raidlandsRoughDx = dFdx(raidlandsTerrainWorldPosition);
+vec3 raidlandsRoughDy = dFdy(raidlandsTerrainWorldPosition);
+vec3 raidlandsRoughNormal = normalize(cross(raidlandsRoughDx, raidlandsRoughDy));
+float raidlandsRoughSlope = 1.0 - abs(raidlandsRoughNormal.y);
+float raidlandsRoughMicro = sin(raidlandsTerrainWorldPosition.x * 0.31) * cos(raidlandsTerrainWorldPosition.z * 0.27);
+float raidlandsWetRoughness = raidlandsTerrainWetness * (1.0 - raidlandsRoughSlope * 0.5);
+roughnessFactor = clamp(roughnessFactor - raidlandsWetRoughness * 0.38 + abs(raidlandsRoughMicro) * 0.035, 0.28, 1.0);`,
         )
         .replace(
           "#include <opaque_fragment>",
@@ -1536,7 +1655,7 @@ outgoingLight = mix(outgoingLight, raidlandsFogColor, raidlandsTerrainHorizon * 
 #include <opaque_fragment>`,
         );
     };
-    material.customProgramCacheKey = () => `raidlands-terrain-cloud-${this.cloudDetail}-v3`;
+    material.customProgramCacheKey = () => `raidlands-terrain-ultra-${this.qualityProfile.resolved}-${this.cloudDetail}-v4`;
     return material;
   }
 
@@ -1596,6 +1715,11 @@ outgoingLight = mix(outgoingLight, raidlandsFogColor, raidlandsTerrainHorizon * 
       shader.uniforms.raidlandsCloudPhase = this.waterLightUniforms.cloudPhase;
       shader.uniforms.raidlandsCloudShadowStrength = this.waterLightUniforms.cloudShadowStrength;
       shader.uniforms.raidlandsCloudWorldSize = this.waterLightUniforms.worldSize;
+      shader.uniforms.raidlandsWaterRainIntensity = this.waterLightUniforms.rainIntensity;
+      shader.uniforms.raidlandsWaterLevel = this.waterLightUniforms.waterLevel;
+      shader.uniforms.raidlandsTerrainHeight = this.waterLightUniforms.terrainHeight;
+      shader.uniforms.raidlandsHasTerrainHeight = this.waterLightUniforms.hasTerrainHeight;
+      shader.uniforms.raidlandsWaterDetail = this.waterLightUniforms.detail;
       shader.vertexShader = shader.vertexShader
         .replace(
           "#include <common>",
@@ -1619,6 +1743,11 @@ uniform float raidlandsWaterDaylight;
 uniform float raidlandsWaterTime;
 uniform vec3 raidlandsWaterFogColor;
 uniform float raidlandsWaterFogDensity;
+uniform float raidlandsWaterRainIntensity;
+uniform float raidlandsWaterLevel;
+uniform sampler2D raidlandsTerrainHeight;
+uniform float raidlandsHasTerrainHeight;
+uniform float raidlandsWaterDetail;
 varying vec3 raidlandsWaterWorldPosition;
 ${cloudShadowShaderSource(this.cloudProfile.shadowOctaves)}`,
         )
@@ -1628,7 +1757,13 @@ ${cloudShadowShaderSource(this.cloudProfile.shadowOctaves)}`,
 float raidlandsWaterCloudShadow = raidlandsCloudShadowAt(raidlandsWaterWorldPosition.xz);
 float raidlandsWaterWaveA = sin(raidlandsWaterWorldPosition.x * 0.038 + raidlandsWaterWorldPosition.z * 0.021 + raidlandsWaterTime * 0.55);
 float raidlandsWaterWaveB = cos(raidlandsWaterWorldPosition.x * -0.019 + raidlandsWaterWorldPosition.z * 0.044 - raidlandsWaterTime * 0.37);
-vec3 raidlandsWaterNormal = normalize(vec3(raidlandsWaterWaveA * 0.04, 1.0, raidlandsWaterWaveB * 0.04));
+float raidlandsWaterRainRipple = sin(length(fract(raidlandsWaterWorldPosition.xz * 0.071) - 0.5) * 34.0 - raidlandsWaterTime * 8.0)
+  * raidlandsWaterRainIntensity * raidlandsWaterDetail;
+vec3 raidlandsWaterNormal = normalize(vec3(
+  raidlandsWaterWaveA * 0.04 + raidlandsWaterRainRipple * 0.025,
+  1.0,
+  raidlandsWaterWaveB * 0.04 - raidlandsWaterRainRipple * 0.022
+));
 vec3 raidlandsWaterReflectionDirection = reflect(-normalize(raidlandsWaterSunDirection), raidlandsWaterNormal);
 float raidlandsWaterAlignment = max(dot(raidlandsWaterViewDirection, raidlandsWaterReflectionDirection), 0.0);
 float raidlandsWaterGlare = pow(raidlandsWaterAlignment, 90.0);
@@ -1648,6 +1783,27 @@ outgoingLight = mix(outgoingLight, raidlandsWaterSkyColor, raidlandsWaterSkyRefl
 float raidlandsWaterSunPath = (raidlandsWaterGlare * 0.95 + raidlandsWaterStreak * 0.3)
   * raidlandsWaterReflectionStrength * raidlandsWaterRipples;
 outgoingLight += raidlandsWaterSunColor * raidlandsWaterSunPath;
+vec2 raidlandsTerrainUv = vec2(
+  0.5 - raidlandsWaterWorldPosition.x / raidlandsCloudWorldSize,
+  0.5 - raidlandsWaterWorldPosition.z / raidlandsCloudWorldSize
+);
+float raidlandsInsideTerrain = step(0.0, raidlandsTerrainUv.x) * step(raidlandsTerrainUv.x, 1.0)
+  * step(0.0, raidlandsTerrainUv.y) * step(raidlandsTerrainUv.y, 1.0) * raidlandsHasTerrainHeight;
+float raidlandsGroundHeight = texture2D(raidlandsTerrainHeight, clamp(raidlandsTerrainUv, 0.0, 1.0)).r;
+float raidlandsShoreDepth = raidlandsWaterLevel - raidlandsGroundHeight;
+float raidlandsShallowWater = raidlandsInsideTerrain
+  * (1.0 - smoothstep(2.0, 42.0, raidlandsShoreDepth))
+  * smoothstep(-1.5, 0.3, raidlandsShoreDepth);
+outgoingLight = mix(outgoingLight, vec3(0.16, 0.42, 0.46), raidlandsShallowWater * 0.34);
+float raidlandsShoreFoam = raidlandsInsideTerrain
+  * (1.0 - smoothstep(0.8, 8.5, raidlandsShoreDepth))
+  * smoothstep(-1.5, 0.25, raidlandsShoreDepth);
+float raidlandsFoamBreakup = 0.64 + 0.36 * sin(
+  raidlandsWaterWorldPosition.x * 0.22 + raidlandsWaterWorldPosition.z * 0.17 + raidlandsWaterTime * 1.8
+);
+raidlandsShoreFoam *= raidlandsFoamBreakup;
+outgoingLight = mix(outgoingLight, vec3(0.72, 0.86, 0.88), raidlandsShoreFoam * 0.58);
+outgoingLight += vec3(0.16, 0.2, 0.22) * max(raidlandsWaterRainRipple, 0.0) * raidlandsWaterRainIntensity * 0.18;
 float raidlandsWaterFogDistance = length(vViewPosition);
 float raidlandsWaterFogDistanceScaled = raidlandsWaterFogDensity * raidlandsWaterFogDistance;
 float raidlandsWaterFogFactor = 1.0 - exp(-raidlandsWaterFogDistanceScaled * raidlandsWaterFogDistanceScaled);
@@ -1656,7 +1812,7 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
 #include <opaque_fragment>`,
         );
     };
-    material.customProgramCacheKey = () => `raidlands-water-cloud-${this.cloudDetail}-v4`;
+    material.customProgramCacheKey = () => `raidlands-water-ultra-${this.qualityProfile.resolved}-${this.cloudDetail}-v5`;
     const mesh = new Mesh(geometry, material);
     mesh.name = "raidlands-infinite-ocean-surface";
     mesh.rotation.x = -Math.PI / 2;
@@ -1675,7 +1831,7 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     const group = new Group();
     group.name = "raidlands-volumetric-cloud-slices";
     group.visible = false;
-    const sliceCount = this.cloudDetail === "max" ? 9 : this.cloudDetail === "medium" ? 6 : 0;
+    const sliceCount = this.qualityProfile.cloudSliceCount;
     const sliceOpacity = sliceCount > 0 ? 1 - Math.exp(-1.8 / sliceCount) : 0;
 
     for (let sliceIndex = 0; sliceIndex < sliceCount; sliceIndex += 1) {
@@ -1695,6 +1851,7 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
           uWorldSize: uniforms.worldSize,
           uSunColor: uniforms.sunColor,
           uAmbientColor: uniforms.ambientColor,
+          uSunDirection: uniforms.sunDirection,
           uLayerFraction: { value: layerFraction },
           uSliceOpacity: { value: sliceOpacity },
         },
@@ -1722,6 +1879,7 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
         uniform float uWorldSize;
         uniform vec3 uSunColor;
         uniform vec3 uAmbientColor;
+        uniform vec3 uSunDirection;
         uniform float uLayerFraction;
         uniform float uSliceOpacity;
 
@@ -1775,6 +1933,14 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
           );
           vec3 sunTop = mix(vec3(1.0), uSunColor, clamp(uColoring, 0.0, 1.0));
           vec3 color = mix(neutralTop, sunTop, topLight * layerLight * mix(0.14, 0.48, uColoring));
+          vec3 cloudNormal = normalize(vec3(
+            noise(position + vec2(0.035, 0.0)) - noise(position - vec2(0.035, 0.0)),
+            0.3 + interior,
+            noise(position + vec2(0.0, 0.035)) - noise(position - vec2(0.0, 0.035))
+          ));
+          float silverFacing = pow(max(dot(cloudNormal, normalize(uSunDirection)), 0.0), 5.0);
+          float silverEdge = silverFacing * (1.0 - interior) * density * mix(0.22, 0.7, uColoring);
+          color += uSunColor * silverEdge;
           color *= mix(0.68, 1.12, clamp(uBrightness, 0.0, 2.0) * 0.5);
           color = mix(color, vec3(0.16, 0.19, 0.23), pocketShade);
           color = mix(color, vec3(0.08, 0.095, 0.12), clamp(uAttenuation * 0.22 + uRain * 0.48, 0.0, 0.72));
@@ -1789,7 +1955,7 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
         side: DoubleSide,
         fog: false,
       });
-      material.customProgramCacheKey = () => `raidlands-cloud-slice-${this.cloudDetail}-${sliceIndex}-v2`;
+      material.customProgramCacheKey = () => `raidlands-cloud-slice-${this.qualityProfile.resolved}-${this.cloudDetail}-${sliceIndex}-v3`;
       const mesh = new Mesh(new PlaneGeometry(worldSize * 6, worldSize * 6, 1, 1), material);
       mesh.name = `raidlands-cloud-volume-slice-${sliceIndex + 1}`;
       mesh.rotation.x = -Math.PI / 2;
@@ -1858,6 +2024,12 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
       });
       group.position.set(monumentPosition.x, groupY, monumentPosition.z);
       group.rotation.y = rotationY;
+      group.traverse((object) => {
+        if (object instanceof Mesh) {
+          object.castShadow = this.renderer.shadowMap.enabled;
+          object.receiveShadow = this.renderer.shadowMap.enabled;
+        }
+      });
       layer.add(group);
     });
 
@@ -1865,14 +2037,31 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
   }
 
   private addLights(): void {
+    const worldSize = this.terrain.worldSize || 4500;
     const ambient = new AmbientLight(0xddeaf0, 0.5);
     const sun = new DirectionalLight(0xfff1cf, 1.58);
     sun.position.set(900, 1400, 650);
+    sun.castShadow = this.renderer.shadowMap.enabled;
+    sun.shadow.mapSize.set(
+      this.qualityProfile.resolved === "ultra" ? 4096 : 2048,
+      this.qualityProfile.resolved === "ultra" ? 4096 : 2048,
+    );
+    sun.shadow.camera.left = -worldSize * 0.56;
+    sun.shadow.camera.right = worldSize * 0.56;
+    sun.shadow.camera.top = worldSize * 0.56;
+    sun.shadow.camera.bottom = -worldSize * 0.56;
+    sun.shadow.camera.near = 20;
+    sun.shadow.camera.far = worldSize * 2.2;
+    sun.shadow.bias = -0.00012;
+    sun.shadow.normalBias = 0.75;
     const fill = new DirectionalLight(0x9fc7dd, 0.18);
     fill.position.set(-500, 500, -800);
+    const lightning = new PointLight(0xc8e2ff, 0, worldSize * 1.35, 1.45);
+    lightning.position.set(0, worldSize * 0.42, 0);
     this.ambientLight = ambient;
     this.sunLight = sun;
     this.fillLight = fill;
+    this.lightningLight = lightning;
     const initialEnvironment = normalizeEnvironment({
       rustTime: 12,
       sunDirection: { x: 0.5, y: 0.78, z: 0.36 },
@@ -1886,7 +2075,7 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     });
     this.activeEnvironment = initialEnvironment;
     this.targetEnvironment = initialEnvironment;
-    this.scene.add(ambient, sun, fill);
+    this.scene.add(ambient, sun, sun.target, fill, lightning);
   }
 
   private resize(): void {
@@ -1896,10 +2085,16 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height, false);
     this.composer.setSize(width, height);
+    this.temporalResetFrames = 2;
   }
 
   private animate(): void {
     this.animationFrame = window.requestAnimationFrame(() => this.animate());
+    if (document.visibilityState === "hidden") {
+      if (this.temporalRenderPass) this.temporalRenderPass.accumulate = false;
+      this.temporalResetFrames = 2;
+      return;
+    }
     const now = performance.now();
     this.updateSelfLocationOrbit(now);
     this.updateCameraTour(now);
@@ -1912,6 +2107,15 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     this.airstrikeLayer.userData.tick?.((now - this.clockStart) / 1000);
     this.monumentLayer.traverse((object) => object.userData.tick?.((now - this.clockStart) / 1000));
     this.updateAircraftCameraSafety();
+    if (this.temporalRenderPass) {
+      const cameraMoved = this.camera.position.distanceToSquared(this.lastCameraPosition) > 0.0004
+        || this.camera.quaternion.angleTo(this.lastCameraQuaternion) > 0.00008;
+      if (cameraMoved) this.temporalResetFrames = 2;
+      this.temporalRenderPass.accumulate = !cameraMoved && this.temporalResetFrames <= 0;
+      this.lastCameraPosition.copy(this.camera.position);
+      this.lastCameraQuaternion.copy(this.camera.quaternion);
+      this.temporalResetFrames = Math.max(0, this.temporalResetFrames - 1);
+    }
     this.composer.render();
   }
 
@@ -1931,6 +2135,14 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     const next = normalizeEnvironment(snapshot);
     if (!next) {
       return;
+    }
+    const previous = this.targetEnvironment;
+    if (!previous
+      || previous.sunDirection.angleTo(next.sunDirection) > 0.12
+      || Math.abs(previous.cloudCoverage - next.cloudCoverage) > 0.18
+      || Math.abs(previous.rainIntensity - next.rainIntensity) > 0.16
+      || Math.abs(previous.fogIntensity - next.fogIntensity) > 0.16) {
+      this.temporalResetFrames = 3;
     }
     this.activeEnvironment = this.currentEnvironment(performance.now());
     this.targetEnvironment = next;
@@ -2034,6 +2246,8 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     this.terrainLightUniforms.cloudSize.value = environment.cloudSize;
     this.terrainLightUniforms.cloudSharpness.value = environment.cloudSharpness;
     this.terrainLightUniforms.cloudPhase.value = performance.now() / 1000;
+    this.terrainLightUniforms.time.value = performance.now() / 1000;
+    this.terrainLightUniforms.wetness.value = this.wetness;
     this.terrainLightUniforms.cloudShadowStrength.value = this.cloudProfile.useVolumetricClouds
       ? MathUtils.clamp(environment.cloudOpacity * (0.28 + environment.cloudAttenuation * 0.48 + environment.rainIntensity * 0.16), 0, 0.92)
       : 0;
@@ -2078,6 +2292,7 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     this.waterLightUniforms.cloudSharpness.value = environment.cloudSharpness;
     this.waterLightUniforms.cloudPhase.value = performance.now() / 1000;
     this.waterLightUniforms.cloudShadowStrength.value = this.terrainLightUniforms.cloudShadowStrength.value;
+    this.waterLightUniforms.rainIntensity.value = environment.rainIntensity;
     const cloudSizeFraction = MathUtils.clamp((environment.cloudSize - 0.2) / 7.8, 0, 1);
     const cloudBase = worldSize * (0.115 - environment.rainIntensity * 0.016);
     const cloudTop = cloudBase + worldSize * MathUtils.lerp(0.055, 0.105, cloudSizeFraction);
@@ -2094,6 +2309,7 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     this.aerialCloudUniforms.worldSize.value = worldSize;
     this.aerialCloudUniforms.sunColor.value.copy(environment.sunColor);
     this.aerialCloudUniforms.ambientColor.value.copy(environment.ambientColor);
+    this.aerialCloudUniforms.sunDirection.value.copy(environment.sunDirection);
     this.aerialCloudLayer.children.forEach((child) => {
       child.position.y = cloudBase + (Number(child.userData.layerFraction) || 0) * (cloudTop - cloudBase);
     });
@@ -2157,6 +2373,15 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
   private updateWeatherEffects(environment: NormalizedEnvironment, now: number): void {
     const worldSize = this.terrain.worldSize || 4500;
     const rain = MathUtils.clamp(environment.rainIntensity, 0, 1);
+    const weatherDeltaSeconds = MathUtils.clamp((now - this.lastWeatherTick) / 1000, 0, 0.25);
+    this.lastWeatherTick = now;
+    const wetnessTarget = MathUtils.smoothstep(rain, 0.015, 0.72);
+    const wetnessResponseSeconds = wetnessTarget > this.wetness ? 10 : 210;
+    this.wetness = MathUtils.lerp(
+      this.wetness,
+      wetnessTarget,
+      1 - Math.exp(-weatherDeltaSeconds / wetnessResponseSeconds),
+    );
     const visibleCloudAmount = visualCloudCoverageForEnvironment(environment);
     const sunHeight = MathUtils.clamp(environment.sunDirection.y, -0.32, 0.9);
     const twilight = MathUtils.smoothstep(sunHeight, -0.2, -0.04)
@@ -2271,17 +2496,47 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
       child.position.y = -rainFallOffset * 0.42;
     });
     this.rainMaterial.opacity = rainVisible ? MathUtils.lerp(0.08, 0.38, Math.sqrt(rain)) : 0;
+    this.rainSplashLayer.visible = rain > 0.08 && this.qualityProfile.rainDetail >= 0.5;
+    if (this.rainSplashLayer.visible) {
+      const waterLevel = resolveOceanWaterLevel(this.terrain);
+      this.rainSplashLayer.children.forEach((child, index) => {
+        if (!(child instanceof Mesh)) return;
+        const cycle = (now * (Number(child.userData.speed) || 0.00055) + Number(child.userData.phase || 0)) % 1;
+        const angle = Number(child.userData.angle) || 0;
+        const radius = Number(child.userData.radius) || 100;
+        const x = this.camera.position.x + Math.cos(angle + index * 0.17) * radius;
+        const z = this.camera.position.z + Math.sin(angle + index * 0.17) * radius;
+        const ground = sampleTerrainHeight(this.terrain, x, z);
+        const surface = ground < waterLevel ? waterLevel + 0.18 : ground + 0.22;
+        child.position.set(x, surface, z);
+        const size = MathUtils.lerp(0.6, 8.5, Math.sin(cycle * Math.PI)) * MathUtils.lerp(0.72, 1.35, rain);
+        child.scale.setScalar(size);
+        const material = child.material as MeshStandardMaterial;
+        material.opacity = Math.sin(cycle * Math.PI) * (1 - cycle) * rain * 0.38;
+      });
+    }
 
     const thunder = MathUtils.clamp(environment.thunderIntensity, 0, 1);
-    if (thunder > 0.015 && this.ambientLight && this.sunLight) {
-      const flashSeed = Math.max(
-        0,
-        Math.sin(now * 0.0067) * 0.7 + Math.sin(now * 0.017 + 1.8) * 0.3,
-      );
-      const flash = Math.pow(flashSeed, 18) * thunder;
+    if (this.lightningLight) this.lightningLight.intensity = 0;
+    if (this.bloomPass) this.bloomPass.strength = this.qualityProfile.bloomStrength;
+    if (thunder > 0.015 && visibleCloudAmount > 0.08 && this.ambientLight && this.sunLight && this.lightningLight) {
+      const stormCycle = now / 7200;
+      const stormCell = Math.floor(stormCycle);
+      const stormPhase = stormCycle - stormCell;
+      const primaryFlash = Math.exp(-Math.pow((stormPhase - 0.115) / 0.018, 2));
+      const returnStroke = Math.exp(-Math.pow((stormPhase - 0.162) / 0.011, 2)) * 0.58;
+      const flash = MathUtils.clamp(primaryFlash + returnStroke, 0, 1)
+        * thunder
+        * MathUtils.smoothstep(visibleCloudAmount, 0.08, 0.48);
+      const strikeX = (Math.sin(stormCell * 91.731 + 0.37) * 0.5) * worldSize;
+      const strikeZ = (Math.sin(stormCell * 47.119 + 2.11) * 0.5) * worldSize;
+      this.lightningLight.position.set(strikeX, worldSize * 0.32, strikeZ);
+      this.lightningLight.intensity = flash * 5.4;
       this.ambientLight.intensity += flash * 0.32;
       this.sunLight.intensity += flash * 1.4;
       this.scene.backgroundIntensity += flash * 0.22;
+      this.renderer.toneMappingExposure *= 1 + flash * 0.12;
+      if (this.bloomPass) this.bloomPass.strength += flash * 0.24;
     }
   }
 
@@ -2414,7 +2669,16 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
       return;
     }
 
-    const kinds: CameraTourKind[] = ["coastal-sweep", "ridge-crossing", "monument-orbit", "map-run"];
+    const environment = this.currentEnvironment(now);
+    const severeWeather = environment
+      ? Math.max(environment.rainIntensity, visualFogStrengthForEnvironment(environment)) > 0.42
+      : false;
+    const night = environment ? environment.sunDirection.y < -0.08 : false;
+    const kinds: CameraTourKind[] = severeWeather
+      ? ["ridge-crossing", "monument-orbit", "coastal-sweep", "map-run"]
+      : night
+        ? ["coastal-sweep", "monument-orbit", "map-run", "ridge-crossing"]
+        : ["coastal-sweep", "ridge-crossing", "monument-orbit", "map-run"];
     this.tourIndex = (this.tourIndex + 1) % kinds.length;
     this.tourKind = kinds[this.tourIndex] || "coastal-sweep";
     this.tourStartedAt = now;
@@ -2524,6 +2788,13 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
       }
     }
 
+    const breathing = Math.sin(elapsed * 0.00024) * 0.7;
+    const targetFov = (this.tourKind === "monument-orbit" ? 43.5 : this.tourKind === "map-run" ? 50 : 46.5) + breathing;
+    const nextFov = MathUtils.lerp(this.camera.fov, targetFov, 0.035);
+    if (Math.abs(nextFov - this.camera.fov) > 0.001) {
+      this.camera.fov = nextFov;
+      this.camera.updateProjectionMatrix();
+    }
     this.applyCameraPose(pose);
   }
 
@@ -5470,23 +5741,24 @@ function createWeatherCloudTexture(): CanvasTexture {
   });
 }
 
-function createRainSheets(terrain: TerrainPayload): Group {
+function createRainSheets(terrain: TerrainPayload, detail = 1): Group {
   const group = new Group();
   const worldSize = terrain.worldSize || 4500;
   const texture = createRainSheetTexture();
   const sheetSize = MathUtils.clamp(worldSize * 1.18, 1800, 6200);
 
-  for (let index = 0; index < 4; index += 1) {
+  const sheetCount = Math.max(2, Math.round(MathUtils.lerp(2, 6, detail)));
+  for (let index = 0; index < sheetCount; index += 1) {
     const material = new SpriteMaterial({
       map: texture,
       color: 0xc8dbea,
       transparent: true,
       opacity: 0,
       depthWrite: false,
-      depthTest: false,
+      depthTest: true,
     });
     const sprite = new Sprite(material);
-    const angle = (index / 4) * Math.PI * 2 + Math.PI * 0.25;
+    const angle = (index / sheetCount) * Math.PI * 2 + Math.PI * 0.25;
     const radius = sheetSize * 0.18;
     sprite.name = "raidlands-rain-sheet";
     sprite.position.set(Math.cos(angle) * radius, index * sheetSize * 0.035, Math.sin(angle) * radius);
@@ -5495,7 +5767,7 @@ function createRainSheets(terrain: TerrainPayload): Group {
     sprite.userData.baseX = sprite.position.x;
     sprite.userData.baseY = sprite.position.y;
     sprite.userData.baseZ = sprite.position.z;
-    sprite.userData.opacityBias = MathUtils.lerp(0.72, 1.08, index / 3);
+    sprite.userData.opacityBias = MathUtils.lerp(0.68, 1.08, index / Math.max(1, sheetCount - 1));
     group.add(sprite);
   }
 
@@ -5534,11 +5806,11 @@ function createRainSheetTexture(): CanvasTexture {
   });
 }
 
-function createRainStreaks(terrain: TerrainPayload, material: LineBasicMaterial): LineSegments {
+function createRainStreaks(terrain: TerrainPayload, material: LineBasicMaterial, detail = 1): LineSegments {
   const worldSize = terrain.worldSize || 4500;
   const width = MathUtils.clamp(worldSize * 1.45, 1800, 7600);
   const height = MathUtils.clamp(worldSize * 0.92, 1800, 5200);
-  const streakCount = Math.round(MathUtils.clamp(worldSize * 0.42, 900, 2400));
+  const streakCount = Math.round(MathUtils.clamp(worldSize * 0.42, 900, 2400) * MathUtils.lerp(0.34, 1, detail));
   const positions: number[] = [];
 
   for (let index = 0; index < streakCount; index += 1) {
@@ -5558,6 +5830,40 @@ function createRainStreaks(terrain: TerrainPayload, material: LineBasicMaterial)
   rain.frustumCulled = false;
   rain.renderOrder = 30;
   return rain;
+}
+
+function createRainSplashes(terrain: TerrainPayload, detail = 1): Group {
+  const group = new Group();
+  group.name = "raidlands-rain-surface-splashes";
+  const worldSize = terrain.worldSize || 4500;
+  const count = Math.round(MathUtils.lerp(12, 38, detail));
+  const geometry = new RingGeometry(0.42, 0.72, 12);
+
+  for (let index = 0; index < count; index += 1) {
+    const material = new MeshStandardMaterial({
+      color: 0xc9e2ec,
+      emissive: 0x678b9c,
+      emissiveIntensity: 0.08,
+      roughness: 0.24,
+      metalness: 0,
+      transparent: true,
+      opacity: 0,
+      depthWrite: false,
+      side: DoubleSide,
+    });
+    const splash = new Mesh(geometry.clone(), material);
+    splash.name = "raidlands-rain-splash";
+    splash.rotation.x = -Math.PI / 2;
+    splash.renderOrder = 22;
+    splash.userData.angle = ((index * 137.508) % 360) * Math.PI / 180;
+    splash.userData.radius = MathUtils.lerp(worldSize * 0.012, worldSize * 0.12, ((index * 73) % 101) / 100);
+    splash.userData.phase = ((index * 47) % 97) / 97;
+    splash.userData.speed = MathUtils.lerp(0.00038, 0.00082, ((index * 31) % 89) / 88);
+    group.add(splash);
+  }
+
+  geometry.dispose();
+  return group;
 }
 
 function normalizeEnvironment(snapshot: EnvironmentSnapshot | null | undefined): NormalizedEnvironment | null {
