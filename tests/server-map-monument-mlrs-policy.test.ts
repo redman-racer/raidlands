@@ -30,7 +30,7 @@ describe("abandoned military base MLRS policy", () => {
 
   it("installs the exact modular assets used to complete the military base", () => {
     expect(MILITARY_BASE_COMPOSITE_ASSETS.map((asset) => asset.id)).toEqual([
-      "hangar", "helipad", "field-tent", "shipping-container", "sandbags", "generator",
+      "hangar", "field-tent", "shipping-container", "sandbags", "generator", "fuel-tank",
     ]);
     for (const asset of MILITARY_BASE_COMPOSITE_ASSETS) {
       const file = resolve("assets", asset.path.replace(/^media\//, "media/"));
@@ -49,6 +49,9 @@ describe("abandoned military base MLRS policy", () => {
     }
     const mlrs = attachMilitaryBaseMlrs(monument, source, "desert_military_base_a");
     expect(mlrs?.userData.raidlandsAnimationReady).toBe(true);
+    expect(mlrs?.userData.raidlandsResidentVehicle).toBe(true);
+    expect(monument.userData.raidlandsResidentMlrs).toBe(true);
+    expect(mlrs?.scale.x).toBe(1.35);
     expect(mlrs?.getObjectByName("hRotator")?.userData.raidlandsAnimationRole).toBe("launcher-yaw");
     expect(mlrs?.getObjectByName("vRotator")?.userData.raidlandsAnimationRole).toBe("launcher-pitch");
     expect(mlrs?.getObjectByName("raidlands-mlrs-launch-origin")?.userData.raidlandsAnimationRole).toBe("rocket-origin");
