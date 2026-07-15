@@ -167,10 +167,25 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
             <input type="checkbox" checked data-map-viewer-grid>
             <span>Grid coordinates</span>
           </label>
-          <label class="server-terrain-toggle">
-            <input type="checkbox" checked data-map-viewer-tour>
-            <span>Camera flyover</span>
+          <label class="server-terrain-field server-terrain-camera-mode">
+            <span>Camera</span>
+            <select data-map-viewer-camera-mode>
+              <option value="director">Director</option>
+              <option value="action">Action</option>
+              <option value="orbit">Map orbit</option>
+              <option value="top">Top down</option>
+              <option value="cinematic">Cinematic</option>
+              <option value="manual">Manual</option>
+            </select>
           </label>
+          <label class="server-terrain-field server-terrain-manual-style">
+            <span>Manual</span>
+            <select data-map-viewer-manual-style>
+              <option value="orbit">Orbit</option>
+              <option value="fly">Fly</option>
+            </select>
+          </label>
+          <small class="server-terrain-camera-help">Click or tap the map to target a local area.</small>
         </div>
         <div class="server-terrain-control-group" aria-label="Overlay controls">
           <label class="server-terrain-toggle">
@@ -218,6 +233,11 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
           </div>
           <button type="button" data-map-viewer-my-location aria-pressed="false" disabled>Follow my location</button>
           <button type="button" data-map-viewer-my-location-orbit aria-pressed="false" disabled>Orbit follow</button>
+          <div class="server-terrain-interval" aria-live="polite">
+            <span>Camera target</span>
+            <output data-map-viewer-camera-target>Whole map</output>
+          </div>
+          <button type="button" data-map-viewer-camera-target-clear>Clear target</button>
           <label class="server-terrain-field">
             <span>Metric</span>
             <select data-map-viewer-heatmap-metric>
@@ -263,6 +283,8 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
         data-airstrike-profiles-url="<?= e(route_url('api/airstrike-animation-profiles.php')) ?>"
         data-asset-base="<?= e($base_path . 'assets/') ?>"
         data-camera-tour="true"
+        data-camera-profile="full"
+        data-camera-mode="director"
         data-camera-locked="false"
         data-grid-overlay="true"
         data-world-size="<?= e((string) ($server_map_image['worldSize'] ?? $server_status['worldSize'] ?? 0)) ?>"

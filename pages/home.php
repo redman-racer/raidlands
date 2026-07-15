@@ -195,6 +195,7 @@ $home_is_linked = raidlands_has_linked_account();
             data-camera-tour="true"
             data-camera-tour-style="orbit"
             data-camera-locked="true"
+            data-camera-profile="curated"
             data-grid-overlay="true"
             data-terrain-hash="<?= e((string) ($home_server_map_image['terrainHash'] ?? '')) ?>"
             data-seed="<?= e((string) ($home_server_map_image['seed'] ?? $home_server_status['seed'] ?? 0)) ?>"

@@ -28,6 +28,7 @@ import {
   PlaneGeometry,
   PointLight,
   Quaternion,
+  Raycaster,
   RingGeometry,
   RepeatWrapping,
   RedFormat,
@@ -82,8 +83,19 @@ import {
   type EnvironmentQuality,
   type EnvironmentQualityProfile,
 } from "./environment-quality";
+import {
+  cameraHeightAboveTerrain,
+  clampMapCoordinate,
+  parseCameraPreferences,
+  parseCameraMode,
+  shouldResumeAutomaticCamera,
+  transitionNeedsSafeWaypoint,
+  type CameraMode,
+  type ManualCameraStyle,
+} from "./camera-policy";
 
 const ENVIRONMENT_QUALITY_STORAGE_KEY = "raidlands:map-environment-quality";
+const CAMERA_PREFERENCES_STORAGE_KEY = "raidlands:map-camera-preferences";
 
 type TerrainPayload = {
   version?: number;
@@ -936,6 +948,8 @@ class TerrainViewer {
   private readonly volumetricFogPass: ShaderPass | null;
   private readonly environmentGradePass: ShaderPass;
   private readonly controls: OrbitControls;
+  private readonly raycaster = new Raycaster();
+  private readonly pointer = new Vector2();
   private floatingControls: HTMLElement | null = null;
   private readonly terrainMesh: Mesh;
   private readonly terrainMaterial: MeshStandardMaterial;
@@ -1027,6 +1041,26 @@ class TerrainViewer {
   private latestReplaySpeed = 1;
   private latestReplayOptions: ReplayDisplayOptions = {};
   private readonly onResize = () => this.resize();
+  private readonly onFullscreenChange = () => {
+    const button = this.floatingControls?.querySelector<HTMLButtonElement>("[data-map-native-fullscreen]");
+    const enabled = document.fullscreenElement === this.root;
+    button?.setAttribute("aria-pressed", String(enabled));
+    if (button) button.title = enabled ? "Exit fullscreen" : "Enter fullscreen";
+    this.resize();
+  };
+  private readonly onKeyDown = (event: KeyboardEvent) => this.handleFlightKey(event, true);
+  private readonly onKeyUp = (event: KeyboardEvent) => this.handleFlightKey(event, false);
+  private readonly onPointerDown = (event: PointerEvent) => {
+    this.pointerDownAt = { x: event.clientX, y: event.clientY };
+  };
+  private readonly onPointerMove = (event: PointerEvent) => {
+    if (this.cameraMode === "manual" && this.manualCameraStyle === "fly" && this.pointerDownAt && event.buttons !== 0) {
+      this.pointerLookDelta.x += event.movementX * 0.035;
+      this.pointerLookDelta.y += event.movementY * 0.035;
+      this.pauseAutomaticCamera();
+    }
+  };
+  private readonly onPointerUp = (event: PointerEvent) => this.handleTargetPointer(event);
   private animationFrame = 0;
   private readonly clockStart = performance.now();
   private isoViewIndex = -1;
@@ -1037,12 +1071,23 @@ class TerrainViewer {
   private tourKind: CameraTourKind = "coastal-sweep";
   private tourIndex = -1;
   private tourEnabled: boolean;
+  private cameraMode: CameraMode = "director";
+  private manualCameraStyle: ManualCameraStyle = "orbit";
+  private automaticPausedUntil = 0;
+  private readonly pressedFlightKeys = new Set<string>();
+  private lastAnimationTick = performance.now();
+  private pointerDownAt: { x: number; y: number } | null = null;
+  private mobileMove = new Vector2();
+  private mobileLook = new Vector2();
+  private pointerLookDelta = new Vector2();
+  private mobileRise = 0;
   private readonly tourStyle: CameraTourStyle;
   private readonly actionHighlights = new Map<ActionHighlightSource, ActionHighlightFocus>();
   private actionTourStartedAt = performance.now();
   private readonly lockCameraInput: boolean;
   private transitionFrom: CameraPose | null = null;
   private transitionTo: CameraPose | null = null;
+  private transitionFinal: CameraPose | null = null;
   private transitionStartedAt = 0;
   private transitionDuration = 1400;
   private selfLocation: PlayerLocation | null = null;
@@ -1082,6 +1127,9 @@ class TerrainViewer {
     this.tourEnabled = this.root.dataset.cameraTour === "true";
     this.tourStyle = this.root.dataset.cameraTourStyle === "orbit" ? "orbit" : "cinematic";
     this.lockCameraInput = this.root.dataset.cameraLocked === "true";
+    this.cameraMode = this.lockCameraInput
+      ? (this.tourStyle === "orbit" ? "orbit" : "cinematic")
+      : parseCameraMode(this.root.dataset.cameraMode, this.tourEnabled ? "director" : "manual");
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.qualityProfile.pixelRatioCap));
     this.renderer.outputColorSpace = SRGBColorSpace;
     this.renderer.shadowMap.enabled = this.qualityProfile.resolved === "ultra" || this.qualityProfile.resolved === "high";
@@ -1202,6 +1250,7 @@ class TerrainViewer {
     this.controls.minDistance = Math.max(120, (this.terrain.worldSize || 4500) * 0.08);
     this.controls.maxDistance = Math.max(1600, (this.terrain.worldSize || 4500) * 1.4);
     (this.controls as OrbitControls & { zoomToCursor?: boolean }).zoomToCursor = true;
+    this.controls.addEventListener("start", () => this.pauseAutomaticCamera());
   }
 
   public mount(): void {
@@ -1211,6 +1260,12 @@ class TerrainViewer {
       this.startNextTour(performance.now(), true);
     }
     this.bindFloatingViewSelect();
+    this.renderer.domElement.addEventListener("pointerdown", this.onPointerDown);
+    this.renderer.domElement.addEventListener("pointerup", this.onPointerUp);
+    this.renderer.domElement.addEventListener("pointermove", this.onPointerMove);
+    window.addEventListener("keydown", this.onKeyDown);
+    window.addEventListener("keyup", this.onKeyUp);
+    document.addEventListener("fullscreenchange", this.onFullscreenChange);
     this.resize();
     window.addEventListener("resize", this.onResize);
     this.animate();
@@ -1221,6 +1276,15 @@ class TerrainViewer {
   public dispose(): void {
     window.cancelAnimationFrame(this.animationFrame);
     window.removeEventListener("resize", this.onResize);
+    this.renderer.domElement.removeEventListener("pointerdown", this.onPointerDown);
+    this.renderer.domElement.removeEventListener("pointerup", this.onPointerUp);
+    this.renderer.domElement.removeEventListener("pointermove", this.onPointerMove);
+    window.removeEventListener("keydown", this.onKeyDown);
+    window.removeEventListener("keyup", this.onKeyUp);
+    document.removeEventListener("fullscreenchange", this.onFullscreenChange);
+    if (this.root.classList.contains("is-browser-fill")) {
+      document.documentElement.classList.remove("has-map-browser-fill");
+    }
     this.controls.dispose();
     this.floatingControls?.remove();
     this.floatingControls = null;
@@ -1247,19 +1311,47 @@ class TerrainViewer {
   }
 
   public setTourEnabled(enabled: boolean): void {
-    this.tourEnabled = enabled;
-    this.controls.enabled = !enabled && !this.lockCameraInput;
-    this.controls.enableRotate = !enabled && !this.lockCameraInput;
-    this.controls.enablePan = !enabled && !this.lockCameraInput;
-    this.controls.enableZoom = !enabled && !this.lockCameraInput;
-    this.focusUntil = 0;
-    if (enabled) {
-      this.startNextTour(performance.now(), true);
-      return;
-    }
+    this.setCameraMode(enabled ? "director" : "manual");
+  }
 
+  public setCameraMode(mode: CameraMode): void {
+    this.cameraMode = mode;
+    this.root.dataset.cameraModeActive = mode;
+    this.tourEnabled = mode !== "manual" && mode !== "top";
+    const interactive = !this.lockCameraInput;
+    this.controls.enabled = interactive;
+    this.controls.enableRotate = interactive && !(mode === "manual" && this.manualCameraStyle === "fly");
+    this.controls.enablePan = interactive && !(mode === "manual" && this.manualCameraStyle === "fly");
+    this.controls.enableZoom = interactive;
+    this.focusUntil = 0;
+    this.automaticPausedUntil = 0;
     this.transitionFrom = null;
     this.transitionTo = null;
+    this.activePose = this.currentPose();
+    if (mode === "top") {
+      this.focusCamera(this.topPose());
+      return;
+    }
+    if (mode === "orbit" || mode === "cinematic" || mode === "director") {
+      this.startNextTour(performance.now(), true);
+    }
+  }
+
+  public getCameraMode(): CameraMode { return this.cameraMode; }
+
+  public setManualCameraStyle(style: ManualCameraStyle): void {
+    this.manualCameraStyle = style;
+    this.root.dataset.manualCameraStyle = style;
+    if (this.cameraMode === "manual") this.setCameraMode("manual");
+  }
+
+  public setMobileFlightInput(moveX: number, moveY: number, lookX: number, lookY: number, rise: number): void {
+    this.mobileMove.set(moveX, moveY);
+    this.mobileLook.set(lookX, lookY);
+    this.mobileRise = rise;
+    if (Math.abs(moveX) + Math.abs(moveY) + Math.abs(lookX) + Math.abs(lookY) + Math.abs(rise) > 0.01) {
+      this.pauseAutomaticCamera();
+    }
   }
 
   public setHeatmapVisible(visible: boolean): void {
@@ -1502,12 +1594,16 @@ class TerrainViewer {
   }
 
   public frameTop(): void {
+    this.focusCamera(this.topPose());
+  }
+
+  private topPose(): CameraPose {
     const size = this.terrain.worldSize || 4500;
-    this.focusCamera({
+    return {
       position: new Vector3(0, size * 0.86, 0.001),
       target: new Vector3(0, 0, 0),
       up: new Vector3(0, 0, 1),
-    });
+    };
   }
 
   public setView(view: MapView): void {
@@ -1530,6 +1626,12 @@ class TerrainViewer {
         <button type="button" data-map-view="iso" aria-pressed="true" aria-label="Home view" title="Home view">
           <span aria-hidden="true">Home</span>
         </button>
+        <button type="button" data-map-browser-fill aria-pressed="false" aria-label="Fill browser viewport" title="Fill browser viewport">
+          <span aria-hidden="true">Fill</span>
+        </button>
+        <button type="button" data-map-native-fullscreen aria-pressed="false" aria-label="Enter fullscreen" title="Enter fullscreen">
+          <span aria-hidden="true">Full</span>
+        </button>
         <button type="button" data-map-view="top" aria-pressed="false" aria-label="Top view" title="Top view">
           <span aria-hidden="true">Top</span>
         </button>
@@ -1544,10 +1646,102 @@ class TerrainViewer {
         </select>
         ${resolvedNote}
       </label>
+      ${this.root.dataset.cameraProfile === "full" ? `
+        <div class="server-map-flight-controls" data-map-flight-controls aria-label="Mobile flight controls">
+          <div class="server-map-flight-stick" data-map-flight-move><span>Move</span><i></i></div>
+          <div class="server-map-flight-altitude">
+            <button type="button" data-map-flight-rise aria-label="Fly upward">+</button>
+            <button type="button" data-map-flight-fall aria-label="Fly downward">−</button>
+          </div>
+          <div class="server-map-flight-stick" data-map-flight-look><span>Look</span><i></i></div>
+        </div>` : ""}
     `;
     this.root.appendChild(controls);
     this.floatingControls = controls;
     bindMapViewButtons(Array.from(controls.querySelectorAll<HTMLButtonElement>("[data-map-view]")), this);
+    const fillButton = controls.querySelector<HTMLButtonElement>("[data-map-browser-fill]");
+    const fullscreenButton = controls.querySelector<HTMLButtonElement>("[data-map-native-fullscreen]");
+    const stored = parseCameraPreferences(window.localStorage.getItem(CAMERA_PREFERENCES_STORAGE_KEY));
+    const saveDisplayPreference = () => {
+      const current = parseCameraPreferences(window.localStorage.getItem(CAMERA_PREFERENCES_STORAGE_KEY));
+      window.localStorage.setItem(CAMERA_PREFERENCES_STORAGE_KEY, JSON.stringify({
+        ...current,
+        browserFill: this.root.classList.contains("is-browser-fill"),
+        terrainFingerprint: this.root.dataset.terrainHash || this.root.dataset.seed || "",
+      }));
+    };
+    if (stored.browserFill) {
+      this.root.classList.add("is-browser-fill");
+      document.documentElement.classList.add("has-map-browser-fill");
+    }
+    fillButton?.setAttribute("aria-pressed", String(stored.browserFill));
+    fillButton?.addEventListener("click", () => {
+      const enabled = this.root.classList.toggle("is-browser-fill");
+      fillButton.setAttribute("aria-pressed", String(enabled));
+      document.documentElement.classList.toggle("has-map-browser-fill", enabled);
+      saveDisplayPreference();
+      this.resize();
+    });
+    if (!this.root.requestFullscreen) {
+      if (fullscreenButton) fullscreenButton.disabled = true;
+      fullscreenButton?.setAttribute("title", "Fullscreen is not supported by this browser");
+    } else {
+      fullscreenButton?.addEventListener("click", () => {
+        const request = document.fullscreenElement === this.root
+          ? document.exitFullscreen()
+          : this.root.requestFullscreen();
+        void request.catch(() => setStatus(this.status, "Fullscreen could not be opened by this browser."));
+      });
+    }
+    const moveStick = controls.querySelector<HTMLElement>("[data-map-flight-move]");
+    const lookStick = controls.querySelector<HTMLElement>("[data-map-flight-look]");
+    let move = new Vector2();
+    let look = new Vector2();
+    let rise = 0;
+    const syncFlight = () => this.setMobileFlightInput(move.x, move.y, look.x, look.y, rise);
+    const bindStick = (stick: HTMLElement | null, output: Vector2) => {
+      if (!stick) return;
+      const knob = stick.querySelector<HTMLElement>("i");
+      const update = (event: PointerEvent) => {
+        const rect = stick.getBoundingClientRect();
+        output.set(
+          MathUtils.clamp((event.clientX - (rect.left + rect.width / 2)) / (rect.width * 0.38), -1, 1),
+          MathUtils.clamp((event.clientY - (rect.top + rect.height / 2)) / (rect.height * 0.38), -1, 1),
+        );
+        if (knob) knob.style.transform = `translate(${output.x * 20}px, ${output.y * 20}px)`;
+        syncFlight();
+      };
+      stick.addEventListener("pointerdown", (event) => {
+        stick.setPointerCapture(event.pointerId);
+        update(event);
+      });
+      stick.addEventListener("pointermove", (event) => {
+        if (stick.hasPointerCapture(event.pointerId)) update(event);
+      });
+      const reset = (event: PointerEvent) => {
+        if (stick.hasPointerCapture(event.pointerId)) stick.releasePointerCapture(event.pointerId);
+        output.set(0, 0);
+        if (knob) knob.style.transform = "translate(0, 0)";
+        syncFlight();
+      };
+      stick.addEventListener("pointerup", reset);
+      stick.addEventListener("pointercancel", reset);
+    };
+    bindStick(moveStick, move);
+    bindStick(lookStick, look);
+    const bindAltitude = (button: HTMLButtonElement | null, value: number) => {
+      if (!button) return;
+      button.addEventListener("pointerdown", (event) => {
+        button.setPointerCapture(event.pointerId);
+        rise = value;
+        syncFlight();
+      });
+      const reset = () => { rise = 0; syncFlight(); };
+      button.addEventListener("pointerup", reset);
+      button.addEventListener("pointercancel", reset);
+    };
+    bindAltitude(controls.querySelector("[data-map-flight-rise]"), 1);
+    bindAltitude(controls.querySelector("[data-map-flight-fall]"), -1);
     controls.querySelector<HTMLSelectElement>("[data-map-environment-quality]")?.addEventListener("change", (event) => {
       const quality = parseEnvironmentQuality((event.currentTarget as HTMLSelectElement).value, requested);
       this.root.dispatchEvent(new CustomEvent("raidlands:environment-quality", {
@@ -2154,9 +2348,13 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
       return;
     }
     const now = performance.now();
+    const deltaSeconds = Math.min(0.05, Math.max(0, (now - this.lastAnimationTick) / 1000));
+    this.lastAnimationTick = now;
+    this.updateFreeFlight(deltaSeconds);
     this.updateSelfLocationOrbit(now);
     this.updateCameraTour(now);
     this.controls.update();
+    this.enforceCameraTerrainSafety();
     this.camera.updateMatrixWorld();
     this.updateOverlayLayerTransitions(now);
     this.updateGridOpacity();
@@ -2166,6 +2364,119 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     this.monumentLayer.traverse((object) => object.userData.tick?.((now - this.clockStart) / 1000));
     this.updateAircraftCameraSafety();
     this.composer.render();
+  }
+
+  private pauseAutomaticCamera(): void {
+    if (this.lockCameraInput || this.cameraMode === "manual") return;
+    this.automaticPausedUntil = performance.now() + 8000;
+    this.transitionFrom = null;
+    this.transitionTo = null;
+    this.transitionFinal = null;
+    this.activePose = this.currentPose();
+    this.root.dataset.cameraPaused = "true";
+    window.setTimeout(() => {
+      if (this.automaticPausedUntil <= performance.now()) delete this.root.dataset.cameraPaused;
+    }, 8050);
+  }
+
+  private handleFlightKey(event: KeyboardEvent, pressed: boolean): void {
+    if (this.cameraMode !== "manual" || this.manualCameraStyle !== "fly") return;
+    const target = event.target as HTMLElement | null;
+    if (target?.closest("input, select, textarea, button, [contenteditable='true']")) return;
+    const key = event.code;
+    if (!["KeyW", "KeyA", "KeyS", "KeyD", "Space", "ShiftLeft", "ShiftRight"].includes(key)) return;
+    event.preventDefault();
+    if (pressed) this.pressedFlightKeys.add(key); else this.pressedFlightKeys.delete(key);
+  }
+
+  private updateFreeFlight(deltaSeconds: number): void {
+    if (this.cameraMode !== "manual" || this.manualCameraStyle !== "fly") return;
+    const forwardInput = Number(this.pressedFlightKeys.has("KeyW")) - Number(this.pressedFlightKeys.has("KeyS")) - this.mobileMove.y;
+    const strafeInput = Number(this.pressedFlightKeys.has("KeyD")) - Number(this.pressedFlightKeys.has("KeyA")) + this.mobileMove.x;
+    const riseInput = Number(this.pressedFlightKeys.has("Space"))
+      - Number(this.pressedFlightKeys.has("ShiftLeft") || this.pressedFlightKeys.has("ShiftRight"))
+      + this.mobileRise;
+    const lookX = this.mobileLook.x + this.pointerLookDelta.x;
+    const lookY = this.mobileLook.y + this.pointerLookDelta.y;
+    this.pointerLookDelta.set(0, 0);
+    if (Math.abs(forwardInput) + Math.abs(strafeInput) + Math.abs(riseInput) + Math.abs(lookX) + Math.abs(lookY) < 0.001) return;
+
+    const direction = this.controls.target.clone().sub(this.camera.position).normalize();
+    const yaw = Math.atan2(direction.x, direction.z) - lookX * deltaSeconds * 1.8;
+    const pitch = MathUtils.clamp(Math.asin(direction.y) - lookY * deltaSeconds * 1.5, -1.35, 1.35);
+    direction.set(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch)).normalize();
+    const horizontalForward = new Vector3(direction.x, 0, direction.z).normalize();
+    const right = new Vector3(horizontalForward.z, 0, -horizontalForward.x);
+    const ground = sampleTerrainHeight(this.terrain, this.camera.position.x, this.camera.position.z);
+    const altitude = Math.max(12, this.camera.position.y - ground);
+    const speed = MathUtils.clamp(altitude * 0.85, 90, (this.terrain.worldSize || 4500) * 0.38);
+    const movement = horizontalForward.multiplyScalar(forwardInput)
+      .add(right.multiplyScalar(strafeInput))
+      .add(new Vector3(0, riseInput, 0));
+    if (movement.lengthSq() > 1) movement.normalize();
+    this.camera.position.addScaledVector(movement, speed * deltaSeconds);
+    const worldSize = this.terrain.worldSize || 4500;
+    this.camera.position.x = clampMapCoordinate(this.camera.position.x, worldSize, 4);
+    this.camera.position.z = clampMapCoordinate(this.camera.position.z, worldSize, 4);
+    this.camera.position.y = cameraHeightAboveTerrain(
+      this.camera.position.y,
+      sampleTerrainHeight(this.terrain, this.camera.position.x, this.camera.position.z),
+      12,
+    );
+    this.controls.target.copy(this.camera.position).addScaledVector(direction, MathUtils.clamp(altitude * 1.8, 120, 900));
+    this.camera.lookAt(this.controls.target);
+  }
+
+  private enforceCameraTerrainSafety(): void {
+    const worldSize = this.terrain.worldSize || 4500;
+    this.camera.position.x = clampMapCoordinate(this.camera.position.x, worldSize, 2);
+    this.camera.position.z = clampMapCoordinate(this.camera.position.z, worldSize, 2);
+    this.camera.position.y = cameraHeightAboveTerrain(
+      this.camera.position.y,
+      sampleTerrainHeight(this.terrain, this.camera.position.x, this.camera.position.z),
+      12,
+    );
+    this.controls.target.x = clampMapCoordinate(this.controls.target.x, worldSize, 2);
+    this.controls.target.z = clampMapCoordinate(this.controls.target.z, worldSize, 2);
+    this.controls.target.y = Math.max(
+      this.controls.target.y,
+      sampleTerrainHeight(this.terrain, this.controls.target.x, this.controls.target.z) + 4,
+    );
+  }
+
+  private handleTargetPointer(event: PointerEvent): void {
+    const started = this.pointerDownAt;
+    this.pointerDownAt = null;
+    if (!started || Math.hypot(event.clientX - started.x, event.clientY - started.y) > 6) return;
+    if (this.cameraMode === "manual" && this.manualCameraStyle === "fly") return;
+    const rect = this.renderer.domElement.getBoundingClientRect();
+    if (!rect.width || !rect.height) return;
+    this.pointer.set(((event.clientX - rect.left) / rect.width) * 2 - 1, -((event.clientY - rect.top) / rect.height) * 2 + 1);
+    this.raycaster.setFromCamera(this.pointer, this.camera);
+    const hits = this.raycaster.intersectObjects([
+      this.playerLocationLayer,
+      this.heatmapLayer,
+      this.airstrikeLayer,
+      this.monumentLayer,
+      this.terrainMesh,
+    ], true);
+    const hit = hits[0];
+    if (!hit) return;
+    const target = hit.point.clone();
+    target.y = Math.max(target.y, sampleTerrainHeight(this.terrain, target.x, target.z) + 18);
+    const distance = MathUtils.clamp(this.camera.position.distanceTo(target), 140, (this.terrain.worldSize || 4500) * 0.42);
+    const direction = this.camera.position.clone().sub(this.controls.target).normalize();
+    const pose = this.aboveTerrainPose(target.clone().addScaledVector(direction, distance), target, 36);
+    this.pauseAutomaticCamera();
+    this.focusCamera(pose);
+    this.root.dataset.cameraTarget = hit.object.name || hit.object.parent?.name || "terrain";
+    this.root.dispatchEvent(new CustomEvent("raidlands:camera-target", { detail: { label: this.root.dataset.cameraTarget } }));
+  }
+
+  public clearCameraTarget(): void {
+    delete this.root.dataset.cameraTarget;
+    this.root.dispatchEvent(new CustomEvent("raidlands:camera-target", { detail: { label: "Whole map" } }));
+    if (this.cameraMode === "top") this.focusCamera(this.topPose());
   }
 
   private updateAircraftCameraSafety(): void {
@@ -2650,8 +2961,27 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
   }
 
   private focusCamera(pose: CameraPose): void {
-    this.transitionFrom = this.currentPose();
-    this.transitionTo = clonePose(pose);
+    const from = this.currentPose();
+    const worldSize = this.terrain.worldSize || 4500;
+    const needsWaypoint = transitionNeedsSafeWaypoint(
+      from.position,
+      pose.position,
+      (x, z) => sampleTerrainHeight(this.terrain, x, z),
+      Math.max(24, worldSize * 0.012),
+    );
+    this.transitionFrom = from;
+    this.transitionFinal = needsWaypoint ? clonePose(pose) : null;
+    this.transitionTo = needsWaypoint
+      ? {
+        position: new Vector3(
+          (from.position.x + pose.position.x) * 0.5,
+          Math.max(from.position.y, pose.position.y, (this.terrain.maxHeight || 300) + worldSize * 0.18),
+          (from.position.z + pose.position.z) * 0.5,
+        ),
+        target: from.target.clone().lerp(pose.target, 0.5),
+        up: new Vector3(0, 1, 0),
+      }
+      : clonePose(pose);
     this.transitionStartedAt = performance.now();
     this.transitionDuration = 1350;
     this.activePose = null;
@@ -2666,8 +2996,16 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
       const pose = interpolatePose(from, this.transitionTo, eased);
       this.applyCameraPose(pose);
       if (progress >= 1) {
-        this.transitionFrom = null;
-        this.transitionTo = null;
+        if (this.transitionFinal) {
+          this.transitionFrom = this.currentPose();
+          this.transitionTo = this.transitionFinal;
+          this.transitionFinal = null;
+          this.transitionStartedAt = now;
+          this.transitionDuration = 1350;
+        } else {
+          this.transitionFrom = null;
+          this.transitionTo = null;
+        }
       }
       return;
     }
@@ -2676,15 +3014,24 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
       return;
     }
 
-    if (!this.tourEnabled) {
+    if (shouldResumeAutomaticCamera(now, this.automaticPausedUntil)) {
+      this.automaticPausedUntil = 0;
+      this.activePose = this.currentPose();
+      this.actionTourStartedAt = now;
+      this.tourStartedAt = now;
+    }
+    if (this.automaticPausedUntil > now || this.cameraMode === "manual" || this.cameraMode === "top") {
       return;
     }
 
-    const actionPose = this.actionHighlightPose(now);
+    const actionPose = this.cameraMode === "director" || this.cameraMode === "action"
+      ? this.actionHighlightPose(now)
+      : null;
     if (actionPose) {
       this.applyBlendedTourPose(actionPose, now - this.actionTourStartedAt);
       return;
     }
+    if (this.cameraMode === "action") return;
 
     if (this.focusUntil > 0) {
       this.focusUntil = 0;
@@ -2709,7 +3056,7 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
   }
 
   private startNextTour(now: number, blendFromCurrent: boolean): void {
-    if (this.tourStyle === "orbit") {
+    if (this.cameraMode === "orbit" || (this.lockCameraInput && this.tourStyle === "orbit")) {
       this.tourKind = "home-orbit";
       this.tourStartedAt = now;
       this.tourDuration = 32000;
@@ -2843,11 +3190,17 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
       this.camera.fov = nextFov;
       this.camera.updateProjectionMatrix();
     }
-    this.applyCameraPose(pose);
+    const safePose = this.aboveTerrainPose(pose.position, pose.target, Math.max(24, (this.terrain.worldSize || 4500) * 0.012));
+    safePose.up.copy(pose.up);
+    this.applyCameraPose(safePose);
   }
 
   private aboveTerrainPose(position: Vector3, target: Vector3, clearance: number): CameraPose {
     const worldSize = this.terrain.worldSize || 4500;
+    position.x = clampMapCoordinate(position.x, worldSize, 2);
+    position.z = clampMapCoordinate(position.z, worldSize, 2);
+    target.x = clampMapCoordinate(target.x, worldSize, 2);
+    target.z = clampMapCoordinate(target.z, worldSize, 2);
     const ground = sampleTerrainHeight(this.terrain, position.x, position.z);
     const targetGround = sampleTerrainHeight(this.terrain, target.x, target.z);
     const targetY = Math.max(target.y, targetGround + 28);
@@ -6229,6 +6582,10 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   const buttons = Array.from(panel?.querySelectorAll<HTMLButtonElement>("[data-map-view]") || []);
   const grid = panel?.querySelector<HTMLInputElement>("[data-map-viewer-grid]");
   const tour = panel?.querySelector<HTMLInputElement>("[data-map-viewer-tour]");
+  const cameraMode = panel?.querySelector<HTMLSelectElement>("[data-map-viewer-camera-mode]");
+  const manualStyle = panel?.querySelector<HTMLSelectElement>("[data-map-viewer-manual-style]");
+  const cameraTarget = panel?.querySelector<HTMLOutputElement>("[data-map-viewer-camera-target]");
+  const clearCameraTarget = panel?.querySelector<HTMLButtonElement>("[data-map-viewer-camera-target-clear]");
   const heatmap = panel?.querySelector<HTMLInputElement>("[data-map-viewer-heatmap]");
   const heatmapPlayback = panel?.querySelector<HTMLInputElement>("[data-map-viewer-heatmap-playback]");
   const heatmapPlay = panel?.querySelector<HTMLButtonElement>("[data-map-viewer-heatmap-play]");
@@ -6259,6 +6616,17 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   const playbackSpeeds = [0.25, 0.5, 1, 2, 4, 8];
   const playerLocationRefreshMs = 15_000;
   const disposers: Array<() => void> = [];
+  const cameraFingerprint = root.dataset.terrainHash || root.dataset.seed || "";
+  const cameraPreferences = parseCameraPreferences(window.localStorage.getItem(CAMERA_PREFERENCES_STORAGE_KEY));
+  const saveCameraPreferences = () => {
+    const current = parseCameraPreferences(window.localStorage.getItem(CAMERA_PREFERENCES_STORAGE_KEY));
+    window.localStorage.setItem(CAMERA_PREFERENCES_STORAGE_KEY, JSON.stringify({
+      ...current,
+      mode: viewer.getCameraMode(),
+      manualStyle: manualStyle?.value === "fly" ? "fly" : "orbit",
+      terrainFingerprint: cameraFingerprint,
+    }));
+  };
   let followMyLocation = false;
   let orbitMyLocation = false;
   const dataFlag = (name: string, fallback = false): boolean => {
@@ -6349,6 +6717,21 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       viewer.setTourEnabled(tour.checked && !followMyLocation);
     }
   });
+  bind(cameraMode, "change", () => {
+    if (!cameraMode) return;
+    viewer.setCameraMode(parseCameraMode(cameraMode.value));
+    if (manualStyle) manualStyle.disabled = cameraMode.value !== "manual";
+    saveCameraPreferences();
+  });
+  bind(manualStyle, "change", () => {
+    if (!manualStyle) return;
+    viewer.setManualCameraStyle(manualStyle.value === "fly" ? "fly" : "orbit");
+    saveCameraPreferences();
+  });
+  bind(clearCameraTarget, "click", () => viewer.clearCameraTarget());
+  bind(root, "raidlands:camera-target", ((event: CustomEvent<{ label?: string }>) => {
+    if (cameraTarget) cameraTarget.value = event.detail?.label || "Whole map";
+  }) as EventListener);
 
   const stopHeatmapPlayback = () => {
     window.cancelAnimationFrame(playbackAnimationFrame);
@@ -7001,6 +7384,15 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   updatePlaybackSpeedControls();
   if (tour) {
     viewer.setTourEnabled(tour.checked && !followMyLocation);
+  }
+  if (cameraMode) {
+    cameraMode.value = cameraPreferences.mode;
+    if (manualStyle) {
+      manualStyle.value = cameraPreferences.manualStyle;
+      manualStyle.disabled = cameraPreferences.mode !== "manual";
+      viewer.setManualCameraStyle(cameraPreferences.manualStyle);
+    }
+    viewer.setCameraMode(cameraPreferences.mode);
   }
   if (wantsHeatmap() || wantsPlayers()) {
     reloadPlayback();

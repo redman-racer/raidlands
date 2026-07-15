@@ -1813,6 +1813,21 @@ h3,
   box-shadow: inset 0 0 0 1px rgba(243, 238, 227, .06), 0 24px 54px rgba(0, 0, 0, .34);
 }
 
+.server-terrain-viewer.is-browser-fill,
+.server-terrain-viewer:fullscreen {
+  position: fixed;
+  inset: 0;
+  z-index: 10050;
+  width: 100vw;
+  height: 100dvh;
+  max-width: none;
+  border: 0;
+}
+
+html.has-map-browser-fill {
+  overflow: hidden;
+}
+
 .server-terrain-viewer::after {
   position: absolute;
   inset: 0;
@@ -1934,6 +1949,73 @@ h3,
 .server-terrain-view-select button[aria-pressed="true"] {
   color: var(--black);
   background: var(--orange);
+}
+
+.server-map-flight-controls {
+  position: fixed;
+  right: 18px;
+  bottom: max(18px, env(safe-area-inset-bottom));
+  left: 18px;
+  z-index: 10060;
+  display: none;
+  grid-template-columns: 92px 44px 92px;
+  justify-content: space-between;
+  align-items: end;
+  pointer-events: none;
+}
+
+.server-terrain-viewer[data-camera-mode-active="manual"][data-manual-camera-style="fly"] .server-map-flight-controls {
+  display: grid;
+}
+
+.server-map-flight-stick {
+  position: relative;
+  display: grid;
+  place-items: center;
+  width: 92px;
+  height: 92px;
+  border: 1px solid rgba(255, 138, 40, .5);
+  border-radius: 50%;
+  color: rgba(243, 238, 227, .76);
+  background: rgba(5, 6, 7, .7);
+  touch-action: none;
+  pointer-events: auto;
+  user-select: none;
+}
+
+.server-map-flight-stick i {
+  position: absolute;
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  background: var(--orange);
+  box-shadow: 0 4px 18px rgba(0, 0, 0, .45);
+}
+
+.server-map-flight-stick span {
+  margin-top: 62px;
+  font: 900 .6rem var(--font-body);
+  text-transform: uppercase;
+}
+
+.server-map-flight-altitude {
+  display: grid;
+  gap: 8px;
+  pointer-events: auto;
+}
+
+.server-map-flight-altitude button {
+  width: 44px;
+  min-width: 44px;
+  height: 44px;
+  padding: 0;
+  touch-action: none;
+}
+
+@media (pointer: fine) {
+  .server-map-flight-controls {
+    display: none !important;
+  }
 }
 
 .server-terrain-status {
