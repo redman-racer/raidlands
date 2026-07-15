@@ -500,7 +500,6 @@ const RAIDLANDS_VOLUMETRIC_FOG_SHADER = {
       float rayLength = length(ray);
       vec3 rayDirection = ray / max(rayLength, 0.0001);
       float stepLength = rayLength / max(uSampleCount, 1.0);
-      float jitter = hash21(gl_FragCoord.xy) - 0.5;
       float transmittance = 1.0;
       vec3 scattering = vec3(0.0);
       float sunFacing = pow(max(dot(rayDirection, normalize(uSunDirection)), 0.0), mix(3.0, 9.0, uMie));
@@ -508,7 +507,9 @@ const RAIDLANDS_VOLUMETRIC_FOG_SHADER = {
 
       for (int index = 0; index < 44; index++) {
         if (float(index) >= uSampleCount || transmittance < 0.025) break;
-        float alongRay = (float(index) + 0.5 + jitter * 0.35) * stepLength;
+        // A stable midpoint sample avoids screen-space shimmer while the
+        // automatic camera moves. The density field already supplies detail.
+        float alongRay = (float(index) + 0.5) * stepLength;
         vec3 samplePosition = uCameraPosition + rayDirection * alongRay;
         float density = fogDensity(samplePosition);
         float extinction = 1.0 - exp(-density * stepLength / max(uWorldSize * 0.085, 1.0));
@@ -2743,7 +2744,9 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
       uniforms.uCameraWorld.value.copy(this.camera.matrixWorld);
       uniforms.uCameraPosition.value.copy(this.camera.position);
       uniforms.uWorldSize.value = worldSize;
-      uniforms.uFogStrength.value = fogStrength;
+      // Clear-weather atmospheric haze is handled by the scene fog and grade.
+      // Do not run the volumetric raymarch for tiny baseline haze values.
+      uniforms.uFogStrength.value = fogStrength > 0.025 ? fogStrength : 0;
       uniforms.uFogIntensity.value = environment.fogIntensity;
       uniforms.uFogColor.value.copy(fogColor);
       uniforms.uSunColor.value.copy(environment.sunColor);
@@ -6978,26 +6981,16 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
 
   const loadLiveEnvironment = () => {
     void loadEnvironment(root).then((payload) => {
-      if (!wantsTimelineOverlay()) {
-        viewer.setEnvironment(payload.environment);
-      }
+      viewer.setEnvironment(payload.environment);
     });
   };
 
   const startEnvironmentPolling = () => {
-    if (wantsTimelineOverlay()) {
-      stopEnvironmentPolling();
-      return;
-    }
     loadLiveEnvironment();
     if (environmentPollTimer !== 0) {
       return;
     }
     environmentPollTimer = window.setInterval(() => {
-      if (wantsTimelineOverlay()) {
-        stopEnvironmentPolling();
-        return;
-      }
       loadLiveEnvironment();
     }, playerLocationRefreshMs);
   };
@@ -7316,7 +7309,6 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     navigationEvents = Array.from(new Map(heatmapHistory.flatMap((historyFrame) => historyFrame.events || []).map((event, index) => [replayEventKey(event, index), event])).values());
     if (navigationTab === "events") renderNavigation();
     syncTimelineReplay();
-    viewer.setEnvironment(frame.environment, 420);
     setTimelineLabel(frame);
   };
 
@@ -7353,7 +7345,6 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
 
     if (wantsPlayback()) {
       stopLiveOverlayPolling();
-      stopEnvironmentPolling();
       const requestId = playbackRequestId + 1;
       playbackRequestId = requestId;
       const requestRange = selectedRange();
@@ -7438,8 +7429,6 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       startEnvironmentPolling();
       return;
     }
-
-    stopEnvironmentPolling();
 
     if (playbackHistoryPollTimer !== 0) {
       return;
