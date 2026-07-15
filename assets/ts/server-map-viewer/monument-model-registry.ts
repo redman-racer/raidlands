@@ -1,3 +1,19 @@
+import manifestJson from "../../media/models/monuments-map/manifest.json";
+
+export type MonumentModelManifestEntry = {
+  id: string;
+  detail: string;
+  map: string;
+  sourceSha256: string;
+  sourceBytes: number;
+  outputBytes: number;
+  sourceTriangles: number;
+  triangles: number;
+  textureBytes: number;
+  bounds: { min: number[]; max: number[] };
+  overBudget: boolean;
+};
+
 const RUSTRELAY_MONUMENT_PREFABS = new Set([
   "airfield_1",
   "apartments_complex_1",
@@ -79,6 +95,9 @@ const RUSTRELAY_MONUMENT_PREFABS = new Set([
   "water_well_e",
 ]);
 
+const manifest = manifestJson as { version: number; targets: { maxBytes: number }; entries: MonumentModelManifestEntry[] };
+const manifestById = new Map(manifest.entries.map((entry) => [entry.id, entry]));
+
 export function monumentPrefabId(prefab: string): string {
   const normalized = prefab.trim().replace(/\\/g, "/").split("/").pop() || "";
   return normalized.replace(/\.prefab$/i, "").replace(/\.glb$/i, "").toLowerCase();
@@ -87,6 +106,18 @@ export function monumentPrefabId(prefab: string): string {
 export function monumentModelAssetName(prefab: string): string | null {
   const id = monumentPrefabId(prefab);
   return RUSTRELAY_MONUMENT_PREFABS.has(id) ? `${id}.glb` : null;
+}
+
+export function monumentModelMetadata(prefab: string): MonumentModelManifestEntry | null {
+  return manifestById.get(monumentPrefabId(prefab)) || null;
+}
+
+export function monumentModelManifestVersion(): number {
+  return manifest.version;
+}
+
+export function monumentModelBudgetBytes(): number {
+  return manifest.targets.maxBytes;
 }
 
 export function monumentModelCount(): number {

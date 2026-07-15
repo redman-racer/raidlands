@@ -4,6 +4,8 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
+    "monuments:lod": "tsx scripts/generate-monument-lods.ts",
+    "monuments:lod:check": "tsx scripts/generate-monument-lods.ts --check",
     "compiler": "tsx assets/ts/airstrike-animation-editor/cli.ts",
     "fixtures:update": "tsx assets/ts/airstrike-animation-editor/cli.ts fixtures tests/fixtures/airstrike-animations --update",
     "test": "vitest run",
@@ -11,6 +13,10 @@
     "typecheck": "tsc --noEmit"
   },
   "devDependencies": {
+    "@gltf-transform/cli": "^4.3.0",
+    "@gltf-transform/core": "^4.3.0",
+    "@gltf-transform/extensions": "^4.3.0",
+    "@gltf-transform/functions": "^4.3.0",
     "@types/node": "^24.0.0",
     "@types/three": "^0.166.0",
     "tsx": "^4.20.0",

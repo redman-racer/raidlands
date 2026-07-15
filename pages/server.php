@@ -167,9 +167,13 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
             <input type="checkbox" checked data-map-viewer-grid>
             <span>Grid coordinates</span>
           </label>
-          <label class="server-terrain-toggle">
-            <input type="checkbox" checked data-map-detailed-monuments>
-            <span>Detailed monuments</span>
+          <label class="server-terrain-field">
+            <span>Monuments</span>
+            <select data-map-detailed-monuments>
+              <option value="auto">Auto</option>
+              <option value="map">Map LOD</option>
+              <option value="detailed">Detailed</option>
+            </select>
           </label>
           <label class="server-terrain-field server-terrain-camera-mode">
             <span>Camera</span>

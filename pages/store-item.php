@@ -500,7 +500,14 @@ function store_item_render_perks(array $perks): string
     </div>
   </section>
 
-  <section class="section">
+  <?php $store_preview_payload = raidlands_store_preview_payload($linked_kits, $product); ?>
+  <?php if (($store_preview_payload['items'] ?? []) !== [] || ($store_preview_payload['ranks'] ?? []) !== []) : ?>
+    <section class="section store-preview-section"><div class="section-inner">
+      <?= raidlands_store_preview_markup($store_preview_payload, 'store-product-inventory') ?>
+    </div></section>
+  <?php endif; ?>
+
+  <section class="section" id="store-product-inventory" data-store-html-inventory>
     <div class="section-inner">
       <div class="section-header">
         <p class="section-kicker">Included access</p>
@@ -529,4 +536,7 @@ function store_item_render_perks(array $perks): string
       <?= store_item_purchase_panel($product, $store_player, $store_csrf, $cash_checkout_ready) ?>
     </div>
   </section>
+<?php endif; ?>
+<?php if ($store_item_context !== null) : ?>
+<script type="module" src="<?= e(asset_url('build/airstrike-animation-editor/store-kit-preview.js')) ?>"></script>
 <?php endif; ?>

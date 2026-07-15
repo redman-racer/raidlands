@@ -7,6 +7,7 @@ require dirname(__DIR__, 2) . '/includes/bootstrap.php';
 require_once $site_root . '/includes/store.php';
 require_once $site_root . '/includes/kits.php';
 require_once $site_root . '/includes/permissions.php';
+require_once $site_root . '/includes/store-preview.php';
 
 raidlands_store_boot();
 

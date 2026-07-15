@@ -219,7 +219,14 @@ function store_kit_render_container(string $label, array $items): string
     </div>
   </section>
 
-  <section class="section">
+  <?php $store_preview_payload = raidlands_store_preview_payload([$kit]); ?>
+  <?php if (($store_preview_payload['items'] ?? []) !== []) : ?>
+    <section class="section store-preview-section"><div class="section-inner">
+      <?= raidlands_store_preview_markup($store_preview_payload, 'store-kit-inventory') ?>
+    </div></section>
+  <?php endif; ?>
+
+  <section class="section" id="store-kit-inventory" data-store-html-inventory>
     <div class="section-inner">
       <div class="section-header">
         <p class="section-kicker">Contents</p>
@@ -256,4 +263,7 @@ function store_kit_render_container(string $label, array $items): string
       <?php endif; ?>
     </div>
   </section>
+<?php endif; ?>
+<?php if ($store_kit_context !== null) : ?>
+<script type="module" src="<?= e(asset_url('build/airstrike-animation-editor/store-kit-preview.js')) ?>"></script>
 <?php endif; ?>

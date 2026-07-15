@@ -1,7 +1,7 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { monumentModelAssetName, monumentModelAssetNames, monumentModelCount, monumentPrefabId } from "../assets/ts/server-map-viewer/monument-model-registry";
+import { monumentModelAssetName, monumentModelAssetNames, monumentModelCount, monumentModelMetadata, monumentPrefabId } from "../assets/ts/server-map-viewer/monument-model-registry";
 
 describe("RustRelay monument model registry", () => {
   it("normalizes Rust prefab paths and extensions", () => {
@@ -25,6 +25,19 @@ describe("RustRelay monument model registry", () => {
     const modelDirectory = resolve("assets/media/models/monuments");
     const installed = readdirSync(modelDirectory).filter((name) => name.endsWith(".glb")).sort();
     expect(installed).toEqual(monumentModelAssetNames());
+  });
+
+  it("has generated map metadata and assets for every registered monument", () => {
+    const modelDirectory = resolve("assets/media/models/monuments-map");
+    const installed = readdirSync(modelDirectory).filter((name) => name.endsWith(".glb")).sort();
+    expect(installed).toEqual(monumentModelAssetNames());
+    for (const name of monumentModelAssetNames()) {
+      const metadata = monumentModelMetadata(name);
+      expect(metadata?.map).toBe(name);
+      expect(metadata?.triangles).toBeGreaterThan(0);
+      expect(metadata?.bounds.min).toHaveLength(3);
+      expect(metadata?.bounds.max).toHaveLength(3);
+    }
   });
 
   it("covers every monument instance in the current terrain export", () => {

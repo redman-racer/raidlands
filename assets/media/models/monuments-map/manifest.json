@@ -1,0 +1,1883 @@
+{
+  "version": 1,
+  "generatedBy": "gltf-transform@4.3.0",
+  "targets": {
+    "ratio": 0.02,
+    "textureSize": 256,
+    "maxBytes": 256000
+  },
+  "entries": [
+    {
+      "id": "airfield_1",
+      "detail": "../monuments/airfield_1.glb",
+      "map": "airfield_1.glb",
+      "sourceSha256": "dbb7f76836ba3efb70b0a1814d7087a9b0f8239e89e45b5cc9b998bf422a4321",
+      "sourceBytes": 13346560,
+      "outputBytes": 4609912,
+      "sourceTriangles": 619153,
+      "triangles": 217373,
+      "textureBytes": 2312172,
+      "bounds": {
+        "min": [
+          -235.86984252929688,
+          -99.66571807861328,
+          -230.8789520263672
+        ],
+        "max": [
+          287.5235290527344,
+          160.9844512939453,
+          247.40774536132812
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "apartments_complex_1",
+      "detail": "../monuments/apartments_complex_1.glb",
+      "map": "apartments_complex_1.glb",
+      "sourceSha256": "34ab86baa23a40784358d2a0238018696fe471bfc8ed5d597b82e0a63d1f262c",
+      "sourceBytes": 25262008,
+      "outputBytes": 9982284,
+      "sourceTriangles": 980534,
+      "triangles": 438382,
+      "textureBytes": 4506796,
+      "bounds": {
+        "min": [
+          -294.9530334472656,
+          -70.72846221923828,
+          -159.12954711914062
+        ],
+        "max": [
+          116.75248718261719,
+          67.1640396118164,
+          189.92098999023438
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "arctic_research_base_a",
+      "detail": "../monuments/arctic_research_base_a.glb",
+      "map": "arctic_research_base_a.glb",
+      "sourceSha256": "e0aa2e0df68760a1e8d197b673710080ae426c5a16104b43aa71da67a565c7cf",
+      "sourceBytes": 10092424,
+      "outputBytes": 3549016,
+      "sourceTriangles": 434763,
+      "triangles": 148417,
+      "textureBytes": 1927108,
+      "bounds": {
+        "min": [
+          -110.88836669921875,
+          -70.20785522460938,
+          -125.43408966064453
+        ],
+        "max": [
+          372.4757385253906,
+          69.8425521850586,
+          104.41265106201172
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "bandit_town",
+      "detail": "../monuments/bandit_town.glb",
+      "map": "bandit_town.glb",
+      "sourceSha256": "dcf26bc49a392ffb28ad7fa8cef97093795ef1314f8d96f4ec8f3c342f2e7935",
+      "sourceBytes": 7996632,
+      "outputBytes": 3089528,
+      "sourceTriangles": 359794,
+      "triangles": 168002,
+      "textureBytes": 1492754,
+      "bounds": {
+        "min": [
+          -107.733154296875,
+          -131.65219116210938,
+          -431.7025146484375
+        ],
+        "max": [
+          320.002685546875,
+          20.14682388305664,
+          108.23829650878906
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "cave_large_hard",
+      "detail": "../monuments/cave_large_hard.glb",
+      "map": "cave_large_hard.glb",
+      "sourceSha256": "92a8eb0b904b02e4307c0e632dbe289a2ac2dfa387d0603cd516fae5c8e0ebc5",
+      "sourceBytes": 3658100,
+      "outputBytes": 1132092,
+      "sourceTriangles": 242246,
+      "triangles": 60499,
+      "textureBytes": 663216,
+      "bounds": {
+        "min": [
+          -165.27952575683594,
+          -40.37559127807617,
+          -152.37628173828125
+        ],
+        "max": [
+          82.40208435058594,
+          56.6782341003418,
+          187.87359619140625
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "cave_large_medium",
+      "detail": "../monuments/cave_large_medium.glb",
+      "map": "cave_large_medium.glb",
+      "sourceSha256": "fa361f706900b16a677f9be9dfe8c60f599e6b490f20c4e2494e10a27cf8f622",
+      "sourceBytes": 3241608,
+      "outputBytes": 1129344,
+      "sourceTriangles": 228498,
+      "triangles": 95164,
+      "textureBytes": 553180,
+      "bounds": {
+        "min": [
+          -112.43490600585938,
+          -44.78258514404297,
+          -136.45262145996094
+        ],
+        "max": [
+          64.01654815673828,
+          59.678890228271484,
+          56.69477844238281
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "cave_large_sewers_hard",
+      "detail": "../monuments/cave_large_sewers_hard.glb",
+      "map": "cave_large_sewers_hard.glb",
+      "sourceSha256": "c96714c23260787e84764aa392f4063178b476972d92f6065b9804b9ac8633ae",
+      "sourceBytes": 4272996,
+      "outputBytes": 1456668,
+      "sourceTriangles": 234534,
+      "triangles": 81454,
+      "textureBytes": 765718,
+      "bounds": {
+        "min": [
+          -150.0950469970703,
+          -61.6071891784668,
+          -122.30973052978516
+        ],
+        "max": [
+          142.01678466796875,
+          50.247093200683594,
+          152.50949096679688
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "cave_medium_easy",
+      "detail": "../monuments/cave_medium_easy.glb",
+      "map": "cave_medium_easy.glb",
+      "sourceSha256": "674f9ff27200959ccd121a73765e3ccedccd621fa3de61fbd5d0689f53f99848",
+      "sourceBytes": 1830928,
+      "outputBytes": 638252,
+      "sourceTriangles": 122954,
+      "triangles": 45063,
+      "textureBytes": 334664,
+      "bounds": {
+        "min": [
+          -86.77325439453125,
+          -42.249874114990234,
+          -49.406517028808594
+        ],
+        "max": [
+          89.1240463256836,
+          51.667057037353516,
+          52.61513900756836
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "cave_medium_hard",
+      "detail": "../monuments/cave_medium_hard.glb",
+      "map": "cave_medium_hard.glb",
+      "sourceSha256": "2773dafcfcfdd76fadfbbe41640647331e49a7d028b644f6f8cfb01a26801fee",
+      "sourceBytes": 2215080,
+      "outputBytes": 743736,
+      "sourceTriangles": 149709,
+      "triangles": 49826,
+      "textureBytes": 402670,
+      "bounds": {
+        "min": [
+          -49.60812759399414,
+          -22.282922744750977,
+          -50.855674743652344
+        ],
+        "max": [
+          78.19806671142578,
+          60.66969680786133,
+          71.05972290039062
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "cave_medium_medium",
+      "detail": "../monuments/cave_medium_medium.glb",
+      "map": "cave_medium_medium.glb",
+      "sourceSha256": "acfa8658f4aafed56ac925a6e4d32bf1db379804d02eeede1a3b77435e21d943",
+      "sourceBytes": 2660236,
+      "outputBytes": 821232,
+      "sourceTriangles": 163831,
+      "triangles": 41676,
+      "textureBytes": 516604,
+      "bounds": {
+        "min": [
+          -135.13790893554688,
+          -35.67136001586914,
+          -83.10942840576172
+        ],
+        "max": [
+          73.62825775146484,
+          58.22702407836914,
+          81.35938262939453
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "cave_small_easy",
+      "detail": "../monuments/cave_small_easy.glb",
+      "map": "cave_small_easy.glb",
+      "sourceSha256": "b1dd4a053b2b546be801f490d0ff3a416d4add7243c8c7320c25eacaecb29424",
+      "sourceBytes": 2610148,
+      "outputBytes": 745200,
+      "sourceTriangles": 130974,
+      "triangles": 21342,
+      "textureBytes": 563902,
+      "bounds": {
+        "min": [
+          -55.794342041015625,
+          -46.55609893798828,
+          -50.489315032958984
+        ],
+        "max": [
+          58.5140380859375,
+          54.970306396484375,
+          37.38149642944336
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "cave_small_hard",
+      "detail": "../monuments/cave_small_hard.glb",
+      "map": "cave_small_hard.glb",
+      "sourceSha256": "e2c2489c91660c68321cf6e56e5391bde96b0974061b91b54e8538bbee5f0bef",
+      "sourceBytes": 2105120,
+      "outputBytes": 625480,
+      "sourceTriangles": 115712,
+      "triangles": 24955,
+      "textureBytes": 435350,
+      "bounds": {
+        "min": [
+          -59.5834846496582,
+          -17.677453994750977,
+          -69.02203369140625
+        ],
+        "max": [
+          61.9503059387207,
+          45.78505325317383,
+          52.775245666503906
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "cave_small_medium",
+      "detail": "../monuments/cave_small_medium.glb",
+      "map": "cave_small_medium.glb",
+      "sourceSha256": "b9adc61be1cf8a5f77dac849ac7b3163f206a1c7ccc1691972b46009446f24e4",
+      "sourceBytes": 2524120,
+      "outputBytes": 740672,
+      "sourceTriangles": 136765,
+      "triangles": 28286,
+      "textureBytes": 520868,
+      "bounds": {
+        "min": [
+          -45.494937896728516,
+          -36.89703369140625,
+          -51.81209945678711
+        ],
+        "max": [
+          58.5157356262207,
+          63.1137580871582,
+          61.472076416015625
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "compound",
+      "detail": "../monuments/compound.glb",
+      "map": "compound.glb",
+      "sourceSha256": "3cae5ca3a7e53a876fd9134ddbbcad799b11abd25872e4f7ff3c7ace4e492991",
+      "sourceBytes": 13301848,
+      "outputBytes": 4738660,
+      "sourceTriangles": 527297,
+      "triangles": 227744,
+      "textureBytes": 2413052,
+      "bounds": {
+        "min": [
+          -157.0252227783203,
+          -59.2766227722168,
+          -158.17141723632812
+        ],
+        "max": [
+          176.96055603027344,
+          28.722164154052734,
+          129.4512481689453
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "desert_military_base_a",
+      "detail": "../monuments/desert_military_base_a.glb",
+      "map": "desert_military_base_a.glb",
+      "sourceSha256": "2efd5185a22040a67eba0655acdb2bc6507458f8782b69fe892b6d33faffbc54",
+      "sourceBytes": 2051652,
+      "outputBytes": 566104,
+      "sourceTriangles": 60301,
+      "triangles": 17748,
+      "textureBytes": 372710,
+      "bounds": {
+        "min": [
+          -64.86426544189453,
+          -41.776123046875,
+          -44.660186767578125
+        ],
+        "max": [
+          82.59056854248047,
+          6.938388824462891,
+          62.71188735961914
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "desert_military_base_b",
+      "detail": "../monuments/desert_military_base_b.glb",
+      "map": "desert_military_base_b.glb",
+      "sourceSha256": "077079da1b3a6303c76c6c823c58bbe48730958874151ca385cbc116cc98e09d",
+      "sourceBytes": 2053696,
+      "outputBytes": 545756,
+      "sourceTriangles": 60388,
+      "triangles": 14796,
+      "textureBytes": 372710,
+      "bounds": {
+        "min": [
+          -80.00957489013672,
+          -3.0852320194244385,
+          -78.07139587402344
+        ],
+        "max": [
+          83.44107818603516,
+          6.940436363220215,
+          88.70281219482422
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "desert_military_base_c",
+      "detail": "../monuments/desert_military_base_c.glb",
+      "map": "desert_military_base_c.glb",
+      "sourceSha256": "3eb585960525828226ef5162d6ebc19bfef0e4165350dc4e9df0145b92718c55",
+      "sourceBytes": 2001852,
+      "outputBytes": 586340,
+      "sourceTriangles": 51900,
+      "triangles": 19744,
+      "textureBytes": 372710,
+      "bounds": {
+        "min": [
+          -62.49954605102539,
+          -1.3598638772964478,
+          -85.5
+        ],
+        "max": [
+          55.743629455566406,
+          6.93757438659668,
+          62.50083923339844
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "desert_military_base_d",
+      "detail": "../monuments/desert_military_base_d.glb",
+      "map": "desert_military_base_d.glb",
+      "sourceSha256": "cbc5b14a391675515c3e4dfaad543e04eed21e8c56e33dcda3bbbbc0f4ab16d5",
+      "sourceBytes": 1983016,
+      "outputBytes": 528852,
+      "sourceTriangles": 48507,
+      "triangles": 15861,
+      "textureBytes": 342882,
+      "bounds": {
+        "min": [
+          -112.50012969970703,
+          -1.3598638772964478,
+          -68.27172088623047
+        ],
+        "max": [
+          90.23176574707031,
+          78.20960235595703,
+          117.00030517578125
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "entrance_bunker_a",
+      "detail": "../monuments/entrance_bunker_a.glb",
+      "map": "entrance_bunker_a.glb",
+      "sourceSha256": "87ec4c993b9b8d042ef8c350351a59bc02f646be602f763b81419337e22d69dc",
+      "sourceBytes": 2887432,
+      "outputBytes": 922388,
+      "sourceTriangles": 79645,
+      "triangles": 25116,
+      "textureBytes": 638348,
+      "bounds": {
+        "min": [
+          -16.36621856689453,
+          -19.000938415527344,
+          -20.399242401123047
+        ],
+        "max": [
+          18.804861068725586,
+          18.850799560546875,
+          10.0657958984375
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "entrance_bunker_b",
+      "detail": "../monuments/entrance_bunker_b.glb",
+      "map": "entrance_bunker_b.glb",
+      "sourceSha256": "56f454970bb6e8283a3e6a3bd8cce3a170023862c8e86bb2e8107b3f649d61f8",
+      "sourceBytes": 3567804,
+      "outputBytes": 1130596,
+      "sourceTriangles": 113454,
+      "triangles": 32828,
+      "textureBytes": 765494,
+      "bounds": {
+        "min": [
+          -28.216949462890625,
+          -19.000938415527344,
+          -31.87923812866211
+        ],
+        "max": [
+          35.21305847167969,
+          40.25699996948242,
+          29.37962532043457
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "entrance_bunker_c",
+      "detail": "../monuments/entrance_bunker_c.glb",
+      "map": "entrance_bunker_c.glb",
+      "sourceSha256": "cda87904715db7f715c2660297e3946d0c251d69124e7dc90af70e0513788e52",
+      "sourceBytes": 3646944,
+      "outputBytes": 1185860,
+      "sourceTriangles": 110207,
+      "triangles": 35041,
+      "textureBytes": 793622,
+      "bounds": {
+        "min": [
+          -16.218233108520508,
+          -6.830597877502441,
+          -17.462766647338867
+        ],
+        "max": [
+          18.15567398071289,
+          18.850799560546875,
+          18.23607063293457
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "entrance_bunker_d",
+      "detail": "../monuments/entrance_bunker_d.glb",
+      "map": "entrance_bunker_d.glb",
+      "sourceSha256": "ceba2284fb36d3e49f6279af36807afc6bbd0984c922946e37b05ac87bea41c9",
+      "sourceBytes": 2262384,
+      "outputBytes": 739556,
+      "sourceTriangles": 63488,
+      "triangles": 22277,
+      "textureBytes": 496004,
+      "bounds": {
+        "min": [
+          -11.826089859008789,
+          -19.000938415527344,
+          -12.26877212524414
+        ],
+        "max": [
+          13.202610969543457,
+          18.850799560546875,
+          7.840418815612793
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "excavator_1",
+      "detail": "../monuments/excavator_1.glb",
+      "map": "excavator_1.glb",
+      "sourceSha256": "66e010436a01771092cde869c3c8cad8f3510b303098936e2e25149a2a8e5f01",
+      "sourceBytes": 9479132,
+      "outputBytes": 3820912,
+      "sourceTriangles": 548869,
+      "triangles": 304207,
+      "textureBytes": 1509072,
+      "bounds": {
+        "min": [
+          -143.4974365234375,
+          -28.817174911499023,
+          -114.46043395996094
+        ],
+        "max": [
+          132.29153442382812,
+          56.2609748840332,
+          101.7737808227539
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "ferry_terminal_1",
+      "detail": "../monuments/ferry_terminal_1.glb",
+      "map": "ferry_terminal_1.glb",
+      "sourceSha256": "4a0b596f97aeca0051a6ac3dbaa895fe2a1d3fad803c36d345cbb50a4369bad2",
+      "sourceBytes": 13501868,
+      "outputBytes": 4611440,
+      "sourceTriangles": 588247,
+      "triangles": 234702,
+      "textureBytes": 2556996,
+      "bounds": {
+        "min": [
+          -157.76986694335938,
+          -162.10580444335938,
+          -353.8700256347656
+        ],
+        "max": [
+          12284.8076171875,
+          108.71597290039062,
+          909.5980224609375
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "fishing_village_a",
+      "detail": "../monuments/fishing_village_a.glb",
+      "map": "fishing_village_a.glb",
+      "sourceSha256": "3e86b65fada7248522a54d4787be30e32d8c8e7d53049b2e693a19703c9303f5",
+      "sourceBytes": 4875668,
+      "outputBytes": 2225604,
+      "sourceTriangles": 236664,
+      "triangles": 188063,
+      "textureBytes": 933686,
+      "bounds": {
+        "min": [
+          -52.12339401245117,
+          -18.95381736755371,
+          -46.515663146972656
+        ],
+        "max": [
+          65.95994567871094,
+          45.815399169921875,
+          58.07537841796875
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "fishing_village_b",
+      "detail": "../monuments/fishing_village_b.glb",
+      "map": "fishing_village_b.glb",
+      "sourceSha256": "cb8e20f740f085c6791fa5210532a8d8d5d96ee9bb1e331c87fc9d109554068e",
+      "sourceBytes": 3999572,
+      "outputBytes": 1721620,
+      "sourceTriangles": 174508,
+      "triangles": 137980,
+      "textureBytes": 811520,
+      "bounds": {
+        "min": [
+          -37.094276428222656,
+          -21.586685180664062,
+          -61.15446090698242
+        ],
+        "max": [
+          61.497859954833984,
+          15.791580200195312,
+          30.118671417236328
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "fishing_village_c",
+      "detail": "../monuments/fishing_village_c.glb",
+      "map": "fishing_village_c.glb",
+      "sourceSha256": "96a3d7b23f4550b32c96350644369729d21dc0552d34a88ba829b38b2b545c83",
+      "sourceBytes": 4342260,
+      "outputBytes": 1947152,
+      "sourceTriangles": 190416,
+      "triangles": 169546,
+      "textureBytes": 855932,
+      "bounds": {
+        "min": [
+          -38.79323959350586,
+          -21.586685180664062,
+          -39.15070724487305
+        ],
+        "max": [
+          63.75285339355469,
+          11.691896438598633,
+          50.58375549316406
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "gas_station_1",
+      "detail": "../monuments/gas_station_1.glb",
+      "map": "gas_station_1.glb",
+      "sourceSha256": "f04db5e8fcd67ef0f2be1e8675acb16d597612ffb8eeb4c25dfc5a3d85e291a3",
+      "sourceBytes": 6080532,
+      "outputBytes": 1893304,
+      "sourceTriangles": 224672,
+      "triangles": 66087,
+      "textureBytes": 1187628,
+      "bounds": {
+        "min": [
+          -56.14729690551758,
+          -14.773630142211914,
+          -52.954917907714844
+        ],
+        "max": [
+          54.20819854736328,
+          23.43214988708496,
+          70.83322143554688
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "harbor_1",
+      "detail": "../monuments/harbor_1.glb",
+      "map": "harbor_1.glb",
+      "sourceSha256": "3e2e658ffd4f31b8ba3434af20df9220ec3bbd04897c811c858f79dc08f03d32",
+      "sourceBytes": 14802572,
+      "outputBytes": 5739824,
+      "sourceTriangles": 705885,
+      "triangles": 355060,
+      "textureBytes": 2591170,
+      "bounds": {
+        "min": [
+          -208.5421142578125,
+          -27.294918060302734,
+          -312.4349365234375
+        ],
+        "max": [
+          331.2281799316406,
+          65.01268005371094,
+          194.94178771972656
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "harbor_2",
+      "detail": "../monuments/harbor_2.glb",
+      "map": "harbor_2.glb",
+      "sourceSha256": "a659a25dcbc48b2019c9c4c733991c0b420d581a6914460e5069abb7fb136ee6",
+      "sourceBytes": 13296112,
+      "outputBytes": 5067652,
+      "sourceTriangles": 643017,
+      "triangles": 306904,
+      "textureBytes": 2328086,
+      "bounds": {
+        "min": [
+          -195.39942932128906,
+          -78.83575439453125,
+          -219.04489135742188
+        ],
+        "max": [
+          191.05242919921875,
+          34.64326858520508,
+          213.45957946777344
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "ice_lake_1",
+      "detail": "../monuments/ice_lake_1.glb",
+      "map": "ice_lake_1.glb",
+      "sourceSha256": "ffb39666b93c27bcbf23ca764386538f6707718409ec6e4a20c33abb1d1f925d",
+      "sourceBytes": 824068,
+      "outputBytes": 223528,
+      "sourceTriangles": 43405,
+      "triangles": 5199,
+      "textureBytes": 181416,
+      "bounds": {
+        "min": [
+          -70.5138931274414,
+          -3.0557503700256348,
+          -116.94335174560547
+        ],
+        "max": [
+          102.7324447631836,
+          45.375709533691406,
+          80.71697998046875
+        ]
+      },
+      "overBudget": false
+    },
+    {
+      "id": "ice_lake_2",
+      "detail": "../monuments/ice_lake_2.glb",
+      "map": "ice_lake_2.glb",
+      "sourceSha256": "4fe728695de2fafee66a33547c866e6218e6d62f4553bf0c34bb02b1aefadc44",
+      "sourceBytes": 326156,
+      "outputBytes": 90544,
+      "sourceTriangles": 22559,
+      "triangles": 3308,
+      "textureBytes": 62328,
+      "bounds": {
+        "min": [
+          -60.67155456542969,
+          -9.627909660339355,
+          -76.07508087158203
+        ],
+        "max": [
+          82.02349853515625,
+          45.375709533691406,
+          84.48717498779297
+        ]
+      },
+      "overBudget": false
+    },
+    {
+      "id": "ice_lake_3",
+      "detail": "../monuments/ice_lake_3.glb",
+      "map": "ice_lake_3.glb",
+      "sourceSha256": "056633e02569c8808abfe0990ac850d6b1b7c2ae517c0f25183998f6f7d28a9c",
+      "sourceBytes": 647980,
+      "outputBytes": 176112,
+      "sourceTriangles": 34406,
+      "triangles": 4666,
+      "textureBytes": 136734,
+      "bounds": {
+        "min": [
+          -80.48416900634766,
+          -16.487682342529297,
+          -117.40350341796875
+        ],
+        "max": [
+          88.90828704833984,
+          45.375709533691406,
+          110.31100463867188
+        ]
+      },
+      "overBudget": false
+    },
+    {
+      "id": "ice_lake_4",
+      "detail": "../monuments/ice_lake_4.glb",
+      "map": "ice_lake_4.glb",
+      "sourceSha256": "c01c5f6b6391deeee4030de50eefa1bb2acc085455900b6232bcb77ca53dfa30",
+      "sourceBytes": 315516,
+      "outputBytes": 85668,
+      "sourceTriangles": 14650,
+      "triangles": 1737,
+      "textureBytes": 68084,
+      "bounds": {
+        "min": [
+          -42.5528450012207,
+          -0.6946352124214172,
+          -40.12416076660156
+        ],
+        "max": [
+          46.0111198425293,
+          16.09458351135254,
+          35.45496368408203
+        ]
+      },
+      "overBudget": false
+    },
+    {
+      "id": "jungle_ruins_a",
+      "detail": "../monuments/jungle_ruins_a.glb",
+      "map": "jungle_ruins_a.glb",
+      "sourceSha256": "6c59667a2e5a7b34cf6c47d9f08611839bffd0153a8b8132c73e75039bdf9744",
+      "sourceBytes": 3057012,
+      "outputBytes": 751212,
+      "sourceTriangles": 157764,
+      "triangles": 18090,
+      "textureBytes": 475230,
+      "bounds": {
+        "min": [
+          -33.07765579223633,
+          -8.455121994018555,
+          -27.746395111083984
+        ],
+        "max": [
+          11.314842224121094,
+          13.074237823486328,
+          28.01297378540039
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "jungle_ruins_b",
+      "detail": "../monuments/jungle_ruins_b.glb",
+      "map": "jungle_ruins_b.glb",
+      "sourceSha256": "528e085f5e6dadf9ced95e02eb3f04d29002c9cf3b73d73115b04fa344cd5d31",
+      "sourceBytes": 3597500,
+      "outputBytes": 973788,
+      "sourceTriangles": 200326,
+      "triangles": 28832,
+      "textureBytes": 526654,
+      "bounds": {
+        "min": [
+          -23.503395080566406,
+          -8.381797790527344,
+          -17.531023025512695
+        ],
+        "max": [
+          14.530216217041016,
+          14.459915161132812,
+          17.541961669921875
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "jungle_ruins_c",
+      "detail": "../monuments/jungle_ruins_c.glb",
+      "map": "jungle_ruins_c.glb",
+      "sourceSha256": "8f866eef58f340cd3e9f4e74ddaaa8ab0e79f7b7675fdd47e64f838223ca2733",
+      "sourceBytes": 3359984,
+      "outputBytes": 890012,
+      "sourceTriangles": 170655,
+      "triangles": 22025,
+      "textureBytes": 528606,
+      "bounds": {
+        "min": [
+          -14.789950370788574,
+          -13.121589660644531,
+          -15.25659465789795
+        ],
+        "max": [
+          13.448006629943848,
+          10.270339965820312,
+          20.235326766967773
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "jungle_ruins_d",
+      "detail": "../monuments/jungle_ruins_d.glb",
+      "map": "jungle_ruins_d.glb",
+      "sourceSha256": "f820c815d68fd8abc4d52c9705290d1a6662489e5aec23b24a7ca9b2ed64cc80",
+      "sourceBytes": 3108680,
+      "outputBytes": 821320,
+      "sourceTriangles": 149964,
+      "triangles": 20188,
+      "textureBytes": 505998,
+      "bounds": {
+        "min": [
+          -15.945831298828125,
+          -5.382811069488525,
+          -15.352115631103516
+        ],
+        "max": [
+          13.02794075012207,
+          13.428119659423828,
+          14.123116493225098
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "jungle_ruins_e",
+      "detail": "../monuments/jungle_ruins_e.glb",
+      "map": "jungle_ruins_e.glb",
+      "sourceSha256": "7bea0eefbf5bb14af531c168ef004599725226dc49ce0214c133a1b7ab223cbb",
+      "sourceBytes": 4490780,
+      "outputBytes": 1073432,
+      "sourceTriangles": 246976,
+      "triangles": 25603,
+      "textureBytes": 677536,
+      "bounds": {
+        "min": [
+          -27.30459213256836,
+          -10.603140830993652,
+          -20.414281845092773
+        ],
+        "max": [
+          23.75858497619629,
+          13.38071346282959,
+          22.363481521606445
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "jungle_ziggurat_a",
+      "detail": "../monuments/jungle_ziggurat_a.glb",
+      "map": "jungle_ziggurat_a.glb",
+      "sourceSha256": "8755d336d700a7febe25183e1f491e7830e331203f93c56fc51fb39466860a6a",
+      "sourceBytes": 7815404,
+      "outputBytes": 2539068,
+      "sourceTriangles": 403212,
+      "triangles": 115446,
+      "textureBytes": 1347848,
+      "bounds": {
+        "min": [
+          -33.6328239440918,
+          -18.78191566467285,
+          -25.75654411315918
+        ],
+        "max": [
+          36.97236633300781,
+          23.097959518432617,
+          31.669403076171875
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "junkyard_1",
+      "detail": "../monuments/junkyard_1.glb",
+      "map": "junkyard_1.glb",
+      "sourceSha256": "2909eaeeae9f92fb23bf0a76595846aa3703f989f50be85e5d605b1ddeb59973",
+      "sourceBytes": 7243192,
+      "outputBytes": 2544932,
+      "sourceTriangles": 322048,
+      "triangles": 134919,
+      "textureBytes": 1352392,
+      "bounds": {
+        "min": [
+          -126.16251373291016,
+          -75.28144073486328,
+          -137.65696716308594
+        ],
+        "max": [
+          170.44515991210938,
+          31.4036922454834,
+          164.76516723632812
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "launch_site_1",
+      "detail": "../monuments/launch_site_1.glb",
+      "map": "launch_site_1.glb",
+      "sourceSha256": "1b25c4233f5731671d49d351103cc83795b8b61e2afb71c388c0d729d037f445",
+      "sourceBytes": 14592916,
+      "outputBytes": 6012080,
+      "sourceTriangles": 877880,
+      "triangles": 423559,
+      "textureBytes": 2101026,
+      "bounds": {
+        "min": [
+          -380.79998779296875,
+          -210.34078979492188,
+          -756.6282348632812
+        ],
+        "max": [
+          548.7488403320312,
+          93.3799057006836,
+          422.5129699707031
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "lighthouse",
+      "detail": "../monuments/lighthouse.glb",
+      "map": "lighthouse.glb",
+      "sourceSha256": "bb9a8a5164cfff4bbd72fa40d7740b6c88f7a648c2c0362abf99a415ddafd695",
+      "sourceBytes": 4404284,
+      "outputBytes": 1420792,
+      "sourceTriangles": 149545,
+      "triangles": 40038,
+      "textureBytes": 905910,
+      "bounds": {
+        "min": [
+          -19.960790634155273,
+          -23.92095184326172,
+          -40.53207778930664
+        ],
+        "max": [
+          58.5140380859375,
+          63.55467224121094,
+          37.38149642944336
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "military_tunnel_1",
+      "detail": "../monuments/military_tunnel_1.glb",
+      "map": "military_tunnel_1.glb",
+      "sourceSha256": "0954bd16ce42875efe7f7722304fc97d748082916bc19aae0febdab95b14f401",
+      "sourceBytes": 12682800,
+      "outputBytes": 4280760,
+      "sourceTriangles": 714170,
+      "triangles": 226922,
+      "textureBytes": 2110266,
+      "bounds": {
+        "min": [
+          -197.13999938964844,
+          -42.49996566772461,
+          -215.4373016357422
+        ],
+        "max": [
+          275.8546142578125,
+          53.66648864746094,
+          174.97105407714844
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "mining_quarry_a",
+      "detail": "../monuments/mining_quarry_a.glb",
+      "map": "mining_quarry_a.glb",
+      "sourceSha256": "6b49aaf0d1240201b97574785e3f501a8e93d3e4a49b64fa64333a8c48856742",
+      "sourceBytes": 1981120,
+      "outputBytes": 620608,
+      "sourceTriangles": 108034,
+      "triangles": 32849,
+      "textureBytes": 312250,
+      "bounds": {
+        "min": [
+          -37.10686111450195,
+          -4.962943077087402,
+          -59.43474578857422
+        ],
+        "max": [
+          54.9798469543457,
+          12.246299743652344,
+          45.4444694519043
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "mining_quarry_b",
+      "detail": "../monuments/mining_quarry_b.glb",
+      "map": "mining_quarry_b.glb",
+      "sourceSha256": "6a135c111ccd8b05b5c8f1facb372c29fdca01d7b5ab0baf8498e1a86011d260",
+      "sourceBytes": 2046216,
+      "outputBytes": 680232,
+      "sourceTriangles": 89012,
+      "triangles": 32407,
+      "textureBytes": 360422,
+      "bounds": {
+        "min": [
+          -31.79657554626465,
+          -6.685891151428223,
+          -22.195201873779297
+        ],
+        "max": [
+          19.667327880859375,
+          18.382001876831055,
+          20.458599090576172
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "mining_quarry_c",
+      "detail": "../monuments/mining_quarry_c.glb",
+      "map": "mining_quarry_c.glb",
+      "sourceSha256": "fe558d9bb46281248a468652e4dc18a0071c7f3e03a64ada1402591e7d6954fb",
+      "sourceBytes": 1872268,
+      "outputBytes": 609492,
+      "sourceTriangles": 86597,
+      "triangles": 30940,
+      "textureBytes": 313326,
+      "bounds": {
+        "min": [
+          -55.840274810791016,
+          -5.971574306488037,
+          -38.8679084777832
+        ],
+        "max": [
+          35.474700927734375,
+          11.571443557739258,
+          50.31059265136719
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "nuclear_missile_silo",
+      "detail": "../monuments/nuclear_missile_silo.glb",
+      "map": "nuclear_missile_silo.glb",
+      "sourceSha256": "3eb1bc55ed32683ed105599364bf36e6538b1aa8cc4189cf3df65f99219ea2d1",
+      "sourceBytes": 12368196,
+      "outputBytes": 4098272,
+      "sourceTriangles": 665872,
+      "triangles": 169341,
+      "textureBytes": 2147234,
+      "bounds": {
+        "min": [
+          -95.47442626953125,
+          -5254.60009765625,
+          -99.25011444091797
+        ],
+        "max": [
+          214673.890625,
+          242.9357452392578,
+          145.56236267089844
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "oilrig_1",
+      "detail": "../monuments/oilrig_1.glb",
+      "map": "oilrig_1.glb",
+      "sourceSha256": "05077866304db9066a11e4b42d3d8d5e3e05564ae18e56d1c3175d3f8d967be0",
+      "sourceBytes": 8912244,
+      "outputBytes": 3293972,
+      "sourceTriangles": 447036,
+      "triangles": 192785,
+      "textureBytes": 1635080,
+      "bounds": {
+        "min": [
+          -89.15338134765625,
+          -112.48143768310547,
+          -98.912353515625
+        ],
+        "max": [
+          40.9796142578125,
+          46.11060333251953,
+          119.43470764160156
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "oilrig_2",
+      "detail": "../monuments/oilrig_2.glb",
+      "map": "oilrig_2.glb",
+      "sourceSha256": "3bfa4f93241f0e0fa838d23bc8fd64e080b7dd7b8591858caefc71dfdd36e6ab",
+      "sourceBytes": 6916860,
+      "outputBytes": 2512964,
+      "sourceTriangles": 284441,
+      "triangles": 119915,
+      "textureBytes": 1392180,
+      "bounds": {
+        "min": [
+          -42.201263427734375,
+          -77.14959716796875,
+          -45.15238952636719
+        ],
+        "max": [
+          45.61088943481445,
+          40.00420379638672,
+          34.080196380615234
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "power_sub_big_1",
+      "detail": "../monuments/power_sub_big_1.glb",
+      "map": "power_sub_big_1.glb",
+      "sourceSha256": "f275a5f433b4498b1da84ef611a6d903571c3dce7f1111c19498e0759ad7fa19",
+      "sourceBytes": 1028184,
+      "outputBytes": 306984,
+      "sourceTriangles": 29308,
+      "triangles": 7044,
+      "textureBytes": 218494,
+      "bounds": {
+        "min": [
+          -17.151453018188477,
+          -1.4999818801879883,
+          -13.720210075378418
+        ],
+        "max": [
+          13.85203742980957,
+          8.254682540893555,
+          14.499750137329102
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "power_sub_big_2",
+      "detail": "../monuments/power_sub_big_2.glb",
+      "map": "power_sub_big_2.glb",
+      "sourceSha256": "7d6003133dec03dacbc583b29312605484389e2641b77d46f679c9cdb29971e9",
+      "sourceBytes": 1110764,
+      "outputBytes": 369500,
+      "sourceTriangles": 36205,
+      "triangles": 15276,
+      "textureBytes": 223040,
+      "bounds": {
+        "min": [
+          -18.68842315673828,
+          -1.4999818801879883,
+          -16.515657424926758
+        ],
+        "max": [
+          13.85203742980957,
+          8.254250526428223,
+          14.499750137329102
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "power_sub_small_1",
+      "detail": "../monuments/power_sub_small_1.glb",
+      "map": "power_sub_small_1.glb",
+      "sourceSha256": "b21c77eabc596dd25371e285aaa485a727ae8ae4d3e349f285c0ffde691ddb60",
+      "sourceBytes": 831676,
+      "outputBytes": 251060,
+      "sourceTriangles": 16194,
+      "triangles": 4330,
+      "textureBytes": 186380,
+      "bounds": {
+        "min": [
+          -12.056475639343262,
+          -1.9459218978881836,
+          -12.399470329284668
+        ],
+        "max": [
+          11.25837230682373,
+          6.532083034515381,
+          7.147813320159912
+        ]
+      },
+      "overBudget": false
+    },
+    {
+      "id": "power_sub_small_2",
+      "detail": "../monuments/power_sub_small_2.glb",
+      "map": "power_sub_small_2.glb",
+      "sourceSha256": "4dd0114320fc20f821697c41e1b9c753ad377abf7dc61aeea7a1988f0da21590",
+      "sourceBytes": 636816,
+      "outputBytes": 190820,
+      "sourceTriangles": 12113,
+      "triangles": 3345,
+      "textureBytes": 144260,
+      "bounds": {
+        "min": [
+          -12.046476364135742,
+          -0.45665374398231506,
+          -6.409470558166504
+        ],
+        "max": [
+          5.268872261047363,
+          3.91215443611145,
+          6.046560287475586
+        ]
+      },
+      "overBudget": false
+    },
+    {
+      "id": "powerplant_1",
+      "detail": "../monuments/powerplant_1.glb",
+      "map": "powerplant_1.glb",
+      "sourceSha256": "06b4e9676ae7beda4ee6718499d8b44bd0fbebdf39a2339fdfd870c3f7a8f268",
+      "sourceBytes": 13485804,
+      "outputBytes": 5276696,
+      "sourceTriangles": 756409,
+      "triangles": 352143,
+      "textureBytes": 2108236,
+      "bounds": {
+        "min": [
+          -311.58056640625,
+          -99.16049194335938,
+          -185.76185607910156
+        ],
+        "max": [
+          159.060791015625,
+          195.34011840820312,
+          291.2034912109375
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "radtown_1",
+      "detail": "../monuments/radtown_1.glb",
+      "map": "radtown_1.glb",
+      "sourceSha256": "41c72c5395ff9749f897713a41eb271a11883c6aab51cebeb2466e906a392f6d",
+      "sourceBytes": 14758380,
+      "outputBytes": 5040308,
+      "sourceTriangles": 546152,
+      "triangles": 215401,
+      "textureBytes": 2841510,
+      "bounds": {
+        "min": [
+          -225.34222412109375,
+          -90.56857299804688,
+          -110.91258239746094
+        ],
+        "max": [
+          192.1452178955078,
+          118.46871185302734,
+          116.04669189453125
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "radtown_small_3",
+      "detail": "../monuments/radtown_small_3.glb",
+      "map": "radtown_small_3.glb",
+      "sourceSha256": "3c7db2b1cc3d9df962feee5e7d31ebf790b4dea8128e071a39ea2c4c35705628",
+      "sourceBytes": 7885844,
+      "outputBytes": 2494932,
+      "sourceTriangles": 312334,
+      "triangles": 84796,
+      "textureBytes": 1574992,
+      "bounds": {
+        "min": [
+          -82.31885528564453,
+          -85.0403823852539,
+          -90.67813110351562
+        ],
+        "max": [
+          111.16991424560547,
+          48.50927734375,
+          85.22201538085938
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "satellite_dish",
+      "detail": "../monuments/satellite_dish.glb",
+      "map": "satellite_dish.glb",
+      "sourceSha256": "580b5c6974b12b5826b26f4f25203bccd06449dfc82abd8e76a99b1f1ba48038",
+      "sourceBytes": 6337468,
+      "outputBytes": 2169808,
+      "sourceTriangles": 193970,
+      "triangles": 82100,
+      "textureBytes": 1332636,
+      "bounds": {
+        "min": [
+          -92.75190734863281,
+          -35.04554748535156,
+          -73.44123840332031
+        ],
+        "max": [
+          80.41212463378906,
+          70.41262817382812,
+          98.28801727294922
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "sphere_tank",
+      "detail": "../monuments/sphere_tank.glb",
+      "map": "sphere_tank.glb",
+      "sourceSha256": "862ee2130dc2823eb2138dfc92bb0ea3964976dfd942f4a9704568bdd62731a7",
+      "sourceBytes": 5034120,
+      "outputBytes": 1847864,
+      "sourceTriangles": 220825,
+      "triangles": 103160,
+      "textureBytes": 883660,
+      "bounds": {
+        "min": [
+          -70.60979461669922,
+          -34.476226806640625,
+          -89.70654296875
+        ],
+        "max": [
+          65.44129180908203,
+          72.01007080078125,
+          63.311309814453125
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "stables_a",
+      "detail": "../monuments/stables_a.glb",
+      "map": "stables_a.glb",
+      "sourceSha256": "83d3f0493bdc819be5d06b1211ed9ff285dde6dffe9feadcd68917f93b35aea1",
+      "sourceBytes": 4258340,
+      "outputBytes": 1374408,
+      "sourceTriangles": 133303,
+      "triangles": 43391,
+      "textureBytes": 903446,
+      "bounds": {
+        "min": [
+          -24.529991149902344,
+          -3.318854808807373,
+          -51.6020622253418
+        ],
+        "max": [
+          22.061145782470703,
+          15.68998908996582,
+          43.1806526184082
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "stables_b",
+      "detail": "../monuments/stables_b.glb",
+      "map": "stables_b.glb",
+      "sourceSha256": "776f130deb0a11d3a38c9b98667ae3adff417d583a488c3fce0b93b8dc5c72cb",
+      "sourceBytes": 3812728,
+      "outputBytes": 1432924,
+      "sourceTriangles": 154576,
+      "triangles": 83384,
+      "textureBytes": 776702,
+      "bounds": {
+        "min": [
+          -39.091304779052734,
+          -11.902000427246094,
+          -36.27775192260742
+        ],
+        "max": [
+          27.00168800354004,
+          19.57374382019043,
+          36.638427734375
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "supermarket_1",
+      "detail": "../monuments/supermarket_1.glb",
+      "map": "supermarket_1.glb",
+      "sourceSha256": "cd8b021ad9cdf35ad6b6b09e82d676dbf1b3adec6dee7e3fc67654bec6e56445",
+      "sourceBytes": 4142740,
+      "outputBytes": 1383152,
+      "sourceTriangles": 126770,
+      "triangles": 43325,
+      "textureBytes": 869688,
+      "bounds": {
+        "min": [
+          -35.94063949584961,
+          -7.33780574798584,
+          -35.37482833862305
+        ],
+        "max": [
+          35.02000045776367,
+          7.996327877044678,
+          36.512203216552734
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "swamp_a",
+      "detail": "../monuments/swamp_a.glb",
+      "map": "swamp_a.glb",
+      "sourceSha256": "1a788d39d66a6dbdb8ca318015dfb6f1adfc2e2785e0977050e0445acfd49f85",
+      "sourceBytes": 1351044,
+      "outputBytes": 458336,
+      "sourceTriangles": 47827,
+      "triangles": 12165,
+      "textureBytes": 282230,
+      "bounds": {
+        "min": [
+          -63.21816635131836,
+          -5.362039566040039,
+          -104.27423095703125
+        ],
+        "max": [
+          84.66929626464844,
+          21.045866012573242,
+          82.95272064208984
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "swamp_b",
+      "detail": "../monuments/swamp_b.glb",
+      "map": "swamp_b.glb",
+      "sourceSha256": "72d38f7971c3bea64de024eb047034b6c4294c105df6e045b0743c810f25d854",
+      "sourceBytes": 640912,
+      "outputBytes": 231872,
+      "sourceTriangles": 24384,
+      "triangles": 7292,
+      "textureBytes": 133698,
+      "bounds": {
+        "min": [
+          -21.792726516723633,
+          -5.636709690093994,
+          -16.017202377319336
+        ],
+        "max": [
+          17.00849723815918,
+          26.525854110717773,
+          21.356367111206055
+        ]
+      },
+      "overBudget": false
+    },
+    {
+      "id": "swamp_c",
+      "detail": "../monuments/swamp_c.glb",
+      "map": "swamp_c.glb",
+      "sourceSha256": "1e8b385448d094d76a89ee84dba78cd2a6b8c64de3fb7dd9e5412cc1592ab042",
+      "sourceBytes": 3201680,
+      "outputBytes": 993300,
+      "sourceTriangles": 111166,
+      "triangles": 32783,
+      "textureBytes": 641854,
+      "bounds": {
+        "min": [
+          -2154.153076171875,
+          -62.79878234863281,
+          -167.58779907226562
+        ],
+        "max": [
+          91.67431640625,
+          45.72118377685547,
+          71.119384765625
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "trainyard_1",
+      "detail": "../monuments/trainyard_1.glb",
+      "map": "trainyard_1.glb",
+      "sourceSha256": "4e708307ca739632a286e77913e68fa298e55fd183ae0c234cac42c5aada863e",
+      "sourceBytes": 14919636,
+      "outputBytes": 5533700,
+      "sourceTriangles": 830850,
+      "triangles": 349849,
+      "textureBytes": 2449456,
+      "bounds": {
+        "min": [
+          -208.47308349609375,
+          -114.17740631103516,
+          -197.17039489746094
+        ],
+        "max": [
+          198.53099060058594,
+          83.6537094116211,
+          151.01834106445312
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "ue_jungle_swamp_a",
+      "detail": "../monuments/ue_jungle_swamp_a.glb",
+      "map": "ue_jungle_swamp_a.glb",
+      "sourceSha256": "034034f39e588ded8e611acfead60293906b9e1559c04d4494987cac7c8f3f9a",
+      "sourceBytes": 2292,
+      "outputBytes": 1404,
+      "sourceTriangles": 80,
+      "triangles": 76,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          0,
+          0,
+          0
+        ],
+        "max": [
+          16383,
+          5836,
+          16383
+        ]
+      },
+      "overBudget": false
+    },
+    {
+      "id": "underwater_lab_a",
+      "detail": "../monuments/underwater_lab_a.glb",
+      "map": "underwater_lab_a.glb",
+      "sourceSha256": "6913a54ba35066c04d8bc4656a3912694cd613dc7c7c3d81294774cf26261259",
+      "sourceBytes": 722632,
+      "outputBytes": 243908,
+      "sourceTriangles": 23736,
+      "triangles": 6458,
+      "textureBytes": 162388,
+      "bounds": {
+        "min": [
+          -3.122802257537842,
+          -1.5033118724822998,
+          -3.4595437049865723
+        ],
+        "max": [
+          6.89911413192749,
+          2.4987614154815674,
+          5.486630439758301
+        ]
+      },
+      "overBudget": false
+    },
+    {
+      "id": "underwater_lab_b",
+      "detail": "../monuments/underwater_lab_b.glb",
+      "map": "underwater_lab_b.glb",
+      "sourceSha256": "7b93037a400c98dcbfa152669b13cbae2bbed51a9b4aeee08f9b346d33d0059a",
+      "sourceBytes": 846376,
+      "outputBytes": 290532,
+      "sourceTriangles": 37809,
+      "triangles": 9750,
+      "textureBytes": 176484,
+      "bounds": {
+        "min": [
+          -7.694199562072754,
+          -1.5,
+          -9.321599960327148
+        ],
+        "max": [
+          15.20129680633545,
+          3.005676507949829,
+          11.924402236938477
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "underwater_lab_c",
+      "detail": "../monuments/underwater_lab_c.glb",
+      "map": "underwater_lab_c.glb",
+      "sourceSha256": "48585167a9aadcd180dff50a62e4f6517ecba533eecf08bbcc4d031a99df51cc",
+      "sourceBytes": 705828,
+      "outputBytes": 232940,
+      "sourceTriangles": 22962,
+      "triangles": 5169,
+      "textureBytes": 158406,
+      "bounds": {
+        "min": [
+          -6.457838535308838,
+          -0.9956731796264648,
+          -8.57715129852295
+        ],
+        "max": [
+          8.23543930053711,
+          1.5093376636505127,
+          11.102840423583984
+        ]
+      },
+      "overBudget": false
+    },
+    {
+      "id": "underwater_lab_d",
+      "detail": "../monuments/underwater_lab_d.glb",
+      "map": "underwater_lab_d.glb",
+      "sourceSha256": "2dbd0b3dc805209fc08c8f5ab881ac93ad217a3829a834979512a2edc00f66e8",
+      "sourceBytes": 1020884,
+      "outputBytes": 349028,
+      "sourceTriangles": 39146,
+      "triangles": 11525,
+      "textureBytes": 221156,
+      "bounds": {
+        "min": [
+          -8.494089126586914,
+          -1.211866855621338,
+          -9.859071731567383
+        ],
+        "max": [
+          9.762312889099121,
+          3.0059170722961426,
+          6.465739727020264
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "warehouse",
+      "detail": "../monuments/warehouse.glb",
+      "map": "warehouse.glb",
+      "sourceSha256": "b5e69f701da92f592dfb0a73337883fda6b7ad4b7073e6a265fe8d687883495d",
+      "sourceBytes": 2518320,
+      "outputBytes": 849148,
+      "sourceTriangles": 68892,
+      "triangles": 31974,
+      "textureBytes": 537230,
+      "bounds": {
+        "min": [
+          -23.47499656677246,
+          -4.345138072967529,
+          -31.50234031677246
+        ],
+        "max": [
+          20.653865814208984,
+          18.977571487426758,
+          21.396303176879883
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "water_treatment_plant_1",
+      "detail": "../monuments/water_treatment_plant_1.glb",
+      "map": "water_treatment_plant_1.glb",
+      "sourceSha256": "84e5afe57e4ccfeae0f22618251e166d40213e11a44aa0718af7c48c1eab24b0",
+      "sourceBytes": 12853912,
+      "outputBytes": 4542720,
+      "sourceTriangles": 610385,
+      "triangles": 230448,
+      "textureBytes": 2353700,
+      "bounds": {
+        "min": [
+          -193.23521423339844,
+          -131.23854064941406,
+          -185.36866760253906
+        ],
+        "max": [
+          231.20375061035156,
+          76.76554870605469,
+          192.05517578125
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "water_well_a",
+      "detail": "../monuments/water_well_a.glb",
+      "map": "water_well_a.glb",
+      "sourceSha256": "db2ace2b85711bfdb4eba5b17aaffcd70b252684a3aa9d34d4dc73c110da58b8",
+      "sourceBytes": 1839648,
+      "outputBytes": 596428,
+      "sourceTriangles": 66068,
+      "triangles": 21741,
+      "textureBytes": 348134,
+      "bounds": {
+        "min": [
+          -78.54766082763672,
+          -9.764472961425781,
+          -34.75809097290039
+        ],
+        "max": [
+          63.80243682861328,
+          11.102499008178711,
+          116.33499145507812
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "water_well_b",
+      "detail": "../monuments/water_well_b.glb",
+      "map": "water_well_b.glb",
+      "sourceSha256": "c89c0d6020208e6c2f3fc1330ccd691c04f059b5999048d16066be057271bde4",
+      "sourceBytes": 2757924,
+      "outputBytes": 878244,
+      "sourceTriangles": 63305,
+      "triangles": 22796,
+      "textureBytes": 596654,
+      "bounds": {
+        "min": [
+          -16.771770477294922,
+          -7.2131476402282715,
+          -23.148439407348633
+        ],
+        "max": [
+          12.759647369384766,
+          11.720861434936523,
+          19.718475341796875
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "water_well_c",
+      "detail": "../monuments/water_well_c.glb",
+      "map": "water_well_c.glb",
+      "sourceSha256": "3dd1d91ae6fd080e9debd1aeea18f180934cdd4aadbde4646ba46004487d2467",
+      "sourceBytes": 2092168,
+      "outputBytes": 686316,
+      "sourceTriangles": 70992,
+      "triangles": 24122,
+      "textureBytes": 428548,
+      "bounds": {
+        "min": [
+          -9.212690353393555,
+          -6.359045505523682,
+          -14.590079307556152
+        ],
+        "max": [
+          22.507558822631836,
+          12.269783020019531,
+          12.691110610961914
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "water_well_d",
+      "detail": "../monuments/water_well_d.glb",
+      "map": "water_well_d.glb",
+      "sourceSha256": "ab3f7c472f009802fc808750919e2e00f53e5cdf558c46f6d9dc0e5da850d9c6",
+      "sourceBytes": 2415580,
+      "outputBytes": 795228,
+      "sourceTriangles": 58785,
+      "triangles": 25721,
+      "textureBytes": 524586,
+      "bounds": {
+        "min": [
+          -20.64967155456543,
+          -9.608342170715332,
+          -17.5524845123291
+        ],
+        "max": [
+          17.2479305267334,
+          19.877721786499023,
+          10.008403778076172
+        ]
+      },
+      "overBudget": true
+    },
+    {
+      "id": "water_well_e",
+      "detail": "../monuments/water_well_e.glb",
+      "map": "water_well_e.glb",
+      "sourceSha256": "aca9ac5418c165dd594d740e0cacb49778b492cfc3ab121e399a71dbcca401c3",
+      "sourceBytes": 2202012,
+      "outputBytes": 717532,
+      "sourceTriangles": 52500,
+      "triangles": 22242,
+      "textureBytes": 476462,
+      "bounds": {
+        "min": [
+          -10.73880672454834,
+          -11.250896453857422,
+          -14.900331497192383
+        ],
+        "max": [
+          11.99993896484375,
+          13.89389705657959,
+          11.770086288452148
+        ]
+      },
+      "overBudget": true
+    }
+  ]
+}
