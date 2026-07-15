@@ -49,15 +49,6 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
-import {
-  attachMilitaryBaseMlrs,
-  attachMilitaryBaseCompositeAsset,
-  MILITARY_BASE_COMPOSITE_ASSETS,
-  MILITARY_BASE_MLRS_ASSET,
-  MILITARY_BASE_MLRS_SHA256,
-  militaryBaseMlrsPlacement,
-  usesEnhancedMilitaryBaseMapModel,
-} from "./monument-mlrs-policy";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { SSAOPass } from "three/examples/jsm/postprocessing/SSAOPass.js";
@@ -112,11 +103,31 @@ import {
   type ManualCameraStyle,
 } from "./camera-policy";
 import { monumentNavigationLabels, recentUniqueNavigationEvents, validNavigationCoordinate } from "./navigation-policy";
-import { monumentModelAssetName, monumentModelMetadata, type MonumentModelManifestEntry } from "./monument-model-registry";
+import {
+  monumentModelAssetName,
+  monumentModelManifestVersion,
+  monumentModelMetadata,
+  monumentModelRecipeVersion,
+  monumentModelSourceRevision,
+  monumentModelThresholds,
+  type MonumentModelManifestEntry,
+  type MonumentModelTier,
+} from "./monument-model-registry";
 import { monumentPrimitiveKind, monumentPrimitiveSearchKey, monumentPrimitiveSize } from "./monument-primitive-policy";
-import { monumentRenderClass, type MonumentRenderClass } from "./monument-render-policy";
 import { normalizePowerLines, type PowerLinePayload } from "./power-line-policy";
-import { monumentLoadDistance, monumentUnloadDistance, parseMonumentMode, prioritizeMonuments, resolveMonumentQuality, type MonumentMode, type MonumentQualityPolicy } from "./monument-quality-policy";
+import {
+  desiredMonumentTier,
+  monumentCacheEvictionKeys,
+  monumentTierFitsBudget,
+  parseMonumentMode,
+  prioritizeMonuments,
+  projectedMonumentDiameter,
+  resolveMonumentQuality,
+  visibleMonumentTier,
+  type MonumentLodTier,
+  type MonumentMode,
+  type MonumentQualityPolicy,
+} from "./monument-quality-policy";
 
 const ENVIRONMENT_QUALITY_STORAGE_KEY = "raidlands:map-environment-quality";
 const CAMERA_PREFERENCES_STORAGE_KEY = "raidlands:map-camera-preferences";
@@ -1235,7 +1246,7 @@ class TerrainViewer {
     this.monumentModels = new MonumentModelController({
       assetBase: this.root.dataset.assetBase || new URL(/* @vite-ignore */ "../../", import.meta.url).href,
       camera: this.camera,
-      policy: resolveMonumentQuality(this.monumentMode, this.qualityProfile.resolved),
+      policy: resolveMonumentQuality(this.monumentMode, this.qualityProfile.resolved, monumentModelThresholds()),
       root: this.root,
     });
     this.tourEnabled = this.root.dataset.cameraTour === "true";
@@ -1459,7 +1470,7 @@ class TerrainViewer {
   public setMonumentMode(mode: MonumentMode): void {
     this.monumentMode = mode;
     this.root.dataset.monumentMode = mode;
-    this.monumentModels.setPolicy(resolveMonumentQuality(mode, this.qualityProfile.resolved));
+    this.monumentModels.setPolicy(resolveMonumentQuality(mode, this.qualityProfile.resolved, monumentModelThresholds()));
     this.root.closest<HTMLElement>(".server-terrain-panel")
       ?.querySelectorAll<HTMLInputElement | HTMLSelectElement>("[data-map-detailed-monuments]")
       .forEach((control) => {
@@ -4846,20 +4857,16 @@ interface MonumentPrimitivePlacement {
   rotationY: number;
 }
 
-type MonumentTier = "map" | "detail";
 type MonumentCacheEntry = { source: Group; active: number; lastUsed: number };
-type MonumentBinding = {
+type MonumentBinding = Record<MonumentModelTier, Group | null> & {
   group: Group;
   monument: MonumentPayload;
   metadata: MonumentModelManifestEntry;
-  renderClass: MonumentRenderClass;
   fallback: Object3D[];
   localGroundY: number;
-  map: Group | null;
-  detail: Group | null;
-  desired: "fallback" | MonumentTier;
-  loading: Set<MonumentTier>;
-  failed: Set<MonumentTier>;
+  desired: MonumentLodTier;
+  loading: Set<MonumentModelTier>;
+  failed: Set<MonumentModelTier>;
 };
 
 class MonumentModelController {
@@ -4889,14 +4896,10 @@ class MonumentModelController {
   public register(group: Group, monument: MonumentPayload, localGroundY: number): void {
     const metadata = monumentModelMetadata(monument.prefab);
     if (!metadata) return;
-    if ((window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") && (metadata.overBudget || metadata.overTriangleTarget)) {
-      console.warn(`Monument map LOD ${metadata.id} needs manual tuning: ${metadata.outputBytes} bytes, ${(metadata.triangleRatio * 100).toFixed(2)}% of source triangles.`);
-    }
     this.bindings.push({
       group, monument, metadata, localGroundY,
-      renderClass: monumentRenderClass(monument.prefab),
       fallback: group.children.filter((child) => child.name !== "monument-title"),
-      map: null, detail: null, desired: "fallback", loading: new Set(), failed: new Set(),
+      map: null, mid: null, close: null, desired: "fallback", loading: new Set(), failed: new Set(),
     });
   }
 
@@ -4915,25 +4918,106 @@ class MonumentModelController {
   public tick(now: number): void {
     if (this.disposed || now - this.lastTick < 250) return;
     this.lastTick = now;
+    const viewportHeight = Math.max(1, this.options.root.clientHeight || window.innerHeight);
     const ranked = prioritizeMonuments(this.bindings.map((binding) => ({
       binding,
       distance: this.options.camera.position.distanceTo(binding.group.position),
       focused: now < this.focusedUntil && binding.monument === this.focused,
+      projectedDiameter: projectedMonumentDiameter(
+        this.structuralRadius(binding),
+        this.options.camera.position.distanceTo(binding.group.position),
+        this.options.camera.fov,
+        viewportHeight,
+      ),
     })));
-    const detailSet = new Set(ranked.filter((item) => {
-      const eligible = !usesEnhancedMilitaryBaseMapModel(item.binding.metadata.id)
-        && item.binding.renderClass !== "surface-entrance"
-        && (this.policy.requested === "detailed" || item.binding.renderClass === "shared-detail");
-      const threshold = item.binding.desired === "detail"
-        ? monumentUnloadDistance(item.binding.monument.radius, this.policy)
-        : monumentLoadDistance(item.binding.monument.radius, this.policy);
-      return eligible && (item.focused || item.distance <= threshold);
-    }).slice(0, this.policy.activeDetailLimit).map((item) => item.binding));
-    // Every supported monument gets its real-geometry map proxy. Procedural
-    // geometry remains visible only while this asset loads or after failure.
-    const mapSet = new Set(ranked.slice(0, this.policy.activeMapLimit).map((item) => item.binding));
-    for (const { binding } of ranked) this.setDesired(binding, detailSet.has(binding) ? "detail" : mapSet.has(binding) ? "map" : "fallback");
-    this.evict("detail", this.policy.detailCacheLimit);
+
+    const mapSet = new Set<MonumentBinding>();
+    const midSet = new Set<MonumentBinding>();
+    const closeSet = new Set<MonumentBinding>();
+    const requestedTiers = new Map<MonumentBinding, Exclude<MonumentLodTier, "fallback">>();
+    let activeTriangles = 0;
+    let activeDrawCalls = 0;
+
+    for (const item of ranked.slice(0, this.policy.activeMapLimit)) {
+      const tier = item.binding.metadata.tiers.map;
+      if (!monumentTierFitsBudget(
+        { triangles: activeTriangles, drawCalls: activeDrawCalls },
+        { triangles: 0, drawCalls: 0 },
+        tier,
+        this.policy,
+      )) continue;
+      mapSet.add(item.binding);
+      activeTriangles += tier.triangles;
+      activeDrawCalls += tier.drawCalls;
+    }
+
+    for (const item of ranked) {
+      if (!mapSet.has(item.binding)) continue;
+      let requested = desiredMonumentTier(item.projectedDiameter, item.binding.desired, this.policy, item.focused);
+      if (this.policy.requested === "detailed") requested = "close";
+      requestedTiers.set(item.binding, requested);
+    }
+
+    const closeRanked = this.policy.requested === "detailed"
+      ? [...ranked].sort((a, b) => Number(b.focused) - Number(a.focused) || a.distance - b.distance)
+      : ranked;
+    for (const item of closeRanked) {
+      if (!mapSet.has(item.binding)) continue;
+      const requested = requestedTiers.get(item.binding) || "map";
+      if (requested !== "close" || closeSet.size >= this.policy.activeCloseLimit) continue;
+      const mapTier = item.binding.metadata.tiers.map;
+      const closeTier = item.binding.metadata.tiers.close;
+      const triangleDelta = Math.max(0, closeTier.triangles - mapTier.triangles);
+      const drawCallDelta = Math.max(0, closeTier.drawCalls - mapTier.drawCalls);
+      if (!monumentTierFitsBudget(
+        { triangles: activeTriangles, drawCalls: activeDrawCalls },
+        mapTier,
+        closeTier,
+        this.policy,
+      )) continue;
+      closeSet.add(item.binding);
+      activeTriangles += triangleDelta;
+      activeDrawCalls += drawCallDelta;
+    }
+
+    for (const item of ranked) {
+      if (!mapSet.has(item.binding) || closeSet.has(item.binding) || midSet.size >= this.policy.activeMidLimit) continue;
+      const requested = requestedTiers.get(item.binding) || "map";
+      if (requested === "map") continue;
+      const mapTier = item.binding.metadata.tiers.map;
+      const midTier = item.binding.metadata.tiers.mid;
+      const triangleDelta = Math.max(0, midTier.triangles - mapTier.triangles);
+      const drawCallDelta = Math.max(0, midTier.drawCalls - mapTier.drawCalls);
+      if (!monumentTierFitsBudget(
+        { triangles: activeTriangles, drawCalls: activeDrawCalls },
+        mapTier,
+        midTier,
+        this.policy,
+      )) continue;
+      midSet.add(item.binding);
+      activeTriangles += triangleDelta;
+      activeDrawCalls += drawCallDelta;
+    }
+
+    for (const { binding } of ranked) {
+      this.setDesired(binding, closeSet.has(binding) ? "close" : midSet.has(binding) ? "mid" : mapSet.has(binding) ? "map" : "fallback");
+    }
+
+    const preloadMidAt = this.policy.mapToMidPixels * (1 - this.policy.hysteresis);
+    const preloadCloseAt = this.policy.midToClosePixels * (1 - this.policy.hysteresis);
+    if (this.policy.activeMidLimit > 0) {
+      ranked.filter((item) => mapSet.has(item.binding) && item.projectedDiameter >= preloadMidAt)
+        .slice(0, this.policy.activeMidLimit + 2)
+        .forEach((item) => this.preload(item.binding, "mid"));
+    }
+    if (this.policy.activeCloseLimit > 0) {
+      ranked.filter((item) => mapSet.has(item.binding) && item.projectedDiameter >= preloadCloseAt)
+        .slice(0, this.policy.activeCloseLimit + 1)
+        .forEach((item) => this.preload(item.binding, "close"));
+    }
+
+    this.evict("close", this.policy.closeCacheLimit);
+    this.evict("mid", this.policy.midCacheLimit);
     this.evict("map", this.policy.activeMapLimit + 2);
     this.syncDiagnostics();
   }
@@ -4942,7 +5026,8 @@ class MonumentModelController {
     this.disposed = true;
     this.queue.length = 0;
     for (const binding of this.bindings) {
-      this.detach(binding, "detail");
+      this.detach(binding, "close");
+      this.detach(binding, "mid");
       this.detach(binding, "map");
     }
     for (const entry of this.cache.values()) this.disposeSource(entry.source);
@@ -4954,20 +5039,22 @@ class MonumentModelController {
 
   private setDesired(binding: MonumentBinding, desired: MonumentBinding["desired"]): void {
     binding.desired = desired;
-    if (desired !== "detail") this.detach(binding, "detail");
+    if (desired !== "close") this.detach(binding, "close");
+    if (desired === "map" || desired === "fallback") this.detach(binding, "mid");
     if (desired === "fallback") this.detach(binding, "map");
-    if (desired === "map" || desired === "detail") this.ensure(binding, "map");
-    if (desired === "detail") this.ensure(binding, "detail");
+    if (desired !== "fallback") this.ensure(binding, "map");
+    if (desired === "mid" || desired === "close") this.ensure(binding, "mid");
+    if (desired === "close") this.ensure(binding, "close");
     this.applyVisibility(binding);
   }
 
-  private ensure(binding: MonumentBinding, tier: MonumentTier): void {
+  private ensure(binding: MonumentBinding, tier: MonumentModelTier): void {
     if (binding[tier] || binding.loading.has(tier) || binding.failed.has(tier) || this.disposed) return;
     binding.loading.add(tier);
     this.queue.push(async () => {
       try {
         const source = await this.load(binding, tier);
-        if (this.disposed || binding.desired === "fallback" || (tier === "detail" && binding.desired !== "detail")) {
+        if (this.disposed || this.tierRank(binding.desired) < this.tierRank(tier)) {
           if (this.disposed) this.disposeSource(source);
           return;
         }
@@ -4976,8 +5063,8 @@ class MonumentModelController {
         model.position.set(0, binding.localGroundY, 0);
         model.traverse((object) => {
           if (object instanceof Mesh) {
-            object.castShadow = tier === "detail" && this.policy.shadows;
-            object.receiveShadow = tier === "detail" && this.policy.shadows;
+            object.castShadow = tier === "close" && this.policy.shadows;
+            object.receiveShadow = tier === "close" && this.policy.shadows;
             object.userData.preserveSharedVehicleAsset = true;
           } else if ((object as Object3D & { isLight?: boolean }).isLight) object.visible = false;
         });
@@ -4996,38 +5083,40 @@ class MonumentModelController {
     this.pump();
   }
 
-  private async load(binding: MonumentBinding, tier: MonumentTier): Promise<Group> {
+  private preload(binding: MonumentBinding, tier: MonumentModelTier): void {
+    if (binding[tier] || binding.loading.has(tier) || binding.failed.has(tier) || this.cache.has(this.key(binding, tier)) || this.disposed) return;
+    binding.loading.add(tier);
+    this.queue.push(async () => {
+      try {
+        await this.load(binding, tier);
+      } catch (error) {
+        binding.failed.add(tier);
+        console.warn(`Raidlands map viewer could not preload ${binding.metadata.id} ${tier} LOD; retaining the current tier.`, error);
+      } finally {
+        binding.loading.delete(tier);
+      }
+    });
+    this.pump();
+  }
+
+  private async load(binding: MonumentBinding, tier: MonumentModelTier): Promise<Group> {
     const key = this.key(binding, tier);
     const cached = this.cache.get(key);
     if (cached) { cached.lastUsed = performance.now(); return cached.source; }
     const pending = this.pending.get(key);
     if (pending) return pending;
     const base = new URL(this.options.assetBase, window.location.href);
-    const enhancedMilitaryMap = tier === "map" && usesEnhancedMilitaryBaseMapModel(binding.metadata.id);
-    const path = tier === "map" && !enhancedMilitaryMap
-      ? `media/models/monuments-map/${binding.metadata.map}`
-      : `media/models/monuments/${binding.metadata.id}.glb`;
+    const tierMetadata = binding.metadata.tiers[tier];
+    const path = binding.metadata.reviewStatus === "approved"
+      ? tierMetadata.url
+      : `media/models/monuments-lod/${tier === "map" ? binding.metadata.legacy.map : binding.metadata.legacy.detail}`;
+    const hash = binding.metadata.reviewStatus === "approved"
+      ? tierMetadata.sha256
+      : tier === "map" ? tierMetadata.sha256 : binding.metadata.sourceSha256;
     const url = new URL(path, base);
-    url.searchParams.set("v", (tier === "map" && !enhancedMilitaryMap ? binding.metadata.outputSha256 : binding.metadata.sourceSha256).slice(0, 12));
-    const promise = this.loader.loadAsync(url.href).then(async (gltf) => {
+    url.searchParams.set("v", hash.slice(0, 12));
+    const promise = this.loader.loadAsync(url.href).then((gltf) => {
       const source = gltf.scene;
-      if ((tier === "detail" || enhancedMilitaryMap) && militaryBaseMlrsPlacement(binding.metadata.id)) {
-        const mlrsUrl = new URL(MILITARY_BASE_MLRS_ASSET, base);
-        mlrsUrl.searchParams.set("v", MILITARY_BASE_MLRS_SHA256.slice(0, 12));
-        const [mlrs, ...compositeModels] = await Promise.all([
-          this.loader.loadAsync(mlrsUrl.href),
-          ...MILITARY_BASE_COMPOSITE_ASSETS.map((asset) => {
-            const assetUrl = new URL(asset.path, base);
-            assetUrl.searchParams.set("v", asset.sha256.slice(0, 12));
-            return this.loader.loadAsync(assetUrl.href);
-          }),
-        ]);
-        attachMilitaryBaseMlrs(source, mlrs.scene, binding.metadata.id);
-        MILITARY_BASE_COMPOSITE_ASSETS.forEach((asset, index) => {
-          const model = compositeModels[index];
-          if (model) attachMilitaryBaseCompositeAsset(source, model.scene, asset);
-        });
-      }
       if (!this.disposed) this.cache.set(key, { source, active: 0, lastUsed: performance.now() });
       return source;
     }).finally(() => this.pending.delete(key));
@@ -5043,7 +5132,7 @@ class MonumentModelController {
     }
   }
 
-  private detach(binding: MonumentBinding, tier: MonumentTier): void {
+  private detach(binding: MonumentBinding, tier: MonumentModelTier): void {
     const model = binding[tier];
     if (!model) return;
     binding.group.remove(model);
@@ -5053,25 +5142,41 @@ class MonumentModelController {
   }
 
   private applyVisibility(binding: MonumentBinding): void {
-    const detailVisible = binding.desired === "detail" && binding.detail !== null;
-    const mapVisible = !detailVisible && binding.desired !== "fallback" && binding.map !== null;
-    if (binding.detail) binding.detail.visible = detailVisible;
-    if (binding.map) binding.map.visible = mapVisible;
-    for (const child of binding.fallback) child.visible = !detailVisible && !mapVisible;
-    binding.group.userData.primitiveKind = detailVisible ? "detail-model" : mapVisible ? "map-lod" : "fallback";
+    const loaded = new Set<MonumentModelTier>();
+    for (const tier of ["map", "mid", "close"] as MonumentModelTier[]) if (binding[tier]) loaded.add(tier);
+    const visible = visibleMonumentTier(binding.desired, loaded);
+    binding.close && (binding.close.visible = visible === "close");
+    binding.mid && (binding.mid.visible = visible === "mid");
+    binding.map && (binding.map.visible = visible === "map");
+    for (const child of binding.fallback) child.visible = visible === "fallback";
+    binding.group.userData.primitiveKind = visible === "fallback" ? "fallback" : `${visible}-lod`;
+    binding.group.userData.monumentLodTier = visible;
   }
 
-  private evict(tier: MonumentTier, limit: number): void {
-    const entries = [...this.cache.entries()].filter(([key, entry]) => key.startsWith(`${tier}:`) && entry.active === 0).sort((a, b) => a[1].lastUsed - b[1].lastUsed);
-    const total = [...this.cache.keys()].filter((key) => key.startsWith(`${tier}:`)).length;
-    for (let count = total; count > limit && entries.length; count--) {
-      const [key, entry] = entries.shift()!;
+  private evict(tier: MonumentModelTier, limit: number): void {
+    const keys = monumentCacheEvictionKeys([...this.cache.entries()].map(([key, entry]) => ({ key, ...entry })), tier, limit);
+    for (const key of keys) {
+      const entry = this.cache.get(key);
+      if (!entry) continue;
       this.disposeSource(entry.source);
       this.cache.delete(key);
     }
   }
 
-  private key(binding: MonumentBinding, tier: MonumentTier): string { return `${tier}:${binding.metadata.id}`; }
+  private key(binding: MonumentBinding, tier: MonumentModelTier): string { return `${tier}:${binding.metadata.id}`; }
+
+  private structuralRadius(binding: MonumentBinding): number {
+    const { min, max } = binding.metadata.tiers.close.structuralBounds;
+    return Math.max(1, ...[0, 1, 2].map((axis) => Math.abs((max[axis] || 0) - (min[axis] || 0)) / 2));
+  }
+
+  private tierRank(tier: MonumentLodTier | MonumentModelTier): number {
+    return tier === "close" ? 3 : tier === "mid" ? 2 : tier === "map" ? 1 : 0;
+  }
+
+  private visibleTier(binding: MonumentBinding): MonumentLodTier {
+    return binding.close?.visible ? "close" : binding.mid?.visible ? "mid" : binding.map?.visible ? "map" : "fallback";
+  }
 
   private disposeSource(source: Group): void {
     source.traverse((object) => {
@@ -5080,20 +5185,40 @@ class MonumentModelController {
   }
 
   private syncDiagnostics(): void {
-    const activeMap = this.bindings.filter((binding) => binding.map).length;
-    const activeDetail = this.bindings.filter((binding) => binding.detail).length;
-    const triangles = this.bindings.reduce((sum, binding) => sum
-      + (binding.detail ? binding.metadata.sourceTriangles : binding.map ? binding.metadata.triangles : 0), 0);
-    const drawCalls = this.bindings.reduce((sum, binding) => sum
-      + (binding.detail ? binding.metadata.sourceDrawCalls : binding.map ? binding.metadata.drawCalls : 0), 0);
+    const active = this.bindings.map((binding) => ({ binding, tier: this.visibleTier(binding) }));
+    const activeMap = active.filter((entry) => entry.tier === "map").length;
+    const activeMid = active.filter((entry) => entry.tier === "mid").length;
+    const activeClose = active.filter((entry) => entry.tier === "close").length;
+    const triangles = active.reduce((sum, { binding, tier }) => sum
+      + (tier === "fallback" ? 0 : binding.metadata.tiers[tier].triangles), 0);
+    const drawCalls = active.reduce((sum, { binding, tier }) => sum
+      + (tier === "fallback" ? 0 : binding.metadata.tiers[tier].drawCalls), 0);
+    const activeBytes = active.reduce((sum, { binding, tier }) => sum
+      + (tier === "fallback" ? 0 : binding.metadata.tiers[tier].bytes), 0);
+    const loadedBytes = [...this.cache.keys()].reduce((sum, key) => {
+      const [tier, id] = key.split(":") as [MonumentModelTier, string];
+      const metadata = this.bindings.find((binding) => binding.metadata.id === id)?.metadata;
+      return sum + (metadata?.tiers[tier]?.bytes || 0);
+    }, 0);
     const failures = this.bindings.reduce((sum, binding) => sum + binding.failed.size, 0);
     Object.assign(this.options.root.dataset, {
       monumentModeRequested: this.policy.requested,
       monumentModeResolved: this.policy.resolved,
-      monumentMapLoaded: String(activeMap), monumentDetailLoaded: String(activeDetail),
+      monumentManifestVersion: String(monumentModelManifestVersion()),
+      monumentRecipeVersion: String(monumentModelRecipeVersion()),
+      monumentSourceRevision: monumentModelSourceRevision(),
+      monumentMapLoaded: String(activeMap), monumentMidLoaded: String(activeMid), monumentCloseLoaded: String(activeClose),
+      monumentDetailLoaded: String(activeMid + activeClose),
       monumentCacheEntries: String(this.cache.size), monumentFailedAssets: String(failures),
       monumentApproxTriangles: String(triangles), monumentApproxDrawCalls: String(drawCalls),
-      monumentDecodeQueue: String(this.queue.length),
+      monumentActiveBytes: String(activeBytes), monumentLoadedBytes: String(loadedBytes),
+      monumentTriangleBudget: String(this.policy.triangleBudget), monumentDrawCallBudget: String(this.policy.drawCallBudget),
+      monumentDecodeQueue: String(this.queue.length + this.activeLoads),
+      monumentActiveAssets: JSON.stringify(active.filter((entry) => entry.tier !== "fallback").map((entry) => {
+        const tier = entry.tier as MonumentModelTier;
+        const metadata = entry.binding.metadata.tiers[tier];
+        return { id: entry.binding.metadata.id, tier, url: metadata.url, hash: metadata.sha256.slice(0, 12) };
+      })),
     });
   }
 }

@@ -1,19 +1,27 @@
 import type { EnvironmentQuality } from "./environment-quality";
 
 export type MonumentMode = "auto" | "primitives" | "detailed";
+export type MonumentLodTier = "fallback" | "map" | "mid" | "close";
 
 export type MonumentQualityPolicy = {
   requested: MonumentMode;
   resolved: "primitives" | "detailed";
-  activeDetailLimit: number;
+  activeCloseLimit: number;
+  activeMidLimit: number;
   activeMapLimit: number;
-  detailCacheLimit: number;
-  loadDistanceMultiplier: number;
-  unloadDistanceMultiplier: number;
-  minimumLoadDistance: number;
+  closeCacheLimit: number;
+  midCacheLimit: number;
+  mapToMidPixels: number;
+  midToClosePixels: number;
+  hysteresis: number;
+  triangleBudget: number;
+  drawCallBudget: number;
   decodeConcurrency: number;
   shadows: boolean;
 };
+
+export type MonumentLodThresholds = { mapToMidPixels: number; midToClosePixels: number; hysteresis: number };
+export type MonumentResourceUsage = { triangles: number; drawCalls: number };
 
 export function parseMonumentMode(value: unknown, fallback: MonumentMode = "auto"): MonumentMode {
   const normalized = String(value ?? "").trim().toLowerCase();
@@ -24,37 +32,91 @@ export function parseMonumentMode(value: unknown, fallback: MonumentMode = "auto
     : fallback;
 }
 
-export function resolveMonumentQuality(mode: MonumentMode, quality: EnvironmentQuality): MonumentQualityPolicy {
-  // Auto keeps one close monument detailed even on Low. This preserves the
-  // visible LOD transition while bounding decode/GPU cost to a single asset.
-  // Explicit Map LOD mode remains the zero-detail performance escape hatch.
-  const limits: Record<EnvironmentQuality, number> = { low: 1, medium: 1, high: 2, ultra: 3 };
-  const activeDetailLimit = mode === "primitives" ? 0 : limits[quality];
+export function resolveMonumentQuality(
+  mode: MonumentMode,
+  quality: EnvironmentQuality,
+  thresholds: MonumentLodThresholds = { mapToMidPixels: 80, midToClosePixels: 220, hysteresis: 0.2 },
+): MonumentQualityPolicy {
+  const closeLimits: Record<EnvironmentQuality, number> = { low: 1, medium: 1, high: 2, ultra: 3 };
+  const midLimits: Record<EnvironmentQuality, number> = { low: 3, medium: 5, high: 8, ultra: 12 };
+  const triangleBudgets: Record<EnvironmentQuality, number> = { low: 750_000, medium: 1_250_000, high: 2_000_000, ultra: 3_000_000 };
+  const drawCallBudgets: Record<EnvironmentQuality, number> = { low: 500, medium: 650, high: 800, ultra: 1_000 };
+  const activeCloseLimit = mode === "primitives" ? 0 : closeLimits[quality];
+  const activeMidLimit = mode === "primitives" ? 0 : midLimits[quality];
   return {
     requested: mode,
-    resolved: activeDetailLimit > 0 ? "detailed" : "primitives",
-    activeDetailLimit,
-    // Website terrain ingestion is capped at 96 monument instances. Keeping
-    // this above that cap makes actual-geometry map proxies the normal map
-    // representation, rather than allowing distant procedural stand-ins.
+    resolved: activeCloseLimit > 0 ? "detailed" : "primitives",
+    activeCloseLimit,
+    activeMidLimit,
     activeMapLimit: 128,
-    detailCacheLimit: Math.max(0, activeDetailLimit + 1),
-    loadDistanceMultiplier: 5.5,
-    unloadDistanceMultiplier: 7.25,
-    minimumLoadDistance: 425,
+    closeCacheLimit: Math.max(0, activeCloseLimit + 1),
+    midCacheLimit: Math.max(0, activeMidLimit + 2),
+    mapToMidPixels: thresholds.mapToMidPixels,
+    midToClosePixels: thresholds.midToClosePixels,
+    hysteresis: thresholds.hysteresis,
+    triangleBudget: triangleBudgets[quality],
+    drawCallBudget: drawCallBudgets[quality],
     decodeConcurrency: quality === "ultra" ? 2 : 1,
     shadows: quality === "high" || quality === "ultra",
   };
 }
 
-export function monumentLoadDistance(radius: number, policy: MonumentQualityPolicy): number {
-  return Math.max(policy.minimumLoadDistance, Math.min(280, Math.max(24, radius)) * policy.loadDistanceMultiplier);
+export function projectedMonumentDiameter(radius: number, distance: number, verticalFovDegrees: number, viewportHeight: number): number {
+  const safeDistance = Math.max(0.001, distance);
+  const safeRadius = Math.max(0.001, radius);
+  const fovRadians = Math.max(0.01, verticalFovDegrees * Math.PI / 180);
+  const focalLength = Math.max(1, viewportHeight) / (2 * Math.tan(fovRadians / 2));
+  return 2 * safeRadius * focalLength / safeDistance;
 }
 
-export function monumentUnloadDistance(radius: number, policy: MonumentQualityPolicy): number {
-  return Math.max(monumentLoadDistance(radius, policy) + 100, Math.min(280, Math.max(24, radius)) * policy.unloadDistanceMultiplier);
+export function desiredMonumentTier(
+  projectedDiameter: number,
+  current: MonumentLodTier,
+  policy: MonumentQualityPolicy,
+  focused = false,
+): Exclude<MonumentLodTier, "fallback"> {
+  if (policy.requested === "primitives") return "map";
+  if (focused) return "close";
+  const lowerFactor = 1 - policy.hysteresis;
+  const mapToMid = current === "mid" || current === "close" ? policy.mapToMidPixels * lowerFactor : policy.mapToMidPixels;
+  const midToClose = current === "close" ? policy.midToClosePixels * lowerFactor : policy.midToClosePixels;
+  if (projectedDiameter >= midToClose) return "close";
+  if (projectedDiameter >= mapToMid) return "mid";
+  return "map";
 }
 
-export function prioritizeMonuments<T extends { distance: number; focused?: boolean }>(items: T[]): T[] {
-  return [...items].sort((a, b) => Number(Boolean(b.focused)) - Number(Boolean(a.focused)) || a.distance - b.distance);
+export function prioritizeMonuments<T extends { distance: number; projectedDiameter?: number; focused?: boolean }>(items: T[]): T[] {
+  return [...items].sort((a, b) => Number(Boolean(b.focused)) - Number(Boolean(a.focused))
+    || (b.projectedDiameter || 0) - (a.projectedDiameter || 0)
+    || a.distance - b.distance);
+}
+
+export function visibleMonumentTier(
+  desired: MonumentLodTier,
+  loaded: ReadonlySet<Exclude<MonumentLodTier, "fallback">>,
+): MonumentLodTier {
+  if (desired === "close" && loaded.has("close")) return "close";
+  if ((desired === "close" || desired === "mid") && loaded.has("mid")) return "mid";
+  if (desired !== "fallback" && loaded.has("map")) return "map";
+  return "fallback";
+}
+
+export function monumentCacheEvictionKeys(
+  entries: Array<{ key: string; active: number; lastUsed: number }>,
+  tier: Exclude<MonumentLodTier, "fallback">,
+  limit: number,
+): string[] {
+  const tierEntries = entries.filter((entry) => entry.key.startsWith(`${tier}:`));
+  const removable = tierEntries.filter((entry) => entry.active === 0).sort((a, b) => a.lastUsed - b.lastUsed);
+  return removable.slice(0, Math.max(0, tierEntries.length - limit)).map((entry) => entry.key);
+}
+
+export function monumentTierFitsBudget(
+  active: MonumentResourceUsage,
+  currentTier: MonumentResourceUsage,
+  nextTier: MonumentResourceUsage,
+  policy: Pick<MonumentQualityPolicy, "triangleBudget" | "drawCallBudget">,
+): boolean {
+  return active.triangles + Math.max(0, nextTier.triangles - currentTier.triangles) <= policy.triangleBudget
+    && active.drawCalls + Math.max(0, nextTier.drawCalls - currentTier.drawCalls) <= policy.drawCallBudget;
 }

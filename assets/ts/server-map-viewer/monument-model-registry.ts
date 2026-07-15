@@ -1,111 +1,69 @@
-import manifestJson from "../../media/models/monuments-map/manifest.json";
+import manifestJson from "../../media/models/monuments-lod/manifest.json";
+
+export type MonumentModelTier = "map" | "mid" | "close";
+export type MonumentMaterialMode = "palette" | "textured";
+
+export type MonumentModelTierMetadata = {
+  file: string;
+  url: string;
+  sha256: string;
+  bytes: number;
+  triangles: number;
+  drawCalls: number;
+  instanceBatches: number;
+  instances: number;
+  textureBytes: number;
+  textureSize: number;
+  materialMode: MonumentMaterialMode;
+  selectionKind: "authored-hlod" | "recipe-structural" | "surface-structural" | "largest-structural" | "standalone-override";
+  sourceNodes: string[];
+  roleNodes: Record<string, string[]>;
+  roleCounts: Record<string, number>;
+  componentResolutions: Array<{ sourceNode: string; resolution: "standalone-catalog" | "embedded-layout"; catalogPath: string | null }>;
+  compositeSources: string[];
+  bounds: { min: number[]; max: number[] };
+  structuralBounds: { min: number[]; max: number[] };
+  maxBytes: number;
+  maxTriangles: number;
+  maxDrawCalls: number;
+  footprintCoverage: number;
+  normalizedCenterOffset: number;
+  normalizedElevationOffset: number;
+};
 
 export type MonumentModelManifestEntry = {
   id: string;
-  detail: string;
-  map: string;
-  mapKind: "authored-hlod" | "generated-proxy";
-  sourceNodes: string[];
-  generatedInstances: number;
+  reviewStatus: "candidate" | "approved" | "rejected";
+  review: { sourceSha256: string; reviewedAt: string } | null;
+  layoutSource: string;
+  sizeClass: "tiny" | "small" | "medium" | "large" | "xlarge";
+  deliveryWave: 2 | 3 | 4;
+  surfaceOnly: boolean;
+  structuralRoles: string[];
   sourceSha256: string;
-  outputSha256: string;
+  sourceMatchesRustRelay: boolean;
   sourceBytes: number;
-  outputBytes: number;
   sourceTriangles: number;
   sourceDrawCalls: number;
-  triangles: number;
-  drawCalls: number;
-  triangleRatio: number;
-  overTriangleTarget: boolean;
-  textureBytes: number;
   sourceBounds: { min: number[]; max: number[] };
-  bounds: { min: number[]; max: number[] };
-  overBudget: boolean;
+  legacy: { map: string; detail: string };
+  exclusions: { policy: Record<string, boolean>; hard: string; natural: string | null; looseProps: string };
+  standaloneOverrides: Array<{ id: string; sourcePath: string; sourceSha256: string; minimumTier: MonumentModelTier; placements: Array<{ x: number; y: number; z: number; rotationY: number; scale?: number }> }>;
+  tiers: Record<MonumentModelTier, MonumentModelTierMetadata>;
 };
 
-const RUSTRELAY_MONUMENT_PREFABS = new Set([
-  "airfield_1",
-  "apartments_complex_1",
-  "arctic_research_base_a",
-  "bandit_town",
-  "cave_large_hard",
-  "cave_large_medium",
-  "cave_large_sewers_hard",
-  "cave_medium_easy",
-  "cave_medium_hard",
-  "cave_medium_medium",
-  "cave_small_easy",
-  "cave_small_hard",
-  "cave_small_medium",
-  "compound",
-  "desert_military_base_a",
-  "desert_military_base_b",
-  "desert_military_base_c",
-  "desert_military_base_d",
-  "entrance_bunker_a",
-  "entrance_bunker_b",
-  "entrance_bunker_c",
-  "entrance_bunker_d",
-  "excavator_1",
-  "ferry_terminal_1",
-  "fishing_village_a",
-  "fishing_village_b",
-  "fishing_village_c",
-  "gas_station_1",
-  "harbor_1",
-  "harbor_2",
-  "ice_lake_1",
-  "ice_lake_2",
-  "ice_lake_3",
-  "ice_lake_4",
-  "jungle_ruins_a",
-  "jungle_ruins_b",
-  "jungle_ruins_c",
-  "jungle_ruins_d",
-  "jungle_ruins_e",
-  "jungle_ziggurat_a",
-  "junkyard_1",
-  "launch_site_1",
-  "lighthouse",
-  "military_tunnel_1",
-  "mining_quarry_a",
-  "mining_quarry_b",
-  "mining_quarry_c",
-  "nuclear_missile_silo",
-  "oilrig_1",
-  "oilrig_2",
-  "power_sub_big_1",
-  "power_sub_big_2",
-  "power_sub_small_1",
-  "power_sub_small_2",
-  "powerplant_1",
-  "radtown_1",
-  "radtown_small_3",
-  "satellite_dish",
-  "sphere_tank",
-  "stables_a",
-  "stables_b",
-  "supermarket_1",
-  "swamp_a",
-  "swamp_b",
-  "swamp_c",
-  "trainyard_1",
-  "ue_jungle_swamp_a",
-  "underwater_lab_a",
-  "underwater_lab_b",
-  "underwater_lab_c",
-  "underwater_lab_d",
-  "warehouse",
-  "water_treatment_plant_1",
-  "water_well_a",
-  "water_well_b",
-  "water_well_c",
-  "water_well_d",
-  "water_well_e",
-]);
+type MonumentModelManifest = {
+  version: number;
+  recipeVersion: number;
+  sourceRepository: { repository: string; revision: string; defaultSibling: string };
+  thresholds: { mapToMidPixels: number; midToClosePixels: number; hysteresis: number };
+  targets: Record<MonumentModelTier, { maxBytes: number; maxTriangles: number; maxDrawCalls: number }>;
+  entries: MonumentModelManifestEntry[];
+};
 
-const manifest = manifestJson as { version: number; targets: { maxBytes: number }; entries: MonumentModelManifestEntry[] };
+const manifest = manifestJson as MonumentModelManifest;
 const manifestById = new Map(manifest.entries.map((entry) => [entry.id, entry]));
+const registeredIds = new Set(manifest.entries.map((entry) => entry.id));
 
 export function monumentPrefabId(prefab: string): string {
   const normalized = prefab.trim().replace(/\\/g, "/").split("/").pop() || "";
@@ -114,25 +72,45 @@ export function monumentPrefabId(prefab: string): string {
 
 export function monumentModelAssetName(prefab: string): string | null {
   const id = monumentPrefabId(prefab);
-  return RUSTRELAY_MONUMENT_PREFABS.has(id) ? `${id}.glb` : null;
+  return registeredIds.has(id) ? `${id}.glb` : null;
 }
 
 export function monumentModelMetadata(prefab: string): MonumentModelManifestEntry | null {
   return manifestById.get(monumentPrefabId(prefab)) || null;
 }
 
+export function monumentModelTierMetadata(prefab: string, tier: MonumentModelTier): MonumentModelTierMetadata | null {
+  return monumentModelMetadata(prefab)?.tiers[tier] || null;
+}
+
 export function monumentModelManifestVersion(): number {
   return manifest.version;
 }
 
-export function monumentModelBudgetBytes(): number {
-  return manifest.targets.maxBytes;
+export function monumentModelRecipeVersion(): number {
+  return manifest.recipeVersion;
+}
+
+export function monumentModelSourceRevision(): string {
+  return manifest.sourceRepository.revision;
+}
+
+export function monumentModelThresholds(): MonumentModelManifest["thresholds"] {
+  return manifest.thresholds;
+}
+
+export function monumentModelBudgetBytes(tier: MonumentModelTier = "map"): number {
+  return manifest.targets[tier].maxBytes;
 }
 
 export function monumentModelCount(): number {
-  return RUSTRELAY_MONUMENT_PREFABS.size;
+  return registeredIds.size;
 }
 
 export function monumentModelAssetNames(): string[] {
-  return Array.from(RUSTRELAY_MONUMENT_PREFABS, (id) => `${id}.glb`).sort();
+  return Array.from(registeredIds, (id) => `${id}.glb`).sort();
+}
+
+export function monumentModelTierAssetNames(): string[] {
+  return manifest.entries.flatMap((entry) => (["map", "mid", "close"] as MonumentModelTier[]).map((tier) => entry.tiers[tier].file)).sort();
 }

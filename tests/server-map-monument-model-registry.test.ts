@@ -1,99 +1,129 @@
 import { readFileSync, readdirSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { monumentModelAssetName, monumentModelAssetNames, monumentModelCount, monumentModelMetadata, monumentPrefabId } from "../assets/ts/server-map-viewer/monument-model-registry";
+import {
+  monumentModelAssetName,
+  monumentModelAssetNames,
+  monumentModelCount,
+  monumentModelManifestVersion,
+  monumentModelMetadata,
+  monumentModelRecipeVersion,
+  monumentModelSourceRevision,
+  monumentModelTierAssetNames,
+  monumentPrefabId,
+  type MonumentModelTier,
+} from "../assets/ts/server-map-viewer/monument-model-registry";
+
+const tiers: MonumentModelTier[] = ["map", "mid", "close"];
 
 describe("RustRelay monument model registry", () => {
-  it("normalizes Rust prefab paths and extensions", () => {
+  it("normalizes Rust prefab paths and covers all 78 registered families", () => {
     expect(monumentPrefabId("assets/bundled/prefabs/autospawn/monument/medium/compound.prefab")).toBe("compound");
     expect(monumentPrefabId("POWER_SUB_BIG_1.GLB")).toBe("power_sub_big_1");
-  });
-
-  it("maps dedicated monuments and the additional live-world prefab families", () => {
     expect(monumentModelAssetName("compound")).toBe("compound.glb");
     expect(monumentModelAssetName("entrance_bunker_d")).toBe("entrance_bunker_d.glb");
-    expect(monumentModelAssetName("power_sub_small_2")).toBe("power_sub_small_2.glb");
-    expect(monumentModelAssetName("ue_jungle_swamp_a")).toBe("ue_jungle_swamp_a.glb");
+    expect(monumentModelAssetName("not_a_real_monument")).toBeNull();
     expect(monumentModelCount()).toBe(78);
   });
 
-  it("leaves unsupported monuments on the procedural fallback", () => {
-    expect(monumentModelAssetName("not_a_real_monument")).toBeNull();
+  it("pins the manifest, recipe, and source revisions", () => {
+    expect(monumentModelManifestVersion()).toBeGreaterThanOrEqual(6);
+    expect(monumentModelRecipeVersion()).toBeGreaterThanOrEqual(1);
+    expect(monumentModelSourceRevision()).toBe("494242b");
   });
 
-  it("has one installed GLB for every registered RustRelay prefab", () => {
-    const modelDirectory = resolve("assets/media/models/monuments");
-    const installed = readdirSync(modelDirectory).filter((name) => name.endsWith(".glb")).sort();
+  it("keeps the complete legacy collection installed during rollout", () => {
+    const installed = readdirSync(resolve("assets/media/models/monuments")).filter((name) => name.endsWith(".glb")).sort();
     expect(installed).toEqual(monumentModelAssetNames());
   });
 
-  it("has generated map metadata and assets for every registered monument", () => {
-    const modelDirectory = resolve("assets/media/models/monuments-map");
+  it("installs Map, Mid, and Close assets with complete metrics and hard budgets", () => {
+    const modelDirectory = resolve("assets/media/models/monuments-lod");
     const installed = readdirSync(modelDirectory).filter((name) => name.endsWith(".glb")).sort();
-    const expected = monumentModelAssetNames().filter((name) => monumentModelMetadata(name)?.map === name);
-    expect(installed).toEqual(expected);
-    expect(installed).toHaveLength(78);
-    let totalBytes = 0;
+    expect(installed).toEqual(monumentModelTierAssetNames());
+    expect(installed).toHaveLength(234);
+    let totalMapBytes = 0;
+    let totalInstanceBatches = 0;
     for (const name of monumentModelAssetNames()) {
       const metadata = monumentModelMetadata(name)!;
-      expect(metadata.map).toBe(name);
-      expect(["authored-hlod", "generated-proxy"]).toContain(metadata.mapKind);
-      expect(metadata.triangles).toBeGreaterThan(0);
-      expect(metadata.drawCalls).toBeGreaterThan(0);
-      expect(metadata.outputBytes).toBeLessThanOrEqual(250 * 1024);
-      expect(metadata.overTriangleTarget).toBe(metadata.triangleRatio > 0.03);
-      expect(metadata.bounds.min).toHaveLength(3);
-      expect(metadata.bounds.max).toHaveLength(3);
-      expect(metadata.sourceBounds.min).toHaveLength(3);
-      expect(metadata.sourceBounds.max).toHaveLength(3);
-      expect(metadata.outputSha256).toMatch(/^[a-f0-9]{64}$/);
-      expect(metadata.generatedInstances).toBeGreaterThanOrEqual(0);
-      expect(metadata.sourceDrawCalls).toBeGreaterThan(0);
-      const sourceFootprint = Math.max(
-        metadata.sourceBounds.max[0]! - metadata.sourceBounds.min[0]!,
-        metadata.sourceBounds.max[2]! - metadata.sourceBounds.min[2]!,
-      );
-      const mapFootprint = Math.max(
-        metadata.bounds.max[0]! - metadata.bounds.min[0]!,
-        metadata.bounds.max[2]! - metadata.bounds.min[2]!,
-      );
-      const sourceCenter = [0, 2].map((axis) => (metadata.sourceBounds.min[axis]! + metadata.sourceBounds.max[axis]!) / 2);
-      const mapCenter = [0, 2].map((axis) => (metadata.bounds.min[axis]! + metadata.bounds.max[axis]!) / 2);
-      const normalizedCenterOffset = Math.hypot(mapCenter[0]! - sourceCenter[0]!, mapCenter[1]! - sourceCenter[1]!) / sourceFootprint;
-      expect(mapFootprint / sourceFootprint).toBeGreaterThan(0.55);
-      expect(normalizedCenterOffset).toBeLessThan(0.25);
-      totalBytes += metadata.outputBytes;
+      expect(metadata.sourceMatchesRustRelay).toBe(true);
+      expect(metadata.sourceSha256).toMatch(/^[a-f0-9]{64}$/);
+      expect(metadata.layoutSource).toMatch(/\.glb$/);
+      expect(["candidate", "approved", "rejected"]).toContain(metadata.reviewStatus);
+      expect(metadata.structuralRoles).toEqual(["shell", "roof", "platform", "stairs", "perimeter", "landmark-prop", "ground-pad"]);
+      expect(Object.values(metadata.exclusions.policy).every(Boolean)).toBe(true);
+      const triangleCounts: number[] = [];
+      for (const tierName of tiers) {
+        const tier = metadata.tiers[tierName];
+        expect(tier.file).toBe(`${metadata.id}-${tierName}.glb`);
+        expect(tier.url).toBe(`media/models/monuments-lod/${tier.file}`);
+        expect(tier.sha256).toMatch(/^[a-f0-9]{64}$/);
+        expect(tier.bytes).toBeGreaterThan(0);
+        expect(tier.bytes).toBeLessThanOrEqual(tier.maxBytes);
+        expect(tier.triangles).toBeGreaterThan(0);
+        expect(tier.triangles).toBeLessThanOrEqual(tier.maxTriangles);
+        expect(tier.drawCalls).toBeGreaterThan(0);
+        expect(tier.drawCalls).toBeLessThanOrEqual(tier.maxDrawCalls);
+        expect(tier.instanceBatches).toBeGreaterThanOrEqual(0);
+        expect(tier.instances).toBeGreaterThanOrEqual(0);
+        expect(tier.bounds.min).toHaveLength(3);
+        expect(tier.bounds.max).toHaveLength(3);
+        expect(tier.structuralBounds.min).toHaveLength(3);
+        expect(tier.structuralBounds.max).toHaveLength(3);
+        expect(tier.sourceNodes.length).toBeGreaterThan(0);
+        expect(tier.componentResolutions.every((resolution) => resolution.resolution === "standalone-catalog" || resolution.resolution === "embedded-layout")).toBe(true);
+        if (tierName === "map") {
+          expect(tier.materialMode).toBe("palette");
+          expect(tier.textureSize).toBe(0);
+        } else if (tier.materialMode === "textured") {
+          expect(tier.textureSize).toBeLessThanOrEqual(tierName === "mid" ? 512 : 1024);
+        }
+        triangleCounts.push(tier.triangles);
+        totalInstanceBatches += tier.instanceBatches;
+      }
+      expect(triangleCounts[0]).toBeLessThanOrEqual(triangleCounts[1]!);
+      expect(triangleCounts[1]).toBeLessThanOrEqual(triangleCounts[2]!);
+      expect(metadata.tiers.map.footprintCoverage).toBeGreaterThanOrEqual(0.8);
+      expect(metadata.tiers.mid.footprintCoverage).toBeGreaterThanOrEqual(0.95);
+      expect(metadata.tiers.close.footprintCoverage).toBeGreaterThanOrEqual(0.95);
+      expect(metadata.tiers.map.normalizedCenterOffset).toBeLessThanOrEqual(0.05);
+      expect(metadata.tiers.mid.normalizedCenterOffset).toBeLessThanOrEqual(0.05);
+      expect(metadata.tiers.close.normalizedCenterOffset).toBeLessThanOrEqual(0.05);
+      expect(metadata.tiers.map.normalizedElevationOffset).toBeLessThanOrEqual(0.05);
+      expect(metadata.tiers.mid.normalizedElevationOffset).toBeLessThanOrEqual(0.05);
+      expect(metadata.tiers.close.normalizedElevationOffset).toBeLessThanOrEqual(0.05);
+      totalMapBytes += metadata.tiers.map.bytes;
     }
-    expect(totalBytes).toBeLessThan(20 * 1024 * 1024);
+    expect(totalMapBytes).toBeLessThan(20 * 1024 * 1024);
+    expect(totalInstanceBatches).toBeGreaterThan(0);
   });
 
-  it("uses the authored exterior-shell recipe for Launch Site", () => {
-    const launchSite = monumentModelMetadata("launch_site_1");
-    expect(launchSite).not.toBeNull();
-    expect(launchSite!.sourceNodes).toContain("rocket_factory_exterior_LOD0");
-    expect(launchSite!.sourceNodes).toContain("space_center_office_bld_a_LOD0");
-    expect(launchSite!.sourceNodes.some((name) => /interior|office_[ab]_floor|rocket_crane_floor/i.test(name))).toBe(false);
-    expect(launchSite!.triangles).toBeLessThan(30_000);
+  it("uses dedicated exterior selections for Launch Site and Outpost", () => {
+    const launch = monumentModelMetadata("launch_site_1")!;
+    expect(launch.tiers.close.sourceNodes.some((name) => /rocket_factory_exterior/i.test(name))).toBe(true);
+    expect(launch.tiers.close.sourceNodes.some((name) => /interior|office_[ab]_floor/i.test(name))).toBe(false);
+    const outpost = monumentModelMetadata("compound")!;
+    expect(outpost.tiers.close.sourceNodes.some((name) => /rowhouse_3st_9x12/i.test(name))).toBe(true);
+    expect(outpost.tiers.close.sourceNodes.some((name) => /compound_wall_straight/i.test(name))).toBe(true);
+    expect(outpost.tiers.close.sourceNodes.some((name) => /sewer|tunnel|interior/i.test(name))).toBe(false);
   });
 
-  it("uses complete above-ground building shells for Outpost", () => {
-    const outpost = monumentModelMetadata("compound");
-    expect(outpost).not.toBeNull();
-    expect(outpost!.sourceNodes).toContain("rowhouse_3st_9x12_LOD0");
-    expect(outpost!.sourceNodes).toContain("compound_wall_straight_LOD0");
-    expect(outpost!.sourceNodes.some((name) => /sewer|tunnel|floor|interior/i.test(name))).toBe(false);
-    expect(outpost!.generatedInstances).toBe(56);
-    expect(outpost!.triangles).toBeLessThan(50_000);
+  it("publishes the recipe-owned Abandoned Military Base assembly", () => {
+    const military = monumentModelMetadata("desert_military_base_a")!;
+    expect(military.standaloneOverrides.map((component) => component.id)).toEqual([
+      "hangar", "field-tent", "shipping-container", "sandbags", "generator", "fuel-tank", "mlrs",
+    ]);
+    expect(military.standaloneOverrides.every((component) => component.sourceSha256.match(/^[a-f0-9]{64}$/) && component.placements.length > 0)).toBe(true);
   });
 
-  it("covers every monument instance in the current terrain export", () => {
-    const terrain = JSON.parse(readFileSync(resolve("assets/media/maps/raidlands-main/current-terrain.json"), "utf8")) as {
-      monuments?: Array<{ prefab?: string }>;
-    };
+  it("covers all 96 live terrain instances and never references the 381 MB full-detail collection", () => {
+    const terrain = JSON.parse(readFileSync(resolve("assets/media/maps/raidlands-main/current-terrain.json"), "utf8")) as { monuments?: Array<{ prefab?: string }> };
     const monuments = terrain.monuments || [];
-    const unmapped = monuments.filter((monument) => !monumentModelAssetName(String(monument.prefab || "")));
-
-    expect(monuments.length).toBeGreaterThan(0);
-    expect(unmapped).toEqual([]);
+    expect(monuments).toHaveLength(96);
+    expect(monuments.filter((monument) => !monumentModelMetadata(String(monument.prefab || "")))).toEqual([]);
+    expect(monuments.every((monument) => monumentModelMetadata(String(monument.prefab || ""))?.reviewStatus === "approved")).toBe(true);
+    const viewerSource = readFileSync(resolve("assets/ts/server-map-viewer/app.ts"), "utf8");
+    expect(viewerSource).not.toContain("media/models/monuments/");
+    expect(viewerSource).not.toContain("media/models/monuments-map/");
   });
 });

@@ -1,28 +1,87 @@
 import { describe, expect, it } from "vitest";
-import { monumentLoadDistance, monumentUnloadDistance, parseMonumentMode, prioritizeMonuments, resolveMonumentQuality } from "../assets/ts/server-map-viewer/monument-quality-policy";
+import {
+  desiredMonumentTier,
+  monumentCacheEvictionKeys,
+  monumentTierFitsBudget,
+  parseMonumentMode,
+  prioritizeMonuments,
+  projectedMonumentDiameter,
+  resolveMonumentQuality,
+  visibleMonumentTier,
+} from "../assets/ts/server-map-viewer/monument-quality-policy";
 
 describe("monument quality policy", () => {
-  it("migrates the legacy boolean setting", () => {
+  it("migrates existing local-storage values", () => {
     expect(parseMonumentMode("true")).toBe("auto");
     expect(parseMonumentMode("false")).toBe("primitives");
     expect(parseMonumentMode("simple")).toBe("primitives");
     expect(parseMonumentMode("map")).toBe("primitives");
+    expect(parseMonumentMode("detailed")).toBe("detailed");
   });
 
-  it("keeps one close-detail slot on low and applies preset budgets", () => {
-    expect(resolveMonumentQuality("detailed", "low").activeDetailLimit).toBe(1);
-    expect(resolveMonumentQuality("auto", "low").activeDetailLimit).toBe(1);
-    expect(resolveMonumentQuality("auto", "medium").activeDetailLimit).toBe(1);
-    expect(resolveMonumentQuality("auto", "high").activeDetailLimit).toBe(2);
-    expect(resolveMonumentQuality("auto", "ultra").activeDetailLimit).toBe(3);
-    expect(resolveMonumentQuality("primitives", "ultra").activeDetailLimit).toBe(0);
-    expect(resolveMonumentQuality("primitives", "low").activeDetailLimit).toBe(0);
-    expect(resolveMonumentQuality("auto", "low").activeMapLimit).toBeGreaterThanOrEqual(96);
+  it("applies the requested tier caps and total resource budgets", () => {
+    expect(resolveMonumentQuality("auto", "low")).toMatchObject({ activeCloseLimit: 1, activeMidLimit: 3, triangleBudget: 750_000, drawCallBudget: 500 });
+    expect(resolveMonumentQuality("auto", "medium")).toMatchObject({ activeCloseLimit: 1, activeMidLimit: 5, triangleBudget: 1_250_000, drawCallBudget: 650 });
+    expect(resolveMonumentQuality("auto", "high")).toMatchObject({ activeCloseLimit: 2, activeMidLimit: 8, triangleBudget: 2_000_000, drawCallBudget: 800 });
+    expect(resolveMonumentQuality("auto", "ultra")).toMatchObject({ activeCloseLimit: 3, activeMidLimit: 12, triangleBudget: 3_000_000, drawCallBudget: 1_000 });
+    expect(resolveMonumentQuality("primitives", "ultra")).toMatchObject({ activeCloseLimit: 0, activeMidLimit: 0 });
   });
 
-  it("uses hysteresis and focused-first prioritization", () => {
+  it("selects by projected screen diameter and focuses Close", () => {
     const policy = resolveMonumentQuality("auto", "high");
-    expect(monumentUnloadDistance(100, policy)).toBeGreaterThan(monumentLoadDistance(100, policy));
-    expect(prioritizeMonuments([{ distance: 10 }, { distance: 100, focused: true }])[0]?.focused).toBe(true);
+    expect(desiredMonumentTier(79, "map", policy)).toBe("map");
+    expect(desiredMonumentTier(80, "map", policy)).toBe("mid");
+    expect(desiredMonumentTier(219, "mid", policy)).toBe("mid");
+    expect(desiredMonumentTier(220, "mid", policy)).toBe("close");
+    expect(desiredMonumentTier(1, "map", policy, true)).toBe("close");
+    expect(projectedMonumentDiameter(50, 500, 60, 1000)).toBeCloseTo(173.205, 2);
+  });
+
+  it("uses 20 percent hysteresis for demotion", () => {
+    const policy = resolveMonumentQuality("auto", "high");
+    expect(desiredMonumentTier(70, "mid", policy)).toBe("mid");
+    expect(desiredMonumentTier(63, "mid", policy)).toBe("map");
+    expect(desiredMonumentTier(190, "close", policy)).toBe("close");
+    expect(desiredMonumentTier(175, "close", policy)).toBe("mid");
+  });
+
+  it("prioritizes focus, then projected size, then distance", () => {
+    const ranked = prioritizeMonuments([
+      { id: "near", distance: 10, projectedDiameter: 40 },
+      { id: "large", distance: 100, projectedDiameter: 200 },
+      { id: "focus", distance: 500, projectedDiameter: 10, focused: true },
+    ]);
+    expect(ranked.map((entry) => entry.id)).toEqual(["focus", "large", "near"]);
+  });
+
+  it("keeps the best loaded lower tier after a close decode failure", () => {
+    expect(visibleMonumentTier("close", new Set(["map", "mid"]))).toBe("mid");
+    expect(visibleMonumentTier("mid", new Set(["map"]))).toBe("map");
+    expect(visibleMonumentTier("map", new Set())).toBe("fallback");
+  });
+
+  it("rejects an oversized tier before it can consume the scene budget", () => {
+    const policy = resolveMonumentQuality("auto", "ultra");
+    expect(monumentTierFitsBudget(
+      { triangles: 2_900_000, drawCalls: 950 },
+      { triangles: 20_000, drawCalls: 8 },
+      { triangles: 300_000, drawCalls: 90 },
+      policy,
+    )).toBe(false);
+    expect(monumentTierFitsBudget(
+      { triangles: 2_000_000, drawCalls: 700 },
+      { triangles: 20_000, drawCalls: 8 },
+      { triangles: 120_000, drawCalls: 40 },
+      policy,
+    )).toBe(true);
+  });
+
+  it("evicts only inactive least-recently-used entries above the cache cap", () => {
+    expect(monumentCacheEvictionKeys([
+      { key: "close:a", active: 0, lastUsed: 1 },
+      { key: "close:b", active: 1, lastUsed: 0 },
+      { key: "close:c", active: 0, lastUsed: 2 },
+      { key: "mid:d", active: 0, lastUsed: 0 },
+    ], "close", 2)).toEqual(["close:a"]);
   });
 });
