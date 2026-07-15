@@ -2190,27 +2190,29 @@ float raidlandsInsideTerrain = step(0.0, raidlandsTerrainUv.x) * step(raidlandsT
 float raidlandsGroundHeight = texture2D(raidlandsTerrainHeight, clamp(raidlandsTerrainUv, 0.0, 1.0)).r;
 float raidlandsShoreDepth = raidlandsWaterLevel - raidlandsGroundHeight;
 float raidlandsShallowWater = raidlandsInsideTerrain
-  * (1.0 - smoothstep(2.0, 42.0, raidlandsShoreDepth))
-  * smoothstep(-1.5, 0.3, raidlandsShoreDepth);
-outgoingLight = mix(outgoingLight, vec3(0.16, 0.42, 0.46), raidlandsShallowWater * 0.34);
+  * (1.0 - smoothstep(1.0, 52.0, raidlandsShoreDepth))
+  * smoothstep(-3.0, 2.0, raidlandsShoreDepth);
+// Keep the authored terrain visible through shallow water. The depth cue is a
+// restrained colour lift; transparency and the ground provide most of it.
+outgoingLight = mix(outgoingLight, vec3(0.13, 0.32, 0.36), raidlandsShallowWater * 0.1);
 float raidlandsShoreFoam = raidlandsInsideTerrain
-  * (1.0 - smoothstep(0.8, 8.5, raidlandsShoreDepth))
-  * smoothstep(-1.5, 0.25, raidlandsShoreDepth);
-float raidlandsFoamBreakup = 0.64 + 0.36 * sin(
+  * (1.0 - smoothstep(0.2, 5.5, raidlandsShoreDepth))
+  * smoothstep(-2.5, 1.2, raidlandsShoreDepth);
+float raidlandsFoamBreakup = 0.84 + 0.16 * sin(
   raidlandsWaterWorldPosition.x * 0.22 + raidlandsWaterWorldPosition.z * 0.17 + raidlandsWaterTime * 1.8
 );
 raidlandsShoreFoam *= raidlandsFoamBreakup;
-outgoingLight = mix(outgoingLight, vec3(0.72, 0.86, 0.88), raidlandsShoreFoam * 0.58);
+outgoingLight = mix(outgoingLight, vec3(0.62, 0.76, 0.78), raidlandsShoreFoam * 0.16);
 outgoingLight += vec3(0.16, 0.2, 0.22) * max(raidlandsWaterRainRipple, 0.0) * raidlandsWaterRainIntensity * 0.18;
 float raidlandsWaterFogDistance = length(vViewPosition);
 float raidlandsWaterFogDistanceScaled = raidlandsWaterFogDensity * raidlandsWaterFogDistance;
 float raidlandsWaterFogFactor = 1.0 - exp(-raidlandsWaterFogDistanceScaled * raidlandsWaterFogDistanceScaled);
 outgoingLight = mix(outgoingLight, raidlandsWaterFogColor, clamp(raidlandsWaterFogFactor, 0.0, 0.86));
-diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
+diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlandsShallowWater);
 #include <opaque_fragment>`,
         );
     };
-    material.customProgramCacheKey = () => `raidlands-water-ultra-${this.qualityProfile.resolved}-${this.cloudDetail}-v5`;
+    material.customProgramCacheKey = () => `raidlands-water-ultra-${this.qualityProfile.resolved}-${this.cloudDetail}-v6`;
     const mesh = new Mesh(geometry, material);
     mesh.name = "raidlands-infinite-ocean-surface";
     mesh.rotation.x = -Math.PI / 2;

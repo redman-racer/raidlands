@@ -1018,24 +1018,26 @@ float raidlandsInsideTerrain = step(0.0, raidlandsTerrainUv.x) * step(raidlandsT
 float raidlandsGroundHeight = texture2D(raidlandsTerrainHeight, clamp(raidlandsTerrainUv, 0.0, 1.0)).r;
 float raidlandsShoreDepth = raidlandsWaterLevel - raidlandsGroundHeight;
 float raidlandsShallowWater = raidlandsInsideTerrain
-  * (1.0 - smoothstep(2.0, 42.0, raidlandsShoreDepth))
-  * smoothstep(-1.5, 0.3, raidlandsShoreDepth);
-outgoingLight = mix(outgoingLight, vec3(0.16, 0.42, 0.46), raidlandsShallowWater * 0.34);
+  * (1.0 - smoothstep(1.0, 52.0, raidlandsShoreDepth))
+  * smoothstep(-3.0, 2.0, raidlandsShoreDepth);
+// Keep the authored terrain visible through shallow water. The depth cue is a
+// restrained colour lift; transparency and the ground provide most of it.
+outgoingLight = mix(outgoingLight, vec3(0.13, 0.32, 0.36), raidlandsShallowWater * 0.1);
 float raidlandsShoreFoam = raidlandsInsideTerrain
-  * (1.0 - smoothstep(0.8, 8.5, raidlandsShoreDepth))
-  * smoothstep(-1.5, 0.25, raidlandsShoreDepth);
-float raidlandsFoamBreakup = 0.64 + 0.36 * sin(
+  * (1.0 - smoothstep(0.2, 5.5, raidlandsShoreDepth))
+  * smoothstep(-2.5, 1.2, raidlandsShoreDepth);
+float raidlandsFoamBreakup = 0.84 + 0.16 * sin(
   raidlandsWaterWorldPosition.x * 0.22 + raidlandsWaterWorldPosition.z * 0.17 + raidlandsWaterTime * 1.8
 );
 raidlandsShoreFoam *= raidlandsFoamBreakup;
-outgoingLight = mix(outgoingLight, vec3(0.72, 0.86, 0.88), raidlandsShoreFoam * 0.58);
+outgoingLight = mix(outgoingLight, vec3(0.62, 0.76, 0.78), raidlandsShoreFoam * 0.16);
 outgoingLight += vec3(0.16, 0.2, 0.22) * max(raidlandsWaterRainRipple, 0.0) * raidlandsWaterRainIntensity * 0.18;
 float raidlandsWaterFogDistance = length(vViewPosition);
 float raidlandsWaterFogDistanceScaled = raidlandsWaterFogDensity * raidlandsWaterFogDistance;
 float raidlandsWaterFogFactor = 1.0 - exp(-raidlandsWaterFogDistanceScaled * raidlandsWaterFogDistanceScaled);
 outgoingLight = mix(outgoingLight, raidlandsWaterFogColor, clamp(raidlandsWaterFogFactor, 0.0, 0.86));
-diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
-#include <opaque_fragment>`)},o.customProgramCacheKey=()=>`raidlands-water-ultra-${this.qualityProfile.resolved}-${this.cloudDetail}-v5`;const i=new Y(n,o);return i.name="raidlands-infinite-ocean-surface",i.rotation.x=-Math.PI/2,i.position.y=r+.12,i.renderOrder=8,o.depthWrite=!1,i}createAerialCloudLayer(){const t=this.terrain.worldSize||4500,a=this.aerialCloudUniforms;a.worldSize.value=t;const r=new X;r.name="raidlands-volumetric-cloud-slices",r.visible=!1;const n=this.qualityProfile.cloudSliceCount,o=n>0?1-Math.exp(-1.8/n):0;for(let i=0;i<n;i+=1){const s=n<=1?.5:i/(n-1),c=new dt({uniforms:{uCoverage:a.coverage,uOpacity:a.opacity,uCloudSize:a.size,uSharpness:a.sharpness,uAttenuation:a.attenuation,uBrightness:a.brightness,uColoring:a.coloring,uRain:a.rain,uPhase:a.phase,uVisibility:a.visibility,uWorldSize:a.worldSize,uSunColor:a.sunColor,uAmbientColor:a.ambientColor,uSunDirection:a.sunDirection,uLayerFraction:{value:s},uSliceOpacity:{value:o}},vertexShader:`
+diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlandsShallowWater);
+#include <opaque_fragment>`)},o.customProgramCacheKey=()=>`raidlands-water-ultra-${this.qualityProfile.resolved}-${this.cloudDetail}-v6`;const i=new Y(n,o);return i.name="raidlands-infinite-ocean-surface",i.rotation.x=-Math.PI/2,i.position.y=r+.12,i.renderOrder=8,o.depthWrite=!1,i}createAerialCloudLayer(){const t=this.terrain.worldSize||4500,a=this.aerialCloudUniforms;a.worldSize.value=t;const r=new X;r.name="raidlands-volumetric-cloud-slices",r.visible=!1;const n=this.qualityProfile.cloudSliceCount,o=n>0?1-Math.exp(-1.8/n):0;for(let i=0;i<n;i+=1){const s=n<=1?.5:i/(n-1),c=new dt({uniforms:{uCoverage:a.coverage,uOpacity:a.opacity,uCloudSize:a.size,uSharpness:a.sharpness,uAttenuation:a.attenuation,uBrightness:a.brightness,uColoring:a.coloring,uRain:a.rain,uPhase:a.phase,uVisibility:a.visibility,uWorldSize:a.worldSize,uSunColor:a.sunColor,uAmbientColor:a.ambientColor,uSunDirection:a.sunDirection,uLayerFraction:{value:s},uSliceOpacity:{value:o}},vertexShader:`
         varying vec3 vWorldPosition;
         void main() {
           vec4 worldPosition = modelMatrix * vec4(position, 1.0);
