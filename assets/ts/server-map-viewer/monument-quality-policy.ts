@@ -31,7 +31,10 @@ export function resolveMonumentQuality(mode: MonumentMode, quality: EnvironmentQ
     requested: mode,
     resolved: activeDetailLimit > 0 ? "detailed" : "primitives",
     activeDetailLimit,
-    activeMapLimit: ({ low: 18, medium: 24, high: 30, ultra: 36 } as Record<EnvironmentQuality, number>)[quality],
+    // Website terrain ingestion is capped at 96 monument instances. Keeping
+    // this above that cap makes actual-geometry map proxies the normal map
+    // representation, rather than allowing distant procedural stand-ins.
+    activeMapLimit: 128,
     detailCacheLimit: Math.max(0, activeDetailLimit + 1),
     loadDistanceMultiplier: 5.5,
     unloadDistanceMultiplier: 7.25,

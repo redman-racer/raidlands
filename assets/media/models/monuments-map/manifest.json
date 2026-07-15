@@ -1,5 +1,5 @@
 {
-  "version": 3,
+  "version": 5,
   "generatedBy": "gltf-transform@4.3.0",
   "targets": {
     "textureSize": 256,
@@ -9,20 +9,15 @@
     {
       "id": "airfield_1",
       "detail": "../monuments/airfield_1.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "airfield_1.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "dbb7f76836ba3efb70b0a1814d7087a9b0f8239e89e45b5cc9b998bf422a4321",
       "sourceBytes": 13346560,
-      "outputBytes": 0,
+      "outputBytes": 78528,
       "sourceTriangles": 619153,
       "sourceDrawCalls": 706,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -168.01258182568597,
           -18.01556310673221,
@@ -32,6 +27,23 @@
           174.5235227166585,
           42.662401326293946,
           70.69045962172356
+        ]
+      },
+      "triangles": 9314,
+      "drawCalls": 10,
+      "triangleRatio": 0.015043,
+      "overTriangleTarget": false,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -167.95718383789062,
+          -15.792805671691895,
+          -122.1506118774414
+        ],
+        "max": [
+          174.38644409179688,
+          37.03529739379883,
+          70.58334350585938
         ]
       },
       "overBudget": false
@@ -49,6 +61,18 @@
       "outputBytes": 179436,
       "sourceTriangles": 980534,
       "sourceDrawCalls": 1445,
+      "sourceBounds": {
+        "min": [
+          -59.16551208496094,
+          -26.824779510498047,
+          -78.83984422683716
+        ],
+        "max": [
+          117.28268654430869,
+          33.681501386108394,
+          118.83984486113499
+        ]
+      },
       "triangles": 14338,
       "drawCalls": 1,
       "triangleRatio": 0.014623,
@@ -81,6 +105,18 @@
       "outputBytes": 200432,
       "sourceTriangles": 434763,
       "sourceDrawCalls": 487,
+      "sourceBounds": {
+        "min": [
+          -59.801631927490234,
+          -20.283926010131836,
+          -57.64092254638672
+        ],
+        "max": [
+          64.34779357910156,
+          45.374839782714844,
+          58.96845245361328
+        ]
+      },
       "triangles": 16955,
       "drawCalls": 1,
       "triangleRatio": 0.038998,
@@ -103,20 +139,15 @@
     {
       "id": "bandit_town",
       "detail": "../monuments/bandit_town.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "bandit_town.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "dcf26bc49a392ffb28ad7fa8cef97093795ef1314f8d96f4ec8f3c342f2e7935",
       "sourceBytes": 7996632,
-      "outputBytes": 0,
+      "outputBytes": 52408,
       "sourceTriangles": 359794,
       "sourceDrawCalls": 392,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -71.45672769713816,
           -18.947839736938477,
@@ -128,25 +159,37 @@
           63.55572671553408
         ]
       },
+      "triangles": 5273,
+      "drawCalls": 10,
+      "triangleRatio": 0.014656,
+      "overTriangleTarget": false,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -71.09076690673828,
+          -18.947839736938477,
+          -75.1474609375
+        ],
+        "max": [
+          60.80584716796875,
+          19.99909782409668,
+          62.876148191425145
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "cave_large_hard",
       "detail": "../monuments/cave_large_hard.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "cave_large_hard.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "92a8eb0b904b02e4307c0e632dbe289a2ac2dfa387d0603cd516fae5c8e0ebc5",
       "sourceBytes": 3658100,
-      "outputBytes": 0,
+      "outputBytes": 33240,
       "sourceTriangles": 242246,
       "sourceDrawCalls": 106,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -68.66030259083573,
           -51.351695708912665,
@@ -158,25 +201,37 @@
           95.57908024726788
         ]
       },
+      "triangles": 4302,
+      "drawCalls": 6,
+      "triangleRatio": 0.017759,
+      "overTriangleTarget": false,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -68.6603012084961,
+          -50.95895004272461,
+          -78.41963958740234
+        ],
+        "max": [
+          60.44860076904297,
+          19.015697479248047,
+          95.35550689697266
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "cave_large_medium",
       "detail": "../monuments/cave_large_medium.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "cave_large_medium.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "fa361f706900b16a677f9be9dfe8c60f599e6b490f20c4e2494e10a27cf8f622",
       "sourceBytes": 3241608,
-      "outputBytes": 0,
+      "outputBytes": 33304,
       "sourceTriangles": 228498,
       "sourceDrawCalls": 111,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -87.40623704766556,
           -50.90694382597303,
@@ -188,25 +243,37 @@
           48.75917385970193
         ]
       },
+      "triangles": 4214,
+      "drawCalls": 6,
+      "triangleRatio": 0.018442,
+      "overTriangleTarget": false,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -87.25518798828125,
+          -50.7091178894043,
+          -103.62036895751953
+        ],
+        "max": [
+          58.4012451171875,
+          18.818866729736328,
+          48.683021545410156
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "cave_large_sewers_hard",
       "detail": "../monuments/cave_large_sewers_hard.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "cave_large_sewers_hard.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "c96714c23260787e84764aa392f4063178b476972d92f6065b9804b9ac8633ae",
       "sourceBytes": 4272996,
-      "outputBytes": 0,
+      "outputBytes": 40616,
       "sourceTriangles": 234534,
       "sourceDrawCalls": 194,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -131.51189680532016,
           -14.71995576191438,
@@ -218,25 +285,37 @@
           72.62620941719003
         ]
       },
+      "triangles": 4401,
+      "drawCalls": 9,
+      "triangleRatio": 0.018765,
+      "overTriangleTarget": false,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -131.30612182617188,
+          -14.490259170532227,
+          -87.40972137451172
+        ],
+        "max": [
+          35.436100006103516,
+          58.38904571533203,
+          72.58209991455078
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "cave_medium_easy",
       "detail": "../monuments/cave_medium_easy.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "cave_medium_easy.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "674f9ff27200959ccd121a73765e3ccedccd621fa3de61fbd5d0689f53f99848",
       "sourceBytes": 1830928,
-      "outputBytes": 0,
+      "outputBytes": 31572,
       "sourceTriangles": 122954,
       "sourceDrawCalls": 61,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -61.35201072692871,
           -38.84630000592528,
@@ -248,25 +327,37 @@
           46.283949122754464
         ]
       },
+      "triangles": 4151,
+      "drawCalls": 6,
+      "triangleRatio": 0.033761,
+      "overTriangleTarget": true,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -61.28561782836914,
+          -38.51408386230469,
+          -59.37418746948242
+        ],
+        "max": [
+          21.555049896240234,
+          17.581523895263672,
+          46.283939361572266
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "cave_medium_hard",
       "detail": "../monuments/cave_medium_hard.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "cave_medium_hard.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "2773dafcfcfdd76fadfbbe41640647331e49a7d028b644f6f8cfb01a26801fee",
       "sourceBytes": 2215080,
-      "outputBytes": 0,
+      "outputBytes": 30836,
       "sourceTriangles": 149709,
       "sourceDrawCalls": 63,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -70.76133632659912,
           -50.851695405007675,
@@ -278,25 +369,37 @@
           55.07384426274923
         ]
       },
+      "triangles": 4078,
+      "drawCalls": 6,
+      "triangleRatio": 0.02724,
+      "overTriangleTarget": false,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -70.58714294433594,
+          -50.562644958496094,
+          -67.24345397949219
+        ],
+        "max": [
+          55.539955139160156,
+          21.442893981933594,
+          54.426124572753906
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "cave_medium_medium",
       "detail": "../monuments/cave_medium_medium.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "cave_medium_medium.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "acfa8658f4aafed56ac925a6e4d32bf1db379804d02eeede1a3b77435e21d943",
       "sourceBytes": 2660236,
-      "outputBytes": 0,
+      "outputBytes": 31600,
       "sourceTriangles": 163831,
       "sourceDrawCalls": 69,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -53.61189489247552,
           -52.50624294877812,
@@ -308,25 +411,37 @@
           56.369893698630435
         ]
       },
+      "triangles": 4129,
+      "drawCalls": 6,
+      "triangleRatio": 0.025203,
+      "overTriangleTarget": false,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -53.4025764465332,
+          -52.40509033203125,
+          -49.33220672607422
+        ],
+        "max": [
+          54.73160934448242,
+          20.63481903076172,
+          55.990211486816406
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "cave_small_easy",
       "detail": "../monuments/cave_small_easy.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "cave_small_easy.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "b1dd4a053b2b546be801f490d0ff3a416d4add7243c8c7320c25eacaecb29424",
       "sourceBytes": 2610148,
-      "outputBytes": 0,
+      "outputBytes": 30688,
       "sourceTriangles": 130974,
       "sourceDrawCalls": 49,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -27.685482973851276,
           -50.90448662174292,
@@ -338,25 +453,37 @@
           50.04496968333313
         ]
       },
+      "triangles": 5210,
+      "drawCalls": 6,
+      "triangleRatio": 0.039779,
+      "overTriangleTarget": true,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -27.685482025146484,
+          -49.60211944580078,
+          -23.552339553833008
+        ],
+        "max": [
+          20.720722198486328,
+          10.953330993652344,
+          47.4830322265625
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "cave_small_hard",
       "detail": "../monuments/cave_small_hard.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "cave_small_hard.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "e2c2489c91660c68321cf6e56e5391bde96b0974061b91b54e8538bbee5f0bef",
       "sourceBytes": 2105120,
-      "outputBytes": 0,
+      "outputBytes": 30032,
       "sourceTriangles": 115712,
       "sourceDrawCalls": 41,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -31.426125063645273,
           -38.47498338351298,
@@ -368,25 +495,37 @@
           33.45725988616995
         ]
       },
+      "triangles": 3966,
+      "drawCalls": 6,
+      "triangleRatio": 0.034275,
+      "overTriangleTarget": true,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -31.426122665405273,
+          -38.2179069519043,
+          -38.7210578918457
+        ],
+        "max": [
+          31.973630905151367,
+          10.446186065673828,
+          33.149837493896484
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "cave_small_medium",
       "detail": "../monuments/cave_small_medium.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "cave_small_medium.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "b9adc61be1cf8a5f77dac849ac7b3163f206a1c7ccc1691972b46009446f24e4",
       "sourceBytes": 2524120,
-      "outputBytes": 0,
+      "outputBytes": 30164,
       "sourceTriangles": 136765,
       "sourceDrawCalls": 56,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -56.90623748248695,
           -53.76353606281155,
@@ -398,25 +537,37 @@
           16.304706063924264
         ]
       },
+      "triangles": 4000,
+      "drawCalls": 6,
+      "triangleRatio": 0.029247,
+      "overTriangleTarget": false,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -56.26896667480469,
+          -53.51513671875,
+          -49.72620391845703
+        ],
+        "max": [
+          28.014022827148438,
+          15.442268371582031,
+          16.170196533203125
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "compound",
       "detail": "../monuments/compound.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "compound.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "3cae5ca3a7e53a876fd9134ddbbcad799b11abd25872e4f7ff3c7ace4e492991",
       "sourceBytes": 13301848,
-      "outputBytes": 0,
+      "outputBytes": 105344,
       "sourceTriangles": 527297,
       "sourceDrawCalls": 714,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -79.45431848471718,
           -11.917352182774023,
@@ -428,25 +579,37 @@
           91.64177715691909
         ]
       },
+      "triangles": 11725,
+      "drawCalls": 13,
+      "triangleRatio": 0.022236,
+      "overTriangleTarget": false,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -78.9301986694336,
+          -9.912806510925293,
+          -91.74999237060547
+        ],
+        "max": [
+          78.28716278076172,
+          24.37258529663086,
+          91.58634185791016
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "desert_military_base_a",
       "detail": "../monuments/desert_military_base_a.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "desert_military_base_a.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "2efd5185a22040a67eba0655acdb2bc6507458f8782b69fe892b6d33faffbc54",
       "sourceBytes": 2051652,
-      "outputBytes": 0,
+      "outputBytes": 35140,
       "sourceTriangles": 60301,
       "sourceDrawCalls": 60,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -45.5032484523608,
           -1.3598638772964478,
@@ -458,25 +621,37 @@
           47.6813777490693
         ]
       },
+      "triangles": 4025,
+      "drawCalls": 8,
+      "triangleRatio": 0.066748,
+      "overTriangleTarget": true,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -45.495609283447266,
+          -1.358689546585083,
+          -44.211753845214844
+        ],
+        "max": [
+          48.21184539794922,
+          7.005517959594727,
+          47.681373596191406
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "desert_military_base_b",
       "detail": "../monuments/desert_military_base_b.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "desert_military_base_b.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "077079da1b3a6303c76c6c823c58bbe48730958874151ca385cbc116cc98e09d",
       "sourceBytes": 2053696,
-      "outputBytes": 0,
+      "outputBytes": 36212,
       "sourceTriangles": 60388,
       "sourceDrawCalls": 59,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -43.65272673419237,
           -1.358689546585083,
@@ -488,25 +663,37 @@
           48.18137736508195
         ]
       },
+      "triangles": 4016,
+      "drawCalls": 8,
+      "triangleRatio": 0.066503,
+      "overTriangleTarget": true,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -43.65272521972656,
+          -1.358689546585083,
+          -44.454227447509766
+        ],
+        "max": [
+          49.21174621582031,
+          7.0061845779418945,
+          48.18351364135742
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "desert_military_base_c",
       "detail": "../monuments/desert_military_base_c.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "desert_military_base_c.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "3eb585960525828226ef5162d6ebc19bfef0e4165350dc4e9df0145b92718c55",
       "sourceBytes": 2001852,
-      "outputBytes": 0,
+      "outputBytes": 33692,
       "sourceTriangles": 51900,
       "sourceDrawCalls": 55,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -45.5032484523608,
           -1.3598638772964478,
@@ -518,25 +705,37 @@
           76.49883985519409
         ]
       },
+      "triangles": 3960,
+      "drawCalls": 8,
+      "triangleRatio": 0.076301,
+      "overTriangleTarget": true,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -45.48164367675781,
+          -1.358689546585083,
+          -43.500091552734375
+        ],
+        "max": [
+          48.24903869628906,
+          7.005441665649414,
+          76.49884033203125
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "desert_military_base_d",
       "detail": "../monuments/desert_military_base_d.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "desert_military_base_d.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "cbc5b14a391675515c3e4dfaad543e04eed21e8c56e33dcda3bbbbc0f4ab16d5",
       "sourceBytes": 1983016,
-      "outputBytes": 0,
+      "outputBytes": 33356,
       "sourceTriangles": 48507,
       "sourceDrawCalls": 50,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -59.71174685627316,
           -1.3598638772964478,
@@ -548,25 +747,37 @@
           45.2532027221941
         ]
       },
+      "triangles": 3955,
+      "drawCalls": 8,
+      "triangleRatio": 0.081535,
+      "overTriangleTarget": true,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -59.71174621582031,
+          -1.358689546585083,
+          -47.20697021484375
+        ],
+        "max": [
+          67.21174621582031,
+          7.009806156158447,
+          45.24896240234375
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "entrance_bunker_a",
       "detail": "../monuments/entrance_bunker_a.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "entrance_bunker_a.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "87ec4c993b9b8d042ef8c350351a59bc02f646be602f763b81419337e22d69dc",
       "sourceBytes": 2887432,
-      "outputBytes": 0,
+      "outputBytes": 34984,
       "sourceTriangles": 79645,
       "sourceDrawCalls": 164,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -5.967830519086163,
           -16.50000023841858,
@@ -578,25 +789,37 @@
           7.250274658203125
         ]
       },
+      "triangles": 3959,
+      "drawCalls": 8,
+      "triangleRatio": 0.049708,
+      "overTriangleTarget": true,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -5.749992370605469,
+          -15.31328147649765,
+          -9.600802421569824
+        ],
+        "max": [
+          13,
+          12.515663607963836,
+          7.25014591217041
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "entrance_bunker_b",
       "detail": "../monuments/entrance_bunker_b.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "entrance_bunker_b.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "56f454970bb6e8283a3e6a3bd8cce3a170023862c8e86bb2e8107b3f649d61f8",
       "sourceBytes": 3567804,
-      "outputBytes": 0,
+      "outputBytes": 38652,
       "sourceTriangles": 113454,
       "sourceDrawCalls": 193,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -5.80474564514772,
           -16.50000023841858,
@@ -608,25 +831,37 @@
           7.250274658203125
         ]
       },
+      "triangles": 4009,
+      "drawCalls": 10,
+      "triangleRatio": 0.035336,
+      "overTriangleTarget": true,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -5.749992370605469,
+          -15.264568001031876,
+          -9.542805671691895
+        ],
+        "max": [
+          21.87018394470215,
+          12.511243330152931,
+          7.250812530517578
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "entrance_bunker_c",
       "detail": "../monuments/entrance_bunker_c.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "entrance_bunker_c.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "cda87904715db7f715c2660297e3946d0c251d69124e7dc90af70e0513788e52",
       "sourceBytes": 3646944,
-      "outputBytes": 0,
+      "outputBytes": 36468,
       "sourceTriangles": 110207,
       "sourceDrawCalls": 188,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -7.271533865656101,
           -16.50000023841858,
@@ -638,25 +873,37 @@
           8.262462863060637
         ]
       },
+      "triangles": 4029,
+      "drawCalls": 9,
+      "triangleRatio": 0.036558,
+      "overTriangleTarget": true,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -7.271533966064453,
+          -15.264568001031876,
+          -17.46320343017578
+        ],
+        "max": [
+          14.650972366333008,
+          12.582417243957465,
+          7.454219341278076
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "entrance_bunker_d",
       "detail": "../monuments/entrance_bunker_d.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "entrance_bunker_d.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "ceba2284fb36d3e49f6279af36807afc6bbd0984c922946e37b05ac87bea41c9",
       "sourceBytes": 2262384,
-      "outputBytes": 0,
+      "outputBytes": 35904,
       "sourceTriangles": 63488,
       "sourceDrawCalls": 120,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -5.749992370605469,
           -16.50000023841858,
@@ -668,25 +915,37 @@
           7.250274658203125
         ]
       },
+      "triangles": 3931,
+      "drawCalls": 9,
+      "triangleRatio": 0.061917,
+      "overTriangleTarget": true,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -5.749992370605469,
+          -15.31328147649765,
+          -9.276963233947754
+        ],
+        "max": [
+          13.179264068603516,
+          12.515663607963836,
+          7.250337600708008
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "excavator_1",
       "detail": "../monuments/excavator_1.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "excavator_1.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "66e010436a01771092cde869c3c8cad8f3510b303098936e2e25149a2a8e5f01",
       "sourceBytes": 9479132,
-      "outputBytes": 0,
+      "outputBytes": 78084,
       "sourceTriangles": 548869,
       "sourceDrawCalls": 464,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -105.51690959086642,
           -6.865901470184326,
@@ -696,6 +955,23 @@
           109.30670278181958,
           67.5833708190918,
           90.75180729519428
+        ]
+      },
+      "triangles": 9213,
+      "drawCalls": 11,
+      "triangleRatio": 0.016785,
+      "overTriangleTarget": false,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -103.76112359057998,
+          -6.865901470184326,
+          -80.01380920410156
+        ],
+        "max": [
+          109.02907833507297,
+          64.70555877685547,
+          90.74638350326252
         ]
       },
       "overBudget": false
@@ -713,6 +989,18 @@
       "outputBytes": 111984,
       "sourceTriangles": 588247,
       "sourceDrawCalls": 549,
+      "sourceBounds": {
+        "min": [
+          -122.10559398630969,
+          -21.796388930404888,
+          -86.83984422683716
+        ],
+        "max": [
+          125.22351259553,
+          27.78164944458008,
+          117.31620788574219
+        ]
+      },
       "triangles": 6610,
       "drawCalls": 1,
       "triangleRatio": 0.011237,
@@ -745,6 +1033,18 @@
       "outputBytes": 103304,
       "sourceTriangles": 236664,
       "sourceDrawCalls": 234,
+      "sourceBounds": {
+        "min": [
+          -34.42734873439789,
+          -18.95381736755371,
+          -46.515663146972656
+        ],
+        "max": [
+          40.862178599378936,
+          15.153383967906422,
+          28.17432218397117
+        ]
+      },
       "triangles": 6332,
       "drawCalls": 1,
       "triangleRatio": 0.026755,
@@ -777,6 +1077,18 @@
       "outputBytes": 69648,
       "sourceTriangles": 174508,
       "sourceDrawCalls": 194,
+      "sourceBounds": {
+        "min": [
+          -17.00678797505835,
+          -19.587685129014762,
+          -41.66866130050248
+        ],
+        "max": [
+          23.41768407382242,
+          13.28897013654339,
+          33.08308931478197
+        ]
+      },
       "triangles": 2934,
       "drawCalls": 1,
       "triangleRatio": 0.016813,
@@ -809,6 +1121,18 @@
       "outputBytes": 52136,
       "sourceTriangles": 190416,
       "sourceDrawCalls": 204,
+      "sourceBounds": {
+        "min": [
+          -14.539389915271776,
+          -19.57668512901476,
+          -41.66865562357697
+        ],
+        "max": [
+          15.699508329847216,
+          13.79400764465332,
+          33.07683626084766
+        ]
+      },
       "triangles": 2099,
       "drawCalls": 1,
       "triangleRatio": 0.011023,
@@ -831,20 +1155,15 @@
     {
       "id": "gas_station_1",
       "detail": "../monuments/gas_station_1.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "gas_station_1.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "f04db5e8fcd67ef0f2be1e8675acb16d597612ffb8eeb4c25dfc5a3d85e291a3",
       "sourceBytes": 6080532,
-      "outputBytes": 0,
+      "outputBytes": 48360,
       "sourceTriangles": 224672,
       "sourceDrawCalls": 266,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -35.586747207037035,
           -7.50001436658115,
@@ -854,6 +1173,23 @@
           34.67260174351539,
           22.48666000366211,
           45.12458037438518
+        ]
+      },
+      "triangles": 4005,
+      "drawCalls": 9,
+      "triangleRatio": 0.017826,
+      "overTriangleTarget": false,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -35.585015292180756,
+          -7.486241340637207,
+          -13.943970224459425
+        ],
+        "max": [
+          34.6721128822638,
+          22.48770523071289,
+          45.12381228652888
         ]
       },
       "overBudget": false
@@ -871,6 +1207,18 @@
       "outputBytes": 191504,
       "sourceTriangles": 705885,
       "sourceDrawCalls": 699,
+      "sourceBounds": {
+        "min": [
+          -145.39121899163078,
+          -28.076352998637162,
+          -85.66245056795013
+        ],
+        "max": [
+          136.0702600743101,
+          39.28954362119974,
+          171.11765716492124
+        ]
+      },
       "triangles": 15634,
       "drawCalls": 1,
       "triangleRatio": 0.022148,
@@ -893,20 +1241,15 @@
     {
       "id": "harbor_2",
       "detail": "../monuments/harbor_2.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "harbor_2.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "a659a25dcbc48b2019c9c4c733991c0b420d581a6914460e5069abb7fb136ee6",
       "sourceBytes": 13296112,
-      "outputBytes": 0,
+      "outputBytes": 105428,
       "sourceTriangles": 643017,
       "sourceDrawCalls": 627,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -129.80966169385593,
           -23.352930754646792,
@@ -918,25 +1261,37 @@
           144.60103177863851
         ]
       },
+      "triangles": 12223,
+      "drawCalls": 11,
+      "triangleRatio": 0.019009,
+      "overTriangleTarget": false,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -121.2983901977539,
+          -13.06596565246582,
+          -141.81178283691406
+        ],
+        "max": [
+          101.1009292602539,
+          29.279592514038086,
+          144.171630859375
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "ice_lake_1",
       "detail": "../monuments/ice_lake_1.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "ice_lake_1.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "ffb39666b93c27bcbf23ca764386538f6707718409ec6e4a20c33abb1d1f925d",
       "sourceBytes": 824068,
-      "outputBytes": 0,
+      "outputBytes": 25812,
       "sourceTriangles": 43405,
       "sourceDrawCalls": 14,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -70.5138931274414,
           -0.797989772743755,
@@ -948,25 +1303,37 @@
           80.71697998046875
         ]
       },
+      "triangles": 3990,
+      "drawCalls": 3,
+      "triangleRatio": 0.091925,
+      "overTriangleTarget": true,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -70.5138931274414,
+          -0.8013335166134071,
+          -80.71694946289062
+        ],
+        "max": [
+          70.51293182373047,
+          45.287353515625,
+          80.71697998046875
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "ice_lake_2",
       "detail": "../monuments/ice_lake_2.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "ice_lake_2.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "4fe728695de2fafee66a33547c866e6218e6d62f4553bf0c34bb02b1aefadc44",
       "sourceBytes": 326156,
-      "outputBytes": 0,
+      "outputBytes": 26292,
       "sourceTriangles": 22559,
       "sourceDrawCalls": 11,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -60.67155456542969,
           -1.4166069994686306,
@@ -978,25 +1345,37 @@
           85.25033569335938
         ]
       },
+      "triangles": 3994,
+      "drawCalls": 3,
+      "triangleRatio": 0.177047,
+      "overTriangleTarget": true,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -60.67155456542969,
+          -1.416933215731712,
+          -77.12567138671875
+        ],
+        "max": [
+          72.29777526855469,
+          45.29042434692383,
+          85.25033569335938
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "ice_lake_3",
       "detail": "../monuments/ice_lake_3.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "ice_lake_3.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "056633e02569c8808abfe0990ac850d6b1b7c2ae517c0f25183998f6f7d28a9c",
       "sourceBytes": 647980,
-      "outputBytes": 0,
+      "outputBytes": 25952,
       "sourceTriangles": 34406,
       "sourceDrawCalls": 14,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -80.70655822753906,
           -1.777989920175663,
@@ -1008,23 +1387,52 @@
           110.31100463867188
         ]
       },
+      "triangles": 3991,
+      "drawCalls": 3,
+      "triangleRatio": 0.115997,
+      "overTriangleTarget": true,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -80.70655822753906,
+          -1.7780786188091113,
+          -117.40350341796875
+        ],
+        "max": [
+          88.90829467773438,
+          45.2883415222168,
+          110.31100463867188
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "ice_lake_4",
       "detail": "../monuments/ice_lake_4.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "ice_lake_4.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "c01c5f6b6391deeee4030de50eefa1bb2acc085455900b6232bcb77ca53dfa30",
       "sourceBytes": 315516,
-      "outputBytes": 0,
+      "outputBytes": 25548,
       "sourceTriangles": 14650,
       "sourceDrawCalls": 7,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
+      "sourceBounds": {
+        "min": [
+          -42.5528450012207,
+          -0.3570321202278137,
+          -40.12416076660156
+        ],
+        "max": [
+          46.0111198425293,
+          10.28854365119934,
+          35.800941467285156
+        ]
+      },
+      "triangles": 3999,
+      "drawCalls": 2,
+      "triangleRatio": 0.272969,
+      "overTriangleTarget": true,
       "textureBytes": 0,
       "bounds": {
         "min": [
@@ -1034,7 +1442,7 @@
         ],
         "max": [
           46.0111198425293,
-          10.28854365119934,
+          10.264312789516449,
           35.800941467285156
         ]
       },
@@ -1053,6 +1461,18 @@
       "outputBytes": 61068,
       "sourceTriangles": 157764,
       "sourceDrawCalls": 138,
+      "sourceBounds": {
+        "min": [
+          -11.620776107573768,
+          -2.707280776721627,
+          -20.98353792087159
+        ],
+        "max": [
+          10.669981002807617,
+          15.579575675964355,
+          20.57800121304969
+        ]
+      },
       "triangles": 2123,
       "drawCalls": 1,
       "triangleRatio": 0.013457,
@@ -1085,6 +1505,18 @@
       "outputBytes": 62896,
       "sourceTriangles": 200326,
       "sourceDrawCalls": 156,
+      "sourceBounds": {
+        "min": [
+          -15.692895742135253,
+          -3.009133815765381,
+          -16.05280352807104
+        ],
+        "max": [
+          9.610816885329966,
+          24.1809311542511,
+          16.6118141809117
+        ]
+      },
       "triangles": 2304,
       "drawCalls": 1,
       "triangleRatio": 0.011501,
@@ -1117,6 +1549,18 @@
       "outputBytes": 38548,
       "sourceTriangles": 170655,
       "sourceDrawCalls": 108,
+      "sourceBounds": {
+        "min": [
+          -10.75461451656487,
+          -1.8881207477834285,
+          -11.473553663253783
+        ],
+        "max": [
+          10.808225535248793,
+          18.455217918395995,
+          11.104528882034513
+        ]
+      },
       "triangles": 1153,
       "drawCalls": 1,
       "triangleRatio": 0.006756,
@@ -1149,6 +1593,18 @@
       "outputBytes": 46628,
       "sourceTriangles": 149964,
       "sourceDrawCalls": 106,
+      "sourceBounds": {
+        "min": [
+          -8.457477569580078,
+          -2.6904533448517323,
+          -9.965074346160888
+        ],
+        "max": [
+          12.602876213355547,
+          22.00709073813202,
+          12.52858721093186
+        ]
+      },
       "triangles": 1385,
       "drawCalls": 1,
       "triangleRatio": 0.009236,
@@ -1181,6 +1637,18 @@
       "outputBytes": 83724,
       "sourceTriangles": 246976,
       "sourceDrawCalls": 171,
+      "sourceBounds": {
+        "min": [
+          -15.337862163755606,
+          -6.231745941337322,
+          -17.863937114485474
+        ],
+        "max": [
+          14.18889235408362,
+          20.734257918395997,
+          16.983974660007306
+        ]
+      },
       "triangles": 3088,
       "drawCalls": 1,
       "triangleRatio": 0.012503,
@@ -1213,6 +1681,18 @@
       "outputBytes": 47808,
       "sourceTriangles": 403212,
       "sourceDrawCalls": 307,
+      "sourceBounds": {
+        "min": [
+          -27.6489200592041,
+          -6.140936374664307,
+          -23.779961811837715
+        ],
+        "max": [
+          27.6489200592041,
+          29.915826877593993,
+          24.001251220703125
+        ]
+      },
       "triangles": 1795,
       "drawCalls": 1,
       "triangleRatio": 0.004452,
@@ -1235,20 +1715,15 @@
     {
       "id": "junkyard_1",
       "detail": "../monuments/junkyard_1.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "junkyard_1.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "2909eaeeae9f92fb23bf0a76595846aa3703f989f50be85e5d605b1ddeb59973",
       "sourceBytes": 7243192,
-      "outputBytes": 0,
+      "outputBytes": 64124,
       "sourceTriangles": 322048,
       "sourceDrawCalls": 285,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -78.00210884406013,
           -7.120898888701696,
@@ -1260,25 +1735,37 @@
           86.55808900311654
         ]
       },
+      "triangles": 7458,
+      "drawCalls": 9,
+      "triangleRatio": 0.023158,
+      "overTriangleTarget": false,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -78.00210571289062,
+          -6.308221817016602,
+          -70.25142669677734
+        ],
+        "max": [
+          119.1619873046875,
+          30.37657356262207,
+          85.51854705810547
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "launch_site_1",
       "detail": "../monuments/launch_site_1.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "launch_site_1.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "1b25c4233f5731671d49d351103cc83795b8b61e2afb71c388c0d729d037f445",
       "sourceBytes": 14592916,
-      "outputBytes": 0,
+      "outputBytes": 172172,
       "sourceTriangles": 877880,
       "sourceDrawCalls": 1001,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -300.9749766213756,
           -34.74160194396973,
@@ -1290,25 +1777,37 @@
           127.00303629471351
         ]
       },
+      "triangles": 23965,
+      "drawCalls": 12,
+      "triangleRatio": 0.027299,
+      "overTriangleTarget": false,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -299.6210632324219,
+          -33.00000762939453,
+          -161.989990234375
+        ],
+        "max": [
+          260.1267395019531,
+          66.00080871582031,
+          118.84318542480469
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "lighthouse",
       "detail": "../monuments/lighthouse.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "lighthouse.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "bb9a8a5164cfff4bbd72fa40d7740b6c88f7a648c2c0362abf99a415ddafd695",
       "sourceBytes": 4404284,
-      "outputBytes": 0,
+      "outputBytes": 45784,
       "sourceTriangles": 149545,
       "sourceDrawCalls": 120,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -28.71288812517114,
           -17.799529876308075,
@@ -1318,6 +1817,23 @@
           58.60857009887695,
           65.55467224121094,
           41.81565441549182
+        ]
+      },
+      "triangles": 4002,
+      "drawCalls": 7,
+      "triangleRatio": 0.026761,
+      "overTriangleTarget": false,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -28.182411193847656,
+          -17.648292541503906,
+          -40.53207778930664
+        ],
+        "max": [
+          58.513214111328125,
+          65.5546760559082,
+          41.28513717651367
         ]
       },
       "overBudget": false
@@ -1335,6 +1851,18 @@
       "outputBytes": 144840,
       "sourceTriangles": 714170,
       "sourceDrawCalls": 611,
+      "sourceBounds": {
+        "min": [
+          -138.01747909463305,
+          -5.161283493041992,
+          -147.4305830001831
+        ],
+        "max": [
+          137.67614849934492,
+          90.67403132629394,
+          127.30713653564453
+        ]
+      },
       "triangles": 13343,
       "drawCalls": 1,
       "triangleRatio": 0.018683,
@@ -1357,20 +1885,15 @@
     {
       "id": "mining_quarry_a",
       "detail": "../monuments/mining_quarry_a.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "mining_quarry_a.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "6b49aaf0d1240201b97574785e3f501a8e93d3e4a49b64fa64333a8c48856742",
       "sourceBytes": 1981120,
-      "outputBytes": 0,
+      "outputBytes": 42760,
       "sourceTriangles": 108034,
       "sourceDrawCalls": 67,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -26.96338022065776,
           -3.2642503356933594,
@@ -1382,25 +1905,37 @@
           37.336739547288204
         ]
       },
+      "triangles": 3983,
+      "drawCalls": 6,
+      "triangleRatio": 0.036868,
+      "overTriangleTarget": true,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -26.78880757752487,
+          -3.2642502784729004,
+          -25.85182762145996
+        ],
+        "max": [
+          20.553953170776367,
+          13.90769618988037,
+          37.23276922607422
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "mining_quarry_b",
       "detail": "../monuments/mining_quarry_b.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "mining_quarry_b.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "6a135c111ccd8b05b5c8f1facb372c29fdca01d7b5ab0baf8498e1a86011d260",
       "sourceBytes": 2046216,
-      "outputBytes": 0,
+      "outputBytes": 40016,
       "sourceTriangles": 89012,
       "sourceDrawCalls": 67,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -23.767452910910034,
           -3.2642503356933594,
@@ -1412,25 +1947,37 @@
           10.675755409868042
         ]
       },
+      "triangles": 3925,
+      "drawCalls": 6,
+      "triangleRatio": 0.044095,
+      "overTriangleTarget": true,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -23.7275333404541,
+          -3.2642502784729004,
+          -25.845552444458008
+        ],
+        "max": [
+          24.451147099005198,
+          10.279336395263671,
+          7.30042586771766
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "mining_quarry_c",
       "detail": "../monuments/mining_quarry_c.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "mining_quarry_c.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "fe558d9bb46281248a468652e4dc18a0071c7f3e03a64ada1402591e7d6954fb",
       "sourceBytes": 1872268,
-      "outputBytes": 0,
+      "outputBytes": 42684,
       "sourceTriangles": 86597,
       "sourceDrawCalls": 66,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -9.04781005820396,
           -3.2642503356933594,
@@ -1440,6 +1987,23 @@
           22.70248964773865,
           13.51811594581604,
           36.85349638386688
+        ]
+      },
+      "triangles": 3988,
+      "drawCalls": 6,
+      "triangleRatio": 0.046052,
+      "overTriangleTarget": true,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -8.77424039652199,
+          -3.2642502784729004,
+          -8.313505506194144
+        ],
+        "max": [
+          20.067581176757812,
+          13.517945709228515,
+          35.049835205078125
         ]
       },
       "overBudget": false
@@ -1457,6 +2021,18 @@
       "outputBytes": 116080,
       "sourceTriangles": 665872,
       "sourceDrawCalls": 657,
+      "sourceBounds": {
+        "min": [
+          -80.05122037500016,
+          -3.2499988079071045,
+          -64.93775939941406
+        ],
+        "max": [
+          61.9503059387207,
+          108.09417724609375,
+          63.30772399902344
+        ]
+      },
       "triangles": 9538,
       "drawCalls": 1,
       "triangleRatio": 0.014324,
@@ -1479,20 +2055,15 @@
     {
       "id": "oilrig_1",
       "detail": "../monuments/oilrig_1.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "oilrig_1.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "05077866304db9066a11e4b42d3d8d5e3e05564ae18e56d1c3175d3f8d967be0",
       "sourceBytes": 8912244,
-      "outputBytes": 0,
+      "outputBytes": 71432,
       "sourceTriangles": 447036,
       "sourceDrawCalls": 483,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -40.20126914978027,
           -55.85144046157227,
@@ -1504,25 +2075,37 @@
           70.08531188964844
         ]
       },
+      "triangles": 7546,
+      "drawCalls": 14,
+      "triangleRatio": 0.01688,
+      "overTriangleTarget": false,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -38.105384826660156,
+          -53.519222259521484,
+          -45
+        ],
+        "max": [
+          34.58365249633789,
+          73.52771759033203,
+          63.09257507324219
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "oilrig_2",
       "detail": "../monuments/oilrig_2.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "oilrig_2.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "3bfa4f93241f0e0fa838d23bc8fd64e080b7dd7b8591858caefc71dfdd36e6ab",
       "sourceBytes": 6916860,
-      "outputBytes": 0,
+      "outputBytes": 47044,
       "sourceTriangles": 284441,
       "sourceDrawCalls": 324,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -50.951263427734375,
           -55.21541976928711,
@@ -1532,6 +2115,23 @@
           15.54135806479539,
           45.3146858215332,
           35.83531188964844
+        ]
+      },
+      "triangles": 4541,
+      "drawCalls": 13,
+      "triangleRatio": 0.015965,
+      "overTriangleTarget": false,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -48.85535430908203,
+          -55.21322250366211,
+          -37.73302459716797
+        ],
+        "max": [
+          15.297164916992188,
+          41.5883903503418,
+          32.76148986816406
         ]
       },
       "overBudget": false
@@ -1549,6 +2149,18 @@
       "outputBytes": 50012,
       "sourceTriangles": 29308,
       "sourceDrawCalls": 45,
+      "sourceBounds": {
+        "min": [
+          -9.252033615112305,
+          -1.1039907932281494,
+          -10.602381783750413
+        ],
+        "max": [
+          9.981029270350955,
+          8.281370162963867,
+          11.79821887181667
+        ]
+      },
       "triangles": 1142,
       "drawCalls": 1,
       "triangleRatio": 0.038965,
@@ -1581,6 +2193,18 @@
       "outputBytes": 59108,
       "sourceTriangles": 36205,
       "sourceDrawCalls": 50,
+      "sourceBounds": {
+        "min": [
+          -9.550008420944215,
+          -1.1039907932281494,
+          -8.62040399906356
+        ],
+        "max": [
+          12.342273762273205,
+          8.281370162963867,
+          13.173251881302177
+        ]
+      },
       "triangles": 1963,
       "drawCalls": 1,
       "triangleRatio": 0.054219,
@@ -1613,6 +2237,18 @@
       "outputBytes": 30320,
       "sourceTriangles": 16194,
       "sourceDrawCalls": 35,
+      "sourceBounds": {
+        "min": [
+          -6.795624256134033,
+          -0.12074828892946243,
+          -7.713717985386933
+        ],
+        "max": [
+          7.72373171059902,
+          7.048143274261864,
+          7.158287342276836
+        ]
+      },
       "triangles": 262,
       "drawCalls": 1,
       "triangleRatio": 0.016179,
@@ -1645,6 +2281,18 @@
       "outputBytes": 29768,
       "sourceTriangles": 12113,
       "sourceDrawCalls": 27,
+      "sourceBounds": {
+        "min": [
+          -5.098455657483508,
+          -0.11158410222273293,
+          -7.713717985386933
+        ],
+        "max": [
+          7.713731710599021,
+          4.428143274261864,
+          4.918410913157993
+        ]
+      },
       "triangles": 228,
       "drawCalls": 1,
       "triangleRatio": 0.018823,
@@ -1677,6 +2325,18 @@
       "outputBytes": 252496,
       "sourceTriangles": 756409,
       "sourceDrawCalls": 688,
+      "sourceBounds": {
+        "min": [
+          -87.56636047363281,
+          -6.9199990463256835,
+          -146.77163046197103
+        ],
+        "max": [
+          123.68242843139419,
+          51.2761116027832,
+          132.44525896591944
+        ]
+      },
       "triangles": 21191,
       "drawCalls": 1,
       "triangleRatio": 0.028015,
@@ -1709,6 +2369,18 @@
       "outputBytes": 95492,
       "sourceTriangles": 546152,
       "sourceDrawCalls": 762,
+      "sourceBounds": {
+        "min": [
+          -61.49922964800693,
+          -6.865901470184326,
+          -37.295394111459565
+        ],
+        "max": [
+          57.13259506225586,
+          12.82711700805278,
+          47.09539970990853
+        ]
+      },
       "triangles": 5860,
       "drawCalls": 1,
       "triangleRatio": 0.01073,
@@ -1741,6 +2413,18 @@
       "outputBytes": 87800,
       "sourceTriangles": 312334,
       "sourceDrawCalls": 284,
+      "sourceBounds": {
+        "min": [
+          -82.31885528564453,
+          -16.692874310860933,
+          -80.58740234375
+        ],
+        "max": [
+          82.41878509521484,
+          46.09917449951172,
+          55.080078125
+        ]
+      },
       "triangles": 6780,
       "drawCalls": 1,
       "triangleRatio": 0.021708,
@@ -1773,6 +2457,18 @@
       "outputBytes": 113864,
       "sourceTriangles": 193970,
       "sourceDrawCalls": 243,
+      "sourceBounds": {
+        "min": [
+          -80.0001220703125,
+          -3.2178290319062515,
+          -64.03617095947266
+        ],
+        "max": [
+          83.55454972521513,
+          41.89990234375,
+          71.8039321899414
+        ]
+      },
       "triangles": 6195,
       "drawCalls": 1,
       "triangleRatio": 0.031938,
@@ -1795,20 +2491,15 @@
     {
       "id": "sphere_tank",
       "detail": "../monuments/sphere_tank.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "sphere_tank.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "862ee2130dc2823eb2138dfc92bb0ea3964976dfd942f4a9704568bdd62731a7",
       "sourceBytes": 5034120,
-      "outputBytes": 0,
+      "outputBytes": 73568,
       "sourceTriangles": 220825,
       "sourceDrawCalls": 241,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -43.84831568308386,
           -6.725839614868164,
@@ -1818,6 +2509,23 @@
           51.54658134557779,
           77.74081918796867,
           73.4200693789124
+        ]
+      },
+      "triangles": 7895,
+      "drawCalls": 7,
+      "triangleRatio": 0.035752,
+      "overTriangleTarget": true,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -43.799564361572266,
+          -6.078082084655762,
+          -37.43479537963867
+        ],
+        "max": [
+          51.51862716674805,
+          71.65116119384766,
+          71.67982482910156
         ]
       },
       "overBudget": false
@@ -1835,6 +2543,18 @@
       "outputBytes": 38656,
       "sourceTriangles": 133303,
       "sourceDrawCalls": 181,
+      "sourceBounds": {
+        "min": [
+          -25.21197158485448,
+          -0.6787304282188416,
+          -24.881187494808145
+        ],
+        "max": [
+          22.0590083255926,
+          16.23402770564762,
+          32.72562069801764
+        ]
+      },
       "triangles": 327,
       "drawCalls": 1,
       "triangleRatio": 0.002453,
@@ -1867,6 +2587,18 @@
       "outputBytes": 45816,
       "sourceTriangles": 154576,
       "sourceDrawCalls": 131,
+      "sourceBounds": {
+        "min": [
+          -39.11064147949219,
+          -1.4533617496490479,
+          -10.342983535595547
+        ],
+        "max": [
+          13.918080969932586,
+          19.574375546761882,
+          32.59303837728132
+        ]
+      },
       "triangles": 730,
       "drawCalls": 1,
       "triangleRatio": 0.004723,
@@ -1899,6 +2631,18 @@
       "outputBytes": 49948,
       "sourceTriangles": 126770,
       "sourceDrawCalls": 206,
+      "sourceBounds": {
+        "min": [
+          -21.874844304656758,
+          -1.389022879437975,
+          -20.81562870948765
+        ],
+        "max": [
+          20.01855486057245,
+          7.268357276916504,
+          23.440612407202583
+        ]
+      },
       "triangles": 1350,
       "drawCalls": 1,
       "triangleRatio": 0.010649,
@@ -1921,20 +2665,15 @@
     {
       "id": "swamp_a",
       "detail": "../monuments/swamp_a.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "swamp_a.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "1a788d39d66a6dbdb8ca318015dfb6f1adfc2e2785e0977050e0445acfd49f85",
       "sourceBytes": 1351044,
-      "outputBytes": 0,
+      "outputBytes": 38828,
       "sourceTriangles": 47827,
       "sourceDrawCalls": 35,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -44.337495722991946,
           -3.620000596046448,
@@ -1946,25 +2685,37 @@
           62.2781386192041
         ]
       },
+      "triangles": 4248,
+      "drawCalls": 6,
+      "triangleRatio": 0.08882,
+      "overTriangleTarget": true,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -44.309993743896484,
+          -3.6200006008148193,
+          -45.98020935058594
+        ],
+        "max": [
+          44.019351959228516,
+          24.196535110473633,
+          62.262718200683594
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "swamp_b",
       "detail": "../monuments/swamp_b.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "swamp_b.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "72d38f7971c3bea64de024eb047034b6c4294c105df6e045b0743c810f25d854",
       "sourceBytes": 640912,
-      "outputBytes": 0,
+      "outputBytes": 36052,
       "sourceTriangles": 24384,
       "sourceDrawCalls": 17,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -18.201163558959962,
           -2.2200005960464475,
@@ -1976,25 +2727,37 @@
           26.11579371395378
         ]
       },
+      "triangles": 4033,
+      "drawCalls": 5,
+      "triangleRatio": 0.165395,
+      "overTriangleTarget": true,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -17.16128662109375,
+          -2.2200005960464475,
+          -13.856369018554688
+        ],
+        "max": [
+          51.02663415738707,
+          29.456701278686523,
+          26.11579132080078
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "swamp_c",
       "detail": "../monuments/swamp_c.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "swamp_c.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "1e8b385448d094d76a89ee84dba78cd2a6b8c64de3fb7dd9e5412cc1592ab042",
       "sourceBytes": 3201680,
-      "outputBytes": 0,
+      "outputBytes": 42972,
       "sourceTriangles": 111166,
       "sourceDrawCalls": 137,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -54.73653114525742,
           -18.899425506591797,
@@ -2006,25 +2769,37 @@
           56.07383998418912
         ]
       },
+      "triangles": 4478,
+      "drawCalls": 9,
+      "triangleRatio": 0.040282,
+      "overTriangleTarget": true,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -54.67074203491211,
+          -18.83565330505371,
+          -40.565452575683594
+        ],
+        "max": [
+          58.51797866821289,
+          45.290836334228516,
+          56.07642364501953
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "trainyard_1",
       "detail": "../monuments/trainyard_1.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "trainyard_1.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "4e708307ca739632a286e77913e68fa298e55fd183ae0c234cac42c5aada863e",
       "sourceBytes": 14919636,
-      "outputBytes": 0,
+      "outputBytes": 134280,
       "sourceTriangles": 830850,
       "sourceDrawCalls": 713,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -131.58984526336798,
           -21.438088163686764,
@@ -2036,23 +2811,52 @@
           96.86042357983396
         ]
       },
+      "triangles": 15507,
+      "drawCalls": 12,
+      "triangleRatio": 0.018664,
+      "overTriangleTarget": false,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -130.5767822265625,
+          -21.40855598449707,
+          -113.51124572753906
+        ],
+        "max": [
+          117.3592758178711,
+          44.6744384765625,
+          96.2694091796875
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "ue_jungle_swamp_a",
       "detail": "../monuments/ue_jungle_swamp_a.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "ue_jungle_swamp_a.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "034034f39e588ded8e611acfead60293906b9e1559c04d4494987cac7c8f3f9a",
       "sourceBytes": 2292,
-      "outputBytes": 0,
+      "outputBytes": 1392,
       "sourceTriangles": 80,
       "sourceDrawCalls": 1,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
+      "sourceBounds": {
+        "min": [
+          -15.5000038,
+          -14.4015856,
+          -15.5000076
+        ],
+        "max": [
+          15.500005623529999,
+          -3.3586719092400017,
+          15.500001823529999
+        ]
+      },
+      "triangles": 80,
+      "drawCalls": 1,
+      "triangleRatio": 1,
+      "overTriangleTarget": true,
       "textureBytes": 0,
       "bounds": {
         "min": [
@@ -2071,20 +2875,15 @@
     {
       "id": "underwater_lab_a",
       "detail": "../monuments/underwater_lab_a.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "underwater_lab_a.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "6913a54ba35066c04d8bc4656a3912694cd613dc7c7c3d81294774cf26261259",
       "sourceBytes": 722632,
-      "outputBytes": 0,
+      "outputBytes": 28988,
       "sourceTriangles": 23736,
       "sourceDrawCalls": 28,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -5.3481610600650615,
           -0.11651172488927841,
@@ -2096,25 +2895,37 @@
           6.538176041520983
         ]
       },
+      "triangles": 3997,
+      "drawCalls": 5,
+      "triangleRatio": 0.168394,
+      "overTriangleTarget": true,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -5.241244311257324,
+          6.7434031498960145,
+          -6.750033226013329
+        ],
+        "max": [
+          5.255051014785767,
+          9.2485656706958,
+          6.465909597808838
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "underwater_lab_b",
       "detail": "../monuments/underwater_lab_b.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "underwater_lab_b.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "7b93037a400c98dcbfa152669b13cbae2bbed51a9b4aeee08f9b346d33d0059a",
       "sourceBytes": 846376,
-      "outputBytes": 0,
+      "outputBytes": 30008,
       "sourceTriangles": 37809,
       "sourceDrawCalls": 32,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -4.045210820339803,
           -0.11651172488927841,
@@ -2126,25 +2937,37 @@
           7.126028362716013
         ]
       },
+      "triangles": 3994,
+      "drawCalls": 5,
+      "triangleRatio": 0.105636,
+      "overTriangleTarget": true,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -4.045160871765639,
+          -0.006447120103985071,
+          -4.922001838684082
+        ],
+        "max": [
+          5.206208229064941,
+          9.24977731704712,
+          7.125017629612782
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "underwater_lab_c",
       "detail": "../monuments/underwater_lab_c.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "underwater_lab_c.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "48585167a9aadcd180dff50a62e4f6517ecba533eecf08bbcc4d031a99df51cc",
       "sourceBytes": 705828,
-      "outputBytes": 0,
+      "outputBytes": 28564,
       "sourceTriangles": 22962,
       "sourceDrawCalls": 29,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -5.575136384974802,
           -0.11651172488927841,
@@ -2156,25 +2979,37 @@
           7.000002877726212
         ]
       },
+      "triangles": 3980,
+      "drawCalls": 5,
+      "triangleRatio": 0.17333,
+      "overTriangleTarget": true,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -2.9721627176475525,
+          6.732746663773561,
+          -0.738253603485781
+        ],
+        "max": [
+          5.227653926544189,
+          9.250066460814667,
+          7.0000026266344495
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "underwater_lab_d",
       "detail": "../monuments/underwater_lab_d.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "underwater_lab_d.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "2dbd0b3dc805209fc08c8f5ab881ac93ad217a3829a834979512a2edc00f66e8",
       "sourceBytes": 1020884,
-      "outputBytes": 0,
+      "outputBytes": 26952,
       "sourceTriangles": 39146,
       "sourceDrawCalls": 38,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -5.473120906551907,
           -0.11651172488927841,
@@ -2184,6 +3019,23 @@
           5.564927977809172,
           9.521255997911133,
           10.139482945373098
+        ]
+      },
+      "triangles": 3996,
+      "drawCalls": 4,
+      "triangleRatio": 0.102079,
+      "overTriangleTarget": true,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -5.245265960693359,
+          -0.0033775807823985815,
+          -6.412508489688721
+        ],
+        "max": [
+          5.171268463134766,
+          9.248698234558105,
+          10.129551887512207
         ]
       },
       "overBudget": false
@@ -2201,6 +3053,18 @@
       "outputBytes": 37948,
       "sourceTriangles": 68892,
       "sourceDrawCalls": 72,
+      "sourceBounds": {
+        "min": [
+          -21.715215163889276,
+          -2.213022699437975,
+          -19.982446146011352
+        ],
+        "max": [
+          23.382338072712145,
+          8.968137543236967,
+          4.9107775402035925
+        ]
+      },
       "triangles": 922,
       "drawCalls": 1,
       "triangleRatio": 0.013383,
@@ -2223,20 +3087,15 @@
     {
       "id": "water_treatment_plant_1",
       "detail": "../monuments/water_treatment_plant_1.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "water_treatment_plant_1.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "84e5afe57e4ccfeae0f22618251e166d40213e11a44aa0718af7c48c1eab24b0",
       "sourceBytes": 12853912,
-      "outputBytes": 0,
+      "outputBytes": 101828,
       "sourceTriangles": 610385,
       "sourceDrawCalls": 507,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -114.82966939004447,
           -32.39262960895396,
@@ -2248,25 +3107,37 @@
           130.3633777265131
         ]
       },
+      "triangles": 11876,
+      "drawCalls": 8,
+      "triangleRatio": 0.019457,
+      "overTriangleTarget": false,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -114.30638885498047,
+          -32.305580139160156,
+          -167.875
+        ],
+        "max": [
+          138.48826599121094,
+          65.74405670166016,
+          129.67210388183594
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "water_well_a",
       "detail": "../monuments/water_well_a.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "water_well_a.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "db2ace2b85711bfdb4eba5b17aaffcd70b252684a3aa9d34d4dc73c110da58b8",
       "sourceBytes": 1839648,
-      "outputBytes": 0,
+      "outputBytes": 46696,
       "sourceTriangles": 66068,
       "sourceDrawCalls": 66,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -10.907231592828321,
           -3.000000476837158,
@@ -2278,25 +3149,37 @@
           10.982230920902566
         ]
       },
+      "triangles": 4027,
+      "drawCalls": 7,
+      "triangleRatio": 0.060952,
+      "overTriangleTarget": true,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -10.907203804657344,
+          -3.000000476837158,
+          -11.759924925050415
+        ],
+        "max": [
+          12.947836828988574,
+          12.84513638305664,
+          10.982353168080824
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "water_well_b",
       "detail": "../monuments/water_well_b.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "water_well_b.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "c89c0d6020208e6c2f3fc1330ccd691c04f059b5999048d16066be057271bde4",
       "sourceBytes": 2757924,
-      "outputBytes": 0,
+      "outputBytes": 45628,
       "sourceTriangles": 63305,
       "sourceDrawCalls": 79,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -13.037406271331742,
           -6.725839614868164,
@@ -2308,25 +3191,37 @@
           11.650066321901273
         ]
       },
+      "triangles": 4013,
+      "drawCalls": 7,
+      "triangleRatio": 0.063392,
+      "overTriangleTarget": true,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -13.037405967712402,
+          -6.725839614868164,
+          -13.234040462669942
+        ],
+        "max": [
+          12.689894676208496,
+          10.885810852050781,
+          11.649696350097656
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "water_well_c",
       "detail": "../monuments/water_well_c.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "water_well_c.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "3dd1d91ae6fd080e9debd1aeea18f180934cdd4aadbde4646ba46004487d2467",
       "sourceBytes": 2092168,
-      "outputBytes": 0,
+      "outputBytes": 42624,
       "sourceTriangles": 70992,
       "sourceDrawCalls": 72,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -10.658575820790944,
           -3.000000476837158,
@@ -2338,25 +3233,37 @@
           10.715285138912712
         ]
       },
+      "triangles": 3892,
+      "drawCalls": 7,
+      "triangleRatio": 0.054823,
+      "overTriangleTarget": true,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -10.639537811279297,
+          -3.000000476837158,
+          -9.42556095123291
+        ],
+        "max": [
+          11.576374053955078,
+          13.483760759144346,
+          10.665444374084473
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "water_well_d",
       "detail": "../monuments/water_well_d.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "water_well_d.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "ab3f7c472f009802fc808750919e2e00f53e5cdf558c46f6d9dc0e5da850d9c6",
       "sourceBytes": 2415580,
-      "outputBytes": 0,
+      "outputBytes": 40644,
       "sourceTriangles": 58785,
       "sourceDrawCalls": 88,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -12.11662380775426,
           -6.215725189198254,
@@ -2368,25 +3275,37 @@
           8.75815195251208
         ]
       },
+      "triangles": 4235,
+      "drawCalls": 7,
+      "triangleRatio": 0.072042,
+      "overTriangleTarget": true,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -12.10699462890625,
+          -6.18882417678833,
+          -10.651369094848633
+        ],
+        "max": [
+          8.842852592468262,
+          15.010896682739258,
+          7.902229309082031
+        ]
+      },
       "overBudget": false
     },
     {
       "id": "water_well_e",
       "detail": "../monuments/water_well_e.glb",
-      "map": null,
-      "mapKind": "procedural",
+      "map": "water_well_e.glb",
+      "mapKind": "generated-proxy",
       "sourceNodes": [],
       "sourceSha256": "aca9ac5418c165dd594d740e0cacb49778b492cfc3ab121e399a71dbcca401c3",
       "sourceBytes": 2202012,
-      "outputBytes": 0,
+      "outputBytes": 41244,
       "sourceTriangles": 52500,
       "sourceDrawCalls": 69,
-      "triangles": 0,
-      "drawCalls": 0,
-      "triangleRatio": 0,
-      "overTriangleTarget": false,
-      "textureBytes": 0,
-      "bounds": {
+      "sourceBounds": {
         "min": [
           -7.103909969329834,
           -3.000000476837158,
@@ -2396,6 +3315,23 @@
           9.762125706100955,
           14.88989735657959,
           6.651122021860509
+        ]
+      },
+      "triangles": 4003,
+      "drawCalls": 6,
+      "triangleRatio": 0.076248,
+      "overTriangleTarget": true,
+      "textureBytes": 0,
+      "bounds": {
+        "min": [
+          -7.103909969329834,
+          -3.000000476837158,
+          -6.156454563140869
+        ],
+        "max": [
+          9.762125968933105,
+          12.753354082653809,
+          6.650641918182373
         ]
       },
       "overBudget": false

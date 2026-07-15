@@ -1,11 +1,11 @@
 import { describe, expect, it } from "vitest";
-import { monumentRenderClass, monumentUsesProceduralGeometry } from "../assets/ts/server-map-viewer/monument-render-policy";
+import { monumentRenderClass, monumentUsesMapProxyInAuto } from "../assets/ts/server-map-viewer/monument-render-policy";
 
 describe("monument render policy", () => {
   it("keeps large landmarks on compact map silhouettes in Auto mode", () => {
     for (const id of ["compound", "launch_site_1", "harbor_1", "oilrig_1", "radtown_small_3", "desert_military_base_d"]) {
-      expect(monumentRenderClass(id)).toBe("landmark-primitive");
-      expect(monumentUsesProceduralGeometry(id)).toBe(true);
+      expect(monumentRenderClass(id)).toBe("landmark-map");
+      expect(monumentUsesMapProxyInAuto(id)).toBe(true);
     }
   });
 

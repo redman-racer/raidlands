@@ -2,7 +2,7 @@ import {
   ACESFilmicToneMapping, AdditiveBlending, AmbientLight, Box3, BufferAttribute,
   BufferGeometry, Color, CylinderGeometry, DirectionalLight, FogExp2, Group,
   Mesh, MeshBasicMaterial, MeshStandardMaterial, Object3D, PerspectiveCamera,
-  PlaneGeometry, PointLight, Points, PointsMaterial, Raycaster, Scene, Sprite,
+  PointLight, Points, PointsMaterial, Raycaster, Scene, Sprite,
   SpriteMaterial, SRGBColorSpace, TextureLoader, TorusGeometry, Vector2, Vector3,
   WebGLRenderer,
 } from "three";
@@ -214,6 +214,12 @@ class StorePreview {
     const spread = (slot: number, count: number, width: number) => (slot - (count - 1) / 2) * width;
     if (item.category === "armor") return new Vector3(spread(index, total, 1.25), 0.48, -3.55 - Math.floor(index / 9) * 1.15);
     if (item.category === "weapon") return new Vector3(index % 2 ? 4.2 : -4.2, 0.58, -2.25 + Math.floor(index / 2) * 1.65);
+    if (item.category === "vehicle") {
+      if (total === 1) return new Vector3(0, 0.42, 0);
+      const angle = (index / total) * Math.PI * 2 - Math.PI / 2;
+      const radius = total <= 4 ? 3.2 : 4.25;
+      return new Vector3(Math.cos(angle) * radius, 0.42, Math.sin(angle) * radius);
+    }
     if (item.category === "sentry" || item.category === "deployable") return new Vector3(index % 2 ? 4.55 : -4.55, 0.42, -1.8 + Math.floor(index / 2) * 2.1);
     const columns = Math.min(8, total); const row = Math.floor(index / columns); const column = index % columns;
     const zBase = item.category === "ammo" || item.category === "explosive" ? 3.6 : 2.35;
@@ -222,7 +228,7 @@ class StorePreview {
 
   private async setItems(items: PreviewItem[]) {
     const slots = this.categorySlots(items);
-    const order: Record<string, number> = { armor: 0, sentry: 1, deployable: 2, weapon: 3, attachment: 4, medical: 5, item: 6, resource: 7, explosive: 8, ammo: 9 };
+    const order: Record<string, number> = { vehicle: 0, armor: 1, sentry: 2, deployable: 3, weapon: 4, attachment: 5, medical: 6, item: 7, resource: 8, explosive: 9, ammo: 10 };
     const sorted = [...items].sort((left, right) => (order[left.category] ?? 6) - (order[right.category] ?? 6) || left.position - right.position);
     for (const item of sorted) {
       const slot = slots.get(item.id) || { index: 0, total: 1 };
@@ -255,7 +261,7 @@ class StorePreview {
         let source = this.modelCache.get(item.modelUrl);
         if (!source) { source = (await this.gltf.loadAsync(item.modelUrl)).scene; this.modelCache.set(item.modelUrl, source); }
         const model = source.clone(true); const box = new Box3().setFromObject(model); const size = box.getSize(new Vector3());
-        const target = item.category === "sentry" || item.category === "deployable" ? 1.65 : item.category === "weapon" ? 1.5 : 1.15;
+        const target = item.category === "vehicle" ? 2.3 : item.category === "sentry" || item.category === "deployable" ? 1.65 : item.category === "weapon" ? 1.5 : 1.15;
         model.scale.setScalar((target / Math.max(size.x, size.y, size.z, 0.01)) * item.modelScale);
         const fitted = new Box3().setFromObject(model); const center = fitted.getCenter(new Vector3()); model.position.sub(center); model.position.y -= fitted.min.y;
         model.traverse((child) => { child.userData.item = item; });
@@ -263,9 +269,24 @@ class StorePreview {
       } catch { record("item_model_fallback", { shortname: item.shortname }); }
     }
     const card = new Group();
-    card.add(new Mesh(new PlaneGeometry(1.18, 1.18), new MeshBasicMaterial({ color: 0x0d1716, transparent: true, opacity: 0.88 })));
+    let hasIcon = false;
     if (item.iconUrl) {
-      try { const texture = await this.textureLoader.loadAsync(item.iconUrl); texture.colorSpace = SRGBColorSpace; const icon = new Sprite(new SpriteMaterial({ map: texture, transparent: true, depthWrite: false })); icon.position.z = 0.03; icon.scale.set(1.02, 1.02, 1); card.add(icon); } catch { /* dark card remains */ }
+      try {
+        const texture = await this.textureLoader.loadAsync(item.iconUrl);
+        texture.colorSpace = SRGBColorSpace;
+        const icon = new Sprite(new SpriteMaterial({ map: texture, transparent: true, depthWrite: false, alphaTest: 0.04 }));
+        icon.scale.set(1.14, 1.14, 1);
+        card.add(icon);
+        hasIcon = true;
+      } catch { /* use the neutral marker below */ }
+    }
+    if (!hasIcon) {
+      const marker = new Mesh(
+        new TorusGeometry(0.38, 0.045, 12, 36),
+        new MeshBasicMaterial({ color: 0x56f5a7, transparent: true, opacity: 0.76 }),
+      );
+      marker.userData.item = item;
+      card.add(marker);
     }
     card.position.y = 0.72; card.userData.item = item; return card;
   }

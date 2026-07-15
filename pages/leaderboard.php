@@ -207,6 +207,7 @@ function leaderboard_podium_value(array $row, string $board, string $metric): st
 
 function leaderboard_podium_markup(array $leaders, string $board, string $metric): string
 {
+    $leaders = raidlands_podium_decorate_leaders($leaders, $board);
     $metric_labels = [
         'kills' => 'kills', 'kdr' => 'K/D', 'playtime' => 'played', 'rp' => 'RP',
         'npc_kills' => 'NPC kills', 'deaths_by_npc' => 'NPC deaths', 'deaths' => 'deaths',
@@ -234,7 +235,7 @@ function leaderboard_podium_markup(array $leaders, string $board, string $metric
     }
 
     $empty = $cards === '' ? '<p class="leaderboard-podium-empty">The podium is waiting for contenders.</p>' : '';
-    $payload = json_encode(['leaders' => array_values(array_slice($leaders, 0, 3))], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+    $payload = json_encode(['leaders' => array_values(array_slice($leaders, 0, 3)), 'board' => $board, 'metric' => $metric], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 
     return '<section class="leaderboard-podium" data-leaderboard-podium data-board="' . e($board) . '" data-metric="' . e($metric) . '"'
         . ' data-model-base="' . e(asset_url('media/models/leaderboard/')) . '"'

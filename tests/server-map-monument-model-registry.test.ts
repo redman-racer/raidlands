@@ -32,22 +32,37 @@ describe("RustRelay monument model registry", () => {
     const installed = readdirSync(modelDirectory).filter((name) => name.endsWith(".glb")).sort();
     const expected = monumentModelAssetNames().filter((name) => monumentModelMetadata(name)?.map === name);
     expect(installed).toEqual(expected);
+    expect(installed).toHaveLength(78);
+    let totalBytes = 0;
     for (const name of monumentModelAssetNames()) {
-      const metadata = monumentModelMetadata(name);
-      if (metadata?.map) {
-        expect(metadata.map).toBe(name);
-        expect(metadata.mapKind).toBe("authored-hlod");
-        expect(metadata.triangles).toBeGreaterThan(0);
-        expect(metadata.drawCalls).toBeGreaterThan(0);
-        expect(metadata.outputBytes).toBeLessThanOrEqual(250 * 1024);
-        expect(metadata.overTriangleTarget).toBe(metadata.triangleRatio > 0.03);
-      } else {
-        expect(metadata?.mapKind).toBe("procedural");
-      }
-      expect(metadata?.bounds.min).toHaveLength(3);
-      expect(metadata?.bounds.max).toHaveLength(3);
-      expect(metadata?.sourceDrawCalls).toBeGreaterThan(0);
+      const metadata = monumentModelMetadata(name)!;
+      expect(metadata.map).toBe(name);
+      expect(["authored-hlod", "generated-proxy"]).toContain(metadata.mapKind);
+      expect(metadata.triangles).toBeGreaterThan(0);
+      expect(metadata.drawCalls).toBeGreaterThan(0);
+      expect(metadata.outputBytes).toBeLessThanOrEqual(250 * 1024);
+      expect(metadata.overTriangleTarget).toBe(metadata.triangleRatio > 0.03);
+      expect(metadata.bounds.min).toHaveLength(3);
+      expect(metadata.bounds.max).toHaveLength(3);
+      expect(metadata.sourceBounds.min).toHaveLength(3);
+      expect(metadata.sourceBounds.max).toHaveLength(3);
+      expect(metadata.sourceDrawCalls).toBeGreaterThan(0);
+      const sourceFootprint = Math.max(
+        metadata.sourceBounds.max[0]! - metadata.sourceBounds.min[0]!,
+        metadata.sourceBounds.max[2]! - metadata.sourceBounds.min[2]!,
+      );
+      const mapFootprint = Math.max(
+        metadata.bounds.max[0]! - metadata.bounds.min[0]!,
+        metadata.bounds.max[2]! - metadata.bounds.min[2]!,
+      );
+      const sourceCenter = [0, 2].map((axis) => (metadata.sourceBounds.min[axis]! + metadata.sourceBounds.max[axis]!) / 2);
+      const mapCenter = [0, 2].map((axis) => (metadata.bounds.min[axis]! + metadata.bounds.max[axis]!) / 2);
+      const normalizedCenterOffset = Math.hypot(mapCenter[0]! - sourceCenter[0]!, mapCenter[1]! - sourceCenter[1]!) / sourceFootprint;
+      expect(mapFootprint / sourceFootprint).toBeGreaterThan(0.55);
+      expect(normalizedCenterOffset).toBeLessThan(0.25);
+      totalBytes += metadata.outputBytes;
     }
+    expect(totalBytes).toBeLessThan(20 * 1024 * 1024);
   });
 
   it("covers every monument instance in the current terrain export", () => {

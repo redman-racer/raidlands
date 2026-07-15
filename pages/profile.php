@@ -2,6 +2,7 @@
 
 require_once $site_root . '/includes/store.php';
 require_once $site_root . '/includes/stats.php';
+require_once $site_root . '/includes/podium.php';
 require_once $site_root . '/includes/discord.php';
 
 $profile_player = raidlands_store_current_player();
@@ -14,6 +15,7 @@ $profile_rp_subscriptions = [];
 $profile_cash_subscriptions = [];
 $profile_flash = raidlands_store_flash();
 $profile_discord = null;
+$profile_podium = null;
 
 if ($profile_player !== null && !empty($profile_player['id'])) {
     $profile_discord = raidlands_discord_identity_for_player((int) $profile_player['id']);
@@ -25,6 +27,7 @@ if ($profile_player !== null && !empty($profile_player['id'])) {
     $profile_rp_requests = raidlands_store_rp_requests_for_player((int) $profile_player['id']);
     $profile_rp_subscriptions = raidlands_store_rp_subscriptions_for_player((int) $profile_player['id']);
     $profile_cash_subscriptions = raidlands_store_cash_subscriptions_for_player((int) $profile_player['id']);
+    $profile_podium = raidlands_podium_profile_bundle((int) $profile_player['id'], (string) $profile_player['steam_id64']);
 }
 
 $profile_display_name = $profile_player !== null
@@ -107,6 +110,105 @@ $profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_
 </section>
 
 <?php if ($profile_player !== null) : ?>
+  <?php
+    $podium_profile = (array) ($profile_podium['profile'] ?? []);
+    $podium_resolved = (array) ($profile_podium['resolved'] ?? raidlands_podium_preset_payload('survivor', 'default'));
+    $podium_preview_payload = json_encode([
+        'board' => 'players',
+        'metric' => 'kills',
+        'leaders' => [[
+            'display_name' => $profile_display_name,
+            'steam_avatar_url' => (string) ($profile_player['steam_avatar_url'] ?? ''),
+            'steam_profile_url' => $profile_url,
+            'kills' => (int) ($profile_stats['current']['kills'] ?? 0),
+            'appearance' => $podium_resolved,
+        ]],
+    ], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+    $podium_bundle_json = json_encode($profile_podium, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+  ?>
+  <section class="section podium-profile-section">
+    <div class="section-inner">
+      <div class="section-header">
+        <p class="section-kicker">Podium appearance</p>
+        <h2>Choose how you enter the top three</h2>
+        <p class="section-lede">Auto learns the complete outfit and supported weapon you use most this wipe. You can also lock in a captured look or a polished Raidlands preset.</p>
+      </div>
+
+      <?php if (!raidlands_podium_is_ready()) : ?>
+        <div class="form-status warning">Run database migration 064 to enable saved podium appearances. The leaderboard will use stable vanilla player presets until then.</div>
+      <?php else : ?>
+        <div class="podium-profile-grid" data-podium-profile>
+          <section class="leaderboard-podium podium-profile-preview" data-leaderboard-podium data-board="players" data-metric="kills"
+            data-model-base="<?= e(asset_url('media/models/leaderboard/')) ?>" data-decoder-path="<?= e(asset_url('media/models/draco/')) ?>" aria-label="Your podium preview">
+            <div class="leaderboard-podium-stage" data-podium-stage aria-hidden="true"></div>
+            <div class="leaderboard-podium-cards" data-podium-cards></div>
+            <p class="leaderboard-podium-status" data-podium-status aria-live="polite">Loading your podium preview.</p>
+            <script type="application/json" data-podium-payload><?= $podium_preview_payload ?: '{}' ?></script>
+          </section>
+
+          <form class="metal-panel podium-profile-form" method="post" action="<?= e(route_url('profile') . 'podium-appearance.php') ?>" data-podium-profile-form>
+            <input type="hidden" name="csrf" value="<?= e(raidlands_store_csrf_token()) ?>">
+            <input type="hidden" name="outfit_mode" value="<?= e((string) ($podium_profile['outfit_mode'] ?? 'auto')) ?>" data-podium-outfit-mode>
+            <input type="hidden" name="outfit_key" value="<?= e((string) ($podium_profile['outfit_key'] ?? '')) ?>" data-podium-outfit-key>
+            <input type="hidden" name="weapon_mode" value="<?= e((string) ($podium_profile['weapon_mode'] ?? 'auto')) ?>" data-podium-weapon-mode>
+            <input type="hidden" name="weapon_key" value="<?= e((string) ($podium_profile['weapon_key'] ?? '')) ?>" data-podium-weapon-key>
+            <script type="application/json" data-podium-profile-bundle><?= $podium_bundle_json ?: '{}' ?></script>
+
+            <label>
+              <span>Outfit</span>
+              <?php $current_outfit_value = (string) ($podium_profile['outfit_mode'] ?? 'auto') . '|' . (string) ($podium_profile['outfit_key'] ?? ''); ?>
+              <select data-podium-outfit-select>
+                <option value="auto|"<?= $current_outfit_value === 'auto|' ? ' selected' : '' ?>>Auto — current-wipe favorite</option>
+                <optgroup label="Raidlands presets">
+                  <?php foreach ((array) ($profile_podium['presets'] ?? []) as $key => $preset) : ?>
+                    <option value="preset|<?= e((string) $key) ?>"<?= $current_outfit_value === 'preset|' . $key ? ' selected' : '' ?>><?= e((string) ($preset['label'] ?? $key)) ?></option>
+                  <?php endforeach; ?>
+                </optgroup>
+                <?php if (!empty($profile_podium['captured_outfits'])) : ?>
+                  <optgroup label="Captured this wipe">
+                    <?php foreach ((array) $profile_podium['captured_outfits'] as $outfit) : ?>
+                      <option value="captured|<?= e((string) $outfit['key']) ?>"<?= $current_outfit_value === 'captured|' . $outfit['key'] ? ' selected' : '' ?>><?= e((string) $outfit['label']) ?></option>
+                    <?php endforeach; ?>
+                  </optgroup>
+                <?php endif; ?>
+              </select>
+            </label>
+
+            <label>
+              <span>Weapon</span>
+              <?php $current_weapon_value = (string) ($podium_profile['weapon_mode'] ?? 'auto') . '|' . (string) ($podium_profile['weapon_key'] ?? ''); ?>
+              <select data-podium-weapon-select>
+                <option value="auto|"<?= $current_weapon_value === 'auto|' ? ' selected' : '' ?>>Auto — current-wipe favorite</option>
+                <option value="none|"<?= $current_weapon_value === 'none|' ? ' selected' : '' ?>>No weapon</option>
+                <optgroup label="Vanilla weapons">
+                  <?php foreach ((array) ($profile_podium['weapons'] ?? []) as $shortname => $weapon) : ?>
+                    <option value="preset|<?= e((string) $shortname) ?>"<?= $current_weapon_value === 'preset|' . $shortname ? ' selected' : '' ?>><?= e((string) ($weapon['label'] ?? $shortname)) ?></option>
+                  <?php endforeach; ?>
+                </optgroup>
+                <?php if (!empty($profile_podium['captured_weapons'])) : ?>
+                  <optgroup label="Captured this wipe">
+                    <?php foreach ((array) $profile_podium['captured_weapons'] as $weapon) : ?>
+                      <?php $weapon_value = (string) $weapon['weapon_shortname'] . ':' . (string) $weapon['skin_id']; ?>
+                      <?php if (isset($profile_podium['weapons'][$weapon['weapon_shortname']])) : ?>
+                        <option value="captured|<?= e($weapon_value) ?>"<?= $current_weapon_value === 'captured|' . $weapon_value ? ' selected' : '' ?>><?= e((string) $profile_podium['weapons'][$weapon['weapon_shortname']]['label']) ?> (<?= e((string) $weapon['sample_count']) ?> captures)</option>
+                      <?php endif; ?>
+                    <?php endforeach; ?>
+                  </optgroup>
+                <?php endif; ?>
+              </select>
+            </label>
+
+            <div class="podium-profile-guidance">
+              <strong>How Auto works</strong>
+              <p>After three captures, an outfit must account for at least half of this wipe's observations. Unknown Workshop skins keep their real skin ID and display the vanilla garment until an exact model is mapped.</p>
+            </div>
+            <button class="btn btn-primary" type="submit">Save Podium Appearance</button>
+          </form>
+        </div>
+      <?php endif; ?>
+    </div>
+  </section>
+
   <section class="section">
     <div class="section-inner">
       <div class="section-header">
@@ -342,4 +444,9 @@ $profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_
       <?php endif; ?>
     </div>
   </section>
+<?php endif; ?>
+
+<?php if ($profile_player !== null && raidlands_podium_is_ready()) : ?>
+  <script type="module" src="<?= e(asset_url('build/airstrike-animation-editor/leaderboard-podium.js')) ?>"></script>
+  <script defer src="<?= e(asset_url('js/podium-profile.js')) ?>"></script>
 <?php endif; ?>

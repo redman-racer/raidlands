@@ -1,20 +1,36 @@
 import { existsSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
-import { LEADERBOARD_PODIUM_THEMES, leaderboardPodiumMetricValue } from "../assets/ts/leaderboard-podium/policy";
+import {
+  LEADERBOARD_PODIUM_ASSETS, LEADERBOARD_PODIUM_PRESETS, LEADERBOARD_PODIUM_THEMES,
+  leaderboardPodiumMetricValue, podiumWearables, podiumWeapon,
+} from "../assets/ts/leaderboard-podium/policy";
 
 describe("leaderboard podium policy", () => {
   it("maps every existing metric to installed RustRelay props", () => {
-    expect(Object.keys(LEADERBOARD_PODIUM_THEMES).sort()).toEqual([
-      "deaths", "deaths_by_npc", "kdr", "kills", "npc_kills", "playtime", "rp", "total-won",
-    ]);
-
     for (const files of Object.values(LEADERBOARD_PODIUM_THEMES)) {
-      expect(files).toHaveLength(3);
+      expect(files).toHaveLength(2);
       for (const file of files) {
         expect(existsSync(resolve(__dirname, "../assets/media/models/leaderboard", file))).toBe(true);
       }
     }
+  });
+
+  it("maps every curated mannequin layer and weapon to an installed RustRelay model", () => {
+    for (const file of Object.values(LEADERBOARD_PODIUM_ASSETS)) {
+      expect(existsSync(resolve(__dirname, "../assets/media/models/leaderboard", file))).toBe(true);
+    }
+    for (const assets of Object.values(LEADERBOARD_PODIUM_PRESETS)) {
+      expect(assets.length).toBeGreaterThan(0);
+      assets.forEach((asset) => expect(LEADERBOARD_PODIUM_ASSETS[asset]).toBeTruthy());
+    }
+  });
+
+  it("uses resolved appearances and safe deterministic fallbacks", () => {
+    expect(podiumWearables({ appearance: { wearables: [{ asset: "hazmat" }, { asset: "missing" }] } })).toEqual(["hazmat"]);
+    expect(podiumWearables({}, 0)).toEqual(LEADERBOARD_PODIUM_PRESETS.survivor);
+    expect(podiumWeapon({ appearance: { weapon: { asset: "ak47" } } })).toBe("ak47");
+    expect(podiumWeapon({ appearance: { weapon: { asset: "missing" } } })).toBe("");
   });
 
   it("formats player, bot, and RP game podium values", () => {

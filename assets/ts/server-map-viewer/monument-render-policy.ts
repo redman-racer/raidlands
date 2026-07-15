@@ -1,8 +1,8 @@
 import { monumentPrefabId } from "./monument-model-registry";
 
-export type MonumentRenderClass = "landmark-primitive" | "surface-entrance" | "shared-detail";
+export type MonumentRenderClass = "landmark-map" | "surface-entrance" | "shared-detail";
 
-const LANDMARK_PRIMITIVES = new Set([
+const LANDMARK_MAP_MODELS = new Set([
   "airfield_1", "apartments_complex_1", "bandit_town", "compound", "desert_military_base_a",
   "desert_military_base_b", "desert_military_base_c", "desert_military_base_d",
   "excavator_1", "ferry_terminal_1", "harbor_1", "harbor_2", "jungle_ziggurat_a", "junkyard_1",
@@ -14,10 +14,10 @@ const LANDMARK_PRIMITIVES = new Set([
 export function monumentRenderClass(prefab: string): MonumentRenderClass {
   const id = monumentPrefabId(prefab);
   if (id.startsWith("cave_") || id.startsWith("entrance_bunker_")) return "surface-entrance";
-  if (LANDMARK_PRIMITIVES.has(id)) return "landmark-primitive";
+  if (LANDMARK_MAP_MODELS.has(id)) return "landmark-map";
   return "shared-detail";
 }
 
-export function monumentUsesProceduralGeometry(prefab: string): boolean {
+export function monumentUsesMapProxyInAuto(prefab: string): boolean {
   return monumentRenderClass(prefab) !== "shared-detail";
 }

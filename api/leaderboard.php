@@ -53,6 +53,7 @@ try {
         'rp-games' => raidlands_rewards_leaderboard_leaders($scope, $wipe_id, $wipe_key),
         default => raidlands_stats_leaderboard_leaders($metric, $scope, $wipe_id, $wipe_key),
     };
+    $leaders = raidlands_podium_decorate_leaders($leaders, $board);
     $selected_wipe = $scope === 'wipe' ? raidlands_stats_wipe($wipe_id, $wipe_key) : null;
 
     raidlands_store_json_response([

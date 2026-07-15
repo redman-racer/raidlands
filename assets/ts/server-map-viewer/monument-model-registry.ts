@@ -3,8 +3,8 @@ import manifestJson from "../../media/models/monuments-map/manifest.json";
 export type MonumentModelManifestEntry = {
   id: string;
   detail: string;
-  map: string | null;
-  mapKind: "authored-hlod" | "procedural";
+  map: string;
+  mapKind: "authored-hlod" | "generated-proxy";
   sourceNodes: string[];
   sourceSha256: string;
   sourceBytes: number;
@@ -16,6 +16,7 @@ export type MonumentModelManifestEntry = {
   triangleRatio: number;
   overTriangleTarget: boolean;
   textureBytes: number;
+  sourceBounds: { min: number[]; max: number[] };
   bounds: { min: number[]; max: number[] };
   overBudget: boolean;
 };

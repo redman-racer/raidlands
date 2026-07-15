@@ -15,6 +15,7 @@ describe("monument quality policy", () => {
     expect(resolveMonumentQuality("auto", "high").activeDetailLimit).toBe(2);
     expect(resolveMonumentQuality("auto", "ultra").activeDetailLimit).toBe(3);
     expect(resolveMonumentQuality("primitives", "ultra").activeDetailLimit).toBe(0);
+    expect(resolveMonumentQuality("auto", "low").activeMapLimit).toBeGreaterThanOrEqual(96);
   });
 
   it("uses hysteresis and focused-first prioritization", () => {

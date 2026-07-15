@@ -15,7 +15,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteVipBridge", "Raidlands", "1.6.1")]
+    [Info("WebsiteVipBridge", "Raidlands", "1.7.0")]
     [Description("Syncs website VIP entitlements and player stats between Raidlands.net and the Rust server.")]
     public class WebsiteVipBridge : CovalencePlugin
     {
@@ -619,6 +619,22 @@ namespace Oxide.Plugins
             public int playtime_seconds;
             public int afk_seconds;
             public int reward_points;
+            public StatsAppearance appearance;
+        }
+
+        private class StatsAppearance
+        {
+            public string observed_at;
+            public List<StatsAppearanceItem> wear = new List<StatsAppearanceItem>();
+            public List<StatsAppearanceItem> belt_weapons = new List<StatsAppearanceItem>();
+            public StatsAppearanceItem active_weapon;
+        }
+
+        private class StatsAppearanceItem
+        {
+            public string slot;
+            public string shortname;
+            public string skin_id;
         }
 
         private class StatsBot
@@ -954,6 +970,33 @@ namespace Oxide.Plugins
         {
             QueueStatsSync();
             QueueStatusHeartbeat();
+        }
+
+        private void OnItemAddedToContainer(ItemContainer container, Item item)
+        {
+            QueueAppearanceStatsSync(container);
+        }
+
+        private void OnItemRemovedFromContainer(ItemContainer container, Item item)
+        {
+            QueueAppearanceStatsSync(container);
+        }
+
+        private void QueueAppearanceStatsSync(ItemContainer container)
+        {
+            var owner = container?.playerOwner;
+
+            if (owner == null || owner.inventory == null || !IsRealPlayerSteamId(owner.userID))
+            {
+                return;
+            }
+
+            if (container != owner.inventory.containerWear && container != owner.inventory.containerBelt)
+            {
+                return;
+            }
+
+            QueueStatsSync();
         }
 
         private void OnEntityDeath(BaseCombatEntity entity, HitInfo info)
@@ -3376,7 +3419,85 @@ namespace Oxide.Plugins
 
                 var statsPlayer = EnsureStatsPlayer(playersById, player.Id);
                 statsPlayer.display_name = FirstNonEmpty(statsPlayer.display_name, player.Name);
+                var basePlayer = player.Object as BasePlayer;
+
+                if (basePlayer == null)
+                {
+                    ulong userId;
+                    if (ulong.TryParse(player.Id, out userId))
+                    {
+                        basePlayer = BasePlayer.FindByID(userId);
+                    }
+                }
+
+                statsPlayer.appearance = BuildStatsAppearance(basePlayer);
             }
+        }
+
+        private StatsAppearance BuildStatsAppearance(BasePlayer player)
+        {
+            if (player == null || player.inventory == null)
+            {
+                return null;
+            }
+
+            var appearance = new StatsAppearance
+            {
+                observed_at = DateTime.UtcNow.ToString("o")
+            };
+
+            AddAppearanceItems(appearance.wear, player.inventory.containerWear, "wear", false);
+            AddAppearanceItems(appearance.belt_weapons, player.inventory.containerBelt, "belt", true);
+            appearance.active_weapon = BuildAppearanceItem(player.GetActiveItem(), "active", true);
+
+            return appearance.wear.Count > 0 || appearance.belt_weapons.Count > 0 || appearance.active_weapon != null
+                ? appearance
+                : null;
+        }
+
+        private void AddAppearanceItems(List<StatsAppearanceItem> target, ItemContainer container, string slotPrefix, bool weaponsOnly)
+        {
+            if (target == null || container?.itemList == null)
+            {
+                return;
+            }
+
+            foreach (var item in container.itemList.OrderBy(value => value?.position ?? int.MaxValue))
+            {
+                var appearanceItem = BuildAppearanceItem(item, $"{slotPrefix}-{item?.position ?? 0}", weaponsOnly);
+
+                if (appearanceItem != null)
+                {
+                    target.Add(appearanceItem);
+                }
+
+                if (target.Count >= 12)
+                {
+                    break;
+                }
+            }
+        }
+
+        private StatsAppearanceItem BuildAppearanceItem(Item item, string slot, bool weaponsOnly)
+        {
+            var shortname = item?.info?.shortname;
+
+            if (string.IsNullOrWhiteSpace(shortname))
+            {
+                return null;
+            }
+
+            if (weaponsOnly && item.GetHeldEntity() == null)
+            {
+                return null;
+            }
+
+            return new StatsAppearanceItem
+            {
+                slot = slot,
+                shortname = shortname,
+                skin_id = item.skin.ToString()
+            };
         }
 
         private List<StatsBot> AddRoamBotStats(Dictionary<string, StatsPlayer> playersById)

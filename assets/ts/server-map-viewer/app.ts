@@ -1830,7 +1830,7 @@ class TerrainViewer {
         <span>Monuments</span>
         <select data-map-detailed-monuments aria-label="Monument model detail">
           <option value="auto"${this.monumentMode === "auto" ? " selected" : ""}>Auto</option>
-          <option value="primitives"${this.monumentMode === "primitives" ? " selected" : ""}>Primitives</option>
+          <option value="primitives"${this.monumentMode === "primitives" ? " selected" : ""}>Map LOD</option>
           <option value="detailed"${this.monumentMode === "detailed" ? " selected" : ""}>Detailed</option>
         </select>
       </label>
@@ -4901,14 +4901,9 @@ class MonumentModelController {
         : monumentLoadDistance(item.binding.monument.radius, this.policy);
       return eligible && (item.focused || item.distance <= threshold);
     }).slice(0, this.policy.activeDetailLimit).map((item) => item.binding));
-    const mapSet = new Set(ranked.filter((item) => {
-      if (!item.binding.metadata.map || item.binding.renderClass === "surface-entrance") return false;
-      const eligible = this.policy.requested === "primitives" || item.binding.renderClass !== "shared-detail";
-      const threshold = item.binding.desired === "map"
-        ? monumentUnloadDistance(item.binding.monument.radius, this.policy)
-        : monumentLoadDistance(item.binding.monument.radius, this.policy);
-      return eligible && (item.focused || item.distance <= threshold * 2.2);
-    }).slice(0, this.policy.activeMapLimit).map((item) => item.binding));
+    // Every supported monument gets its real-geometry map proxy. Procedural
+    // geometry remains visible only while this asset loads or after failure.
+    const mapSet = new Set(ranked.slice(0, this.policy.activeMapLimit).map((item) => item.binding));
     for (const { binding } of ranked) this.setDesired(binding, detailSet.has(binding) ? "detail" : mapSet.has(binding) ? "map" : "fallback");
     this.evict("detail", this.policy.detailCacheLimit);
     this.evict("map", this.policy.activeMapLimit + 2);
@@ -4933,7 +4928,7 @@ class MonumentModelController {
     binding.desired = desired;
     if (desired !== "detail") this.detach(binding, "detail");
     if (desired === "fallback") this.detach(binding, "map");
-    if ((desired === "map" || desired === "detail") && binding.metadata.map) this.ensure(binding, "map");
+    if (desired === "map" || desired === "detail") this.ensure(binding, "map");
     if (desired === "detail") this.ensure(binding, "detail");
     this.applyVisibility(binding);
   }
@@ -4980,7 +4975,7 @@ class MonumentModelController {
     const pending = this.pending.get(key);
     if (pending) return pending;
     const base = new URL(this.options.assetBase, window.location.href);
-    const path = tier === "map" ? `media/models/monuments-map/${binding.metadata.map!}` : `media/models/monuments/${binding.metadata.id}.glb`;
+    const path = tier === "map" ? `media/models/monuments-map/${binding.metadata.map}` : `media/models/monuments/${binding.metadata.id}.glb`;
     const promise = this.loader.loadAsync(new URL(path, base).href).then((gltf) => {
       const source = gltf.scene;
       if (!this.disposed) this.cache.set(key, { source, active: 0, lastUsed: performance.now() });

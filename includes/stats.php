@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/store.php';
+require_once __DIR__ . '/podium.php';
 
 function raidlands_stats_server_id(): string
 {
@@ -223,6 +224,14 @@ function raidlands_stats_ingest_snapshot(array $payload, string $server_id, stri
             ];
 
             raidlands_stats_upsert_player_wipe($pdo, $wipe_id, $player_id, $display_name, $raw, $is_first_season);
+            raidlands_podium_ingest_observation(
+                $pdo,
+                $player_id,
+                $wipe_id,
+                $server_id,
+                $player['appearance'] ?? null,
+                raidlands_stats_timestamp($player['appearance']['observed_at'] ?? null) ?? $generated_at
+            );
             $accepted++;
         }
 
