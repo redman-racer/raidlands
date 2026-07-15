@@ -1265,6 +1265,23 @@ class TerrainViewer {
     this.ambientOcclusionPass.kernelRadius = this.qualityProfile.ambientOcclusionRadius;
     this.ambientOcclusionPass.minDistance = 0.0005;
     this.ambientOcclusionPass.maxDistance = 0.009;
+    const renderAmbientOcclusion = this.ambientOcclusionPass.render.bind(this.ambientOcclusionPass);
+    this.ambientOcclusionPass.render = ((...args: Parameters<SSAOPass["render"]>) => {
+      const visibleSprites: Sprite[] = [];
+      this.scene.traverse((object) => {
+        if (object instanceof Sprite && object.visible) {
+          visibleSprites.push(object);
+          object.visible = false;
+        }
+      });
+      try {
+        renderAmbientOcclusion(...args);
+      } finally {
+        visibleSprites.forEach((sprite) => {
+          sprite.visible = true;
+        });
+      }
+    }) as SSAOPass["render"];
     this.environmentGradePass = new ShaderPass(RAIDLANDS_ENVIRONMENT_GRADE_SHADER);
     this.terrainHeightTexture = this.fogDetail === "low" ? null : createTerrainHeightTexture(this.terrain);
     this.volumetricFogPass = this.fogDetail === "low" ? null : new ShaderPass(RAIDLANDS_VOLUMETRIC_FOG_SHADER);
