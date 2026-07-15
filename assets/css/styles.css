@@ -517,6 +517,7 @@ main,
   min-height: 58px;
   padding: 19px 0 13px;
   display: inline-flex;
+  flex-wrap: wrap;
   align-items: center;
   white-space: nowrap;
   color: #f0e8da;
@@ -1997,6 +1998,10 @@ h3,
   font: 900 .72rem var(--font-body);
   padding: 0 26px 0 9px;
   cursor: pointer;
+}
+
+.server-terrain-monument-select select {
+  min-width: 112px;
 }
 
 .server-terrain-detail-select select:focus-visible {

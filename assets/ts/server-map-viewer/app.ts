@@ -22,6 +22,7 @@ import {
   Matrix4,
   Mesh,
   MeshStandardMaterial,
+  NoColorSpace,
   Object3D,
   PerspectiveCamera,
   PCFSoftShadowMap,
@@ -46,6 +47,7 @@ import {
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { SSAOPass } from "three/examples/jsm/postprocessing/SSAOPass.js";
@@ -100,13 +102,15 @@ import {
   type ManualCameraStyle,
 } from "./camera-policy";
 import { monumentNavigationLabels, recentUniqueNavigationEvents, validNavigationCoordinate } from "./navigation-policy";
+import { monumentModelAssetName } from "./monument-model-registry";
 import { monumentPrimitiveKind, monumentPrimitiveSearchKey } from "./monument-primitive-policy";
 
 const ENVIRONMENT_QUALITY_STORAGE_KEY = "raidlands:map-environment-quality";
 const CAMERA_PREFERENCES_STORAGE_KEY = "raidlands:map-camera-preferences";
-const OUTPOST_MODEL_URL = new URL(/* @vite-ignore */ "../../media/models/monuments/outpost.glb", import.meta.url).href;
+const DETAILED_MONUMENTS_STORAGE_KEY = "raidlands:map-detailed-monuments";
 const DRACO_DECODER_URL = new URL(/* @vite-ignore */ "../../media/models/draco/", import.meta.url).href;
-let outpostModelPromise: Promise<Group> | null = null;
+const monumentModelPromises = new Map<string, Promise<Group>>();
+let monumentModelLoader: GLTFLoader | null = null;
 
 type TerrainPayload = {
   version?: number;
@@ -670,6 +674,7 @@ function applyInitialEnvironmentQuality(root: HTMLElement): void {
     window.matchMedia("(pointer: coarse)").matches,
     window.innerWidth,
   );
+  root.dataset.detailedMonuments = String(preferredDetailedMonuments(root));
 }
 
 function persistEnvironmentQuality(quality: EnvironmentQuality): void {
@@ -677,6 +682,26 @@ function persistEnvironmentQuality(quality: EnvironmentQuality): void {
     window.localStorage.setItem(ENVIRONMENT_QUALITY_STORAGE_KEY, quality);
   } catch {
     // The active page still keeps the selection when storage is unavailable.
+  }
+}
+
+function preferredDetailedMonuments(root: HTMLElement): boolean {
+  try {
+    const stored = window.localStorage.getItem(DETAILED_MONUMENTS_STORAGE_KEY);
+    if (stored === "true" || stored === "false") {
+      return stored === "true";
+    }
+  } catch {
+    // Use the page default when storage is unavailable.
+  }
+  return root.dataset.detailedMonuments !== "false";
+}
+
+function persistDetailedMonuments(enabled: boolean): void {
+  try {
+    window.localStorage.setItem(DETAILED_MONUMENTS_STORAGE_KEY, String(enabled));
+  } catch {
+    // The active viewer still keeps the setting when storage is unavailable.
   }
 }
 
@@ -1151,6 +1176,7 @@ class TerrainViewer {
   private readonly actionHighlights = new Map<ActionHighlightSource, ActionHighlightFocus>();
   private actionTourStartedAt = performance.now();
   private readonly lockCameraInput: boolean;
+  private detailedMonumentsEnabled = true;
   private transitionFrom: CameraPose | null = null;
   private transitionTo: CameraPose | null = null;
   private transitionFinal: CameraPose | null = null;
@@ -1190,6 +1216,7 @@ class TerrainViewer {
     this.sunDetail = parseRaidlandsSunDetail(this.qualityProfile.sunDetail, "max");
     this.sunProfile = raidlandsSunProfile(this.sunDetail);
     this.root.dataset.sunDetailResolved = this.sunDetail;
+    this.detailedMonumentsEnabled = this.root.dataset.detailedMonuments !== "false";
     this.tourEnabled = this.root.dataset.cameraTour === "true";
     this.tourStyle = this.root.dataset.cameraTourStyle === "orbit" ? "orbit" : "cinematic";
     this.lockCameraInput = this.root.dataset.cameraLocked === "true";
@@ -1384,6 +1411,25 @@ class TerrainViewer {
     this.updateGridOpacity();
   }
 
+  public getDetailedMonumentsEnabled(): boolean {
+    return this.detailedMonumentsEnabled;
+  }
+
+  public setDetailedMonumentsEnabled(enabled: boolean): void {
+    this.detailedMonumentsEnabled = enabled;
+    this.root.dataset.detailedMonuments = String(enabled);
+    this.monumentLayer.traverse((object) => object.userData.setDetailedMonument?.(enabled));
+    this.root.closest<HTMLElement>(".server-terrain-panel")
+      ?.querySelectorAll<HTMLInputElement | HTMLSelectElement>("[data-map-detailed-monuments]")
+      .forEach((control) => {
+        if (control instanceof HTMLInputElement) {
+          control.checked = enabled;
+        } else {
+          control.value = enabled ? "detailed" : "simple";
+        }
+      });
+  }
+
   public setTourEnabled(enabled: boolean): void {
     this.setCameraMode(enabled ? "director" : "manual");
   }
@@ -1470,10 +1516,9 @@ class TerrainViewer {
       const baseY = sampleTerrainHeight(this.terrain, bucketPosition.x, bucketPosition.z) + 18;
       const color = heatmapRampColor(normalized);
       const material = new SpriteMaterial({
-        map: texture,
+        alphaMap: texture,
         color,
         transparent: true,
-        premultipliedAlpha: true,
         alphaTest: 0.01,
         opacity: MathUtils.lerp(0.18, 0.64, normalized),
         depthWrite: false,
@@ -1765,6 +1810,13 @@ class TerrainViewer {
         </select>
         ${resolvedNote}
       </label>
+      <label class="server-terrain-detail-select server-terrain-monument-select">
+        <span>Monuments</span>
+        <select data-map-detailed-monuments aria-label="Monument model detail">
+          <option value="detailed"${this.detailedMonumentsEnabled ? " selected" : ""}>Detailed</option>
+          <option value="simple"${this.detailedMonumentsEnabled ? "" : " selected"}>Simple</option>
+        </select>
+      </label>
       ${this.root.dataset.cameraProfile === "full" ? `
         <div class="server-map-flight-controls" data-map-flight-controls aria-label="Mobile flight controls">
           <div class="server-map-flight-stick" data-map-flight-move><span>Move</span><i></i></div>
@@ -1780,6 +1832,12 @@ class TerrainViewer {
     bindMapViewButtons(Array.from(controls.querySelectorAll<HTMLButtonElement>("[data-map-view]")), this);
     const fillButton = controls.querySelector<HTMLButtonElement>("[data-map-browser-fill]");
     const fullscreenButton = controls.querySelector<HTMLButtonElement>("[data-map-native-fullscreen]");
+    const monumentsSelect = controls.querySelector<HTMLSelectElement>("[data-map-detailed-monuments]");
+    monumentsSelect?.addEventListener("change", () => {
+      const enabled = monumentsSelect.value !== "simple";
+      persistDetailedMonuments(enabled);
+      this.setDetailedMonumentsEnabled(enabled);
+    });
     // Heal the old persisted lockout state, but keep the other camera choices.
     const stored = parseCameraPreferences(window.localStorage.getItem(CAMERA_PREFERENCES_STORAGE_KEY));
     window.localStorage.setItem(CAMERA_PREFERENCES_STORAGE_KEY, JSON.stringify({ ...stored, browserFill: false }));
@@ -2371,7 +2429,7 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
     layer.name = "raidlands-monument-primitives";
 
     monuments.forEach((monument) => {
-      if (shouldHideMonumentPrimitive(monument)) {
+      if (shouldHideMonumentPrimitive(monument) && !monumentModelAssetName(monument.prefab)) {
         return;
       }
       const monumentPosition = rustWorldToViewerPosition(monument.x, monument.y, monument.z);
@@ -2394,9 +2452,13 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
         }
       });
       layer.add(group);
-      if (monumentKey(monument).includes("outpost") || monumentKey(monument).includes("compound")) {
-        void replaceOutpostPrimitiveWithReferenceModel(group, monumentGroundY - groupY, this.renderer.shadowMap.enabled);
-      }
+      bindMonumentReferenceModel(group, monument, {
+        assetBase: this.root.dataset.assetBase || new URL(/* @vite-ignore */ "../../", import.meta.url).href,
+        camera: this.camera,
+        enabled: this.detailedMonumentsEnabled,
+        localGroundY: monumentGroundY - groupY,
+        shadowsEnabled: this.renderer.shadowMap.enabled,
+      });
     });
 
     this.scene.add(layer);
@@ -4644,52 +4706,102 @@ interface MonumentPrimitivePlacement {
   rotationY: number;
 }
 
-function loadOutpostReferenceModel(): Promise<Group> {
-  if (!outpostModelPromise) {
-    const draco = new DRACOLoader();
-    draco.setDecoderPath(DRACO_DECODER_URL);
-    const loader = new GLTFLoader();
-    loader.setDRACOLoader(draco);
-    outpostModelPromise = loader.loadAsync(OUTPOST_MODEL_URL).then((gltf) => gltf.scene);
-  }
-  return outpostModelPromise;
+interface MonumentReferenceModelPlacement {
+  assetBase: string;
+  camera: PerspectiveCamera;
+  enabled: boolean;
+  localGroundY: number;
+  shadowsEnabled: boolean;
 }
 
-async function replaceOutpostPrimitiveWithReferenceModel(group: Group, localGroundY: number, shadowsEnabled: boolean): Promise<void> {
-  const fallback = group.children.filter((child) => child.name !== "monument-title");
-
-  try {
-    const model = (await loadOutpostReferenceModel()).clone(true);
-
-    model.name = "outpost-reference-model";
-    // Rust places the monument prefab by its authored root transform. Preserve
-    // that native X/Z pivot and 1:1 scale; only cancel the +5 map-proxy lift so
-    // the prefab's authored Y=0 ground plane sits on the published monument.
-    model.position.set(0, localGroundY, 0);
-    model.traverse((object) => {
-      if (object instanceof Mesh) {
-        object.castShadow = shadowsEnabled;
-        object.receiveShadow = shadowsEnabled;
-        // Clones share the cached glTF geometry/materials. Keep them alive across
-        // terrain refreshes rather than disposing the cache through one clone.
-        object.userData.preserveSharedVehicleAsset = true;
-      } else if ((object as Object3D & { isLight?: boolean }).isLight) {
-        // The map viewer owns its Rust-fed lighting; embedded monument lights
-        // would otherwise change the lighting of the entire shared scene.
-        object.visible = false;
-      }
-    });
-    group.add(model);
-    fallback.forEach((child) => {
-      group.remove(child);
-      if (child instanceof Group || child instanceof Mesh || child instanceof Sprite || child instanceof LineSegments) {
-        disposeObjectTree(child);
-      }
-    });
-    group.userData.primitiveKind = "reference-model";
-  } catch (error) {
-    console.warn("Raidlands map viewer could not load the Outpost reference model; keeping the procedural fallback.", error);
+function getMonumentModelLoader(): GLTFLoader {
+  if (!monumentModelLoader) {
+    const draco = new DRACOLoader();
+    draco.setDecoderPath(DRACO_DECODER_URL);
+    monumentModelLoader = new GLTFLoader();
+    monumentModelLoader.setDRACOLoader(draco);
+    monumentModelLoader.setMeshoptDecoder(MeshoptDecoder);
   }
+  return monumentModelLoader;
+}
+
+function loadMonumentReferenceModel(assetName: string, assetBase: string): Promise<Group> {
+  const baseUrl = new URL(assetBase, window.location.href);
+  const modelUrl = new URL(`media/models/monuments/${assetName}`, baseUrl).href;
+  let promise = monumentModelPromises.get(modelUrl);
+  if (!promise) {
+    promise = getMonumentModelLoader().loadAsync(modelUrl).then((gltf) => gltf.scene);
+    monumentModelPromises.set(modelUrl, promise);
+  }
+  return promise;
+}
+
+function bindMonumentReferenceModel(group: Group, monument: MonumentPayload, placement: MonumentReferenceModelPlacement): void {
+  const assetName = monumentModelAssetName(monument.prefab);
+  if (!assetName) {
+    return;
+  }
+
+  const fallback = group.children.filter((child) => child.name !== "monument-title");
+  const priorTick = group.userData.tick as ((time: number) => void) | undefined;
+  let enabled = placement.enabled;
+  let loading = false;
+  let failed = false;
+  let model: Group | null = null;
+
+  const applyVisibility = () => {
+    fallback.forEach((child) => {
+      child.visible = !enabled || model === null;
+    });
+    if (model) {
+      model.visible = enabled;
+    }
+  };
+
+  group.userData.monumentModelAsset = assetName;
+  group.userData.setDetailedMonument = (next: boolean) => {
+    enabled = next;
+    applyVisibility();
+  };
+  group.userData.tick = (time: number) => {
+    priorTick?.(time);
+    if (!enabled || loading || failed || model) {
+      return;
+    }
+    const loadDistance = Math.max(425, MathUtils.clamp(monument.radius, 24, 280) * 5.5);
+    if (placement.camera.position.distanceTo(group.position) > loadDistance) {
+      return;
+    }
+    loading = true;
+    void loadMonumentReferenceModel(assetName, placement.assetBase).then((source) => {
+      model = source.clone(true);
+      model.name = `monument-reference-model-${assetName.replace(/\.glb$/i, "")}`;
+      // Rust places monument prefabs by their authored root transforms. Preserve
+      // native scale and X/Z pivots; cancel only the procedural proxy's +5 lift.
+      model.position.set(0, placement.localGroundY, 0);
+      model.traverse((object) => {
+        if (object instanceof Mesh) {
+          object.castShadow = placement.shadowsEnabled;
+          object.receiveShadow = placement.shadowsEnabled;
+          object.userData.preserveSharedVehicleAsset = true;
+        } else if ((object as Object3D & { isLight?: boolean }).isLight) {
+          // Shared Rust environment data owns scene lighting in this viewer.
+          object.visible = false;
+        }
+      });
+      group.add(model);
+      group.userData.primitiveKind = "reference-model";
+      loading = false;
+      applyVisibility();
+    }).catch((error) => {
+      failed = true;
+      loading = false;
+      applyVisibility();
+      console.warn(`Raidlands map viewer could not load ${assetName}; keeping its procedural fallback.`, error);
+    });
+  };
+
+  applyVisibility();
 }
 
 function createMonumentPrimitive(monument: MonumentPayload, placement?: MonumentPrimitivePlacement): Group {
@@ -6326,23 +6438,20 @@ function createGridLabelSprite(label: string, size: number, x: number, z: number
   context.textAlign = "center";
   context.textBaseline = "middle";
   context.lineJoin = "round";
-  context.shadowColor = "rgba(0, 0, 0, 0.42)";
-  context.shadowBlur = 4;
-  context.strokeStyle = "rgba(3, 5, 6, 0.56)";
+  context.strokeStyle = "#ffffff";
   context.lineWidth = 6;
   context.strokeText(label, canvas.width / 2, 64);
-  context.fillStyle = "rgba(255, 246, 218, 0.72)";
+  context.fillStyle = "#ffffff";
   context.fillText(label, canvas.width / 2, 64);
 
     const created = new CanvasTexture(canvas);
-    created.colorSpace = SRGBColorSpace;
-    created.premultiplyAlpha = true;
+    created.colorSpace = NoColorSpace;
     return created;
   });
   const material = new SpriteMaterial({
-    map: texture,
+    alphaMap: texture,
+    color: 0xfff6da,
     transparent: true,
-    premultipliedAlpha: true,
     alphaTest: 0.02,
     depthTest: false,
     depthWrite: false,
@@ -6365,17 +6474,16 @@ function createHeatmapCloudTexture(): CanvasTexture {
 
   if (context) {
     const gradient = context.createRadialGradient(size / 2, size / 2, 2, size / 2, size / 2, size / 2);
-    gradient.addColorStop(0, "rgba(255,255,255,0.86)");
-    gradient.addColorStop(0.34, "rgba(255,255,255,0.42)");
-    gradient.addColorStop(0.68, "rgba(255,255,255,0.16)");
-    gradient.addColorStop(1, "rgba(255,255,255,0)");
+    gradient.addColorStop(0, "rgb(255,255,255)");
+    gradient.addColorStop(0.34, "rgb(128,128,128)");
+    gradient.addColorStop(0.68, "rgb(42,42,42)");
+    gradient.addColorStop(1, "rgb(0,0,0)");
     context.fillStyle = gradient;
     context.fillRect(0, 0, size, size);
   }
 
   const texture = new CanvasTexture(canvas);
-  texture.colorSpace = SRGBColorSpace;
-  texture.premultiplyAlpha = true;
+  texture.colorSpace = NoColorSpace;
   return texture;
   });
 }
@@ -7154,6 +7262,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   const panel = root.closest<HTMLElement>(".server-terrain-panel");
   const buttons = Array.from(panel?.querySelectorAll<HTMLButtonElement>("[data-map-view]") || []);
   const grid = panel?.querySelector<HTMLInputElement>("[data-map-viewer-grid]");
+  const detailedMonuments = panel?.querySelector<HTMLInputElement>("[data-map-detailed-monuments]");
   const tour = panel?.querySelector<HTMLInputElement>("[data-map-viewer-tour]");
   const cameraMode = panel?.querySelector<HTMLSelectElement>("[data-map-viewer-camera-mode]");
   const manualStyle = panel?.querySelector<HTMLSelectElement>("[data-map-viewer-manual-style]");
@@ -7440,6 +7549,12 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     if (grid) {
       viewer.setGridVisible(grid.checked);
     }
+  });
+
+  bind(detailedMonuments, "change", () => {
+    if (!detailedMonuments) return;
+    persistDetailedMonuments(detailedMonuments.checked);
+    viewer.setDetailedMonumentsEnabled(detailedMonuments.checked);
   });
 
   bind(tour, "change", () => {
@@ -8154,6 +8269,9 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   updateEstimatedFrameIntervalLabel();
   updatePlaybackControlAvailability();
   updatePlaybackSpeedControls();
+  if (detailedMonuments) {
+    detailedMonuments.checked = viewer.getDetailedMonumentsEnabled();
+  }
   if (tour) {
     viewer.setTourEnabled(tour.checked && !followMyLocation);
   }

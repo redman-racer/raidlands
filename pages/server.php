@@ -167,6 +167,10 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
             <input type="checkbox" checked data-map-viewer-grid>
             <span>Grid coordinates</span>
           </label>
+          <label class="server-terrain-toggle">
+            <input type="checkbox" checked data-map-detailed-monuments>
+            <span>Detailed monuments</span>
+          </label>
           <label class="server-terrain-field server-terrain-camera-mode">
             <span>Camera</span>
             <select data-map-viewer-camera-mode>
@@ -268,6 +272,7 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
         class="server-terrain-viewer"
         data-server-map-viewer
         data-environment-quality="ultra"
+        data-detailed-monuments="true"
         data-terrain-url="<?= e($server_terrain_url) ?>"
         data-texture-url="<?= e($server_texture_url) ?>"
         data-skybox-url="<?= e($server_skybox_url) ?>"
