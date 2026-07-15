@@ -1,11 +1,11 @@
 export type Leader = Record<string, unknown>;
 
 export const LEADERBOARD_PODIUM_THEMES: Record<string, string[]> = {
-  kills: ["ak47.glb", "reactive-target.glb", "ammo.glb"],
-  kdr: ["trophy.glb", "reactive-target.glb", "ak47.glb"],
+  kills: ["ak47.glb", "rocket-launcher.glb", "combat-knife.glb"],
+  kdr: ["trophy.glb", "rocket-launcher.glb", "ak47.glb"],
   playtime: ["sleeping-bag.glb", "campfire.glb", "digital-clock.glb"],
   rp: ["scrap.glb", "loot-crate.glb", "trophy.glb"],
-  npc_kills: ["scientist.glb", "ak47.glb", "loot-crate.glb"],
+  npc_kills: ["scientist.glb", "ak47.glb", "rocket-launcher.glb"],
   deaths_by_npc: ["scientist.glb", "skull.glb", "sleeping-bag.glb"],
   deaths: ["skull.glb", "sleeping-bag.glb", "ak47.glb"],
   "total-won": ["scrap.glb", "loot-crate.glb", "trophy.glb"],

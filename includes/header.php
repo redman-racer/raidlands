@@ -268,24 +268,39 @@ $animation_diagnostics_json = json_encode($client_site_config['animationDiagnost
               <img src="<?= e(asset_url('media/raidlands-logo.webp')) ?>" alt="Raidlands 1000x">
             </a>
             <nav class="nav-menu" id="site-menu" aria-label="Primary navigation">
-              <?php foreach ($primary_nav as [$id, $path, $label]) : ?>
-                <?php
-                  if ($id === 'profile') {
-                      continue;
-                  }
-
-                  $nav_path = $path;
-                  $nav_label = $label;
-                  $nav_active = $id === $page_id || ($id === 'store' && str_starts_with($page_id, 'store-'));
-
-                  if ($id === 'link') {
-                      $nav_path = $linked_player !== null ? 'profile' : 'link';
-                      $nav_label = $linked_player !== null ? 'Account' : 'Sign in with Steam';
-                      $nav_active = in_array($page_id, ['link', 'profile'], true);
-                  }
-                ?>
-                <a class="nav-link<?= $nav_active ? ' is-active' : '' ?>" href="<?= e(route_url($nav_path)) ?>"><?= e($nav_label) ?></a>
+              <?php foreach ($header_nav as $nav_item) : ?>
+                <?php if ($nav_item[0] === 'link') : ?>
+                  <?php
+                    [, $id, $path, $label] = $nav_item;
+                    $nav_active = $id === $page_id || ($id === 'store' && str_starts_with($page_id, 'store-'));
+                  ?>
+                  <a class="nav-link<?= $nav_active ? ' is-active' : '' ?>" href="<?= e(route_url($path)) ?>"<?= $nav_active ? ' aria-current="page"' : '' ?>><?= e($label) ?></a>
+                <?php else : ?>
+                  <?php
+                    [, $group_id, $group_label, $group_links] = $nav_item;
+                    $group_active = false;
+                    foreach ($group_links as [$child_id]) {
+                        $group_active = $group_active || $child_id === $page_id;
+                    }
+                  ?>
+                  <details class="nav-dropdown<?= $group_active ? ' is-active' : '' ?>" data-nav-dropdown>
+                    <summary class="nav-link" aria-label="Open <?= e($group_label) ?> menu">
+                      <?= e($group_label) ?><span class="nav-chevron" aria-hidden="true"></span>
+                    </summary>
+                    <div class="nav-dropdown-panel">
+                      <?php foreach ($group_links as [$child_id, $child_path, $child_label, $child_description]) : ?>
+                        <a class="nav-dropdown-link<?= $child_id === $page_id ? ' is-active' : '' ?>" href="<?= e(route_url($child_path)) ?>"<?= $child_id === $page_id ? ' aria-current="page"' : '' ?>>
+                          <strong><?= e($child_label) ?></strong>
+                          <small><?= e($child_description) ?></small>
+                        </a>
+                      <?php endforeach; ?>
+                    </div>
+                  </details>
+                <?php endif; ?>
               <?php endforeach; ?>
+              <a class="nav-mobile-account" href="<?= e($linked_player !== null ? route_url('profile') : raidlands_account_url()) ?>">
+                <?= e($linked_player !== null ? (trim((string) ($linked_player['display_name'] ?? '')) ?: 'Account') : 'Sign in with Steam') ?>
+              </a>
             </nav>
             <div class="header-actions">
               <?php if ($linked_player !== null) : ?>

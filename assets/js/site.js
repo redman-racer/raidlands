@@ -436,12 +436,38 @@
 
   function bindNav() {
     const toggle = app.querySelector("[data-menu-toggle]");
+    const dropdowns = Array.from(app.querySelectorAll("[data-nav-dropdown]"));
+
+    const closeDropdowns = except => {
+      dropdowns.forEach(dropdown => {
+        if (dropdown !== except) dropdown.open = false;
+      });
+    };
+
+    dropdowns.forEach(dropdown => {
+      dropdown.addEventListener("toggle", () => {
+        if (dropdown.open) closeDropdowns(dropdown);
+      });
+    });
+
+    document.addEventListener("click", event => {
+      if (!event.target.closest("[data-nav-dropdown]")) closeDropdowns();
+    });
+
+    document.addEventListener("keydown", event => {
+      if (event.key !== "Escape") return;
+      closeDropdowns();
+      document.body.classList.remove("nav-open");
+      if (toggle) toggle.setAttribute("aria-expanded", "false");
+    });
+
     if (!toggle) return;
 
     toggle.addEventListener("click", () => {
       const open = !document.body.classList.contains("nav-open");
       document.body.classList.toggle("nav-open", open);
       toggle.setAttribute("aria-expanded", String(open));
+      if (!open) closeDropdowns();
     });
   }
 
@@ -825,8 +851,13 @@
     const controls=table.closest('[data-rp-game-panel="blackjack"]')?.querySelector('[data-blackjack-controls]');if(!controls)return;
     const csrf=table.dataset.csrf||'',actionUrl=table.dataset.actionUrl||window.location.href,min=Number(table.dataset.minStake)||200,max=Number(table.dataset.maxStake)||2000,enabled=table.dataset.enabled==='1',evenMin=min+(min%2);
     if(hand&&hand.status==='playing')controls.innerHTML=`<form class="feedback-form rp-game-form" method="post" action="${escapeHtml(actionUrl)}" data-rp-game-form="blackjack"><input type="hidden" name="csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="hand_id" value="${Number(hand.id)||0}"><input type="hidden" name="action_version" value="${Number(hand.action_version)||0}"><div class="blackjack-actions"><button class="btn btn-secondary" name="action" value="blackjack_hit" type="submit" ${hand.can_hit?'':'disabled'}>Hit</button><button class="btn btn-primary" name="action" value="blackjack_stand" type="submit" ${hand.can_stand?'':'disabled'}>Stand</button><button class="btn btn-secondary" name="action" value="blackjack_double" type="submit" ${hand.can_double?'':'disabled'}>Double</button></div></form>`;
-    else if(hand&&['wager_queued','double_queued','payout_queued'].includes(hand.status))controls.innerHTML=`<div class="form-status warning blackjack-pending"><strong>Waiting on the Rust server</strong><p>${escapeHtml(hand.message||'This hand will unlock automatically after RP confirmation.')}</p></div>`;
+    else if(hand&&['wager_queued','double_queued','payout_queued'].includes(hand.status)){controls.innerHTML=`<div class="form-status warning blackjack-pending"><strong>Waiting on the Rust server</strong><p>${escapeHtml(hand.message||'This hand will unlock automatically after RP confirmation.')}</p><small>Checking again automatically...</small></div>`;scheduleBlackjackPoll(table);}
     else controls.innerHTML=`<form class="feedback-form rp-game-form" method="post" action="${escapeHtml(actionUrl)}" data-rp-game-form="blackjack"><input type="hidden" name="csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="action" value="start_blackjack"><label class="store-field"><span>Stake (even RP)</span><input type="number" name="stake_rp" min="${min}" max="${max}" step="2" value="${evenMin}" ${enabled?'':'disabled'}></label><button class="btn btn-primary" type="submit" ${enabled?'':'disabled'}>Deal Blackjack</button></form>`;
+  }
+
+  function scheduleBlackjackPoll(table) {
+    if(!table||table.dataset.blackjackPollTimer)return;
+    table.dataset.blackjackPollTimer=String(window.setTimeout(async()=>{delete table.dataset.blackjackPollTimer;const root=table.closest('[data-rp-games]');if(root)await checkRpSyncStatus(root,false);},2500));
   }
 
   function stopRpGameMotion(panel) {

@@ -51,3 +51,5 @@ The files in `assets/media/models/leaderboard/` are renamed copies from the sibl
 | `loot-crate.glb` | `assets/prefabs/Deployable/Wooden loot crates/wooden_crate_2.glb` |
 | `scientist.glb` | `assets/prefabs/Deployable/Youtooz_Figurines/heavyscientist_youtooz.deployed.glb` |
 | `skull.glb` | `assets/prefabs/Weapons/Halloween/Skull_Halloween/skull.worldmodel.glb` |
+| `rocket-launcher.glb` | `assets/prefabs/Weapons/RocketLauncher/rocketlauncher.worldmodel.glb` |
+| `combat-knife.glb` | `assets/prefabs/Weapons/Knife/knife.combat.worldmodel.glb` |

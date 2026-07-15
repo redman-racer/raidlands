@@ -1,5 +1,5 @@
 import {
-  ACESFilmicToneMapping, AmbientLight, Box3, BoxGeometry, Color, CylinderGeometry,
+  ACESFilmicToneMapping, AmbientLight, Box3, Color, CylinderGeometry,
   DirectionalLight, Group, Mesh, MeshStandardMaterial, Object3D, PerspectiveCamera,
   Scene, SRGBColorSpace, Vector3, WebGLRenderer,
 } from "three";
@@ -9,6 +9,9 @@ import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { Leader, LEADERBOARD_PODIUM_THEMES, leaderboardPodiumMetricValue } from "./policy";
 
 type Payload = { leaders?: Leader[]; metric?: string; board?: string };
+
+const PODIUM_X = [-3.25, 0, 3.25];
+const PODIUM_HEIGHTS = [1.15, 1.75, 0.88];
 
 function supportsWebGL2(): boolean {
   try { return Boolean(document.createElement("canvas").getContext("webgl2")); } catch { return false; }
@@ -97,8 +100,8 @@ class PodiumScene {
     this.renderer.toneMapping = ACESFilmicToneMapping;
     this.renderer.toneMappingExposure = 1.08;
     stage.replaceChildren(this.renderer.domElement);
-    this.camera.position.set(0, 4.3, 11.8);
-    this.camera.lookAt(0, 1.25, 0);
+    this.camera.position.set(0, 3.7, 8.35);
+    this.camera.lookAt(0, 1.35, 0);
 
     const draco = new DRACOLoader(); draco.setDecoderPath(host.dataset.decoderPath || "");
     this.loader = new GLTFLoader(); this.loader.setDRACOLoader(draco); this.loader.setMeshoptDecoder(MeshoptDecoder);
@@ -117,12 +120,20 @@ class PodiumScene {
     const rim = new DirectionalLight(0x39d98a, 3); rim.position.set(-6, 5, -4); this.scene.add(rim);
     const floor = new Mesh(new CylinderGeometry(6.8, 7.2, 0.35, 48), new MeshStandardMaterial({ color: 0x17201f, metalness: 0.75, roughness: 0.42 }));
     floor.position.y = -0.25; this.scene.add(floor);
-    const positions = [-3.2, 0, 3.2]; const heights = [1.15, 1.75, 0.85];
-    positions.forEach((x, index) => {
-      const pedestal = new Mesh(new BoxGeometry(2.55, heights[index], 2.25), new MeshStandardMaterial({
+    PODIUM_X.forEach((x, index) => {
+      const height = PODIUM_HEIGHTS[index];
+      const pedestal = new Mesh(new CylinderGeometry(1.48, 1.68, height, 8), new MeshStandardMaterial({
         color: [0x697574, 0xb38b3a, 0x765441][index], metalness: 0.78, roughness: 0.34,
       }));
-      pedestal.position.set(x, heights[index] / 2, 0); this.scene.add(pedestal);
+      pedestal.position.set(x, height / 2, 0); this.scene.add(pedestal);
+      const topLip = new Mesh(new CylinderGeometry(1.53, 1.53, 0.1, 8), new MeshStandardMaterial({
+        color: [0xa8b3b0, 0xe2b854, 0xb77b52][index], metalness: 0.9, roughness: 0.24,
+      }));
+      topLip.position.set(x, height + 0.02, 0); this.scene.add(topLip);
+      const baseBand = new Mesh(new CylinderGeometry(1.71, 1.76, 0.13, 8), new MeshStandardMaterial({
+        color: 0x202827, metalness: 0.86, roughness: 0.3,
+      }));
+      baseBand.position.set(x, 0.02, 0); this.scene.add(baseBand);
     });
     this.scene.add(this.propRoot);
   }
@@ -136,12 +147,17 @@ class PodiumScene {
         if (generation !== this.generation || this.disposed) return;
         const visual = model.clone(true);
         const box = new Box3().setFromObject(visual); const size = box.getSize(new Vector3());
-        visual.scale.setScalar(1.7 / Math.max(size.x, size.y, size.z, 0.01));
+        visual.scale.setScalar(2.15 / Math.max(size.x, size.y, size.z, 0.01));
         const fitted = new Box3().setFromObject(visual); const center = fitted.getCenter(new Vector3());
-        visual.position.sub(center); visual.position.y -= fitted.min.y;
+        visual.position.x -= center.x;
+        visual.position.y -= fitted.min.y;
+        visual.position.z -= center.z;
         const wrapper = new Group(); wrapper.add(visual);
-        wrapper.position.set([-4.5, 0, 4.5][index], 0.02, index === 1 ? -1.8 : -1.1);
-        wrapper.rotation.y = index === 0 ? 0.45 : index === 2 ? -0.45 : 0;
+        wrapper.position.set(PODIUM_X[index], PODIUM_HEIGHTS[index] + 0.03, -0.1);
+        wrapper.rotation.y = file === "rocket-launcher.glb"
+          ? Math.PI / 2
+          : (index === 0 ? 0.3 : index === 2 ? -0.3 : 0);
+        if (file === "rocket-launcher.glb") wrapper.rotation.z = -0.08;
         wrapper.userData.baseY = wrapper.position.y; wrapper.userData.phase = index * 1.8;
         this.propRoot.add(wrapper);
       } catch { /* The HTML podium remains the fallback for individual assets. */ }

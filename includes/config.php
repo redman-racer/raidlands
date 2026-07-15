@@ -148,6 +148,24 @@ $primary_nav = [
     ['profile', 'profile', 'Profile'],
 ];
 
+$header_nav = [
+    ['link', 'play', 'play', 'Play'],
+    ['link', 'server', 'server', 'Server'],
+    ['group', 'explore', 'Explore', [
+        ['features', 'features', 'Features', 'See what is live on Raidlands'],
+        ['events', 'events', 'Events', 'Server events and activities'],
+        ['leaderboard', 'leaderboard', 'Leaderboards', 'Wipe rankings and player stats'],
+        ['clans', 'clans', 'Clans', 'Clan standings and management'],
+    ]],
+    ['group', 'community', 'Community', [
+        ['rules', 'rules', 'Rules', 'Know the server rules before you raid'],
+        ['discord', 'discord', 'Discord', 'News, support, and the community'],
+        ['vote', 'vote', 'Vote', 'Support the server and claim rewards'],
+        ['rp-games', 'rp-games', 'RP Games', 'Play games with Reward Points'],
+    ]],
+    ['link', 'store', 'store', 'Store'],
+];
+
 $quick_features = [
     ['GATHER', '1000x Gather'],
     ['KIT', 'Kits'],

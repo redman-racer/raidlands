@@ -2984,7 +2984,8 @@ function raidlands_rewards_player_sync_state(int $player_id): array
 
     $game_sources = "'coinflip', 'dice', 'high_low', 'wheel', 'jackpot_entry', 'jackpot_payout',
         'raid_duel_entry', 'raid_duel_payout', 'supply_run_entry', 'supply_run_payout',
-        'monument_wager', 'monument_payout'";
+        'monument_wager', 'monument_payout', 'roulette', 'slots',
+        'blackjack_wager', 'blackjack_double', 'blackjack_payout'";
     $pending = raidlands_db_fetch_one(
         "SELECT COUNT(*) AS pending_count
          FROM rp_point_requests

@@ -251,7 +251,15 @@ $rp_game_tabs = [
     </aside>
 
     <div class="rp-games-workspace">
-      <nav class="rp-game-nav" aria-label="RP game navigation" role="tablist">
+      <div class="rp-game-picker">
+        <div class="rp-game-picker-heading">
+          <div>
+            <p class="section-kicker">Game library</p>
+            <h2>Choose a game</h2>
+          </div>
+          <span class="rp-game-count"><?= e((string) count($rp_game_tabs)) ?> games</span>
+        </div>
+        <nav class="rp-game-nav" aria-label="RP game navigation" role="tablist">
         <?php foreach ($rp_game_tabs as $index => $tab) : ?>
           <?php
             $tab_key = (string) $tab['key'];
@@ -275,7 +283,8 @@ $rp_game_tabs = [
             <em class="status-pill <?= e($status_class) ?>"><?= e($status_label) ?></em>
           </a>
         <?php endforeach; ?>
-      </nav>
+        </nav>
+      </div>
 
       <div class="rp-game-stage">
         <article class="metal-panel rp-game-panel is-active" id="rp-panel-coinflip" role="tabpanel" aria-labelledby="rp-tab-coinflip" data-rp-game-panel="coinflip">
