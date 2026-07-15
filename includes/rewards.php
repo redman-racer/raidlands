@@ -3,6 +3,7 @@
 require_once __DIR__ . '/store.php';
 require_once __DIR__ . '/monument-extraction.php';
 require_once __DIR__ . '/stats.php';
+require_once __DIR__ . '/casino-games.php';
 
 function raidlands_rewards_tables(): array
 {
@@ -75,6 +76,10 @@ function raidlands_rewards_game_backend_ready(string $game_key): bool
 
     if (in_array($game_key, ['raid_duel', 'supply_run'], true)) {
         return raidlands_rewards_pool_backend_ready($game_key);
+    }
+
+    if (in_array($game_key, ['roulette', 'slots', 'blackjack'], true)) {
+        return raidlands_casino_backend_ready($game_key);
     }
 
     if (!in_array($game_key, ['high_low', 'wheel'], true)) {
@@ -699,6 +704,11 @@ function raidlands_rewards_queue_point_request(
         'supply_run_payout',
         'monument_wager',
         'monument_payout',
+        'roulette',
+        'slots',
+        'blackjack_wager',
+        'blackjack_double',
+        'blackjack_payout',
         'admin_adjustment',
     ], true)) {
         throw new InvalidArgumentException('Unsupported RP point request source.');
@@ -2670,6 +2680,19 @@ function raidlands_rewards_leaderboard_events_sql(): string
              WHERE m.status IN ('COMPLETED', 'DEAD', 'ABANDONED', 'EXPIRED')";
     }
 
+    if (raidlands_rewards_table_exists('rp_blackjack_hands')) {
+        $events[] =
+            "SELECT b.player_id,
+                    CASE WHEN b.status IN ('paid','push') THEN b.payout_rp ELSE 0 END AS payout_rp,
+                    1 AS games_played,
+                    CASE WHEN b.status = 'paid' AND b.payout_rp > b.total_stake_rp THEN 1 ELSE 0 END AS wins,
+                    COALESCE(b.resolved_at, b.updated_at) AS played_at
+             FROM rp_blackjack_hands b
+             LEFT JOIN rp_point_requests payout_request ON payout_request.id = b.payout_request_id
+             WHERE b.status IN ('paid','push','lost')
+               AND (b.payout_request_id IS NULL OR payout_request.status = 'confirmed')";
+    }
+
     return implode("\nUNION ALL\n", $events);
 }
 
@@ -2772,7 +2795,19 @@ function raidlands_rewards_recent_game_activity(int $player_id = 0, int $limit =
     }
     unset($round);
 
-    $activity = array_merge($rounds, raidlands_monument_recent_activity($player_id, $limit));
+    $blackjack = [];
+    if (raidlands_rewards_table_exists('rp_blackjack_hands')) {
+        $params = []; $where = '';
+        if ($player_id > 0) { $where = 'WHERE player_id = :player_id'; $params['player_id'] = $player_id; }
+        $blackjack = raidlands_db_fetch_all(
+            "SELECT id, 'blackjack' AS game_type, total_stake_rp AS stake_rp, payout_rp,
+                    CONCAT('Player ', JSON_LENGTH(player_cards_json), ' cards / dealer ', JSON_LENGTH(dealer_cards_json), ' cards') AS roll_result,
+                    status, created_at, CONCAT('blackjack-', id) AS activity_key
+             FROM rp_blackjack_hands {$where} ORDER BY created_at DESC LIMIT " . max(1, min(50, $limit)),
+            $params
+        );
+    }
+    $activity = array_merge($rounds, $blackjack, raidlands_monument_recent_activity($player_id, $limit));
     usort($activity, static function (array $left, array $right): int {
         $date_compare = strcmp((string) ($right['created_at'] ?? ''), (string) ($left['created_at'] ?? ''));
 
@@ -3003,6 +3038,7 @@ function raidlands_rewards_public_games_state(bool $include_leaderboards = true)
 
     raidlands_rewards_run_due_jackpots();
     raidlands_rewards_run_due_pool_rounds();
+    raidlands_blackjack_run_timeouts();
     $settings = raidlands_rewards_settings();
     $active_jackpot = raidlands_rewards_active_jackpot_round($settings, true);
     $player_id = raidlands_rewards_player_ready($player) ? (int) $player['id'] : 0;
@@ -3022,11 +3058,15 @@ function raidlands_rewards_public_games_state(bool $include_leaderboards = true)
         'leaderboard_current' => $include_leaderboards ? raidlands_rewards_leaderboard_result('current', 1, 10)['rows'] : [],
         'leaderboard_all_time' => $include_leaderboards ? raidlands_rewards_leaderboard_result('all-time', 1, 10)['rows'] : [],
         'sync' => raidlands_rewards_player_sync_state($player_id),
+        'active_blackjack' => raidlands_blackjack_active($player_id),
         'game_backend' => [
             'high_low' => raidlands_rewards_game_backend_ready('high_low'),
             'wheel' => raidlands_rewards_game_backend_ready('wheel'),
             'raid_duel' => raidlands_rewards_game_backend_ready('raid_duel'),
             'supply_run' => raidlands_rewards_game_backend_ready('supply_run'),
+            'roulette' => raidlands_rewards_game_backend_ready('roulette'),
+            'slots' => raidlands_rewards_game_backend_ready('slots'),
+            'blackjack' => raidlands_rewards_game_backend_ready('blackjack'),
         ],
     ];
 }
@@ -3072,7 +3112,7 @@ function raidlands_rewards_handle_games_request(): void
 
     $action = (string) ($_POST['action'] ?? '');
 
-    if (!in_array($action, ['play_coinflip', 'play_dice', 'play_high_low', 'play_wheel', 'enter_jackpot', 'enter_raid_duel', 'enter_supply_run'], true)) {
+    if (!in_array($action, ['play_coinflip', 'play_dice', 'play_high_low', 'play_wheel', 'play_roulette', 'play_slots', 'start_blackjack', 'blackjack_hit', 'blackjack_stand', 'blackjack_double', 'enter_jackpot', 'enter_raid_duel', 'enter_supply_run'], true)) {
         return;
     }
 
@@ -3111,6 +3151,20 @@ function raidlands_rewards_handle_games_request(): void
             $message = $result['won']
                 ? 'Wheel landed on ' . $outcome . '. Your game is saved; the server is now adding the ' . raidlands_store_rp((int) $result['payout_rp']) . ' payout.'
                 : 'Wheel landed on ' . $outcome . '. Your game is saved; the server is now updating your RP.';
+        } elseif ($action === 'play_roulette') {
+            $bets = json_decode((string) ($_POST['bets_json'] ?? '[]'), true);
+            if (!is_array($bets)) throw new InvalidArgumentException('Roulette bets are invalid.');
+            $result = raidlands_casino_play_roulette($bets);
+            $message = 'Roulette landed on ' . $result['roll'] . '. The server is confirming ' . raidlands_store_rp((int) $result['payout_rp']) . ' in payouts.';
+        } elseif ($action === 'play_slots') {
+            $result = raidlands_casino_play_slots((int) ($_POST['stake_rp'] ?? 0));
+            $message = 'The reels stopped with ' . count((array) ($result['winning_lines'] ?? [])) . ' winning line(s). The server is confirming the result.';
+        } elseif ($action === 'start_blackjack') {
+            $result = raidlands_blackjack_start((int) ($_POST['stake_rp'] ?? 0));
+            $message = 'Blackjack wager queued. Cards will be dealt after the Rust server confirms it.';
+        } elseif (in_array($action, ['blackjack_hit', 'blackjack_stand', 'blackjack_double'], true)) {
+            $result = raidlands_blackjack_action(substr($action, 10), (int) ($_POST['hand_id'] ?? 0), (int) ($_POST['action_version'] ?? 0));
+            $message = (string) ($result['hand']['message'] ?? 'Blackjack hand updated.');
         } elseif ($action === 'enter_raid_duel') {
             $result = raidlands_rewards_enter_pool_game('raid_duel', (string) ($_POST['choice'] ?? ''), (int) ($_POST['stake_rp'] ?? 0));
             $message = 'Your Raid Duel pick on ' . (string) $result['choice_label'] . ' is saved. The server is now confirming the ' . raidlands_store_rp((int) $result['stake_rp']) . ' entry.';
@@ -3296,6 +3350,10 @@ function raidlands_rewards_sync_source_from_point_result(PDO $pdo, array $reques
         return;
     }
 
+    if (raidlands_blackjack_sync_point_result($pdo, $request, $status, $message)) {
+        return;
+    }
+
     if ($source_type === 'vote_reward') {
         $update = $pdo->prepare(
             'UPDATE vote_reward_claims
@@ -3314,7 +3372,7 @@ function raidlands_rewards_sync_source_from_point_result(PDO $pdo, array $reques
         return;
     }
 
-    if (in_array($source_type, ['coinflip', 'dice', 'high_low', 'wheel'], true)) {
+    if (in_array($source_type, ['coinflip', 'dice', 'high_low', 'wheel', 'roulette', 'slots'], true)) {
         $round = raidlands_db_fetch_one('SELECT * FROM rp_game_rounds WHERE id = :id LIMIT 1', ['id' => $source_id]);
         $update = $pdo->prepare(
             'UPDATE rp_game_rounds
@@ -3643,6 +3701,18 @@ function raidlands_rewards_admin_save_game_settings(array $post): void
     if (raidlands_store_table_has_columns('rp_game_settings', ['wheel_enabled'])) {
         $set[] = 'wheel_enabled = :wheel_enabled';
         $params['wheel_enabled'] = raidlands_rewards_bool($post['wheel_enabled'] ?? null);
+    }
+
+    foreach (['roulette', 'slots', 'blackjack'] as $casino_game) {
+        if (raidlands_store_table_has_columns('rp_game_settings', [$casino_game . '_enabled'])) {
+            $set[] = $casino_game . '_enabled = :' . $casino_game . '_enabled';
+            $params[$casino_game . '_enabled'] = raidlands_rewards_bool($post[$casino_game . '_enabled'] ?? null);
+        }
+    }
+    if (raidlands_store_table_has_columns('rp_game_settings', ['casino_rtp_preset'])) {
+        $preset = strtolower(trim((string) ($post['casino_rtp_preset'] ?? 'balanced')));
+        $set[] = 'casino_rtp_preset = :casino_rtp_preset';
+        $params['casino_rtp_preset'] = in_array($preset, ['safe', 'balanced', 'generous'], true) ? $preset : 'balanced';
     }
 
     if (raidlands_store_table_has_columns('rp_game_settings', ['raid_duel_enabled'])) {

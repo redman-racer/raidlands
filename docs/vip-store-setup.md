@@ -41,9 +41,10 @@
 37. Run `database/migrations/051_server_map_heatmap.sql`.
 38. Run `database/migrations/056_seed_airstrike_animation_strike_profiles.sql`.
 39. Run `database/migrations/057_repair_airstrike_animation_column_widths.sql`.
-40. Run `database/seeds/001_store_products.sql`.
-41. Copy the root `.env.example` file to `.env`.
-42. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
+40. Run `database/migrations/063_blackjack_roulette_slots.sql`.
+41. Run `database/seeds/001_store_products.sql`.
+42. Copy the root `.env.example` file to `.env`.
+43. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
 
 The root `.env` file is ignored by Git and protected from direct web access by the root `.htaccess`.
 
@@ -74,6 +75,8 @@ Cash checkout remains inactive until real Stripe prices are configured.
 - Each active store product must have at least one applied group. Purchases and manual grants apply those groups; Kits and Groups control the permissions those groups receive. Migration `025_store_lifetime_kit_unlock_groups.sql` creates managed groups for the individual kit unlock products.
 - The website queues RP purchases first. `WebsiteVipBridge` polls `/api/server/rp-purchases.php`, verifies and deducts live ServerRewards RP, then posts the result to `/api/server/rp-purchase-result.php`.
 - Vote rewards and RP games queue generic point changes through `/api/server/rp-point-requests.php`; `WebsiteVipBridge` confirms ServerRewards debits/credits exactly once and posts results to `/api/server/rp-point-result.php`.
+- Migration 063 adds European Roulette, five-reel Slots, and persisted Blackjack. Blackjack queues its wager before dealing, queues a second debit before double-down resolution, and uses a separate payout request. Confirmed hands auto-stand after ten minutes if abandoned.
+- Roulette uses the published European single-zero table. Blackjack uses six decks, dealer stand on soft 17, and 3:2 naturals. The RP Games admin preset changes the audited Slots paytable only; it does not silently change Roulette or Blackjack table rules.
 - Entitlements activate only after the bridge confirms the debit.
 - Fixed purchases with insufficient RP are rejected. Auto-renew renewals with insufficient RP become past due and the current entitlement expires normally.
 - After running `013_pvp_kit_permission_cleanup.sql`, publish once from Admin > Kits or Admin > Groups so the server receives the unique PvP kit permissions.

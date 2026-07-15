@@ -16,6 +16,9 @@
     "supply-run": { minMs: 1100, settleMs: 260, resultLockMs: 900 },
     "high-low": { minMs: 2200, settleMs: 560, resultLockMs: 1100 },
     wheel: { minMs: 3200, settleMs: 1600, resultLockMs: 1200 }
+    ,blackjack: { minMs: 500, settleMs: 250, resultLockMs: 700 }
+    ,roulette: { minMs: 2400, settleMs: 900, resultLockMs: 1100 }
+    ,slots: { minMs: 1900, settleMs: 500, resultLockMs: 1000 }
   };
   const RP_WHEEL_RESULT_ROTATIONS = {
     green: 351,
@@ -509,6 +512,8 @@
     if (!tabs.length || !panels.length) return;
 
     initRpSyncGuide(root);
+    initRouletteBuilder(root);
+    renderBlackjack(root.querySelector("[data-blackjack-table]"));
     activateRpGame(root, normalizeRpGameKey(root, window.location.hash) || tabs[0].dataset.rpGameTab || "coinflip", false);
 
     tabs.forEach(tab => {
@@ -538,7 +543,7 @@
       }
 
       event.preventDefault();
-      submitRpGameForm(root, form);
+      submitRpGameForm(root, form, event.submitter);
     });
   }
 
@@ -583,11 +588,12 @@
     }
   }
 
-  async function submitRpGameForm(root, form) {
+  async function submitRpGameForm(root, form, clickedButton) {
     const panel = form.closest("[data-rp-game-panel]");
     const submitter = form.querySelector('[type="submit"]');
     const gameKey = form.dataset.rpGameForm || panel?.dataset.rpGamePanel || "game";
     const formData = new FormData(form);
+    if (clickedButton?.name && clickedButton.value) formData.set(clickedButton.name, clickedButton.value);
     const timing = startRpGameMotion(panel, gameKey);
 
     form.classList.add("is-submitting");
@@ -631,6 +637,7 @@
       showToast(payload.message || "RP game queued.");
       track(`rp_game_${form.dataset.rpGameForm || "play"}_queued`);
       await delay(timing.resultLockMs);
+      if (normalizeRpPlayedGame(gameKey) === "blackjack") window.setTimeout(() => window.location.reload(), 250);
     } catch (error) {
       const message = error && error.message ? error.message : "RP game could not be queued.";
       stopRpGameMotion(panel);
@@ -709,10 +716,45 @@
       settleHighLow(panel, result);
     } else if (normalized === "wheel") {
       settleWheel(panel, result, timing);
+    } else if (normalized === "roulette") {
+      const target = panel.querySelector("[data-rp-roulette-result]");
+      if (target) target.textContent = String(result.roll ?? 0);
+    } else if (normalized === "slots") {
+      const cells = panel.querySelectorAll("[data-rp-slot-grid] span");
+      const grid = result.grid || [];
+      cells.forEach((cell, index) => { const reel = Math.floor(index / 3); const row = index % 3; cell.textContent = grid?.[reel]?.[row] || "?"; });
+    } else if (normalized === "blackjack") {
+      const table = panel.querySelector("[data-blackjack-table]");
+      if (table && result.hand) { table.dataset.hand = JSON.stringify(result.hand); renderBlackjack(table); }
     }
 
     await delay(timing.settleMs);
     panel.classList.remove("is-spinning");
+  }
+
+  function initRouletteBuilder(root) {
+    const form = root.querySelector(".roulette-bet-builder");
+    if (!form) return;
+    const bets = [], type = form.querySelector("[data-roulette-type]"), numbers = form.querySelector("[data-roulette-numbers]");
+    const key = form.querySelector("[data-roulette-key]"), stake = form.querySelector("[data-roulette-stake]");
+    const hidden = form.querySelector("[data-roulette-bets-json]"), slip = form.querySelector("[data-roulette-slip]"), total = form.querySelector("[data-roulette-total]");
+    const render = () => {
+      hidden.value = JSON.stringify(bets); total.textContent = `${bets.reduce((sum, bet) => sum + bet.stake_rp, 0)} RP`;
+      slip.innerHTML = bets.length ? "" : "<p>No bets placed.</p>";
+      bets.forEach((bet, index) => { const row = document.createElement("button"); row.type="button"; row.className="roulette-slip-row"; row.textContent=`${bet.type === "outside" ? bet.key : bet.numbers.join("/")} — ${bet.stake_rp} RP ×`; row.addEventListener("click",()=>{bets.splice(index,1);render();}); slip.appendChild(row); });
+    };
+    type.addEventListener("change",()=>{ const outside=type.value==="outside"; form.querySelector("[data-roulette-numbers-field]").hidden=outside; form.querySelector("[data-roulette-key-field]").hidden=!outside; });
+    root.querySelectorAll("[data-roulette-straights] [data-number]").forEach(button=>button.addEventListener("click",()=>{type.value="straight";type.dispatchEvent(new Event("change"));numbers.value=button.dataset.number||"";}));
+    form.querySelector("[data-roulette-add]").addEventListener("click",()=>{ const amount=Number(stake.value); if(!Number.isInteger(amount)||amount<1){showToast("Enter a positive roulette stake.");return;} const bet={type:type.value,stake_rp:amount}; if(type.value==="outside")bet.key=key.value;else bet.numbers=numbers.value.split(",").map(value=>Number(value.trim())).filter(Number.isInteger); bets.push(bet);render(); });
+    form.addEventListener("submit",event=>{if(!bets.length){event.preventDefault();event.stopImmediatePropagation();showToast("Add at least one roulette bet.");}});
+  }
+
+  function renderBlackjack(table) {
+    if (!table) return; let hand=null; try { hand=JSON.parse(table.dataset.hand||"null"); } catch (_) {}
+    const renderCards = (target, cards) => { target.innerHTML=""; (cards||[]).forEach(card=>{const el=document.createElement("span");el.className="blackjack-card";el.textContent=card||"?";target.appendChild(el);}); };
+    renderCards(table.querySelector("[data-blackjack-dealer]"),hand?.dealer_cards); renderCards(table.querySelector("[data-blackjack-player]"),hand?.player_cards);
+    const playerTotal=table.querySelector("[data-blackjack-player-total]"), dealerTotal=table.querySelector("[data-blackjack-dealer-total]");
+    if(playerTotal)playerTotal.textContent=hand?.player_value?.total?`Total ${hand.player_value.total}`:""; if(dealerTotal)dealerTotal.textContent=hand?.dealer_value?.total?`Total ${hand.dealer_value.total}`:"";
   }
 
   function stopRpGameMotion(panel) {
@@ -1192,6 +1234,11 @@
     renderRpJackpotEntries(Array.isArray(state.jackpot_entries) ? state.jackpot_entries : []);
     updateRpHistoryEmpty(state);
     applyRpSyncState(state.sync || {});
+    const blackjackTable = app.querySelector("[data-blackjack-table]");
+    if (blackjackTable && state.active_blackjack) {
+      let current = null; try { current = JSON.parse(blackjackTable.dataset.hand || "null"); } catch (_) {}
+      if (!current || current.status !== state.active_blackjack.status || current.action_version !== state.active_blackjack.action_version) window.location.reload();
+    }
   }
 
   function applyRpJackpotState(jackpot) {

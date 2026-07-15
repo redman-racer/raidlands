@@ -36,6 +36,13 @@ $raid_duel_backend = !empty($game_backend['raid_duel']);
 $supply_run_backend = !empty($game_backend['supply_run']);
 $high_low_enabled = $high_low_backend && !empty($settings['high_low_enabled']);
 $wheel_enabled = $wheel_backend && !empty($settings['wheel_enabled']);
+$roulette_backend = !empty($game_backend['roulette']);
+$slots_backend = !empty($game_backend['slots']);
+$blackjack_backend = !empty($game_backend['blackjack']);
+$roulette_enabled = $roulette_backend && !empty($settings['roulette_enabled']);
+$slots_enabled = $slots_backend && !empty($settings['slots_enabled']);
+$blackjack_enabled = $blackjack_backend && !empty($settings['blackjack_enabled']);
+$active_blackjack = is_array($rp_games_state['active_blackjack'] ?? null) ? $rp_games_state['active_blackjack'] : null;
 $raid_duel_enabled = $raid_duel_backend && !empty($settings['raid_duel_enabled']);
 $supply_run_enabled = $supply_run_backend && !empty($settings['supply_run_enabled']);
 $monument_ready = !empty($monument_state['ready']);
@@ -59,6 +66,9 @@ $game_names = [
     'dice' => 'Dice',
     'high_low' => 'High-Low',
     'wheel' => 'Wheel',
+    'roulette' => 'Roulette',
+    'slots' => 'Slots',
+    'blackjack' => 'Blackjack',
     'raid_duel' => 'Raid Duel',
     'supply_run' => 'Supply Run',
     'monument_extraction' => 'Monument Extraction',
@@ -139,6 +149,19 @@ $rp_game_tabs = [
         'icon' => 'EVENT',
         'enabled' => $can_play && $wheel_enabled,
         'ready' => $wheel_backend,
+    ],
+    [
+        'key' => 'blackjack', 'label' => 'Blackjack',
+        'meta' => $active_blackjack ? 'Hand in progress' : 'Dealer stands soft 17', 'icon' => 'RISK',
+        'enabled' => $can_play && $blackjack_enabled, 'ready' => $blackjack_backend,
+    ],
+    [
+        'key' => 'roulette', 'label' => 'Roulette', 'meta' => 'European 0-36', 'icon' => 'EVENT',
+        'enabled' => $can_play && $roulette_enabled, 'ready' => $roulette_backend,
+    ],
+    [
+        'key' => 'slots', 'label' => 'Slots', 'meta' => '5 reels / 10 lines', 'icon' => 'SHOP',
+        'enabled' => $can_play && $slots_enabled, 'ready' => $slots_backend,
     ],
 ];
 ?>
@@ -603,6 +626,24 @@ $rp_game_tabs = [
               </div>
             </details>
           </div>
+        </article>
+
+        <article class="metal-panel rp-game-panel" id="rp-panel-blackjack" role="tabpanel" aria-labelledby="rp-tab-blackjack" data-rp-game-panel="blackjack" hidden>
+          <div class="rp-game-panel-grid"><div><p class="section-kicker">Six decks / 3:2 natural</p><h2>Blackjack</h2><p class="section-lede">Beat the dealer without passing 21. The dealer stands on soft 17; unfinished hands auto-stand after ten minutes.</p>
+            <div class="blackjack-table" data-blackjack-table data-hand='<?= e(json_encode($active_blackjack, JSON_UNESCAPED_SLASHES) ?: 'null') ?>'><small>Dealer</small><div class="blackjack-cards" data-blackjack-dealer></div><strong data-blackjack-dealer-total></strong><small>Your hand</small><div class="blackjack-cards" data-blackjack-player></div><strong data-blackjack-player-total></strong><p data-blackjack-message><?= e((string)($active_blackjack['message']??'Start a hand after the Rust server confirms your wager.')) ?></p></div>
+            <?php if(!$blackjack_backend): ?><div class="form-status warning">Run migration 063 to unlock Blackjack.</div><?php endif; ?></div><div>
+            <?php if($active_blackjack===null): ?><form class="feedback-form rp-game-form" method="post" action="<?= e(route_url('rp-games')) ?>" data-rp-game-form="blackjack"><input type="hidden" name="csrf" value="<?= e($rp_games_csrf) ?>"><input type="hidden" name="action" value="start_blackjack"><label class="store-field"><span>Stake (even RP)</span><input type="number" name="stake_rp" min="<?= $min_stake ?>" max="<?= $max_stake ?>" step="2" value="<?= $min_stake+($min_stake%2) ?>" <?= $can_play&&$blackjack_enabled?'':'disabled' ?>></label><button class="btn btn-primary" type="submit" <?= $can_play&&$blackjack_enabled?'':'disabled' ?>>Deal Blackjack</button></form>
+            <?php else: ?><form class="feedback-form rp-game-form" method="post" action="<?= e(route_url('rp-games')) ?>" data-rp-game-form="blackjack"><input type="hidden" name="csrf" value="<?= e($rp_games_csrf) ?>"><input type="hidden" name="hand_id" value="<?= e((string)$active_blackjack['id']) ?>"><input type="hidden" name="action_version" value="<?= e((string)$active_blackjack['action_version']) ?>"><div class="blackjack-actions"><button class="btn btn-secondary" name="action" value="blackjack_hit" type="submit" <?= !empty($active_blackjack['can_hit'])?'':'disabled' ?>>Hit</button><button class="btn btn-primary" name="action" value="blackjack_stand" type="submit" <?= !empty($active_blackjack['can_stand'])?'':'disabled' ?>>Stand</button><button class="btn btn-secondary" name="action" value="blackjack_double" type="submit" <?= !empty($active_blackjack['can_double'])?'':'disabled' ?>>Double</button></div></form><?php endif; ?></div></div>
+        </article>
+
+        <article class="metal-panel rp-game-panel" id="rp-panel-roulette" role="tabpanel" aria-labelledby="rp-tab-roulette" data-rp-game-panel="roulette" hidden>
+          <div class="rp-game-panel-grid"><div><p class="section-kicker">European single-zero</p><h2>Roulette</h2><p class="section-lede">Build up to 64 simultaneous inside and outside bets, then spin once.</p><div class="roulette-wheel"><strong data-rp-roulette-result>0</strong></div><div class="roulette-number-grid" data-roulette-straights><?php for($n=0;$n<=36;$n++): ?><button type="button" data-number="<?= $n ?>" class="roulette-number<?= in_array($n,raidlands_casino_roulette_red_numbers(),true)?' red':' black' ?>"><?= $n ?></button><?php endfor; ?></div><?php if(!$roulette_backend): ?><div class="form-status warning">Run migration 063 to unlock Roulette.</div><?php endif; ?></div>
+            <form class="feedback-form rp-game-form roulette-bet-builder" method="post" action="<?= e(route_url('rp-games')) ?>" data-rp-game-form="roulette"><input type="hidden" name="csrf" value="<?= e($rp_games_csrf) ?>"><input type="hidden" name="action" value="play_roulette"><input type="hidden" name="bets_json" value="[]" data-roulette-bets-json><label class="store-field"><span>Bet type</span><select data-roulette-type><option value="straight">Straight</option><option value="split">Split</option><option value="street">Street / trio</option><option value="corner">Corner</option><option value="six_line">Six-line</option><option value="outside">Outside</option></select></label><label class="store-field" data-roulette-numbers-field><span>Numbers</span><input data-roulette-numbers placeholder="17 or 17,18"></label><label class="store-field" data-roulette-key-field hidden><span>Outside bet</span><select data-roulette-key><?php foreach(['red','black','odd','even','low','high','dozen_1','dozen_2','dozen_3','column_1','column_2','column_3'] as $key): ?><option value="<?= e($key) ?>"><?= e(ucwords(str_replace('_',' ',$key))) ?></option><?php endforeach; ?></select></label><label class="store-field"><span>Bet stake</span><input type="number" min="1" value="<?= $min_stake ?>" data-roulette-stake></label><button class="btn btn-secondary" type="button" data-roulette-add>Add Bet</button><div class="roulette-bet-slip" data-roulette-slip><p>No bets placed.</p></div><strong>Total: <span data-roulette-total>0 RP</span></strong><button class="btn btn-primary" type="submit" <?= $can_play&&$roulette_enabled?'':'disabled' ?>>Spin Roulette</button></form>
+          </div>
+        </article>
+
+        <article class="metal-panel rp-game-panel" id="rp-panel-slots" role="tabpanel" aria-labelledby="rp-tab-slots" data-rp-game-panel="slots" hidden>
+          <div class="rp-game-panel-grid"><div><p class="section-kicker">Five reels / ten fixed lines</p><h2>Raidlands Slots</h2><p class="section-lede">Every spin plays ten equal paylines. Match three or more symbols from the leftmost reel.</p><div class="casino-slot-grid" data-rp-slot-grid><?php for($i=0;$i<15;$i++): ?><span>?</span><?php endfor; ?></div><details><summary>Paytable</summary><div class="rp-wheel-odds"><?php foreach(raidlands_casino_slot_config((string)($settings['casino_rtp_preset']??'balanced'))['symbols'] as $symbol): if($symbol['pays']): ?><span><strong><?= e($symbol['label']) ?></strong><?php foreach($symbol['pays'] as $count=>$pay): ?> <?= $count ?>×: <?= $pay ?>x<?php endforeach; ?></span><?php endif; endforeach; ?></div></details><?php if(!$slots_backend): ?><div class="form-status warning">Run migration 063 to unlock Slots.</div><?php endif; ?></div><form class="feedback-form rp-game-form" method="post" action="<?= e(route_url('rp-games')) ?>" data-rp-game-form="slots"><input type="hidden" name="csrf" value="<?= e($rp_games_csrf) ?>"><input type="hidden" name="action" value="play_slots"><label class="store-field"><span>Total stake (multiple of 10)</span><input type="number" name="stake_rp" min="<?= $min_stake ?>" max="<?= $max_stake ?>" step="10" value="<?= intdiv($min_stake+9,10)*10 ?>" <?= $can_play&&$slots_enabled?'':'disabled' ?>></label><button class="btn btn-primary" type="submit" <?= $can_play&&$slots_enabled?'':'disabled' ?>>Spin Reels</button></form></div>
         </article>
 
         <article class="metal-panel rp-game-panel" id="rp-panel-high-low" role="tabpanel" aria-labelledby="rp-tab-high-low" data-rp-game-panel="high-low" hidden>

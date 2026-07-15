@@ -3756,6 +3756,12 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                           <input type="checkbox" name="wheel_enabled" value="1" <?= !empty($game_settings['wheel_enabled']) ? 'checked' : '' ?> <?= raidlands_rewards_game_backend_ready('wheel') ? '' : 'disabled' ?>>
                           <?= admin_check_copy('Wheel enabled', raidlands_rewards_game_backend_ready('wheel') ? 'Allows players to pick a wheel segment with different odds and payouts.' : 'Run database/migrations/039_more_rp_games.sql before enabling Wheel.') ?>
                         </label>
+                        <?php foreach (['blackjack' => 'Blackjack', 'roulette' => 'Roulette', 'slots' => 'Slots'] as $casino_key => $casino_label) : ?>
+                          <label class="admin-check admin-check-field">
+                            <input type="checkbox" name="<?= e($casino_key) ?>_enabled" value="1" <?= !empty($game_settings[$casino_key . '_enabled']) ? 'checked' : '' ?> <?= raidlands_rewards_game_backend_ready($casino_key) ? '' : 'disabled' ?>>
+                            <?= admin_check_copy($casino_label . ' enabled', raidlands_rewards_game_backend_ready($casino_key) ? 'Allows linked players to wager RP in ' . $casino_label . '.' : 'Run database/migrations/063_blackjack_roulette_slots.sql before enabling ' . $casino_label . '.') ?>
+                          </label>
+                        <?php endforeach; ?>
                         <label class="admin-check admin-check-field">
                           <input type="checkbox" name="raid_duel_enabled" value="1" <?= !empty($game_settings['raid_duel_enabled']) ? 'checked' : '' ?> <?= raidlands_rewards_game_backend_ready('raid_duel') ? '' : 'disabled' ?>>
                           <?= admin_check_copy('Raid Duel enabled', raidlands_rewards_game_backend_ready('raid_duel') ? 'Allows players to join the PvP raiders-vs-defenders pool.' : 'Run database/migrations/040_multiplayer_rp_games.sql before enabling Raid Duel.') ?>
@@ -3775,6 +3781,14 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                       </div>
 
                       <div class="admin-grid four">
+                        <label class="admin-field">
+                          <?= admin_field_head('Casino RTP preset', 'Controls the audited Slots paytable. Roulette and Blackjack retain their published table rules.') ?>
+                          <select name="casino_rtp_preset" <?= raidlands_store_table_has_columns('rp_game_settings', ['casino_rtp_preset']) ? '' : 'disabled' ?>>
+                            <?php foreach (['safe' => 'Safe', 'balanced' => 'Balanced', 'generous' => 'Generous'] as $preset_key => $preset_label) : ?>
+                              <option value="<?= e($preset_key) ?>" <?= (string) ($game_settings['casino_rtp_preset'] ?? 'balanced') === $preset_key ? 'selected' : '' ?>><?= e($preset_label) ?></option>
+                            <?php endforeach; ?>
+                          </select>
+                        </label>
                         <label class="admin-field">
                           <?= admin_field_head('Min stake RP', 'Minimum stake for coinflip and dice.') ?>
                           <input type="number" min="1" name="min_stake_rp" value="<?= e((string) ($game_settings['min_stake_rp'] ?? 200)) ?>">

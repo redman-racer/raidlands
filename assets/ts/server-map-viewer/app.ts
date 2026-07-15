@@ -98,6 +98,7 @@ import {
   type ManualCameraStyle,
 } from "./camera-policy";
 import { monumentNavigationLabels, recentUniqueNavigationEvents, validNavigationCoordinate } from "./navigation-policy";
+import { monumentPrimitiveKind, monumentPrimitiveSearchKey } from "./monument-primitive-policy";
 
 const ENVIRONMENT_QUALITY_STORAGE_KEY = "raidlands:map-environment-quality";
 const CAMERA_PREFERENCES_STORAGE_KEY = "raidlands:map-camera-preferences";
@@ -4681,18 +4682,18 @@ interface MonumentPrimitivePlacement {
 function createMonumentPrimitive(monument: MonumentPayload, placement?: MonumentPrimitivePlacement): Group {
   const group = new Group();
   const key = monumentKey(monument);
+  const primitiveKind = monumentPrimitiveKind(monument);
   const size = MathUtils.clamp(monument.radius, 24, 180);
 
   group.name = `monument-${key}`;
+  group.userData.primitiveKind = primitiveKind;
   const addTitle = () => {
     group.add(createMonumentTitleSprite(monument.name, size));
     return group;
   };
 
-  if (key.includes("airfield")) {
-    addBox(group, size * 2.1, 5, size * 0.22, 0x2c3030, 0, 1, 0);
-    addBox(group, size * 0.44, 22, size * 0.34, 0x6e7470, -size * 0.55, 13, -size * 0.32);
-    addBox(group, size * 0.34, 16, size * 0.28, 0x7f6b45, size * 0.48, 10, size * 0.26);
+  if (primitiveKind === "airfield") {
+    createAirfieldMonumentPrimitive(group, size);
     return addTitle();
   }
 
@@ -4706,24 +4707,18 @@ function createMonumentPrimitive(monument: MonumentPayload, placement?: Monument
     return addTitle();
   }
 
-  if (key.includes("sphere")) {
-    addSphere(group, size * 0.42, 0x9baaa0, 0, size * 0.42, 0);
-    addCylinder(group, size * 0.08, size * 0.55, 0x7f6b45, size * 0.48, size * 0.28, -size * 0.12);
+  if (primitiveKind === "sphere-tank") {
+    createSphereTankMonumentPrimitive(group, size);
     return addTitle();
   }
 
-  if (key.includes("satellite")) {
-    addCylinder(group, size * 0.07, size * 0.46, 0x7d837f, 0, size * 0.23, 0);
-    const dish = addCone(group, size * 0.42, size * 0.18, 0x9aa29c, 0, size * 0.58, 0);
-    dish.rotation.x = MathUtils.degToRad(58);
-    addBox(group, size * 0.86, 4, size * 0.16, 0x3f4543, 0, 2, -size * 0.24);
+  if (primitiveKind === "satellite-dish") {
+    createSatelliteDishMonumentPrimitive(group, size);
     return addTitle();
   }
 
-  if (key.includes("lighthouse")) {
-    addCylinder(group, size * 0.14, size * 1.1, 0xd9d2bd, 0, size * 0.55, 0);
-    addCylinder(group, size * 0.2, size * 0.16, 0x9b3e2e, 0, size * 1.18, 0);
-    addCone(group, size * 0.24, size * 0.18, 0x342f2b, 0, size * 1.35, 0);
+  if (primitiveKind === "lighthouse") {
+    createLighthouseMonumentPrimitive(group, size);
     return addTitle();
   }
 
@@ -4781,17 +4776,14 @@ function createMonumentPrimitive(monument: MonumentPayload, placement?: Monument
     return titledGroup;
   }
 
-  if (key.includes("powerplant") || key.includes("power_plant")) {
-    addBox(group, size * 0.92, size * 0.2, size * 0.62, 0x5b605c, 0, size * 0.1, 0);
-    addCylinder(group, size * 0.09, size * 0.92, 0x9a9a90, -size * 0.24, size * 0.55, 0);
-    addCylinder(group, size * 0.09, size * 0.72, 0x9a9a90, 0, size * 0.45, 0);
-    addCylinder(group, size * 0.09, size * 0.82, 0x9a9a90, size * 0.24, size * 0.5, 0);
+  if (primitiveKind === "power-plant") {
+    createPowerPlantMonumentPrimitive(group, size);
     return addTitle();
   }
 
-  if (key.includes("substation") || key.includes("sub_station")) {
+  if (primitiveKind === "substation") {
     createSubstationMonumentPrimitive(group, size);
-    return group;
+    return addTitle();
   }
 
   if (key.includes("excavator")) {
@@ -4799,11 +4791,8 @@ function createMonumentPrimitive(monument: MonumentPayload, placement?: Monument
     return addTitle();
   }
 
-  if (key.includes("trainyard") || key.includes("train_yard")) {
-    addBox(group, size * 1.3, 4, size * 0.08, 0x252928, 0, 2, -size * 0.22);
-    addBox(group, size * 1.3, 4, size * 0.08, 0x252928, 0, 2, size * 0.22);
-    addBox(group, size * 0.72, size * 0.32, size * 0.34, 0x6f5f48, -size * 0.18, size * 0.18, 0);
-    addBox(group, size * 0.34, size * 0.42, size * 0.28, 0x7f6b45, size * 0.38, size * 0.24, 0);
+  if (primitiveKind === "train-yard") {
+    createTrainYardMonumentPrimitive(group, size);
     return addTitle();
   }
 
@@ -4817,27 +4806,348 @@ function createMonumentPrimitive(monument: MonumentPayload, placement?: Monument
     return addTitle();
   }
 
-  if (key.includes("military") || key.includes("tunnel") || key.includes("bunker")) {
-    addBox(group, size * 0.94, size * 0.26, size * 0.62, 0x59645b, 0, size * 0.13, 0);
-    addBox(group, size * 0.24, size * 0.32, size * 0.28, 0x303635, -size * 0.38, size * 0.16, 0);
+  if (primitiveKind === "military-tunnels") {
+    createMilitaryTunnelsMonumentPrimitive(group, size);
     return addTitle();
   }
 
-  if (key.includes("gas") || key.includes("supermarket") || key.includes("warehouse")) {
-    addBox(group, size * 0.74, size * 0.26, size * 0.56, 0x7d7359, 0, size * 0.13, 0);
-    addBox(group, size * 0.82, size * 0.08, size * 0.22, 0xb76d3a, 0, size * 0.34, -size * 0.18);
+  if (primitiveKind === "bunker") {
+    createBunkerMonumentPrimitive(group, size);
     return addTitle();
   }
 
-  if (key.includes("quarry") || key.includes("mining")) {
-    addCone(group, size * 0.42, size * 0.24, 0x6d624c, 0, size * 0.12, 0);
-    addCylinder(group, size * 0.08, size * 0.48, 0x6f5f48, size * 0.26, size * 0.24, 0);
+  if (primitiveKind === "gas-station") {
+    createGasStationMonumentPrimitive(group, size);
     return addTitle();
   }
 
-  addBox(group, size * 0.68, size * 0.24, size * 0.5, 0x6a705e, 0, size * 0.12, 0);
-  addCylinder(group, size * 0.08, size * 0.46, 0x8b7044, size * 0.28, size * 0.23, -size * 0.12);
+  if (primitiveKind === "supermarket") {
+    createSupermarketMonumentPrimitive(group, size);
+    return addTitle();
+  }
+
+  if (primitiveKind === "warehouse") {
+    createWarehouseMonumentPrimitive(group, size);
+    return addTitle();
+  }
+
+  if (primitiveKind === "quarry") {
+    createQuarryMonumentPrimitive(group, size);
+    return addTitle();
+  }
+
+  createGenericMonumentPrimitive(group, size);
   return addTitle();
+}
+
+function createAirfieldMonumentPrimitive(group: Group, size: number): void {
+  const asphalt = 0x292d2e;
+  const concrete = 0x777970;
+  const fadedConcrete = 0x989386;
+  const hangar = 0x696c66;
+  const rust = 0x8b4c35;
+  const marking = 0xd7d0ad;
+
+  // Long runway, parallel taxiway, and concrete aprons dominate the overhead view.
+  addBox(group, size * 2.18, size * 0.025, size * 0.24, asphalt, 0, size * 0.015, size * 0.24);
+  addBox(group, size * 1.8, size * 0.02, size * 0.12, asphalt, -size * 0.08, size * 0.014, -size * 0.23);
+  addBox(group, size * 0.82, size * 0.018, size * 0.58, concrete, -size * 0.42, size * 0.012, -size * 0.3);
+  for (let x = -0.86; x <= 0.86; x += 0.22) {
+    addBox(group, size * 0.095, size * 0.008, size * 0.018, marking, size * x, size * 0.033, size * 0.24);
+  }
+  [-0.98, 0.98].forEach((x) => {
+    for (const z of [0.18, 0.24, 0.3]) addBox(group, size * 0.11, size * 0.009, size * 0.014, marking, size * x, size * 0.034, size * z);
+  });
+
+  // Three broad, low hangars sit together along the apron.
+  [-0.72, -0.24, 0.24].forEach((x, index) => {
+    addBox(group, size * 0.36, size * 0.2, size * 0.32, index === 1 ? fadedConcrete : hangar, size * x, size * 0.12, -size * 0.48);
+    addPitchedRoof(group, size * 0.4, size * 0.34, size * 0.06, rust, size * x, size * 0.245, -size * 0.48);
+    addBox(group, size * 0.22, size * 0.12, size * 0.015, 0x222827, size * x, size * 0.1, -size * 0.65);
+  });
+
+  // Office block and control tower form the recognizable east-side skyline.
+  addBox(group, size * 0.42, size * 0.2, size * 0.25, concrete, size * 0.7, size * 0.12, -size * 0.42);
+  addBox(group, size * 0.18, size * 0.52, size * 0.18, fadedConcrete, size * 0.83, size * 0.3, -size * 0.16);
+  addBox(group, size * 0.26, size * 0.12, size * 0.26, 0x434b4b, size * 0.83, size * 0.63, -size * 0.16);
+  addBox(group, size * 0.3, size * 0.035, size * 0.3, rust, size * 0.83, size * 0.72, -size * 0.16);
+  addCylinder(group, size * 0.018, size * 0.34, rust, size * 0.83, size * 0.9, -size * 0.16);
+}
+
+function createSphereTankMonumentPrimitive(group: Group, size: number): void {
+  const steel = 0x9ba49d;
+  const rust = 0x86513b;
+  const concrete = 0x817f73;
+  const pipe = 0x626b68;
+
+  addBox(group, size * 1.2, size * 0.025, size * 0.84, concrete, 0, size * 0.015, 0);
+  const tankY = size * 0.55;
+  addSphere(group, size * 0.34, steel, -size * 0.1, tankY, 0);
+  for (const [x, z] of [[-0.25, -0.16], [0.05, -0.16], [-0.25, 0.16], [0.05, 0.16]]) {
+    const leg = addBox(group, size * 0.035, size * 0.42, size * 0.035, rust, size * x, size * 0.22, size * z);
+    leg.rotation.z = MathUtils.degToRad(x < -0.1 ? -7 : 7);
+  }
+  const catwalk = new Mesh(new RingGeometry(size * 0.35, size * 0.39, 28), monumentMaterial(rust));
+  catwalk.position.set(-size * 0.1, tankY, 0);
+  catwalk.rotation.x = -Math.PI / 2;
+  group.add(catwalk);
+  addCylinder(group, size * 0.025, size * 0.5, pipe, size * 0.38, size * 0.26, 0);
+  addBox(group, size * 0.48, size * 0.035, size * 0.035, pipe, size * 0.15, size * 0.16, 0);
+  addBox(group, size * 0.32, size * 0.18, size * 0.24, 0x676a62, size * 0.42, size * 0.11, -size * 0.26);
+}
+
+function createSatelliteDishMonumentPrimitive(group: Group, size: number): void {
+  const concrete = 0x77786e;
+  const steel = 0x9ba39d;
+  const dark = 0x414947;
+  const rust = 0x86513b;
+
+  addBox(group, size * 1.42, size * 0.025, size * 0.92, concrete, 0, size * 0.015, 0);
+  [[-0.42, -0.05, 54], [0.42, 0.08, -54]].forEach(([x, z, tilt]) => {
+    addCylinder(group, size * 0.065, size * 0.42, dark, size * x, size * 0.22, size * z);
+    addBox(group, size * 0.28, size * 0.07, size * 0.24, rust, size * x, size * 0.43, size * z);
+    const dish = addCone(group, size * 0.28, size * 0.12, steel, size * x, size * 0.58, size * z);
+    dish.rotation.x = MathUtils.degToRad(tilt);
+    const feed = addCylinder(group, size * 0.018, size * 0.25, dark, size * x, size * 0.7, size * z);
+    feed.rotation.x = MathUtils.degToRad(tilt);
+  });
+  addBox(group, size * 0.38, size * 0.18, size * 0.25, dark, 0, size * 0.11, -size * 0.36);
+  addBox(group, size * 0.42, size * 0.035, size * 0.29, rust, 0, size * 0.22, -size * 0.36);
+}
+
+function createLighthouseMonumentPrimitive(group: Group, size: number): void {
+  const stone = 0x666258;
+  const plaster = 0xd0c8b0;
+  const red = 0x914333;
+  const dark = 0x2e3332;
+
+  addCone(group, size * 0.5, size * 0.2, stone, 0, size * 0.1, 0);
+  addBox(group, size * 0.48, size * 0.2, size * 0.34, stone, size * 0.24, size * 0.18, size * 0.14);
+  addPitchedRoof(group, size * 0.52, size * 0.38, size * 0.06, red, size * 0.24, size * 0.31, size * 0.14);
+  const tower = new Mesh(new CylinderGeometry(size * 0.11, size * 0.18, size * 0.95, 18), monumentMaterial(plaster));
+  tower.position.set(-size * 0.08, size * 0.66, -size * 0.04);
+  group.add(tower);
+  [0.42, 0.66, 0.88].forEach((y) => addBox(group, size * 0.025, size * 0.065, size * 0.01, dark, -size * 0.08, size * y, -size * 0.145));
+  addCylinder(group, size * 0.16, size * 0.055, red, -size * 0.08, size * 1.16, -size * 0.04);
+  addCylinder(group, size * 0.12, size * 0.16, 0x334143, -size * 0.08, size * 1.26, -size * 0.04);
+  addCone(group, size * 0.16, size * 0.13, red, -size * 0.08, size * 1.405, -size * 0.04);
+}
+
+function createPowerPlantMonumentPrimitive(group: Group, size: number): void {
+  const concrete = 0x85837a;
+  const stained = 0x65665f;
+  const rust = 0x8c4b35;
+  const steel = 0x5e6968;
+  const asphalt = 0x303536;
+
+  addBox(group, size * 1.65, size * 0.025, size * 1.2, asphalt, 0, size * 0.015, 0);
+  [-0.42, 0.38].forEach((x, index) => {
+    addCoolingTower(group, size * (index ? 0.42 : 0.48), size * x, size * (index ? 0.08 : -0.08), concrete);
+  });
+  addBox(group, size * 0.72, size * 0.28, size * 0.3, stained, 0, size * 0.17, size * 0.46);
+  addPitchedRoof(group, size * 0.76, size * 0.34, size * 0.055, rust, 0, size * 0.34, size * 0.46);
+  addBox(group, size * 0.28, size * 0.48, size * 0.28, stained, size * 0.62, size * 0.26, size * 0.42);
+  // Elevated red process pipes and a rail spur tie the site together.
+  addBox(group, size * 1.1, size * 0.035, size * 0.035, rust, 0, size * 0.34, -size * 0.48);
+  [-0.48, -0.18, 0.18, 0.48].forEach((x) => addCylinder(group, size * 0.018, size * 0.34, steel, size * x, size * 0.18, -size * 0.48));
+  addRailTrack(group, size, -size * 0.52, size * 1.35);
+}
+
+function addCoolingTower(group: Group, towerSize: number, x: number, z: number, color: number): void {
+  const lower = new Mesh(new CylinderGeometry(towerSize * 0.3, towerSize * 0.5, towerSize * 0.68, 22, 1, true), monumentMaterial(color));
+  lower.position.set(x, towerSize * 0.34, z);
+  group.add(lower);
+  const upper = new Mesh(new CylinderGeometry(towerSize * 0.43, towerSize * 0.3, towerSize * 0.42, 22, 1, true), monumentMaterial(color));
+  upper.position.set(x, towerSize * 0.89, z);
+  group.add(upper);
+  const rim = new Mesh(new RingGeometry(towerSize * 0.34, towerSize * 0.44, 22), monumentMaterial(0x5c5d58));
+  rim.position.set(x, towerSize * 1.1, z);
+  rim.rotation.x = -Math.PI / 2;
+  group.add(rim);
+}
+
+function createTrainYardMonumentPrimitive(group: Group, size: number): void {
+  const concrete = 0x777b75;
+  const dark = 0x303536;
+  const rust = 0x955033;
+  const steel = 0x5e696b;
+  const tank = 0x7f765f;
+
+  addBox(group, size * 1.65, size * 0.025, size * 1.15, 0x55564f, 0, size * 0.015, 0);
+  [-0.48, -0.16, 0.16, 0.48].forEach((z) => addRailTrack(group, size, size * z, size * 1.55));
+  addBox(group, size * 0.44, size * 0.7, size * 0.32, concrete, -size * 0.5, size * 0.36, -size * 0.04);
+  addBox(group, size * 0.38, size * 0.46, size * 0.28, concrete, size * 0.48, size * 0.25, size * 0.34);
+  addBox(group, size * 0.5, size * 0.24, size * 0.26, dark, size * 0.06, size * 0.14, -size * 0.44);
+  addPitchedRoof(group, size * 0.54, size * 0.3, size * 0.05, rust, size * 0.06, size * 0.28, -size * 0.44);
+  [-0.58, 0.05, 0.62].forEach((x, index) => addFreightCrane(group, size * 0.55, size * x, size * (index === 1 ? 0.2 : -0.2), index % 2 ? -0.12 : 0.12));
+  // Water tower and short rail cars make the silhouette legible from low orbit.
+  for (const [x, z] of [[0.67, -0.48], [0.78, -0.48], [0.67, -0.32], [0.78, -0.32]]) {
+    addBox(group, size * 0.025, size * 0.46, size * 0.025, steel, size * x, size * 0.24, size * z);
+  }
+  addCylinder(group, size * 0.14, size * 0.18, tank, size * 0.725, size * 0.55, -size * 0.4);
+  [[-0.2, -0.16, 0x86503a], [0.24, 0.16, 0x4d6870], [-0.42, 0.48, 0x766448]].forEach(([x, z, color]) => {
+    addBox(group, size * 0.32, size * 0.11, size * 0.12, color, size * (x as number), size * 0.085, size * (z as number));
+  });
+}
+
+function addRailTrack(group: Group, size: number, z: number, length: number): void {
+  addBox(group, length, size * 0.018, size * 0.018, 0x202525, 0, size * 0.032, z - size * 0.035);
+  addBox(group, length, size * 0.018, size * 0.018, 0x202525, 0, size * 0.032, z + size * 0.035);
+  for (let x = -length * 0.46; x <= length * 0.46; x += size * 0.14) {
+    addBox(group, size * 0.025, size * 0.012, size * 0.11, 0x574638, x, size * 0.018, z);
+  }
+}
+
+function addFreightCrane(group: Group, craneSize: number, x: number, z: number, rotationY: number): void {
+  const rust = 0x955033;
+  const dark = 0x434b4c;
+  [-0.15, 0.15].forEach((offset) => {
+    const leg = addBox(group, craneSize * 0.035, craneSize * 0.7, craneSize * 0.035, dark, x + craneSize * offset, craneSize * 0.36, z);
+    leg.rotation.z = MathUtils.degToRad(offset < 0 ? -8 : 8);
+  });
+  const bridge = addBox(group, craneSize * 0.62, craneSize * 0.045, craneSize * 0.06, rust, x, craneSize * 0.72, z);
+  bridge.rotation.y = rotationY;
+  addBox(group, craneSize * 0.025, craneSize * 0.3, craneSize * 0.025, dark, x, craneSize * 0.55, z);
+}
+
+function createMilitaryTunnelsMonumentPrimitive(group: Group, size: number): void {
+  const earth = 0x5d584b;
+  const concrete = 0x777970;
+  const military = 0x566153;
+  const dark = 0x252a29;
+  const rust = 0x67483a;
+
+  addBox(group, size * 1.55, size * 0.025, size * 1.08, earth, 0, size * 0.015, 0);
+  addBox(group, size * 0.86, size * 0.025, size * 0.2, 0x353a3a, -size * 0.12, size * 0.032, size * 0.22);
+  // Recessed concrete portal and dark tunnel mouth.
+  addBox(group, size * 0.56, size * 0.32, size * 0.26, concrete, -size * 0.38, size * 0.18, -size * 0.38);
+  addBox(group, size * 0.34, size * 0.22, size * 0.02, dark, -size * 0.38, size * 0.13, -size * 0.52);
+  addBox(group, size * 0.64, size * 0.12, size * 0.34, earth, -size * 0.38, size * 0.36, -size * 0.36);
+  // Loading shed, container yard, and watchtower match the visible surface complex.
+  addBox(group, size * 0.46, size * 0.2, size * 0.28, military, size * 0.42, size * 0.12, -size * 0.18);
+  addPitchedRoof(group, size * 0.5, size * 0.32, size * 0.05, rust, size * 0.42, size * 0.24, -size * 0.18);
+  addGuardTower(group, size * 0.42, size * 0.56, size * 0.34);
+  [[0.15, 0.42, 0x5b6a5c], [0.42, 0.44, 0x83503b], [0.18, 0.56, 0x525c65]].forEach(([x, z, color]) => {
+    addBox(group, size * 0.28, size * 0.11, size * 0.12, color, size * (x as number), size * 0.075, size * (z as number));
+  });
+}
+
+function createBunkerMonumentPrimitive(group: Group, size: number): void {
+  const earth = 0x625c4d;
+  const concrete = 0x777970;
+  addBox(group, size * 1.05, size * 0.025, size * 0.76, earth, 0, size * 0.015, 0);
+  addBox(group, size * 0.68, size * 0.18, size * 0.46, concrete, 0, size * 0.1, 0);
+  addBox(group, size * 0.38, size * 0.17, size * 0.025, 0x202525, 0, size * 0.11, -size * 0.245);
+  addBox(group, size * 0.18, size * 0.08, size * 0.4, 0x3e4441, 0, size * 0.21, size * 0.04);
+  [-0.22, 0.22].forEach((x) => addCylinder(group, size * 0.035, size * 0.22, 0x555f5b, size * x, size * 0.28, size * 0.08));
+}
+
+function createGasStationMonumentPrimitive(group: Group, size: number): void {
+  const concrete = 0x8a887d;
+  const wall = 0xb1aa91;
+  const oxum = 0xb86435;
+  const dark = 0x343a39;
+
+  addBox(group, size * 1.18, size * 0.025, size * 0.82, concrete, 0, size * 0.015, 0);
+  addBox(group, size * 0.58, size * 0.28, size * 0.4, wall, size * 0.2, size * 0.15, size * 0.12);
+  addBox(group, size * 0.28, size * 0.22, size * 0.035, dark, size * 0.34, size * 0.13, size * 0.335);
+  addBox(group, size * 0.24, size * 0.22, size * 0.035, 0x506063, size * 0.02, size * 0.13, size * 0.335);
+  addBox(group, size * 0.64, size * 0.045, size * 0.46, oxum, size * 0.2, size * 0.32, size * 0.12);
+  // Roadside pump canopy with two fuel islands.
+  addBox(group, size * 0.62, size * 0.045, size * 0.28, oxum, -size * 0.26, size * 0.3, -size * 0.3);
+  [-0.48, -0.04].forEach((x) => {
+    addBox(group, size * 0.03, size * 0.28, size * 0.03, dark, size * x, size * 0.16, -size * 0.3);
+    addBox(group, size * 0.08, size * 0.12, size * 0.06, 0x8b4d35, size * x, size * 0.08, -size * 0.3);
+  });
+  addCylinder(group, size * 0.025, size * 0.5, dark, -size * 0.48, size * 0.27, size * 0.3);
+  addBox(group, size * 0.22, size * 0.16, size * 0.035, oxum, -size * 0.48, size * 0.52, size * 0.3);
+}
+
+function createSupermarketMonumentPrimitive(group: Group, size: number): void {
+  const concrete = 0x88877d;
+  const wall = 0xb2ad94;
+  const green = 0x536b55;
+  const orange = 0xb56b3c;
+  const dark = 0x333a39;
+
+  addBox(group, size * 1.18, size * 0.025, size * 0.88, concrete, 0, size * 0.015, 0);
+  addBox(group, size * 0.78, size * 0.3, size * 0.52, wall, 0, size * 0.17, 0);
+  addBox(group, size * 0.84, size * 0.045, size * 0.58, green, 0, size * 0.34, 0);
+  addBox(group, size * 0.8, size * 0.055, size * 0.025, orange, 0, size * 0.25, -size * 0.272);
+  [-0.24, 0, 0.24].forEach((x) => addBox(group, size * 0.2, size * 0.13, size * 0.018, dark, size * x, size * 0.12, -size * 0.282));
+  [-0.22, 0.22].forEach((x) => addBox(group, size * 0.16, size * 0.07, size * 0.13, 0x626965, size * x, size * 0.405, 0));
+  // Faded parking bays reinforce the broad roadside footprint.
+  [-0.36, -0.12, 0.12, 0.36].forEach((x) => addBox(group, size * 0.012, size * 0.006, size * 0.2, 0xc6c09e, size * x, size * 0.032, -size * 0.38));
+}
+
+function createWarehouseMonumentPrimitive(group: Group, size: number): void {
+  const concrete = 0x7d7d74;
+  const sheet = 0x65706d;
+  const rust = 0x874b35;
+  const dark = 0x303635;
+
+  addBox(group, size * 1.22, size * 0.025, size * 0.86, concrete, 0, size * 0.015, 0);
+  addBox(group, size * 0.86, size * 0.34, size * 0.5, sheet, -size * 0.08, size * 0.19, 0);
+  addPitchedRoof(group, size * 0.92, size * 0.56, size * 0.07, rust, -size * 0.08, size * 0.4, 0);
+  [-0.32, 0, 0.32].forEach((x) => addBox(group, size * 0.2, size * 0.19, size * 0.022, dark, size * x - size * 0.08, size * 0.12, -size * 0.262));
+  addBox(group, size * 0.34, size * 0.18, size * 0.26, 0x5a615d, size * 0.48, size * 0.11, size * 0.2);
+  [[0.44, -0.26, 0x9a5c37], [0.53, -0.08, 0x4d6768], [0.42, 0.04, 0x59664f]].forEach(([x, z, color]) => {
+    addBox(group, size * 0.18, size * 0.1, size * 0.12, color, size * (x as number), size * 0.07, size * (z as number));
+  });
+}
+
+function createQuarryMonumentPrimitive(group: Group, size: number): void {
+  const earth = 0x625b4a;
+  const rust = 0x8d4f31;
+  const dark = 0x343a38;
+  const steel = 0x646d6a;
+
+  addBox(group, size * 1.22, size * 0.025, size * 0.9, earth, 0, size * 0.015, 0);
+  const pit = new Mesh(new RingGeometry(size * 0.25, size * 0.46, 28), monumentMaterial(0x514a3e));
+  pit.rotation.x = -Math.PI / 2;
+  pit.position.set(-size * 0.2, size * 0.035, 0);
+  group.add(pit);
+  addCylinder(group, size * 0.15, size * 0.1, 0x292e2c, -size * 0.2, size * 0.045, 0);
+  // Quarry engine, tall frame, angled bucket boom, and output conveyor.
+  addBox(group, size * 0.32, size * 0.2, size * 0.26, dark, size * 0.3, size * 0.12, size * 0.12);
+  [-0.12, 0.12].forEach((z) => addBox(group, size * 0.035, size * 0.62, size * 0.035, steel, size * 0.22, size * 0.34, size * z));
+  addBox(group, size * 0.38, size * 0.04, size * 0.28, rust, size * 0.22, size * 0.65, 0);
+  const boom = addBox(group, size * 0.72, size * 0.05, size * 0.08, rust, -size * 0.04, size * 0.48, 0);
+  boom.rotation.z = MathUtils.degToRad(-24);
+  addCylinder(group, size * 0.11, size * 0.07, dark, -size * 0.36, size * 0.31, 0).rotation.x = Math.PI / 2;
+  const conveyor = addBox(group, size * 0.62, size * 0.045, size * 0.12, rust, size * 0.26, size * 0.2, -size * 0.32);
+  conveyor.rotation.z = MathUtils.degToRad(12);
+  addCone(group, size * 0.15, size * 0.28, steel, size * 0.54, size * 0.22, -size * 0.32);
+}
+
+function createGenericMonumentPrimitive(group: Group, size: number): void {
+  const concrete = 0x77786f;
+  const wall = 0x686e63;
+  const rust = 0x85513a;
+  addBox(group, size * 1.05, size * 0.025, size * 0.78, concrete, 0, size * 0.015, 0);
+  addBox(group, size * 0.56, size * 0.26, size * 0.38, wall, -size * 0.12, size * 0.15, 0);
+  addPitchedRoof(group, size * 0.6, size * 0.42, size * 0.055, rust, -size * 0.12, size * 0.31, 0);
+  addBox(group, size * 0.28, size * 0.18, size * 0.24, 0x515a58, size * 0.36, size * 0.11, size * 0.2);
+  addGuardTower(group, size * 0.32, size * 0.42, -size * 0.25);
+}
+
+function addPitchedRoof(group: Group, width: number, depth: number, thickness: number, color: number, x: number, y: number, z: number): void {
+  const panelWidth = width * 0.54;
+  const pitch = MathUtils.degToRad(13);
+  const left = addBox(group, panelWidth, thickness, depth, color, x - width * 0.235, y, z);
+  left.rotation.z = pitch;
+  const right = addBox(group, panelWidth, thickness, depth, color, x + width * 0.235, y, z);
+  right.rotation.z = -pitch;
+}
+
+function addGuardTower(group: Group, towerSize: number, x: number, z: number): void {
+  const steel = 0x4f5956;
+  const rust = 0x704536;
+  for (const [dx, dz] of [[-0.12, -0.12], [0.12, -0.12], [-0.12, 0.12], [0.12, 0.12]]) {
+    addBox(group, towerSize * 0.035, towerSize * 0.8, towerSize * 0.035, steel, x + towerSize * dx, towerSize * 0.4, z + towerSize * dz);
+  }
+  addBox(group, towerSize * 0.4, towerSize * 0.17, towerSize * 0.4, steel, x, towerSize * 0.82, z);
+  addBox(group, towerSize * 0.46, towerSize * 0.04, towerSize * 0.46, rust, x, towerSize * 0.93, z);
 }
 
 function createJunkyardMonumentPrimitive(group: Group, size: number, placement?: MonumentPrimitivePlacement): void {
@@ -6764,7 +7074,7 @@ function roundRect(context: CanvasRenderingContext2D, x: number, y: number, widt
 }
 
 function monumentKey(monument: MonumentPayload): string {
-  return `${monument.kind} ${monument.name} ${monument.prefab}`.toLowerCase().replace(/[^a-z0-9_]+/g, "_");
+  return monumentPrimitiveSearchKey(monument);
 }
 
 function shouldHideMonumentPrimitive(monument: MonumentPayload): boolean {
