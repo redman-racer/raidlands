@@ -658,7 +658,9 @@
       }
 
       await settleRpGameMotion(panel, gameKey, payload.result || {}, timing);
-      showRpGameOutcome(panel, gameKey, payload.result || {}, payload.message || "RP game queued.");
+      if (shouldShowRpGameOutcome(gameKey, payload.result || {})) {
+        showRpGameOutcome(panel, gameKey, payload.result || {}, payload.message || "RP game queued.");
+      }
       showRpGamesFlash(root, payload.type || "success", payload.message || "RP game queued.");
       applyRpGamesState(payload.state || {});
       showToast(payload.message || "RP game queued.");
@@ -691,6 +693,13 @@
     }
 
     return base;
+  }
+
+  function shouldShowRpGameOutcome(gameKey, result) {
+    if (normalizeRpPlayedGame(gameKey) !== "blackjack") return true;
+
+    const status = String(result?.hand?.status || "").toLowerCase();
+    return ["payout_queued", "paid", "lost", "push", "canceled", "failed"].includes(status);
   }
 
   function startRpGameMotion(panel, gameKey) {
@@ -1082,11 +1091,16 @@
     if (normalized === "blackjack") {
       const hand = result?.hand || {};
       const pending = ["wager_queued", "double_queued", "payout_queued"].includes(hand.status);
+      const payout = Number(hand.payout_rp || 0);
+      const stake = Number(hand.stake_rp || 0);
+      const push = hand.status === "push" || (hand.status === "payout_queued" && payout === stake);
+      const won = hand.status === "paid" || (hand.status === "payout_queued" && payout > stake);
+      const lost = hand.status === "lost";
       return {
-        type: pending ? "neutral" : (hand.status === "lost" ? "loss" : (hand.status === "push" ? "push" : "neutral")),
-        eyebrow: pending ? "Hand saved" : "Hand updated",
-        title: hand.status === "wager_queued" ? "Confirming Wager" : (hand.status === "double_queued" ? "Confirming Double" : "Blackjack Updated"),
-        amount: pending ? "Server confirmation pending" : formatSignedRp(Number(hand.payout_rp || 0) - Number(hand.stake_rp || 0)),
+        type: won ? "win" : (lost ? "loss" : (push ? "push" : "neutral")),
+        eyebrow: pending ? "Hand complete" : "Hand closed",
+        title: won ? "Blackjack Win" : (lost ? "Dealer Wins" : (push ? "Push" : "Blackjack Complete")),
+        amount: formatSignedRp(payout - stake),
         detail: hand.message || fallbackMessage
       };
     }
