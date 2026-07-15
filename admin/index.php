@@ -5273,16 +5273,38 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                         $admin_access_known_count = count($admin_access_known_players);
                       ?>
                       <div class="admin-access-workbench" data-admin-access-workbench>
-                        <div class="admin-access-main">
+                        <div class="admin-access-view-tabs" role="tablist" aria-label="Player access workspace">
+                          <button class="admin-access-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="admin-access-lookup-view" data-admin-access-view-tab="lookup">Player Lookup / Access</button>
+                          <button class="admin-access-tab" type="button" role="tab" aria-selected="false" aria-controls="admin-access-known-view" data-admin-access-view-tab="known">Known Players <span class="admin-access-tab-count"><?= e((string) $admin_access_known_count) ?></span></button>
+                        </div>
+
+                        <div class="admin-access-main admin-access-view is-active" id="admin-access-lookup-view" role="tabpanel" data-admin-access-view="lookup">
                           <section class="admin-section admin-access-lookup">
                             <div class="admin-subsection-head">
                               <h3>Player Lookup</h3>
-                              <p>Choose a known player or paste a SteamID64 before granting or removing website-owned access.</p>
+                              <p>Search by player name or SteamID64, then review or change website-owned access.</p>
                             </div>
                             <div class="admin-grid two">
-                              <label class="admin-field">
-                                <?= admin_field_head('SteamID64', 'The 17-digit Rust player ID to load or update.') ?>
-                                <input type="text" name="steam_id64" inputmode="numeric" pattern="[0-9]{17}" maxlength="17" placeholder="7656119XXXXXXXXXX" value="<?= e($admin_access_steam_id64) ?>" required data-admin-access-steam-input>
+                              <label class="admin-field admin-access-lookup-field">
+                                <?= admin_field_head('Player name or SteamID64', 'Start typing a known player name or enter a full 17-digit SteamID64.') ?>
+                                <input type="search" maxlength="160" autocomplete="off" placeholder="Player name or 7656119XXXXXXXXXX" value="<?= e((string) ($admin_access_player['display_name'] ?? $admin_access_player['steam_display_name'] ?? $admin_access_steam_id64)) ?>" required data-admin-access-lookup-input aria-autocomplete="list" aria-controls="admin-access-suggestions" aria-expanded="false">
+                                <input type="hidden" name="steam_id64" value="<?= e($admin_access_steam_id64) ?>" data-admin-access-steam-input>
+                                <div class="admin-access-suggestions" id="admin-access-suggestions" role="listbox" data-admin-access-suggestions hidden>
+                                  <?php foreach ($admin_access_known_players as $known_player) : ?>
+                                    <?php
+                                      $suggest_steam = raidlands_store_normalize_steam_id64($known_player['steam_id64'] ?? '');
+                                      $suggest_name = trim((string) ($known_player['display_name'] ?? ''));
+                                      $suggest_steam_name = trim((string) ($known_player['steam_display_name'] ?? ''));
+                                      $suggest_label = $suggest_name !== '' ? $suggest_name : ($suggest_steam_name !== '' ? $suggest_steam_name : $suggest_steam);
+                                      $suggest_search = strtolower(trim(implode(' ', [$suggest_label, $suggest_name, $suggest_steam_name, $suggest_steam])));
+                                    ?>
+                                    <button type="button" role="option" data-admin-access-suggestion data-steam-id="<?= e($suggest_steam) ?>" data-label="<?= e($suggest_label) ?>" data-search="<?= e($suggest_search) ?>">
+                                      <span><strong><?= e($suggest_label) ?></strong><small><?= e($suggest_steam) ?></small></span>
+                                      <em>Select</em>
+                                    </button>
+                                  <?php endforeach; ?>
+                                  <p class="admin-access-suggestions-empty" data-admin-access-suggestions-empty hidden>No known players match that search.</p>
+                                </div>
                                 <?= admin_hint('Loading does not create a player record. Granting access creates one if needed.') ?>
                               </label>
                               <div class="admin-field">
@@ -5496,7 +5518,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                           </section>
                         </div>
 
-                        <aside class="admin-access-player-picker" aria-label="Known player selector">
+                        <section class="admin-access-player-picker admin-access-view" id="admin-access-known-view" role="tabpanel" data-admin-access-view="known" hidden aria-label="Known player selector">
                           <div class="admin-access-player-picker-head">
                             <div>
                               <h3>Known Players</h3>
@@ -5533,7 +5555,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             <p class="admin-store-filter-count" data-admin-access-count><?= e((string) $admin_access_known_count) ?> players shown</p>
                             <div class="admin-alert warning admin-access-empty" data-admin-access-empty hidden>No known players match these controls.</div>
                           </div>
-                          <div class="admin-access-player-list" data-admin-access-list>
+                          <div class="admin-access-player-list admin-access-player-card-grid" data-admin-access-list>
                             <?php foreach ($admin_access_known_players as $known_player) : ?>
                               <?php
                                 $known_steam = raidlands_store_normalize_steam_id64($known_player['steam_id64'] ?? '');
@@ -5557,15 +5579,17 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                 type="button"
                                 data-admin-access-player
                                 data-steam-id="<?= e($known_steam) ?>"
+                                data-label="<?= e($known_label) ?>"
                                 data-name="<?= e(strtolower($known_label)) ?>"
                                 data-last-seen="<?= e($known_last_seen) ?>"
                                 data-access="<?= e($known_access) ?>"
                                 data-product="<?= $known_has_product ? '1' : '0' ?>"
                                 data-direct="<?= $known_has_direct ? '1' : '0' ?>"
                                 data-search="<?= e($known_search) ?>">
-                                <span>
+                                <span class="admin-access-player-identity">
                                   <strong><?= e($known_label) ?></strong>
                                   <small><code><?= e($known_steam) ?></code></small>
+                                  <?php if ($known_name !== '' && $known_steam_name !== '' && strcasecmp($known_name, $known_steam_name) !== 0) : ?><small>Steam: <?= e($known_steam_name) ?></small><?php endif; ?>
                                 </span>
                                 <span class="admin-access-player-meta">
                                   <?php if ($known_has_product) : ?><em>Product</em><?php endif; ?>
@@ -5575,7 +5599,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                               </button>
                             <?php endforeach; ?>
                           </div>
-                        </aside>
+                        </section>
                       </div>
                       </div>
                       <?php endif; ?>

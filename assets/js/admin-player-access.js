@@ -6,7 +6,10 @@
   }
 
   var steamInput = root.querySelector('[data-admin-access-steam-input]');
+  var lookupInput = root.querySelector('[data-admin-access-lookup-input]');
   var loadButton = root.querySelector('button[name="grant_action"][value="load_player"]');
+  var viewButtons = Array.prototype.slice.call(root.querySelectorAll('[data-admin-access-view-tab]'));
+  var views = Array.prototype.slice.call(root.querySelectorAll('[data-admin-access-view]'));
   var tabButtons = Array.prototype.slice.call(root.querySelectorAll('[data-admin-access-tab]'));
   var panels = Array.prototype.slice.call(root.querySelectorAll('[data-admin-access-panel]'));
   var searchInput = root.querySelector('[data-admin-access-search]');
@@ -17,6 +20,23 @@
   var emptyState = root.querySelector('[data-admin-access-empty]');
   var playerList = root.querySelector('[data-admin-access-list]');
   var playerButtons = Array.prototype.slice.call(root.querySelectorAll('[data-admin-access-player]'));
+  var suggestions = Array.prototype.slice.call(root.querySelectorAll('[data-admin-access-suggestion]'));
+  var suggestionList = root.querySelector('[data-admin-access-suggestions]');
+  var suggestionEmpty = root.querySelector('[data-admin-access-suggestions-empty]');
+
+  function setActiveView(view) {
+    viewButtons.forEach(function (button) {
+      var active = button.getAttribute('data-admin-access-view-tab') === view;
+      button.classList.toggle('is-active', active);
+      button.setAttribute('aria-selected', active ? 'true' : 'false');
+    });
+
+    views.forEach(function (panel) {
+      var active = panel.getAttribute('data-admin-access-view') === view;
+      panel.classList.toggle('is-active', active);
+      panel.hidden = !active;
+    });
+  }
 
   function setActiveTab(tab) {
     tabButtons.forEach(function (button) {
@@ -34,6 +54,52 @@
 
   function normalizeText(value) {
     return String(value || '').trim().toLowerCase();
+  }
+
+  function choosePlayer(steamId, label, submit) {
+    if (steamInput) {
+      steamInput.value = steamId || '';
+    }
+
+    if (lookupInput) {
+      lookupInput.value = label || steamId || '';
+      lookupInput.setCustomValidity('');
+      lookupInput.setAttribute('aria-expanded', 'false');
+    }
+
+    if (suggestionList) {
+      suggestionList.hidden = true;
+    }
+
+    if (submit && loadButton) {
+      loadButton.click();
+    }
+  }
+
+  function matchingSuggestions(query) {
+    var normalized = normalizeText(query);
+    return suggestions.filter(function (button) {
+      return normalized && normalizeText(button.getAttribute('data-search')).indexOf(normalized) !== -1;
+    });
+  }
+
+  function updateSuggestions() {
+    if (!lookupInput || !suggestionList) {
+      return;
+    }
+
+    var query = lookupInput.value;
+    var matches = matchingSuggestions(query);
+    suggestions.forEach(function (button) {
+      button.hidden = matches.indexOf(button) === -1;
+    });
+
+    if (suggestionEmpty) {
+      suggestionEmpty.hidden = !query.trim() || matches.length > 0;
+    }
+
+    suggestionList.hidden = !query.trim();
+    lookupInput.setAttribute('aria-expanded', query.trim() ? 'true' : 'false');
   }
 
   function accessMatches(button, filter) {
@@ -183,15 +249,85 @@
     });
   });
 
+  viewButtons.forEach(function (button) {
+    button.addEventListener('click', function () {
+      setActiveView(button.getAttribute('data-admin-access-view-tab') || 'lookup');
+    });
+  });
+
+  suggestions.forEach(function (button) {
+    button.addEventListener('click', function () {
+      choosePlayer(button.getAttribute('data-steam-id'), button.getAttribute('data-label'), false);
+    });
+  });
+
+  if (lookupInput) {
+    lookupInput.addEventListener('input', function () {
+      if (steamInput) {
+        steamInput.value = /^7656119\d{10}$/.test(lookupInput.value.trim()) ? lookupInput.value.trim() : '';
+      }
+      lookupInput.setCustomValidity('');
+      updateSuggestions();
+    });
+
+    lookupInput.addEventListener('keydown', function (event) {
+      var matches = matchingSuggestions(lookupInput.value);
+
+      if (event.key === 'ArrowDown' && matches.length) {
+        event.preventDefault();
+        matches[0].focus();
+      }
+    });
+
+    lookupInput.addEventListener('blur', function () {
+      window.setTimeout(function () {
+        if (suggestionList && !suggestionList.contains(document.activeElement)) {
+          suggestionList.hidden = true;
+          lookupInput.setAttribute('aria-expanded', 'false');
+        }
+      }, 100);
+    });
+  }
+
+  suggestions.forEach(function (button, index) {
+    button.addEventListener('keydown', function (event) {
+      var visible = matchingSuggestions(lookupInput ? lookupInput.value : '');
+      var position = visible.indexOf(button);
+      if (event.key === 'ArrowDown' && visible[position + 1]) {
+        event.preventDefault();
+        visible[position + 1].focus();
+      } else if (event.key === 'ArrowUp') {
+        event.preventDefault();
+        if (visible[position - 1]) visible[position - 1].focus(); else if (lookupInput) lookupInput.focus();
+      } else if (event.key === 'Escape' && lookupInput) {
+        lookupInput.focus();
+        suggestionList.hidden = true;
+      }
+    });
+  });
+
+  if (loadButton) {
+    loadButton.addEventListener('click', function (event) {
+      if (!lookupInput || !steamInput || steamInput.value) return;
+      var exact = matchingSuggestions(lookupInput.value).filter(function (button) {
+        var query = normalizeText(lookupInput.value);
+        return normalizeText(button.getAttribute('data-label')) === query || button.getAttribute('data-steam-id') === lookupInput.value.trim();
+      });
+      if (exact.length === 1) {
+        choosePlayer(exact[0].getAttribute('data-steam-id'), exact[0].getAttribute('data-label'), false);
+        return;
+      }
+      event.preventDefault();
+      lookupInput.setCustomValidity('Choose a known player from the list or enter a complete SteamID64.');
+      lookupInput.reportValidity();
+      updateSuggestions();
+    });
+  }
+
   playerButtons.forEach(function (button) {
     button.addEventListener('click', function () {
-      if (steamInput) {
-        steamInput.value = button.getAttribute('data-steam-id') || '';
-      }
-
-      if (loadButton) {
-        loadButton.click();
-      }
+      setActiveView('lookup');
+      choosePlayer(button.getAttribute('data-steam-id'), button.getAttribute('data-label'), true);
     });
   });
 

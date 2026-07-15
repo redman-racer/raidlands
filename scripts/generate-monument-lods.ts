@@ -32,6 +32,13 @@ const MAP_INVISIBLE_NAME = /(?:grass|bush|fern|foliage|twig|debris|cardboard|loo
 // collapsed thin wall shells. At map distance the exterior silhouette is the
 // useful representation, so retain the authored shell assemblies explicitly.
 const LAUNCH_SITE_MAP_SHELL = /(?:rocket_factory_(?:exterior|silo|scaffolding|crane_beams|crane_arm|helipad|support_beam|tower_frame)|rocket_(?:boosters_stage|payload)|space_center_(?:office_bld|roof_module)|warehouse_launch_site|watch_tower|range_core_exterior|pipeline_bespoke_launchsite|floodlights_A)/i;
+const COMPOUND_MAP_SHELL = /(?:rowhouse|outbuilding|compound_(?:wall|gate)|watch_tower|marketpalce_terminal|marketplace_(?:radar|shopfront)|caboose|shipping_container)/i;
+
+function explicitMapShell(id: string): RegExp | null {
+  if (id === "launch_site_1") return LAUNCH_SITE_MAP_SHELL;
+  if (id === "compound") return COMPOUND_MAP_SHELL;
+  return null;
+}
 
 type Bounds = { min: number[]; max: number[] };
 type Stats = { triangles: number; drawCalls: number; textureBytes: number; bounds: Bounds };
@@ -125,13 +132,14 @@ async function generateGeometryProxy(source: Document, id: string, sourceStats: 
   const bounds = getBounds(scene);
   const footprint = Math.max(bounds.max[0] - bounds.min[0], bounds.max[2] - bounds.min[2]);
   const minimumExtent = Math.max(1.25, footprint * 0.012);
+  const mapShell = explicitMapShell(id);
   for (const node of target.getRoot().listNodes()) {
     if (!node.getMesh()) continue;
     const nodeBounds = getBounds(node);
     const extent = Math.max(...[0, 1, 2].map((axis) => nodeBounds.max[axis]! - nodeBounds.min[axis]!));
     const name = `${node.getName()} ${node.getMesh()!.getName()}`;
-    if (id === "launch_site_1") {
-      if (!LAUNCH_SITE_MAP_SHELL.test(name)) node.setMesh(null);
+    if (mapShell) {
+      if (!mapShell.test(name) || (id === "compound" && /rowhouse_ruin/i.test(name))) node.setMesh(null);
       continue;
     }
     const invisibleDecoration = MAP_INVISIBLE_NAME.test(name) || (id !== "junkyard_1" && /junk/i.test(name));
@@ -151,10 +159,10 @@ async function generateGeometryProxy(source: Document, id: string, sourceStats: 
     for (const morphTarget of primitive.listTargets()) primitive.removeTarget(morphTarget);
   }
 
-  if (id === "launch_site_1") {
+  if (mapShell) {
     await target.transform(weld({ overwrite: true }), prune());
     for (const mesh of target.getRoot().listMeshes()) for (const primitive of mesh.listPrimitives()) {
-      simplifyPrimitive(primitive, { simplifier: MeshoptSimplifier, ratio: 0.04, error: 0.02, lockBorder: false });
+      simplifyPrimitive(primitive, { simplifier: MeshoptSimplifier, ratio: id === "launch_site_1" ? 0.04 : 0.08, error: 0.02, lockBorder: false });
     }
     await target.transform(normals({ overwrite: true }), flatten(), join({ keepNamed: false }), prune());
     return target;
@@ -207,10 +215,12 @@ async function main(): Promise<void> {
     const outputBytes = statSync(outputPath).size;
     const sourceNodes = candidates.length
       ? candidates.map((node) => node.getName())
-      : id === "launch_site_1"
+      : explicitMapShell(id)
         ? Array.from(new Set(sourceDocument.getRoot().listNodes().filter((node) => {
           const mesh = node.getMesh();
-          return mesh && LAUNCH_SITE_MAP_SHELL.test(`${node.getName()} ${mesh.getName()}`);
+          if (!mesh) return false;
+          const name = `${node.getName()} ${mesh.getName()}`;
+          return explicitMapShell(id)!.test(name) && !(id === "compound" && /rowhouse_ruin/i.test(name));
         }).map((node) => node.getMesh()!.getName() || node.getName()).filter(Boolean))).sort()
         : [];
     entries.push({

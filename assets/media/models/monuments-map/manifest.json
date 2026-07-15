@@ -574,11 +574,37 @@
       "detail": "../monuments/compound.glb",
       "map": "compound.glb",
       "mapKind": "generated-proxy",
-      "sourceNodes": [],
+      "sourceNodes": [
+        "Caboose_LOD0",
+        "caboose_stringlights",
+        "compound_gate_LOD0",
+        "compound_gate_train_LOD0",
+        "compound_wall_S_600_LOD0",
+        "compound_wall_corner_LOD0",
+        "compound_wall_s_150_LOD0",
+        "compound_wall_straight_LOD0",
+        "compound_wall_straight_short_LOD0",
+        "marketpalce_terminal_LOD0",
+        "marketplace_radar_LOD0",
+        "outbuilding_1st_15x9_LOD0",
+        "outbuilding_1st_27x9_LOD0",
+        "outbuilding_1st_6x9_LOD0",
+        "outbuilding_2st_21x9_LOD0",
+        "rowhouse_2st_6x12_LOD0",
+        "rowhouse_2st_9x12-2_LOD0",
+        "rowhouse_2st_9x12_LOD0",
+        "rowhouse_3st_9x12_LOD0",
+        "rowhouse_3st_9x9_LOD0",
+        "rowhouse_4st_9x12_LOD0",
+        "shipping_container_900_a_LOD0",
+        "shipping_container_900_c_LOD0",
+        "watch_tower_c_LOD0",
+        "watch_tower_d_LOD0"
+      ],
       "sourceSha256": "3cae5ca3a7e53a876fd9134ddbbcad799b11abd25872e4f7ff3c7ace4e492991",
-      "outputSha256": "435346ee907acee2f611f8893a4bbafb4411d9e7fd2b7c24279db659c859a8e5",
+      "outputSha256": "1293175ce198462c73da0a51cc32ad9d6df813863d0955e480da4278d514beae",
       "sourceBytes": 13301848,
-      "outputBytes": 105344,
+      "outputBytes": 112004,
       "sourceTriangles": 527297,
       "sourceDrawCalls": 714,
       "sourceBounds": {
@@ -593,21 +619,21 @@
           91.64177715691909
         ]
       },
-      "triangles": 11725,
-      "drawCalls": 13,
-      "triangleRatio": 0.022236,
-      "overTriangleTarget": false,
+      "triangles": 17947,
+      "drawCalls": 6,
+      "triangleRatio": 0.034036,
+      "overTriangleTarget": true,
       "textureBytes": 0,
       "bounds": {
         "min": [
-          -78.9301986694336,
-          -9.912806510925293,
-          -91.74999237060547
+          -66.82405611523063,
+          -1.3750019073486328,
+          -88.46621415657339
         ],
         "max": [
-          78.28716278076172,
-          24.37258529663086,
-          91.58634185791016
+          65.75333788981965,
+          23.973936080932617,
+          77.21785736083984
         ]
       },
       "overBudget": false

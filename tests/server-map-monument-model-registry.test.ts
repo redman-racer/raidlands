@@ -75,6 +75,15 @@ describe("RustRelay monument model registry", () => {
     expect(launchSite!.triangles).toBeLessThan(30_000);
   });
 
+  it("uses complete above-ground building shells for Outpost", () => {
+    const outpost = monumentModelMetadata("compound");
+    expect(outpost).not.toBeNull();
+    expect(outpost!.sourceNodes).toContain("rowhouse_3st_9x12_LOD0");
+    expect(outpost!.sourceNodes).toContain("compound_wall_straight_LOD0");
+    expect(outpost!.sourceNodes.some((name) => /sewer|tunnel|floor|interior/i.test(name))).toBe(false);
+    expect(outpost!.triangles).toBeLessThan(30_000);
+  });
+
   it("covers every monument instance in the current terrain export", () => {
     const terrain = JSON.parse(readFileSync(resolve("assets/media/maps/raidlands-main/current-terrain.json"), "utf8")) as {
       monuments?: Array<{ prefab?: string }>;
