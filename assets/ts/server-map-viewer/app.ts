@@ -1119,41 +1119,6 @@ class TerrainViewer {
   private readonly onContextMenu = (event: MouseEvent) => {
     if (this.cameraMode === "manual" && this.manualCameraStyle === "fly") event.preventDefault();
   };
-  private readonly onElevationPointerDown = (event: PointerEvent) => {
-    if (event.button !== 2 || !this.controls.enabled) return;
-    if (this.cameraMode === "manual" && this.manualCameraStyle === "fly") return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    this.pointerDownAt = null;
-    this.elevationPointerId = event.pointerId;
-    this.elevationPointerY = event.clientY;
-    this.renderer.domElement.setPointerCapture(event.pointerId);
-    this.pauseAutomaticCamera();
-  };
-  private readonly onElevationPointerMove = (event: PointerEvent) => {
-    if (event.pointerId !== this.elevationPointerId) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    const deltaY = this.elevationPointerY - event.clientY;
-    this.elevationPointerY = event.clientY;
-    const distance = Math.max(120, this.camera.position.distanceTo(this.controls.target));
-    const ground = sampleTerrainHeight(this.terrain, this.camera.position.x, this.camera.position.z);
-    const maxHeight = Math.max((this.terrain.worldSize || 4500) * 1.5, this.controls.target.y + 2000);
-    this.camera.position.y = MathUtils.clamp(
-      this.camera.position.y + deltaY * distance * 0.0025,
-      ground + 12,
-      maxHeight,
-    );
-  };
-  private readonly onElevationPointerEnd = (event: PointerEvent) => {
-    if (event.pointerId !== this.elevationPointerId) return;
-    event.preventDefault();
-    event.stopImmediatePropagation();
-    if (this.renderer.domElement.hasPointerCapture(event.pointerId)) {
-      this.renderer.domElement.releasePointerCapture(event.pointerId);
-    }
-    this.elevationPointerId = null;
-  };
   private animationFrame = 0;
   private readonly clockStart = performance.now();
   private isoViewIndex = -1;
@@ -1171,8 +1136,6 @@ class TerrainViewer {
   private lastAnimationTick = performance.now();
   private pointerDownAt: { x: number; y: number } | null = null;
   private readonly flightLookButtons = new Set<number>();
-  private elevationPointerId: number | null = null;
-  private elevationPointerY = 0;
   private mobileMove = new Vector2();
   private mobileLook = new Vector2();
   private pointerLookDelta = new Vector2();
@@ -1361,10 +1324,6 @@ class TerrainViewer {
     this.renderer.domElement.addEventListener("pointerup", this.onPointerUp);
     this.renderer.domElement.addEventListener("pointermove", this.onPointerMove);
     this.renderer.domElement.addEventListener("contextmenu", this.onContextMenu);
-    this.renderer.domElement.addEventListener("pointerdown", this.onElevationPointerDown, true);
-    this.renderer.domElement.addEventListener("pointermove", this.onElevationPointerMove, true);
-    this.renderer.domElement.addEventListener("pointerup", this.onElevationPointerEnd, true);
-    this.renderer.domElement.addEventListener("pointercancel", this.onElevationPointerEnd, true);
     window.addEventListener("keydown", this.onKeyDown);
     window.addEventListener("keyup", this.onKeyUp);
     window.addEventListener("blur", this.onWindowBlur);
@@ -1386,10 +1345,6 @@ class TerrainViewer {
     this.renderer.domElement.removeEventListener("pointerup", this.onPointerUp);
     this.renderer.domElement.removeEventListener("pointermove", this.onPointerMove);
     this.renderer.domElement.removeEventListener("contextmenu", this.onContextMenu);
-    this.renderer.domElement.removeEventListener("pointerdown", this.onElevationPointerDown, true);
-    this.renderer.domElement.removeEventListener("pointermove", this.onElevationPointerMove, true);
-    this.renderer.domElement.removeEventListener("pointerup", this.onElevationPointerEnd, true);
-    this.renderer.domElement.removeEventListener("pointercancel", this.onElevationPointerEnd, true);
     window.removeEventListener("keydown", this.onKeyDown);
     window.removeEventListener("keyup", this.onKeyUp);
     window.removeEventListener("blur", this.onWindowBlur);

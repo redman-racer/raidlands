@@ -185,7 +185,7 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
               <option value="fly">Fly</option>
             </select>
           </label>
-          <small class="server-terrain-camera-help">Orbit: left-drag rotates, Ctrl+left-drag pans, right-drag changes elevation, wheel zooms. Fly: hold either mouse button for unlimited look, WASD, Space up, Ctrl down, hold Shift to sprint.</small>
+          <small class="server-terrain-camera-help">Orbit: left-drag rotates, right-drag pans freely, wheel zooms. Fly: hold either mouse button for unlimited look, WASD, Space up, Ctrl down, hold Shift to sprint.</small>
         </div>
         <div class="server-terrain-control-group" aria-label="Overlay controls">
           <label class="server-terrain-toggle">
