@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import {
+  defaultEnvironmentQuality,
   parseEnvironmentQuality,
+  preferredEnvironmentQuality,
   resolveEnvironmentQuality,
 } from "../assets/ts/server-map-viewer/environment-quality";
 import type { FogCapabilities } from "../assets/ts/server-map-viewer/fog-detail";
@@ -25,7 +27,7 @@ describe("server map environment quality", () => {
       resolved: "ultra",
       cloudDetail: "max",
       fogDetail: "max",
-      temporalAccumulation: true,
+      stableAntialiasing: true,
       bloom: true,
     });
   });
@@ -37,7 +39,7 @@ describe("server map environment quality", () => {
     })).toMatchObject({
       requested: "ultra",
       resolved: "high",
-      temporalAccumulation: false,
+      stableAntialiasing: true,
     });
 
     expect(resolveEnvironmentQuality("ultra", {
@@ -51,5 +53,17 @@ describe("server map environment quality", () => {
       cloudDetail: "low",
       fogDetail: "low",
     });
+  });
+
+  it("defaults first-time phones to medium and other devices to ultra", () => {
+    expect(defaultEnvironmentQuality(true, 390)).toBe("medium");
+    expect(defaultEnvironmentQuality(false, 390)).toBe("ultra");
+    expect(defaultEnvironmentQuality(true, 1024)).toBe("ultra");
+  });
+
+  it("prefers a saved detail level over device and markup defaults", () => {
+    expect(preferredEnvironmentQuality("low", "ultra", false, 1440)).toBe("low");
+    expect(preferredEnvironmentQuality(null, "ultra", true, 390)).toBe("medium");
+    expect(preferredEnvironmentQuality(null, "high", false, 1440)).toBe("high");
   });
 });

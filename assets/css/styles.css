@@ -1860,12 +1860,54 @@ h3,
   right: 14px;
   z-index: 3;
   display: inline-flex;
+  align-items: stretch;
   gap: 6px;
   padding: 6px;
   border: 1px solid rgba(255, 138, 40, .2);
   background: rgba(5, 6, 7, .78);
   box-shadow: 0 14px 34px rgba(0, 0, 0, .34);
   backdrop-filter: blur(10px);
+}
+
+.server-terrain-view-buttons {
+  display: inline-flex;
+  gap: 6px;
+}
+
+.server-terrain-detail-select {
+  display: grid;
+  grid-template-columns: auto minmax(88px, auto);
+  align-items: center;
+  gap: 2px 7px;
+  padding-left: 7px;
+  border-left: 1px solid rgba(243, 238, 227, .14);
+  color: var(--muted);
+  font: 900 .65rem var(--font-body);
+  text-transform: uppercase;
+}
+
+.server-terrain-detail-select select {
+  min-height: 36px;
+  border: 1px solid rgba(243, 238, 227, .16);
+  border-radius: 4px;
+  color: var(--white);
+  background: rgba(0, 0, 0, .72);
+  font: 900 .72rem var(--font-body);
+  padding: 0 26px 0 9px;
+  cursor: pointer;
+}
+
+.server-terrain-detail-select select:focus-visible {
+  outline: 2px solid var(--yellow);
+  outline-offset: 2px;
+}
+
+.server-terrain-detail-select small {
+  grid-column: 1 / -1;
+  color: var(--yellow);
+  font-size: .58rem;
+  text-align: right;
+  text-transform: none;
 }
 
 .server-terrain-view-select button {
@@ -6070,6 +6112,8 @@ a.leaderboard-steam:hover,
   .server-terrain-view-select {
     top: 10px;
     right: 10px;
+    left: 10px;
+    justify-content: space-between;
     padding: 5px;
   }
 
@@ -6077,6 +6121,14 @@ a.leaderboard-steam:hover,
     min-width: 46px;
     min-height: 34px;
     padding: 0 8px;
+  }
+
+  .server-terrain-detail-select {
+    margin-left: auto;
+  }
+
+  .server-terrain-detail-select select {
+    min-height: 34px;
   }
 
   .server-history-chart-wrap {

@@ -14,8 +14,7 @@ export type EnvironmentQualityProfile = {
   composerPixelRatioCap: number;
   ambientOcclusionRadius: number;
   cloudSliceCount: number;
-  temporalAccumulation: boolean;
-  temporalSampleLevel: number;
+  stableAntialiasing: boolean;
   bloom: boolean;
   bloomStrength: number;
   bloomRadius: number;
@@ -29,6 +28,24 @@ const QUALITY_ORDER: EnvironmentQuality[] = ["low", "medium", "high", "ultra"];
 export function parseEnvironmentQuality(value: unknown, fallback: EnvironmentQuality = "ultra"): EnvironmentQuality {
   const normalized = String(value ?? "").trim().toLowerCase();
   return QUALITY_ORDER.includes(normalized as EnvironmentQuality) ? normalized as EnvironmentQuality : fallback;
+}
+
+export function defaultEnvironmentQuality(coarsePointer: boolean, viewportWidth: number): EnvironmentQuality {
+  return coarsePointer && viewportWidth <= 768 ? "medium" : "ultra";
+}
+
+export function preferredEnvironmentQuality(
+  stored: unknown,
+  markup: unknown,
+  coarsePointer: boolean,
+  viewportWidth: number,
+): EnvironmentQuality {
+  const normalizedStored = String(stored ?? "").trim().toLowerCase();
+  if (QUALITY_ORDER.includes(normalizedStored as EnvironmentQuality)) {
+    return normalizedStored as EnvironmentQuality;
+  }
+  const deviceDefault = defaultEnvironmentQuality(coarsePointer, viewportWidth);
+  return deviceDefault === "medium" ? deviceDefault : parseEnvironmentQuality(markup, "ultra");
 }
 
 export function resolveEnvironmentQuality(
@@ -56,8 +73,7 @@ const profiles: Record<EnvironmentQuality, Omit<EnvironmentQualityProfile, "requ
     composerPixelRatioCap: 1.75,
     ambientOcclusionRadius: 8.5,
     cloudSliceCount: 12,
-    temporalAccumulation: true,
-    temporalSampleLevel: 1,
+    stableAntialiasing: true,
     bloom: true,
     bloomStrength: 0.19,
     bloomRadius: 0.28,
@@ -73,8 +89,7 @@ const profiles: Record<EnvironmentQuality, Omit<EnvironmentQualityProfile, "requ
     composerPixelRatioCap: 1.5,
     ambientOcclusionRadius: 7,
     cloudSliceCount: 9,
-    temporalAccumulation: false,
-    temporalSampleLevel: 0,
+    stableAntialiasing: true,
     bloom: true,
     bloomStrength: 0.12,
     bloomRadius: 0.2,
@@ -90,8 +105,7 @@ const profiles: Record<EnvironmentQuality, Omit<EnvironmentQualityProfile, "requ
     composerPixelRatioCap: 1.25,
     ambientOcclusionRadius: 5.5,
     cloudSliceCount: 6,
-    temporalAccumulation: false,
-    temporalSampleLevel: 0,
+    stableAntialiasing: false,
     bloom: false,
     bloomStrength: 0,
     bloomRadius: 0,
@@ -107,8 +121,7 @@ const profiles: Record<EnvironmentQuality, Omit<EnvironmentQualityProfile, "requ
     composerPixelRatioCap: 1,
     ambientOcclusionRadius: 4,
     cloudSliceCount: 0,
-    temporalAccumulation: false,
-    temporalSampleLevel: 0,
+    stableAntialiasing: false,
     bloom: false,
     bloomStrength: 0,
     bloomRadius: 0,

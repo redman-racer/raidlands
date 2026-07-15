@@ -48,7 +48,7 @@ import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { SSAOPass } from "three/examples/jsm/postprocessing/SSAOPass.js";
 import { ShaderPass } from "three/examples/jsm/postprocessing/ShaderPass.js";
-import { TAARenderPass } from "three/examples/jsm/postprocessing/TAARenderPass.js";
+import { SMAAPass } from "three/examples/jsm/postprocessing/SMAAPass.js";
 import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPass.js";
 import { unityPositionToThreeVector, unityQuaternionValueToThreeQuaternion } from "../airstrike-animation-editor/editor/coordinates";
 import { createVehicleProxy, loadVehiclePreview, metadataForVehicle } from "../airstrike-animation-editor/editor/vehicle-preview";
@@ -77,9 +77,13 @@ import {
 } from "../shared/three-sun-detail";
 import {
   parseEnvironmentQuality,
+  preferredEnvironmentQuality,
   resolveEnvironmentQuality,
+  type EnvironmentQuality,
   type EnvironmentQualityProfile,
 } from "./environment-quality";
+
+const ENVIRONMENT_QUALITY_STORAGE_KEY = "raidlands:map-environment-quality";
 
 type TerrainPayload = {
   version?: number;
@@ -620,11 +624,35 @@ float raidlandsCloudShadowAt(vec2 worldPosition) {
 const roots = Array.from(document.querySelectorAll<HTMLElement>("[data-server-map-viewer]"));
 
 for (const root of roots) {
+  applyInitialEnvironmentQuality(root);
   void initTerrainViewer(root).then((instance) => {
     if (instance) {
       bindLiveTerrainUpdates(root, instance);
     }
   });
+}
+
+function applyInitialEnvironmentQuality(root: HTMLElement): void {
+  let stored: string | null = null;
+  try {
+    stored = window.localStorage.getItem(ENVIRONMENT_QUALITY_STORAGE_KEY);
+  } catch {
+    // Storage can be unavailable in private or hardened browser contexts.
+  }
+  root.dataset.environmentQuality = preferredEnvironmentQuality(
+    stored,
+    root.dataset.environmentQuality,
+    window.matchMedia("(pointer: coarse)").matches,
+    window.innerWidth,
+  );
+}
+
+function persistEnvironmentQuality(quality: EnvironmentQuality): void {
+  try {
+    window.localStorage.setItem(ENVIRONMENT_QUALITY_STORAGE_KEY, quality);
+  } catch {
+    // The active page still keeps the selection when storage is unavailable.
+  }
 }
 
 async function initTerrainViewer(root: HTMLElement): Promise<TerrainViewerInstance | null> {
@@ -668,13 +696,28 @@ async function initTerrainViewer(root: HTMLElement): Promise<TerrainViewerInstan
 function bindLiveTerrainUpdates(root: HTMLElement, initial: TerrainViewerInstance): void {
   const statusUrl = root.dataset.statusUrl || "";
 
-  if (!statusUrl) {
-    return;
-  }
-
   let instance: TerrainViewerInstance | null = initial;
   let pollTimer = 0;
   let polling = false;
+
+  const replaceViewer = async (): Promise<void> => {
+    const previous = instance;
+    previous?.binding.dispose();
+    previous?.viewer.dispose();
+    instance = await initTerrainViewer(root);
+  };
+
+  const onQualityChange = (event: Event) => {
+    const quality = parseEnvironmentQuality((event as CustomEvent<{ quality?: string }>).detail?.quality, root.dataset.environmentQuality as EnvironmentQuality);
+    if (quality === root.dataset.environmentQuality) return;
+    root.dataset.environmentQuality = quality;
+    persistEnvironmentQuality(quality);
+    setStatus(root.querySelector<HTMLElement>("[data-map-viewer-status]"), `Applying ${quality} detail.`);
+    void replaceViewer();
+  };
+  root.addEventListener("raidlands:environment-quality", onQualityChange);
+
+  if (!statusUrl) return;
 
   const schedule = (delay = liveTerrainPollDelayMs()) => {
     window.clearTimeout(pollTimer);
@@ -719,9 +762,7 @@ function bindLiveTerrainUpdates(root: HTMLElement, initial: TerrainViewerInstanc
       root.dataset.skyboxHash = metadata.skyboxHash || "";
       root.dataset.mapPublishedAt = metadata.publishedAt || "";
 
-      instance?.binding.dispose();
-      instance?.viewer.dispose();
-      instance = await initTerrainViewer(root);
+      await replaceViewer();
       if (instance) {
         root.dataset.mapFingerprint = nextFingerprint;
       }
@@ -889,12 +930,13 @@ class TerrainViewer {
   private readonly renderer = new WebGLRenderer({ antialias: true, alpha: false });
   private readonly composer: EffectComposer;
   private readonly qualityProfile: EnvironmentQualityProfile;
-  private readonly temporalRenderPass: TAARenderPass | null;
+  private readonly antialiasPass: SMAAPass | null;
   private readonly bloomPass: UnrealBloomPass | null;
   private readonly ambientOcclusionPass: SSAOPass;
   private readonly volumetricFogPass: ShaderPass | null;
   private readonly environmentGradePass: ShaderPass;
   private readonly controls: OrbitControls;
+  private floatingControls: HTMLElement | null = null;
   private readonly terrainMesh: Mesh;
   private readonly terrainMaterial: MeshStandardMaterial;
   private readonly oceanSurfaceMesh: Mesh;
@@ -1008,9 +1050,6 @@ class TerrainViewer {
   private selfLocationOrbitStartedAt = performance.now();
   private wetness = 0;
   private lastWeatherTick = performance.now();
-  private lastCameraPosition = new Vector3(Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY, Number.POSITIVE_INFINITY);
-  private lastCameraQuaternion = new Quaternion();
-  private temporalResetFrames = 2;
 
   public constructor(
     root: HTMLElement,
@@ -1077,15 +1116,7 @@ class TerrainViewer {
       this.volumetricFogPass.uniforms.uSampleCount.value = fogRayMarchSamples(this.fogDetail);
       this.volumetricFogPass.uniforms.uMaxDetail.value = this.fogDetail === "max" ? 1 : 0;
     }
-    this.temporalRenderPass = this.qualityProfile.temporalAccumulation
-      ? new TAARenderPass(this.scene, this.camera)
-      : null;
-    if (this.temporalRenderPass) {
-      this.temporalRenderPass.sampleLevel = this.qualityProfile.temporalSampleLevel;
-      this.temporalRenderPass.unbiased = true;
-      this.temporalRenderPass.accumulate = false;
-    }
-    this.composer.addPass(this.temporalRenderPass || new RenderPass(this.scene, this.camera));
+    this.composer.addPass(new RenderPass(this.scene, this.camera));
     this.composer.addPass(this.ambientOcclusionPass);
     if (this.volumetricFogPass) this.composer.addPass(this.volumetricFogPass);
     this.composer.addPass(this.environmentGradePass);
@@ -1098,6 +1129,10 @@ class TerrainViewer {
       )
       : null;
     if (this.bloomPass) this.composer.addPass(this.bloomPass);
+    this.antialiasPass = this.qualityProfile.stableAntialiasing
+      ? new SMAAPass(1, 1)
+      : null;
+    if (this.antialiasPass) this.composer.addPass(this.antialiasPass);
     this.renderer.domElement.dataset.serverMapViewerCanvas = "true";
     this.terrainMaterial = this.createTerrainMaterial();
     this.oceanFloorMesh = this.createOceanFloorMesh();
@@ -1187,7 +1222,9 @@ class TerrainViewer {
     window.cancelAnimationFrame(this.animationFrame);
     window.removeEventListener("resize", this.onResize);
     this.controls.dispose();
-    this.temporalRenderPass?.dispose();
+    this.floatingControls?.remove();
+    this.floatingControls = null;
+    this.antialiasPass?.dispose();
     this.ambientOcclusionPass.dispose();
     this.volumetricFogPass?.dispose();
     this.environmentGradePass.dispose();
@@ -1484,17 +1521,39 @@ class TerrainViewer {
   private bindFloatingViewSelect(): void {
     const controls = document.createElement("div");
     controls.className = "server-terrain-view-select";
-    controls.setAttribute("aria-label", "Map view");
+    controls.setAttribute("aria-label", "Map view and detail");
+    const requested = this.qualityProfile.requested;
+    const resolved = this.qualityProfile.resolved;
+    const resolvedNote = requested === resolved ? "" : `<small>${resolved} available</small>`;
     controls.innerHTML = `
-      <button type="button" data-map-view="iso" aria-pressed="true" aria-label="Home view" title="Home view">
-        <span aria-hidden="true">Home</span>
-      </button>
-      <button type="button" data-map-view="top" aria-pressed="false" aria-label="Top view" title="Top view">
-        <span aria-hidden="true">Top</span>
-      </button>
+      <div class="server-terrain-view-buttons" role="group" aria-label="Map view">
+        <button type="button" data-map-view="iso" aria-pressed="true" aria-label="Home view" title="Home view">
+          <span aria-hidden="true">Home</span>
+        </button>
+        <button type="button" data-map-view="top" aria-pressed="false" aria-label="Top view" title="Top view">
+          <span aria-hidden="true">Top</span>
+        </button>
+      </div>
+      <label class="server-terrain-detail-select">
+        <span>Detail</span>
+        <select data-map-environment-quality aria-label="Viewer detail level">
+          <option value="low"${requested === "low" ? " selected" : ""}>Low</option>
+          <option value="medium"${requested === "medium" ? " selected" : ""}>Medium</option>
+          <option value="high"${requested === "high" ? " selected" : ""}>High</option>
+          <option value="ultra"${requested === "ultra" ? " selected" : ""}>Ultra</option>
+        </select>
+        ${resolvedNote}
+      </label>
     `;
     this.root.appendChild(controls);
+    this.floatingControls = controls;
     bindMapViewButtons(Array.from(controls.querySelectorAll<HTMLButtonElement>("[data-map-view]")), this);
+    controls.querySelector<HTMLSelectElement>("[data-map-environment-quality]")?.addEventListener("change", (event) => {
+      const quality = parseEnvironmentQuality((event.currentTarget as HTMLSelectElement).value, requested);
+      this.root.dispatchEvent(new CustomEvent("raidlands:environment-quality", {
+        detail: { quality },
+      }));
+    });
   }
 
   private createTerrainMesh(): Mesh {
@@ -1708,6 +1767,7 @@ outgoingLight = mix(outgoingLight, raidlandsFogColor, raidlandsTerrainHorizon * 
       shader.uniforms.raidlandsWaterTime = this.waterLightUniforms.time;
       shader.uniforms.raidlandsWaterFogColor = this.waterLightUniforms.fogColor;
       shader.uniforms.raidlandsWaterFogDensity = this.waterLightUniforms.fogDensity;
+      shader.uniforms.raidlandsWaterWorldSize = this.waterLightUniforms.worldSize;
       shader.uniforms.raidlandsCloudCoverage = this.waterLightUniforms.cloudCoverage;
       shader.uniforms.raidlandsCloudOpacity = this.waterLightUniforms.cloudOpacity;
       shader.uniforms.raidlandsCloudSize = this.waterLightUniforms.cloudSize;
@@ -1743,6 +1803,7 @@ uniform float raidlandsWaterDaylight;
 uniform float raidlandsWaterTime;
 uniform vec3 raidlandsWaterFogColor;
 uniform float raidlandsWaterFogDensity;
+uniform float raidlandsWaterWorldSize;
 uniform float raidlandsWaterRainIntensity;
 uniform float raidlandsWaterLevel;
 uniform sampler2D raidlandsTerrainHeight;
@@ -1784,8 +1845,8 @@ float raidlandsWaterSunPath = (raidlandsWaterGlare * 0.95 + raidlandsWaterStreak
   * raidlandsWaterReflectionStrength * raidlandsWaterRipples;
 outgoingLight += raidlandsWaterSunColor * raidlandsWaterSunPath;
 vec2 raidlandsTerrainUv = vec2(
-  0.5 - raidlandsWaterWorldPosition.x / raidlandsCloudWorldSize,
-  0.5 - raidlandsWaterWorldPosition.z / raidlandsCloudWorldSize
+  0.5 - raidlandsWaterWorldPosition.x / raidlandsWaterWorldSize,
+  0.5 - raidlandsWaterWorldPosition.z / raidlandsWaterWorldSize
 );
 float raidlandsInsideTerrain = step(0.0, raidlandsTerrainUv.x) * step(raidlandsTerrainUv.x, 1.0)
   * step(0.0, raidlandsTerrainUv.y) * step(raidlandsTerrainUv.y, 1.0) * raidlandsHasTerrainHeight;
@@ -2085,14 +2146,11 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     this.camera.updateProjectionMatrix();
     this.renderer.setSize(width, height, false);
     this.composer.setSize(width, height);
-    this.temporalResetFrames = 2;
   }
 
   private animate(): void {
     this.animationFrame = window.requestAnimationFrame(() => this.animate());
     if (document.visibilityState === "hidden") {
-      if (this.temporalRenderPass) this.temporalRenderPass.accumulate = false;
-      this.temporalResetFrames = 2;
       return;
     }
     const now = performance.now();
@@ -2107,15 +2165,6 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     this.airstrikeLayer.userData.tick?.((now - this.clockStart) / 1000);
     this.monumentLayer.traverse((object) => object.userData.tick?.((now - this.clockStart) / 1000));
     this.updateAircraftCameraSafety();
-    if (this.temporalRenderPass) {
-      const cameraMoved = this.camera.position.distanceToSquared(this.lastCameraPosition) > 0.0004
-        || this.camera.quaternion.angleTo(this.lastCameraQuaternion) > 0.00008;
-      if (cameraMoved) this.temporalResetFrames = 2;
-      this.temporalRenderPass.accumulate = !cameraMoved && this.temporalResetFrames <= 0;
-      this.lastCameraPosition.copy(this.camera.position);
-      this.lastCameraQuaternion.copy(this.camera.quaternion);
-      this.temporalResetFrames = Math.max(0, this.temporalResetFrames - 1);
-    }
     this.composer.render();
   }
 
@@ -2142,7 +2191,6 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
       || Math.abs(previous.cloudCoverage - next.cloudCoverage) > 0.18
       || Math.abs(previous.rainIntensity - next.rainIntensity) > 0.16
       || Math.abs(previous.fogIntensity - next.fogIntensity) > 0.16) {
-      this.temporalResetFrames = 3;
     }
     this.activeEnvironment = this.currentEnvironment(performance.now());
     this.targetEnvironment = next;
