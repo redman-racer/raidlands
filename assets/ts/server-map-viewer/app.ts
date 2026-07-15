@@ -1,7 +1,6 @@
 import {
   AmbientLight,
   AdditiveBlending,
-  Box3,
   BoxGeometry,
   BufferGeometry,
   Color,
@@ -2376,7 +2375,8 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
       }
       const monumentPosition = rustWorldToViewerPosition(monument.x, monument.y, monument.z);
       const terrainHeight = sampleTerrainHeight(this.terrain, monumentPosition.x, monumentPosition.z);
-      const groupY = Math.max(monumentPosition.y, terrainHeight) + 5;
+      const monumentGroundY = Math.max(monumentPosition.y, terrainHeight);
+      const groupY = monumentGroundY + 5;
       const rotationY = -MathUtils.degToRad(monument.rotationY || 0);
       const group = createMonumentPrimitive(monument, {
         terrain: this.terrain,
@@ -2394,7 +2394,7 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
       });
       layer.add(group);
       if (monumentKey(monument).includes("outpost") || monumentKey(monument).includes("compound")) {
-        void replaceOutpostPrimitiveWithReferenceModel(group, sizeForMonumentModel(monument), this.renderer.shadowMap.enabled);
+        void replaceOutpostPrimitiveWithReferenceModel(group, monumentGroundY - groupY, this.renderer.shadowMap.enabled);
       }
     });
 
@@ -4643,10 +4643,6 @@ interface MonumentPrimitivePlacement {
   rotationY: number;
 }
 
-function sizeForMonumentModel(monument: MonumentPayload): number {
-  return MathUtils.clamp(monument.radius, 24, 180);
-}
-
 function loadOutpostReferenceModel(): Promise<Group> {
   if (!outpostModelPromise) {
     const draco = new DRACOLoader();
@@ -4658,20 +4654,17 @@ function loadOutpostReferenceModel(): Promise<Group> {
   return outpostModelPromise;
 }
 
-async function replaceOutpostPrimitiveWithReferenceModel(group: Group, size: number, shadowsEnabled: boolean): Promise<void> {
+async function replaceOutpostPrimitiveWithReferenceModel(group: Group, localGroundY: number, shadowsEnabled: boolean): Promise<void> {
   const fallback = group.children.filter((child) => child.name !== "monument-title");
 
   try {
     const model = (await loadOutpostReferenceModel()).clone(true);
-    const bounds = new Box3().setFromObject(model);
-    const extent = bounds.getSize(new Vector3());
-    const center = bounds.getCenter(new Vector3());
-    const footprint = Math.max(extent.x, extent.z, 1);
-    const scale = (size * 2) / footprint;
 
     model.name = "outpost-reference-model";
-    model.position.set(-center.x * scale, -bounds.min.y * scale, -center.z * scale);
-    model.scale.setScalar(scale);
+    // Rust places the monument prefab by its authored root transform. Preserve
+    // that native X/Z pivot and 1:1 scale; only cancel the +5 map-proxy lift so
+    // the prefab's authored Y=0 ground plane sits on the published monument.
+    model.position.set(0, localGroundY, 0);
     model.traverse((object) => {
       if (object instanceof Mesh) {
         object.castShadow = shadowsEnabled;
