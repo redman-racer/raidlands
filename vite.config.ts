@@ -13,6 +13,7 @@ export default defineConfig({
         "airstrike-animation-editor": resolve(__dirname, "assets/ts/airstrike-animation-editor/app.ts"),
         "server-map-viewer": resolve(__dirname, "assets/ts/server-map-viewer/app.ts"),
         "store-kit-preview": resolve(__dirname, "assets/ts/store-kit-preview/app.ts"),
+        "leaderboard-podium": resolve(__dirname, "assets/ts/leaderboard-podium/app.ts"),
       },
       output: {
         entryFileNames: "[name].js",

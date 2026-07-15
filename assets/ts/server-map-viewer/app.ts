@@ -13,6 +13,7 @@ import {
   FloatType,
   Float32BufferAttribute,
   Group,
+  InstancedMesh,
   CanvasTexture,
   LineBasicMaterial,
   LineSegments,
@@ -103,7 +104,9 @@ import {
 } from "./camera-policy";
 import { monumentNavigationLabels, recentUniqueNavigationEvents, validNavigationCoordinate } from "./navigation-policy";
 import { monumentModelAssetName, monumentModelMetadata, type MonumentModelManifestEntry } from "./monument-model-registry";
-import { monumentPrimitiveKind, monumentPrimitiveSearchKey } from "./monument-primitive-policy";
+import { monumentPrimitiveKind, monumentPrimitiveSearchKey, monumentPrimitiveSize } from "./monument-primitive-policy";
+import { monumentRenderClass, type MonumentRenderClass } from "./monument-render-policy";
+import { normalizePowerLines, type PowerLinePayload } from "./power-line-policy";
 import { monumentLoadDistance, monumentUnloadDistance, parseMonumentMode, prioritizeMonuments, resolveMonumentQuality, type MonumentMode, type MonumentQualityPolicy } from "./monument-quality-policy";
 
 const ENVIRONMENT_QUALITY_STORAGE_KEY = "raidlands:map-environment-quality";
@@ -122,6 +125,7 @@ type TerrainPayload = {
   heights: number[];
   colors?: string[];
   monuments?: MonumentPayload[];
+  powerLines?: PowerLinePayload[];
 };
 
 type MonumentPayload = {
@@ -914,6 +918,7 @@ function normalizeTerrain(value: unknown, root: HTMLElement): TerrainPayload {
   const worldSize = Number(payload.worldSize) || Number(root.dataset.worldSize) || 4500;
   const colors = Array.isArray(payload.colors) && payload.colors.length === expected ? payload.colors.map(String) : undefined;
   const monuments = normalizeMonuments(payload.monuments, Math.max(100, worldSize));
+  const powerLines = normalizePowerLines(payload.powerLines, Math.max(100, worldSize));
 
   return {
     version: Number(payload.version) || 1,
@@ -926,6 +931,7 @@ function normalizeTerrain(value: unknown, root: HTMLElement): TerrainPayload {
     heights,
     colors,
     monuments,
+    powerLines,
   };
 }
 
@@ -998,6 +1004,7 @@ class TerrainViewer {
   private readonly overlayLayerTransitions: OverlayLayerTransition[] = [];
   private readonly airstrikeLayer = new Group();
   private readonly monumentLayer = new Group();
+  private readonly powerLineLayer = new Group();
   private readonly weatherCloudLayer = new Group();
   private readonly groundFogLayer: Group;
   private readonly terrainHeightTexture: DataTexture | null;
@@ -1185,6 +1192,7 @@ class TerrainViewer {
   private selfLocationOrbitStartedAt = performance.now();
   private wetness = 0;
   private lastWeatherTick = performance.now();
+  private disposed = false;
 
   public constructor(
     root: HTMLElement,
@@ -1333,6 +1341,7 @@ class TerrainViewer {
     this.airstrikeLayer.name = "raidlands-airstrike-preview-layer";
     this.scene.add(this.airstrikeLayer);
     this.addMonuments();
+    this.addPowerLines();
     this.addLights();
 
     this.controls = new OrbitControls(this.camera, this.renderer.domElement);
@@ -1375,6 +1384,7 @@ class TerrainViewer {
   }
 
   public dispose(): void {
+    this.disposed = true;
     window.cancelAnimationFrame(this.animationFrame);
     window.removeEventListener("resize", this.onResize);
     this.renderer.domElement.removeEventListener("pointerdown", this.onPointerDown, true);
@@ -1428,7 +1438,7 @@ class TerrainViewer {
       ?.querySelectorAll<HTMLInputElement | HTMLSelectElement>("[data-map-detailed-monuments]")
       .forEach((control) => {
         if (control instanceof HTMLInputElement) {
-          control.checked = mode !== "map";
+          control.checked = mode !== "primitives";
         } else {
           control.value = mode;
         }
@@ -1820,7 +1830,7 @@ class TerrainViewer {
         <span>Monuments</span>
         <select data-map-detailed-monuments aria-label="Monument model detail">
           <option value="auto"${this.monumentMode === "auto" ? " selected" : ""}>Auto</option>
-          <option value="map"${this.monumentMode === "map" ? " selected" : ""}>Map LOD</option>
+          <option value="primitives"${this.monumentMode === "primitives" ? " selected" : ""}>Primitives</option>
           <option value="detailed"${this.monumentMode === "detailed" ? " selected" : ""}>Detailed</option>
         </select>
       </label>
@@ -2459,10 +2469,109 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
         }
       });
       layer.add(group);
-      this.monumentModels.register(group, monument, monumentGroundY - groupY);
+      // Procedural fallbacks sit on sampled terrain, while authored models keep
+      // the Rust monument root Y. This prevents subterranean cave/lab geometry
+      // from being lifted wholesale above the ground or ocean surface.
+      this.monumentModels.register(group, monument, monumentPosition.y - groupY);
     });
 
     this.scene.add(layer);
+  }
+
+  private addPowerLines(): void {
+    const paths = this.terrain.powerLines || [];
+    if (!paths.length) return;
+    this.powerLineLayer.name = "raidlands-power-line-infrastructure";
+    this.scene.add(this.powerLineLayer);
+    const placements: Array<{ position: Vector3; rotationY: number; variant: number }> = [];
+    const wireVertices: Vector3[] = [];
+    paths.forEach((path, pathIndex) => {
+      const points = path.points.map((point) => rustWorldToViewerPosition(point.x, point.y, point.z));
+      points.forEach((point, index) => {
+        const neighbor = points[Math.min(points.length - 1, index + 1)] || points[Math.max(0, index - 1)]!;
+        const prior = points[Math.max(0, index - 1)] || neighbor;
+        const direction = neighbor.clone().sub(prior);
+        placements.push({ position: point, rotationY: Math.atan2(direction.x, direction.z), variant: (pathIndex + index) % 4 });
+      });
+      for (let index = 0; index < points.length - 1; index++) {
+        const start = points[index]!; const end = points[index + 1]!;
+        const perpendicular = new Vector3(-(end.z - start.z), 0, end.x - start.x).normalize();
+        for (const lateral of [-7, 0, 7]) {
+          const samples: Vector3[] = [];
+          for (let step = 0; step <= 8; step++) {
+            const t = step / 8;
+            samples.push(start.clone().lerp(end, t).addScaledVector(perpendicular, lateral).add(new Vector3(0, 31 - Math.sin(t * Math.PI) * 4.5, 0)));
+          }
+          for (let step = 0; step < samples.length - 1; step++) wireVertices.push(samples[step]!, samples[step + 1]!);
+        }
+      }
+    });
+    if (wireVertices.length) {
+      const wires = new LineSegments(
+        new BufferGeometry().setFromPoints(wireVertices),
+        new LineBasicMaterial({ color: 0x242a2a, transparent: true, opacity: 0.72 }),
+      );
+      wires.name = "power-line-wires";
+      this.powerLineLayer.add(wires);
+    }
+    this.root.dataset.powerLinePathCount = String(paths.length);
+    this.root.dataset.powerLineTowerCount = String(placements.length);
+    const draco = new DRACOLoader();
+    draco.setDecoderPath(DRACO_DECODER_URL);
+    const loader = new GLTFLoader();
+    loader.setDRACOLoader(draco);
+    loader.setMeshoptDecoder(MeshoptDecoder);
+    const base = new URL(this.root.dataset.assetBase || new URL(/* @vite-ignore */ "../../", import.meta.url).href, window.location.href);
+    const variants = ["a", "b", "c", "d"];
+    void Promise.allSettled(variants.map((variant) => loader.loadAsync(new URL(`media/models/infrastructure/powerline_${variant}.glb`, base).href)))
+      .then((results) => {
+        if (this.disposed) {
+          results.forEach((result) => {
+            if (result.status === "fulfilled") result.value.scene.traverse((object) => {
+              if (object instanceof Mesh) disposeGeometryMaterial(object);
+            });
+          });
+          return;
+        }
+        results.forEach((result, variant) => {
+          const selected = placements.filter((placement) => placement.variant === variant);
+          if (!selected.length) {
+            if (result.status === "fulfilled") result.value.scene.traverse((object) => {
+              if (object instanceof Mesh) disposeGeometryMaterial(object);
+            });
+            return;
+          }
+          if (result.status === "rejected") {
+            console.warn(`Raidlands map viewer could not load Rust power-line tower ${variants[variant]}; using lightweight pylons.`, result.reason);
+            selected.forEach((placement) => {
+              const fallback = createPowerLineTowerPrimitive();
+              fallback.position.copy(placement.position);
+              fallback.rotation.y = placement.rotationY;
+              this.powerLineLayer.add(fallback);
+            });
+            return;
+          }
+          const gltf = result.value;
+          gltf.scene.updateMatrixWorld(true);
+          const source = gltf.scene.getObjectByProperty("isMesh", true) as Mesh | undefined;
+          if (!source) return;
+          const instances = new InstancedMesh(source.geometry, source.material, selected.length);
+          instances.name = `power-line-towers-${variant}`;
+          instances.castShadow = false;
+          instances.receiveShadow = false;
+          selected.forEach((placement, index) => {
+            const placementMatrix = new Matrix4().compose(
+              placement.position,
+              new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), placement.rotationY),
+              new Vector3(1, 1, 1),
+            ).multiply(source.matrixWorld);
+            instances.setMatrixAt(index, placementMatrix);
+          });
+          instances.instanceMatrix.needsUpdate = true;
+          this.powerLineLayer.add(instances);
+        });
+      })
+      .finally(() => draco.dispose());
   }
 
   private addLights(): void {
@@ -4716,6 +4825,7 @@ type MonumentBinding = {
   group: Group;
   monument: MonumentPayload;
   metadata: MonumentModelManifestEntry;
+  renderClass: MonumentRenderClass;
   fallback: Object3D[];
   localGroundY: number;
   map: Group | null;
@@ -4726,6 +4836,7 @@ type MonumentBinding = {
 };
 
 class MonumentModelController {
+  private readonly draco: DRACOLoader;
   private readonly loader: GLTFLoader;
   private readonly bindings: MonumentBinding[] = [];
   private readonly cache = new Map<string, MonumentCacheEntry>();
@@ -4740,10 +4851,10 @@ class MonumentModelController {
 
   public constructor(private readonly options: { assetBase: string; camera: PerspectiveCamera; policy: MonumentQualityPolicy; root: HTMLElement }) {
     this.policy = options.policy;
-    const draco = new DRACOLoader();
-    draco.setDecoderPath(DRACO_DECODER_URL);
+    this.draco = new DRACOLoader();
+    this.draco.setDecoderPath(DRACO_DECODER_URL);
     this.loader = new GLTFLoader();
-    this.loader.setDRACOLoader(draco);
+    this.loader.setDRACOLoader(this.draco);
     this.loader.setMeshoptDecoder(MeshoptDecoder);
     this.syncDiagnostics();
   }
@@ -4751,11 +4862,12 @@ class MonumentModelController {
   public register(group: Group, monument: MonumentPayload, localGroundY: number): void {
     const metadata = monumentModelMetadata(monument.prefab);
     if (!metadata) return;
-    if ((window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") && metadata.overBudget) {
-      console.warn(`Monument map LOD ${metadata.id} exceeds its ${metadata.outputBytes}-byte asset budget.`);
+    if ((window.location.hostname === "localhost" || window.location.hostname === "127.0.0.1") && (metadata.overBudget || metadata.overTriangleTarget)) {
+      console.warn(`Monument map LOD ${metadata.id} needs manual tuning: ${metadata.outputBytes} bytes, ${(metadata.triangleRatio * 100).toFixed(2)}% of source triangles.`);
     }
     this.bindings.push({
       group, monument, metadata, localGroundY,
+      renderClass: monumentRenderClass(monument.prefab),
       fallback: group.children.filter((child) => child.name !== "monument-title"),
       map: null, detail: null, desired: "fallback", loading: new Set(), failed: new Set(),
     });
@@ -4781,8 +4893,22 @@ class MonumentModelController {
       distance: this.options.camera.position.distanceTo(binding.group.position),
       focused: now < this.focusedUntil && binding.monument === this.focused,
     })));
-    const mapSet = new Set(ranked.filter((item) => item.focused || item.distance <= monumentUnloadDistance(item.binding.monument.radius, this.policy) * 1.8).slice(0, this.policy.activeMapLimit).map((item) => item.binding));
-    const detailSet = new Set(ranked.filter((item) => item.focused || item.distance <= monumentLoadDistance(item.binding.monument.radius, this.policy)).slice(0, this.policy.activeDetailLimit).map((item) => item.binding));
+    const detailSet = new Set(ranked.filter((item) => {
+      const eligible = item.binding.renderClass !== "surface-entrance"
+        && (this.policy.requested === "detailed" || item.binding.renderClass === "shared-detail");
+      const threshold = item.binding.desired === "detail"
+        ? monumentUnloadDistance(item.binding.monument.radius, this.policy)
+        : monumentLoadDistance(item.binding.monument.radius, this.policy);
+      return eligible && (item.focused || item.distance <= threshold);
+    }).slice(0, this.policy.activeDetailLimit).map((item) => item.binding));
+    const mapSet = new Set(ranked.filter((item) => {
+      if (!item.binding.metadata.map || item.binding.renderClass === "surface-entrance") return false;
+      const eligible = this.policy.requested === "primitives" || item.binding.renderClass !== "shared-detail";
+      const threshold = item.binding.desired === "map"
+        ? monumentUnloadDistance(item.binding.monument.radius, this.policy)
+        : monumentLoadDistance(item.binding.monument.radius, this.policy);
+      return eligible && (item.focused || item.distance <= threshold * 2.2);
+    }).slice(0, this.policy.activeMapLimit).map((item) => item.binding));
     for (const { binding } of ranked) this.setDesired(binding, detailSet.has(binding) ? "detail" : mapSet.has(binding) ? "map" : "fallback");
     this.evict("detail", this.policy.detailCacheLimit);
     this.evict("map", this.policy.activeMapLimit + 2);
@@ -4799,6 +4925,7 @@ class MonumentModelController {
     for (const entry of this.cache.values()) this.disposeSource(entry.source);
     this.cache.clear();
     this.bindings.length = 0;
+    this.draco.dispose();
     this.syncDiagnostics();
   }
 
@@ -4806,7 +4933,7 @@ class MonumentModelController {
     binding.desired = desired;
     if (desired !== "detail") this.detach(binding, "detail");
     if (desired === "fallback") this.detach(binding, "map");
-    if (desired === "map" || desired === "detail") this.ensure(binding, "map");
+    if ((desired === "map" || desired === "detail") && binding.metadata.map) this.ensure(binding, "map");
     if (desired === "detail") this.ensure(binding, "detail");
     this.applyVisibility(binding);
   }
@@ -4853,7 +4980,7 @@ class MonumentModelController {
     const pending = this.pending.get(key);
     if (pending) return pending;
     const base = new URL(this.options.assetBase, window.location.href);
-    const path = tier === "map" ? `media/models/monuments-map/${binding.metadata.map}` : `media/models/monuments/${binding.metadata.id}.glb`;
+    const path = tier === "map" ? `media/models/monuments-map/${binding.metadata.map!}` : `media/models/monuments/${binding.metadata.id}.glb`;
     const promise = this.loader.loadAsync(new URL(path, base).href).then((gltf) => {
       const source = gltf.scene;
       if (!this.disposed) this.cache.set(key, { source, active: 0, lastUsed: performance.now() });
@@ -4912,13 +5039,16 @@ class MonumentModelController {
     const activeDetail = this.bindings.filter((binding) => binding.detail).length;
     const triangles = this.bindings.reduce((sum, binding) => sum
       + (binding.detail ? binding.metadata.sourceTriangles : binding.map ? binding.metadata.triangles : 0), 0);
+    const drawCalls = this.bindings.reduce((sum, binding) => sum
+      + (binding.detail ? binding.metadata.sourceDrawCalls : binding.map ? binding.metadata.drawCalls : 0), 0);
     const failures = this.bindings.reduce((sum, binding) => sum + binding.failed.size, 0);
     Object.assign(this.options.root.dataset, {
       monumentModeRequested: this.policy.requested,
       monumentModeResolved: this.policy.resolved,
       monumentMapLoaded: String(activeMap), monumentDetailLoaded: String(activeDetail),
       monumentCacheEntries: String(this.cache.size), monumentFailedAssets: String(failures),
-      monumentApproxTriangles: String(triangles), monumentDecodeQueue: String(this.queue.length),
+      monumentApproxTriangles: String(triangles), monumentApproxDrawCalls: String(drawCalls),
+      monumentDecodeQueue: String(this.queue.length),
     });
   }
 }
@@ -4927,7 +5057,7 @@ function createMonumentPrimitive(monument: MonumentPayload, placement?: Monument
   const group = new Group();
   const key = monumentKey(monument);
   const primitiveKind = monumentPrimitiveKind(monument);
-  const size = MathUtils.clamp(monument.radius, 24, 180);
+  const size = monumentPrimitiveSize(monument, monument.radius);
 
   group.name = `monument-${key}`;
   group.userData.primitiveKind = primitiveKind;
@@ -4984,6 +5114,36 @@ function createMonumentPrimitive(monument: MonumentPayload, placement?: Monument
 
   if (key.includes("junkyard") || key.includes("junk_yard")) {
     createJunkyardMonumentPrimitive(group, size, placement);
+    return addTitle();
+  }
+
+  if (key.includes("radtown")) {
+    createRadtownMonumentPrimitive(group, size);
+    return addTitle();
+  }
+
+  if (key.includes("ferry_terminal") || key.includes("ferryterminal")) {
+    createFerryTerminalMonumentPrimitive(group, size * 1.45);
+    return addTitle();
+  }
+
+  if (key.includes("fishing_village") || key.includes("fishingvillage")) {
+    createFishingVillageMonumentPrimitive(group, size);
+    return addTitle();
+  }
+
+  if (key.includes("stables") || key.includes("large_barn") || key.includes("ranch")) {
+    createStablesMonumentPrimitive(group, size);
+    return addTitle();
+  }
+
+  if (key.includes("arctic_research") || key.includes("arcticresearch")) {
+    createArcticResearchBaseMonumentPrimitive(group, size * 1.35);
+    return addTitle();
+  }
+
+  if (key.includes("ziggurat")) {
+    createJungleZigguratMonumentPrimitive(group, size * 1.35);
     return addTitle();
   }
 
@@ -5052,6 +5212,11 @@ function createMonumentPrimitive(monument: MonumentPayload, placement?: Monument
 
   if (primitiveKind === "military-tunnels") {
     createMilitaryTunnelsMonumentPrimitive(group, size);
+    return addTitle();
+  }
+
+  if (key.includes("cave_")) {
+    createCaveEntranceMonumentPrimitive(group, size);
     return addTitle();
   }
 
@@ -5362,6 +5527,164 @@ function createQuarryMonumentPrimitive(group: Group, size: number): void {
   const conveyor = addBox(group, size * 0.62, size * 0.045, size * 0.12, rust, size * 0.26, size * 0.2, -size * 0.32);
   conveyor.rotation.z = MathUtils.degToRad(12);
   addCone(group, size * 0.15, size * 0.28, steel, size * 0.54, size * 0.22, -size * 0.32);
+}
+
+function createRadtownMonumentPrimitive(group: Group, size: number): void {
+  const road = 0x34383a;
+  const concrete = 0x77776e;
+  const brick = 0x81513e;
+  const rust = 0x9a4e31;
+  const steel = 0x596567;
+  const dark = 0x282e2f;
+
+  addBox(group, size * 1.72, size * 0.025, size * 1.18, road, 0, size * 0.015, 0);
+  addBox(group, size * 0.68, size * 0.34, size * 0.34, brick, -size * 0.36, size * 0.19, -size * 0.24);
+  addPitchedRoof(group, size * 0.72, size * 0.38, size * 0.065, rust, -size * 0.36, size * 0.41, -size * 0.24);
+  addBox(group, size * 0.46, size * 0.55, size * 0.34, concrete, size * 0.42, size * 0.29, size * 0.16);
+  addBox(group, size * 0.52, size * 0.055, size * 0.4, rust, size * 0.42, size * 0.59, size * 0.16);
+  addBox(group, size * 0.54, size * 0.22, size * 0.28, steel, size * 0.12, size * 0.13, -size * 0.42);
+  [-0.54, -0.38, -0.22].forEach((x) => addCylinder(group, size * 0.055, size * 0.3, steel, size * x, size * 0.17, size * 0.3));
+  addCylinder(group, size * 0.07, size * 0.8, rust, size * 0.66, size * 0.41, -size * 0.32);
+  addCylinder(group, size * 0.1, size * 0.055, dark, size * 0.66, size * 0.82, -size * 0.32);
+  addGuardTower(group, size * 0.42, -size * 0.68, size * 0.38);
+  [[-0.05, 0.4, 0x4f684e], [0.2, 0.43, 0x9b5936], [0.46, -0.42, 0x526a70]].forEach(([x, z, color]) => {
+    addBox(group, size * 0.25, size * 0.11, size * 0.13, color, size * Number(x), size * 0.075, size * Number(z));
+  });
+}
+
+function createFerryTerminalMonumentPrimitive(group: Group, size: number): void {
+  const concrete = 0x969387;
+  const asphalt = 0x303638;
+  const steel = 0x59666a;
+  const rust = 0x8f5036;
+  const glass = 0x3e555c;
+  const marking = 0xd2c99c;
+
+  addBox(group, size * 1.75, size * 0.025, size * 1.05, asphalt, 0, size * 0.015, 0);
+  addBox(group, size * 0.9, size * 0.035, size * 0.46, concrete, size * 0.38, size * 0.035, size * 0.27);
+  [-0.28, -0.12, 0.04, 0.2].forEach((z) => addBox(group, size * 1.35, size * 0.008, size * 0.012, marking, -size * 0.08, size * 0.04, size * z));
+  addBox(group, size * 0.74, size * 0.28, size * 0.3, concrete, -size * 0.38, size * 0.16, -size * 0.28);
+  addBox(group, size * 0.8, size * 0.05, size * 0.36, rust, -size * 0.38, size * 0.33, -size * 0.28);
+  addBox(group, size * 0.42, size * 0.2, size * 0.025, glass, -size * 0.38, size * 0.18, -size * 0.445);
+  // Twin loading ramps and their overhead gantries make the ferry terminal legible from orbit.
+  [-0.38, 0.38].forEach((x) => {
+    const ramp = addBox(group, size * 0.32, size * 0.035, size * 0.72, steel, size * x, size * 0.11, size * 0.22);
+    ramp.rotation.x = MathUtils.degToRad(-7);
+    [-0.13, 0.13].forEach((dx) => addBox(group, size * 0.025, size * 0.55, size * 0.025, rust, size * x + size * dx, size * 0.3, -size * 0.02));
+    addBox(group, size * 0.34, size * 0.035, size * 0.05, rust, size * x, size * 0.58, -size * 0.02);
+  });
+  addBox(group, size * 0.17, size * 0.62, size * 0.17, concrete, size * 0.68, size * 0.32, -size * 0.32);
+  addBox(group, size * 0.24, size * 0.13, size * 0.24, glass, size * 0.68, size * 0.68, -size * 0.32);
+}
+
+function createFishingVillageMonumentPrimitive(group: Group, size: number): void {
+  const wood = 0x75583e;
+  const darkWood = 0x3e3329;
+  const roof = 0x8b4c35;
+  const tarp = 0x42637a;
+
+  const pier = addBox(group, size * 1.5, size * 0.055, size * 0.2, wood, 0, size * 0.12, 0);
+  pier.rotation.y = MathUtils.degToRad(4);
+  [-0.62, -0.3, 0, 0.3, 0.62].forEach((x) => {
+    [-0.07, 0.07].forEach((z) => addBox(group, size * 0.025, size * 0.34, size * 0.025, darkWood, size * x, size * 0.02, size * z));
+  });
+  [[-0.4, -0.24, 0.4], [0.08, 0.25, -0.2], [0.5, -0.2, 0.25]].forEach(([x, z, rotation], index) => {
+    const hut = addBox(group, size * 0.32, size * 0.22, size * 0.28, index === 1 ? 0x67675b : wood, size * x, size * 0.27, size * z);
+    hut.rotation.y = rotation;
+    addPitchedRoof(group, size * 0.36, size * 0.32, size * 0.055, index === 2 ? tarp : roof, size * x, size * 0.41, size * z);
+  });
+  addCylinder(group, size * 0.025, size * 0.55, darkWood, -size * 0.65, size * 0.38, size * 0.18);
+  const sign = addBox(group, size * 0.22, size * 0.12, size * 0.025, tarp, -size * 0.65, size * 0.62, size * 0.18);
+  sign.rotation.y = MathUtils.degToRad(-10);
+}
+
+function createStablesMonumentPrimitive(group: Group, size: number): void {
+  const dirt = 0x665b47;
+  const timber = 0x71523a;
+  const darkWood = 0x3f3125;
+  const roof = 0x8d4932;
+
+  addBox(group, size * 1.55, size * 0.02, size * 1.08, dirt, 0, size * 0.012, 0);
+  addBox(group, size * 0.82, size * 0.38, size * 0.46, timber, -size * 0.18, size * 0.21, -size * 0.14);
+  addPitchedRoof(group, size * 0.9, size * 0.52, size * 0.075, roof, -size * 0.18, size * 0.46, -size * 0.14);
+  addBox(group, size * 0.2, size * 0.28, size * 0.025, darkWood, -size * 0.18, size * 0.16, -size * 0.385);
+  // Open paddocks and fence rails provide the broad stable footprint missing from a generic shed.
+  [[0.42, -0.3], [0.42, 0.28], [-0.42, 0.35]].forEach(([cx, cz], index) => {
+    const width = size * (index === 2 ? 0.42 : 0.5);
+    const depth = size * 0.34;
+    [-1, 1].forEach((side) => {
+      addBox(group, width, size * 0.018, size * 0.018, darkWood, size * cx, size * 0.16, size * cz + side * depth / 2);
+      addBox(group, size * 0.018, size * 0.18, size * 0.018, darkWood, size * cx - width / 2, size * 0.1, size * cz + side * depth / 2);
+      addBox(group, size * 0.018, size * 0.18, size * 0.018, darkWood, size * cx + width / 2, size * 0.1, size * cz + side * depth / 2);
+    });
+  });
+  addCylinder(group, size * 0.11, size * 0.18, 0x696b62, size * 0.58, size * 0.12, size * 0.46);
+}
+
+function createArcticResearchBaseMonumentPrimitive(group: Group, size: number): void {
+  const snow = 0xd2d7d5;
+  const steel = 0x687578;
+  const blue = 0x315b72;
+  const orange = 0xb76435;
+  const dark = 0x263236;
+
+  addBox(group, size * 1.45, size * 0.025, size * 1.1, snow, 0, size * 0.015, 0);
+  [[-0.35, -0.18], [0.25, -0.2], [-0.05, 0.3]].forEach(([x, z], index) => {
+    addBox(group, size * 0.48, size * 0.25, size * 0.3, index === 1 ? blue : steel, size * x, size * 0.15, size * z);
+    addBox(group, size * 0.52, size * 0.045, size * 0.34, orange, size * x, size * 0.3, size * z);
+  });
+  addCylinder(group, size * 0.075, size * 0.56, dark, size * 0.5, size * 0.3, size * 0.22);
+  const dish = addCone(group, size * 0.22, size * 0.1, snow, size * 0.5, size * 0.64, size * 0.22);
+  dish.rotation.x = MathUtils.degToRad(55);
+  addBox(group, size * 0.24, size * 0.15, size * 0.16, blue, -size * 0.55, size * 0.1, size * 0.32);
+  addGuardTower(group, size * 0.32, -size * 0.58, -size * 0.38);
+}
+
+function createJungleZigguratMonumentPrimitive(group: Group, size: number): void {
+  const stone = 0x66695a;
+  const moss = 0x40543b;
+  const dark = 0x252c28;
+  [1, 0.76, 0.53, 0.3].forEach((scale, index) => {
+    addBox(group, size * scale, size * 0.15, size * scale, index % 2 ? moss : stone, 0, size * (0.08 + index * 0.14), 0);
+  });
+  addBox(group, size * 0.2, size * 0.2, size * 0.18, dark, 0, size * 0.29, -size * 0.38);
+  for (let i = 0; i < 6; i++) addBox(group, size * 0.11, size * 0.035, size * 0.08, stone, 0, size * (0.05 + i * 0.055), -size * (0.53 - i * 0.065));
+  [[-0.48, -0.46], [0.5, -0.42], [-0.44, 0.48], [0.46, 0.46]].forEach(([x, z]) => {
+    addCylinder(group, size * 0.025, size * 0.34, 0x514735, size * x, size * 0.18, size * z);
+    addSphere(group, size * 0.08, 0x35513a, size * x, size * 0.4, size * z);
+  });
+}
+
+function createCaveEntranceMonumentPrimitive(group: Group, size: number): void {
+  const rock = 0x59564d;
+  const darkRock = 0x3c3a35;
+  const mouth = 0x141817;
+  // Everything remains at or above local ground: the detailed cave GLBs include
+  // their subterranean chambers, which must never be raised into view.
+  const mound = new Mesh(new SphereGeometry(size * 0.42, 12, 7, 0, Math.PI * 2, 0, Math.PI * 0.52), monumentMaterial(rock));
+  mound.scale.set(1.35, 0.72, 1);
+  mound.position.set(0, 0, size * 0.04);
+  group.add(mound);
+  addBox(group, size * 0.34, size * 0.24, size * 0.035, mouth, 0, size * 0.12, -size * 0.36);
+  addBox(group, size * 0.46, size * 0.08, size * 0.12, darkRock, 0, size * 0.26, -size * 0.32).rotation.x = MathUtils.degToRad(-8);
+  [-0.3, 0.3].forEach((x) => addBox(group, size * 0.14, size * 0.22, size * 0.15, darkRock, size * x, size * 0.11, -size * 0.24));
+}
+
+function createPowerLineTowerPrimitive(): Group {
+  const group = new Group();
+  const steel = 0x4f595c;
+  [-4.8, 4.8].forEach((x) => {
+    const leg = addBox(group, 0.65, 28, 0.65, steel, x, 14, 0);
+    leg.rotation.z = MathUtils.degToRad(x < 0 ? -10 : 10);
+  });
+  addBox(group, 22, 0.65, 0.75, steel, 0, 27, 0);
+  addBox(group, 15, 0.55, 0.65, steel, 0, 22, 0);
+  addBox(group, 7, 0.5, 0.55, steel, 0, 17, 0);
+  [-18, -9, 9, 18].forEach((angle, index) => {
+    const brace = addBox(group, 12, 0.42, 0.42, steel, 0, 7 + index * 5, 0);
+    brace.rotation.z = MathUtils.degToRad(angle);
+  });
+  return group;
 }
 
 function createGenericMonumentPrimitive(group: Group, size: number): void {

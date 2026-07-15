@@ -35,6 +35,7 @@ try {
             'metric' => $metric,
             'search' => $search,
             'rows' => [],
+            'leaders' => [],
             'total' => 0,
             'page' => 1,
             'per_page' => $per_page,
@@ -46,6 +47,11 @@ try {
         'bots' => raidlands_stats_bot_leaderboard_result($scope, $page, $per_page, $search, $metric, $wipe_id, $wipe_key),
         'rp-games' => raidlands_rewards_leaderboard_result($scope, $page, $per_page, $search, $wipe_id, $wipe_key),
         default => raidlands_stats_leaderboard_result($metric, $scope, $page, $per_page, $search, $wipe_id, $wipe_key),
+    };
+    $leaders = match ($board) {
+        'bots' => raidlands_stats_bot_leaderboard_leaders($scope, $metric, $wipe_id, $wipe_key),
+        'rp-games' => raidlands_rewards_leaderboard_leaders($scope, $wipe_id, $wipe_key),
+        default => raidlands_stats_leaderboard_leaders($metric, $scope, $wipe_id, $wipe_key),
     };
     $selected_wipe = $scope === 'wipe' ? raidlands_stats_wipe($wipe_id, $wipe_key) : null;
 
@@ -60,6 +66,7 @@ try {
         'metric' => $metric,
         'search' => $search,
         'rows' => $result['rows'],
+        'leaders' => $leaders,
         'total' => $result['total'],
         'page' => $result['page'],
         'per_page' => $result['per_page'],

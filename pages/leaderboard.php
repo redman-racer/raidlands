@@ -56,6 +56,15 @@ $leaderboard_rp_result = $leaderboard_ready
         $leaderboard_wipe_key
     )
     : raidlands_stats_page_result([], 0, 1, $leaderboard_per_page);
+$leaderboard_player_leaders = $leaderboard_ready
+    ? raidlands_stats_leaderboard_leaders($leaderboard_player_metric, $leaderboard_scope, $leaderboard_wipe_id, $leaderboard_wipe_key)
+    : [];
+$leaderboard_bot_leaders = $leaderboard_ready
+    ? raidlands_stats_bot_leaderboard_leaders($leaderboard_scope, $leaderboard_bot_metric, $leaderboard_wipe_id, $leaderboard_wipe_key)
+    : [];
+$leaderboard_rp_leaders = $leaderboard_ready
+    ? raidlands_rewards_leaderboard_leaders($leaderboard_scope, $leaderboard_wipe_id, $leaderboard_wipe_key)
+    : [];
 $leaderboard_wipe = $leaderboard_ready ? raidlands_stats_active_wipe() : null;
 $leaderboard_selected_wipe = $leaderboard_ready && $leaderboard_scope === 'wipe'
     ? raidlands_stats_wipe($leaderboard_wipe_id, $leaderboard_wipe_key)
@@ -170,6 +179,72 @@ function leaderboard_wipe_options(array $wipes, int $selected_wipe_id): string
 
     return $html;
 }
+
+function leaderboard_podium_value(array $row, string $board, string $metric): string
+{
+    if ($board === 'rp-games') {
+        return number_format((int) ($row['total_rp_won'] ?? 0));
+    }
+
+    if ($metric === 'kdr') {
+        return number_format((float) ($row['kdr'] ?? 0), 2);
+    }
+
+    if ($metric === 'playtime') {
+        return raidlands_stats_format_duration((int) ($row['playtime_seconds'] ?? 0));
+    }
+
+    $field = match ($metric) {
+        'rp' => 'reward_points',
+        'npc_kills' => 'npc_kills',
+        'deaths_by_npc' => 'deaths_by_npc',
+        'deaths' => 'deaths',
+        default => 'kills',
+    };
+
+    return number_format((int) ($row[$field] ?? 0));
+}
+
+function leaderboard_podium_markup(array $leaders, string $board, string $metric): string
+{
+    $metric_labels = [
+        'kills' => 'kills', 'kdr' => 'K/D', 'playtime' => 'played', 'rp' => 'RP',
+        'npc_kills' => 'NPC kills', 'deaths_by_npc' => 'NPC deaths', 'deaths' => 'deaths',
+        'total-won' => 'RP won',
+    ];
+    $cards = '';
+
+    foreach (array_slice($leaders, 0, 3) as $index => $row) {
+        $rank = $index + 1;
+        $is_bot = $board === 'bots';
+        $name = trim((string) ($row['display_name'] ?? '')) ?: ($is_bot ? 'Raidlands Bot' : 'Raidlands Player');
+        $profile_url = $is_bot ? '' : trim((string) ($row['steam_profile_url'] ?? ''));
+        $avatar = $is_bot
+            ? '<span class="leaderboard-bot-avatar" aria-hidden="true">AI</span>'
+            : render_steam_avatar((string) ($row['steam_avatar_url'] ?? ''), $profile_url, $name, 'steam-avatar-sm');
+        $name_markup = $profile_url !== ''
+            ? '<a href="' . e($profile_url) . '" target="_blank" rel="noopener noreferrer">' . e($name) . '</a>'
+            : '<strong>' . e($name) . '</strong>';
+        $cards .= '<article class="leaderboard-podium-card" data-podium-rank="' . $rank . '">'
+            . '<span class="leaderboard-podium-medal" aria-label="Rank ' . $rank . '">#' . $rank . '</span>'
+            . $avatar
+            . '<span class="leaderboard-podium-copy">' . $name_markup
+            . '<span><b>' . e(leaderboard_podium_value($row, $board, $metric)) . '</b> ' . e($metric_labels[$metric] ?? $metric) . '</span></span>'
+            . '</article>';
+    }
+
+    $empty = $cards === '' ? '<p class="leaderboard-podium-empty">The podium is waiting for contenders.</p>' : '';
+    $payload = json_encode(['leaders' => array_values(array_slice($leaders, 0, 3))], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
+
+    return '<section class="leaderboard-podium" data-leaderboard-podium data-board="' . e($board) . '" data-metric="' . e($metric) . '"'
+        . ' data-model-base="' . e(asset_url('media/models/leaderboard/')) . '"'
+        . ' data-decoder-path="' . e(asset_url('media/models/draco/')) . '" aria-label="Top three podium">'
+        . '<div class="leaderboard-podium-stage" data-podium-stage aria-hidden="true"></div>'
+        . '<div class="leaderboard-podium-cards" data-podium-cards>' . $cards . $empty . '</div>'
+        . '<p class="leaderboard-podium-status" data-podium-status aria-live="polite">Loading 3D podium scene.</p>'
+        . '<script type="application/json" data-podium-payload>' . ($payload ?: '{"leaders":[]}') . '</script>'
+        . '</section>';
+}
 ?>
 <?= render_page_hero('leaderboard',
     '<a class="btn btn-primary" href="' . e(route_url('play')) . '">Join Server</a>'
@@ -265,6 +340,8 @@ function leaderboard_wipe_options(array $wipes, int $selected_wipe_id): string
               <?php endforeach; ?>
             </div>
           </div>
+
+          <?= leaderboard_podium_markup($leaderboard_player_leaders, 'players', $leaderboard_player_metric) ?>
 
           <form class="leaderboard-filterbar" method="get" action="<?= e(route_url('leaderboard')) ?>" data-leaderboard-form>
             <input type="hidden" name="board" value="players">
@@ -392,6 +469,8 @@ function leaderboard_wipe_options(array $wipes, int $selected_wipe_id): string
             </div>
           </div>
 
+          <?= leaderboard_podium_markup($leaderboard_bot_leaders, 'bots', $leaderboard_bot_metric) ?>
+
           <form class="leaderboard-filterbar" method="get" action="<?= e(route_url('leaderboard')) ?>" data-leaderboard-form>
             <input type="hidden" name="board" value="bots">
             <input type="hidden" name="scope" value="<?= e($leaderboard_scope) ?>" data-leaderboard-field="scope">
@@ -495,6 +574,8 @@ function leaderboard_wipe_options(array $wipes, int $selected_wipe_id): string
             </div>
           </div>
 
+          <?= leaderboard_podium_markup($leaderboard_rp_leaders, 'rp-games', 'total-won') ?>
+
           <form class="leaderboard-filterbar" method="get" action="<?= e(route_url('leaderboard')) ?>" data-leaderboard-form>
             <input type="hidden" name="board" value="rp-games">
             <input type="hidden" name="scope" value="<?= e($leaderboard_scope) ?>" data-leaderboard-field="scope">
@@ -523,3 +604,7 @@ function leaderboard_wipe_options(array $wipes, int $selected_wipe_id): string
     <?php endif; ?>
   </div>
 </section>
+
+<?php if ($leaderboard_ready) : ?>
+  <script type="module" src="<?= e(asset_url('build/airstrike-animation-editor/leaderboard-podium.js')) ?>"></script>
+<?php endif; ?>

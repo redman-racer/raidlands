@@ -512,7 +512,7 @@
     if (!tabs.length || !panels.length) return;
 
     initRpSyncGuide(root);
-    initRouletteCanvas(root);
+    initRouletteDirectTable(root);
     initSlotMachine(root);
     renderBlackjack(root.querySelector("[data-blackjack-table]"));
     activateRpGame(root, normalizeRpGameKey(root, window.location.hash) || tabs[0].dataset.rpGameTab || "coinflip", false);
@@ -638,7 +638,6 @@
       showToast(payload.message || "RP game queued.");
       track(`rp_game_${form.dataset.rpGameForm || "play"}_queued`);
       await delay(timing.resultLockMs);
-      if (normalizeRpPlayedGame(gameKey) === "blackjack") window.setTimeout(() => window.location.reload(), 250);
     } catch (error) {
       const message = error && error.message ? error.message : "RP game could not be queued.";
       stopRpGameMotion(panel);
@@ -700,6 +699,7 @@
     }
 
     startWheelSpin(panel, timing);
+    if (normalizeRpPlayedGame(gameKey) === "slots") startSlotSpin(panel);
 
     return timing;
   }
@@ -721,7 +721,8 @@
       const target = panel.querySelector("[data-rp-roulette-result]");
       if (target) target.textContent = String(result.roll ?? 0);
     } else if (normalized === "slots") {
-      renderSlotGrid(panel, result.grid || [], result.winning_lines || []);
+      stopSlotSpin(panel);
+      await settleSlotReels(panel, result.grid || [], result.winning_lines || []);
     } else if (normalized === "blackjack") {
       const table = panel.querySelector("[data-blackjack-table]");
       if (table && result.hand) { table.dataset.hand = JSON.stringify(result.hand); renderBlackjack(table); }
@@ -764,11 +765,41 @@
     form.addEventListener('submit',event=>{if(!bets.length){event.preventDefault();event.stopImmediatePropagation();showToast('Add at least one roulette bet.');}});render();
   }
 
+  function initRouletteDirectTable(root) {
+    const form=root.querySelector('.roulette-bet-builder'),canvas=root.querySelector('[data-roulette-canvas]');if(!form||!canvas)return;
+    const bets=[],hidden=form.querySelector('[data-roulette-bets-json]'),slip=form.querySelector('[data-roulette-slip]'),total=form.querySelector('[data-roulette-total]'),help=root.querySelector('[data-roulette-help]');let chip=50;
+    const reds=new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]),left=70,top=20,w=68,h=82;
+    const add=bet=>{bets.push({...bet,stake_rp:chip});render();};
+    const draw=()=>{const c=canvas.getContext('2d');c.clearRect(0,0,960,420);c.fillStyle='#0b5937';c.fillRect(0,0,960,420);c.strokeStyle='rgba(255,255,255,.72)';c.lineWidth=2;c.fillStyle='#08703f';c.fillRect(12,top,left-12,h*3);c.strokeRect(12,top,left-12,h*3);c.fillStyle='#fff';c.font='bold 24px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText('0',41,top+h*1.5);for(let col=0;col<12;col++)for(let row=0;row<3;row++){const n=col*3+(3-row),x=left+col*w,y=top+row*h;c.fillStyle=reds.has(n)?'#8b2025':'#15191b';c.fillRect(x,y,w,h);c.strokeRect(x,y,w,h);c.fillStyle='#fff';c.fillText(String(n),x+w/2,y+h/2);}c.font='bold 12px sans-serif';for(let col=0;col<12;col++){const x=left+col*w;c.fillStyle='rgba(255,255,255,.07)';c.fillRect(x,top+h*3,w,42);c.strokeRect(x,top+h*3,w,42);c.fillStyle='#fff';c.fillText(`Street ${col+1}`,x+w/2,top+h*3+21);}for(let col=0;col<11;col++){const x=left+col*w+w/2;c.fillStyle='rgba(241,207,84,.12)';c.fillRect(x,top+h*3+47,w,36);c.strokeRect(x,top+h*3+47,w,36);c.fillStyle='#f1cf54';c.fillText('Six-line',x+w/2,top+h*3+65);}const counts=new Map();bets.filter(b=>b.type==='straight').forEach(b=>counts.set(b.numbers[0],(counts.get(b.numbers[0])||0)+1));counts.forEach((count,n)=>{let x,y;if(n===0){x=41;y=top+h*1.5;}else{const col=Math.floor((n-1)/3),row=2-((n-1)%3);x=left+col*w+w/2;y=top+row*h+h/2;}c.beginPath();c.fillStyle='#f1cf54';c.arc(x+18,y-20,13,0,Math.PI*2);c.fill();c.fillStyle='#19150a';c.fillText(String(count),x+18,y-20);});};
+    const render=()=>{hidden.value=JSON.stringify(bets);total.textContent=`${bets.reduce((sum,b)=>sum+b.stake_rp,0)} RP`;slip.innerHTML=bets.length?'':'<p>No bets placed.</p>';bets.forEach((bet,index)=>{const row=document.createElement('button');row.type='button';row.className='roulette-slip-row';row.textContent=`${bet.type==='outside'?bet.key.replaceAll('_',' '):`${bet.type}: ${bet.numbers.join('/')}`} - ${bet.stake_rp} RP (remove)`;row.addEventListener('click',()=>{bets.splice(index,1);render();});slip.appendChild(row);});root.querySelectorAll('[data-roulette-outside]').forEach(button=>button.classList.toggle('has-bet',bets.some(b=>b.key===button.dataset.rouletteOutside)));draw();};
+    form.querySelectorAll('[data-roulette-chip]').forEach(button=>button.addEventListener('click',()=>{chip=Number(button.dataset.rouletteChip)||50;form.querySelectorAll('[data-roulette-chip]').forEach(item=>item.classList.toggle('is-selected',item===button));help.textContent=`${chip} RP chip selected. Tap a center, edge, intersection, or rail.`;}));
+    root.querySelectorAll('[data-roulette-outside]').forEach(button=>button.addEventListener('click',()=>add({type:'outside',key:button.dataset.rouletteOutside})));
+    const outsideWrap=root.querySelector('.roulette-outside-bets');[['0-1-2 Trio',[0,1,2]],['0-2-3 Trio',[0,2,3]]].forEach(([label,numbers])=>{const button=document.createElement('button');button.type='button';button.className='roulette-outside';button.textContent=label;button.addEventListener('click',()=>add({type:'street',numbers}));outsideWrap.appendChild(button);});
+    form.querySelector('[data-roulette-clear]').addEventListener('click',()=>{bets.splice(0);render();});
+    canvas.addEventListener('click',event=>{const rect=canvas.getBoundingClientRect(),x=(event.clientX-rect.left)*960/rect.width,y=(event.clientY-rect.top)*420/rect.height;if(x>=12&&x<left&&y>=top&&y<top+h*3)return add({type:'straight',numbers:[0]});if(x<left||x>=left+w*12)return;
+      const col=Math.floor((x-left)/w),localX=(x-left)-col*w;
+      if(y>=top+h*3&&y<top+h*3+42){const s=col*3+1;return add({type:'street',numbers:[s,s+1,s+2]});}
+      if(y>=top+h*3+47&&y<top+h*3+83){const boundary=Math.max(0,Math.min(10,Math.floor((x-left)/w)));const s=boundary*3+1;return add({type:'six_line',numbers:[s,s+1,s+2,s+3,s+4,s+5]});}
+      if(y<top||y>=top+h*3)return;const row=Math.floor((y-top)/h),localY=(y-top)-row*h,n=col*3+(3-row),nearV=localX<11||localX>w-11,nearH=localY<11||localY>h-11;
+      if(nearV&&nearH&&col<11){const nextCol=localX>w-11?col+1:col;if(nextCol<=0)return;const upperRow=localY>h-11?row+1:row;if(upperRow<=0||upperRow>2)return;const a=(nextCol-1)*3+(3-upperRow);return add({type:'corner',numbers:[a,a+1,a+3,a+4]});}
+      if(nearH){const other=localY<11?n+1:n-1;if(other>=col*3+1&&other<=col*3+3)return add({type:'split',numbers:[n,other].sort((a,b)=>a-b)});}
+      if(nearV){const other=localX<11?n-3:n+3;if(other>=1&&other<=36)return add({type:'split',numbers:[n,other].sort((a,b)=>a-b)});}
+      add({type:'straight',numbers:[n]});
+    });form.addEventListener('submit',event=>{if(!bets.length){event.preventDefault();event.stopImmediatePropagation();showToast('Add at least one roulette bet.');}});help.textContent='Tap number centers for straight bets, shared edges for splits, intersections for corners, or the rails for streets and six-lines.';render();
+  }
+
   function initSlotMachine(root) {
     const panel=root.querySelector('[data-rp-game-panel="slots"]');if(!panel)return;
     const symbols=['scrap','sulfur','crate','hazmat','c4','blank'];
     const grid=Array.from({length:5},(_,reel)=>Array.from({length:3},(_,row)=>symbols[(reel*3+row)%symbols.length]));renderSlotGrid(panel,grid,[]);
   }
+
+  function startSlotSpin(panel) {
+    stopSlotSpin(panel);const symbols=['scrap','sulfur','crate','hazmat','c4','blank'];let tick=0;
+    panel.dataset.slotSpinTimer=String(window.setInterval(()=>{tick++;const grid=Array.from({length:5},(_,reel)=>Array.from({length:3},(_,row)=>symbols[(tick+reel*2+row+Math.floor(Math.random()*symbols.length))%symbols.length]));renderSlotGrid(panel,grid,[]);},85));
+  }
+
+  function stopSlotSpin(panel) { const timer=Number(panel?.dataset.slotSpinTimer||0);if(timer){window.clearInterval(timer);delete panel.dataset.slotSpinTimer;} }
 
   function renderSlotGrid(panel, grid, winningLines) {
     const labels={scrap:'Scrap',sulfur:'Sulfur',crate:'Crate',hazmat:'Hazmat',c4:'C4',blank:'Ash'};
@@ -778,18 +809,31 @@
     panel.classList.toggle('has-slot-win',winning.size>0);
   }
 
+  async function settleSlotReels(panel, grid, winningLines) {
+    const labels={scrap:'Scrap',sulfur:'Sulfur',crate:'Crate',hazmat:'Hazmat',c4:'C4',blank:'Ash'},cells=Array.from(panel.querySelectorAll('[data-rp-slot-grid] span'));
+    for(let reel=0;reel<5;reel++){await delay(135);for(let row=0;row<3;row++){const cell=cells[reel*3+row],symbol=grid?.[reel]?.[row]||'blank';cell.className='slot-symbol is-reel-stopped';cell.dataset.symbol=symbol;cell.innerHTML=`<i aria-hidden="true"></i><b>${labels[symbol]||symbol}</b>`;}window.setTimeout(()=>cells.slice(reel*3,reel*3+3).forEach(cell=>cell.classList.remove('is-reel-stopped')),180);}
+    renderSlotGrid(panel,grid,winningLines);
+  }
+
   function renderBlackjack(table) {
     if (!table) return; let hand=null; try { hand=JSON.parse(table.dataset.hand||"null"); } catch (_) {}
     const renderCards = (target, cards) => { target.innerHTML=""; (cards||[]).forEach(card=>{const el=document.createElement("span");el.className="blackjack-card";el.textContent=card||"?";target.appendChild(el);}); };
     renderCards(table.querySelector("[data-blackjack-dealer]"),hand?.dealer_cards); renderCards(table.querySelector("[data-blackjack-player]"),hand?.player_cards);
     const playerTotal=table.querySelector("[data-blackjack-player-total]"), dealerTotal=table.querySelector("[data-blackjack-dealer-total]");
     if(playerTotal)playerTotal.textContent=hand?.player_value?.total?`Total ${hand.player_value.total}`:""; if(dealerTotal)dealerTotal.textContent=hand?.dealer_value?.total?`Total ${hand.dealer_value.total}`:"";
+    const message=table.querySelector('[data-blackjack-message]');if(message)message.textContent=hand?.message||'Start a hand after the Rust server confirms your wager.';
+    const controls=table.closest('[data-rp-game-panel="blackjack"]')?.querySelector('[data-blackjack-controls]');if(!controls)return;
+    const csrf=table.dataset.csrf||'',actionUrl=table.dataset.actionUrl||window.location.href,min=Number(table.dataset.minStake)||200,max=Number(table.dataset.maxStake)||2000,enabled=table.dataset.enabled==='1',evenMin=min+(min%2);
+    if(hand&&hand.status==='playing')controls.innerHTML=`<form class="feedback-form rp-game-form" method="post" action="${escapeHtml(actionUrl)}" data-rp-game-form="blackjack"><input type="hidden" name="csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="hand_id" value="${Number(hand.id)||0}"><input type="hidden" name="action_version" value="${Number(hand.action_version)||0}"><div class="blackjack-actions"><button class="btn btn-secondary" name="action" value="blackjack_hit" type="submit" ${hand.can_hit?'':'disabled'}>Hit</button><button class="btn btn-primary" name="action" value="blackjack_stand" type="submit" ${hand.can_stand?'':'disabled'}>Stand</button><button class="btn btn-secondary" name="action" value="blackjack_double" type="submit" ${hand.can_double?'':'disabled'}>Double</button></div></form>`;
+    else if(hand&&['wager_queued','double_queued','payout_queued'].includes(hand.status))controls.innerHTML=`<div class="form-status warning blackjack-pending"><strong>Waiting on the Rust server</strong><p>${escapeHtml(hand.message||'This hand will unlock automatically after RP confirmation.')}</p></div>`;
+    else controls.innerHTML=`<form class="feedback-form rp-game-form" method="post" action="${escapeHtml(actionUrl)}" data-rp-game-form="blackjack"><input type="hidden" name="csrf" value="${escapeHtml(csrf)}"><input type="hidden" name="action" value="start_blackjack"><label class="store-field"><span>Stake (even RP)</span><input type="number" name="stake_rp" min="${min}" max="${max}" step="2" value="${evenMin}" ${enabled?'':'disabled'}></label><button class="btn btn-primary" type="submit" ${enabled?'':'disabled'}>Deal Blackjack</button></form>`;
   }
 
   function stopRpGameMotion(panel) {
     if (!panel) return;
 
     stopHighLowTicker(panel);
+    stopSlotSpin(panel);
     panel.classList.remove("is-spinning");
   }
 
@@ -976,6 +1020,18 @@
         title: "Entry Saved",
         amount: formatSignedRp(-cost),
         detail: `${tickets || 1} jackpot ticket${tickets === 1 ? "" : "s"} saved. The server is now updating your RP.`
+      };
+    }
+
+    if (normalized === "blackjack") {
+      const hand = result?.hand || {};
+      const pending = ["wager_queued", "double_queued", "payout_queued"].includes(hand.status);
+      return {
+        type: pending ? "neutral" : (hand.status === "lost" ? "loss" : (hand.status === "push" ? "push" : "neutral")),
+        eyebrow: pending ? "Hand saved" : "Hand updated",
+        title: hand.status === "wager_queued" ? "Confirming Wager" : (hand.status === "double_queued" ? "Confirming Double" : "Blackjack Updated"),
+        amount: pending ? "Server confirmation pending" : formatSignedRp(Number(hand.payout_rp || 0) - Number(hand.stake_rp || 0)),
+        detail: hand.message || fallbackMessage
       };
     }
 
@@ -1264,10 +1320,7 @@
     updateRpHistoryEmpty(state);
     applyRpSyncState(state.sync || {});
     const blackjackTable = app.querySelector("[data-blackjack-table]");
-    if (blackjackTable && state.active_blackjack) {
-      let current = null; try { current = JSON.parse(blackjackTable.dataset.hand || "null"); } catch (_) {}
-      if (!current || current.status !== state.active_blackjack.status || current.action_version !== state.active_blackjack.action_version) window.location.reload();
-    }
+    if (blackjackTable && state.active_blackjack) { blackjackTable.dataset.hand=JSON.stringify(state.active_blackjack);renderBlackjack(blackjackTable); }
   }
 
   function applyRpJackpotState(jackpot) {
@@ -1777,6 +1830,10 @@
     panel.dataset.total = String(Math.max(0, Number(payload.total) || 0));
     panel.dataset.pages = normalizeLeaderboardPage(payload.pages);
     renderLeaderboardRows(panel, rows);
+    panel.dispatchEvent(new CustomEvent("raidlands:leaderboard-payload", {
+      bubbles: true,
+      detail: payload
+    }));
     updateLeaderboardControls(root);
   }
 

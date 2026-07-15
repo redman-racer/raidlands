@@ -911,6 +911,17 @@ function raidlands_stats_leaderboard(string $metric = 'kills', string $scope = '
     return raidlands_stats_leaderboard_result($metric, $scope, 1, $limit)['rows'];
 }
 
+function raidlands_stats_leaderboard_leaders(
+    string $metric = 'kills',
+    string $scope = 'current',
+    int $wipe_id = 0,
+    string $wipe_key = ''
+): array {
+    $result = raidlands_stats_leaderboard_result($metric, $scope, 1, 5, '', $wipe_id, $wipe_key);
+
+    return array_slice((array) ($result['rows'] ?? []), 0, 3);
+}
+
 function raidlands_stats_bot_leaderboard_result(
     string $scope = 'current',
     int $page = 1,
@@ -1037,6 +1048,17 @@ function raidlands_stats_bot_leaderboard_result(
 function raidlands_stats_bot_leaderboard(string $scope = 'current', int $limit = 25, string $metric = 'kdr'): array
 {
     return raidlands_stats_bot_leaderboard_result($scope, 1, $limit, '', $metric)['rows'];
+}
+
+function raidlands_stats_bot_leaderboard_leaders(
+    string $scope = 'current',
+    string $metric = 'kdr',
+    int $wipe_id = 0,
+    string $wipe_key = ''
+): array {
+    $result = raidlands_stats_bot_leaderboard_result($scope, 1, 5, '', $metric, $wipe_id, $wipe_key);
+
+    return array_slice((array) ($result['rows'] ?? []), 0, 3);
 }
 
 function raidlands_stats_home_preview_state(): array

@@ -20,6 +20,19 @@ export type MonumentPrimitiveKind =
   | "quarry"
   | "generic";
 
+const CANONICAL_PRIMITIVE_SIZES: Record<string, number> = {
+  compound: 122,
+  launch_site_1: 326,
+  water_treatment_plant_1: 268,
+  excavator_1: 180,
+  harbor_1: 185,
+  harbor_2: 185,
+  junkyard_1: 132,
+  bandit_town: 100,
+  oilrig_1: 82,
+  oilrig_2: 64,
+};
+
 export function monumentPrimitiveSearchKey(monument: MonumentPrimitiveDescriptor): string {
   return `${monument.kind || ""} ${monument.name || ""} ${monument.prefab || ""}`
     .toLowerCase()
@@ -45,4 +58,9 @@ export function monumentPrimitiveKind(monument: MonumentPrimitiveDescriptor): Mo
   if ((key.includes("quarry") || key.includes("mining")) && !key.includes("mining_outpost") && !key.includes("miningoutpost")) return "quarry";
 
   return "generic";
+}
+
+export function monumentPrimitiveSize(monument: MonumentPrimitiveDescriptor, radius: number): number {
+  const id = String(monument.prefab || "").trim().replace(/\\/g, "/").split("/").pop()?.replace(/\.(?:prefab|glb)$/i, "").toLowerCase() || "";
+  return CANONICAL_PRIMITIVE_SIZES[id] ?? Math.max(24, Math.min(180, radius));
 }

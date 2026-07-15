@@ -171,7 +171,7 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
             <span>Monuments</span>
             <select data-map-detailed-monuments>
               <option value="auto">Auto</option>
-              <option value="map">Map LOD</option>
+              <option value="primitives">Primitives</option>
               <option value="detailed">Detailed</option>
             </select>
           </label>

@@ -17,7 +17,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteMapBridge", "Raidlands", "1.0.13")]
+    [Info("WebsiteMapBridge", "Raidlands", "1.0.14")]
     [Description("Publishes the current RustMapApi map image and sampled terrain to the Raidlands website.")]
     public class WebsiteMapBridge : CovalencePlugin
     {
@@ -219,6 +219,7 @@ namespace Oxide.Plugins
             public List<float> heights;
             public List<string> colors;
             public List<MonumentUploadPayload> monuments;
+            public List<PowerLineUploadPayload> powerLines;
         }
 
         private class MonumentUploadPayload
@@ -231,6 +232,19 @@ namespace Oxide.Plugins
             public float z;
             public float radius;
             public float rotationY;
+        }
+
+        private class TerrainPointUploadPayload
+        {
+            public float x;
+            public float y;
+            public float z;
+        }
+
+        private class PowerLineUploadPayload
+        {
+            public string name;
+            public List<TerrainPointUploadPayload> points;
         }
 
         private class MapUploadResponse
@@ -401,7 +415,7 @@ namespace Oxide.Plugins
                 return;
             }
 
-            ReplyToCommand(arg, "WebsiteMapBridge v1.0.13 status requested; reading cached diagnostics.");
+            ReplyToCommand(arg, "WebsiteMapBridge v1.0.14 status requested; reading cached diagnostics.");
 
             try
             {
@@ -411,7 +425,7 @@ namespace Oxide.Plugins
 
                 ReplyToCommand(
                     arg,
-                    $"WebsiteMapBridge v1.0.13 status: server={ResolveServerId()}, api={apiState}, ready=not-probed, secret={secretState}, render={config.RenderName}, textureRender={config.TextureRenderName}, autoPublishReady={config.AutoPublishOnRustMapApiReady}, autoPublishInit={config.AutoPublishOnServerInitialized}, terrainEnabled={config.PublishTerrain}, terrainResolution={config.TerrainSampleResolution}, monumentsEnabled={config.IncludeMonuments}, skybox={config.PublishSkybox}/{config.SkyboxImagePath}, playerLocations={config.PublishPlayerLocations}/{config.PlayerLocationIntervalSeconds}s, environment={config.PublishEnvironment}/{config.EnvironmentIntervalSeconds}s last={FirstNonEmpty(lastEnvironmentSyncAt, "never")}, sampleMs={lastEnvironmentSampleMilliseconds}, sampled=[{lastEnvironmentDiagnosticSummary}], replayEvents={config.PublishReplayEvents}, heightMap={heightMapState}, lastWipe={lastPublishedWipeKey}."
+                    $"WebsiteMapBridge v1.0.14 status: server={ResolveServerId()}, api={apiState}, ready=not-probed, secret={secretState}, render={config.RenderName}, textureRender={config.TextureRenderName}, autoPublishReady={config.AutoPublishOnRustMapApiReady}, autoPublishInit={config.AutoPublishOnServerInitialized}, terrainEnabled={config.PublishTerrain}, terrainResolution={config.TerrainSampleResolution}, monumentsEnabled={config.IncludeMonuments}, powerLines=enabled, skybox={config.PublishSkybox}/{config.SkyboxImagePath}, playerLocations={config.PublishPlayerLocations}/{config.PlayerLocationIntervalSeconds}s, environment={config.PublishEnvironment}/{config.EnvironmentIntervalSeconds}s last={FirstNonEmpty(lastEnvironmentSyncAt, "never")}, sampleMs={lastEnvironmentSampleMilliseconds}, sampled=[{lastEnvironmentDiagnosticSummary}], replayEvents={config.PublishReplayEvents}, heightMap={heightMapState}, lastWipe={lastPublishedWipeKey}."
                 );
             }
             catch (Exception ex)
@@ -1991,7 +2005,8 @@ namespace Oxide.Plugins
             }
 
             var monuments = CreateMonumentPayloads();
-            summary = $"terrain {resolution}x{resolution}, height {minHeight:0.###}-{maxHeight:0.###}, ocean {waterLevel:0.###}, monuments {monuments.Count}";
+            var powerLines = CreatePowerLinePayloads();
+            summary = $"terrain {resolution}x{resolution}, height {minHeight:0.###}-{maxHeight:0.###}, ocean {waterLevel:0.###}, monuments {monuments.Count}, power lines {powerLines.Count}";
 
             return new TerrainUploadPayload
             {
@@ -2007,7 +2022,8 @@ namespace Oxide.Plugins
                 generatedAt = generatedAt,
                 heights = heights,
                 colors = colors,
-                monuments = monuments
+                monuments = monuments,
+                powerLines = powerLines
             };
         }
 
@@ -2085,6 +2101,67 @@ namespace Oxide.Plugins
             }
 
             return monuments;
+        }
+
+        private List<PowerLineUploadPayload> CreatePowerLinePayloads()
+        {
+            var powerLines = new List<PowerLineUploadPayload>();
+
+            if (TerrainMeta.Path == null || TerrainMeta.Path.Powerlines == null)
+            {
+                return powerLines;
+            }
+
+            const float towerSpacing = 90f;
+
+            foreach (var powerLine in TerrainMeta.Path.Powerlines)
+            {
+                if (powerLine == null || powerLine.Path == null || powerLine.Path.Points == null || powerLine.Path.Points.Length < 2)
+                {
+                    continue;
+                }
+
+                var sampled = new List<TerrainPointUploadPayload>();
+                var points = powerLine.Path.Points;
+                var last = points[0];
+                var distanceSinceTower = towerSpacing;
+
+                for (var index = 0; index < points.Length && sampled.Count < 128; index++)
+                {
+                    var point = points[index];
+                    distanceSinceTower += index == 0 ? 0f : Vector3.Distance(last, point);
+
+                    if (index == 0 || distanceSinceTower >= towerSpacing || index == points.Length - 1)
+                    {
+                        var terrainY = TerrainMeta.HeightMap != null ? TerrainMeta.HeightMap.GetHeight(point) : point.y;
+                        sampled.Add(new TerrainPointUploadPayload
+                        {
+                            x = (float)Math.Round(point.x, 3),
+                            y = (float)Math.Round(terrainY, 3),
+                            z = (float)Math.Round(point.z, 3)
+                        });
+                        distanceSinceTower = 0f;
+                    }
+
+                    last = point;
+                }
+
+                if (sampled.Count >= 2)
+                {
+                    powerLines.Add(new PowerLineUploadPayload
+                    {
+                        name = string.IsNullOrWhiteSpace(powerLine.Name) ? $"powerline-{powerLines.Count + 1}" : powerLine.Name,
+                        points = sampled
+                    });
+                }
+
+                if (powerLines.Count >= 32)
+                {
+                    break;
+                }
+            }
+
+            return powerLines;
         }
 
         private string MonumentDisplayName(MonumentInfo monument, string prefab)

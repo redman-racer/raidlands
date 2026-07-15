@@ -4,8 +4,9 @@ import { monumentLoadDistance, monumentUnloadDistance, parseMonumentMode, priori
 describe("monument quality policy", () => {
   it("migrates the legacy boolean setting", () => {
     expect(parseMonumentMode("true")).toBe("auto");
-    expect(parseMonumentMode("false")).toBe("map");
-    expect(parseMonumentMode("simple")).toBe("map");
+    expect(parseMonumentMode("false")).toBe("primitives");
+    expect(parseMonumentMode("simple")).toBe("primitives");
+    expect(parseMonumentMode("map")).toBe("primitives");
   });
 
   it("enforces map LOD on low and applies preset budgets", () => {
@@ -13,7 +14,7 @@ describe("monument quality policy", () => {
     expect(resolveMonumentQuality("auto", "medium").activeDetailLimit).toBe(1);
     expect(resolveMonumentQuality("auto", "high").activeDetailLimit).toBe(2);
     expect(resolveMonumentQuality("auto", "ultra").activeDetailLimit).toBe(3);
-    expect(resolveMonumentQuality("map", "ultra").activeDetailLimit).toBe(0);
+    expect(resolveMonumentQuality("primitives", "ultra").activeDetailLimit).toBe(0);
   });
 
   it("uses hysteresis and focused-first prioritization", () => {

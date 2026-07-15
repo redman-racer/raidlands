@@ -1,10 +1,10 @@
 import type { EnvironmentQuality } from "./environment-quality";
 
-export type MonumentMode = "auto" | "map" | "detailed";
+export type MonumentMode = "auto" | "primitives" | "detailed";
 
 export type MonumentQualityPolicy = {
   requested: MonumentMode;
-  resolved: "map" | "detailed";
+  resolved: "primitives" | "detailed";
   activeDetailLimit: number;
   activeMapLimit: number;
   detailCacheLimit: number;
@@ -18,20 +18,20 @@ export type MonumentQualityPolicy = {
 export function parseMonumentMode(value: unknown, fallback: MonumentMode = "auto"): MonumentMode {
   const normalized = String(value ?? "").trim().toLowerCase();
   if (normalized === "true") return "auto";
-  if (normalized === "false" || normalized === "simple") return "map";
-  return normalized === "auto" || normalized === "map" || normalized === "detailed"
+  if (normalized === "false" || normalized === "simple" || normalized === "map") return "primitives";
+  return normalized === "auto" || normalized === "primitives" || normalized === "detailed"
     ? normalized
     : fallback;
 }
 
 export function resolveMonumentQuality(mode: MonumentMode, quality: EnvironmentQuality): MonumentQualityPolicy {
   const limits: Record<EnvironmentQuality, number> = { low: 0, medium: 1, high: 2, ultra: 3 };
-  const activeDetailLimit = mode === "map" || quality === "low" ? 0 : limits[quality];
+  const activeDetailLimit = mode === "primitives" || quality === "low" ? 0 : limits[quality];
   return {
     requested: mode,
-    resolved: activeDetailLimit > 0 ? "detailed" : "map",
+    resolved: activeDetailLimit > 0 ? "detailed" : "primitives",
     activeDetailLimit,
-    activeMapLimit: ({ low: 12, medium: 18, high: 24, ultra: 32 } as Record<EnvironmentQuality, number>)[quality],
+    activeMapLimit: ({ low: 18, medium: 24, high: 30, ultra: 36 } as Record<EnvironmentQuality, number>)[quality],
     detailCacheLimit: Math.max(0, activeDetailLimit + 1),
     loadDistanceMultiplier: 5.5,
     unloadDistanceMultiplier: 7.25,

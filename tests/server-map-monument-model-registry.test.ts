@@ -30,13 +30,23 @@ describe("RustRelay monument model registry", () => {
   it("has generated map metadata and assets for every registered monument", () => {
     const modelDirectory = resolve("assets/media/models/monuments-map");
     const installed = readdirSync(modelDirectory).filter((name) => name.endsWith(".glb")).sort();
-    expect(installed).toEqual(monumentModelAssetNames());
+    const expected = monumentModelAssetNames().filter((name) => monumentModelMetadata(name)?.map === name);
+    expect(installed).toEqual(expected);
     for (const name of monumentModelAssetNames()) {
       const metadata = monumentModelMetadata(name);
-      expect(metadata?.map).toBe(name);
-      expect(metadata?.triangles).toBeGreaterThan(0);
+      if (metadata?.map) {
+        expect(metadata.map).toBe(name);
+        expect(metadata.mapKind).toBe("authored-hlod");
+        expect(metadata.triangles).toBeGreaterThan(0);
+        expect(metadata.drawCalls).toBeGreaterThan(0);
+        expect(metadata.outputBytes).toBeLessThanOrEqual(250 * 1024);
+        expect(metadata.overTriangleTarget).toBe(metadata.triangleRatio > 0.03);
+      } else {
+        expect(metadata?.mapKind).toBe("procedural");
+      }
       expect(metadata?.bounds.min).toHaveLength(3);
       expect(metadata?.bounds.max).toHaveLength(3);
+      expect(metadata?.sourceDrawCalls).toBeGreaterThan(0);
     }
   });
 

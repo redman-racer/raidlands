@@ -2786,6 +2786,16 @@ function raidlands_rewards_leaderboard_result(
     return raidlands_stats_page_result($rows, $total, $page, $per_page);
 }
 
+function raidlands_rewards_leaderboard_leaders(
+    string $scope = 'current',
+    int $wipe_id = 0,
+    string $wipe_key = ''
+): array {
+    $result = raidlands_rewards_leaderboard_result($scope, 1, 5, '', $wipe_id, $wipe_key);
+
+    return array_slice((array) ($result['rows'] ?? []), 0, 3);
+}
+
 function raidlands_rewards_recent_game_activity(int $player_id = 0, int $limit = 12): array
 {
     $rounds = raidlands_rewards_recent_game_rounds($player_id, $limit);

@@ -403,6 +403,7 @@ function raidlands_server_map_validate_terrain($terrain): ?array
     }
 
     $normalized_monuments = [];
+    $normalized_power_lines = [];
     $world_size = raidlands_server_status_int($terrain['worldSize'] ?? $terrain['world_size'] ?? 0, 0);
     $world_half = max(100, $world_size) / 2;
     $monuments = is_array($terrain['monuments'] ?? null) ? $terrain['monuments'] : [];
@@ -440,6 +441,44 @@ function raidlands_server_map_validate_terrain($terrain): ?array
         ];
     }
 
+    $power_lines = is_array($terrain['powerLines'] ?? $terrain['power_lines'] ?? null)
+        ? ($terrain['powerLines'] ?? $terrain['power_lines'])
+        : [];
+    $power_point_count = 0;
+
+    foreach (array_slice($power_lines, 0, 32) as $line_index => $power_line) {
+        if (!is_array($power_line) || !is_array($power_line['points'] ?? null)) {
+            continue;
+        }
+
+        $points = [];
+        foreach (array_slice($power_line['points'], 0, 128) as $point) {
+            if ($power_point_count >= 512 || !is_array($point)) {
+                break;
+            }
+            $x = $point['x'] ?? null;
+            $y = $point['y'] ?? null;
+            $z = $point['z'] ?? null;
+            if (!is_numeric($x) || !is_numeric($y) || !is_numeric($z)) {
+                continue;
+            }
+            $x = round((float) $x, 3);
+            $y = round((float) $y, 3);
+            $z = round((float) $z, 3);
+            if (abs($x) > $world_half * 1.2 || abs($z) > $world_half * 1.2) {
+                continue;
+            }
+            $points[] = ['x' => $x, 'y' => $y, 'z' => $z];
+            $power_point_count++;
+        }
+        if (count($points) >= 2) {
+            $normalized_power_lines[] = [
+                'name' => raidlands_server_status_clean_text($power_line['name'] ?? ('powerline-' . ($line_index + 1)), 80),
+                'points' => $points,
+            ];
+        }
+    }
+
     $payload = [
         'version' => 1,
         'serverId' => raidlands_server_status_clean_text($terrain['serverId'] ?? $terrain['server_id'] ?? '', 120),
@@ -461,6 +500,10 @@ function raidlands_server_map_validate_terrain($terrain): ?array
 
     if ($normalized_monuments !== []) {
         $payload['monuments'] = $normalized_monuments;
+    }
+
+    if ($normalized_power_lines !== []) {
+        $payload['powerLines'] = $normalized_power_lines;
     }
 
     $json = json_encode($payload, JSON_UNESCAPED_SLASHES);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { monumentPrimitiveKind } from "../assets/ts/server-map-viewer/monument-primitive-policy";
+import { monumentPrimitiveKind, monumentPrimitiveSize } from "../assets/ts/server-map-viewer/monument-primitive-policy";
 
 describe("server map monument primitive policy", () => {
   it.each([
@@ -24,5 +24,14 @@ describe("server map monument primitive policy", () => {
     expect(monumentPrimitiveKind({ name: "Oxum's Gas Station" })).toBe("gas-station");
     expect(monumentPrimitiveKind({ kind: "Satellite Dish" })).toBe("satellite-dish");
     expect(monumentPrimitiveKind({ name: "Train Tunnel", kind: "military_tunnel" })).toBe("bunker");
+  });
+});
+
+describe("monument primitive authored footprint", () => {
+  it("decouples landmark dimensions from bridge navigation radii", () => {
+    expect(monumentPrimitiveSize({ prefab: "compound" }, 255)).toBe(122);
+    expect(monumentPrimitiveSize({ prefab: "launch_site_1" }, 245)).toBe(326);
+    expect(monumentPrimitiveSize({ prefab: "harbor_2.prefab" }, 50)).toBe(185);
+    expect(monumentPrimitiveSize({ prefab: "unknown" }, 50)).toBe(50);
   });
 });
