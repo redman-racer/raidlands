@@ -185,7 +185,7 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
               <option value="fly">Fly</option>
             </select>
           </label>
-          <small class="server-terrain-camera-help">Click or tap the map to target a local area.</small>
+          <small class="server-terrain-camera-help">Click or tap the map to target a local area. Fly: WASD, Space up, Ctrl down, hold Shift to sprint.</small>
         </div>
         <div class="server-terrain-control-group" aria-label="Overlay controls">
           <label class="server-terrain-toggle">

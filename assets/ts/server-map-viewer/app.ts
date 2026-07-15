@@ -75,6 +75,11 @@ import {
   type RaidlandsSunProfile,
 } from "../shared/three-sun-detail";
 import {
+  extrapolateRaidlandsSunDirection,
+  raidlandsSunMotionBetween,
+  type RaidlandsSunMotion,
+} from "../shared/three-sun-motion";
+import {
   parseEnvironmentQuality,
   preferredEnvironmentQuality,
   resolveEnvironmentQuality,
@@ -315,6 +320,7 @@ type EnvironmentPayload = {
 };
 
 type NormalizedEnvironment = {
+  sampledAtMs: number;
   rustTime: number;
   sunDirection: Vector3;
   sunIntensity: number;
@@ -1036,6 +1042,9 @@ class TerrainViewer {
   private targetEnvironment: NormalizedEnvironment | null = null;
   private environmentBlendStartedAt = 0;
   private environmentBlendDuration = 900;
+  private sunMotion: RaidlandsSunMotion | null = null;
+  private sunMotionBaseDirection = new Vector3(0.5, 0.78, 0.36).normalize();
+  private sunMotionBaseAt = 0;
   private airstrikeReplay: AirstrikeReplayPlayer | null = null;
   private latestReplayEvents: MapReplayEvent[] = [];
   private latestReplaySpeed = 1;
@@ -1050,6 +1059,7 @@ class TerrainViewer {
   };
   private readonly onKeyDown = (event: KeyboardEvent) => this.handleFlightKey(event, true);
   private readonly onKeyUp = (event: KeyboardEvent) => this.handleFlightKey(event, false);
+  private readonly onWindowBlur = () => this.pressedFlightKeys.clear();
   private readonly onPointerDown = (event: PointerEvent) => {
     this.pointerDownAt = { x: event.clientX, y: event.clientY };
   };
@@ -1266,6 +1276,7 @@ class TerrainViewer {
     this.renderer.domElement.addEventListener("pointermove", this.onPointerMove);
     window.addEventListener("keydown", this.onKeyDown);
     window.addEventListener("keyup", this.onKeyUp);
+    window.addEventListener("blur", this.onWindowBlur);
     document.addEventListener("fullscreenchange", this.onFullscreenChange);
     this.resize();
     window.addEventListener("resize", this.onResize);
@@ -1282,6 +1293,7 @@ class TerrainViewer {
     this.renderer.domElement.removeEventListener("pointermove", this.onPointerMove);
     window.removeEventListener("keydown", this.onKeyDown);
     window.removeEventListener("keyup", this.onKeyUp);
+    window.removeEventListener("blur", this.onWindowBlur);
     document.removeEventListener("fullscreenchange", this.onFullscreenChange);
     this.setBrowserFill(false);
     this.controls.dispose();
@@ -2416,7 +2428,10 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     const target = event.target as HTMLElement | null;
     if (target?.closest("input, select, textarea, button, [contenteditable='true']")) return;
     const key = event.code;
-    if (!["KeyW", "KeyA", "KeyS", "KeyD", "Space", "ShiftLeft", "ShiftRight"].includes(key)) return;
+    if (![
+      "KeyW", "KeyA", "KeyS", "KeyD", "Space",
+      "ControlLeft", "ControlRight", "ShiftLeft", "ShiftRight",
+    ].includes(key)) return;
     event.preventDefault();
     if (pressed) this.pressedFlightKeys.add(key); else this.pressedFlightKeys.delete(key);
   }
@@ -2426,8 +2441,9 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     const forwardInput = Number(this.pressedFlightKeys.has("KeyW")) - Number(this.pressedFlightKeys.has("KeyS")) - this.mobileMove.y;
     const strafeInput = Number(this.pressedFlightKeys.has("KeyD")) - Number(this.pressedFlightKeys.has("KeyA")) + this.mobileMove.x;
     const riseInput = Number(this.pressedFlightKeys.has("Space"))
-      - Number(this.pressedFlightKeys.has("ShiftLeft") || this.pressedFlightKeys.has("ShiftRight"))
+      - Number(this.pressedFlightKeys.has("ControlLeft") || this.pressedFlightKeys.has("ControlRight"))
       + this.mobileRise;
+    const sprintMultiplier = this.pressedFlightKeys.has("ShiftLeft") || this.pressedFlightKeys.has("ShiftRight") ? 2 : 1;
     const lookX = this.mobileLook.x + this.pointerLookDelta.x;
     const lookY = this.mobileLook.y + this.pointerLookDelta.y;
     this.pointerLookDelta.set(0, 0);
@@ -2439,10 +2455,19 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     direction.set(Math.sin(yaw) * Math.cos(pitch), Math.sin(pitch), Math.cos(yaw) * Math.cos(pitch)).normalize();
     const horizontalForward = new Vector3(direction.x, 0, direction.z).normalize();
     const right = new Vector3(-horizontalForward.z, 0, horizontalForward.x);
+    const terrainClearance = 12;
     const ground = sampleTerrainHeight(this.terrain, this.camera.position.x, this.camera.position.z);
-    const altitude = Math.max(12, this.camera.position.y - ground);
-    const speed = MathUtils.clamp(altitude * 0.85, 90, (this.terrain.worldSize || 4500) * 0.38);
-    const movement = direction.clone().multiplyScalar(forwardInput)
+    const heightAboveGround = this.camera.position.y - ground;
+    const altitude = Math.max(terrainClearance, heightAboveGround);
+    const speed = MathUtils.clamp(altitude * 0.85, 90, (this.terrain.worldSize || 4500) * 0.38) * sprintMultiplier;
+    // Once a downward flight reaches minimum clearance, keep W moving at full
+    // horizontal speed while terrain safety carries the camera over rising land.
+    const forwardDirection = forwardInput > 0
+      && direction.y < 0
+      && heightAboveGround <= terrainClearance + 1
+      ? horizontalForward
+      : direction;
+    const movement = forwardDirection.clone().multiplyScalar(forwardInput)
       .add(right.multiplyScalar(strafeInput))
       .add(new Vector3(0, riseInput, 0));
     if (movement.lengthSq() > 1) movement.normalize();
@@ -2453,7 +2478,7 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     this.camera.position.y = cameraHeightAboveTerrain(
       this.camera.position.y,
       sampleTerrainHeight(this.terrain, this.camera.position.x, this.camera.position.z),
-      12,
+      terrainClearance,
     );
     this.controls.target.copy(this.camera.position).addScaledVector(direction, MathUtils.clamp(altitude * 1.8, 120, 900));
     this.camera.lookAt(this.controls.target);
@@ -2550,15 +2575,19 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
       return;
     }
     const previous = this.targetEnvironment;
-    if (!previous
-      || previous.sunDirection.angleTo(next.sunDirection) > 0.12
-      || Math.abs(previous.cloudCoverage - next.cloudCoverage) > 0.18
-      || Math.abs(previous.rainIntensity - next.rainIntensity) > 0.16
-      || Math.abs(previous.fogIntensity - next.fogIntensity) > 0.16) {
+    if (previous && next.sampledAtMs > 0 && next.sampledAtMs === previous.sampledAtMs) {
+      return;
     }
-    this.activeEnvironment = this.currentEnvironment(performance.now());
+    const now = performance.now();
+    const currentBeforeUpdate = this.currentEnvironment(now);
+    this.sunMotion = previous
+      ? raidlandsSunMotionBetween(previous.sunDirection, previous.sampledAtMs, next.sunDirection, next.sampledAtMs)
+      : null;
+    this.sunMotionBaseDirection.copy(next.sunDirection);
+    this.sunMotionBaseAt = now + Math.max(0, durationMs);
+    this.activeEnvironment = currentBeforeUpdate;
     this.targetEnvironment = next;
-    this.environmentBlendStartedAt = performance.now();
+    this.environmentBlendStartedAt = now;
     this.environmentBlendDuration = Math.max(0, durationMs);
     if (this.environmentBlendDuration === 0) {
       this.applyEnvironment(next);
@@ -2568,10 +2597,27 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
 
   private currentEnvironment(now: number): NormalizedEnvironment | null {
     if (!this.activeEnvironment || !this.targetEnvironment || this.environmentBlendDuration <= 0) {
-      return this.targetEnvironment || this.activeEnvironment;
+      const source = this.targetEnvironment || this.activeEnvironment;
+      const current = source ? interpolateEnvironment(source, source, 1) : null;
+      if (current && this.sunMotionBaseAt > 0) {
+        current.sunDirection.copy(extrapolateRaidlandsSunDirection(
+          this.sunMotionBaseDirection,
+          this.sunMotion,
+          now - this.sunMotionBaseAt,
+        ));
+      }
+      return current;
     }
     const progress = MathUtils.clamp((now - this.environmentBlendStartedAt) / this.environmentBlendDuration, 0, 1);
-    return interpolateEnvironment(this.activeEnvironment, this.targetEnvironment, MathUtils.smoothstep(progress, 0, 1));
+    const current = interpolateEnvironment(this.activeEnvironment, this.targetEnvironment, MathUtils.smoothstep(progress, 0, 1));
+    if (progress >= 1 && this.sunMotionBaseAt > 0) {
+      current.sunDirection.copy(extrapolateRaidlandsSunDirection(
+        this.sunMotionBaseDirection,
+        this.sunMotion,
+        now - this.sunMotionBaseAt,
+      ));
+    }
+    return current;
   }
 
   private updateEnvironment(now: number): void {
@@ -6345,6 +6391,9 @@ function normalizeEnvironment(snapshot: EnvironmentSnapshot | null | undefined):
   const fogIntensity = nullableFiniteNumber(snapshot.fogIntensity, Number.NaN);
 
   return {
+    sampledAtMs: Number.isFinite(Date.parse(String(snapshot.sampledAt || "")))
+      ? Date.parse(String(snapshot.sampledAt || ""))
+      : 0,
     rustTime: MathUtils.clamp(finiteNumber(snapshot.rustTime, 0), 0, 24),
     sunDirection: direction,
     sunIntensity: MathUtils.clamp(finiteNumber(snapshot.sunIntensity, 0), 0, 4),
@@ -6374,6 +6423,7 @@ function normalizeEnvironment(snapshot: EnvironmentSnapshot | null | undefined):
 
 function interpolateEnvironment(from: NormalizedEnvironment, to: NormalizedEnvironment, progress: number): NormalizedEnvironment {
   return {
+    sampledAtMs: MathUtils.lerp(from.sampledAtMs, to.sampledAtMs, progress),
     rustTime: MathUtils.lerp(from.rustTime, to.rustTime, progress),
     sunDirection: from.sunDirection.clone().lerp(to.sunDirection, progress).normalize(),
     sunIntensity: MathUtils.lerp(from.sunIntensity, to.sunIntensity, progress),
