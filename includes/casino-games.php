@@ -186,8 +186,8 @@ function raidlands_blackjack_start(int $stake): array
     if($stake%2!==0)throw new InvalidArgumentException('Blackjack stake must be divisible by 2 RP.');
     raidlands_rewards_check_daily_limits($player,$settings,$stake,$stake);$pdo=raidlands_db_required();$pdo->beginTransaction();
     try{
-        $stmt=$pdo->prepare('INSERT INTO rp_blackjack_hands (player_id,steam_id64,active_player_key,stake_rp,total_stake_rp,player_cards_json,dealer_cards_json,deck_json,message) VALUES (:player,:steam,:active,:stake,:stake,"[]","[]","[]","Waiting for the Rust server to confirm the wager.")');
-        $stmt->execute(['player'=>$player['id'],'steam'=>$player['steam_id64'],'active'=>$player['id'],'stake'=>$stake]);$id=(int)$pdo->lastInsertId();
+        $stmt=$pdo->prepare('INSERT INTO rp_blackjack_hands (player_id,steam_id64,active_player_key,stake_rp,total_stake_rp,player_cards_json,dealer_cards_json,deck_json,message) VALUES (:player,:steam,:active,:stake,:total_stake,"[]","[]","[]","Waiting for the Rust server to confirm the wager.")');
+        $stmt->execute(['player'=>$player['id'],'steam'=>$player['steam_id64'],'active'=>$player['id'],'stake'=>$stake,'total_stake'=>$stake]);$id=(int)$pdo->lastInsertId();
         $request=raidlands_rewards_queue_point_request($pdo,(int)$player['id'],(string)$player['steam_id64'],'blackjack_wager',(string)$id,$stake,0,'RP Blackjack wager',['hand_id'=>$id,'action'=>'wager']);
         $pdo->prepare('UPDATE rp_blackjack_hands SET wager_request_id=:request WHERE id=:id')->execute(['request'=>$request['id'],'id'=>$id]);raidlands_rewards_record_daily_wager($pdo,$player,$stake,$stake);$pdo->commit();
         return ['hand'=>raidlands_blackjack_public_hand(raidlands_db_fetch_one('SELECT * FROM rp_blackjack_hands WHERE id=:id',['id'=>$id]))];

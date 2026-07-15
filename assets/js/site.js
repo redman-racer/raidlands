@@ -512,7 +512,8 @@
     if (!tabs.length || !panels.length) return;
 
     initRpSyncGuide(root);
-    initRouletteBuilder(root);
+    initRouletteCanvas(root);
+    initSlotMachine(root);
     renderBlackjack(root.querySelector("[data-blackjack-table]"));
     activateRpGame(root, normalizeRpGameKey(root, window.location.hash) || tabs[0].dataset.rpGameTab || "coinflip", false);
 
@@ -720,9 +721,7 @@
       const target = panel.querySelector("[data-rp-roulette-result]");
       if (target) target.textContent = String(result.roll ?? 0);
     } else if (normalized === "slots") {
-      const cells = panel.querySelectorAll("[data-rp-slot-grid] span");
-      const grid = result.grid || [];
-      cells.forEach((cell, index) => { const reel = Math.floor(index / 3); const row = index % 3; cell.textContent = grid?.[reel]?.[row] || "?"; });
+      renderSlotGrid(panel, result.grid || [], result.winning_lines || []);
     } else if (normalized === "blackjack") {
       const table = panel.querySelector("[data-blackjack-table]");
       if (table && result.hand) { table.dataset.hand = JSON.stringify(result.hand); renderBlackjack(table); }
@@ -747,6 +746,36 @@
     root.querySelectorAll("[data-roulette-straights] [data-number]").forEach(button=>button.addEventListener("click",()=>{type.value="straight";type.dispatchEvent(new Event("change"));numbers.value=button.dataset.number||"";}));
     form.querySelector("[data-roulette-add]").addEventListener("click",()=>{ const amount=Number(stake.value); if(!Number.isInteger(amount)||amount<1){showToast("Enter a positive roulette stake.");return;} const bet={type:type.value,stake_rp:amount}; if(type.value==="outside")bet.key=key.value;else bet.numbers=numbers.value.split(",").map(value=>Number(value.trim())).filter(Number.isInteger); bets.push(bet);render(); });
     form.addEventListener("submit",event=>{if(!bets.length){event.preventDefault();event.stopImmediatePropagation();showToast("Add at least one roulette bet.");}});
+  }
+
+  function initRouletteCanvas(root) {
+    const form=root.querySelector('.roulette-bet-builder'),canvas=root.querySelector('[data-roulette-canvas]');if(!form||!canvas)return;
+    const bets=[],type=form.querySelector('[data-roulette-type]'),hidden=form.querySelector('[data-roulette-bets-json]'),slip=form.querySelector('[data-roulette-slip]'),total=form.querySelector('[data-roulette-total]'),help=root.querySelector('[data-roulette-help]');let chip=50,pending=null;
+    const reds=new Set([1,3,5,7,9,12,14,16,18,19,21,23,25,27,30,32,34,36]);
+    const draw=()=>{const c=canvas.getContext('2d'),left=70,top=24,w=68,h=92;c.clearRect(0,0,960,420);c.fillStyle='#0b5937';c.fillRect(0,0,960,420);c.strokeStyle='rgba(255,255,255,.72)';c.lineWidth=2;c.fillStyle='#08703f';c.fillRect(12,top,left-12,h*3);c.strokeRect(12,top,left-12,h*3);c.fillStyle='#fff';c.font='bold 25px sans-serif';c.textAlign='center';c.textBaseline='middle';c.fillText('0',41,top+h*1.5);for(let col=0;col<12;col++)for(let row=0;row<3;row++){const n=col*3+(3-row),x=left+col*w,y=top+row*h;c.fillStyle=reds.has(n)?'#8b2025':'#15191b';c.fillRect(x,y,w,h);c.strokeRect(x,y,w,h);c.fillStyle='#fff';c.fillText(String(n),x+w/2,y+h/2);}const counts=new Map();bets.filter(b=>b.type==='straight').forEach(b=>counts.set(b.numbers[0],(counts.get(b.numbers[0])||0)+1));counts.forEach((count,n)=>{let x,y;if(n===0){x=41;y=top+h*1.5;}else{const col=Math.floor((n-1)/3),row=2-((n-1)%3);x=left+col*w+w/2;y=top+row*h+h/2;}c.beginPath();c.fillStyle='#f1cf54';c.arc(x+19,y-22,14,0,Math.PI*2);c.fill();c.fillStyle='#19150a';c.font='bold 12px sans-serif';c.fillText(String(count),x+19,y-22);});if(pending!==null){c.fillStyle='#f1cf54';c.font='bold 18px sans-serif';c.fillText(`Split from ${pending}`,480,340);}c.fillStyle='rgba(255,255,255,.82)';c.font='14px sans-serif';c.fillText('Tap numbers to place inside bets',480,392);};
+    const render=()=>{hidden.value=JSON.stringify(bets);total.textContent=`${bets.reduce((sum,b)=>sum+b.stake_rp,0)} RP`;slip.innerHTML=bets.length?'':'<p>No bets placed.</p>';bets.forEach((bet,index)=>{const row=document.createElement('button');row.type='button';row.className='roulette-slip-row';row.textContent=`${bet.type==='outside'?bet.key.replaceAll('_',' '):`${bet.type}: ${bet.numbers.join('/')}`} - ${bet.stake_rp} RP (remove)`;row.addEventListener('click',()=>{bets.splice(index,1);render();});slip.appendChild(row);});root.querySelectorAll('[data-roulette-outside]').forEach(button=>button.classList.toggle('has-bet',bets.some(b=>b.key===button.dataset.rouletteOutside)));draw();};
+    const add=bet=>{bets.push({...bet,stake_rp:chip});pending=null;render();};
+    const numberAt=(x,y)=>{const left=70,top=24,w=68,h=92;if(x>=12&&x<left&&y>=top&&y<top+h*3)return 0;if(x<left||x>=left+w*12||y<top||y>=top+h*3)return null;return Math.floor((x-left)/w)*3+(3-Math.floor((y-top)/h));};
+    form.querySelectorAll('[data-roulette-chip]').forEach(button=>button.addEventListener('click',()=>{chip=Number(button.dataset.rouletteChip)||50;form.querySelectorAll('[data-roulette-chip]').forEach(item=>item.classList.toggle('is-selected',item===button));}));
+    root.querySelectorAll('[data-roulette-outside]').forEach(button=>button.addEventListener('click',()=>add({type:'outside',key:button.dataset.rouletteOutside})));
+    const outsideWrap=root.querySelector('.roulette-outside-bets');[['0-1-2 Trio',[0,1,2]],['0-2-3 Trio',[0,2,3]]].forEach(([label,numbers])=>{const button=document.createElement('button');button.type='button';button.className='roulette-outside';button.textContent=label;button.addEventListener('click',()=>add({type:'street',numbers}));outsideWrap.appendChild(button);});
+    form.querySelector('[data-roulette-clear]').addEventListener('click',()=>{bets.splice(0);pending=null;render();});type.addEventListener('change',()=>{pending=null;help.textContent=type.value==='split'?'Tap two adjacent numbers for a split bet.':`Tap the table to place a ${type.options[type.selectedIndex].text.toLowerCase()} bet.`;render();});
+    canvas.addEventListener('click',event=>{const rect=canvas.getBoundingClientRect(),n=numberAt((event.clientX-rect.left)*960/rect.width,(event.clientY-rect.top)*420/rect.height);if(n===null)return;const mode=type.value;if(mode==='straight')add({type:'straight',numbers:[n]});else if(mode==='split'){if(pending===null){pending=n;help.textContent=`Now tap a number adjacent to ${n}.`;render();return;}const pair=[pending,n].sort((a,b)=>a-b),[a,b]=pair,valid=(a===0&&[1,2,3].includes(b))||(a>0&&(b-a===3||(b-a===1&&Math.floor((a-1)/3)===Math.floor((b-1)/3))));if(!valid){pending=n;help.textContent='Those numbers do not share an edge. Choose an adjacent number.';render();return;}add({type:'split',numbers:pair});}else if(mode==='street'){if(n===0)add({type:'street',numbers:[0,1,2]});else{const s=Math.floor((n-1)/3)*3+1;add({type:'street',numbers:[s,s+1,s+2]});}}else if(mode==='corner'){if(n===0)return showToast('Corners start on numbered rows.');const s=n%3===0?n-1:n;if(s>32)return showToast('Choose a corner before the final column.');add({type:'corner',numbers:[s,s+1,s+3,s+4]});}else if(mode==='six_line'){if(n===0)return showToast('Six-lines start on numbered rows.');const s=Math.floor((n-1)/3)*3+1;if(s>31)return showToast('Choose one of the first eleven streets.');add({type:'six_line',numbers:[s,s+1,s+2,s+3,s+4,s+5]});}});
+    form.addEventListener('submit',event=>{if(!bets.length){event.preventDefault();event.stopImmediatePropagation();showToast('Add at least one roulette bet.');}});render();
+  }
+
+  function initSlotMachine(root) {
+    const panel=root.querySelector('[data-rp-game-panel="slots"]');if(!panel)return;
+    const symbols=['scrap','sulfur','crate','hazmat','c4','blank'];
+    const grid=Array.from({length:5},(_,reel)=>Array.from({length:3},(_,row)=>symbols[(reel*3+row)%symbols.length]));renderSlotGrid(panel,grid,[]);
+  }
+
+  function renderSlotGrid(panel, grid, winningLines) {
+    const labels={scrap:'Scrap',sulfur:'Sulfur',crate:'Crate',hazmat:'Hazmat',c4:'C4',blank:'Ash'};
+    const lines=[[0,0,0,0,0],[1,1,1,1,1],[2,2,2,2,2],[0,1,2,1,0],[2,1,0,1,2],[0,0,1,2,2],[2,2,1,0,0],[1,0,0,0,1],[1,2,2,2,1],[0,1,1,1,0]];
+    const winning=new Set();(winningLines||[]).forEach(win=>(lines[(Number(win.line)||1)-1]||[]).forEach((row,reel)=>winning.add(`${reel}-${row}`)));
+    panel.querySelectorAll('[data-rp-slot-grid] span').forEach((cell,index)=>{const reel=Math.floor(index/3),row=index%3,symbol=grid?.[reel]?.[row]||'blank';cell.className=`slot-symbol${winning.has(`${reel}-${row}`)?' is-winning':''}`;cell.dataset.symbol=symbol;cell.innerHTML=`<i aria-hidden="true"></i><b>${labels[symbol]||symbol}</b>`;});
+    panel.classList.toggle('has-slot-win',winning.size>0);
   }
 
   function renderBlackjack(table) {

@@ -12046,7 +12046,28 @@ button.admin-permission-chip:focus-visible {
 .roulette-slip-row { padding:.55rem .7rem; border:1px solid rgba(255,255,255,.15); background:rgba(255,255,255,.04); color:inherit; text-align:left; cursor:pointer; }
 .casino-slot-grid { display:grid; grid-template-columns:repeat(5,1fr); gap:.4rem; padding:1rem; border:2px solid #82672d; border-radius:12px; background:#0e1214; }
 .casino-slot-grid span { display:grid; place-items:center; min-height:62px; border:1px solid rgba(255,255,255,.12); border-radius:7px; background:linear-gradient(#273036,#111619); color:#d7ff76; font-weight:900; text-transform:uppercase; }
+.roulette-game-layout { min-height:456px; display:grid; grid-template-columns:minmax(0,1.45fr) minmax(280px,.55fr); gap:24px; align-items:center; }
+.roulette-table-canvas { display:block; width:100%; height:auto; border:3px solid #ae843f; border-radius:10px; background:#0b5937; box-shadow:inset 0 0 34px rgba(0,0,0,.4),0 14px 28px rgba(0,0,0,.3); cursor:crosshair; touch-action:manipulation; }
+.roulette-board-help { min-height:1.4em; color:#d9e7cf; text-align:center; }
+.roulette-outside-bets { display:grid; grid-template-columns:repeat(6,minmax(0,1fr)); gap:.35rem; }
+.roulette-outside { min-height:42px; border:1px solid rgba(255,255,255,.35); background:#164f36; color:#fff; font-weight:800; cursor:pointer; }
+.roulette-outside.red { background:#8b2025; }.roulette-outside.black { background:#15191b; }.roulette-outside.has-bet { outline:3px solid #f1cf54; outline-offset:-3px; }
+.roulette-chip-picker { display:flex; flex-wrap:wrap; gap:.45rem; border:0; padding:0; }.roulette-chip-picker legend { width:100%; margin-bottom:.35rem; }
+.roulette-chip { width:48px; height:48px; border-radius:50%; border:4px dashed rgba(255,255,255,.75); background:#284d69; color:#fff; font-weight:900; cursor:pointer; box-shadow:0 4px 10px rgba(0,0,0,.35); }.roulette-chip.is-selected { outline:3px solid #f1cf54; transform:translateY(-3px); }
+.casino-slot-machine { position:relative; overflow:hidden; border:5px solid #8f6b2d; border-radius:16px; background:linear-gradient(145deg,#4b3920,#15191c 36%,#0a0d0f); box-shadow:inset 0 0 0 2px #d4aa50,0 18px 38px rgba(0,0,0,.45); }
+.casino-slot-grid { position:relative; z-index:1; border:0; border-radius:0; background:linear-gradient(180deg,rgba(255,255,255,.1),transparent 22% 78%,rgba(0,0,0,.3)); perspective:700px; }
+.casino-slot-grid .slot-symbol { position:relative; display:grid; grid-template-rows:1fr auto; min-height:112px; overflow:hidden; padding:.25rem; background:linear-gradient(#252b2d,#101416); transform-style:preserve-3d; transition:transform .35s cubic-bezier(.18,.75,.24,1),filter .3s,box-shadow .3s; }
+.slot-symbol i { display:block; width:100%; height:82px; background-image:url("../media/rp-games/casino-slot-symbols-v1.png"); background-size:300% 200%; background-repeat:no-repeat; background-position:100% 100%; filter:drop-shadow(0 5px 7px rgba(0,0,0,.5)); }
+.slot-symbol b { font-size:.72rem; letter-spacing:.08em; color:#e8dec5; text-align:center; }
+.slot-symbol[data-symbol="scrap"] i { background-position:0 0; }.slot-symbol[data-symbol="sulfur"] i { background-position:50% 0; }.slot-symbol[data-symbol="crate"] i { background-position:100% 0; }.slot-symbol[data-symbol="hazmat"] i { background-position:0 100%; }.slot-symbol[data-symbol="c4"] i { background-position:50% 100%; }.slot-symbol[data-symbol="blank"] i { background-position:100% 100%; }
+.rp-game-panel.is-spinning .casino-slot-grid .slot-symbol { animation:casino-reel-spin .34s linear infinite; filter:blur(1.5px) brightness(1.35); }.rp-game-panel.is-spinning .casino-slot-grid .slot-symbol:nth-child(3n+2){animation-delay:-.11s}.rp-game-panel.is-spinning .casino-slot-grid .slot-symbol:nth-child(3n){animation-delay:-.22s}
+.slot-symbol.is-winning { z-index:2; box-shadow:inset 0 0 0 3px #f1cf54,0 0 24px rgba(241,207,84,.75); animation:casino-slot-win .7s ease-in-out infinite alternate; }
+.casino-slot-machine::after { content:""; position:absolute; z-index:2; inset:0; pointer-events:none; background:linear-gradient(180deg,rgba(255,255,255,.14),transparent 20% 80%,rgba(0,0,0,.4)); }
+@keyframes casino-reel-spin { 0%{transform:rotateX(0) translateY(-6px) scale(.96)}50%{transform:rotateX(12deg) translateY(7px) scale(1.04)}100%{transform:rotateX(0) translateY(-6px) scale(.96)} }
+@keyframes casino-slot-win { from{filter:brightness(1)}to{filter:brightness(1.45) saturate(1.25);transform:translateY(-3px)} }
+@media (prefers-reduced-motion:reduce){.rp-game-panel.is-spinning .casino-slot-grid .slot-symbol,.slot-symbol.is-winning{animation:none;filter:none;transform:none}}
 @media (max-width:700px){.roulette-number-grid{grid-template-columns:repeat(4,1fr)}.roulette-number[data-number="0"]{grid-column:span 4}.casino-slot-grid span{font-size:.7rem;min-height:48px}}
+@media (max-width:900px){.roulette-game-layout{grid-template-columns:1fr}.roulette-outside-bets{grid-template-columns:repeat(3,1fr)}.casino-slot-grid .slot-symbol{min-height:82px}.slot-symbol i{height:58px}}
 
 .rp-game-panel-grid {
   min-height: 456px;
