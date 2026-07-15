@@ -16,6 +16,7 @@ import {
   CanvasTexture,
   LineBasicMaterial,
   LineSegments,
+  LinearFilter,
   Material,
   MathUtils,
   Matrix4,
@@ -2703,6 +2704,27 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
       this.applyEnvironment(next);
       this.activeEnvironment = next;
     }
+  }
+
+  public setTimelineEnvironment(
+    fromSnapshot: EnvironmentSnapshot | null | undefined,
+    toSnapshot: EnvironmentSnapshot | null | undefined = fromSnapshot,
+    progress = 0,
+  ): void {
+    const from = normalizeEnvironment(fromSnapshot);
+    const to = normalizeEnvironment(toSnapshot) || from;
+    if (!from || !to) {
+      return;
+    }
+
+    const current = interpolateEnvironment(from, to, MathUtils.clamp(progress, 0, 1));
+    this.sunMotion = null;
+    this.sunMotionBaseAt = 0;
+    this.activeEnvironment = current;
+    this.targetEnvironment = current;
+    this.environmentBlendStartedAt = performance.now();
+    this.environmentBlendDuration = 0;
+    this.applyEnvironment(current);
   }
 
   private currentEnvironment(now: number): NormalizedEnvironment | null {
@@ -6657,6 +6679,11 @@ function createTerrainHeightTexture(terrain: TerrainPayload): DataTexture {
   }
   const texture = new DataTexture(data, resolution, resolution, RedFormat, FloatType);
   texture.flipY = false;
+  // The water shader reads this texture as a continuous depth field around the
+  // coast. DataTexture defaults to nearest-neighbour filtering, which exposes
+  // the exported terrain grid as chunky diagonal bands in shallow water.
+  texture.magFilter = LinearFilter;
+  texture.minFilter = LinearFilter;
   texture.needsUpdate = true;
   return texture;
 }
@@ -7140,16 +7167,27 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
 
   const loadLiveEnvironment = () => {
     void loadEnvironment(root).then((payload) => {
+      if (wantsTimelineOverlay()) {
+        return;
+      }
       viewer.setEnvironment(payload.environment);
     });
   };
 
   const startEnvironmentPolling = () => {
+    if (wantsTimelineOverlay()) {
+      stopEnvironmentPolling();
+      return;
+    }
     loadLiveEnvironment();
     if (environmentPollTimer !== 0) {
       return;
     }
     environmentPollTimer = window.setInterval(() => {
+      if (wantsTimelineOverlay()) {
+        stopEnvironmentPolling();
+        return;
+      }
       loadLiveEnvironment();
     }, playerLocationRefreshMs);
   };
@@ -7387,6 +7425,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       }
 
       updateTimelineValue(playbackVirtualFrame);
+      syncTimelineEnvironment(playbackVirtualFrame);
       const nextFrame = Math.floor(playbackVirtualFrame);
       syncTimelineReplay();
       if (nextFrame !== playbackShownFrame) {
@@ -7434,6 +7473,27 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     heatmapFrameIntervalLabel.textContent = label;
   };
 
+  const syncTimelineEnvironment = (frameValue = playbackVirtualFrame) => {
+    if (!wantsTimelineOverlay() || heatmapHistory.length === 0) {
+      return;
+    }
+
+    const clamped = MathUtils.clamp(frameValue, 0, Math.max(0, heatmapHistory.length - 1));
+    const lowerIndex = Math.floor(clamped);
+    const upperIndex = Math.min(heatmapHistory.length - 1, lowerIndex + 1);
+    const lowerEnvironment = heatmapHistory[lowerIndex]?.environment ?? null;
+    const upperEnvironment = heatmapHistory[upperIndex]?.environment ?? lowerEnvironment;
+    if (!lowerEnvironment && !upperEnvironment) {
+      return;
+    }
+
+    viewer.setTimelineEnvironment(
+      lowerEnvironment || upperEnvironment,
+      upperEnvironment || lowerEnvironment,
+      clamped - lowerIndex,
+    );
+  };
+
   const showPlaybackFrame = (index: number) => {
     const clampedIndex = MathUtils.clamp(Math.round(index), 0, Math.max(0, heatmapHistory.length - 1));
     const frame = heatmapHistory[clampedIndex];
@@ -7443,6 +7503,8 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       setTimelineLabel(null, heatmapHistory.length === 0 ? "No frames" : "Latest");
       return;
     }
+
+    syncTimelineEnvironment(clampedIndex);
 
     if (wantsHeatmap()) {
       viewer.setHeatmap(frame);
@@ -7504,6 +7566,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
 
     if (wantsPlayback()) {
       stopLiveOverlayPolling();
+      stopEnvironmentPolling();
       const requestId = playbackRequestId + 1;
       playbackRequestId = requestId;
       const requestRange = selectedRange();
@@ -7837,7 +7900,11 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   if (!wantsPlayback()) {
     startLiveOverlayPolling();
   }
-  startEnvironmentPolling();
+  if (wantsTimelineOverlay()) {
+    stopEnvironmentPolling();
+  } else {
+    startEnvironmentPolling();
+  }
 
   return {
     dispose: () => {

@@ -1,9 +1,11 @@
 <?php
 
 require_once $site_root . '/includes/stats.php';
+require_once $site_root . '/includes/rewards.php';
 
 $leaderboard_ready = raidlands_stats_is_ready();
-$leaderboard_board = ((string) ($_GET['board'] ?? 'players')) === 'bots' ? 'bots' : 'players';
+$leaderboard_board = (string) ($_GET['board'] ?? 'players');
+$leaderboard_board = in_array($leaderboard_board, ['players', 'bots', 'rp-games'], true) ? $leaderboard_board : 'players';
 $leaderboard_scope = raidlands_stats_scope((string) ($_GET['scope'] ?? 'current'));
 $leaderboard_wipe_id = raidlands_stats_wipe_id($_GET['wipe_id'] ?? 0);
 $leaderboard_wipe_key = raidlands_stats_optional_wipe_key($_GET['wipe_key'] ?? '');
@@ -40,6 +42,16 @@ $leaderboard_bot_result = $leaderboard_ready
         $leaderboard_per_page,
         $leaderboard_search,
         $leaderboard_bot_metric,
+        $leaderboard_wipe_id,
+        $leaderboard_wipe_key
+    )
+    : raidlands_stats_page_result([], 0, 1, $leaderboard_per_page);
+$leaderboard_rp_result = $leaderboard_ready
+    ? raidlands_rewards_leaderboard_result(
+        $leaderboard_scope,
+        $leaderboard_board === 'rp-games' ? $leaderboard_page : 1,
+        $leaderboard_per_page,
+        $leaderboard_search,
         $leaderboard_wipe_id,
         $leaderboard_wipe_key
     )
@@ -84,9 +96,9 @@ function leaderboard_url(
 ): string {
     $scope = raidlands_stats_scope($scope);
     $query = [
-        'board' => $board === 'bots' ? 'bots' : 'players',
+        'board' => in_array($board, ['players', 'bots', 'rp-games'], true) ? $board : 'players',
         'scope' => $scope,
-        'metric' => $board === 'bots' ? raidlands_stats_bot_metric($metric) : raidlands_stats_metric($metric),
+        'metric' => $board === 'rp-games' ? 'total-won' : ($board === 'bots' ? raidlands_stats_bot_metric($metric) : raidlands_stats_metric($metric)),
         'page' => max(1, $page),
         'per_page' => raidlands_stats_page_size($per_page),
     ];
@@ -208,6 +220,13 @@ function leaderboard_wipe_options(array $wipes, int $selected_wipe_id): string
             aria-selected="<?= $leaderboard_board === 'bots' ? 'true' : 'false' ?>"
             aria-controls="leaderboard-bots"
             data-leaderboard-tab="bots">Bot Stats</a>
+          <a
+            class="<?= $leaderboard_board === 'rp-games' ? 'is-active' : '' ?>"
+            href="<?= e(leaderboard_url('rp-games', $leaderboard_scope, 'total-won', 1, $leaderboard_per_page, $leaderboard_search, $leaderboard_selected_wipe_id, $leaderboard_selected_wipe_key)) ?>"
+            role="tab"
+            aria-selected="<?= $leaderboard_board === 'rp-games' ? 'true' : 'false' ?>"
+            aria-controls="leaderboard-rp-games"
+            data-leaderboard-tab="rp-games">RP Games</a>
         </div>
 
         <section
@@ -442,6 +461,63 @@ function leaderboard_wipe_options(array $wipes, int $selected_wipe_id): string
             <span data-leaderboard-page-summary>Page <?= e((string) $leaderboard_bot_result['page']) ?> of <?= e((string) $leaderboard_bot_result['pages']) ?></span>
             <a class="<?= (int) $leaderboard_bot_result['page'] >= (int) $leaderboard_bot_result['pages'] ? 'is-disabled' : '' ?>" href="<?= e(leaderboard_url('bots', $leaderboard_scope, $leaderboard_bot_metric, min((int) $leaderboard_bot_result['pages'], (int) $leaderboard_bot_result['page'] + 1), $leaderboard_per_page, $leaderboard_search, $leaderboard_selected_wipe_id, $leaderboard_selected_wipe_key)) ?>" data-leaderboard-page-link="next">Next</a>
           </nav>
+        </section>
+
+        <section
+          id="leaderboard-rp-games"
+          class="<?= e(leaderboard_panel_classes('rp-games', $leaderboard_board)) ?>"
+          role="tabpanel"
+          data-leaderboard-panel
+          data-board="rp-games"
+          data-scope="<?= e($leaderboard_scope) ?>"
+          data-wipe-id="<?= e($leaderboard_scope === 'wipe' ? (string) $leaderboard_selected_wipe_id : '') ?>"
+          data-wipe-key="<?= e($leaderboard_scope === 'wipe' ? $leaderboard_selected_wipe_key : '') ?>"
+          data-metric="total-won"
+          data-page="<?= e((string) ($leaderboard_rp_result['page'] ?? 1)) ?>"
+          data-per-page="<?= e((string) ($leaderboard_rp_result['per_page'] ?? $leaderboard_per_page)) ?>"
+          data-total="<?= e((string) ($leaderboard_rp_result['total'] ?? 0)) ?>"
+          data-pages="<?= e((string) ($leaderboard_rp_result['pages'] ?? 1)) ?>"
+          data-search="<?= e($leaderboard_search) ?>"
+          <?= $leaderboard_board === 'rp-games' ? '' : 'hidden' ?>>
+          <div class="leaderboard-panel-head">
+            <div>
+              <p class="section-kicker">Casino champions</p>
+              <h3>RP Games</h3>
+              <p class="section-lede">Confirmed gross payouts across every Raidlands RP game.</p>
+            </div>
+            <span class="status-pill" data-leaderboard-count><?= e(leaderboard_page_summary($leaderboard_rp_result)) ?></span>
+          </div>
+
+          <div class="leaderboard-toolbar">
+            <div class="leaderboard-tabs" aria-label="RP Games leaderboard scope">
+              <a class="<?= $leaderboard_scope === 'current' ? 'is-active' : '' ?>" href="<?= e(leaderboard_url('rp-games', 'current', 'total-won', 1, $leaderboard_per_page, $leaderboard_search)) ?>" data-leaderboard-scope="current">Current Wipe</a>
+              <a class="<?= $leaderboard_scope === 'all-time' ? 'is-active' : '' ?>" href="<?= e(leaderboard_url('rp-games', 'all-time', 'total-won', 1, $leaderboard_per_page, $leaderboard_search)) ?>" data-leaderboard-scope="all-time">All Time</a>
+            </div>
+          </div>
+
+          <form class="leaderboard-filterbar" method="get" action="<?= e(route_url('leaderboard')) ?>" data-leaderboard-form>
+            <input type="hidden" name="board" value="rp-games">
+            <input type="hidden" name="scope" value="<?= e($leaderboard_scope) ?>" data-leaderboard-field="scope">
+            <input type="hidden" name="metric" value="total-won" data-leaderboard-field="metric">
+            <input type="hidden" name="wipe_key" value="<?= e($leaderboard_scope === 'wipe' ? $leaderboard_selected_wipe_key : '') ?>" data-leaderboard-field="wipe_key">
+            <label><span>Previous Wipe</span><select name="wipe_id" data-leaderboard-wipe-select><?= leaderboard_wipe_options($leaderboard_wipes, $leaderboard_scope === 'wipe' ? $leaderboard_selected_wipe_id : 0) ?></select></label>
+            <label><span>Search</span><input type="search" name="q" maxlength="80" placeholder="Player name or Steam ID" value="<?= e($leaderboard_search) ?>" data-leaderboard-search></label>
+            <label><span>Rows</span><select name="per_page" data-leaderboard-page-size><?php foreach ($leaderboard_page_sizes as $page_size) : ?><option value="<?= e((string) $page_size) ?>"<?= $leaderboard_per_page === $page_size ? ' selected' : '' ?>><?= e((string) $page_size) ?></option><?php endforeach; ?></select></label>
+            <button class="btn btn-secondary copy-small" type="submit">Search</button>
+          </form>
+
+          <div class="store-table-wrap leaderboard-table-wrap" data-leaderboard-table-wrap<?= $leaderboard_rp_result['rows'] === [] ? ' hidden' : '' ?>>
+            <table class="store-table leaderboard-table"><thead><tr><th>Rank</th><th>Player</th><th>Total RP Won</th><th>Wins</th><th>Games</th><th>Biggest Win</th></tr></thead>
+              <tbody data-leaderboard-rows>
+                <?php foreach ($leaderboard_rp_result['rows'] as $row) : ?>
+                  <?php $rp_name = (string) ($row['display_name'] ?: ($row['steam_display_name'] ?? 'Raidlands Player')); $rp_profile_url = trim((string) ($row['steam_profile_url'] ?? '')); ?>
+                  <tr><td><span class="leaderboard-rank">#<?= e((string) $row['rank']) ?></span></td><td><div class="leaderboard-player"><?= render_steam_avatar((string) ($row['steam_avatar_url'] ?? ''), $rp_profile_url, $rp_name, 'steam-avatar-sm') ?><span class="leaderboard-player-copy"><strong><?= e($rp_name) ?></strong><?php if ($rp_profile_url !== '') : ?><a class="leaderboard-steam" href="<?= e($rp_profile_url) ?>" target="_blank" rel="noopener noreferrer"><?= e((string) $row['steam_id64']) ?></a><?php else : ?><span class="leaderboard-steam"><?= e((string) $row['steam_id64']) ?></span><?php endif; ?></span></div></td><td><strong><?= e(raidlands_store_rp((int) $row['total_rp_won'])) ?></strong></td><td><?= e(number_format((int) $row['wins'])) ?></td><td><?= e(number_format((int) $row['games_played'])) ?></td><td><?= e(raidlands_store_rp((int) $row['biggest_win'])) ?></td></tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+          <div class="form-status warning" data-leaderboard-empty<?= $leaderboard_rp_result['rows'] === [] ? '' : ' hidden' ?>>No confirmed RP game results match this view.</div>
+          <nav class="leaderboard-pagination" aria-label="RP Games leaderboard pages" data-leaderboard-pagination><a class="<?= (int) $leaderboard_rp_result['page'] <= 1 ? 'is-disabled' : '' ?>" href="<?= e(leaderboard_url('rp-games', $leaderboard_scope, 'total-won', max(1, (int) $leaderboard_rp_result['page'] - 1), $leaderboard_per_page, $leaderboard_search, $leaderboard_selected_wipe_id, $leaderboard_selected_wipe_key)) ?>" data-leaderboard-page-link="prev">Previous</a><span data-leaderboard-page-summary>Page <?= e((string) $leaderboard_rp_result['page']) ?> of <?= e((string) $leaderboard_rp_result['pages']) ?></span><a class="<?= (int) $leaderboard_rp_result['page'] >= (int) $leaderboard_rp_result['pages'] ? 'is-disabled' : '' ?>" href="<?= e(leaderboard_url('rp-games', $leaderboard_scope, 'total-won', min((int) $leaderboard_rp_result['pages'], (int) $leaderboard_rp_result['page'] + 1), $leaderboard_per_page, $leaderboard_search, $leaderboard_selected_wipe_id, $leaderboard_selected_wipe_key)) ?>" data-leaderboard-page-link="next">Next</a></nav>
         </section>
       </div>
     <?php endif; ?>

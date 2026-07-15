@@ -16,6 +16,10 @@ $game_rounds = (array) ($rp_games_state['game_rounds'] ?? []);
 $jackpot_entries = (array) ($rp_games_state['jackpot_entries'] ?? []);
 $jackpot_rounds = (array) ($rp_games_state['jackpot_rounds'] ?? []);
 $sync_state = is_array($rp_games_state['sync'] ?? null) ? $rp_games_state['sync'] : [];
+$rp_leaderboard_scope = ((string) ($_GET['leaderboard_scope'] ?? 'current')) === 'all-time' ? 'all-time' : 'current';
+$rp_leaders = $rp_leaderboard_scope === 'all-time'
+    ? (array) ($rp_games_state['leaderboard_all_time'] ?? [])
+    : (array) ($rp_games_state['leaderboard_current'] ?? []);
 $sync_pending_count = max(0, (int) ($sync_state['pending_count'] ?? 0));
 $sync_poll_seconds = max(10, (int) ($sync_state['poll_seconds'] ?? 30));
 $sync_countdown_label = (string) floor($sync_poll_seconds / 60) . ':' . str_pad((string) ($sync_poll_seconds % 60), 2, '0', STR_PAD_LEFT);
@@ -683,6 +687,42 @@ $rp_game_tabs = [
 </section>
 
 <script src="<?= e(asset_url('js/monument-extraction.js')) ?>" defer></script>
+
+<section class="section rp-champions-section">
+  <div class="section-inner">
+    <div class="section-header section-header-actions">
+      <div>
+        <p class="section-kicker">Casino champions</p>
+        <h2>RP Games leaderboard</h2>
+        <p class="section-lede">Gross RP payouts count only after the game server confirms them.</p>
+      </div>
+      <a class="btn btn-secondary" href="<?= e(route_url('leaderboard') . '?board=rp-games&scope=' . rawurlencode($rp_leaderboard_scope) . '&metric=total-won') ?>">Full Leaderboard</a>
+    </div>
+    <div class="leaderboard-tabs" aria-label="RP Games leaderboard scope">
+      <a class="<?= $rp_leaderboard_scope === 'current' ? 'is-active' : '' ?>" href="<?= e(route_url('rp-games') . '?leaderboard_scope=current#rp-champions') ?>">Current Wipe</a>
+      <a class="<?= $rp_leaderboard_scope === 'all-time' ? 'is-active' : '' ?>" href="<?= e(route_url('rp-games') . '?leaderboard_scope=all-time#rp-champions') ?>">All Time</a>
+    </div>
+    <div id="rp-champions" class="store-table-wrap leaderboard-table-wrap"<?= $rp_leaders === [] ? ' hidden' : '' ?>>
+      <table class="store-table leaderboard-table">
+        <thead><tr><th>Rank</th><th>Player</th><th>Total RP Won</th><th>Wins</th><th>Games</th><th>Biggest Win</th></tr></thead>
+        <tbody>
+          <?php foreach ($rp_leaders as $row) : ?>
+            <?php $rp_leader_name = (string) ($row['display_name'] ?: ($row['steam_display_name'] ?? 'Raidlands Player')); $rp_leader_profile = trim((string) ($row['steam_profile_url'] ?? '')); ?>
+            <tr>
+              <td><span class="leaderboard-rank">#<?= e((string) $row['rank']) ?></span></td>
+              <td><div class="leaderboard-player"><?= render_steam_avatar((string) ($row['steam_avatar_url'] ?? ''), $rp_leader_profile, $rp_leader_name, 'steam-avatar-sm') ?><span class="leaderboard-player-copy"><strong><?= e($rp_leader_name) ?></strong><span class="leaderboard-steam"><?= e((string) $row['steam_id64']) ?></span></span></div></td>
+              <td><strong><?= e(raidlands_store_rp((int) $row['total_rp_won'])) ?></strong></td>
+              <td><?= e(number_format((int) $row['wins'])) ?></td>
+              <td><?= e(number_format((int) $row['games_played'])) ?></td>
+              <td><?= e(raidlands_store_rp((int) $row['biggest_win'])) ?></td>
+            </tr>
+          <?php endforeach; ?>
+        </tbody>
+      </table>
+    </div>
+    <?php if ($rp_leaders === []) : ?><div class="form-status warning">No confirmed RP game payouts have been recorded for this view yet.</div><?php endif; ?>
+  </div>
+</section>
 
 <section class="section alt">
   <div class="section-inner split-panel rp-games-info-grid">

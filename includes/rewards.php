@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/store.php';
 require_once __DIR__ . '/monument-extraction.php';
+require_once __DIR__ . '/stats.php';
 
 function raidlands_rewards_tables(): array
 {
@@ -2620,6 +2621,148 @@ function raidlands_rewards_recent_game_rounds(int $player_id = 0, int $limit = 1
     );
 }
 
+function raidlands_rewards_leaderboard_events_sql(): string
+{
+    $events = [
+        "SELECT g.player_id, g.payout_rp, 1 AS games_played,
+                CASE WHEN g.payout_rp > 0 THEN 1 ELSE 0 END AS wins,
+                g.created_at AS played_at
+         FROM rp_game_rounds g
+         INNER JOIN rp_point_requests request ON request.id = g.rp_point_request_id
+         WHERE g.status = 'confirmed' AND request.status = 'confirmed'",
+        "SELECT e.player_id,
+                CASE WHEN j.winner_player_id = e.player_id THEN MAX(j.payout_rp) ELSE 0 END AS payout_rp,
+                1 AS games_played,
+                CASE WHEN j.winner_player_id = e.player_id AND MAX(j.payout_rp) > 0 THEN 1 ELSE 0 END AS wins,
+                COALESCE(j.closes_at, j.updated_at) AS played_at
+         FROM rp_jackpot_entries e
+         INNER JOIN rp_jackpot_rounds j ON j.id = e.round_id AND j.status = 'paid'
+         INNER JOIN rp_point_requests entry_request ON entry_request.id = e.rp_point_request_id AND entry_request.status = 'confirmed'
+         LEFT JOIN rp_point_requests payout_request ON payout_request.id = j.payout_request_id
+         WHERE e.status = 'confirmed'
+           AND (j.winner_player_id <> e.player_id OR payout_request.status = 'confirmed')
+         GROUP BY e.player_id, e.round_id, j.winner_player_id, j.closes_at, j.updated_at"
+    ];
+
+    if (raidlands_rewards_table_exists('rp_pool_entries') && raidlands_rewards_table_exists('rp_pool_rounds')) {
+        $events[] =
+            "SELECT e.player_id,
+                    CASE WHEN e.status = 'paid' AND payout_request.status = 'confirmed' THEN e.payout_rp ELSE 0 END AS payout_rp,
+                    1 AS games_played,
+                    CASE WHEN e.status = 'paid' AND payout_request.status = 'confirmed' AND e.payout_rp > 0 THEN 1 ELSE 0 END AS wins,
+                    COALESCE(r.closes_at, r.updated_at) AS played_at
+             FROM rp_pool_entries e
+             INNER JOIN rp_pool_rounds r ON r.id = e.round_id
+             LEFT JOIN rp_point_requests payout_request ON payout_request.id = e.payout_request_id
+             WHERE e.status IN ('lost', 'paid')";
+    }
+
+    if (raidlands_rewards_table_exists('monument_extraction_runs')) {
+        $events[] =
+            "SELECT m.player_id,
+                    CASE WHEN m.payout_status = 'confirmed' AND payout_request.status = 'confirmed' THEN m.payout_rp ELSE 0 END AS payout_rp,
+                    1 AS games_played,
+                    CASE WHEN m.payout_status = 'confirmed' AND payout_request.status = 'confirmed' AND m.payout_rp > 0 THEN 1 ELSE 0 END AS wins,
+                    COALESCE(m.completed_at, m.updated_at) AS played_at
+             FROM monument_extraction_runs m
+             INNER JOIN rp_point_requests wager_request ON wager_request.id = m.wager_request_id AND wager_request.status = 'confirmed'
+             LEFT JOIN rp_point_requests payout_request ON payout_request.id = m.payout_request_id
+             WHERE m.status IN ('COMPLETED', 'DEAD', 'ABANDONED', 'EXPIRED')";
+    }
+
+    return implode("\nUNION ALL\n", $events);
+}
+
+function raidlands_rewards_leaderboard_result(
+    string $scope = 'current',
+    int $page = 1,
+    int $per_page = 25,
+    string $search = '',
+    int $wipe_id = 0,
+    string $wipe_key = '',
+    bool $attach_steam_profiles = true
+): array {
+    if (!raidlands_rewards_is_ready() || !raidlands_stats_is_ready()) {
+        return raidlands_stats_page_result([], 0, $page, $per_page);
+    }
+
+    $scope = raidlands_stats_scope($scope);
+    $page = raidlands_stats_page_number($page);
+    $per_page = raidlands_stats_page_size($per_page);
+    $search = raidlands_stats_search($search);
+    $params = [];
+    $event_where = '';
+    $player_where = '';
+
+    if ($scope !== 'all-time') {
+        $wipe = raidlands_stats_scope_wipe($scope, $wipe_id, $wipe_key);
+
+        if ($wipe === null) {
+            return raidlands_stats_page_result([], 0, $page, $per_page);
+        }
+
+        $started_at = trim((string) ($wipe['started_at'] ?? $wipe['created_at'] ?? ''));
+        $ended_at = trim((string) ($wipe['ended_at'] ?? ''));
+        $params['wipe_started_at'] = $started_at;
+        $event_where = 'WHERE events.played_at >= :wipe_started_at';
+
+        if ($ended_at !== '') {
+            $params['wipe_ended_at'] = $ended_at;
+            $event_where .= ' AND events.played_at < :wipe_ended_at';
+        }
+    }
+
+    if ($search !== '') {
+        $params['search_steam_id'] = '%' . $search . '%';
+        $params['search_name'] = '%' . $search . '%';
+        $player_where = "WHERE (p.steam_id64 LIKE :search_steam_id OR p.display_name LIKE :search_name)";
+    }
+
+    $events_sql = raidlands_rewards_leaderboard_events_sql();
+    $aggregate_sql = "SELECT
+            p.id AS player_id,
+            p.steam_id64,
+            COALESCE(NULLIF(p.display_name, ''), 'Raidlands Player') AS display_name,
+            SUM(filtered.payout_rp) AS total_rp_won,
+            SUM(filtered.wins) AS wins,
+            SUM(filtered.games_played) AS games_played,
+            MAX(filtered.payout_rp) AS biggest_win
+        FROM (
+            SELECT events.* FROM ({$events_sql}) events {$event_where}
+        ) filtered
+        INNER JOIN players p ON p.id = filtered.player_id
+        {$player_where}
+        GROUP BY p.id, p.steam_id64, p.display_name";
+
+    $total_row = raidlands_db_fetch_one("SELECT COUNT(*) AS total FROM ({$aggregate_sql}) ranked_players", $params);
+    $total = (int) ($total_row['total'] ?? 0);
+    $pages = max(1, (int) ceil($total / $per_page));
+    $page = min($page, $pages);
+    $offset = ($page - 1) * $per_page;
+    $rows = raidlands_db_fetch_all(
+        "{$aggregate_sql}
+         ORDER BY total_rp_won DESC, wins DESC, games_played DESC, display_name ASC, player_id ASC
+         LIMIT {$per_page} OFFSET {$offset}",
+        $params
+    );
+    $rank = $offset + 1;
+
+    foreach ($rows as &$row) {
+        $row['rank'] = $rank++;
+        $row['total_rp_won'] = (int) $row['total_rp_won'];
+        $row['wins'] = (int) $row['wins'];
+        $row['games_played'] = (int) $row['games_played'];
+        $row['biggest_win'] = (int) $row['biggest_win'];
+    }
+    unset($row);
+
+    if ($attach_steam_profiles) {
+        $rows = raidlands_store_attach_steam_profiles($rows);
+    }
+
+    return raidlands_stats_page_result($rows, $total, $page, $per_page);
+}
+
 function raidlands_rewards_recent_game_activity(int $player_id = 0, int $limit = 12): array
 {
     $rounds = raidlands_rewards_recent_game_rounds($player_id, $limit);
@@ -2828,7 +2971,7 @@ function raidlands_rewards_player_sync_state(int $player_id): array
     ];
 }
 
-function raidlands_rewards_public_games_state(): array
+function raidlands_rewards_public_games_state(bool $include_leaderboards = true): array
 {
     $ready = raidlands_rewards_is_ready();
     $player = raidlands_store_current_player();
@@ -2846,6 +2989,8 @@ function raidlands_rewards_public_games_state(): array
             'game_rounds' => [],
             'jackpot_entries' => [],
             'jackpot_rounds' => [],
+            'leaderboard_current' => [],
+            'leaderboard_all_time' => [],
             'sync' => raidlands_rewards_player_sync_state(0),
             'game_backend' => [
                 'high_low' => false,
@@ -2874,6 +3019,8 @@ function raidlands_rewards_public_games_state(): array
         'game_rounds' => $player_id > 0 ? raidlands_rewards_recent_game_activity($player_id, 10) : raidlands_rewards_recent_game_activity(0, 6),
         'jackpot_entries' => $player_id > 0 ? raidlands_rewards_recent_jackpot_entries($player_id, 10) : [],
         'jackpot_rounds' => raidlands_rewards_recent_jackpot_rounds(6),
+        'leaderboard_current' => $include_leaderboards ? raidlands_rewards_leaderboard_result('current', 1, 10)['rows'] : [],
+        'leaderboard_all_time' => $include_leaderboards ? raidlands_rewards_leaderboard_result('all-time', 1, 10)['rows'] : [],
         'sync' => raidlands_rewards_player_sync_state($player_id),
         'game_backend' => [
             'high_low' => raidlands_rewards_game_backend_ready('high_low'),
@@ -2904,7 +3051,7 @@ function raidlands_rewards_games_json_response(bool $ok, string $type, string $m
         'type' => $type,
         'message' => $message,
         'result' => $result,
-        'state' => raidlands_rewards_public_games_state(),
+        'state' => raidlands_rewards_public_games_state(false),
     ], JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE);
     exit;
 }
