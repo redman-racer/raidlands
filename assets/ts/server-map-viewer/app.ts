@@ -49,6 +49,7 @@ import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
+import { attachMilitaryBaseMlrs, MILITARY_BASE_MLRS_ASSET, MILITARY_BASE_MLRS_SHA256, militaryBaseMlrsPlacement } from "./monument-mlrs-policy";
 import { EffectComposer } from "three/examples/jsm/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/examples/jsm/postprocessing/RenderPass.js";
 import { SSAOPass } from "three/examples/jsm/postprocessing/SSAOPass.js";
@@ -4978,8 +4979,14 @@ class MonumentModelController {
     const path = tier === "map" ? `media/models/monuments-map/${binding.metadata.map}` : `media/models/monuments/${binding.metadata.id}.glb`;
     const url = new URL(path, base);
     url.searchParams.set("v", (tier === "map" ? binding.metadata.outputSha256 : binding.metadata.sourceSha256).slice(0, 12));
-    const promise = this.loader.loadAsync(url.href).then((gltf) => {
+    const promise = this.loader.loadAsync(url.href).then(async (gltf) => {
       const source = gltf.scene;
+      if (tier === "detail" && militaryBaseMlrsPlacement(binding.metadata.id)) {
+        const mlrsUrl = new URL(MILITARY_BASE_MLRS_ASSET, base);
+        mlrsUrl.searchParams.set("v", MILITARY_BASE_MLRS_SHA256.slice(0, 12));
+        const mlrs = await this.loader.loadAsync(mlrsUrl.href);
+        attachMilitaryBaseMlrs(source, mlrs.scene, binding.metadata.id);
+      }
       if (!this.disposed) this.cache.set(key, { source, active: 0, lastUsed: performance.now() });
       return source;
     }).finally(() => this.pending.delete(key));
