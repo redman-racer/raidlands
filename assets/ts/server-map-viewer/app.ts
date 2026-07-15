@@ -1473,6 +1473,7 @@ class TerrainViewer {
         map: texture,
         color,
         transparent: true,
+        premultipliedAlpha: true,
         alphaTest: 0.01,
         opacity: MathUtils.lerp(0.18, 0.64, normalized),
         depthWrite: false,
@@ -6335,11 +6336,14 @@ function createGridLabelSprite(label: string, size: number, x: number, z: number
 
     const created = new CanvasTexture(canvas);
     created.colorSpace = SRGBColorSpace;
+    created.premultiplyAlpha = true;
     return created;
   });
   const material = new SpriteMaterial({
     map: texture,
     transparent: true,
+    premultipliedAlpha: true,
+    alphaTest: 0.02,
     depthTest: false,
     depthWrite: false,
   });
@@ -6371,6 +6375,7 @@ function createHeatmapCloudTexture(): CanvasTexture {
 
   const texture = new CanvasTexture(canvas);
   texture.colorSpace = SRGBColorSpace;
+  texture.premultiplyAlpha = true;
   return texture;
   });
 }
