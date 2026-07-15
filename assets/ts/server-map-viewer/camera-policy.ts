@@ -30,7 +30,9 @@ export function parseCameraPreferences(value: string | null): CameraPreferences 
     return {
       mode: parseCameraMode(parsed.mode),
       manualStyle: parsed.manualStyle === "fly" ? "fly" : "orbit",
-      browserFill: parsed.browserFill === true,
+      // Browser-fill is deliberately session-only. Persisting it can reload a
+      // mobile user into a fixed viewport with no reliable escape path.
+      browserFill: false,
       terrainFingerprint: typeof parsed.terrainFingerprint === "string" ? parsed.terrainFingerprint : "",
     };
   } catch {

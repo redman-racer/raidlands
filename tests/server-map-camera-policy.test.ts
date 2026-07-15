@@ -10,7 +10,7 @@ import {
 describe("server map camera policy", () => {
   it("parses stored preferences defensively", () => {
     expect(parseCameraPreferences('{"mode":"action","manualStyle":"fly","browserFill":true,"terrainFingerprint":"wipe-1"}'))
-      .toEqual({ mode: "action", manualStyle: "fly", browserFill: true, terrainFingerprint: "wipe-1" });
+      .toEqual({ mode: "action", manualStyle: "fly", browserFill: false, terrainFingerprint: "wipe-1" });
     expect(parseCameraPreferences("broken").mode).toBe("director");
     expect(parseCameraPreferences('{"mode":"unknown"}').mode).toBe("director");
   });

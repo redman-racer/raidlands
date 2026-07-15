@@ -1081,6 +1081,8 @@ class TerrainViewer {
   private mobileLook = new Vector2();
   private pointerLookDelta = new Vector2();
   private mobileRise = 0;
+  private browserFillParent: ParentNode | null = null;
+  private browserFillNextSibling: ChildNode | null = null;
   private readonly tourStyle: CameraTourStyle;
   private readonly actionHighlights = new Map<ActionHighlightSource, ActionHighlightFocus>();
   private actionTourStartedAt = performance.now();
@@ -1282,9 +1284,7 @@ class TerrainViewer {
     window.removeEventListener("keydown", this.onKeyDown);
     window.removeEventListener("keyup", this.onKeyUp);
     document.removeEventListener("fullscreenchange", this.onFullscreenChange);
-    if (this.root.classList.contains("is-browser-fill")) {
-      document.documentElement.classList.remove("has-map-browser-fill");
-    }
+    this.setBrowserFill(false);
     this.controls.dispose();
     this.floatingControls?.remove();
     this.floatingControls = null;
@@ -1661,26 +1661,12 @@ class TerrainViewer {
     bindMapViewButtons(Array.from(controls.querySelectorAll<HTMLButtonElement>("[data-map-view]")), this);
     const fillButton = controls.querySelector<HTMLButtonElement>("[data-map-browser-fill]");
     const fullscreenButton = controls.querySelector<HTMLButtonElement>("[data-map-native-fullscreen]");
+    // Heal the old persisted lockout state, but keep the other camera choices.
     const stored = parseCameraPreferences(window.localStorage.getItem(CAMERA_PREFERENCES_STORAGE_KEY));
-    const saveDisplayPreference = () => {
-      const current = parseCameraPreferences(window.localStorage.getItem(CAMERA_PREFERENCES_STORAGE_KEY));
-      window.localStorage.setItem(CAMERA_PREFERENCES_STORAGE_KEY, JSON.stringify({
-        ...current,
-        browserFill: this.root.classList.contains("is-browser-fill"),
-        terrainFingerprint: this.root.dataset.terrainHash || this.root.dataset.seed || "",
-      }));
-    };
-    if (stored.browserFill) {
-      this.root.classList.add("is-browser-fill");
-      document.documentElement.classList.add("has-map-browser-fill");
-    }
-    fillButton?.setAttribute("aria-pressed", String(stored.browserFill));
+    window.localStorage.setItem(CAMERA_PREFERENCES_STORAGE_KEY, JSON.stringify({ ...stored, browserFill: false }));
+    this.setBrowserFill(false);
     fillButton?.addEventListener("click", () => {
-      const enabled = this.root.classList.toggle("is-browser-fill");
-      fillButton.setAttribute("aria-pressed", String(enabled));
-      document.documentElement.classList.toggle("has-map-browser-fill", enabled);
-      saveDisplayPreference();
-      this.resize();
+      this.setBrowserFill(!this.root.classList.contains("is-browser-fill"));
     });
     if (!this.root.requestFullscreen) {
       if (fullscreenButton) fullscreenButton.disabled = true;
@@ -2380,6 +2366,11 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
   }
 
   private handleFlightKey(event: KeyboardEvent, pressed: boolean): void {
+    if (pressed && event.code === "Escape" && this.root.classList.contains("is-browser-fill")) {
+      event.preventDefault();
+      this.setBrowserFill(false);
+      return;
+    }
     if (this.cameraMode !== "manual" || this.manualCameraStyle !== "fly") return;
     const target = event.target as HTMLElement | null;
     if (target?.closest("input, select, textarea, button, [contenteditable='true']")) return;
@@ -2477,6 +2468,27 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel);
     delete this.root.dataset.cameraTarget;
     this.root.dispatchEvent(new CustomEvent("raidlands:camera-target", { detail: { label: "Whole map" } }));
     if (this.cameraMode === "top") this.focusCamera(this.topPose());
+  }
+
+  private setBrowserFill(enabled: boolean): void {
+    if (enabled && !this.root.classList.contains("is-browser-fill")) {
+      this.browserFillParent = this.root.parentNode;
+      this.browserFillNextSibling = this.root.nextSibling;
+      document.body.appendChild(this.root);
+    }
+    this.root.classList.toggle("is-browser-fill", enabled);
+    if (!enabled && this.browserFillParent) {
+      if (this.browserFillNextSibling?.parentNode === this.browserFillParent) {
+        this.browserFillParent.insertBefore(this.root, this.browserFillNextSibling);
+      } else {
+        this.browserFillParent.appendChild(this.root);
+      }
+      this.browserFillParent = null;
+      this.browserFillNextSibling = null;
+    }
+    this.floatingControls?.querySelector<HTMLButtonElement>("[data-map-browser-fill]")
+      ?.setAttribute("aria-pressed", String(enabled));
+    this.resize();
   }
 
   private updateAircraftCameraSafety(): void {

@@ -1824,10 +1824,6 @@ h3,
   border: 0;
 }
 
-html.has-map-browser-fill {
-  overflow: hidden;
-}
-
 .server-terrain-viewer::after {
   position: absolute;
   inset: 0;
@@ -1838,6 +1834,16 @@ html.has-map-browser-fill {
   background:
     linear-gradient(90deg, rgba(255, 138, 40, .12), transparent 16% 84%, rgba(255, 138, 40, .12)),
     linear-gradient(180deg, rgba(0, 0, 0, .18), transparent 18% 78%, rgba(0, 0, 0, .28));
+}
+
+.server-terrain-viewer.is-browser-fill .server-terrain-view-select {
+  position: fixed;
+  top: max(10px, env(safe-area-inset-top));
+  right: max(10px, env(safe-area-inset-right));
+  left: max(10px, env(safe-area-inset-left));
+  justify-content: space-between;
+  max-width: calc(100vw - 20px);
+  overflow-x: auto;
 }
 
 .server-terrain-viewer canvas {
