@@ -4,10 +4,16 @@ import {
   SUPPORTED_PAYLOADS,
   type EditorSourceProfile,
   type PayloadEventFields,
+  type RepeatedReleaseGroup,
   type SourcePayloadEvent,
   type VehicleHardpointMetadata,
   type VehiclePreviewMetadataFile,
 } from "../types";
+import {
+  cloneRepeatedReleaseGroup,
+  firstRepeatedReleaseTime,
+  repeatedReleaseGroups,
+} from "../repeated-release";
 import { roundEditorNumber } from "./waypoint-source";
 
 export const PAYLOAD_COMMON_FIELDS = [
@@ -94,13 +100,46 @@ function nextReleaseId(events: SourcePayloadEvent[]): string {
   return `release_${Date.now()}`;
 }
 
+function nextRepeatedGroupId(groups: RepeatedReleaseGroup[]): string {
+  const existing = new Set(groups.map((group) => group.Id));
+  for (let index = 1; index < groups.length + 1000; index += 1) {
+    const id = `automatic_${String(index).padStart(3, "0")}`;
+    if (!existing.has(id)) {
+      return id;
+    }
+  }
+  return `automatic_${Date.now()}`;
+}
+
+function materializeRepeatedGroups(profile: EditorSourceProfile): RepeatedReleaseGroup[] {
+  if (profile.ReleaseSource.Mode !== "repeated") {
+    return [];
+  }
+  const release = profile.ReleaseSource;
+  const groups = repeatedReleaseGroups(release).map(cloneRepeatedReleaseGroup);
+  release.Groups = groups;
+  delete release.StartTime;
+  delete release.IntervalSeconds;
+  delete release.UnitsPerRelease;
+  delete release.MaximumUnits;
+  delete release.Template;
+  delete release.HardpointSequence;
+  delete release.LegacyDynamic;
+  return groups;
+}
+
+function repeatedGroupEndTime(group: RepeatedReleaseGroup): number {
+  const releases = Math.max(1, Math.ceil(group.MaximumUnits / Math.max(1, group.UnitsPerRelease)));
+  return group.StartTime + (releases - 1) * group.IntervalSeconds;
+}
+
 function firstReleaseTime(profile: EditorSourceProfile): number {
   const release = profile.ReleaseSource;
   if (release.Mode === "manual" && release.Events.length > 0) {
     return Math.min(...release.Events.map((event) => event.Time));
   }
   if (release.Mode === "repeated") {
-    return release.StartTime;
+    return firstRepeatedReleaseTime(release);
   }
   return Math.min(profile.DurationSeconds, Math.max(0, profile.FirstPayloadDelaySeconds));
 }
@@ -180,33 +219,39 @@ export function updateReleaseMode(profile: EditorSourceProfile, mode: "manual" |
   const next = cloneProfile(profile);
   const release = next.ReleaseSource;
   if (mode === "manual") {
-    const template = release.Mode === "repeated" ? clonePayloadFields(release.Template) : clonePayloadFields(DEFAULT_PAYLOAD_EVENT);
+    const repeatedGroup = release.Mode === "repeated" ? repeatedReleaseGroups(release)[0] : undefined;
+    const template = repeatedGroup ? clonePayloadFields(repeatedGroup.Template) : clonePayloadFields(DEFAULT_PAYLOAD_EVENT);
     next.ReleaseSource = {
       Mode: "manual",
       Events: [
         {
           ...template,
           Id: "release_001",
-          Time: roundEditorNumber(release.Mode === "repeated" ? release.StartTime : next.FirstPayloadDelaySeconds, 3),
-          Count: Math.max(1, release.Mode === "repeated" ? release.UnitsPerRelease : template.Count),
+          Time: roundEditorNumber(repeatedGroup?.StartTime ?? next.FirstPayloadDelaySeconds, 3),
+          Count: Math.max(1, repeatedGroup?.UnitsPerRelease ?? template.Count),
         },
       ],
       LegacyDynamic: false,
-      FallbackIntervalSeconds: release.Mode === "repeated" ? release.IntervalSeconds : 0.5,
+      FallbackIntervalSeconds: repeatedGroup?.IntervalSeconds ?? 0.5,
       Template: template,
     };
   } else {
     const events = release.Mode === "manual" ? release.Events : [];
     const template = clonePayloadFields(events[0] ?? release.Template ?? DEFAULT_PAYLOAD_EVENT);
     const totalUnits = events.reduce((sum, event) => sum + Math.max(1, event.Count), 0);
-    next.ReleaseSource = {
-      Mode: "repeated",
+    const group: RepeatedReleaseGroup = {
+      Id: "automatic_001",
+      Name: "Automatic group 1",
       StartTime: roundEditorNumber(events[0]?.Time ?? next.FirstPayloadDelaySeconds, 3),
       IntervalSeconds: release.Mode === "manual" ? release.FallbackIntervalSeconds ?? 0.5 : 0.5,
       UnitsPerRelease: Math.max(1, template.Count),
       MaximumUnits: Math.max(1, totalUnits || template.Count || 1),
       Template: template,
       HardpointSequence: [],
+    };
+    next.ReleaseSource = {
+      Mode: "repeated",
+      Groups: [group],
     };
   }
   syncFirstPayloadDelay(next);
@@ -330,31 +375,13 @@ export function updateRepeatedField(
   field: "StartTime" | "IntervalSeconds" | "UnitsPerRelease" | "MaximumUnits",
   value: number,
 ): EditorSourceProfile {
-  if (profile.ReleaseSource.Mode !== "repeated") {
-    return cloneProfile(profile);
-  }
-  const next = cloneProfile(profile);
-  const release = next.ReleaseSource;
-  if (release.Mode === "repeated") {
-    const rounded = field === "UnitsPerRelease" || field === "MaximumUnits" ? Math.max(0, Math.round(value)) : roundEditorNumber(value, 3);
-    release[field] = field === "UnitsPerRelease" ? Math.max(1, rounded) : rounded;
-    if (field === "UnitsPerRelease") {
-      release.Template.Count = release.UnitsPerRelease;
-    }
-  }
-  syncFirstPayloadDelay(next);
-  return next;
+  const groupId = profile.ReleaseSource.Mode === "repeated" ? repeatedReleaseGroups(profile.ReleaseSource)[0]?.Id ?? "" : "";
+  return updateRepeatedGroupField(profile, groupId, field, value);
 }
 
 export function updateRepeatedHardpointSequence(profile: EditorSourceProfile, sequence: string[]): EditorSourceProfile {
-  if (profile.ReleaseSource.Mode !== "repeated") {
-    return cloneProfile(profile);
-  }
-  const next = cloneProfile(profile);
-  if (next.ReleaseSource.Mode === "repeated") {
-    next.ReleaseSource.HardpointSequence = sequence.map((entry) => entry.trim()).filter(Boolean);
-  }
-  return next;
+  const groupId = profile.ReleaseSource.Mode === "repeated" ? repeatedReleaseGroups(profile.ReleaseSource)[0]?.Id ?? "" : "";
+  return updateRepeatedGroupHardpointSequence(profile, groupId, sequence);
 }
 
 export function updateRepeatedTemplateField(
@@ -362,14 +389,126 @@ export function updateRepeatedTemplateField(
   field: keyof PayloadEventFields,
   value: string | number | Record<string, number>,
 ): EditorSourceProfile {
+  const groupId = profile.ReleaseSource.Mode === "repeated" ? repeatedReleaseGroups(profile.ReleaseSource)[0]?.Id ?? "" : "";
+  return updateRepeatedGroupTemplateField(profile, groupId, field, value);
+}
+
+export function getRepeatedReleaseGroups(profile: EditorSourceProfile): RepeatedReleaseGroup[] {
+  return profile.ReleaseSource.Mode === "repeated" ? repeatedReleaseGroups(profile.ReleaseSource) : [];
+}
+
+export function addRepeatedReleaseGroup(
+  profile: EditorSourceProfile,
+  sourceGroupId = "",
+): { profile: EditorSourceProfile; groupId: string } {
+  if (profile.ReleaseSource.Mode !== "repeated") {
+    const converted = updateReleaseMode(profile, "repeated");
+    const first = converted.ReleaseSource.Mode === "repeated" ? repeatedReleaseGroups(converted.ReleaseSource)[0] : undefined;
+    return { profile: converted, groupId: first?.Id ?? "" };
+  }
+  const next = cloneProfile(profile);
+  const groups = materializeRepeatedGroups(next);
+  const source = groups.find((group) => group.Id === sourceGroupId) ?? groups[groups.length - 1];
+  if (!source) {
+    return { profile: next, groupId: "" };
+  }
+  const group = cloneRepeatedReleaseGroup(source);
+  group.Id = nextRepeatedGroupId(groups);
+  group.Name = `Automatic group ${groups.length + 1}`;
+  group.StartTime = roundEditorNumber(
+    Math.min(next.DurationSeconds, repeatedGroupEndTime(source) + Math.max(0.25, source.IntervalSeconds)),
+    3,
+  );
+  groups.push(group);
+  syncFirstPayloadDelay(next);
+  return { profile: next, groupId: group.Id };
+}
+
+export function duplicateRepeatedReleaseGroup(
+  profile: EditorSourceProfile,
+  groupId: string,
+): { profile: EditorSourceProfile; groupId: string } {
+  return addRepeatedReleaseGroup(profile, groupId);
+}
+
+export function deleteRepeatedReleaseGroup(profile: EditorSourceProfile, groupId: string): EditorSourceProfile {
   if (profile.ReleaseSource.Mode !== "repeated") {
     return cloneProfile(profile);
   }
   const next = cloneProfile(profile);
-  if (next.ReleaseSource.Mode === "repeated") {
-    assignPayloadField(next.ReleaseSource.Template, field, value);
+  const groups = materializeRepeatedGroups(next);
+  if (groups.length > 1 && next.ReleaseSource.Mode === "repeated") {
+    next.ReleaseSource.Groups = groups.filter((group) => group.Id !== groupId);
+  }
+  syncFirstPayloadDelay(next);
+  return next;
+}
+
+export function updateRepeatedGroupName(profile: EditorSourceProfile, groupId: string, name: string): EditorSourceProfile {
+  if (profile.ReleaseSource.Mode !== "repeated") {
+    return cloneProfile(profile);
+  }
+  const next = cloneProfile(profile);
+  const group = materializeRepeatedGroups(next).find((entry) => entry.Id === groupId);
+  if (group) {
+    group.Name = name.trim() || group.Id;
+  }
+  return next;
+}
+
+export function updateRepeatedGroupField(
+  profile: EditorSourceProfile,
+  groupId: string,
+  field: "StartTime" | "IntervalSeconds" | "UnitsPerRelease" | "MaximumUnits",
+  value: number,
+): EditorSourceProfile {
+  if (profile.ReleaseSource.Mode !== "repeated") {
+    return cloneProfile(profile);
+  }
+  const next = cloneProfile(profile);
+  const group = materializeRepeatedGroups(next).find((entry) => entry.Id === groupId);
+  if (group) {
+    const rounded = field === "UnitsPerRelease" || field === "MaximumUnits" ? Math.max(0, Math.round(value)) : roundEditorNumber(value, 3);
+    group[field] = field === "UnitsPerRelease" ? Math.max(1, rounded) : rounded;
+    if (field === "UnitsPerRelease") {
+      group.Template.Count = group.UnitsPerRelease;
+    }
+  }
+  syncFirstPayloadDelay(next);
+  return next;
+}
+
+export function updateRepeatedGroupHardpointSequence(
+  profile: EditorSourceProfile,
+  groupId: string,
+  sequence: string[],
+): EditorSourceProfile {
+  if (profile.ReleaseSource.Mode !== "repeated") {
+    return cloneProfile(profile);
+  }
+  const next = cloneProfile(profile);
+  const group = materializeRepeatedGroups(next).find((entry) => entry.Id === groupId);
+  if (group) {
+    group.HardpointSequence = sequence.map((entry) => entry.trim()).filter(Boolean);
+  }
+  return next;
+}
+
+export function updateRepeatedGroupTemplateField(
+  profile: EditorSourceProfile,
+  groupId: string,
+  field: keyof PayloadEventFields,
+  value: string | number | Record<string, number>,
+): EditorSourceProfile {
+  if (profile.ReleaseSource.Mode !== "repeated") {
+    return cloneProfile(profile);
+  }
+  const next = cloneProfile(profile);
+  const group = materializeRepeatedGroups(next).find((entry) => entry.Id === groupId);
+  if (group) {
+    assignPayloadField(group.Template, field, value);
     if (field === "Count") {
-      next.ReleaseSource.UnitsPerRelease = Math.max(1, Math.round(next.ReleaseSource.Template.Count));
+      group.UnitsPerRelease = Math.max(1, Math.round(group.Template.Count));
     }
   }
   return next;

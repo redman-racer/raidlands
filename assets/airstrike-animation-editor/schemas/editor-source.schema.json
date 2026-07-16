@@ -68,12 +68,35 @@
         "Template": { "$ref": "#/$defs/payloadFields" }
       }
     },
+    "repeatedGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Id", "Name", "StartTime", "IntervalSeconds", "UnitsPerRelease", "MaximumUnits", "Template", "HardpointSequence"],
+      "properties": {
+        "Id": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$" },
+        "Name": { "type": "string", "minLength": 1, "maxLength": 100 },
+        "StartTime": { "type": "number", "minimum": 0 },
+        "IntervalSeconds": { "type": "number", "exclusiveMinimum": 0 },
+        "UnitsPerRelease": { "type": "integer", "minimum": 1, "maximum": 200 },
+        "MaximumUnits": { "type": "integer", "minimum": 1, "maximum": 200 },
+        "Template": { "$ref": "#/$defs/payloadFields" },
+        "HardpointSequence": {
+          "type": "array",
+          "items": { "type": "string", "pattern": "^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$" }
+        }
+      }
+    },
     "repeatedRelease": {
       "type": "object",
       "additionalProperties": false,
-      "required": ["Mode", "StartTime", "IntervalSeconds", "UnitsPerRelease", "MaximumUnits", "Template", "HardpointSequence"],
+      "required": ["Mode"],
+      "oneOf": [
+        { "required": ["Groups"] },
+        { "required": ["StartTime", "IntervalSeconds", "UnitsPerRelease", "MaximumUnits", "Template", "HardpointSequence"] }
+      ],
       "properties": {
         "Mode": { "const": "repeated" },
+        "Groups": { "type": "array", "minItems": 1, "maxItems": 40, "items": { "$ref": "#/$defs/repeatedGroup" } },
         "StartTime": { "type": "number", "minimum": 0 },
         "IntervalSeconds": { "type": "number", "exclusiveMinimum": 0 },
         "UnitsPerRelease": { "type": "integer", "minimum": 1, "maximum": 200 },

@@ -35,6 +35,10 @@ $maxBetSlot = raidlands_casino_evaluate_slots($grid, 2000, 'balanced');
 casino_assert($maxBetSlot['payout_rp'] === $slot['payout_rp'] * 20, 'Max betting must scale payouts linearly without a hidden bonus.');
 $blank = array_fill(0, 5, ['blank','blank','blank']);
 casino_assert(raidlands_casino_evaluate_slots($blank, 100)['payout_rp'] === 0, 'Blank symbols must never pay.');
+$allC4 = array_fill(0, 5, ['c4','c4','c4']);
+$cappedSlot = raidlands_casino_evaluate_slots($allC4, 2000, 'balanced');
+casino_assert($cappedSlot['payout_rp'] === 50000, 'Slots must cap the total award at 25x the total stake.');
+casino_assert($cappedSlot['payout_capped'] && $cappedSlot['raw_payout_rp'] > $cappedSlot['payout_rp'], 'A clipped Slots result must retain its raw payout audit data.');
 
 $rtps = [];
 foreach (['safe','balanced','generous'] as $preset) {

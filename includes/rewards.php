@@ -3174,7 +3174,8 @@ function raidlands_rewards_handle_games_request(): void
             $message = 'Roulette landed on ' . $result['roll'] . '. The server is confirming ' . raidlands_store_rp((int) $result['payout_rp']) . ' in payouts.';
         } elseif ($action === 'play_slots') {
             $result = raidlands_casino_play_slots((int) ($_POST['stake_rp'] ?? 0));
-            $message = 'The reels stopped with ' . count((array) ($result['winning_lines'] ?? [])) . ' winning line(s). The server is confirming the result.';
+            $message = 'The reels stopped with ' . count((array) ($result['winning_lines'] ?? [])) . ' winning line(s). The server is confirming ' . raidlands_store_rp((int) ($result['payout_rp'] ?? 0)) . '.'
+                . (!empty($result['payout_capped']) ? ' The ' . raidlands_casino_slot_max_total_multiplier() . 'x total-stake cap was applied.' : '');
         } elseif ($action === 'start_blackjack') {
             $result = raidlands_blackjack_start((int) ($_POST['stake_rp'] ?? 0));
             $message = 'Blackjack wager queued. Cards will be dealt after the Rust server confirms it.';

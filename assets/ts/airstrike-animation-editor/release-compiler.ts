@@ -9,6 +9,7 @@ import {
   type VehiclePreviewMetadataFile,
 } from "./types";
 import { clonePayloadFields } from "./validation";
+import { hasGroupedRepeatedReleases, repeatedReleaseGroups } from "./repeated-release";
 
 function orderedManualEvents(profile: EditorSourceProfile) {
   return profile.ReleaseSource.Mode === "manual"
@@ -153,51 +154,60 @@ export function compileReleaseSchedule(
     };
   }
 
-  const template = clonePayloadFields(release.Template);
-  template.Count = release.UnitsPerRelease;
+  const groups = repeatedReleaseGroups(release);
+  const primaryGroup = [...groups].sort((left, right) => left.StartTime - right.StartTime || left.Id.localeCompare(right.Id))[0]!;
+  const template = clonePayloadFields(primaryGroup.Template);
+  template.Count = primaryGroup.UnitsPerRelease;
   const hardpoints = resolveHardpoints(profile, metadata);
-  const resolvedHardpointOffsets = hardpointProjection(hardpoints, release.HardpointSequence);
-  if (release.LegacyDynamic === true && release.MaximumUnits === 0) {
+  const resolvedHardpointOffsets = hardpointProjection(hardpoints, groups.flatMap((group) => group.HardpointSequence));
+  const grouped = hasGroupedRepeatedReleases(release);
+  if (!grouped && release.LegacyDynamic === true && primaryGroup.MaximumUnits === 0) {
     return {
       legacyMode: "generated",
       legacyMaximumUnits: 0,
-      legacyIntervalSeconds: release.IntervalSeconds,
-      legacyTemplate: runtimeEvent(template, release.StartTime, 0),
+      legacyIntervalSeconds: primaryGroup.IntervalSeconds,
+      legacyTemplate: runtimeEvent(template, primaryGroup.StartTime, 0),
       legacyEvents: [],
       resolvedHardpointOffsets,
     };
   }
 
-  const compiledEvents: RuntimePayloadEvent[] = [];
-  let released = 0;
-  let group = 0;
-  while (released < release.MaximumUnits) {
-    const time = release.StartTime + group * release.IntervalSeconds;
-    if (time > profile.DurationSeconds + 1e-9) {
-      break;
-    }
-    const unitsThisGroup = Math.min(release.UnitsPerRelease, release.MaximumUnits - released);
-    for (let unit = 0; unit < unitsThisGroup; unit += 1) {
-      const fields = clonePayloadFields(template);
-      fields.Count = 1;
-      if (release.HardpointSequence.length > 0) {
-        const hardpointId = release.HardpointSequence[released % release.HardpointSequence.length]!;
-        const hardpoint = hardpoints.get(hardpointId)!;
-        fields.CarrierOffsetX += hardpoint.x;
-        fields.CarrierOffsetY += hardpoint.y;
-        fields.CarrierOffsetZ += hardpoint.z;
+  const generated: Array<{ fields: PayloadEventFields; time: number; groupIndex: number; unitIndex: number }> = [];
+  groups.forEach((automaticGroup, groupIndex) => {
+    let released = 0;
+    let releaseIndex = 0;
+    while (released < automaticGroup.MaximumUnits) {
+      const time = automaticGroup.StartTime + releaseIndex * automaticGroup.IntervalSeconds;
+      if (time > profile.DurationSeconds + 1e-9) {
+        break;
       }
-      compiledEvents.push(runtimeEvent(fields, time, released + 1));
-      released += 1;
+      const unitsThisRelease = Math.min(automaticGroup.UnitsPerRelease, automaticGroup.MaximumUnits - released);
+      for (let unit = 0; unit < unitsThisRelease; unit += 1) {
+        const fields = clonePayloadFields(automaticGroup.Template);
+        fields.Count = 1;
+        if (automaticGroup.HardpointSequence.length > 0) {
+          const hardpointId = automaticGroup.HardpointSequence[released % automaticGroup.HardpointSequence.length]!;
+          const hardpoint = hardpoints.get(hardpointId);
+          if (hardpoint) {
+            fields.CarrierOffsetX += hardpoint.x;
+            fields.CarrierOffsetY += hardpoint.y;
+            fields.CarrierOffsetZ += hardpoint.z;
+          }
+        }
+        generated.push({ fields, time, groupIndex, unitIndex: released });
+        released += 1;
+      }
+      releaseIndex += 1;
     }
-    group += 1;
-  }
+  });
+  generated.sort((left, right) => left.time - right.time || left.groupIndex - right.groupIndex || left.unitIndex - right.unitIndex);
+  const compiledEvents = generated.map((event, index) => runtimeEvent(event.fields, event.time, index + 1));
 
   return {
     legacyMode: "generated",
-    legacyMaximumUnits: release.MaximumUnits,
-    legacyIntervalSeconds: release.IntervalSeconds,
-    legacyTemplate: runtimeEvent(template, release.StartTime, 0),
+    legacyMaximumUnits: groups.reduce((sum, group) => sum + group.MaximumUnits, 0),
+    legacyIntervalSeconds: primaryGroup.IntervalSeconds,
+    legacyTemplate: runtimeEvent(template, primaryGroup.StartTime, 0),
     legacyEvents: [],
     compiledEvents,
     resolvedHardpointOffsets,

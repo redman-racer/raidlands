@@ -9,10 +9,14 @@ import {
 } from "./editor/viewport";
 import {
   addManualRelease,
+  addRepeatedReleaseGroup,
   availableHardpoints,
   deleteManualRelease,
+  deleteRepeatedReleaseGroup,
   duplicateManualRelease,
+  duplicateRepeatedReleaseGroup,
   getReleasePreviewEvents,
+  getRepeatedReleaseGroups,
   payloadOptions,
   PAYLOAD_ADVANCED_FIELDS,
   PAYLOAD_COMMON_FIELDS,
@@ -20,9 +24,10 @@ import {
   updateManualReleaseHardpoint,
   updateManualReleaseTime,
   updateReleaseMode,
-  updateRepeatedField,
-  updateRepeatedHardpointSequence,
-  updateRepeatedTemplateField,
+  updateRepeatedGroupField,
+  updateRepeatedGroupHardpointSequence,
+  updateRepeatedGroupName,
+  updateRepeatedGroupTemplateField,
   type PayloadField,
 } from "./editor/release-source";
 import {
@@ -124,6 +129,7 @@ interface EditorState {
   loading: boolean;
   selectedWaypointId: string;
   selectedReleaseId: string;
+  selectedRepeatedGroupId: string;
   scrubTime: number;
   playing: boolean;
 }
@@ -283,6 +289,7 @@ class AirstrikeEditorApp {
     loading: false,
     selectedWaypointId: "",
     selectedReleaseId: "",
+    selectedRepeatedGroupId: "",
     scrubTime: 0,
     playing: false,
   };
@@ -468,18 +475,18 @@ class AirstrikeEditorApp {
       input.dataset.editorSliderEnhanced = "1";
 
       input.addEventListener("input", () => this.syncNumericControl(input));
-      const commitSlider = (): void => {
+      const updateFromSlider = (): void => {
+        if (input.value === range.value) {
+          this.syncNumericControl(input);
+          return;
+        }
         input.value = range.value;
-        input.dispatchEvent(new CustomEvent("airstrike-editor-number-commit", { bubbles: true, detail: { mode: "live" } }));
-        this.syncNumericControl(input);
+        // Use the same native event path as keyboard entry so permanent and generated inputs
+        // both update the profile and viewport while the slider is moving.
+        input.dispatchEvent(new Event("input", { bubbles: true }));
       };
-      range.addEventListener("input", () => {
-        input.value = range.value;
-        input.dispatchEvent(new CustomEvent("airstrike-editor-number-commit", { bubbles: true, detail: { mode: "deferred" } }));
-      });
-      range.addEventListener("change", commitSlider);
-      range.addEventListener("pointerup", commitSlider);
-      range.addEventListener("pointercancel", commitSlider);
+      range.addEventListener("input", updateFromSlider);
+      range.addEventListener("change", updateFromSlider);
       stepDown.addEventListener("click", () => this.stepNumericInput(input, -1));
       stepUp.addEventListener("click", () => this.stepNumericInput(input, 1));
       this.syncNumericControl(input);
@@ -930,6 +937,17 @@ class AirstrikeEditorApp {
     }
   }
 
+  private ensureSelectedRepeatedGroup(profile: EditorSourceProfile): void {
+    if (profile.ReleaseSource.Mode !== "repeated") {
+      this.state.selectedRepeatedGroupId = "";
+      return;
+    }
+    const groups = getRepeatedReleaseGroups(profile);
+    if (!groups.some((group) => group.Id === this.state.selectedRepeatedGroupId)) {
+      this.state.selectedRepeatedGroupId = groups[0]?.Id ?? "";
+    }
+  }
+
   private selectedManualRelease(): SourcePayloadEvent | undefined {
     const profile = this.state.profile;
     if (!profile || profile.ReleaseSource.Mode !== "manual") {
@@ -944,16 +962,32 @@ class AirstrikeEditorApp {
     this.elements.manualReleaseList.textContent = "";
     this.elements.manualReleaseEditor.textContent = "";
     this.elements.repeatedReleaseEditor.textContent = "";
-    this.elements.addRelease.disabled = !profile;
-    this.elements.duplicateRelease.disabled = !this.selectedManualRelease();
-    this.elements.deleteRelease.disabled = !this.selectedManualRelease();
     if (!profile) {
+      this.elements.addRelease.disabled = true;
+      this.elements.duplicateRelease.disabled = true;
+      this.elements.deleteRelease.disabled = true;
       return;
     }
     if (profile.ReleaseSource.Mode === "manual") {
+      this.elements.addRelease.textContent = "Add event";
+      this.elements.duplicateRelease.textContent = "Duplicate event";
+      this.elements.deleteRelease.textContent = "Delete event";
+      this.elements.addRelease.disabled = false;
+      this.elements.duplicateRelease.disabled = !this.selectedManualRelease();
+      this.elements.deleteRelease.disabled = !this.selectedManualRelease();
       this.renderManualReleaseList(profile);
       this.renderManualReleaseEditor(profile);
     } else {
+      this.ensureSelectedRepeatedGroup(profile);
+      const groups = getRepeatedReleaseGroups(profile);
+      const selected = groups.some((group) => group.Id === this.state.selectedRepeatedGroupId);
+      this.elements.addRelease.textContent = "Add group";
+      this.elements.duplicateRelease.textContent = "Duplicate group";
+      this.elements.deleteRelease.textContent = "Delete group";
+      this.elements.addRelease.disabled = false;
+      this.elements.duplicateRelease.disabled = !selected;
+      this.elements.deleteRelease.disabled = !selected || groups.length <= 1;
+      this.renderRepeatedReleaseList(profile);
       this.renderRepeatedReleaseEditor(profile);
     }
     this.enhanceNumericControls(this.elements.root);
@@ -990,7 +1024,7 @@ class AirstrikeEditorApp {
     this.elements.manualReleaseEditor.appendChild(title);
 
     const timeInput = this.createNumberInput(event.Time, 0.01, (value, mode) => {
-      const next = updateManualReleaseTime(profile, event.Id, value);
+      const next = updateManualReleaseTime(this.state.profile ?? profile, event.Id, value);
       if (mode === "deferred") {
         this.previewProfileUpdate(next, true);
       } else {
@@ -1007,14 +1041,14 @@ class AirstrikeEditorApp {
     }
     hardpointSelect.value = event.HardpointId ?? "";
     hardpointSelect.addEventListener("change", () => {
-      const next = updateManualReleaseHardpoint(profile, event.Id, hardpointSelect.value);
+      const next = updateManualReleaseHardpoint(this.state.profile ?? profile, event.Id, hardpointSelect.value);
       this.applyProfile(next, true);
       this.selectRelease(event.Id);
     });
     this.elements.manualReleaseEditor.appendChild(this.fieldWrapper("Hardpoint", hardpointSelect));
 
     this.renderPayloadFieldGroup(this.elements.manualReleaseEditor, event, PAYLOAD_COMMON_FIELDS, (field, value, mode) => {
-      const next = updateManualPayloadField(profile, event.Id, field, value);
+      const next = updateManualPayloadField(this.state.profile ?? profile, event.Id, field, value);
       if (mode === "deferred") {
         this.previewProfileUpdate(next, true);
       } else {
@@ -1029,7 +1063,7 @@ class AirstrikeEditorApp {
     summary.textContent = "Advanced payload fields";
     advanced.appendChild(summary);
     this.renderPayloadFieldGroup(advanced, event, PAYLOAD_ADVANCED_FIELDS, (field, value, mode) => {
-      const next = updateManualPayloadField(profile, event.Id, field, value);
+      const next = updateManualPayloadField(this.state.profile ?? profile, event.Id, field, value);
       if (mode === "deferred") {
         this.previewProfileUpdate(next, true);
       } else {
@@ -1044,15 +1078,31 @@ class AirstrikeEditorApp {
     if (profile.ReleaseSource.Mode !== "repeated") {
       return;
     }
-    const release = profile.ReleaseSource;
+    const group = getRepeatedReleaseGroups(profile).find((entry) => entry.Id === this.state.selectedRepeatedGroupId);
+    if (!group) {
+      return;
+    }
+    const title = document.createElement("h3");
+    title.textContent = group.Name;
+    this.elements.repeatedReleaseEditor.appendChild(title);
+
+    const name = document.createElement("input");
+    name.type = "text";
+    name.maxLength = 100;
+    name.value = group.Name;
+    name.addEventListener("change", () => {
+      this.applyProfile(updateRepeatedGroupName(this.state.profile ?? profile, group.Id, name.value), true);
+    });
+    this.elements.repeatedReleaseEditor.appendChild(this.fieldWrapper("Group name", name));
+
     for (const [field, step] of [
       ["StartTime", 0.01],
       ["IntervalSeconds", 0.01],
       ["UnitsPerRelease", 1],
       ["MaximumUnits", 1],
     ] as const) {
-      const input = this.createNumberInput(release[field], step, (value, mode) => {
-        const next = updateRepeatedField(profile, field, value);
+      const input = this.createNumberInput(group[field], step, (value, mode) => {
+        const next = updateRepeatedGroupField(this.state.profile ?? profile, group.Id, field, value);
         if (mode === "deferred") {
           this.previewProfileUpdate(next, true);
         } else {
@@ -1064,12 +1114,13 @@ class AirstrikeEditorApp {
 
     const sequence = document.createElement("input");
     sequence.type = "text";
-    sequence.value = release.HardpointSequence.join(", ");
+    sequence.value = group.HardpointSequence.join(", ");
     sequence.placeholder = availableHardpoints(profile, this.metadata).map((hardpoint) => hardpoint.id).join(", ");
     sequence.addEventListener("change", () => {
       this.applyProfile(
-        updateRepeatedHardpointSequence(
-          profile,
+        updateRepeatedGroupHardpointSequence(
+          this.state.profile ?? profile,
+          group.Id,
           sequence.value.split(",").map((entry) => entry.trim()).filter(Boolean),
         ),
         true,
@@ -1077,8 +1128,8 @@ class AirstrikeEditorApp {
     });
     this.elements.repeatedReleaseEditor.appendChild(this.fieldWrapper("Hardpoint sequence", sequence));
 
-    this.renderPayloadFieldGroup(this.elements.repeatedReleaseEditor, release.Template, PAYLOAD_COMMON_FIELDS, (field, value, mode) => {
-      const next = updateRepeatedTemplateField(profile, field, value);
+    this.renderPayloadFieldGroup(this.elements.repeatedReleaseEditor, group.Template, PAYLOAD_COMMON_FIELDS, (field, value, mode) => {
+      const next = updateRepeatedGroupTemplateField(this.state.profile ?? profile, group.Id, field, value);
       if (mode === "deferred") {
         this.previewProfileUpdate(next, true);
       } else {
@@ -1091,8 +1142,8 @@ class AirstrikeEditorApp {
     const summary = document.createElement("summary");
     summary.textContent = "Advanced payload fields";
     advanced.appendChild(summary);
-    this.renderPayloadFieldGroup(advanced, release.Template, PAYLOAD_ADVANCED_FIELDS, (field, value, mode) => {
-      const next = updateRepeatedTemplateField(profile, field, value);
+    this.renderPayloadFieldGroup(advanced, group.Template, PAYLOAD_ADVANCED_FIELDS, (field, value, mode) => {
+      const next = updateRepeatedGroupTemplateField(this.state.profile ?? profile, group.Id, field, value);
       if (mode === "deferred") {
         this.previewProfileUpdate(next, true);
       } else {
@@ -1149,19 +1200,30 @@ class AirstrikeEditorApp {
     input.step = String(step);
     input.value = String(value);
     const commit = (mode: NumberInputCommitMode): void => {
+      if (input.value.trim() === "" || input.validity.badInput) {
+        return;
+      }
       const next = Number(input.value);
       if (Number.isFinite(next)) {
         onInput(next, mode);
       }
     };
     input.addEventListener("input", () => {
-      commit("live");
+      commit("deferred");
     });
-    input.addEventListener("airstrike-editor-number-commit", (event) => {
-      const mode = event instanceof CustomEvent && event.detail?.mode === "deferred" ? "deferred" : "live";
-      commit(mode);
-    });
+    input.addEventListener("change", () => commit("deferred"));
     return input;
+  }
+
+  private renderRepeatedReleaseList(profile: EditorSourceProfile): void {
+    for (const group of getRepeatedReleaseGroups(profile)) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.className = `airstrike-release-row${group.Id === this.state.selectedRepeatedGroupId ? " is-active" : ""}`;
+      button.textContent = `${group.Name}  ${group.StartTime.toFixed(2)}s  ${group.Template.Payload || "payload"} x${group.MaximumUnits}`;
+      button.addEventListener("click", () => this.selectRepeatedGroup(group.Id));
+      this.elements.manualReleaseList.appendChild(button);
+    }
   }
 
   private fieldWrapper(labelText: string, control: HTMLElement): HTMLLabelElement {
@@ -1255,6 +1317,11 @@ class AirstrikeEditorApp {
     this.viewport.updateSelectedRelease(releaseId);
   }
 
+  private selectRepeatedGroup(groupId: string): void {
+    this.state.selectedRepeatedGroupId = groupId;
+    this.renderReleaseControls();
+  }
+
   private handleWaypointMoved(waypointId: string, position: Vector3): EditorSourceProfile | null {
     if (!this.state.profile) {
       return null;
@@ -1276,12 +1343,15 @@ class AirstrikeEditorApp {
     if (!field || !WAYPOINT_FIELDS.includes(field)) {
       return;
     }
+    if (input.value.trim() === "" || input.validity.badInput) {
+      return;
+    }
     const value = Number(input.value);
     if (!Number.isFinite(value)) {
       return;
     }
     const next = updateWaypointField(this.state.profile, this.state.selectedWaypointId, field, value);
-    this.applyProfile(next, true);
+    this.previewProfileUpdate(next, true);
     if (field === "Time") {
       this.setScrubTime(value);
     }
@@ -1480,7 +1550,7 @@ class AirstrikeEditorApp {
     if (!Number.isFinite(value) || value <= 0) {
       return;
     }
-    this.applyProfile(setGlobalTargetSpeed(this.state.profile, value), true);
+    this.previewProfileUpdate(setGlobalTargetSpeed(this.state.profile, value), true);
   }
 
   private handleWaypointSpeedInput(): void {
@@ -1491,7 +1561,7 @@ class AirstrikeEditorApp {
     if (!Number.isFinite(value) || value <= 0) {
       return;
     }
-    this.applyProfile(setWaypointTargetSpeed(this.state.profile, this.state.selectedWaypointId, value), true);
+    this.previewProfileUpdate(setWaypointTargetSpeed(this.state.profile, this.state.selectedWaypointId, value), true);
   }
 
   private handleReleaseModeChange(): void {
@@ -1499,11 +1569,21 @@ class AirstrikeEditorApp {
       return;
     }
     const mode = this.elements.releaseMode.value === "repeated" ? "repeated" : "manual";
-    this.applyProfile(updateReleaseMode(this.state.profile, mode), true);
+    const next = updateReleaseMode(this.state.profile, mode);
+    if (mode === "repeated") {
+      this.state.selectedRepeatedGroupId = getRepeatedReleaseGroups(next)[0]?.Id ?? "";
+    }
+    this.applyProfile(next, true);
   }
 
   private handleAddRelease(): void {
     if (!this.state.profile) {
+      return;
+    }
+    if (this.state.profile.ReleaseSource.Mode === "repeated") {
+      const result = addRepeatedReleaseGroup(this.state.profile, this.state.selectedRepeatedGroupId);
+      this.state.selectedRepeatedGroupId = result.groupId;
+      this.applyProfile(result.profile, true);
       return;
     }
     const result = addManualRelease(this.state.profile, this.state.scrubTime);
@@ -1512,7 +1592,19 @@ class AirstrikeEditorApp {
   }
 
   private handleDuplicateRelease(): void {
-    if (!this.state.profile || !this.state.selectedReleaseId) {
+    if (!this.state.profile) {
+      return;
+    }
+    if (this.state.profile.ReleaseSource.Mode === "repeated") {
+      if (!this.state.selectedRepeatedGroupId) {
+        return;
+      }
+      const result = duplicateRepeatedReleaseGroup(this.state.profile, this.state.selectedRepeatedGroupId);
+      this.state.selectedRepeatedGroupId = result.groupId;
+      this.applyProfile(result.profile, true);
+      return;
+    }
+    if (!this.state.selectedReleaseId) {
       return;
     }
     const result = duplicateManualRelease(this.state.profile, this.state.selectedReleaseId);
@@ -1521,7 +1613,19 @@ class AirstrikeEditorApp {
   }
 
   private handleDeleteRelease(): void {
-    if (!this.state.profile || !this.state.selectedReleaseId) {
+    if (!this.state.profile) {
+      return;
+    }
+    if (this.state.profile.ReleaseSource.Mode === "repeated") {
+      if (!this.state.selectedRepeatedGroupId) {
+        return;
+      }
+      const next = deleteRepeatedReleaseGroup(this.state.profile, this.state.selectedRepeatedGroupId);
+      this.state.selectedRepeatedGroupId = getRepeatedReleaseGroups(next)[0]?.Id ?? "";
+      this.applyProfile(next, true);
+      return;
+    }
+    if (!this.state.selectedReleaseId) {
       return;
     }
     this.applyProfile(deleteManualRelease(this.state.profile, this.state.selectedReleaseId), true);

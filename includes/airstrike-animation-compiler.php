@@ -20,6 +20,7 @@ function raidlands_airstrike_animation_compiler_limits(): array
         'max_profiles' => 500,
         'max_waypoints_per_profile' => 256,
         'max_manual_events_per_profile' => 80,
+        'max_repeated_groups_per_profile' => 40,
         'max_release_events_per_profile' => 200,
         'max_duration_seconds' => 120.0,
         'max_compiled_frames_per_profile' => 6000,
@@ -227,6 +228,25 @@ function raidlands_airstrike_animation_profile_key(array $source): string
     return strtolower(trim((string) ($source['ProfileKey'] ?? $source['profile_key'] ?? '')));
 }
 
+function raidlands_airstrike_animation_repeated_group(array $group, int $index = 0): array
+{
+    return [
+        'id' => trim((string) ($group['Id'] ?? ('automatic_' . str_pad((string) ($index + 1), 3, '0', STR_PAD_LEFT)))),
+        'name' => trim((string) ($group['Name'] ?? ('Automatic group ' . ($index + 1)))),
+        'start_time' => raidlands_airstrike_animation_number($group['StartTime'] ?? 0.0),
+        'interval_seconds' => raidlands_airstrike_animation_number($group['IntervalSeconds'] ?? 0.5, 0.5),
+        'units_per_release' => raidlands_airstrike_animation_int(
+            $group['UnitsPerRelease'] ?? ($group['Template']['Count'] ?? null) ?? 1,
+            1
+        ),
+        'maximum_units' => raidlands_airstrike_animation_int($group['MaximumUnits'] ?? 0),
+        'template' => isset($group['Template']) && is_array($group['Template']) ? $group['Template'] : [],
+        'hardpoint_sequence' => isset($group['HardpointSequence']) && is_array($group['HardpointSequence'])
+            ? array_values(array_map('strval', $group['HardpointSequence']))
+            : [],
+    ];
+}
+
 function raidlands_airstrike_animation_release_source(array $source): array
 {
     $release = isset($source['ReleaseSource']) && is_array($source['ReleaseSource'])
@@ -241,10 +261,22 @@ function raidlands_airstrike_animation_release_source(array $source): array
     }
 
     $events = $release['Events'] ?? $source['PayloadEvents'] ?? [];
+    $groups_present = array_key_exists('Groups', $release);
+    $groups = [];
+
+    if ($groups_present && is_array($release['Groups'] ?? null) && array_is_list($release['Groups'])) {
+        foreach ($release['Groups'] as $index => $group) {
+            if (is_array($group)) {
+                $groups[] = raidlands_airstrike_animation_repeated_group($group, (int) $index);
+            }
+        }
+    }
 
     return [
         'mode' => $mode,
         'events' => is_array($events) && array_is_list($events) ? $events : [],
+        'groups_present' => $groups_present,
+        'groups' => $groups,
         'start_time' => raidlands_airstrike_animation_number(
             $release['StartTime'] ?? $source['FirstPayloadDelaySeconds'] ?? 0.0
         ),
@@ -283,6 +315,24 @@ function raidlands_airstrike_animation_release_source(array $source): array
             : [],
         'legacy_dynamic' => !empty($release['LegacyDynamic']),
     ];
+}
+
+function raidlands_airstrike_animation_repeated_groups(array $release): array
+{
+    if (!empty($release['groups_present'])) {
+        return $release['groups'];
+    }
+
+    return [[
+        'id' => 'automatic_001',
+        'name' => 'Automatic group 1',
+        'start_time' => $release['start_time'],
+        'interval_seconds' => $release['interval_seconds'],
+        'units_per_release' => $release['units_per_release'],
+        'maximum_units' => $release['maximum_units'],
+        'template' => $release['template'],
+        'hardpoint_sequence' => $release['hardpoint_sequence'],
+    ]];
 }
 
 function raidlands_airstrike_animation_validation_error(array &$errors, string $path, string $code, string $message): void
@@ -718,6 +768,115 @@ function raidlands_airstrike_animation_validate_profile(
             );
         }
     } else {
+        if ($release['groups_present']) {
+            $raw_groups = $source['ReleaseSource']['Groups'] ?? null;
+
+            if (!is_array($raw_groups) || !array_is_list($raw_groups) || $raw_groups === []) {
+                raidlands_airstrike_animation_validation_error(
+                    $errors,
+                    $path . '.ReleaseSource.Groups',
+                    'array',
+                    'Must contain at least one automatic release group.'
+                );
+            } else {
+                if (count($raw_groups) > (int) $limits['max_repeated_groups_per_profile']) {
+                    raidlands_airstrike_animation_validation_error(
+                        $errors,
+                        $path . '.ReleaseSource.Groups',
+                        'group_count',
+                        'Too many automatic release groups.'
+                    );
+                }
+
+                $group_ids = [];
+                $total_units = 0;
+                $earliest_start = INF;
+                $available_hardpoints = raidlands_airstrike_animation_hardpoints($source, $vehicle_metadata);
+
+                foreach ($raw_groups as $index => $raw_group) {
+                    $group_path = $path . '.ReleaseSource.Groups[' . $index . ']';
+
+                    if (!is_array($raw_group)) {
+                        raidlands_airstrike_animation_validation_error($errors, $group_path, 'object', 'Automatic release group must be an object.');
+                        continue;
+                    }
+
+                    $group = raidlands_airstrike_animation_repeated_group($raw_group, (int) $index);
+                    $group_id = is_string($raw_group['Id'] ?? null) ? trim($raw_group['Id']) : '';
+
+                    if (!preg_match('/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/', $group_id)) {
+                        raidlands_airstrike_animation_validation_error($errors, $group_path . '.Id', 'stable_id', 'Must be a safe stable automatic-group ID.');
+                    } elseif (isset($group_ids[$group_id])) {
+                        raidlands_airstrike_animation_validation_error($errors, $group_path . '.Id', 'duplicate_id', 'Automatic-group ID must be unique.');
+                    } else {
+                        $group_ids[$group_id] = true;
+                    }
+
+                    $group_name = is_string($raw_group['Name'] ?? null) ? trim($raw_group['Name']) : '';
+
+                    if ($group_name === '' || strlen($group_name) > 100) {
+                        raidlands_airstrike_animation_validation_error($errors, $group_path . '.Name', 'name', 'Must be a name between 1 and 100 characters.');
+                    }
+
+                    $raw_start = $raw_group['StartTime'] ?? null;
+                    $raw_interval = $raw_group['IntervalSeconds'] ?? null;
+                    $raw_units = $raw_group['UnitsPerRelease'] ?? null;
+                    $raw_maximum = $raw_group['MaximumUnits'] ?? null;
+                    raidlands_airstrike_animation_validate_number($errors, $raw_start, $group_path . '.StartTime', 0.0, $duration_number);
+                    raidlands_airstrike_animation_validate_number($errors, $raw_interval, $group_path . '.IntervalSeconds', 0.01, 30.0);
+
+                    if (is_int($raw_start) || is_float($raw_start)) {
+                        $earliest_start = min($earliest_start, (float) $raw_start);
+                    }
+
+                    raidlands_airstrike_animation_validate_number($errors, $raw_units, $group_path . '.UnitsPerRelease', 1.0, 200.0);
+
+                    if ((is_int($raw_units) || is_float($raw_units)) && floor((float) $raw_units) !== (float) $raw_units) {
+                        raidlands_airstrike_animation_validation_error($errors, $group_path . '.UnitsPerRelease', 'integer', 'Must be an integer.');
+                    }
+
+                    raidlands_airstrike_animation_validate_number($errors, $raw_maximum, $group_path . '.MaximumUnits', 1.0, 200.0);
+
+                    if ((is_int($raw_maximum) || is_float($raw_maximum)) && floor((float) $raw_maximum) !== (float) $raw_maximum) {
+                        raidlands_airstrike_animation_validation_error($errors, $group_path . '.MaximumUnits', 'integer', 'Must be an integer.');
+                    }
+
+                    if (is_int($raw_maximum) || is_float($raw_maximum)) {
+                        $total_units += max(0, (int) $raw_maximum);
+                    }
+                    $template = $group['template'];
+                    $template['Time'] = $group['start_time'];
+                    $template['Count'] = max(1, $group['units_per_release']);
+                    raidlands_airstrike_animation_validate_event($template, $group_path . '.Template', $duration_number, $errors);
+
+                    $raw_hardpoints = $raw_group['HardpointSequence'] ?? null;
+
+                    if (!is_array($raw_hardpoints) || !array_is_list($raw_hardpoints)) {
+                        raidlands_airstrike_animation_validation_error($errors, $group_path . '.HardpointSequence', 'array', 'Must be an array.');
+                    } else {
+                        foreach ($raw_hardpoints as $hardpoint_index => $hardpoint_value) {
+                            $hardpoint_id = is_string($hardpoint_value) ? $hardpoint_value : '';
+
+                            if (!preg_match('/^[A-Za-z0-9][A-Za-z0-9._-]{0,99}$/', $hardpoint_id)) {
+                                raidlands_airstrike_animation_validation_error($errors, $group_path . '.HardpointSequence[' . $hardpoint_index . ']', 'stable_id', 'Must be a safe hardpoint ID.');
+                            } elseif (!isset($available_hardpoints[$hardpoint_id])) {
+                                raidlands_airstrike_animation_validation_error($errors, $group_path . '.HardpointSequence[' . $hardpoint_index . ']', 'unknown_hardpoint', "Unknown hardpoint '" . $hardpoint_id . "'.");
+                            }
+                        }
+                    }
+                }
+
+                if ($total_units > (int) $limits['max_release_events_per_profile']) {
+                    raidlands_airstrike_animation_validation_error($errors, $path . '.ReleaseSource.Groups', 'compiled_unit_count', 'Automatic groups must not exceed 200 total units.');
+                }
+
+                $first_delay = raidlands_airstrike_animation_number($source['FirstPayloadDelaySeconds'] ?? -1.0, -1.0);
+
+                if (is_finite($earliest_start) && abs($first_delay - $earliest_start) > 0.000001) {
+                    raidlands_airstrike_animation_validation_error($errors, $path . '.FirstPayloadDelaySeconds', 'first_release_sync', 'Must equal the earliest automatic group start time.');
+                }
+            }
+        } else {
         raidlands_airstrike_animation_validate_number(
             $errors,
             $release['start_time'],
@@ -787,6 +946,7 @@ function raidlands_airstrike_animation_validate_profile(
                     "Unknown hardpoint '" . $hardpoint_id . "'."
                 );
             }
+        }
         }
     }
 
@@ -1382,19 +1542,43 @@ function raidlands_airstrike_animation_source_hash_projection(
             $release_projection['ResolvedHardpointOffsets'] = $resolved_hardpoint_offsets;
         }
     } else {
-        $release_projection = [
-            'Mode' => 'repeated',
-            'LegacyDynamic' => $release['legacy_dynamic'],
-            'StartTime' => $release['start_time'],
-            'IntervalSeconds' => $release['interval_seconds'],
-            'UnitsPerRelease' => $release['units_per_release'],
-            'MaximumUnits' => $release['maximum_units'],
-            'Template' => raidlands_airstrike_animation_payload_object_shape($release['template']),
-            'HardpointSequence' => $release['hardpoint_sequence'],
-            'ResolvedHardpointOffsets' => $resolved_hardpoint_offsets === []
-                ? new stdClass()
-                : $resolved_hardpoint_offsets,
-        ];
+        if ($release['groups_present']) {
+            $groups = [];
+
+            foreach ($release['groups'] as $group) {
+                $groups[] = [
+                    'StartTime' => $group['start_time'],
+                    'IntervalSeconds' => $group['interval_seconds'],
+                    'UnitsPerRelease' => $group['units_per_release'],
+                    'MaximumUnits' => $group['maximum_units'],
+                    'Template' => raidlands_airstrike_animation_payload_object_shape($group['template']),
+                    'HardpointSequence' => $group['hardpoint_sequence'],
+                ];
+            }
+
+            $release_projection = [
+                'Mode' => 'repeated',
+                'LegacyDynamic' => false,
+                'Groups' => $groups,
+                'ResolvedHardpointOffsets' => $resolved_hardpoint_offsets === []
+                    ? new stdClass()
+                    : $resolved_hardpoint_offsets,
+            ];
+        } else {
+            $release_projection = [
+                'Mode' => 'repeated',
+                'LegacyDynamic' => $release['legacy_dynamic'],
+                'StartTime' => $release['start_time'],
+                'IntervalSeconds' => $release['interval_seconds'],
+                'UnitsPerRelease' => $release['units_per_release'],
+                'MaximumUnits' => $release['maximum_units'],
+                'Template' => raidlands_airstrike_animation_payload_object_shape($release['template']),
+                'HardpointSequence' => $release['hardpoint_sequence'],
+                'ResolvedHardpointOffsets' => $resolved_hardpoint_offsets === []
+                    ? new stdClass()
+                    : $resolved_hardpoint_offsets,
+            ];
+        }
     }
 
     $projection = [
@@ -1530,62 +1714,98 @@ function raidlands_airstrike_animation_compile_release_schedule(
         return $result;
     }
 
-    $template = $release['template'];
-    $template['Count'] = $release['units_per_release'];
+    $groups = raidlands_airstrike_animation_repeated_groups($release);
+    $primary_group = $groups[0];
+
+    foreach ($groups as $candidate) {
+        if ($candidate['start_time'] < $primary_group['start_time']
+            || ($candidate['start_time'] === $primary_group['start_time'] && strcmp($candidate['id'], $primary_group['id']) < 0)) {
+            $primary_group = $candidate;
+        }
+    }
+    $template = $primary_group['template'];
+    $template['Count'] = $primary_group['units_per_release'];
     $hardpoints = raidlands_airstrike_animation_hardpoints($source, $vehicle_metadata);
     $resolved_hardpoint_offsets = [];
 
-    foreach ($release['hardpoint_sequence'] as $hardpoint_id) {
-        if (isset($hardpoints[$hardpoint_id])) {
-            $resolved_hardpoint_offsets[$hardpoint_id] = $hardpoints[$hardpoint_id];
+    foreach ($groups as $automatic_group) {
+        foreach ($automatic_group['hardpoint_sequence'] as $hardpoint_id) {
+            if (isset($hardpoints[$hardpoint_id])) {
+                $resolved_hardpoint_offsets[$hardpoint_id] = $hardpoints[$hardpoint_id];
+            }
         }
     }
 
     $result = [
         'legacy_mode' => 'generated',
-        'legacy_maximum_units' => $release['maximum_units'],
-        'legacy_interval_seconds' => $release['interval_seconds'],
+        'legacy_maximum_units' => array_sum(array_column($groups, 'maximum_units')),
+        'legacy_interval_seconds' => $primary_group['interval_seconds'],
         'legacy_template' => raidlands_airstrike_animation_runtime_event(
             $template,
-            $release['start_time'],
+            $primary_group['start_time'],
             0,
-            $release['units_per_release']
+            $primary_group['units_per_release']
         ),
         'legacy_events' => [],
         'resolved_hardpoint_offsets' => $resolved_hardpoint_offsets,
     ];
 
-    if ($release['legacy_dynamic'] && $release['maximum_units'] === 0) {
+    if (!$release['groups_present'] && $release['legacy_dynamic'] && $primary_group['maximum_units'] === 0) {
         return $result;
     }
 
-    $compiled = [];
-    $released = 0;
-    $group = 0;
+    $generated = [];
 
-    while ($released < $release['maximum_units']) {
-        $time = $release['start_time'] + ($group * $release['interval_seconds']);
+    foreach ($groups as $group_index => $automatic_group) {
+        $released = 0;
+        $release_index = 0;
 
-        if ($time > (float) $source['DurationSeconds'] + 0.000000001) {
-            break;
-        }
+        while ($released < $automatic_group['maximum_units']) {
+            $time = $automatic_group['start_time'] + ($release_index * $automatic_group['interval_seconds']);
 
-        $units_this_group = min($release['units_per_release'], $release['maximum_units'] - $released);
-
-        for ($unit = 0; $unit < $units_this_group; $unit += 1) {
-            $event = $template;
-            $event['Count'] = 1;
-
-            if ($release['hardpoint_sequence'] !== []) {
-                $hardpoint_id = (string) $release['hardpoint_sequence'][$released % count($release['hardpoint_sequence'])];
-                $event = raidlands_airstrike_animation_apply_hardpoint($event, $hardpoint_id, $hardpoints);
+            if ($time > (float) $source['DurationSeconds'] + 0.000000001) {
+                break;
             }
 
-            $compiled[] = raidlands_airstrike_animation_runtime_event($event, $time, $released + 1, 1);
-            $released += 1;
+            $units_this_release = min($automatic_group['units_per_release'], $automatic_group['maximum_units'] - $released);
+
+            for ($unit = 0; $unit < $units_this_release; $unit += 1) {
+                $event = $automatic_group['template'];
+                $event['Count'] = 1;
+
+                if ($automatic_group['hardpoint_sequence'] !== []) {
+                    $hardpoint_id = (string) $automatic_group['hardpoint_sequence'][$released % count($automatic_group['hardpoint_sequence'])];
+                    $event = raidlands_airstrike_animation_apply_hardpoint($event, $hardpoint_id, $hardpoints);
+                }
+
+                $generated[] = [
+                    'event' => $event,
+                    'time' => $time,
+                    'group_index' => (int) $group_index,
+                    'unit_index' => $released,
+                ];
+                $released += 1;
+            }
+
+            $release_index += 1;
+        }
+    }
+
+    usort($generated, static function (array $left, array $right): int {
+        $time_compare = $left['time'] <=> $right['time'];
+
+        if ($time_compare !== 0) {
+            return $time_compare;
         }
 
-        $group += 1;
+        $group_compare = $left['group_index'] <=> $right['group_index'];
+        return $group_compare !== 0 ? $group_compare : $left['unit_index'] <=> $right['unit_index'];
+    });
+
+    $compiled = [];
+
+    foreach ($generated as $index => $entry) {
+        $compiled[] = raidlands_airstrike_animation_runtime_event($entry['event'], $entry['time'], $index + 1, 1);
     }
 
     $result['compiled_events'] = $compiled;
@@ -1702,7 +1922,10 @@ function raidlands_airstrike_animation_compile_profile(array $source, array $veh
             $release['events']
         ));
     } elseif ($release['mode'] === 'repeated') {
-        $first_payload_delay = $release['start_time'];
+        $first_payload_delay = min(array_map(
+            static fn (array $group): float => (float) $group['start_time'],
+            raidlands_airstrike_animation_repeated_groups($release)
+        ));
     }
 
     $runtime = [

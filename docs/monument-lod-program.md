@@ -22,7 +22,7 @@ The catalog command refuses to run when the sibling checkout is not at the pinne
 
 `npm run monuments:lod` generates `Map`, `Mid`, and `Close` GLBs under `assets/media/models/monuments-lod/` plus a versioned manifest containing URLs, SHA-256 hashes, byte sizes, triangles, draw calls, bounds, structural selections, exclusions, budgets, and review status. `npm run monuments:lod:parallel` runs those same isolated recipe builds through a bounded three-process queue and reconciles the deterministic manifest afterward.
 
-The generator selects structural components before simplification, keeps component transforms from the full layout GLB, applies standalone overrides from the recipe, simplifies components independently, and only then joins compatible materials. Map uses a texture-free palette; Mid and Close use bounded WebP textures when they fit, falling back to the palette when necessary.
+The generator selects structural components before simplification, keeps component transforms from the full layout GLB, applies standalone overrides from the recipe, simplifies components independently, and only then joins compatible materials. Map uses a texture-free palette; Mid and Close always retain WebP textures and progressively reduce their maximum texture resolution before reducing geometry. They never silently fall back to an untextured palette.
 
 Validation commands:
 

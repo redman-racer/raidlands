@@ -6,7 +6,13 @@ import {
   type PayloadEventFields,
   type VehiclePreviewMetadataFile,
 } from "../assets/ts/airstrike-animation-editor/index";
-import { getReleasePreviewEvents, updateManualReleaseTime } from "../assets/ts/airstrike-animation-editor/editor/release-source";
+import {
+  addRepeatedReleaseGroup,
+  getReleasePreviewEvents,
+  getRepeatedReleaseGroups,
+  updateManualReleaseTime,
+  updateRepeatedGroupField,
+} from "../assets/ts/airstrike-animation-editor/editor/release-source";
 import {
   metersPerSecondToMilesPerHour,
   normalizeWaypointTimes,
@@ -168,6 +174,31 @@ describe("airstrike authoring release sources", () => {
 
     expect(preview.map((event) => event.fields.CarrierOffsetX)).toEqual(compiled.map((event) => event.CarrierOffsetX));
     expect(preview.map((event) => event.time)).toEqual(compiled.map((event) => event.Time));
+  });
+
+  it("adds independently editable automatic groups without overwriting earlier group edits", () => {
+    const source = profileFixture({
+      FirstPayloadDelaySeconds: 1,
+      ReleaseSource: {
+        Mode: "repeated",
+        StartTime: 1,
+        IntervalSeconds: 0.25,
+        UnitsPerRelease: 2,
+        MaximumUnits: 4,
+        Template: payload({ Payload: "bradley_longbarrel_burst", Count: 2 }),
+        HardpointSequence: [],
+      },
+    });
+    const firstGroupId = getRepeatedReleaseGroups(source)[0]!.Id;
+    const edited = updateRepeatedGroupField(source, firstGroupId, "IntervalSeconds", 0.15);
+    const added = addRepeatedReleaseGroup(edited, firstGroupId);
+    const groups = getRepeatedReleaseGroups(added.profile);
+
+    expect(groups).toHaveLength(2);
+    expect(groups[0]!.IntervalSeconds).toBe(0.15);
+    expect(groups[1]!.IntervalSeconds).toBe(0.15);
+    expect(groups[1]!.StartTime).toBeGreaterThan(groups[0]!.StartTime);
+    expect(added.profile.FirstPayloadDelaySeconds).toBe(1);
   });
 
   it("updates release-marker source times and keeps first payload delay synced", () => {

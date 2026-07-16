@@ -105,13 +105,26 @@ export interface ManualReleaseSource {
 
 export interface RepeatedReleaseSource {
   Mode: "repeated";
+  /** New grouped authoring shape. Older saved profiles use the legacy fields below. */
+  Groups?: RepeatedReleaseGroup[];
+  StartTime?: number;
+  IntervalSeconds?: number;
+  UnitsPerRelease?: number;
+  MaximumUnits?: number;
+  Template?: PayloadEventFields;
+  HardpointSequence?: string[];
+  LegacyDynamic?: boolean;
+}
+
+export interface RepeatedReleaseGroup {
+  Id: string;
+  Name: string;
   StartTime: number;
   IntervalSeconds: number;
   UnitsPerRelease: number;
   MaximumUnits: number;
   Template: PayloadEventFields;
   HardpointSequence: string[];
-  LegacyDynamic?: boolean;
 }
 
 export type ReleaseSource = ManualReleaseSource | RepeatedReleaseSource;

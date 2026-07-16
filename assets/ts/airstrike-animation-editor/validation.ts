@@ -17,6 +17,7 @@ const MAX_DURATION_SECONDS = 120;
 const MAX_WAYPOINTS = 256;
 const MAX_MANUAL_EVENTS = 80;
 const MAX_COMPILED_RELEASE_UNITS = 200;
+const MAX_REPEATED_GROUPS = 40;
 
 function addIssue(issues: ValidationIssue[], path: string, code: string, message: string): void {
   issues.push({ path, code, message });
@@ -256,31 +257,88 @@ function validateProfile(
       validatePayloadFields(release.Template, `${path}.ReleaseSource.Template`, issues, true);
     }
   } else if (release.Mode === "repeated") {
-    validateFinite(release.StartTime, `${path}.ReleaseSource.StartTime`, issues, 0, Number(profile.DurationSeconds));
-    validateFinite(release.IntervalSeconds, `${path}.ReleaseSource.IntervalSeconds`, issues, 0.01, 30);
-    validateInteger(release.UnitsPerRelease, `${path}.ReleaseSource.UnitsPerRelease`, issues, 1, MAX_COMPILED_RELEASE_UNITS);
-    validateInteger(
-      release.MaximumUnits,
-      `${path}.ReleaseSource.MaximumUnits`,
-      issues,
-      release.LegacyDynamic === true ? 0 : 1,
-      MAX_COMPILED_RELEASE_UNITS,
-    );
-    validatePayloadFields(release.Template, `${path}.ReleaseSource.Template`, issues, false);
-    if (!Array.isArray(release.HardpointSequence)) {
-      addIssue(issues, `${path}.ReleaseSource.HardpointSequence`, "array", "Must be an array.");
-    } else {
-      const available = getAvailableHardpoints(profile as unknown as EditorSourceProfile, metadata);
-      release.HardpointSequence.forEach((id, index) => {
-        if (typeof id !== "string" || !STABLE_ID_PATTERN.test(id)) {
-          addIssue(issues, `${path}.ReleaseSource.HardpointSequence[${index}]`, "stable_id", "Must be a safe hardpoint ID.");
-        } else if (!available.has(id)) {
-          addIssue(issues, `${path}.ReleaseSource.HardpointSequence[${index}]`, "unknown_hardpoint", `Unknown hardpoint '${id}'.`);
+    if (release.Groups !== undefined) {
+      if (!Array.isArray(release.Groups) || release.Groups.length === 0) {
+        addIssue(issues, `${path}.ReleaseSource.Groups`, "array", "Must contain at least one automatic release group.");
+      } else {
+        if (release.Groups.length > MAX_REPEATED_GROUPS) {
+          addIssue(issues, `${path}.ReleaseSource.Groups`, "group_count", `Must not exceed ${MAX_REPEATED_GROUPS} automatic groups.`);
         }
-      });
-    }
-    if (typeof profile.FirstPayloadDelaySeconds === "number" && typeof release.StartTime === "number" && Math.abs(profile.FirstPayloadDelaySeconds - release.StartTime) > 1e-6) {
-      addIssue(issues, `${path}.FirstPayloadDelaySeconds`, "first_release_sync", "Must equal repeated StartTime.");
+        const ids = new Set<string>();
+        const available = getAvailableHardpoints(profile as unknown as EditorSourceProfile, metadata);
+        let earliest = Infinity;
+        let totalUnits = 0;
+        release.Groups.forEach((group, groupIndex) => {
+          const groupPath = `${path}.ReleaseSource.Groups[${groupIndex}]`;
+          if (!isRecord(group)) {
+            addIssue(issues, groupPath, "object", "Automatic release group must be an object.");
+            return;
+          }
+          if (typeof group.Id !== "string" || !STABLE_ID_PATTERN.test(group.Id)) {
+            addIssue(issues, `${groupPath}.Id`, "stable_id", "Must be a safe stable automatic-group ID.");
+          } else if (ids.has(group.Id)) {
+            addIssue(issues, `${groupPath}.Id`, "duplicate_id", "Automatic-group ID must be unique.");
+          } else {
+            ids.add(group.Id);
+          }
+          if (typeof group.Name !== "string" || group.Name.trim() === "" || group.Name.length > 100) {
+            addIssue(issues, `${groupPath}.Name`, "name", "Must be a name between 1 and 100 characters.");
+          }
+          if (validateFinite(group.StartTime, `${groupPath}.StartTime`, issues, 0, Number(profile.DurationSeconds))) {
+            earliest = Math.min(earliest, group.StartTime);
+          }
+          validateFinite(group.IntervalSeconds, `${groupPath}.IntervalSeconds`, issues, 0.01, 30);
+          validateInteger(group.UnitsPerRelease, `${groupPath}.UnitsPerRelease`, issues, 1, MAX_COMPILED_RELEASE_UNITS);
+          if (validateInteger(group.MaximumUnits, `${groupPath}.MaximumUnits`, issues, 1, MAX_COMPILED_RELEASE_UNITS)) {
+            totalUnits += group.MaximumUnits;
+          }
+          validatePayloadFields(group.Template, `${groupPath}.Template`, issues, false);
+          if (!Array.isArray(group.HardpointSequence)) {
+            addIssue(issues, `${groupPath}.HardpointSequence`, "array", "Must be an array.");
+          } else {
+            group.HardpointSequence.forEach((id, index) => {
+              if (typeof id !== "string" || !STABLE_ID_PATTERN.test(id)) {
+                addIssue(issues, `${groupPath}.HardpointSequence[${index}]`, "stable_id", "Must be a safe hardpoint ID.");
+              } else if (!available.has(id)) {
+                addIssue(issues, `${groupPath}.HardpointSequence[${index}]`, "unknown_hardpoint", `Unknown hardpoint '${id}'.`);
+              }
+            });
+          }
+        });
+        if (totalUnits > MAX_COMPILED_RELEASE_UNITS) {
+          addIssue(issues, `${path}.ReleaseSource.Groups`, "compiled_unit_count", `Automatic groups must not exceed ${MAX_COMPILED_RELEASE_UNITS} total units.`);
+        }
+        if (typeof profile.FirstPayloadDelaySeconds === "number" && Number.isFinite(earliest) && Math.abs(profile.FirstPayloadDelaySeconds - earliest) > 1e-6) {
+          addIssue(issues, `${path}.FirstPayloadDelaySeconds`, "first_release_sync", "Must equal the earliest automatic group start time.");
+        }
+      }
+    } else {
+      validateFinite(release.StartTime, `${path}.ReleaseSource.StartTime`, issues, 0, Number(profile.DurationSeconds));
+      validateFinite(release.IntervalSeconds, `${path}.ReleaseSource.IntervalSeconds`, issues, 0.01, 30);
+      validateInteger(release.UnitsPerRelease, `${path}.ReleaseSource.UnitsPerRelease`, issues, 1, MAX_COMPILED_RELEASE_UNITS);
+      validateInteger(
+        release.MaximumUnits,
+        `${path}.ReleaseSource.MaximumUnits`,
+        issues,
+        release.LegacyDynamic === true ? 0 : 1,
+        MAX_COMPILED_RELEASE_UNITS,
+      );
+      validatePayloadFields(release.Template, `${path}.ReleaseSource.Template`, issues, false);
+      if (!Array.isArray(release.HardpointSequence)) {
+        addIssue(issues, `${path}.ReleaseSource.HardpointSequence`, "array", "Must be an array.");
+      } else {
+        const available = getAvailableHardpoints(profile as unknown as EditorSourceProfile, metadata);
+        release.HardpointSequence.forEach((id, index) => {
+          if (typeof id !== "string" || !STABLE_ID_PATTERN.test(id)) {
+            addIssue(issues, `${path}.ReleaseSource.HardpointSequence[${index}]`, "stable_id", "Must be a safe hardpoint ID.");
+          } else if (!available.has(id)) {
+            addIssue(issues, `${path}.ReleaseSource.HardpointSequence[${index}]`, "unknown_hardpoint", `Unknown hardpoint '${id}'.`);
+          }
+        });
+      }
+      if (typeof profile.FirstPayloadDelaySeconds === "number" && typeof release.StartTime === "number" && Math.abs(profile.FirstPayloadDelaySeconds - release.StartTime) > 1e-6) {
+        addIssue(issues, `${path}.FirstPayloadDelaySeconds`, "first_release_sync", "Must equal repeated StartTime.");
+      }
     }
   } else {
     addIssue(issues, `${path}.ReleaseSource.Mode`, "release_mode", "Must be manual or repeated.");

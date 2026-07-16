@@ -17,6 +17,7 @@ import {
   type RuntimeVisualProfileFile,
 } from "./types";
 import { assertValidSourceBundle } from "./validation";
+import { firstRepeatedReleaseTime, hasGroupedRepeatedReleases } from "./repeated-release";
 
 const MAX_COMPILED_FRAMES = 6000;
 const MAX_BUNDLE_BYTES = 20 * 1024 * 1024;
@@ -39,17 +40,24 @@ function sourceHashProjection(
             ? { ResolvedHardpointOffsets: resolvedHardpointOffsets }
             : {}),
         }
-      : {
-          Mode: release.Mode,
-          LegacyDynamic: release.LegacyDynamic === true,
-          StartTime: release.StartTime,
-          IntervalSeconds: release.IntervalSeconds,
-          UnitsPerRelease: release.UnitsPerRelease,
-          MaximumUnits: release.MaximumUnits,
-          Template: release.Template,
-          HardpointSequence: release.HardpointSequence,
-          ResolvedHardpointOffsets: resolvedHardpointOffsets,
-        };
+      : hasGroupedRepeatedReleases(release)
+        ? {
+            Mode: release.Mode,
+            LegacyDynamic: false,
+            Groups: release.Groups!.map(({ Id: _id, Name: _name, ...group }) => group),
+            ResolvedHardpointOffsets: resolvedHardpointOffsets,
+          }
+        : {
+            Mode: release.Mode,
+            LegacyDynamic: release.LegacyDynamic === true,
+            StartTime: release.StartTime,
+            IntervalSeconds: release.IntervalSeconds,
+            UnitsPerRelease: release.UnitsPerRelease,
+            MaximumUnits: release.MaximumUnits,
+            Template: release.Template,
+            HardpointSequence: release.HardpointSequence,
+            ResolvedHardpointOffsets: resolvedHardpointOffsets,
+          };
   return {
     ProfileKey: profile.ProfileKey,
     Vehicle: profile.Vehicle,
@@ -122,7 +130,7 @@ export function compileSourceProfile(
     profile.ReleaseSource.Mode === "manual" && profile.ReleaseSource.Events.length > 0
       ? Math.min(...profile.ReleaseSource.Events.map((event) => event.Time))
       : profile.ReleaseSource.Mode === "repeated"
-        ? profile.ReleaseSource.StartTime
+        ? firstRepeatedReleaseTime(profile.ReleaseSource)
         : profile.FirstPayloadDelaySeconds;
 
   const runtimeProfile: RuntimeVisualProfile = {

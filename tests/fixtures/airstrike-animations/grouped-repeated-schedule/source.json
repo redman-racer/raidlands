@@ -1,0 +1,64 @@
+{
+  "EditorSourceSchemaVersion": 1,
+  "AllowDangerousPayloadPreview": false,
+  "Profiles": {
+    "grouped_repeated_schedule": {
+      "EditorSourceSchemaVersion": 1,
+      "ProfileKey": "grouped_repeated_schedule",
+      "DisplayName": "Grouped A10 Strafe Bursts",
+      "Vehicle": "a10",
+      "DurationSeconds": 10,
+      "FirstPayloadDelaySeconds": 2,
+      "RotationSmoothTimeSeconds": 0.12,
+      "StopAtWaypoints": false,
+      "MinimumTerrainClearance": 55,
+      "PositionInterpolation": "time_hermite",
+      "RotationMode": "follow_path_plus_offset",
+      "Waypoints": [
+        { "Id": "wp_start", "Time": 0, "X": 0, "Y": 95, "Z": -420, "RotationX": 0, "RotationY": 0, "RotationZ": 0 },
+        { "Id": "wp_turn", "Time": 5, "X": 120, "Y": 90, "Z": 0, "RotationX": 0, "RotationY": 165, "RotationZ": 12 },
+        { "Id": "wp_end", "Time": 10, "X": 0, "Y": 95, "Z": 420, "RotationX": 0, "RotationY": 0, "RotationZ": 0 }
+      ],
+      "ReleaseSource": {
+        "Mode": "repeated",
+        "Groups": [
+          {
+            "Id": "strafe_run_1",
+            "Name": "Strafe run 1",
+            "StartTime": 2,
+            "IntervalSeconds": 0.2,
+            "UnitsPerRelease": 2,
+            "MaximumUnits": 8,
+            "HardpointSequence": [],
+            "Template": {
+              "Payload": "bradley_longbarrel_burst", "Count": 2,
+              "CarrierOffsetX": 0, "CarrierOffsetY": -0.5, "CarrierOffsetZ": 1,
+              "TargetOffsetX": 0, "TargetOffsetY": 0, "TargetOffsetZ": 0,
+              "SpreadRadius": 0, "LaunchSpeed": -1, "FuseSeconds": -1,
+              "DamageScale": 1, "VehicleDamageScale": 1, "SplashRadius": 0, "ImpactRadius": 0,
+              "MaxTrackingSeconds": -1, "MaxTrackingDistance": -1, "DamageScales": {}
+            }
+          },
+          {
+            "Id": "strafe_run_2",
+            "Name": "Strafe run 2",
+            "StartTime": 6,
+            "IntervalSeconds": 0.15,
+            "UnitsPerRelease": 3,
+            "MaximumUnits": 9,
+            "HardpointSequence": [],
+            "Template": {
+              "Payload": "bradley_longbarrel_burst", "Count": 3,
+              "CarrierOffsetX": 0, "CarrierOffsetY": -0.5, "CarrierOffsetZ": 1,
+              "TargetOffsetX": 0, "TargetOffsetY": 0, "TargetOffsetZ": 0,
+              "SpreadRadius": 0, "LaunchSpeed": -1, "FuseSeconds": -1,
+              "DamageScale": 1, "VehicleDamageScale": 1, "SplashRadius": 0, "ImpactRadius": 0,
+              "MaxTrackingSeconds": -1, "MaxTrackingDistance": -1, "DamageScales": {}
+            }
+          }
+        ]
+      },
+      "EditorMetadata": { "Notes": "Two independent automatic Bradley longbarrel burst windows.", "Tags": ["release", "grouped", "a10"], "VehiclePreviewOverrides": {} }
+    }
+  }
+}

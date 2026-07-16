@@ -75,7 +75,14 @@ describe("RustRelay monument model registry", () => {
         if (tierName === "map") {
           expect(tier.materialMode).toBe("palette");
           expect(tier.textureSize).toBe(0);
-        } else if (tier.materialMode === "textured") {
+        } else if (metadata.id === "ue_jungle_swamp_a") {
+          expect(tier.materialMode).toBe("palette");
+          expect(tier.textureBytes).toBe(0);
+          expect(tier.textureSize).toBe(0);
+        } else {
+          expect(tier.materialMode).toBe("textured");
+          expect(tier.textureBytes).toBeGreaterThan(0);
+          expect(tier.textureSize).toBeGreaterThan(0);
           expect(tier.textureSize).toBeLessThanOrEqual(tierName === "mid" ? 512 : 1024);
         }
         triangleCounts.push(tier.triangles);
@@ -106,6 +113,33 @@ describe("RustRelay monument model registry", () => {
     expect(outpost.tiers.close.sourceNodes.some((name) => /rowhouse_3st_9x12/i.test(name))).toBe(true);
     expect(outpost.tiers.close.sourceNodes.some((name) => /compound_wall_straight/i.test(name))).toBe(true);
     expect(outpost.tiers.close.sourceNodes.some((name) => /sewer|tunnel|interior/i.test(name))).toBe(false);
+  });
+
+  it("keeps authored HLODs out of Mid and Close assemblies", () => {
+    for (const assetName of monumentModelAssetNames()) {
+      const metadata = monumentModelMetadata(assetName)!;
+      expect(metadata.tiers.mid.sourceNodes.some((name) => /hlod/i.test(name)), metadata.id).toBe(false);
+      expect(metadata.tiers.close.sourceNodes.some((name) => /hlod/i.test(name)), metadata.id).toBe(false);
+    }
+  });
+
+  it("publishes complete non-overlapping assemblies for the reported monuments", () => {
+    const apartments = monumentModelMetadata("apartments_complex_1")!;
+    expect(apartments.tiers.map.sourceNodes.some((name) => /hlod/i.test(name))).toBe(false);
+    expect(apartments.tiers.close.sourceNodes.some((name) => /hlod|_sp|corridor|bathroom|elevator_shaft/i.test(name))).toBe(false);
+
+    const arctic = monumentModelMetadata("arctic_research_base_a")!;
+    expect(arctic.tiers.close.sourceNodes.some((name) => /arctic_base_a_exterior/i.test(name))).toBe(true);
+    expect(arctic.tiers.close.sourceNodes.some((name) => /arctic_base_garage/i.test(name))).toBe(true);
+
+    const bandit = monumentModelMetadata("bandit_town")!;
+    expect(bandit.tiers.close.sourceNodes.some((name) => /wooden_cabin/i.test(name))).toBe(true);
+    expect(bandit.tiers.close.sourceNodes.some((name) => /dradge_metal_structure/i.test(name))).toBe(true);
+
+    const missile = monumentModelMetadata("nuclear_missile_silo")!;
+    expect(missile.tiers.close.sourceNodes.some((name) => /nuclear_silo_bunker_hatch/i.test(name))).toBe(true);
+    expect(missile.tiers.close.sourceNodes.some((name) => /cliff_tall_/i.test(name))).toBe(true);
+    expect(missile.tiers.close.sourceNodes.some((name) => /nuclear_silo_room_|nuclear_silo_tunnel_300|nuclear_silo_tunnel_tube|nuclear_silo_missile|hlod/i.test(name))).toBe(false);
   });
 
   it("publishes the recipe-owned Abandoned Military Base assembly", () => {

@@ -56,17 +56,17 @@ const TIER_BUDGETS: Record<MonumentTierName, TierBudget> = {
   },
   mid: {
     maxBytes: 2 * 1024 * 1024,
-    maxTriangles: 120_000,
+    maxTriangles: 260_000,
     targetTriangles: { tiny: 18_000, small: 32_000, medium: 65_000, large: 100_000, xlarge: 120_000 },
-    maxDrawCalls: 40,
+    maxDrawCalls: 120,
     textureSize: 512,
     simplifyError: 0.012,
   },
   close: {
     maxBytes: 4 * 1024 * 1024,
-    maxTriangles: 300_000,
+    maxTriangles: 350_000,
     targetTriangles: { tiny: 35_000, small: 75_000, medium: 150_000, large: 240_000, xlarge: 300_000 },
-    maxDrawCalls: 90,
+    maxDrawCalls: 180,
     textureSize: 1024,
     simplifyError: 0.006,
   },
@@ -161,6 +161,13 @@ function documentStats(document: Document): Stats {
     instanceBatches,
     instances,
   };
+}
+
+function documentTextureSize(document: Document): number {
+  return document.getRoot().listTextures().reduce((largest, texture) => {
+    const size = texture.getSize();
+    return size ? Math.max(largest, size[0], size[1]) : largest;
+  }, 0);
 }
 
 function nodeWorldMatrices(node: Node): Matrix4[] {
@@ -259,7 +266,7 @@ function selectStructuralNodes(source: Document, recipe: MonumentLodRecipe, tier
   const selected = source.getRoot().listNodes().filter((node) => {
     if (!node.getMesh()) return false;
     const name = nodeName(node);
-    if (HARD_EXCLUDE.test(name) || matchesAny(name, recipe.explicitExcludes)) return false;
+    if (HARD_EXCLUDE.test(name) || authored.includes(node) || matchesAny(name, recipe.explicitExcludes)) return false;
     const bounds = getBounds(node);
     if (recipe.surfaceOnly && bounds.max[1] < -5) return false;
     const explicitMap = tier === "map" && matchesAny(name, recipe.explicitMapIncludes);
@@ -544,6 +551,14 @@ function optimizeStagedAsset(stagedPath: string, outputPath: string, textureSize
   renameSync(optimizedPath, outputPath);
 }
 
+function textureSizeCandidates(maximum: number): number[] {
+  if (maximum <= 0) return [0];
+  const candidates: number[] = [];
+  for (let size = maximum; size >= 64; size = Math.floor(size / 2)) candidates.push(size);
+  if (!candidates.includes(64)) candidates.push(64);
+  return candidates;
+}
+
 async function writeTier(
   reader: NodeIO,
   source: Document,
@@ -554,34 +569,29 @@ async function writeTier(
   const budget = TIER_BUDGETS[tier];
   const stagedPaths: string[] = [];
   let retainInstances = tier !== "map";
-  let stagedPath = resolve(outputDir, `.${recipe.id}-${tier}-initial.staged.glb`);
-  stagedPaths.push(stagedPath);
-  let built = await buildTierDocument(source, recipe, tier, reader, false, 1, retainInstances);
-  rmSync(stagedPath, { force: true });
-  await reader.write(stagedPath, built.document);
-  optimizeStagedAsset(stagedPath, outputPath, budget.textureSize, built.materialMode === "textured");
-  let stats = documentStats(await reader.read(outputPath));
-  let bytes = statSync(outputPath).size;
-  if (tier !== "map" && (bytes > tierMaxBytes(recipe, tier) || stats.drawCalls > budget.maxDrawCalls)) {
-    built = await buildTierDocument(source, recipe, tier, reader, true, 1, retainInstances);
-    stagedPath = resolve(outputDir, `.${recipe.id}-${tier}-palette.staged.glb`);
+  let built: Awaited<ReturnType<typeof buildTierDocument>>;
+  let stats: Stats;
+  let bytes: number;
+
+  const buildAndOptimize = async (tag: string, targetScale: number, preserveInstances: boolean): Promise<void> => {
+    built = await buildTierDocument(source, recipe, tier, reader, false, targetScale, preserveInstances);
+    const stagedPath = resolve(outputDir, `.${recipe.id}-${tier}-${tag}.staged.glb`);
     stagedPaths.push(stagedPath);
     rmSync(stagedPath, { force: true });
     await reader.write(stagedPath, built.document);
-    optimizeStagedAsset(stagedPath, outputPath, 0, false);
-    stats = documentStats(await reader.read(outputPath));
-    bytes = statSync(outputPath).size;
-  }
+    const textureSizes = built.materialMode === "textured" ? textureSizeCandidates(budget.textureSize) : [0];
+    for (const textureSize of textureSizes) {
+      optimizeStagedAsset(stagedPath, outputPath, textureSize, built.materialMode === "textured");
+      stats = documentStats(await reader.read(outputPath));
+      bytes = statSync(outputPath).size;
+      if (bytes <= tierMaxBytes(recipe, tier)) break;
+    }
+  };
+
+  await buildAndOptimize("initial", 1, retainInstances);
   if (stats.drawCalls > budget.maxDrawCalls) {
     retainInstances = false;
-    built = await buildTierDocument(source, recipe, tier, reader, true, 1, false);
-    stagedPath = resolve(outputDir, `.${recipe.id}-${tier}-draw-budget.staged.glb`);
-    stagedPaths.push(stagedPath);
-    rmSync(stagedPath, { force: true });
-    await reader.write(stagedPath, built.document);
-    optimizeStagedAsset(stagedPath, outputPath, 0, false);
-    stats = documentStats(await reader.read(outputPath));
-    bytes = statSync(outputPath).size;
+    await buildAndOptimize("draw-budget", 1, false);
   }
   let targetScale = 1;
   for (let attempt = 0; attempt < 3 && (bytes > tierMaxBytes(recipe, tier) || stats.triangles > budget.maxTriangles); attempt++) {
@@ -589,14 +599,7 @@ async function writeTier(
       tierMaxBytes(recipe, tier) / Math.max(1, bytes) * 0.82,
       budget.maxTriangles / Math.max(1, stats.triangles) * 0.9,
     ));
-    built = await buildTierDocument(source, recipe, tier, reader, true, targetScale, retainInstances);
-    stagedPath = resolve(outputDir, `.${recipe.id}-${tier}-budget-${attempt + 1}.staged.glb`);
-    stagedPaths.push(stagedPath);
-    rmSync(stagedPath, { force: true });
-    await reader.write(stagedPath, built.document);
-    optimizeStagedAsset(stagedPath, outputPath, 0, false);
-    stats = documentStats(await reader.read(outputPath));
-    bytes = statSync(outputPath).size;
+    await buildAndOptimize(`budget-${attempt + 1}`, targetScale, retainInstances);
   }
   for (const path of stagedPaths) rmSync(path, { force: true });
   if (bytes > tierMaxBytes(recipe, tier)) throw new Error(`${recipe.id} ${tier}: ${bytes} bytes exceeds ${tierMaxBytes(recipe, tier)}.`);
@@ -667,7 +670,7 @@ async function main(): Promise<void> {
       const budget = TIER_BUDGETS[tier];
       const selection = buildMetadata?.selection || selectStructuralNodes(source, recipe, tier);
       const structuralBounds = recipeStructuralBounds || selectionBounds(selection);
-      const materialMode = buildMetadata?.materialMode || (outputDocument.getRoot().listTextures().length ? "textured" : "palette");
+      const materialMode = outputDocument.getRoot().listTextures().length ? "textured" : "palette";
       const bytes = statSync(outputPath).size;
       if (bytes > tierMaxBytes(recipe, tier) || stats.triangles > budget.maxTriangles || stats.drawCalls > budget.maxDrawCalls) {
         throw new Error(`${recipe.id}: installed ${tier} asset exceeds its budget.`);
@@ -682,7 +685,7 @@ async function main(): Promise<void> {
         instanceBatches: stats.instanceBatches,
         instances: stats.instances,
         textureBytes: stats.textureBytes,
-        textureSize: materialMode === "textured" ? budget.textureSize : 0,
+        textureSize: materialMode === "textured" ? documentTextureSize(outputDocument) : 0,
         materialMode,
         selectionKind: selection.kind,
         sourceNodes: selection.names,

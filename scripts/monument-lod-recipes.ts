@@ -179,7 +179,8 @@ const WAVE_FOUR = /^(?:power_sub_|mining_quarry_|water_well_|cave_|entrance_bunk
 const EXPLICIT_INCLUDES: Record<string, string[]> = {
   airfield_1: ["hangar", "office_bld", "airfield", "runway", "substation", "watch_tower", "fuel_tank"],
   apartments_complex_1: ["apartment_complex", "apartments_complex", "facade", "roof", "core", "wing"],
-  bandit_town: ["bandit", "town", "market", "shop", "casino", "crane", "dredge", "barge", "dock", "platform", "tower"],
+  arctic_research_base_a: ["arctic_base", "dome_radar", "comms_tower", "wind_turbine", "portacabin_", "walkway_b", "chainlink_fence"],
+  bandit_town: ["bandit", "town", "market", "shop", "casino", "crane", "dredge", "dradge", "barge", "dock", "platform", "tower", "wooden_cabin", "wooden_walkway", "windmill", "helipad", "gate.wall.wood"],
   compound: ["rowhouse", "outbuilding", "compound_wall", "compound_gate", "watch_tower", "marketplace", "marketpalce", "caboose", "shipping_container"],
   desert_military_base_a: ["checkpoint", "barbedwire", "hesco_barrier", "trail_path", "dirt_mound"],
   desert_military_base_b: ["checkpoint", "barbedwire", "hesco_barrier", "trail_path", "dirt_mound"],
@@ -194,6 +195,7 @@ const EXPLICIT_INCLUDES: Record<string, string[]> = {
   ice_lake_4: ["ice_lake_d"],
   junkyard_1: ["junkyard", "carshredder", "car_shredder", "crane", "junk_stack", "warehouse", "wall", "tower"],
   launch_site_1: ["rocket_factory", "rocket_boosters", "rocket_payload", "space_center", "warehouse_launch_site", "watch_tower", "range_core_exterior", "pipeline_bespoke_launchsite"],
+  nuclear_missile_silo: ["nuclear_silo_bunker_hatch", "nuclear_silo_chute", "nuclear_silo_tunnel_exit", "cliff_tall_", "rock_formation_huge_", "military_hangar", "portacabin_", "radio_tower", "watchtower", "chainlink_fence", "fuel_tank"],
   oilrig_1: ["level0", "level1", "level2", "level3", "level4", "level5", "level6", "structure_", "helipad", "burner", "comms_tower", "gas_room", "moon_pool", "oilrig_crane", "dock"],
   oilrig_2: ["level0", "level1", "level2", "level3", "level4", "structure_", "helipad", "burner", "moon_pool", "oilrig_crane", "dock"],
   trainyard_1: ["coaling_tower", "train_crane", "train_track", "train_wagon", "loading_platform", "warehouse", "pavemnent_trainyard", "building", "tower"],
@@ -201,23 +203,26 @@ const EXPLICIT_INCLUDES: Record<string, string[]> = {
 };
 
 const EXPLICIT_EXCLUDES: Record<string, string[]> = {
+  apartments_complex_1: ["_SP", "corridor", "bathroom", "elevator_shaft"],
   compound: ["corridor_train_tunnel", "sewer_tunnel"],
   ice_lake_1: ["cliff", "rock_formation"],
   ice_lake_2: ["cliff", "rock_formation"],
   ice_lake_3: ["cliff", "rock_formation"],
   ice_lake_4: ["cliff", "rock_formation"],
   launch_site_1: ["bunker.room", "corridor_train_tunnel", "office_a_floor", "office_b_floor", "sewer_tunnel"],
+  nuclear_missile_silo: ["nuclear_silo_room_", "nuclear_silo_tunnel_300", "nuclear_silo_tunnel_tube", "nuclear_silo_missile", "elevator_shaft"],
 };
 
 const MAP_INCLUDES: Record<string, string[]> = {
+  apartments_complex_1: EXPLICIT_INCLUDES.apartments_complex_1!,
   compound: EXPLICIT_INCLUDES.compound!,
 };
 const FORCE_RECIPE_MAP = new Set([
-  "airfield_1", "bandit_town", "desert_military_base_a", "desert_military_base_b", "desert_military_base_c", "desert_military_base_d",
+  "airfield_1", "apartments_complex_1", "arctic_research_base_a", "bandit_town", "desert_military_base_a", "desert_military_base_b", "desert_military_base_c", "desert_military_base_d",
   "excavator_1", "ferry_terminal_1", "harbor_2", "jungle_ruins_e", "jungle_ziggurat_a", "junkyard_1",
   "military_tunnel_1", "nuclear_missile_silo", "oilrig_1", "oilrig_2", "power_sub_small_1", "power_sub_small_2",
-  "radtown_small_3", "trainyard_1", "underwater_lab_a", "underwater_lab_b", "underwater_lab_c", "underwater_lab_d",
-  "water_treatment_plant_1",
+  "power_sub_big_1", "radtown_small_3", "stables_a", "stables_b", "supermarket_1", "trainyard_1", "underwater_lab_a",
+  "underwater_lab_b", "underwater_lab_c", "underwater_lab_d", "water_treatment_plant_1", "jungle_ruins_a",
 ]);
 
 const MILITARY_COMPOSITES: MonumentCompositeRecipe[] = [

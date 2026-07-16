@@ -1,4 +1,5 @@
 import type { EditorSourceProfile, SourceWaypoint } from "../types";
+import { firstRepeatedReleaseTime } from "../repeated-release";
 import { roundEditorNumber } from "./waypoint-source";
 
 export const DEFAULT_TARGET_SPEED_METERS_PER_SECOND = 90;
@@ -31,7 +32,7 @@ function firstReleaseTime(profile: EditorSourceProfile): number {
     return Math.min(...release.Events.map((event) => event.Time));
   }
   if (release.Mode === "repeated") {
-    return release.StartTime;
+    return firstRepeatedReleaseTime(release);
   }
   return Math.min(profile.DurationSeconds, Math.max(0, profile.FirstPayloadDelaySeconds));
 }

@@ -103,21 +103,42 @@ function raidlands_casino_play_roulette(array $rawBets): array
 
 function raidlands_casino_slot_config(string $preset): array
 {
-    // Keep the default comfortably house-positive even during volatile max-bet sessions.
-    // These scales produce audited theoretical RTPs of roughly 80.75%, 85.39%, and 90.06%.
-    $scale=['safe'=>7.2,'balanced'=>7.6,'generous'=>8.0][$preset]??7.6;
-    $pay=static fn(array $values): array=>array_map(static fn(int $value): int=>(int)round($value*$scale),$values);
+    // Keep value in the common three-symbol hits instead of concentrating it in
+    // rare economy-sized jackpots. The total-spin cap remains the final guardrail.
+    $tables = [
+        'safe' => [
+            'scrap'=>[3=>16,4=>33,5=>71], 'sulfur'=>[3=>24,4=>52,5=>113],
+            'crate'=>[3=>40,4=>85,5=>188], 'hazmat'=>[3=>68,4=>132,5=>235],
+            'c4'=>[3=>122,4=>188,5=>235],
+        ],
+        'balanced' => [
+            'scrap'=>[3=>17,4=>35,5=>75], 'sulfur'=>[3=>26,4=>55,5=>120],
+            'crate'=>[3=>43,4=>90,5=>200], 'hazmat'=>[3=>72,4=>140,5=>250],
+            'c4'=>[3=>130,4=>200,5=>250],
+        ],
+        'generous' => [
+            'scrap'=>[3=>18,4=>37,5=>79], 'sulfur'=>[3=>27,4=>58,5=>126],
+            'crate'=>[3=>45,4=>95,5=>210], 'hazmat'=>[3=>76,4=>147,5=>250],
+            'c4'=>[3=>137,4=>210,5=>250],
+        ],
+    ];
+    $pays = $tables[$preset] ?? $tables['balanced'];
     return [
         'symbols'=>[
-            'scrap'=>['label'=>'Scrap','weight'=>28,'pays'=>$pay([3=>2,4=>5,5=>12])],
-            'sulfur'=>['label'=>'Sulfur','weight'=>20,'pays'=>$pay([3=>3,4=>8,5=>20])],
-            'crate'=>['label'=>'Crate','weight'=>14,'pays'=>$pay([3=>5,4=>14,5=>35])],
-            'hazmat'=>['label'=>'Hazmat','weight'=>9,'pays'=>$pay([3=>8,4=>24,5=>60])],
-            'c4'=>['label'=>'C4','weight'=>5,'pays'=>$pay([3=>15,4=>50,5=>120])],
+            'scrap'=>['label'=>'Scrap','weight'=>28,'pays'=>$pays['scrap']],
+            'sulfur'=>['label'=>'Sulfur','weight'=>20,'pays'=>$pays['sulfur']],
+            'crate'=>['label'=>'Crate','weight'=>14,'pays'=>$pays['crate']],
+            'hazmat'=>['label'=>'Hazmat','weight'=>9,'pays'=>$pays['hazmat']],
+            'c4'=>['label'=>'C4','weight'=>5,'pays'=>$pays['c4']],
             'blank'=>['label'=>'Ash','weight'=>30,'pays'=>[]],
         ],
         'lines'=>[[0,0,0,0,0],[1,1,1,1,1],[2,2,2,2,2],[0,1,2,1,0],[2,1,0,1,2],[0,0,1,2,2],[2,2,1,0,0],[1,0,0,0,1],[1,2,2,2,1],[0,1,1,1,0]],
     ];
+}
+
+function raidlands_casino_slot_max_total_multiplier(): int
+{
+    return 25;
 }
 
 function raidlands_casino_weighted_symbol(array $symbols): string
@@ -136,7 +157,8 @@ function raidlands_casino_evaluate_slots(array $grid, int $stake, string $preset
         $multiple=(int)($config['symbols'][$symbol]['pays'][$count]??0);
         if($multiple>0){$amount=$lineStake*$multiple;$payout+=$amount;$wins[]=['line'=>$index+1,'symbol'=>$symbol,'count'=>$count,'payout_rp'=>$amount];}
     }
-    return ['payout_rp'=>$payout,'winning_lines'=>$wins];
+    $rawPayout=$payout; $payoutCap=$stake*raidlands_casino_slot_max_total_multiplier(); $payout=min($rawPayout,$payoutCap);
+    return ['payout_rp'=>$payout,'raw_payout_rp'=>$rawPayout,'payout_cap_rp'=>$payoutCap,'payout_capped'=>$rawPayout>$payoutCap,'winning_lines'=>$wins];
 }
 
 function raidlands_casino_play_slots(int $stake): array
@@ -148,7 +170,7 @@ function raidlands_casino_play_slots(int $stake): array
     for($reel=0;$reel<5;$reel++) for($row=0;$row<3;$row++) $grid[$reel][$row]=raidlands_casino_weighted_symbol($symbols);
     $result=raidlands_casino_evaluate_slots($grid,$stake,$preset); $payout=$result['payout_rp']; $loss=max(0,$stake-$payout);
     raidlands_rewards_check_daily_limits($player,$settings,$stake,$loss);
-    return raidlands_casino_insert_instant_round('slots',$player,$stake,$payout,implode('|',array_map(static fn($r)=>implode(',',$r),$grid)),'10 lines',['grid'=>$grid,'winning_lines'=>$result['winning_lines'],'preset'=>$preset],$loss);
+    return raidlands_casino_insert_instant_round('slots',$player,$stake,$payout,implode('|',array_map(static fn($r)=>implode(',',$r),$grid)),'10 lines',['grid'=>$grid,'winning_lines'=>$result['winning_lines'],'preset'=>$preset,'raw_payout_rp'=>$result['raw_payout_rp'],'payout_cap_rp'=>$result['payout_cap_rp'],'payout_capped'=>$result['payout_capped']],$loss);
 }
 
 function raidlands_casino_insert_instant_round(string $game,array $player,int $stake,int $payout,string $roll,string $choice,array $metadata,int $loss): array

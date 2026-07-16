@@ -274,9 +274,10 @@ $editor_config = [
                     <span>Release source</span>
                     <select data-editor-release-mode>
                       <option value="manual">Manual events</option>
-                      <option value="repeated">Repeated sequence</option>
+                      <option value="repeated">Automatic groups</option>
                     </select>
                   </label>
+                  <p class="airstrike-editor-muted">Automatic groups can schedule several independent bursts or strafe runs on the same flight path.</p>
                   <div class="airstrike-editor-inline-actions">
                     <button class="airstrike-editor-action-button" type="button" data-editor-release-add>Add</button>
                     <button class="airstrike-editor-action-button" type="button" data-editor-release-duplicate>Duplicate</button>

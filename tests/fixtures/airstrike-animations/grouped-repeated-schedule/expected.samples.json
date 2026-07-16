@@ -1,0 +1,573 @@
+{
+  "ProfileKey": "grouped_repeated_schedule",
+  "Target": {
+    "x": 0,
+    "y": 0,
+    "z": 0
+  },
+  "Approach": {
+    "x": 0,
+    "y": 0,
+    "z": 1
+  },
+  "Samples": [
+    {
+      "Time": 0,
+      "Local": {
+        "Qw": 0.990318,
+        "Qx": 0.005668,
+        "Qy": 0.138699,
+        "Qz": -0.000794,
+        "Time": 0,
+        "X": 0,
+        "Y": 95,
+        "Z": -420
+      },
+      "World": {
+        "Position": {
+          "x": 0,
+          "y": 95,
+          "z": -420
+        },
+        "Rotation": {
+          "w": 0.990318,
+          "x": 0.005668,
+          "y": 0.138699,
+          "z": -0.000794
+        }
+      }
+    },
+    {
+      "Time": 2,
+      "Local": {
+        "Qw": 0.726616,
+        "Qx": 0.035513,
+        "Qy": 0.685318,
+        "Qz": 0.03329,
+        "Time": 2,
+        "X": 59.52,
+        "Y": 92.52,
+        "Z": -252
+      },
+      "World": {
+        "Position": {
+          "x": 59.52,
+          "y": 92.52,
+          "z": -252
+        },
+        "Rotation": {
+          "w": 0.726616,
+          "x": 0.035513,
+          "y": 0.685318,
+          "z": 0.03329
+        }
+      }
+    },
+    {
+      "Time": 2.6,
+      "Local": {
+        "Qw": 0.606633,
+        "Qx": 0.048985,
+        "Qy": 0.792615,
+        "Qz": 0.036853,
+        "Time": 2.6,
+        "X": 77.97504,
+        "Y": 91.75104,
+        "Z": -201.6
+      },
+      "World": {
+        "Position": {
+          "x": 77.97504,
+          "y": 91.75104,
+          "z": -201.6
+        },
+        "Rotation": {
+          "w": 0.606633,
+          "x": 0.048985,
+          "y": 0.792615,
+          "z": 0.036853
+        }
+      }
+    },
+    {
+      "Time": 5,
+      "Local": {
+        "Qw": 0.129811,
+        "Qx": 0.103634,
+        "Qy": 0.986014,
+        "Qz": 0.013644,
+        "Time": 5,
+        "X": 120,
+        "Y": 90,
+        "Z": 0
+      },
+      "World": {
+        "Position": {
+          "x": 120,
+          "y": 90,
+          "z": 0
+        },
+        "Rotation": {
+          "w": 0.129811,
+          "x": 0.103634,
+          "y": 0.986014,
+          "z": 0.013644
+        }
+      }
+    },
+    {
+      "Time": 6,
+      "Local": {
+        "Qw": 0.490968,
+        "Qx": 0.071574,
+        "Qy": 0.867424,
+        "Qz": 0.037447,
+        "Time": 6,
+        "X": 111.36,
+        "Y": 90.36,
+        "Z": 84
+      },
+      "World": {
+        "Position": {
+          "x": 111.36,
+          "y": 90.36,
+          "z": 84
+        },
+        "Rotation": {
+          "w": 0.490968,
+          "x": 0.071574,
+          "y": 0.867424,
+          "z": 0.037447
+        }
+      }
+    },
+    {
+      "Time": 6.3,
+      "Local": {
+        "Qw": 0.581794,
+        "Qx": 0.061058,
+        "Qy": 0.81002,
+        "Qz": 0.040675,
+        "Time": 6.3,
+        "X": 105.88512,
+        "Y": 90.58812,
+        "Z": 109.2
+      },
+      "World": {
+        "Position": {
+          "x": 105.88512,
+          "y": 90.58812,
+          "z": 109.2
+        },
+        "Rotation": {
+          "w": 0.581794,
+          "x": 0.061058,
+          "y": 0.81002,
+          "z": 0.040675
+        }
+      }
+    },
+    {
+      "Time": 10,
+      "Local": {
+        "Qw": 0.990318,
+        "Qx": -0.005668,
+        "Qy": -0.138699,
+        "Qz": -0.000794,
+        "Time": 10,
+        "X": 0,
+        "Y": 95,
+        "Z": 420
+      },
+      "World": {
+        "Position": {
+          "x": 0,
+          "y": 95,
+          "z": 420
+        },
+        "Rotation": {
+          "w": 0.990318,
+          "x": -0.005668,
+          "y": -0.138699,
+          "z": -0.000794
+        }
+      }
+    }
+  ],
+  "CompiledReleaseEvents": [
+    {
+      "Time": 2,
+      "Payload": "bradley_longbarrel_burst",
+      "Index": 1,
+      "Count": 1,
+      "CarrierOffsetX": 0,
+      "CarrierOffsetY": -0.5,
+      "CarrierOffsetZ": 1,
+      "TargetOffsetX": 0,
+      "TargetOffsetY": 0,
+      "TargetOffsetZ": 0,
+      "SpreadRadius": 0,
+      "LaunchSpeed": -1,
+      "FuseSeconds": -1,
+      "DamageScale": 1,
+      "VehicleDamageScale": 1,
+      "SplashRadius": 0,
+      "ImpactRadius": 0,
+      "MaxTrackingSeconds": -1,
+      "MaxTrackingDistance": -1,
+      "DamageScales": {}
+    },
+    {
+      "Time": 2,
+      "Payload": "bradley_longbarrel_burst",
+      "Index": 2,
+      "Count": 1,
+      "CarrierOffsetX": 0,
+      "CarrierOffsetY": -0.5,
+      "CarrierOffsetZ": 1,
+      "TargetOffsetX": 0,
+      "TargetOffsetY": 0,
+      "TargetOffsetZ": 0,
+      "SpreadRadius": 0,
+      "LaunchSpeed": -1,
+      "FuseSeconds": -1,
+      "DamageScale": 1,
+      "VehicleDamageScale": 1,
+      "SplashRadius": 0,
+      "ImpactRadius": 0,
+      "MaxTrackingSeconds": -1,
+      "MaxTrackingDistance": -1,
+      "DamageScales": {}
+    },
+    {
+      "Time": 2.2,
+      "Payload": "bradley_longbarrel_burst",
+      "Index": 3,
+      "Count": 1,
+      "CarrierOffsetX": 0,
+      "CarrierOffsetY": -0.5,
+      "CarrierOffsetZ": 1,
+      "TargetOffsetX": 0,
+      "TargetOffsetY": 0,
+      "TargetOffsetZ": 0,
+      "SpreadRadius": 0,
+      "LaunchSpeed": -1,
+      "FuseSeconds": -1,
+      "DamageScale": 1,
+      "VehicleDamageScale": 1,
+      "SplashRadius": 0,
+      "ImpactRadius": 0,
+      "MaxTrackingSeconds": -1,
+      "MaxTrackingDistance": -1,
+      "DamageScales": {}
+    },
+    {
+      "Time": 2.2,
+      "Payload": "bradley_longbarrel_burst",
+      "Index": 4,
+      "Count": 1,
+      "CarrierOffsetX": 0,
+      "CarrierOffsetY": -0.5,
+      "CarrierOffsetZ": 1,
+      "TargetOffsetX": 0,
+      "TargetOffsetY": 0,
+      "TargetOffsetZ": 0,
+      "SpreadRadius": 0,
+      "LaunchSpeed": -1,
+      "FuseSeconds": -1,
+      "DamageScale": 1,
+      "VehicleDamageScale": 1,
+      "SplashRadius": 0,
+      "ImpactRadius": 0,
+      "MaxTrackingSeconds": -1,
+      "MaxTrackingDistance": -1,
+      "DamageScales": {}
+    },
+    {
+      "Time": 2.4,
+      "Payload": "bradley_longbarrel_burst",
+      "Index": 5,
+      "Count": 1,
+      "CarrierOffsetX": 0,
+      "CarrierOffsetY": -0.5,
+      "CarrierOffsetZ": 1,
+      "TargetOffsetX": 0,
+      "TargetOffsetY": 0,
+      "TargetOffsetZ": 0,
+      "SpreadRadius": 0,
+      "LaunchSpeed": -1,
+      "FuseSeconds": -1,
+      "DamageScale": 1,
+      "VehicleDamageScale": 1,
+      "SplashRadius": 0,
+      "ImpactRadius": 0,
+      "MaxTrackingSeconds": -1,
+      "MaxTrackingDistance": -1,
+      "DamageScales": {}
+    },
+    {
+      "Time": 2.4,
+      "Payload": "bradley_longbarrel_burst",
+      "Index": 6,
+      "Count": 1,
+      "CarrierOffsetX": 0,
+      "CarrierOffsetY": -0.5,
+      "CarrierOffsetZ": 1,
+      "TargetOffsetX": 0,
+      "TargetOffsetY": 0,
+      "TargetOffsetZ": 0,
+      "SpreadRadius": 0,
+      "LaunchSpeed": -1,
+      "FuseSeconds": -1,
+      "DamageScale": 1,
+      "VehicleDamageScale": 1,
+      "SplashRadius": 0,
+      "ImpactRadius": 0,
+      "MaxTrackingSeconds": -1,
+      "MaxTrackingDistance": -1,
+      "DamageScales": {}
+    },
+    {
+      "Time": 2.6,
+      "Payload": "bradley_longbarrel_burst",
+      "Index": 7,
+      "Count": 1,
+      "CarrierOffsetX": 0,
+      "CarrierOffsetY": -0.5,
+      "CarrierOffsetZ": 1,
+      "TargetOffsetX": 0,
+      "TargetOffsetY": 0,
+      "TargetOffsetZ": 0,
+      "SpreadRadius": 0,
+      "LaunchSpeed": -1,
+      "FuseSeconds": -1,
+      "DamageScale": 1,
+      "VehicleDamageScale": 1,
+      "SplashRadius": 0,
+      "ImpactRadius": 0,
+      "MaxTrackingSeconds": -1,
+      "MaxTrackingDistance": -1,
+      "DamageScales": {}
+    },
+    {
+      "Time": 2.6,
+      "Payload": "bradley_longbarrel_burst",
+      "Index": 8,
+      "Count": 1,
+      "CarrierOffsetX": 0,
+      "CarrierOffsetY": -0.5,
+      "CarrierOffsetZ": 1,
+      "TargetOffsetX": 0,
+      "TargetOffsetY": 0,
+      "TargetOffsetZ": 0,
+      "SpreadRadius": 0,
+      "LaunchSpeed": -1,
+      "FuseSeconds": -1,
+      "DamageScale": 1,
+      "VehicleDamageScale": 1,
+      "SplashRadius": 0,
+      "ImpactRadius": 0,
+      "MaxTrackingSeconds": -1,
+      "MaxTrackingDistance": -1,
+      "DamageScales": {}
+    },
+    {
+      "Time": 6,
+      "Payload": "bradley_longbarrel_burst",
+      "Index": 9,
+      "Count": 1,
+      "CarrierOffsetX": 0,
+      "CarrierOffsetY": -0.5,
+      "CarrierOffsetZ": 1,
+      "TargetOffsetX": 0,
+      "TargetOffsetY": 0,
+      "TargetOffsetZ": 0,
+      "SpreadRadius": 0,
+      "LaunchSpeed": -1,
+      "FuseSeconds": -1,
+      "DamageScale": 1,
+      "VehicleDamageScale": 1,
+      "SplashRadius": 0,
+      "ImpactRadius": 0,
+      "MaxTrackingSeconds": -1,
+      "MaxTrackingDistance": -1,
+      "DamageScales": {}
+    },
+    {
+      "Time": 6,
+      "Payload": "bradley_longbarrel_burst",
+      "Index": 10,
+      "Count": 1,
+      "CarrierOffsetX": 0,
+      "CarrierOffsetY": -0.5,
+      "CarrierOffsetZ": 1,
+      "TargetOffsetX": 0,
+      "TargetOffsetY": 0,
+      "TargetOffsetZ": 0,
+      "SpreadRadius": 0,
+      "LaunchSpeed": -1,
+      "FuseSeconds": -1,
+      "DamageScale": 1,
+      "VehicleDamageScale": 1,
+      "SplashRadius": 0,
+      "ImpactRadius": 0,
+      "MaxTrackingSeconds": -1,
+      "MaxTrackingDistance": -1,
+      "DamageScales": {}
+    },
+    {
+      "Time": 6,
+      "Payload": "bradley_longbarrel_burst",
+      "Index": 11,
+      "Count": 1,
+      "CarrierOffsetX": 0,
+      "CarrierOffsetY": -0.5,
+      "CarrierOffsetZ": 1,
+      "TargetOffsetX": 0,
+      "TargetOffsetY": 0,
+      "TargetOffsetZ": 0,
+      "SpreadRadius": 0,
+      "LaunchSpeed": -1,
+      "FuseSeconds": -1,
+      "DamageScale": 1,
+      "VehicleDamageScale": 1,
+      "SplashRadius": 0,
+      "ImpactRadius": 0,
+      "MaxTrackingSeconds": -1,
+      "MaxTrackingDistance": -1,
+      "DamageScales": {}
+    },
+    {
+      "Time": 6.15,
+      "Payload": "bradley_longbarrel_burst",
+      "Index": 12,
+      "Count": 1,
+      "CarrierOffsetX": 0,
+      "CarrierOffsetY": -0.5,
+      "CarrierOffsetZ": 1,
+      "TargetOffsetX": 0,
+      "TargetOffsetY": 0,
+      "TargetOffsetZ": 0,
+      "SpreadRadius": 0,
+      "LaunchSpeed": -1,
+      "FuseSeconds": -1,
+      "DamageScale": 1,
+      "VehicleDamageScale": 1,
+      "SplashRadius": 0,
+      "ImpactRadius": 0,
+      "MaxTrackingSeconds": -1,
+      "MaxTrackingDistance": -1,
+      "DamageScales": {}
+    },
+    {
+      "Time": 6.15,
+      "Payload": "bradley_longbarrel_burst",
+      "Index": 13,
+      "Count": 1,
+      "CarrierOffsetX": 0,
+      "CarrierOffsetY": -0.5,
+      "CarrierOffsetZ": 1,
+      "TargetOffsetX": 0,
+      "TargetOffsetY": 0,
+      "TargetOffsetZ": 0,
+      "SpreadRadius": 0,
+      "LaunchSpeed": -1,
+      "FuseSeconds": -1,
+      "DamageScale": 1,
+      "VehicleDamageScale": 1,
+      "SplashRadius": 0,
+      "ImpactRadius": 0,
+      "MaxTrackingSeconds": -1,
+      "MaxTrackingDistance": -1,
+      "DamageScales": {}
+    },
+    {
+      "Time": 6.15,
+      "Payload": "bradley_longbarrel_burst",
+      "Index": 14,
+      "Count": 1,
+      "CarrierOffsetX": 0,
+      "CarrierOffsetY": -0.5,
+      "CarrierOffsetZ": 1,
+      "TargetOffsetX": 0,
+      "TargetOffsetY": 0,
+      "TargetOffsetZ": 0,
+      "SpreadRadius": 0,
+      "LaunchSpeed": -1,
+      "FuseSeconds": -1,
+      "DamageScale": 1,
+      "VehicleDamageScale": 1,
+      "SplashRadius": 0,
+      "ImpactRadius": 0,
+      "MaxTrackingSeconds": -1,
+      "MaxTrackingDistance": -1,
+      "DamageScales": {}
+    },
+    {
+      "Time": 6.3,
+      "Payload": "bradley_longbarrel_burst",
+      "Index": 15,
+      "Count": 1,
+      "CarrierOffsetX": 0,
+      "CarrierOffsetY": -0.5,
+      "CarrierOffsetZ": 1,
+      "TargetOffsetX": 0,
+      "TargetOffsetY": 0,
+      "TargetOffsetZ": 0,
+      "SpreadRadius": 0,
+      "LaunchSpeed": -1,
+      "FuseSeconds": -1,
+      "DamageScale": 1,
+      "VehicleDamageScale": 1,
+      "SplashRadius": 0,
+      "ImpactRadius": 0,
+      "MaxTrackingSeconds": -1,
+      "MaxTrackingDistance": -1,
+      "DamageScales": {}
+    },
+    {
+      "Time": 6.3,
+      "Payload": "bradley_longbarrel_burst",
+      "Index": 16,
+      "Count": 1,
+      "CarrierOffsetX": 0,
+      "CarrierOffsetY": -0.5,
+      "CarrierOffsetZ": 1,
+      "TargetOffsetX": 0,
+      "TargetOffsetY": 0,
+      "TargetOffsetZ": 0,
+      "SpreadRadius": 0,
+      "LaunchSpeed": -1,
+      "FuseSeconds": -1,
+      "DamageScale": 1,
+      "VehicleDamageScale": 1,
+      "SplashRadius": 0,
+      "ImpactRadius": 0,
+      "MaxTrackingSeconds": -1,
+      "MaxTrackingDistance": -1,
+      "DamageScales": {}
+    },
+    {
+      "Time": 6.3,
+      "Payload": "bradley_longbarrel_burst",
+      "Index": 17,
+      "Count": 1,
+      "CarrierOffsetX": 0,
+      "CarrierOffsetY": -0.5,
+      "CarrierOffsetZ": 1,
+      "TargetOffsetX": 0,
+      "TargetOffsetY": 0,
+      "TargetOffsetZ": 0,
+      "SpreadRadius": 0,
+      "LaunchSpeed": -1,
+      "FuseSeconds": -1,
+      "DamageScale": 1,
+      "VehicleDamageScale": 1,
+      "SplashRadius": 0,
+      "ImpactRadius": 0,
+      "MaxTrackingSeconds": -1,
+      "MaxTrackingDistance": -1,
+      "DamageScales": {}
+    }
+  ]
+}

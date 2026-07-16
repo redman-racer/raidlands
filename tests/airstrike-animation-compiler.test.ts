@@ -48,7 +48,7 @@ describe("airstrike animation golden fixtures", () => {
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
       .sort();
-    expect(directories).toHaveLength(13);
+    expect(directories).toHaveLength(14);
 
     for (const directory of directories) {
       const path = join(fixtureRoot, directory);
@@ -132,7 +132,7 @@ describe("airstrike animation golden fixtures", () => {
     }
   });
 
-  it("materializes manual, repeated, remainder, and alternating-hardpoint releases", async () => {
+  it("materializes manual, repeated, grouped, remainder, and alternating-hardpoint releases", async () => {
     const metadata = await json<VehiclePreviewMetadataFile>(metadataPath);
     const compileFixture = async (directory: string) => {
       const source = await json<EditorSourceBundle>(join(fixtureRoot, directory, "source.json"));
@@ -144,6 +144,12 @@ describe("airstrike animation golden fixtures", () => {
 
     const repeated = await compileFixture("repeated-release-schedule");
     expect(repeated.CompiledReleaseEvents?.map((event) => event.Time)).toEqual([1, 1, 1.5, 1.5, 2, 2]);
+
+    const grouped = await compileFixture("grouped-repeated-schedule");
+    expect(grouped.CompiledReleaseEvents).toHaveLength(17);
+    expect(grouped.CompiledReleaseEvents?.slice(0, 8).map((event) => event.Time)).toEqual([2, 2, 2.2, 2.2, 2.4, 2.4, 2.6, 2.6]);
+    expect(grouped.CompiledReleaseEvents?.slice(8).map((event) => event.Time)).toEqual([6, 6, 6, 6.15, 6.15, 6.15, 6.3, 6.3, 6.3]);
+    expect(grouped.CompiledReleaseEvents?.every((event) => event.Payload === "bradley_longbarrel_burst")).toBe(true);
 
     const remainder = await compileFixture("non-even-repeated-total");
     expect(remainder.CompiledReleaseEvents).toHaveLength(10);
