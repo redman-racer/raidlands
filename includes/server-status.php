@@ -404,6 +404,7 @@ function raidlands_server_map_validate_terrain($terrain): ?array
 
     $normalized_monuments = [];
     $normalized_power_lines = [];
+    $normalized_roads = [];
     $world_size = raidlands_server_status_int($terrain['worldSize'] ?? $terrain['world_size'] ?? 0, 0);
     $world_half = max(100, $world_size) / 2;
     $monuments = is_array($terrain['monuments'] ?? null) ? $terrain['monuments'] : [];
@@ -479,8 +480,54 @@ function raidlands_server_map_validate_terrain($terrain): ?array
         }
     }
 
+    $roads = is_array($terrain['roads'] ?? null) ? $terrain['roads'] : [];
+    $road_point_count = 0;
+
+    foreach (array_slice($roads, 0, 96) as $road_index => $road) {
+        if (!is_array($road) || !is_array($road['points'] ?? null)) {
+            continue;
+        }
+
+        $kind = strtolower(trim((string) ($road['kind'] ?? 'side')));
+        if (!in_array($kind, ['main', 'side', 'trail'], true)) {
+            $kind = 'side';
+        }
+        $default_width = $kind === 'main' ? 14 : ($kind === 'trail' ? 3.5 : 8);
+        $width = is_numeric($road['width'] ?? null) ? (float) $road['width'] : $default_width;
+        $points = [];
+
+        foreach (array_slice($road['points'], 0, 192) as $point) {
+            if ($road_point_count >= 4096 || !is_array($point)) {
+                break;
+            }
+            $x = $point['x'] ?? null;
+            $y = $point['y'] ?? null;
+            $z = $point['z'] ?? null;
+            if (!is_numeric($x) || !is_numeric($y) || !is_numeric($z)) {
+                continue;
+            }
+            $x = round((float) $x, 3);
+            $y = round((float) $y, 3);
+            $z = round((float) $z, 3);
+            if (abs($x) > $world_half * 1.2 || abs($z) > $world_half * 1.2) {
+                continue;
+            }
+            $points[] = ['x' => $x, 'y' => $y, 'z' => $z];
+            $road_point_count++;
+        }
+
+        if (count($points) >= 2) {
+            $normalized_roads[] = [
+                'name' => raidlands_server_status_clean_text($road['name'] ?? ($kind . '-road-' . ($road_index + 1)), 80),
+                'kind' => $kind,
+                'width' => max(2.5, min(38, round($width, 3))),
+                'points' => $points,
+            ];
+        }
+    }
+
     $payload = [
-        'version' => 1,
+        'version' => 2,
         'serverId' => raidlands_server_status_clean_text($terrain['serverId'] ?? $terrain['server_id'] ?? '', 120),
         'wipeKey' => raidlands_server_status_clean_text($terrain['wipeKey'] ?? $terrain['wipe_key'] ?? '', 160),
         'mapName' => raidlands_server_status_clean_text($terrain['mapName'] ?? $terrain['map_name'] ?? '', 120),
@@ -504,6 +551,10 @@ function raidlands_server_map_validate_terrain($terrain): ?array
 
     if ($normalized_power_lines !== []) {
         $payload['powerLines'] = $normalized_power_lines;
+    }
+
+    if ($normalized_roads !== []) {
+        $payload['roads'] = $normalized_roads;
     }
 
     $json = json_encode($payload, JSON_UNESCAPED_SLASHES);

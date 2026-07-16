@@ -3,6 +3,19 @@ export const CAMERA_MODES = ["director", "action", "orbit", "top", "cinematic", 
 export type CameraMode = (typeof CAMERA_MODES)[number];
 export type ManualCameraStyle = "orbit" | "fly";
 
+export type CameraBounds = {
+  minX: number;
+  maxX: number;
+  minZ: number;
+  maxZ: number;
+};
+
+export type CameraBoundsFeature = {
+  x: number;
+  z: number;
+  radius?: number;
+};
+
 export type CameraPreferences = {
   mode: CameraMode;
   manualStyle: ManualCameraStyle;
@@ -43,6 +56,47 @@ export function parseCameraPreferences(value: string | null): CameraPreferences 
 export function clampMapCoordinate(value: number, worldSize: number, margin = 0): number {
   const half = Math.max(1, worldSize) / 2;
   return Math.min(half - margin, Math.max(-half + margin, value));
+}
+
+/**
+ * Rust can place offshore monuments outside the square sampled by the height
+ * map. Keep a bounded, data-driven allowance for those real map features
+ * while rejecting obviously invalid coordinates from an incoming payload.
+ */
+export function offshoreCameraCoordinateLimit(worldSize: number): number {
+  const safeWorldSize = Math.max(1, worldSize);
+  return safeWorldSize / 2 + Math.min(1400, Math.max(350, safeWorldSize * 0.35));
+}
+
+export function resolveCameraBounds(worldSize: number, features: CameraBoundsFeature[] = []): CameraBounds {
+  const safeWorldSize = Math.max(1, worldSize);
+  const half = safeWorldSize / 2;
+  const coordinateLimit = offshoreCameraCoordinateLimit(safeWorldSize);
+  const featurePadding = Math.min(280, Math.max(100, safeWorldSize * 0.055));
+  const bounds: CameraBounds = { minX: -half, maxX: half, minZ: -half, maxZ: half };
+
+  features.forEach((feature) => {
+    if (!Number.isFinite(feature.x) || !Number.isFinite(feature.z)
+      || Math.abs(feature.x) > coordinateLimit || Math.abs(feature.z) > coordinateLimit) {
+      return;
+    }
+
+    const radius = Math.min(280, Math.max(0, Number(feature.radius) || 0));
+    const reach = radius + featurePadding;
+    bounds.minX = Math.min(bounds.minX, feature.x - reach);
+    bounds.maxX = Math.max(bounds.maxX, feature.x + reach);
+    bounds.minZ = Math.min(bounds.minZ, feature.z - reach);
+    bounds.maxZ = Math.max(bounds.maxZ, feature.z + reach);
+  });
+
+  return bounds;
+}
+
+export function clampMapCoordinateToBounds(value: number, minimum: number, maximum: number, margin = 0): number {
+  const low = Math.min(minimum, maximum);
+  const high = Math.max(minimum, maximum);
+  const safeMargin = Math.min(Math.max(0, margin), Math.max(0, (high - low) / 2));
+  return Math.min(high - safeMargin, Math.max(low + safeMargin, value));
 }
 
 export function cameraHeightAboveTerrain(requestedY: number, terrainY: number, clearance = 12): number {

@@ -94,12 +94,15 @@ import {
   type EnvironmentQualityProfile,
 } from "./environment-quality";
 import {
+  clampMapCoordinateToBounds,
   cameraHeightAboveTerrain,
-  clampMapCoordinate,
+  offshoreCameraCoordinateLimit,
   parseCameraPreferences,
   parseCameraMode,
+  resolveCameraBounds,
   shouldResumeAutomaticCamera,
   transitionNeedsSafeWaypoint,
+  type CameraBounds,
   type CameraMode,
   type ManualCameraStyle,
 } from "./camera-policy";
@@ -116,6 +119,7 @@ import {
 } from "./monument-model-registry";
 import { monumentPrimitiveKind, monumentPrimitiveSearchKey, monumentPrimitiveSize } from "./monument-primitive-policy";
 import { normalizePowerLines, type PowerLinePayload } from "./power-line-policy";
+import { normalizeRoads, type RoadPayload } from "./road-policy";
 import {
   desiredMonumentTier,
   monumentCacheEvictionKeys,
@@ -129,6 +133,11 @@ import {
   type MonumentMode,
   type MonumentQualityPolicy,
 } from "./monument-quality-policy";
+import {
+  buildTerrainVegetation,
+  vegetationInstanceBudget,
+  type VegetationPlacement,
+} from "./vegetation-policy";
 
 const ENVIRONMENT_QUALITY_STORAGE_KEY = "raidlands:map-environment-quality";
 const CAMERA_PREFERENCES_STORAGE_KEY = "raidlands:map-camera-preferences";
@@ -147,6 +156,7 @@ type TerrainPayload = {
   colors?: string[];
   monuments?: MonumentPayload[];
   powerLines?: PowerLinePayload[];
+  roads?: RoadPayload[];
 };
 
 type MonumentPayload = {
@@ -946,6 +956,7 @@ function normalizeTerrain(value: unknown, root: HTMLElement): TerrainPayload {
   const colors = Array.isArray(payload.colors) && payload.colors.length === expected ? payload.colors.map(String) : undefined;
   const monuments = normalizeMonuments(payload.monuments, Math.max(100, worldSize));
   const powerLines = normalizePowerLines(payload.powerLines, Math.max(100, worldSize));
+  const roads = normalizeRoads(payload.roads, Math.max(100, worldSize));
 
   return {
     version: Number(payload.version) || 1,
@@ -959,6 +970,7 @@ function normalizeTerrain(value: unknown, root: HTMLElement): TerrainPayload {
     colors,
     monuments,
     powerLines,
+    roads,
   };
 }
 
@@ -967,7 +979,7 @@ function normalizeMonuments(value: unknown, worldSize: number): MonumentPayload[
     return [];
   }
 
-  const half = worldSize / 2;
+  const coordinateLimit = offshoreCameraCoordinateLimit(worldSize);
   return value
     .map((entry): MonumentPayload | null => {
       const monument = entry && typeof entry === "object" ? (entry as Partial<MonumentPayload>) : {};
@@ -975,7 +987,7 @@ function normalizeMonuments(value: unknown, worldSize: number): MonumentPayload[
       const y = Number(monument.y);
       const z = Number(monument.z);
 
-      if (![x, y, z].every(Number.isFinite) || Math.abs(x) > half * 1.2 || Math.abs(z) > half * 1.2) {
+      if (![x, y, z].every(Number.isFinite) || Math.abs(x) > coordinateLimit || Math.abs(z) > coordinateLimit) {
         return null;
       }
 
@@ -998,6 +1010,7 @@ function normalizeMonuments(value: unknown, worldSize: number): MonumentPayload[
 class TerrainViewer {
   private readonly root: HTMLElement;
   private readonly terrain: TerrainPayload;
+  private readonly cameraBounds: CameraBounds;
   private readonly textureUrl: string;
   private readonly status: HTMLElement | null;
   private readonly cloudDetail: RaidlandsCloudDetail;
@@ -1030,8 +1043,10 @@ class TerrainViewer {
   private readonly playerLocationLayer = new Group();
   private readonly overlayLayerTransitions: OverlayLayerTransition[] = [];
   private readonly airstrikeLayer = new Group();
+  private readonly roadLayer = new Group();
   private readonly monumentLayer = new Group();
   private readonly powerLineLayer = new Group();
+  private readonly vegetationLayer = new Group();
   private readonly weatherCloudLayer = new Group();
   private readonly groundFogLayer: Group;
   private readonly terrainHeightTexture: DataTexture | null;
@@ -1228,6 +1243,20 @@ class TerrainViewer {
   ) {
     this.root = root;
     this.terrain = terrain;
+    this.cameraBounds = resolveCameraBounds(
+      this.terrain.worldSize || 4500,
+      (this.terrain.monuments || []).map((monument) => ({
+        x: -monument.x,
+        z: monument.z,
+        radius: monument.radius,
+      })),
+    );
+    this.root.dataset.cameraBounds = [
+      this.cameraBounds.minX,
+      this.cameraBounds.maxX,
+      this.cameraBounds.minZ,
+      this.cameraBounds.maxZ,
+    ].map((value) => String(Math.round(value))).join(",");
     this.textureUrl = options.textureUrl;
     this.status = options.status;
     const capabilities = fogCapabilities(this.renderer);
@@ -1335,6 +1364,11 @@ class TerrainViewer {
     this.scene.add(this.oceanFloorMesh);
     this.terrainMesh = this.createTerrainMesh();
     this.scene.add(this.terrainMesh);
+    this.vegetationLayer.name = "raidlands-terrain-vegetation";
+    const vegetation = createTerrainVegetation(this.terrain, this.qualityProfile.resolved);
+    this.vegetationLayer.add(vegetation);
+    this.root.dataset.vegetationInstances = String(vegetation.userData.instanceCount || 0);
+    this.scene.add(this.vegetationLayer);
     this.terrainLightUniforms.waterLevel.value = resolveOceanWaterLevel(this.terrain);
     this.terrainLightUniforms.minHeight.value = Number(this.terrain.minHeight) || 0;
     this.terrainLightUniforms.maxHeight.value = Number(this.terrain.maxHeight) || 300;
@@ -1384,6 +1418,7 @@ class TerrainViewer {
     this.scene.add(this.playerLocationLayer);
     this.airstrikeLayer.name = "raidlands-airstrike-preview-layer";
     this.scene.add(this.airstrikeLayer);
+    this.addRoads();
     this.addMonuments();
     this.addPowerLines();
     this.addLights();
@@ -1397,7 +1432,7 @@ class TerrainViewer {
     this.controls.dampingFactor = 0.08;
     this.controls.maxPolarAngle = MathUtils.degToRad(84);
     this.controls.minDistance = Math.max(120, (this.terrain.worldSize || 4500) * 0.08);
-    this.controls.maxDistance = Math.max(1600, (this.terrain.worldSize || 4500) * 1.4);
+    this.controls.maxDistance = Math.max(1600, this.cameraFrameSize() * 1.4);
     (this.controls as OrbitControls & { zoomToCursor?: boolean }).zoomToCursor = true;
     this.controls.addEventListener("start", () => this.pauseAutomaticCamera());
   }
@@ -1760,7 +1795,8 @@ class TerrainViewer {
   }
 
   private isoPose(cycle = true): CameraPose {
-    const size = this.terrain.worldSize || 4500;
+    const size = this.cameraFrameSize();
+    const center = this.cameraFrameCenter();
     const height = Math.max(220, (this.terrain.maxHeight || 220) - Math.min(this.terrain.minHeight || 0, 0));
     if (cycle) {
       this.isoViewIndex = (this.isoViewIndex + 1) % isoViewDirections.length;
@@ -1769,8 +1805,8 @@ class TerrainViewer {
     }
     const direction = isoViewDirections[this.isoViewIndex] || isoViewDirections[0]!;
     return {
-      position: new Vector3(size * direction.x, size * direction.y, size * direction.z),
-      target: new Vector3(0, height * 0.22, 0),
+      position: new Vector3(center.x + size * direction.x, size * direction.y, center.z + size * direction.z),
+      target: new Vector3(center.x, height * 0.22, center.z),
       up: new Vector3(0, 1, 0),
     };
   }
@@ -1805,15 +1841,16 @@ class TerrainViewer {
   }
 
   public focusPreset(key: string): void {
-    const size = this.terrain.worldSize || 4500;
+    const size = this.cameraFrameSize();
+    const center = this.cameraFrameCenter();
     const height = Math.max(180, this.terrain.maxHeight || 220);
     const poses: Record<string, CameraPose> = {
       overview: this.isoPose(false),
       top: this.topPose(),
-      north: { position: new Vector3(0, size * .42, size * .72), target: new Vector3(0, height * .18, 0), up: new Vector3(0, 1, 0) },
-      south: { position: new Vector3(0, size * .42, -size * .72), target: new Vector3(0, height * .18, 0), up: new Vector3(0, 1, 0) },
-      east: { position: new Vector3(-size * .72, size * .42, 0), target: new Vector3(0, height * .18, 0), up: new Vector3(0, 1, 0) },
-      west: { position: new Vector3(size * .72, size * .42, 0), target: new Vector3(0, height * .18, 0), up: new Vector3(0, 1, 0) },
+      north: { position: new Vector3(center.x, size * .42, center.z + size * .72), target: new Vector3(center.x, height * .18, center.z), up: new Vector3(0, 1, 0) },
+      south: { position: new Vector3(center.x, size * .42, center.z - size * .72), target: new Vector3(center.x, height * .18, center.z), up: new Vector3(0, 1, 0) },
+      east: { position: new Vector3(center.x - size * .72, size * .42, center.z), target: new Vector3(center.x, height * .18, center.z), up: new Vector3(0, 1, 0) },
+      west: { position: new Vector3(center.x + size * .72, size * .42, center.z), target: new Vector3(center.x, height * .18, center.z), up: new Vector3(0, 1, 0) },
     };
     const pose = poses[key] || poses.overview!;
     this.setCameraMode(key === "top" ? "top" : "manual");
@@ -1823,12 +1860,29 @@ class TerrainViewer {
   }
 
   private topPose(): CameraPose {
-    const size = this.terrain.worldSize || 4500;
+    const size = this.cameraFrameSize();
+    const center = this.cameraFrameCenter();
     return {
-      position: new Vector3(0, size * 0.86, 0.001),
-      target: new Vector3(0, 0, 0),
+      position: new Vector3(center.x, size * 0.86, center.z + 0.001),
+      target: new Vector3(center.x, 0, center.z),
       up: new Vector3(0, 0, 1),
     };
+  }
+
+  private cameraFrameCenter(): Vector3 {
+    return new Vector3(
+      (this.cameraBounds.minX + this.cameraBounds.maxX) * 0.5,
+      0,
+      (this.cameraBounds.minZ + this.cameraBounds.maxZ) * 0.5,
+    );
+  }
+
+  private cameraFrameSize(): number {
+    return Math.max(
+      this.terrain.worldSize || 4500,
+      this.cameraBounds.maxX - this.cameraBounds.minX,
+      this.cameraBounds.maxZ - this.cameraBounds.minZ,
+    );
   }
 
   public setView(view: MapView): void {
@@ -2523,6 +2577,89 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
     this.scene.add(layer);
   }
 
+  private addRoads(): void {
+    const roads = this.terrain.roads || [];
+    if (!roads.length) return;
+
+    this.roadLayer.name = "raidlands-road-network";
+    const counts = { main: 0, side: 0, trail: 0 };
+
+    roads.forEach((road, index) => {
+      const mesh = this.createRoadSurface(road);
+      if (!mesh) return;
+      mesh.name = `road-${road.kind}-${index + 1}`;
+      this.roadLayer.add(mesh);
+      counts[road.kind]++;
+    });
+
+    if (this.roadLayer.children.length === 0) return;
+    this.root.dataset.roadPathCount = String(this.roadLayer.children.length);
+    this.root.dataset.mainRoadPathCount = String(counts.main);
+    this.root.dataset.sideRoadPathCount = String(counts.side);
+    this.root.dataset.trailRoadPathCount = String(counts.trail);
+    this.scene.add(this.roadLayer);
+  }
+
+  private createRoadSurface(road: RoadPayload): Mesh | null {
+    const centers: Vector3[] = [];
+    road.points.forEach((point) => {
+      const position = rustWorldToViewerPosition(point.x, point.y, point.z);
+      const prior = centers[centers.length - 1];
+      if (!prior || prior.distanceToSquared(position) > 0.01) centers.push(position);
+    });
+    if (centers.length < 2) return null;
+
+    const elevation = road.kind === "main" ? 0.9 : road.kind === "side" ? 0.72 : 0.56;
+    const positions: number[] = [];
+    const indices: number[] = [];
+    const halfWidth = road.width / 2;
+
+    centers.forEach((center, index) => {
+      const previous = centers[Math.max(0, index - 1)]!;
+      const next = centers[Math.min(centers.length - 1, index + 1)]!;
+      const direction = next.clone().sub(previous);
+      direction.y = 0;
+      if (direction.lengthSq() < 0.0001) direction.set(1, 0, 0);
+      direction.normalize();
+      const lateral = new Vector3(-direction.z, 0, direction.x).multiplyScalar(halfWidth);
+      const left = center.clone().add(lateral);
+      const right = center.clone().sub(lateral);
+      left.y = sampleTerrainHeight(this.terrain, left.x, left.z) + elevation;
+      right.y = sampleTerrainHeight(this.terrain, right.x, right.z) + elevation;
+      positions.push(left.x, left.y, left.z, right.x, right.y, right.z);
+
+      if (index > 0) {
+        const prior = (index - 1) * 2;
+        const current = index * 2;
+        indices.push(prior, prior + 1, current + 1, prior, current + 1, current);
+      }
+    });
+
+    const geometry = new BufferGeometry();
+    geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+    geometry.setIndex(new Uint32BufferAttribute(indices, 1));
+    geometry.computeVertexNormals();
+
+    const style = road.kind === "main"
+      ? { color: 0x3e4140, roughness: 0.98, opacity: 0.91 }
+      : road.kind === "side"
+        ? { color: 0x75684f, roughness: 1, opacity: 0.85 }
+        : { color: 0x70543d, roughness: 1, opacity: 0.78 };
+    const material = new MeshStandardMaterial({
+      ...style,
+      transparent: true,
+      depthWrite: true,
+      polygonOffset: true,
+      polygonOffsetFactor: -1,
+      polygonOffsetUnits: -1,
+      side: DoubleSide,
+    });
+    const mesh = new Mesh(geometry, material);
+    mesh.castShadow = false;
+    mesh.receiveShadow = true;
+    return mesh;
+  }
+
   private addPowerLines(): void {
     const paths = this.terrain.powerLines || [];
     if (!paths.length) return;
@@ -2772,8 +2909,8 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
     if (movement.lengthSq() > 1) movement.normalize();
     this.camera.position.addScaledVector(movement, speed * deltaSeconds);
     const worldSize = this.terrain.worldSize || 4500;
-    this.camera.position.x = clampMapCoordinate(this.camera.position.x, worldSize, 4);
-    this.camera.position.z = clampMapCoordinate(this.camera.position.z, worldSize, 4);
+    this.camera.position.x = clampMapCoordinateToBounds(this.camera.position.x, this.cameraBounds.minX, this.cameraBounds.maxX, 4);
+    this.camera.position.z = clampMapCoordinateToBounds(this.camera.position.z, this.cameraBounds.minZ, this.cameraBounds.maxZ, 4);
     this.camera.position.y = cameraHeightAboveTerrain(
       this.camera.position.y,
       sampleTerrainHeight(this.terrain, this.camera.position.x, this.camera.position.z),
@@ -2784,16 +2921,15 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
   }
 
   private enforceCameraTerrainSafety(): void {
-    const worldSize = this.terrain.worldSize || 4500;
-    this.camera.position.x = clampMapCoordinate(this.camera.position.x, worldSize, 2);
-    this.camera.position.z = clampMapCoordinate(this.camera.position.z, worldSize, 2);
+    this.camera.position.x = clampMapCoordinateToBounds(this.camera.position.x, this.cameraBounds.minX, this.cameraBounds.maxX, 2);
+    this.camera.position.z = clampMapCoordinateToBounds(this.camera.position.z, this.cameraBounds.minZ, this.cameraBounds.maxZ, 2);
     this.camera.position.y = cameraHeightAboveTerrain(
       this.camera.position.y,
       sampleTerrainHeight(this.terrain, this.camera.position.x, this.camera.position.z),
       12,
     );
-    this.controls.target.x = clampMapCoordinate(this.controls.target.x, worldSize, 2);
-    this.controls.target.z = clampMapCoordinate(this.controls.target.z, worldSize, 2);
+    this.controls.target.x = clampMapCoordinateToBounds(this.controls.target.x, this.cameraBounds.minX, this.cameraBounds.maxX, 2);
+    this.controls.target.z = clampMapCoordinateToBounds(this.controls.target.z, this.cameraBounds.minZ, this.cameraBounds.maxZ, 2);
     this.controls.target.y = Math.max(
       this.controls.target.y,
       sampleTerrainHeight(this.terrain, this.controls.target.x, this.controls.target.z) + 4,
@@ -3618,10 +3754,10 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
 
   private aboveTerrainPose(position: Vector3, target: Vector3, clearance: number): CameraPose {
     const worldSize = this.terrain.worldSize || 4500;
-    position.x = clampMapCoordinate(position.x, worldSize, 2);
-    position.z = clampMapCoordinate(position.z, worldSize, 2);
-    target.x = clampMapCoordinate(target.x, worldSize, 2);
-    target.z = clampMapCoordinate(target.z, worldSize, 2);
+    position.x = clampMapCoordinateToBounds(position.x, this.cameraBounds.minX, this.cameraBounds.maxX, 2);
+    position.z = clampMapCoordinateToBounds(position.z, this.cameraBounds.minZ, this.cameraBounds.maxZ, 2);
+    target.x = clampMapCoordinateToBounds(target.x, this.cameraBounds.minX, this.cameraBounds.maxX, 2);
+    target.z = clampMapCoordinateToBounds(target.z, this.cameraBounds.minZ, this.cameraBounds.maxZ, 2);
     const ground = sampleTerrainHeight(this.terrain, position.x, position.z);
     const targetGround = sampleTerrainHeight(this.terrain, target.x, target.z);
     const targetY = Math.max(target.y, targetGround + 28);
@@ -7597,6 +7733,164 @@ function createGroundFogBanks(terrain: TerrainPayload): Group {
   }
 
   return group;
+}
+
+function createTerrainVegetation(terrain: TerrainPayload, quality: EnvironmentQuality): Group {
+  const group = new Group();
+  const placements = buildTerrainVegetation({
+    resolution: terrain.resolution,
+    worldSize: terrain.worldSize || 4500,
+    seed: terrain.seed,
+    waterLevel: resolveOceanWaterLevel(terrain),
+    minHeight: terrain.minHeight,
+    maxHeight: terrain.maxHeight,
+    heights: terrain.heights,
+    colors: terrain.colors,
+    // The exported monument positions are Rust coordinates; tree generation
+    // runs in the mirrored viewer coordinate space.
+    monuments: terrain.monuments?.map((monument) => ({
+      x: -monument.x,
+      z: monument.z,
+      radius: monument.radius,
+    })),
+  }, vegetationInstanceBudget(quality));
+
+  group.userData.instanceCount = placements.length;
+  if (placements.length === 0) return group;
+
+  group.add(createVegetationTrunks(placements));
+  const pines = placements.filter((placement) => placement.kind === "pine");
+  const broadleaf = placements.filter((placement) => placement.kind === "broadleaf");
+  const jungle = placements.filter((placement) => placement.kind === "jungle");
+  if (pines.length > 0) group.add(createVegetationCanopy("pine", pines));
+  if (broadleaf.length > 0) group.add(createVegetationCanopy("broadleaf", broadleaf));
+  if (jungle.length > 0) {
+    group.add(createVegetationCanopy("jungle", jungle));
+    group.add(createJungleCanopyCrown(jungle));
+  }
+  return group;
+}
+
+function createVegetationTrunks(placements: VegetationPlacement[]): InstancedMesh {
+  const mesh = new InstancedMesh(
+    new CylinderGeometry(0.72, 1, 1, 6),
+    new MeshStandardMaterial({ color: 0x6c4f32, roughness: 0.94, metalness: 0 }),
+    placements.length,
+  );
+  const transform = new Object3D();
+  const darkBark = new Color(0x4d3624);
+  const sunlitBark = new Color(0x8a6744);
+
+  placements.forEach((placement, index) => {
+    const dimensions = vegetationDimensions(placement);
+    const width = MathUtils.lerp(0.72, 1.28, placement.variation) * placement.scale;
+    transform.position.set(placement.x, placement.y + dimensions.trunkHeight * 0.5, placement.z);
+    transform.rotation.set(0, placement.variation * Math.PI * 2, 0);
+    transform.scale.set(width, dimensions.trunkHeight, width);
+    transform.updateMatrix();
+    mesh.setMatrixAt(index, transform.matrix);
+    mesh.setColorAt(index, darkBark.clone().lerp(sunlitBark, placement.variation));
+  });
+
+  return finalizeVegetationMesh(mesh, "raidlands-tree-trunks");
+}
+
+function createVegetationCanopy(kind: VegetationPlacement["kind"], placements: VegetationPlacement[]): InstancedMesh {
+  const pine = kind === "pine";
+  const mesh = new InstancedMesh(
+    pine ? new ConeGeometry(1, 1, 7) : new SphereGeometry(1, 7, 5),
+    new MeshStandardMaterial({ color: 0x315d35, roughness: 0.9, metalness: 0 }),
+    placements.length,
+  );
+  const transform = new Object3D();
+  const palette = kind === "jungle"
+    ? [new Color(0x1d472c), new Color(0x4d8143)]
+    : pine
+      ? [new Color(0x204331), new Color(0x3f6a3e)]
+      : [new Color(0x2e512d), new Color(0x55783e)];
+
+  placements.forEach((placement, index) => {
+    const dimensions = vegetationDimensions(placement);
+    const canopyY = placement.y + dimensions.trunkHeight + dimensions.canopyHeight * (pine ? 0.44 : 0.48);
+    transform.position.set(placement.x, canopyY, placement.z);
+    transform.rotation.set(0, placement.variation * Math.PI * 2, pine ? 0 : placement.variation * 0.18);
+    transform.scale.set(
+      dimensions.canopyWidth,
+      dimensions.canopyHeight * (pine ? 0.78 : 0.52),
+      dimensions.canopyWidth,
+    );
+    transform.updateMatrix();
+    mesh.setMatrixAt(index, transform.matrix);
+    mesh.setColorAt(index, palette[0].clone().lerp(palette[1], placement.variation));
+  });
+
+  return finalizeVegetationMesh(mesh, `raidlands-${kind}-tree-canopy`);
+}
+
+function createJungleCanopyCrown(placements: VegetationPlacement[]): InstancedMesh {
+  const mesh = new InstancedMesh(
+    new SphereGeometry(1, 6, 4),
+    new MeshStandardMaterial({ color: 0x356536, roughness: 0.92, metalness: 0 }),
+    placements.length,
+  );
+  const transform = new Object3D();
+  const shaded = new Color(0x183d29);
+  const lit = new Color(0x5a8c43);
+
+  placements.forEach((placement, index) => {
+    const dimensions = vegetationDimensions(placement);
+    const angle = placement.variation * Math.PI * 2;
+    const offset = dimensions.canopyWidth * 0.34;
+    transform.position.set(
+      placement.x + Math.cos(angle) * offset,
+      placement.y + dimensions.trunkHeight + dimensions.canopyHeight * 0.72,
+      placement.z + Math.sin(angle) * offset,
+    );
+    transform.rotation.set(0, angle, placement.variation * 0.22);
+    transform.scale.set(dimensions.canopyWidth * 0.72, dimensions.canopyHeight * 0.34, dimensions.canopyWidth * 0.72);
+    transform.updateMatrix();
+    mesh.setMatrixAt(index, transform.matrix);
+    mesh.setColorAt(index, shaded.clone().lerp(lit, placement.variation));
+  });
+
+  return finalizeVegetationMesh(mesh, "raidlands-jungle-canopy-crown");
+}
+
+function vegetationDimensions(placement: VegetationPlacement): {
+  trunkHeight: number;
+  canopyHeight: number;
+  canopyWidth: number;
+} {
+  if (placement.kind === "jungle") {
+    return {
+      trunkHeight: 8 + placement.scale * 8,
+      canopyHeight: 10 + placement.scale * 7,
+      canopyWidth: 8 + placement.scale * 6,
+    };
+  }
+  if (placement.kind === "pine") {
+    return {
+      trunkHeight: 5 + placement.scale * 6,
+      canopyHeight: 12 + placement.scale * 9,
+      canopyWidth: 4 + placement.scale * 3.8,
+    };
+  }
+  return {
+    trunkHeight: 5 + placement.scale * 5.5,
+    canopyHeight: 7 + placement.scale * 5,
+    canopyWidth: 5 + placement.scale * 4.4,
+  };
+}
+
+function finalizeVegetationMesh(mesh: InstancedMesh, name: string): InstancedMesh {
+  mesh.name = name;
+  mesh.castShadow = false;
+  mesh.receiveShadow = false;
+  mesh.instanceMatrix.needsUpdate = true;
+  if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true;
+  mesh.computeBoundingBox();
+  mesh.computeBoundingSphere();
+  return mesh;
 }
 
 function createGroundFogTexture(): CanvasTexture {

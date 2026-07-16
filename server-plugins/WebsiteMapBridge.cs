@@ -17,7 +17,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteMapBridge", "Raidlands", "1.0.18")]
+    [Info("WebsiteMapBridge", "Raidlands", "1.0.19")]
     [Description("Publishes the current RustMapApi map image and sampled terrain to the Raidlands website.")]
     public class WebsiteMapBridge : CovalencePlugin
     {
@@ -223,7 +223,7 @@ namespace Oxide.Plugins
 
         private class TerrainUploadPayload
         {
-            public int version = 1;
+            public int version = 2;
             public string serverId;
             public string wipeKey;
             public string mapName;
@@ -238,6 +238,7 @@ namespace Oxide.Plugins
             public List<string> colors;
             public List<MonumentUploadPayload> monuments;
             public List<PowerLineUploadPayload> powerLines;
+            public List<RoadUploadPayload> roads;
         }
 
         private class MonumentUploadPayload
@@ -262,6 +263,14 @@ namespace Oxide.Plugins
         private class PowerLineUploadPayload
         {
             public string name;
+            public List<TerrainPointUploadPayload> points;
+        }
+
+        private class RoadUploadPayload
+        {
+            public string name;
+            public string kind;
+            public float width;
             public List<TerrainPointUploadPayload> points;
         }
 
@@ -540,7 +549,7 @@ namespace Oxide.Plugins
 
                 ReplyToCommand(
                     arg,
-                    $"WebsiteMapBridge v1.0.18 status: server={ResolveServerId()}, api={apiState}, ready=not-probed, secret={secretState}, render={config.RenderName}, textureRender={config.TextureRenderName}, autoPublishReady={config.AutoPublishOnRustMapApiReady}, autoPublishInit={config.AutoPublishOnServerInitialized}, terrainEnabled={config.PublishTerrain}, terrainResolution={config.TerrainSampleResolution}, monumentsEnabled={config.IncludeMonuments}, powerLines=enabled, skybox={config.PublishSkybox}/{config.SkyboxImagePath}, playerLocations={config.PublishPlayerLocations}/{config.PlayerLocationIntervalSeconds}s, raidlandsEvents={config.PublishRaidlandsEvents}/{(RaidlandsEvents != null && RaidlandsEvents.IsLoaded ? "ready" : "missing")}, worldEvents={config.PublishWorldEvents}/{config.WorldEventIntervalSeconds}s active={trackedWorldEntities.Values.Count(entry => entry.state != "ended")} last={lastWorldEventSyncAt} accepted={lastWorldEventAccepted} error={lastWorldEventError}, environment={config.PublishEnvironment}/{config.EnvironmentIntervalSeconds}s last={FirstNonEmpty(lastEnvironmentSyncAt, "never")}, sampleMs={lastEnvironmentSampleMilliseconds}, sampled=[{lastEnvironmentDiagnosticSummary}], replayEvents={config.PublishReplayEvents}, heightMap={heightMapState}, lastWipe={lastPublishedWipeKey}."
+                    $"WebsiteMapBridge v1.0.19 status: server={ResolveServerId()}, api={apiState}, ready=not-probed, secret={secretState}, render={config.RenderName}, textureRender={config.TextureRenderName}, autoPublishReady={config.AutoPublishOnRustMapApiReady}, autoPublishInit={config.AutoPublishOnServerInitialized}, terrainEnabled={config.PublishTerrain}, terrainResolution={config.TerrainSampleResolution}, monumentsEnabled={config.IncludeMonuments}, roads=enabled, powerLines=enabled, skybox={config.PublishSkybox}/{config.SkyboxImagePath}, playerLocations={config.PublishPlayerLocations}/{config.PlayerLocationIntervalSeconds}s, raidlandsEvents={config.PublishRaidlandsEvents}/{(RaidlandsEvents != null && RaidlandsEvents.IsLoaded ? "ready" : "missing")}, worldEvents={config.PublishWorldEvents}/{config.WorldEventIntervalSeconds}s active={trackedWorldEntities.Values.Count(entry => entry.state != "ended")} last={lastWorldEventSyncAt} accepted={lastWorldEventAccepted} error={lastWorldEventError}, environment={config.PublishEnvironment}/{config.EnvironmentIntervalSeconds}s last={FirstNonEmpty(lastEnvironmentSyncAt, "never")}, sampleMs={lastEnvironmentSampleMilliseconds}, sampled=[{lastEnvironmentDiagnosticSummary}], replayEvents={config.PublishReplayEvents}, heightMap={heightMapState}, lastWipe={lastPublishedWipeKey}."
                 );
             }
             catch (Exception ex)
@@ -3045,8 +3054,9 @@ namespace Oxide.Plugins
             }
 
             var monuments = CreateMonumentPayloads();
+            var roads = CreateRoadPayloads();
             var powerLines = CreatePowerLinePayloads();
-            summary = $"terrain {resolution}x{resolution}, height {minHeight:0.###}-{maxHeight:0.###}, ocean {waterLevel:0.###}, monuments {monuments.Count}, power lines {powerLines.Count}";
+            summary = $"terrain {resolution}x{resolution}, height {minHeight:0.###}-{maxHeight:0.###}, ocean {waterLevel:0.###}, monuments {monuments.Count}, roads {roads.Count}, power lines {powerLines.Count}";
 
             return new TerrainUploadPayload
             {
@@ -3063,6 +3073,7 @@ namespace Oxide.Plugins
                 heights = heights,
                 colors = colors,
                 monuments = monuments,
+                roads = roads,
                 powerLines = powerLines
             };
         }
@@ -3141,6 +3152,90 @@ namespace Oxide.Plugins
             }
 
             return monuments;
+        }
+
+        private List<RoadUploadPayload> CreateRoadPayloads()
+        {
+            var roads = new List<RoadUploadPayload>();
+
+            if (TerrainMeta.Path == null)
+            {
+                return roads;
+            }
+
+            AddRoadPayloads(roads, TerrainMeta.Path.MainRoads, "main", 14f);
+            AddRoadPayloads(roads, TerrainMeta.Path.SideRoads, "side", 8f);
+            AddRoadPayloads(roads, TerrainMeta.Path.TrailRoads, "trail", 3.5f);
+
+            // Older map-generation layouts expose the aggregate list only. Use
+            // it as a fallback so a valid road network is never silently lost.
+            if (roads.Count == 0)
+            {
+                AddRoadPayloads(roads, TerrainMeta.Path.Roads, "main", 14f);
+            }
+
+            return roads;
+        }
+
+        private void AddRoadPayloads(List<RoadUploadPayload> roads, List<PathList> sourceRoads, string kind, float fallbackWidth)
+        {
+            if (sourceRoads == null)
+            {
+                return;
+            }
+
+            const float sampleSpacing = 24f;
+            const int maxRoads = 96;
+            const int maxPointsPerRoad = 192;
+
+            foreach (var road in sourceRoads)
+            {
+                if (roads.Count >= maxRoads)
+                {
+                    break;
+                }
+
+                if (road == null || road.Path == null || road.Path.Points == null || road.Path.Points.Length < 2)
+                {
+                    continue;
+                }
+
+                var sampled = new List<TerrainPointUploadPayload>();
+                var points = road.Path.Points;
+                var last = points[0];
+                var distanceSinceSample = sampleSpacing;
+
+                for (var index = 0; index < points.Length && sampled.Count < maxPointsPerRoad; index++)
+                {
+                    var point = points[index];
+                    distanceSinceSample += index == 0 ? 0f : Vector3.Distance(last, point);
+
+                    if (index == 0 || distanceSinceSample >= sampleSpacing || index == points.Length - 1)
+                    {
+                        var terrainY = TerrainMeta.HeightMap != null ? TerrainMeta.HeightMap.GetHeight(point) : point.y;
+                        sampled.Add(new TerrainPointUploadPayload
+                        {
+                            x = (float)Math.Round(point.x, 3),
+                            y = (float)Math.Round(terrainY, 3),
+                            z = (float)Math.Round(point.z, 3)
+                        });
+                        distanceSinceSample = 0f;
+                    }
+
+                    last = point;
+                }
+
+                if (sampled.Count >= 2)
+                {
+                    roads.Add(new RoadUploadPayload
+                    {
+                        name = string.IsNullOrWhiteSpace(road.Name) ? $"{kind}-road-{roads.Count + 1}" : road.Name,
+                        kind = kind,
+                        width = (float)Math.Round(Mathf.Clamp(road.Width > 0f ? road.Width : fallbackWidth, 2.5f, 38f), 3),
+                        points = sampled
+                    });
+                }
+            }
         }
 
         private List<PowerLineUploadPayload> CreatePowerLinePayloads()
