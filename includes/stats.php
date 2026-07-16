@@ -29,6 +29,20 @@ function raidlands_stats_is_ready(): bool
     }
 }
 
+function raidlands_stats_wipes_are_ready(): bool
+{
+    if (!raidlands_db_is_configured()) {
+        return false;
+    }
+
+    try {
+        raidlands_db_fetch_one('SELECT id FROM wipe_seasons LIMIT 1');
+        return true;
+    } catch (Throwable $error) {
+        return false;
+    }
+}
+
 function raidlands_stats_clean_text($value, int $max_length = 120): string
 {
     $text = trim(str_replace("\0", '', (string) $value));
@@ -77,6 +91,73 @@ function raidlands_stats_wipe_key(string $wipe_key): string
     }
 
     return substr($wipe_key, 0, 160);
+}
+
+function raidlands_stats_wipe_key_is_generic(string $wipe_key, string $server_id = ''): bool
+{
+    $normalized_key = strtolower(trim($wipe_key));
+    $normalized_server = strtolower(trim($server_id !== '' ? $server_id : raidlands_stats_server_id()));
+
+    return $normalized_key === 'current'
+        || $normalized_key === $normalized_server
+        || $normalized_key === $normalized_server . '-current'
+        || str_ends_with($normalized_key, '-current');
+}
+
+function raidlands_stats_activate_wipe_signal(string $server_id, string $wipe_key, $started_at): ?array
+{
+    if (!raidlands_stats_wipes_are_ready()) {
+        return null;
+    }
+
+    $server_id = raidlands_stats_clean_text($server_id !== '' ? $server_id : raidlands_stats_server_id(), 120);
+    $wipe_key = raidlands_stats_wipe_key($wipe_key);
+    $started_at = raidlands_stats_timestamp($started_at);
+
+    if ($started_at === null || raidlands_stats_wipe_key_is_generic($wipe_key, $server_id)) {
+        return null;
+    }
+
+    $pdo = raidlands_db_required();
+    $pdo->beginTransaction();
+
+    try {
+        $active = raidlands_db_fetch_one(
+            'SELECT * FROM wipe_seasons WHERE server_id = :server_id AND is_active = 1 ORDER BY started_at DESC, id DESC LIMIT 1 FOR UPDATE',
+            ['server_id' => $server_id]
+        );
+
+        if (
+            $active !== null
+            && (string) ($active['wipe_key'] ?? '') !== $wipe_key
+            && !empty($active['started_at'])
+            && strtotime($started_at) < strtotime((string) $active['started_at'])
+        ) {
+            $pdo->commit();
+            $active['activated'] = false;
+            $active['ignored_older_signal'] = true;
+            return $active;
+        }
+
+        $season = raidlands_stats_get_or_create_wipe($pdo, $server_id, $wipe_key, $started_at);
+
+        if (empty($season['started_at'])) {
+            $pdo->prepare('UPDATE wipe_seasons SET started_at = :started_at, updated_at = NOW() WHERE id = :id')
+                ->execute(['started_at' => $started_at, 'id' => (int) $season['id']]);
+            $season['started_at'] = $started_at;
+        }
+
+        $pdo->commit();
+        $season['activated'] = true;
+        $season['ignored_older_signal'] = false;
+        return $season;
+    } catch (Throwable $error) {
+        if ($pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
+        throw $error;
+    }
 }
 
 function raidlands_stats_bot_key($value): string
@@ -674,15 +755,7 @@ function raidlands_stats_generic_wipe_key_warning(?array $latest_ingest = null, 
         return '';
     }
 
-    $normalized_key = strtolower($wipe_key);
-    $normalized_server = strtolower($server_id);
-
-    if (
-        $normalized_key === 'current'
-        || $normalized_key === $normalized_server
-        || $normalized_key === $normalized_server . '-current'
-        || str_ends_with($normalized_key, '-current')
-    ) {
+    if (raidlands_stats_wipe_key_is_generic($wipe_key, $server_id)) {
         return 'Latest stats snapshot is using a generic wipe key. Update the server stats sync settings so each wipe gets a unique key.';
     }
 

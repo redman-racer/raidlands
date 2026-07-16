@@ -559,7 +559,7 @@ function raidlands_monument_start_run(int $wager_rp, string $loadout_key, string
         $settings = raidlands_rewards_settings();
         raidlands_rewards_require_games_open($settings, 'monument_extraction');
 
-        if (raidlands_rewards_self_excluded($player_id)) {
+        if (raidlands_rewards_self_excluded($player_id, $settings)) {
             throw new RuntimeException('RP games are disabled for this account.');
         }
 

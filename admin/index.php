@@ -3776,7 +3776,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                         </label>
                         <label class="admin-check admin-check-field">
                           <input type="checkbox" name="self_exclusion_enabled" value="1" <?= !empty($game_settings['self_exclusion_enabled']) ? 'checked' : '' ?>>
-                          <?= admin_check_copy('Self-exclusion enforced', 'Honor self-exclusion rows when present.') ?>
+                          <?= admin_check_copy('Self-exclusion enabled', 'Show the player self-exclusion control and enforce active exclusion rows.') ?>
                         </label>
                       </div>
 

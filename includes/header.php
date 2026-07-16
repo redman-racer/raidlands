@@ -2,10 +2,23 @@
 
 require_once __DIR__ . '/animation-diagnostics.php';
 require_once __DIR__ . '/chat.php';
+require_once __DIR__ . '/server-status.php';
 
 $loader_payload = raidlands_loader_payload();
 $linked_player = raidlands_linked_player();
 $client_site_config = $site_config;
+$client_site_config['wipe']['signal'] = ['key' => '', 'startedAt' => ''];
+
+try {
+    $initial_server_status = raidlands_server_status_public();
+    $client_site_config['wipe']['signal'] = [
+        'key' => (string) ($initial_server_status['wipeKey'] ?? ''),
+        'startedAt' => (string) ($initial_server_status['wipeStartedAt'] ?? ''),
+    ];
+} catch (Throwable $error) {
+    // The live status request below can hydrate the signal after page load.
+}
+
 $client_site_config['animationDiagnostics'] = raidlands_animation_diagnostics_client_config($linked_player, $base_path . 'api/animation-diagnostics.php');
 $client_site_config['chat'] = raidlands_chat_client_config($linked_player, $base_path . 'api/chat/');
 $config_json = json_encode($client_site_config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);

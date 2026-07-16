@@ -1087,21 +1087,195 @@ function raidlands_rewards_handle_vote_callback(string $site_slug, string $token
     }
 }
 
-function raidlands_rewards_self_excluded(int $player_id): bool
+function raidlands_rewards_self_exclusion_periods(): array
+{
+    return [
+        '24_hours' => ['label' => '24 hours', 'seconds' => 24 * 60 * 60],
+        '7_days' => ['label' => '7 days', 'seconds' => 7 * 24 * 60 * 60],
+        '30_days' => ['label' => '30 days', 'seconds' => 30 * 24 * 60 * 60],
+        '90_days' => ['label' => '90 days', 'seconds' => 90 * 24 * 60 * 60],
+        'permanent' => ['label' => 'Permanent', 'seconds' => null],
+    ];
+}
+
+function raidlands_rewards_self_exclusion_end_label(?array $exclusion): string
+{
+    if ($exclusion === null) {
+        return '';
+    }
+
+    $ends_at = trim((string) ($exclusion['ends_at'] ?? ''));
+
+    if ($ends_at === '') {
+        return 'Permanent';
+    }
+
+    $remaining_seconds = array_key_exists('remaining_seconds', $exclusion)
+        ? max(0, (int) $exclusion['remaining_seconds'])
+        : null;
+    $timestamp = $remaining_seconds === null
+        ? strtotime($ends_at . ' UTC')
+        : time() + $remaining_seconds;
+
+    return $timestamp === false
+        ? $ends_at . ' UTC'
+        : gmdate('M j, Y \a\t g:i A \U\T\C', $timestamp);
+}
+
+function raidlands_rewards_active_self_exclusion(int $player_id, ?array $settings = null): ?array
 {
     if ($player_id <= 0 || !raidlands_rewards_is_ready()) {
-        return false;
+        return null;
+    }
+
+    $settings = $settings ?? raidlands_rewards_settings();
+
+    if (empty($settings['self_exclusion_enabled'])) {
+        return null;
     }
 
     return raidlands_db_fetch_one(
-        'SELECT id
+        'SELECT id, player_id, steam_id64, starts_at, ends_at, created_at,
+                TIMESTAMPDIFF(SECOND, NOW(), ends_at) AS remaining_seconds
          FROM rp_game_self_exclusions
          WHERE player_id = :player_id
            AND starts_at <= NOW()
            AND (ends_at IS NULL OR ends_at > NOW())
+         ORDER BY starts_at DESC, id DESC
          LIMIT 1',
         ['player_id' => $player_id]
-    ) !== null;
+    );
+}
+
+function raidlands_rewards_self_excluded(int $player_id, ?array $settings = null): bool
+{
+    return raidlands_rewards_active_self_exclusion($player_id, $settings) !== null;
+}
+
+function raidlands_rewards_public_self_exclusion(?array $exclusion): ?array
+{
+    if ($exclusion === null) {
+        return null;
+    }
+
+    $stored_ends_at = trim((string) ($exclusion['ends_at'] ?? ''));
+    $is_permanent = $stored_ends_at === '';
+    $remaining_seconds = !$is_permanent && array_key_exists('remaining_seconds', $exclusion)
+        ? max(0, (int) $exclusion['remaining_seconds'])
+        : null;
+    $ends_at = $is_permanent
+        ? ''
+        : ($remaining_seconds === null ? $stored_ends_at : gmdate(DATE_ATOM, time() + $remaining_seconds));
+
+    return [
+        'active' => true,
+        'starts_at' => (string) ($exclusion['starts_at'] ?? ''),
+        'ends_at' => $ends_at,
+        'is_permanent' => $is_permanent,
+        'end_label' => raidlands_rewards_self_exclusion_end_label($exclusion),
+    ];
+}
+
+function raidlands_rewards_start_self_exclusion(string $period_key): array
+{
+    if (!raidlands_rewards_is_ready()) {
+        throw new RuntimeException(raidlands_rewards_readiness_message(true));
+    }
+
+    $settings = raidlands_rewards_settings();
+
+    if (empty($settings['self_exclusion_enabled'])) {
+        throw new RuntimeException('RP game self-exclusion is currently unavailable.');
+    }
+
+    $period_key = strtolower(trim($period_key));
+    $periods = raidlands_rewards_self_exclusion_periods();
+    $period = $periods[$period_key] ?? null;
+
+    if (!is_array($period)) {
+        throw new InvalidArgumentException('Choose a valid self-exclusion period.');
+    }
+
+    $player = raidlands_rewards_require_player();
+    $player_id = (int) $player['id'];
+    $ends_at_sql = $period['seconds'] === null
+        ? 'NULL'
+        : 'DATE_ADD(NOW(), INTERVAL ' . (int) $period['seconds'] . ' SECOND)';
+    $pdo = raidlands_db_required();
+    $owns_transaction = !$pdo->inTransaction();
+
+    if ($owns_transaction) {
+        $pdo->beginTransaction();
+    }
+
+    try {
+        $lock = $pdo->prepare('SELECT id FROM players WHERE id = :id FOR UPDATE');
+        $lock->execute(['id' => $player_id]);
+
+        if ($lock->fetchColumn() === false) {
+            throw new RuntimeException('Your linked player account could not be found.');
+        }
+
+        $active = $pdo->prepare(
+            'SELECT id, player_id, steam_id64, starts_at, ends_at, created_at,
+                    TIMESTAMPDIFF(SECOND, NOW(), ends_at) AS remaining_seconds
+             FROM rp_game_self_exclusions
+             WHERE player_id = :player_id
+               AND starts_at <= NOW()
+               AND (ends_at IS NULL OR ends_at > NOW())
+             ORDER BY starts_at DESC, id DESC
+             LIMIT 1
+             FOR UPDATE'
+        );
+        $active->execute(['player_id' => $player_id]);
+        $existing = $active->fetch(PDO::FETCH_ASSOC);
+
+        if (is_array($existing)) {
+            throw new RuntimeException('Self-exclusion is already active for this account.');
+        }
+
+        $insert = $pdo->prepare(
+            'INSERT INTO rp_game_self_exclusions
+                (player_id, steam_id64, starts_at, ends_at, reason)
+             VALUES
+                (:player_id, :steam_id64, NOW(), ' . $ends_at_sql . ', :reason)'
+        );
+        $insert->execute([
+            'player_id' => $player_id,
+            'steam_id64' => (string) $player['steam_id64'],
+            'reason' => 'Player-initiated self-exclusion via RP Games (' . (string) $period['label'] . ')',
+        ]);
+        $exclusion_id = (int) $pdo->lastInsertId();
+        $select = $pdo->prepare(
+            'SELECT id, player_id, steam_id64, starts_at, ends_at, created_at,
+                    TIMESTAMPDIFF(SECOND, NOW(), ends_at) AS remaining_seconds
+             FROM rp_game_self_exclusions
+             WHERE id = :id
+             LIMIT 1'
+        );
+        $select->execute(['id' => $exclusion_id]);
+        $exclusion = $select->fetch(PDO::FETCH_ASSOC);
+
+        if (!is_array($exclusion)) {
+            throw new RuntimeException('The self-exclusion could not be confirmed.');
+        }
+
+        if ($owns_transaction) {
+            $pdo->commit();
+        }
+
+        return [
+            'exclusion' => raidlands_rewards_public_self_exclusion($exclusion),
+            'period_key' => $period_key,
+            'period_label' => (string) $period['label'],
+        ];
+    } catch (Throwable $error) {
+        if ($owns_transaction && $pdo->inTransaction()) {
+            $pdo->rollBack();
+        }
+
+        throw $error;
+    }
 }
 
 function raidlands_rewards_daily_limit_row(int $player_id): array
@@ -1221,7 +1395,7 @@ function raidlands_rewards_play_coinflip(string $choice, int $stake): array
     raidlands_rewards_require_games_open($settings, 'coinflip');
     $player = raidlands_rewards_require_player();
 
-    if (raidlands_rewards_self_excluded((int) $player['id'])) {
+    if (raidlands_rewards_self_excluded((int) $player['id'], $settings)) {
         throw new RuntimeException('RP games are disabled for this account.');
     }
 
@@ -1306,7 +1480,7 @@ function raidlands_rewards_play_dice(int $stake): array
     raidlands_rewards_require_games_open($settings, 'dice');
     $player = raidlands_rewards_require_player();
 
-    if (raidlands_rewards_self_excluded((int) $player['id'])) {
+    if (raidlands_rewards_self_excluded((int) $player['id'], $settings)) {
         throw new RuntimeException('RP games are disabled for this account.');
     }
 
@@ -1394,7 +1568,7 @@ function raidlands_rewards_play_high_low(string $choice, int $stake): array
     raidlands_rewards_require_games_open($settings, 'high_low');
     $player = raidlands_rewards_require_player();
 
-    if (raidlands_rewards_self_excluded((int) $player['id'])) {
+    if (raidlands_rewards_self_excluded((int) $player['id'], $settings)) {
         throw new RuntimeException('RP games are disabled for this account.');
     }
 
@@ -1512,7 +1686,7 @@ function raidlands_rewards_play_wheel(string $choice, int $stake): array
     raidlands_rewards_require_games_open($settings, 'wheel');
     $player = raidlands_rewards_require_player();
 
-    if (raidlands_rewards_self_excluded((int) $player['id'])) {
+    if (raidlands_rewards_self_excluded((int) $player['id'], $settings)) {
         throw new RuntimeException('RP games are disabled for this account.');
     }
 
@@ -1638,7 +1812,7 @@ function raidlands_rewards_enter_jackpot(int $tickets): array
     raidlands_rewards_require_games_open($settings, 'jackpot');
     $player = raidlands_rewards_require_player();
 
-    if (raidlands_rewards_self_excluded((int) $player['id'])) {
+    if (raidlands_rewards_self_excluded((int) $player['id'], $settings)) {
         throw new RuntimeException('RP games are disabled for this account.');
     }
 
@@ -2017,7 +2191,7 @@ function raidlands_rewards_enter_pool_game(string $game_type, string $option_key
     raidlands_rewards_require_games_open($settings, $game_type);
     $player = raidlands_rewards_require_player();
 
-    if (raidlands_rewards_self_excluded((int) $player['id'])) {
+    if (raidlands_rewards_self_excluded((int) $player['id'], $settings)) {
         throw new RuntimeException('RP games are disabled for this account.');
     }
 
@@ -3033,6 +3207,7 @@ function raidlands_rewards_public_games_state(bool $include_leaderboards = true)
             'message' => raidlands_rewards_readiness_message(true),
             'player' => $player,
             'settings' => [],
+            'self_exclusion' => null,
             'balance' => null,
             'daily' => [],
             'active_jackpot' => null,
@@ -3058,12 +3233,16 @@ function raidlands_rewards_public_games_state(bool $include_leaderboards = true)
     $settings = raidlands_rewards_settings();
     $active_jackpot = raidlands_rewards_active_jackpot_round($settings, true);
     $player_id = raidlands_rewards_player_ready($player) ? (int) $player['id'] : 0;
+    $self_exclusion = $player_id > 0
+        ? raidlands_rewards_active_self_exclusion($player_id, $settings)
+        : null;
 
     return [
         'ready' => true,
         'message' => '',
         'player' => $player,
         'settings' => $settings,
+        'self_exclusion' => raidlands_rewards_public_self_exclusion($self_exclusion),
         'balance' => $player_id > 0 ? raidlands_store_current_rp_balance($player_id) : null,
         'daily' => $player_id > 0 ? raidlands_rewards_daily_limit_row($player_id) : [],
         'active_jackpot' => $active_jackpot,
@@ -3128,7 +3307,7 @@ function raidlands_rewards_handle_games_request(): void
 
     $action = (string) ($_POST['action'] ?? '');
 
-    if (!in_array($action, ['play_coinflip', 'play_dice', 'play_high_low', 'play_wheel', 'play_roulette', 'play_slots', 'start_blackjack', 'blackjack_hit', 'blackjack_stand', 'blackjack_double', 'enter_jackpot', 'enter_raid_duel', 'enter_supply_run'], true)) {
+    if (!in_array($action, ['self_exclude', 'play_coinflip', 'play_dice', 'play_high_low', 'play_wheel', 'play_roulette', 'play_slots', 'start_blackjack', 'blackjack_hit', 'blackjack_stand', 'blackjack_double', 'enter_jackpot', 'enter_raid_duel', 'enter_supply_run'], true)) {
         return;
     }
 
@@ -3142,7 +3321,17 @@ function raidlands_rewards_handle_games_request(): void
             throw new RuntimeException('Your RP games session expired. Try again.');
         }
 
-        if ($action === 'play_coinflip') {
+        if ($action === 'self_exclude') {
+            if ((string) ($_POST['confirm_self_exclusion'] ?? '') !== '1') {
+                throw new RuntimeException('Confirm that you understand the self-exclusion cannot be canceled from your account.');
+            }
+
+            $result = raidlands_rewards_start_self_exclusion((string) ($_POST['exclusion_period'] ?? ''));
+            $exclusion = is_array($result['exclusion'] ?? null) ? $result['exclusion'] : [];
+            $message = !empty($exclusion['is_permanent'])
+                ? 'Permanent RP game self-exclusion is now active. Existing entries and queued RP changes may still finish.'
+                : 'RP game self-exclusion is now active until ' . (string) ($exclusion['end_label'] ?? '') . '. Existing entries and queued RP changes may still finish.';
+        } elseif ($action === 'play_coinflip') {
             $result = raidlands_rewards_play_coinflip((string) ($_POST['choice'] ?? ''), (int) ($_POST['stake_rp'] ?? 0));
             $message = $result['won']
                 ? 'Coinflip hit ' . $result['roll'] . '. Your game is saved; the server is now adding the ' . raidlands_store_rp((int) $result['payout_rp']) . ' payout.'

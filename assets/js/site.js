@@ -32,6 +32,7 @@
   let animationDiagnosticFlushTimer = null;
   let animationDiagnosticInFlight = false;
   let resolvedWipeTimeZone = null;
+  let latestWipeSignal = normalizeWipeSignal(CONFIG.wipe && CONFIG.wipe.signal);
   const timeZonePartFormatters = new Map();
 
   function getSiteConfig() {
@@ -3163,8 +3164,12 @@
   }
 
   function applyServerStatus(status) {
+    if (!status) return;
+
+    applyWipeSignal(status);
+
     const panel = app.querySelector("[data-server-status-panel]");
-    if (!panel || !status) return;
+    if (!panel) return;
 
     const online = status.online === true;
     panel.classList.toggle("is-online", online);
@@ -3675,26 +3680,51 @@
   function updateCountdowns() {
     const next = getNextWipeDate();
     const now = new Date();
-    const distance = Math.max(0, next.getTime() - now.getTime());
+    const distance = next.getTime() - now.getTime();
+    const overdue = distance < 0;
+    const magnitude = Math.abs(distance);
     const values = {
-      days: Math.floor(distance / 86400000),
-      hours: Math.floor((distance % 86400000) / 3600000),
-      minutes: Math.floor((distance % 3600000) / 60000),
-      seconds: Math.floor((distance % 60000) / 1000)
+      days: Math.floor(magnitude / 86400000),
+      hours: Math.floor((magnitude % 86400000) / 3600000),
+      minutes: Math.floor((magnitude % 3600000) / 60000),
+      seconds: Math.floor((magnitude % 60000) / 1000)
     };
 
     Object.entries(values).forEach(([key, value]) => {
       app.querySelectorAll(`[data-count-${key}]`).forEach(item => {
-        item.textContent = String(value).padStart(2, "0");
+        const formatted = String(value).padStart(2, "0");
+        item.textContent = key === "days" && overdue ? `-${formatted}` : formatted;
       });
+    });
+
+    app.querySelectorAll("[data-countdown]").forEach(item => {
+      item.classList.toggle("is-overdue", overdue);
+      item.dataset.countdownState = overdue ? "awaiting-server-wipe" : "scheduled";
     });
   }
 
   function getNextWipeDate(now = new Date()) {
-    const schedule = getWipeSchedule();
-    const zoneNow = getTimeZoneDateParts(now, schedule.timeZone);
+    if (latestWipeSignal) {
+      const signalDate = latestWipeSignal.startedAt;
+      const firstScheduledAfterSignal = findScheduledWipeAfter(signalDate);
 
-    for (let offset = 0; offset < 14; offset += 1) {
+      // A wipe signal shortly before the configured time belongs to that
+      // window. Skip that occurrence so the countdown starts a fresh cycle.
+      if (firstScheduledAfterSignal.getTime() - signalDate.getTime() <= 86400000) {
+        return findScheduledWipeAfter(new Date(firstScheduledAfterSignal.getTime() + 1000));
+      }
+
+      return firstScheduledAfterSignal;
+    }
+
+    return findScheduledWipeAfter(now);
+  }
+
+  function findScheduledWipeAfter(reference) {
+    const schedule = getWipeSchedule();
+    const zoneNow = getTimeZoneDateParts(reference, schedule.timeZone);
+
+    for (let offset = 0; offset < 21; offset += 1) {
       const localDate = getPlainDateOffset(zoneNow, offset);
 
       if (!schedule.days.has(localDate.weekday)) {
@@ -3710,15 +3740,19 @@
         schedule.timeZone
       );
 
-      if (candidate > now) {
+      if (candidate > reference) {
         return candidate;
       }
     }
 
-    return new Date(now.getTime() + 86400000);
+    return new Date(reference.getTime() + 86400000);
   }
 
   function getPreviousWipeDate(now = new Date()) {
+    if (latestWipeSignal) {
+      return new Date(latestWipeSignal.startedAt.getTime());
+    }
+
     const schedule = getWipeSchedule();
     const zoneNow = getTimeZoneDateParts(now, schedule.timeZone);
 
@@ -3744,6 +3778,50 @@
     }
 
     return now;
+  }
+
+  function normalizeWipeSignal(signal) {
+    if (!signal || typeof signal !== "object") {
+      return null;
+    }
+
+    const rawStartedAt = signal.startedAt || signal.wipeStartedAt || signal.lastWipe || "";
+    const startedAt = rawStartedAt ? new Date(rawStartedAt) : null;
+
+    if (!startedAt || Number.isNaN(startedAt.getTime())) {
+      return null;
+    }
+
+    return {
+      key: String(signal.key || signal.wipeKey || "").trim(),
+      startedAt
+    };
+  }
+
+  function applyWipeSignal(status) {
+    const signal = normalizeWipeSignal({
+      key: status.wipeKey || (status.mapImage && status.mapImage.wipeKey) || "",
+      startedAt: status.wipeStartedAt || status.lastWipe || ""
+    });
+
+    if (!signal) {
+      return;
+    }
+
+    if (latestWipeSignal && signal.startedAt.getTime() < latestWipeSignal.startedAt.getTime()) {
+      return;
+    }
+
+    const changed = !latestWipeSignal
+      || signal.key !== latestWipeSignal.key
+      || signal.startedAt.getTime() !== latestWipeSignal.startedAt.getTime();
+
+    latestWipeSignal = signal;
+
+    if (changed) {
+      hydrateDates();
+      updateCountdowns();
+    }
   }
 
   function getWipeSchedule() {

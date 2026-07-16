@@ -38,7 +38,7 @@ describe("server-map live world-event replay", () => {
 
   it("keeps portable-airstrike carriers in the live world-entity feed", () => {
     const source = readFileSync(resolve("server-plugins/WebsiteMapBridge.cs"), "utf8");
-    expect(source).toContain('[Info("WebsiteMapBridge", "Raidlands", "1.0.20")]');
+    expect(source).toContain('[Info("WebsiteMapBridge", "Raidlands", "1.0.21")]');
     expect(source).not.toContain("API_IsWebsiteReplayCarrier");
     expect(source).toContain("if (!TryDescribeWorldEntity(entity, out descriptor))");
   });

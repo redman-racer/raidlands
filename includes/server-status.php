@@ -3156,6 +3156,26 @@ function raidlands_server_status_latest(?string $server_id = null): ?array
     );
 }
 
+function raidlands_server_status_active_wipe_signal(?string $server_id = null): ?array
+{
+    if (!raidlands_db_is_configured()) {
+        return null;
+    }
+
+    try {
+        return raidlands_db_fetch_one(
+            'SELECT wipe_key, started_at, created_at, updated_at
+             FROM wipe_seasons
+             WHERE server_id = :server_id AND is_active = 1
+             ORDER BY started_at DESC, id DESC
+             LIMIT 1',
+            ['server_id' => $server_id ?? raidlands_server_status_server_id()]
+        );
+    } catch (Throwable $error) {
+        return null;
+    }
+}
+
 function raidlands_server_status_public(): array
 {
     global $site_config;
@@ -3608,10 +3628,23 @@ function raidlands_server_status_row_public(array $row, int $stale_seconds, arra
         $status_label = raidlands_server_status_label($online, $status);
     }
 
-    $map_image = raidlands_server_map_latest(
-        (string) ($row['server_id'] ?? raidlands_server_status_server_id()),
-        (string) ($row['wipe_key'] ?? '')
-    );
+    $wipe_key = (string) ($row['wipe_key'] ?? '');
+    $wipe_started_at = (string) ($row['wipe_started_at'] ?? '');
+    $server_id = (string) ($row['server_id'] ?? raidlands_server_status_server_id());
+    $active_wipe = raidlands_server_status_active_wipe_signal($server_id);
+
+    if ($active_wipe !== null) {
+        $active_started_at = (string) ($active_wipe['started_at'] ?? '');
+        $status_started_timestamp = $wipe_started_at !== '' ? strtotime($wipe_started_at) : false;
+        $active_started_timestamp = $active_started_at !== '' ? strtotime($active_started_at) : false;
+
+        if ($active_started_timestamp !== false && ($status_started_timestamp === false || $active_started_timestamp >= $status_started_timestamp)) {
+            $wipe_key = (string) ($active_wipe['wipe_key'] ?? $wipe_key);
+            $wipe_started_at = $active_started_at;
+        }
+    }
+
+    $map_image = raidlands_server_map_latest($server_id, $wipe_key);
     $map_image_public = raidlands_server_map_row_public($map_image);
 
     return [
@@ -3634,8 +3667,9 @@ function raidlands_server_status_row_public(array $row, int $stale_seconds, arra
         'entityCount' => (int) ($row['entity_count'] ?? 0),
         'worldSize' => (int) ($row['world_size'] ?? 0),
         'seed' => (int) ($row['seed'] ?? 0),
-        'wipeStartedAt' => raidlands_server_status_iso($row['wipe_started_at'] ?? ''),
-        'lastWipe' => raidlands_server_status_iso($row['wipe_started_at'] ?? ''),
+        'wipeKey' => $wipe_key,
+        'wipeStartedAt' => raidlands_server_status_iso($wipe_started_at),
+        'lastWipe' => raidlands_server_status_iso($wipe_started_at),
         'nextWipe' => '',
         'updatedAt' => raidlands_server_status_iso($row['generated_at'] ?? $row['received_at'] ?? ''),
         'receivedAt' => raidlands_server_status_iso($row['received_at'] ?? ''),
@@ -3654,6 +3688,9 @@ function raidlands_server_status_fallback(string $error): array
     global $site_config;
 
     $online = (bool) $site_config['serverOnline'];
+    $active_wipe = raidlands_server_status_active_wipe_signal();
+    $wipe_key = (string) ($active_wipe['wipe_key'] ?? '');
+    $wipe_started_at = raidlands_server_status_iso($active_wipe['started_at'] ?? '');
 
     return [
         'source' => 'fallback',
@@ -3675,8 +3712,9 @@ function raidlands_server_status_fallback(string $error): array
         'entityCount' => 0,
         'worldSize' => 0,
         'seed' => 0,
-        'wipeStartedAt' => '',
-        'lastWipe' => '',
+        'wipeKey' => $wipe_key,
+        'wipeStartedAt' => $wipe_started_at,
+        'lastWipe' => $wipe_started_at,
         'nextWipe' => '',
         'updatedAt' => '',
         'receivedAt' => '',

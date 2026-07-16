@@ -28,7 +28,7 @@ function raidlands_casino_require_player(string $game): array
     $settings = raidlands_rewards_settings();
     raidlands_rewards_require_games_open($settings, $game);
     $player = raidlands_rewards_require_player();
-    if (raidlands_rewards_self_excluded((int) $player['id'])) {
+    if (raidlands_rewards_self_excluded((int) $player['id'], $settings)) {
         throw new RuntimeException('RP games are disabled for this account.');
     }
     return [$player, $settings];

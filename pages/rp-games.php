@@ -24,7 +24,18 @@ $sync_pending_count = max(0, (int) ($sync_state['pending_count'] ?? 0));
 $sync_poll_seconds = max(10, (int) ($sync_state['poll_seconds'] ?? 30));
 $sync_countdown_label = (string) floor($sync_poll_seconds / 60) . ':' . str_pad((string) ($sync_poll_seconds % 60), 2, '0', STR_PAD_LEFT);
 $sync_next_check_at = (string) ($sync_state['next_check_at'] ?? '');
-$can_play = $games_ready && $games_player !== null && !empty($games_player['id']) && !empty($settings['games_enabled']);
+$self_exclusion = is_array($rp_games_state['self_exclusion'] ?? null) ? $rp_games_state['self_exclusion'] : null;
+$self_exclusion_active = $self_exclusion !== null && !empty($self_exclusion['active']);
+$self_exclusion_enabled = $games_ready && !empty($settings['self_exclusion_enabled']);
+$self_exclusion_periods = function_exists('raidlands_rewards_self_exclusion_periods')
+    ? raidlands_rewards_self_exclusion_periods()
+    : [];
+$self_exclusion_end_label = (string) ($self_exclusion['end_label'] ?? '');
+$can_play = $games_ready
+    && $games_player !== null
+    && !empty($games_player['id'])
+    && !empty($settings['games_enabled'])
+    && !$self_exclusion_active;
 $min_stake = (int) ($settings['min_stake_rp'] ?? 200);
 $max_stake = (int) ($settings['max_stake_rp'] ?? 2000);
 $dice_target = function_exists('raidlands_rewards_dice_target') ? raidlands_rewards_dice_target($settings) : 4;
@@ -186,8 +197,57 @@ $rp_game_tabs = [
         <div class="form-status warning">RP games are paused by admins.</div>
       <?php elseif ($games_player === null || empty($games_player['id'])) : ?>
         <div class="form-status warning">Link your Steam account before playing RP games.</div>
+      <?php elseif ($self_exclusion_active) : ?>
+        <div class="form-status warning">RP game self-exclusion is active<?= $self_exclusion_end_label !== '' ? ' until ' . e($self_exclusion_end_label) : '' ?>.</div>
       <?php endif; ?>
     </div>
+
+    <?php if ($games_ready) : ?>
+      <aside class="rp-self-exclusion-panel <?= $self_exclusion_active ? 'is-active' : '' ?>" aria-labelledby="rp-self-exclusion-title">
+        <div class="rp-self-exclusion-copy">
+          <p class="section-kicker"><?= $self_exclusion_active ? 'Self-exclusion active' : 'Player control' ?></p>
+          <h2 id="rp-self-exclusion-title"><?= $self_exclusion_active ? 'RP games are locked' : 'Take a break from RP games' ?></h2>
+          <?php if ($self_exclusion_active) : ?>
+            <p>Your account cannot start or join RP games. Existing entries, active rounds, and queued RP changes may still finish.</p>
+          <?php else : ?>
+            <p>Block this Steam account from starting or joining RP games for a fixed period or permanently.</p>
+          <?php endif; ?>
+        </div>
+
+        <?php if ($self_exclusion_active) : ?>
+          <div class="rp-self-exclusion-status" role="status">
+            <span>Locked until</span>
+            <strong><?= e($self_exclusion_end_label !== '' ? $self_exclusion_end_label : 'Permanent') ?></strong>
+            <small>The lock ends automatically at the time shown. Permanent exclusions have no end date.</small>
+          </div>
+        <?php elseif (!$self_exclusion_enabled) : ?>
+          <div class="form-status warning rp-self-exclusion-message">Self-exclusion is currently unavailable because enforcement is disabled.</div>
+        <?php elseif ($games_player === null || empty($games_player['id'])) : ?>
+          <div class="rp-self-exclusion-action">
+            <p>Sign in with Steam before setting a self-exclusion.</p>
+            <a class="btn btn-steam" href="<?= e(raidlands_account_url()) ?>">Sign in with Steam</a>
+          </div>
+        <?php else : ?>
+          <form class="rp-self-exclusion-form" method="post" action="<?= e(route_url('rp-games')) ?>">
+            <input type="hidden" name="csrf" value="<?= e($rp_games_csrf) ?>">
+            <input type="hidden" name="action" value="self_exclude">
+            <label class="store-field">
+              <span>Exclusion period</span>
+              <select name="exclusion_period" required autocomplete="off">
+                <?php foreach ($self_exclusion_periods as $period_key => $period) : ?>
+                  <option value="<?= e((string) $period_key) ?>" <?= $period_key === '7_days' ? 'selected' : '' ?>><?= e((string) ($period['label'] ?? $period_key)) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </label>
+            <label class="rp-self-exclusion-confirm">
+              <input type="checkbox" name="confirm_self_exclusion" value="1" required>
+              <span>I understand this starts immediately and I cannot cancel or shorten it from my account.</span>
+            </label>
+            <button class="btn btn-primary" type="submit">Start self-exclusion</button>
+          </form>
+        <?php endif; ?>
+      </aside>
+    <?php endif; ?>
 
     <div class="profile-stat-grid rp-games-stat-grid">
       <article class="stat-tile">

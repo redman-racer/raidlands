@@ -2656,6 +2656,10 @@ h3,
     0 0 10px rgba(255, 16, 8, .16);
 }
 
+.countdown.is-overdue .count-box:first-child strong {
+  font-size: clamp(2.65rem, 3.75vw, 3.85rem);
+}
+
 .count-box span {
   position: relative;
   color: rgba(243, 238, 227, .76);
@@ -13288,6 +13292,122 @@ button.admin-permission-chip:focus-visible {
 .rp-game-panel.result-loss .rp-game-machine {
   border-color: rgba(255, 90, 64, .44);
   box-shadow: 0 0 36px rgba(255, 90, 64, .12);
+}
+
+.rp-self-exclusion-panel {
+  margin: 20px 0 24px;
+  padding: 24px;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) minmax(320px, .72fr);
+  gap: 24px;
+  align-items: center;
+  border: 1px solid rgba(255, 209, 102, .34);
+  border-radius: var(--radius);
+  background:
+    linear-gradient(110deg, rgba(255, 209, 102, .07), transparent 48%),
+    var(--console-scan) center / 240px repeat,
+    rgba(7, 8, 9, .7);
+  box-shadow: inset 0 0 0 1px rgba(255, 255, 255, .025);
+}
+
+.rp-self-exclusion-panel.is-active {
+  border-color: rgba(255, 90, 64, .5);
+  background:
+    linear-gradient(110deg, rgba(179, 38, 30, .15), transparent 52%),
+    var(--console-scan) center / 240px repeat,
+    rgba(7, 8, 9, .76);
+}
+
+.rp-self-exclusion-copy h2 {
+  margin: 4px 0 10px;
+}
+
+.rp-self-exclusion-copy > p:last-child,
+.rp-self-exclusion-action p {
+  margin: 0;
+  color: var(--muted);
+  font-family: var(--font-body);
+  line-height: 1.55;
+}
+
+.rp-self-exclusion-form {
+  display: grid;
+  gap: 14px;
+}
+
+.rp-self-exclusion-form .btn,
+.rp-self-exclusion-action .btn {
+  width: 100%;
+}
+
+.rp-self-exclusion-confirm {
+  display: grid;
+  grid-template-columns: auto minmax(0, 1fr);
+  gap: 10px;
+  align-items: start;
+  color: var(--white);
+  font-family: var(--font-body);
+  font-size: .88rem;
+  font-weight: 800;
+  line-height: 1.45;
+  cursor: pointer;
+}
+
+.rp-self-exclusion-confirm input {
+  width: 19px;
+  height: 19px;
+  margin: 1px 0 0;
+  accent-color: var(--orange);
+}
+
+.rp-self-exclusion-status {
+  padding: 18px;
+  display: grid;
+  gap: 6px;
+  border: 1px solid rgba(255, 90, 64, .36);
+  border-radius: var(--radius);
+  background: rgba(0, 0, 0, .3);
+}
+
+.rp-self-exclusion-status span,
+.rp-self-exclusion-status small {
+  color: var(--muted);
+  font-family: var(--font-body);
+}
+
+.rp-self-exclusion-status span {
+  font-size: .74rem;
+  font-weight: 900;
+  letter-spacing: .09em;
+  text-transform: uppercase;
+}
+
+.rp-self-exclusion-status strong {
+  color: #ff8a73;
+  font-family: var(--font-display);
+  font-size: clamp(1.3rem, 2.5vw, 2rem);
+  line-height: 1;
+  text-transform: uppercase;
+}
+
+.rp-self-exclusion-status small {
+  margin-top: 4px;
+  line-height: 1.45;
+}
+
+.rp-self-exclusion-message {
+  margin: 0;
+}
+
+.rp-self-exclusion-action {
+  display: grid;
+  gap: 14px;
+}
+
+@media (max-width: 900px) {
+  .rp-self-exclusion-panel {
+    grid-template-columns: 1fr;
+  }
 }
 
 .rp-games-info-grid {
