@@ -10,6 +10,9 @@ export type EnvironmentQualityProfile = {
   cloudDetail: RaidlandsCloudDetail;
   sunDetail: RaidlandsSunDetail;
   fogDetail: FogDetail;
+  fogAltitudeFadeStart: number;
+  fogAltitudeFadeEnd: number;
+  fogAltitudeDensityFloor: number;
   pixelRatioCap: number;
   composerPixelRatioCap: number;
   ambientOcclusionRadius: number;
@@ -69,6 +72,9 @@ const profiles: Record<EnvironmentQuality, Omit<EnvironmentQualityProfile, "requ
     cloudDetail: "max",
     sunDetail: "max",
     fogDetail: "max",
+    fogAltitudeFadeStart: 0.55,
+    fogAltitudeFadeEnd: 1.2,
+    fogAltitudeDensityFloor: 0.98,
     pixelRatioCap: 2,
     composerPixelRatioCap: 1.75,
     ambientOcclusionRadius: 8.5,
@@ -85,6 +91,9 @@ const profiles: Record<EnvironmentQuality, Omit<EnvironmentQualityProfile, "requ
     cloudDetail: "max",
     sunDetail: "max",
     fogDetail: "max",
+    fogAltitudeFadeStart: 0.38,
+    fogAltitudeFadeEnd: 0.9,
+    fogAltitudeDensityFloor: 0.78,
     pixelRatioCap: 1.75,
     composerPixelRatioCap: 1.5,
     ambientOcclusionRadius: 7,
@@ -101,6 +110,9 @@ const profiles: Record<EnvironmentQuality, Omit<EnvironmentQualityProfile, "requ
     cloudDetail: "medium",
     sunDetail: "medium",
     fogDetail: "medium",
+    fogAltitudeFadeStart: 0.2,
+    fogAltitudeFadeEnd: 0.65,
+    fogAltitudeDensityFloor: 0.6,
     pixelRatioCap: 1.5,
     composerPixelRatioCap: 1.25,
     ambientOcclusionRadius: 5.5,
@@ -117,6 +129,9 @@ const profiles: Record<EnvironmentQuality, Omit<EnvironmentQualityProfile, "requ
     cloudDetail: "low",
     sunDetail: "low",
     fogDetail: "low",
+    fogAltitudeFadeStart: 0.08,
+    fogAltitudeFadeEnd: 0.42,
+    fogAltitudeDensityFloor: 0.42,
     pixelRatioCap: 1.25,
     composerPixelRatioCap: 1,
     ambientOcclusionRadius: 4,

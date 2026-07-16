@@ -3267,7 +3267,7 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
     this.waterLightUniforms.daylight.value = daylight;
     this.waterLightUniforms.fogColor.value.copy(fogColor);
     this.waterLightUniforms.fogDensity.value = fogStrength > 0.02
-      ? visualFogDensityForCamera(fogStrength, this.camera.position, this.terrain)
+      ? visualFogDensityForCamera(fogStrength, this.camera.position, this.terrain, this.qualityProfile)
       : 0;
     this.waterLightUniforms.worldSize.value = worldSize;
     this.waterLightUniforms.cloudCoverage.value = visualCloudCoverage;
@@ -3304,7 +3304,7 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
     this.scene.fog = fogStrength > 0.02
       ? new FogExp2(
         fogColor,
-        visualFogDensityForCamera(fogStrength, this.camera.position, this.terrain) * (this.fogDetail === "low" ? 1 : 0.18),
+        visualFogDensityForCamera(fogStrength, this.camera.position, this.terrain, this.qualityProfile) * (this.fogDetail === "low" ? 1 : 0.18),
       )
       : null;
     if (this.volumetricFogPass) {
@@ -8356,17 +8356,25 @@ function visualFogStrengthForEnvironment(environment: NormalizedEnvironment): nu
   return MathUtils.clamp(Math.max(environment.fogPresetBlend, sampledHaze + weatherHaze), 0, 1);
 }
 
-function visualFogDensityForCamera(fogStrength: number, cameraPosition: Vector3, terrain: TerrainPayload): number {
+function visualFogDensityForCamera(
+  fogStrength: number,
+  cameraPosition: Vector3,
+  terrain: TerrainPayload,
+  qualityProfile: EnvironmentQualityProfile,
+): number {
   const worldSize = terrain.worldSize || 4500;
   const terrainHeight = sampleTerrainHeight(terrain, cameraPosition.x, cameraPosition.z);
   const cameraAltitude = Math.max(0, cameraPosition.y - terrainHeight);
-  const altitudeTaper = MathUtils.smoothstep(cameraAltitude, worldSize * 0.08, worldSize * 0.55);
-  const altitudeScale = MathUtils.lerp(1, 0.55, altitudeTaper);
+  const altitudeTaper = MathUtils.smoothstep(
+    cameraAltitude,
+    worldSize * qualityProfile.fogAltitudeFadeStart,
+    worldSize * qualityProfile.fogAltitudeFadeEnd,
+  );
+  const altitudeScale = MathUtils.lerp(1, qualityProfile.fogAltitudeDensityFloor, altitudeTaper);
   const baseDensity = MathUtils.lerp(0.00001, 0.00072, Math.pow(MathUtils.clamp(fogStrength, 0, 1), 1.3));
 
-  // Rust's fog reads strongly near the terrain but thins from aerial views.
-  // Keep the ground-level match while preventing the map-scale cameras from
-  // accumulating exponential fog across several kilometres of empty air.
+  // Preserve fog through nearly the full camera range on Ultra, then taper it
+  // progressively sooner and more aggressively on each lower detail tier.
   return baseDensity * altitudeScale;
 }
 

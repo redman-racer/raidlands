@@ -32,6 +32,21 @@ describe("server map environment quality", () => {
     });
   });
 
+  it("retains aerial fog progressively longer at higher detail levels", () => {
+    const ultra = resolveEnvironmentQuality("ultra", ultraCapabilities);
+    const high = resolveEnvironmentQuality("high", ultraCapabilities);
+    const medium = resolveEnvironmentQuality("medium", ultraCapabilities);
+    const low = resolveEnvironmentQuality("low", ultraCapabilities);
+
+    expect(ultra.fogAltitudeDensityFloor).toBeGreaterThanOrEqual(0.95);
+    expect(low.fogAltitudeFadeEnd).toBeLessThan(medium.fogAltitudeFadeEnd);
+    expect(medium.fogAltitudeFadeEnd).toBeLessThan(high.fogAltitudeFadeEnd);
+    expect(high.fogAltitudeFadeEnd).toBeLessThan(ultra.fogAltitudeFadeEnd);
+    expect(low.fogAltitudeDensityFloor).toBeLessThan(medium.fogAltitudeDensityFloor);
+    expect(medium.fogAltitudeDensityFloor).toBeLessThan(high.fogAltitudeDensityFloor);
+    expect(high.fogAltitudeDensityFloor).toBeLessThan(ultra.fogAltitudeDensityFloor);
+  });
+
   it("degrades effects while preserving the requested quality", () => {
     expect(resolveEnvironmentQuality("ultra", {
       ...ultraCapabilities,
