@@ -28,6 +28,26 @@ export function sampleSmoothRoadCenterline(points: Vector3[], maximumSegmentLeng
   return curve.getSpacedPoints(divisions);
 }
 
+export function roadRibbonUvs(
+  centers: Vector3[],
+  width: number,
+  crossSections: number,
+  textureWorldSize: number,
+): number[] {
+  const uvs: number[] = [];
+  const safeWorldSize = Math.max(0.1, textureWorldSize);
+  let distance = 0;
+
+  centers.forEach((center, index) => {
+    if (index > 0) distance += center.distanceTo(centers[index - 1]!);
+    for (let cross = 0; cross <= crossSections; cross += 1) {
+      uvs.push((width * cross / crossSections) / safeWorldSize, distance / safeWorldSize);
+    }
+  });
+
+  return uvs;
+}
+
 function normalizeRoadKind(value: unknown): RoadKind {
   switch (String(value || "").trim().toLowerCase()) {
     case "main": return "main";

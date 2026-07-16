@@ -135,7 +135,7 @@ import {
 } from "./monument-model-registry";
 import { monumentPrimitiveKind, monumentPrimitiveSearchKey, monumentPrimitiveSize } from "./monument-primitive-policy";
 import { normalizePowerLines, type PowerLinePayload } from "./power-line-policy";
-import { normalizeRoads, sampleSmoothRoadCenterline, type RoadPayload } from "./road-policy";
+import { normalizeRoads, roadRibbonUvs, sampleSmoothRoadCenterline, type RoadPayload } from "./road-policy";
 import { sampleTerrainSurfaceHeight } from "./terrain-height-policy";
 import {
   desiredMonumentTier,
@@ -161,6 +161,7 @@ const ENVIRONMENT_QUALITY_STORAGE_KEY = "raidlands:map-environment-quality";
 const CAMERA_PREFERENCES_STORAGE_KEY = "raidlands:map-camera-preferences";
 const DETAILED_MONUMENTS_STORAGE_KEY = "raidlands:map-detailed-monuments";
 const DRACO_DECODER_URL = new URL(/* @vite-ignore */ "../../media/models/draco/", import.meta.url).href;
+const ROAD_TEXTURE_WORLD_SIZE = 12;
 
 type TerrainPayload = {
   version?: number;
@@ -2668,6 +2669,55 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
     this.root.dataset.sideRoadPathCount = String(counts.side);
     this.root.dataset.trailRoadPathCount = String(counts.trail);
     this.scene.add(this.roadLayer);
+    this.loadRoadTextures();
+  }
+
+  private loadRoadTextures(): void {
+    const assetBase = new URL(
+      this.root.dataset.assetBase || new URL(/* @vite-ignore */ "../../", import.meta.url).href,
+      window.location.href,
+    );
+    const asphaltUrl = new URL("media/textures/road-asphalt.webp?v=1", assetBase).href;
+    const dirtUrl = new URL("media/textures/road-dirt.webp?v=1", assetBase).href;
+    this.root.dataset.roadTextureStatus = "loading";
+
+    const applyTexture = async (
+      url: string,
+      meshNames: Set<string>,
+      tint: number,
+      bumpScale: number,
+      roughness: number,
+    ): Promise<void> => {
+      const texture = await loadSharedTexture(url);
+      if (this.disposed) return;
+      texture.colorSpace = SRGBColorSpace;
+      texture.wrapS = RepeatWrapping;
+      texture.wrapT = RepeatWrapping;
+      texture.anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
+      texture.needsUpdate = true;
+      this.roadLayer.traverse((object) => {
+        if (!(object instanceof Mesh) || !meshNames.has(object.name)) return;
+        const material = object.material as MeshStandardMaterial;
+        material.map = texture;
+        material.bumpMap = texture;
+        material.bumpScale = bumpScale;
+        material.color.set(tint);
+        material.roughness = roughness;
+        material.needsUpdate = true;
+      });
+    };
+
+    void Promise.all([
+      applyTexture(asphaltUrl, new Set(["road-main-asphalt"]), 0xd8dcde, 0.16, 0.9),
+      applyTexture(dirtUrl, new Set(["road-side-compacted", "road-trail-tread"]), 0xd8cabc, 0.12, 0.98),
+    ]).then(
+      () => {
+        this.root.dataset.roadTextureStatus = "ready";
+      },
+      () => {
+        this.root.dataset.roadTextureStatus = "fallback";
+      },
+    );
   }
 
   private createRoadSurface(road: RoadPayload): Group | null {
@@ -2773,6 +2823,10 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
 
     const geometry = new BufferGeometry();
     geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+    geometry.setAttribute("uv", new Float32BufferAttribute(
+      roadRibbonUvs(centers, width, crossSections, ROAD_TEXTURE_WORLD_SIZE),
+      2,
+    ));
     geometry.setIndex(new Uint32BufferAttribute(indices, 1));
     geometry.computeVertexNormals();
     const mesh = new Mesh(geometry, material);
