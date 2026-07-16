@@ -188,6 +188,10 @@ const EXPLICIT_INCLUDES: Record<string, string[]> = {
   excavator_1: ["excavator", "conveyor", "bucket", "crane", "platform", "tower"],
   ferry_terminal_1: ["ferry", "terminal", "dock", "pier", "building", "platform", "wall", "crane"],
   harbor_2: ["harbor", "warehouse", "dock", "pier", "crane", "gantry", "barge", "loading", "building"],
+  ice_lake_1: ["ice_lake_a"],
+  ice_lake_2: ["ice_lake_b"],
+  ice_lake_3: ["ice_lake_c"],
+  ice_lake_4: ["ice_lake_d"],
   junkyard_1: ["junkyard", "carshredder", "car_shredder", "crane", "junk_stack", "warehouse", "wall", "tower"],
   launch_site_1: ["rocket_factory", "rocket_boosters", "rocket_payload", "space_center", "warehouse_launch_site", "watch_tower", "range_core_exterior", "pipeline_bespoke_launchsite"],
   oilrig_1: ["level0", "level1", "level2", "level3", "level4", "level5", "level6", "structure_", "helipad", "burner", "comms_tower", "gas_room", "moon_pool", "oilrig_crane", "dock"],
@@ -198,6 +202,10 @@ const EXPLICIT_INCLUDES: Record<string, string[]> = {
 
 const EXPLICIT_EXCLUDES: Record<string, string[]> = {
   compound: ["corridor_train_tunnel", "sewer_tunnel"],
+  ice_lake_1: ["cliff", "rock_formation"],
+  ice_lake_2: ["cliff", "rock_formation"],
+  ice_lake_3: ["cliff", "rock_formation"],
+  ice_lake_4: ["cliff", "rock_formation"],
   launch_site_1: ["bunker.room", "corridor_train_tunnel", "office_a_floor", "office_b_floor", "sewer_tunnel"],
 };
 

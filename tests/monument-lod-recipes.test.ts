@@ -73,4 +73,12 @@ describe("RustRelay monument LOD recipes", () => {
       expect(recipe.composites?.[0]?.minimumTier).toBe("map");
     }
   });
+
+  it("keeps Ice Lake tiers on the lake mesh without oversized cliffs or rock formations", () => {
+    for (const [variant, suffix] of [["1", "a"], ["2", "b"], ["3", "c"], ["4", "d"]]) {
+      const recipe = monumentRecipe(`ice_lake_${variant}`);
+      expect(recipe.explicitStructuralIncludes).toContain(`ice_lake_${suffix}`);
+      expect(recipe.explicitExcludes).toEqual(expect.arrayContaining(["cliff", "rock_formation"]));
+    }
+  });
 });
