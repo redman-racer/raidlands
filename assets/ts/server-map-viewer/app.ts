@@ -111,6 +111,7 @@ import {
   type CameraMode,
   type ManualCameraStyle,
 } from "./camera-policy";
+import { versionMapAssetUrl } from "./map-asset-policy";
 import { monumentNavigationLabels, recentUniqueNavigationEvents, validNavigationCoordinate } from "./navigation-policy";
 import {
   monumentModelAssetName,
@@ -759,7 +760,8 @@ async function initTerrainViewer(root: HTMLElement): Promise<TerrainViewerInstan
   }
 
   try {
-    const response = await fetch(terrainUrl, {
+    const assetFingerprint = mapAssetFingerprint(root);
+    const response = await fetch(versionMapAssetUrl(terrainUrl, assetFingerprint), {
       cache: "no-store",
       headers: { Accept: "application/json" },
     });
@@ -770,7 +772,7 @@ async function initTerrainViewer(root: HTMLElement): Promise<TerrainViewerInstan
 
     const terrain = normalizeTerrain(await response.json(), root);
     const viewer = new TerrainViewer(root, terrain, {
-      textureUrl: root.dataset.textureUrl || "",
+      textureUrl: versionMapAssetUrl(root.dataset.textureUrl || "", assetFingerprint),
       status,
     });
 
@@ -920,6 +922,13 @@ function terrainViewerFingerprint(root: HTMLElement): string {
     worldSize: Number(root.dataset.worldSize || 0),
     seed: Number(root.dataset.seed || 0),
   });
+}
+
+function mapAssetFingerprint(root: HTMLElement): string {
+  return root.dataset.terrainHash
+    || root.dataset.seed
+    || root.dataset.mapPublishedAt
+    || "";
 }
 
 function terrainMetadataFingerprint(metadata: Partial<ServerStatusMapImage> & { terrainUrl?: string; textureUrl?: string; skyboxUrl?: string; worldSize?: number }): string {
