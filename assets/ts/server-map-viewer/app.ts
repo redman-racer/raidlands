@@ -161,7 +161,9 @@ const ENVIRONMENT_QUALITY_STORAGE_KEY = "raidlands:map-environment-quality";
 const CAMERA_PREFERENCES_STORAGE_KEY = "raidlands:map-camera-preferences";
 const DETAILED_MONUMENTS_STORAGE_KEY = "raidlands:map-detailed-monuments";
 const DRACO_DECODER_URL = new URL(/* @vite-ignore */ "../../media/models/draco/", import.meta.url).href;
-const ROAD_TEXTURE_WORLD_SIZE = 12;
+// One repeat spans enough world space for aggregate and cracks to survive the
+// mip levels used by the normal aerial camera, while still avoiding stretching.
+const ROAD_TEXTURE_WORLD_SIZE = 32;
 
 type TerrainPayload = {
   version?: number;
@@ -2677,8 +2679,8 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
       this.root.dataset.assetBase || new URL(/* @vite-ignore */ "../../", import.meta.url).href,
       window.location.href,
     );
-    const asphaltUrl = new URL("media/textures/road-asphalt.webp?v=1", assetBase).href;
-    const dirtUrl = new URL("media/textures/road-dirt.webp?v=1", assetBase).href;
+    const asphaltUrl = new URL("media/textures/road-asphalt.webp?v=2", assetBase).href;
+    const dirtUrl = new URL("media/textures/road-dirt.webp?v=2", assetBase).href;
     this.root.dataset.roadTextureStatus = "loading";
 
     const applyTexture = async (
@@ -2708,8 +2710,8 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
     };
 
     void Promise.all([
-      applyTexture(asphaltUrl, new Set(["road-main-asphalt"]), 0xd8dcde, 0.16, 0.9),
-      applyTexture(dirtUrl, new Set(["road-side-compacted", "road-trail-tread"]), 0xd8cabc, 0.12, 0.98),
+      applyTexture(asphaltUrl, new Set(["road-main-asphalt"]), 0xffffff, 0.26, 0.9),
+      applyTexture(dirtUrl, new Set(["road-side-compacted", "road-trail-tread"]), 0xeee4da, 0.19, 0.98),
     ]).then(
       () => {
         this.root.dataset.roadTextureStatus = "ready";
