@@ -4537,10 +4537,11 @@ class AirdropReplayRun implements MapReplayRun {
       this.aircraft.quaternion.copy(carrierPose.rotation);
     } else {
       this.aircraft.position.set(x, planeHeight, z);
-      // The corrected cargo model points down local -Z. Rotate it toward the
-      // replay lane's +X direction without rolling it onto its side.
       this.aircraft.rotation.set(0, -Math.PI / 2, 0);
     }
+    // The cargo-plane visual points opposite the replay vehicle convention.
+    // Correct it after either route orientation so its nose follows its travel.
+    this.aircraft.rotateY(Math.PI);
 
     const eventTime = elapsed * this.playbackSpeed;
     const fallProgress = MathUtils.clamp((eventTime - this.releaseTime) / this.dropFallSeconds, 0, 1);
