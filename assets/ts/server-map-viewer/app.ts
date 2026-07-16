@@ -2,6 +2,7 @@ import {
   AmbientLight,
   AdditiveBlending,
   BoxGeometry,
+  Box3,
   BufferGeometry,
   Color,
   ConeGeometry,
@@ -279,6 +280,12 @@ type MapReplayEvent = {
   profileKey?: string;
   vehicle?: string;
   payload?: Record<string, unknown>;
+};
+
+type WorldEventRouteSample = {
+  timestampMs: number;
+  position: Vector3;
+  rotation: Quaternion;
 };
 
 type MapReplayHistoryPayload = {
@@ -3874,6 +3881,7 @@ class AirstrikeReplayPlayer {
     const visibleKeys = new Set<string>();
     this.explicitEventsVisible = events.length > 0;
 
+    const eventsByKey = new Map(events.map((event, index) => [replayEventKey(event, index), event]));
     events.slice(0, mode === "timeline" ? 80 : 8).forEach((event, index) => {
       const key = replayEventKey(event, index);
       visibleKeys.add(key);
@@ -3889,8 +3897,8 @@ class AirstrikeReplayPlayer {
       const run = event.eventType === "airstrike"
         ? new AirstrikeReplayRun(key, event, this.terrain, this.profileForEvent(event), startAt, playbackSpeed, this.vehicleMetadata, this.assetBase)
         : event.eventType === "airdrop"
-          ? new AirdropReplayRun(key, event, this.terrain, startAt, playbackSpeed, this.vehicleMetadata, this.assetBase)
-          : new GenericMapEventReplayRun(key, event, this.terrain, startAt, playbackSpeed);
+          ? new AirdropReplayRun(key, event, this.terrain, startAt, playbackSpeed, this.vehicleMetadata, this.assetBase, replayAirdropCarrierEvent(event, eventsByKey))
+          : new GenericMapEventReplayRun(key, event, this.terrain, startAt, playbackSpeed, this.vehicleMetadata, this.assetBase);
       if (mode === "timeline" && Number.isFinite(cursorMs)) {
         run.syncToTimeline(cursorMs, playbackSpeed);
       }
@@ -4237,7 +4245,8 @@ class AirdropReplayRun implements MapReplayRun {
   private playbackSpeed: number;
   private readonly aircraft: Group;
   private readonly dropCount: number;
-  private readonly packageVisuals: Array<{ packageMesh: Mesh; parachute: Mesh; offsetX: number; offsetZ: number }>;
+  private readonly packageVisuals: Array<{ packageMesh: Group; parachute: Group; offsetX: number; offsetZ: number }>;
+  private readonly carrierRoute: WorldEventRouteSample[];
   private timelineElapsed: number | null = null;
 
   public constructor(
@@ -4248,6 +4257,7 @@ class AirdropReplayRun implements MapReplayRun {
     playbackSpeed: number,
     vehicleMetadata: VehiclePreviewMetadataFile | null,
     assetBase: string,
+    carrierEvent: MapReplayEvent | null,
   ) {
     this.key = key;
     this.event = event;
@@ -4275,16 +4285,8 @@ class AirdropReplayRun implements MapReplayRun {
     this.aircraft = createAircraftMarker("cargo_plane", vehicleMetadata, assetBase);
     this.aircraft.scale.multiplyScalar(1.35);
     this.packageVisuals = Array.from({ length: visualDropCount }, (_, index) => {
-      const packageMesh = new Mesh(
-        new BoxGeometry(26, 20, 26),
-        new MeshStandardMaterial({ color: 0x8a5f36, roughness: 0.82, metalness: 0.05 }),
-      );
-      packageMesh.name = `airdrop-replay-package-${index + 1}`;
-      const parachute = new Mesh(
-        new ConeGeometry(34, 22, 24, 1, true),
-        new MeshStandardMaterial({ color: 0xf5ead8, roughness: 0.74, transparent: true, opacity: 0.88, side: DoubleSide }),
-      );
-      parachute.name = `airdrop-replay-parachute-${index + 1}`;
+      const packageMesh = createAirdropPackageMarker(assetBase, index + 1);
+      const parachute = createAirdropParachuteMarker(assetBase, index + 1);
       const centeredIndex = index - ((visualDropCount - 1) / 2);
       this.group.add(packageMesh, parachute);
       return {
@@ -4294,6 +4296,7 @@ class AirdropReplayRun implements MapReplayRun {
         offsetZ: Math.abs(centeredIndex) * 10,
       };
     });
+    this.carrierRoute = carrierEvent ? replayWorldEventRoute(carrierEvent) : [];
     this.group.add(this.aircraft);
   }
 
@@ -4315,19 +4318,36 @@ class AirdropReplayRun implements MapReplayRun {
     const z = this.target.z;
     const ground = sampleTerrainHeight(this.terrain, this.target.x, this.target.z);
     const planeHeight = ground + MathUtils.clamp(worldSize * 0.09, 260, 520);
-    this.aircraft.position.set(x, planeHeight, z);
-    // The corrected cargo model points down local -Z. Rotate it toward the
-    // replay lane's +X direction without rolling it onto its side.
-    this.aircraft.rotation.set(0, -Math.PI / 2, 0);
+    const carrierPose = this.carrierRoute.length > 1 ? sampleWorldEventRoute(this.carrierRoute, progress) : null;
+    if (carrierPose) {
+      this.aircraft.position.copy(carrierPose.position);
+      this.aircraft.quaternion.copy(carrierPose.rotation);
+    } else {
+      this.aircraft.position.set(x, planeHeight, z);
+      // The corrected cargo model points down local -Z. Rotate it toward the
+      // replay lane's +X direction without rolling it onto its side.
+      this.aircraft.rotation.set(0, -Math.PI / 2, 0);
+    }
 
     const eventTime = elapsed * this.playbackSpeed;
     const fallProgress = MathUtils.clamp((eventTime - this.releaseTime) / this.dropFallSeconds, 0, 1);
     this.packageVisuals.forEach((visual, index) => {
       const staggerSeconds = index * 0.38;
       const visualProgress = MathUtils.clamp((eventTime - this.releaseTime - staggerSeconds) / this.dropFallSeconds, 0, 1);
-      const visualHeight = MathUtils.lerp(planeHeight - 42, ground + 20, easeInOutCubic(visualProgress));
-      const releaseX = MathUtils.lerp(this.flightStartX, this.flightEndX, MathUtils.clamp((this.releaseTime + staggerSeconds) / this.duration, 0, 1));
-      visual.packageMesh.position.set(releaseX + visual.offsetX, visualHeight, this.target.z + visual.offsetZ);
+      const visualHeight = MathUtils.lerp(planeHeight - 42, ground + 6, easeInOutCubic(visualProgress));
+      const releaseProgress = MathUtils.clamp((this.releaseTime + staggerSeconds) / this.duration, 0, 1);
+      const routeReleasePose = this.carrierRoute.length > 1 ? sampleWorldEventRoute(this.carrierRoute, releaseProgress) : null;
+      const releasePosition = routeReleasePose?.position ?? new Vector3(
+        MathUtils.lerp(this.flightStartX, this.flightEndX, releaseProgress),
+        planeHeight,
+        this.target.z,
+      );
+      const landingProgress = easeInOutCubic(visualProgress);
+      visual.packageMesh.position.set(
+        MathUtils.lerp(releasePosition.x + visual.offsetX, this.target.x + visual.offsetX, landingProgress),
+        visualHeight,
+        MathUtils.lerp(releasePosition.z + visual.offsetZ, this.target.z + visual.offsetZ, landingProgress),
+      );
       visual.parachute.position.set(visual.packageMesh.position.x, visualHeight + 34, visual.packageMesh.position.z);
       visual.packageMesh.visible = eventTime >= this.releaseTime + staggerSeconds;
       visual.parachute.visible = fallProgress > 0 && visual.packageMesh.visible && visualProgress < 0.98;
@@ -4351,23 +4371,48 @@ class GenericMapEventReplayRun implements MapReplayRun {
   public readonly source = "event" as const;
   public readonly group = new Group();
   private readonly event: MapReplayEvent;
+  private readonly terrain: TerrainPayload;
   private readonly target: Vector3;
+  private readonly sourcePosition: Vector3;
+  private readonly route: WorldEventRouteSample[];
+  private readonly vehicle: string;
+  private readonly semanticType: string;
+  private readonly airborne: boolean;
   private readonly startAt: number;
-  private readonly duration = 12;
+  private readonly duration: number;
   private playbackSpeed: number;
   private timelineElapsed: number | null = null;
   private readonly marker: Mesh;
   private readonly ring: Mesh;
   private readonly beacon: Sprite;
+  private readonly vehicleMarker: Group | null;
 
-  public constructor(key: string, event: MapReplayEvent, terrain: TerrainPayload, startAt: number, playbackSpeed: number) {
+  public constructor(
+    key: string,
+    event: MapReplayEvent,
+    terrain: TerrainPayload,
+    startAt: number,
+    playbackSpeed: number,
+    vehicleMetadata: VehiclePreviewMetadataFile | null,
+    assetBase: string,
+  ) {
     this.key = key;
     this.event = event;
+    this.terrain = terrain;
     this.startAt = startAt;
     this.playbackSpeed = MathUtils.clamp(playbackSpeed || 1, 0.1, 12);
-    this.target = replayEventPosition(event, terrain);
-    this.target.y = sampleTerrainHeight(terrain, this.target.x, this.target.z) + 5;
-    this.group.name = `map-event-replay-${String(event.eventType || "event")}`;
+    this.vehicle = replayVehicleForEvent(event);
+    this.semanticType = replaySemanticEventType(event);
+    this.airborne = replayVehicleIsAirborne(this.vehicle);
+    this.sourcePosition = replayEventPosition(event, terrain);
+    this.route = replayWorldEventRoute(event);
+    this.target = this.sourcePosition.clone();
+    const ground = sampleTerrainHeight(terrain, this.target.x, this.target.z);
+    this.target.y = this.vehicle === "cargo_ship"
+      ? Math.max(Number(terrain.waterLevel) || 0, ground) + 4
+      : ground + 5;
+    this.duration = this.route.length > 1 || replayEventIsWorldVehicle(event) ? 18 : 12;
+    this.group.name = `map-event-replay-${this.semanticType || String(event.eventType || "event")}`;
     this.marker = new Mesh(
       new SphereGeometry(13, 20, 12),
       new MeshStandardMaterial({ color: replayEventColor(event), emissive: replayEventColor(event), emissiveIntensity: 0.5, roughness: 0.5 }),
@@ -4379,6 +4424,13 @@ class GenericMapEventReplayRun implements MapReplayRun {
     this.beacon = new Sprite(new SpriteMaterial({ color: replayEventColor(event), transparent: true, opacity: 0.5, depthWrite: false }));
     this.ring.rotation.x = -Math.PI / 2;
     this.group.add(this.marker, this.ring, this.beacon);
+    this.vehicleMarker = replayVehicleHasViewerModel(this.vehicle)
+      ? createAircraftMarker(this.vehicle, vehicleMetadata, assetBase)
+      : null;
+    if (this.vehicleMarker) {
+      this.vehicleMarker.name = `map-event-vehicle-${this.vehicle}`;
+      this.group.add(this.vehicleMarker);
+    }
   }
 
   public update(now: number): boolean {
@@ -4404,6 +4456,26 @@ class GenericMapEventReplayRun implements MapReplayRun {
     this.beacon.scale.setScalar(MathUtils.lerp(38, 92, easeOutCubic(progress)));
     setMaterialOpacity(this.ring.material, MathUtils.lerp(0.62, 0, progress));
     setMaterialOpacity(this.beacon.material, MathUtils.lerp(0.48, 0, progress));
+
+    if (this.vehicleMarker) {
+      const routePose = this.route.length > 1 ? sampleWorldEventRoute(this.route, progress) : null;
+      const position = routePose?.position.clone() ?? this.sourcePosition.clone();
+      if (this.airborne && !routePose) {
+        const forward = replayEventForward(this.event);
+        const travel = Math.max(280, (this.semanticType === "cargo_plane" ? 0.34 : 0.16) * (this.terrain.worldSize || 4500));
+        position.addScaledVector(forward, (progress - 0.5) * travel);
+        position.y = Math.max(position.y, this.target.y + Math.max(130, (this.terrain.worldSize || 4500) * 0.055));
+      } else if (!this.airborne) {
+        position.y = Math.max(position.y, this.target.y);
+      }
+      this.vehicleMarker.position.copy(position);
+      if (routePose) {
+        this.vehicleMarker.quaternion.copy(routePose.rotation);
+      } else {
+        this.vehicleMarker.rotation.set(0, replayEventHeading(this.event), 0);
+      }
+      this.vehicleMarker.visible = true;
+    }
     return true;
   }
 
@@ -4571,25 +4643,102 @@ function frameQuaternion(frame: RuntimeVisualFrame): Quaternion {
 }
 
 function replayVehicleForEvent(event: MapReplayEvent): string {
-  const explicit = String(event.vehicle || "").trim().toLowerCase();
-  if (explicit) {
-    return explicit;
-  }
+  const explicit = normalizeReplayVehicle(String(event.vehicle || ""));
+  if (explicit) return explicit;
 
-  const delivery = String(event.payload?.delivery || "").trim().toLowerCase();
-  if (delivery === "cargo_plane_jet" || delivery === "jet" || delivery === "f15") {
-    return "f15";
-  }
-  if (delivery.includes("cargo_plane")) {
-    return "cargo_plane";
-  }
-  if (delivery.includes("attack_heli") || delivery.includes("helicopter")) {
-    return "attack_heli";
-  }
-  if (delivery.includes("drone")) {
-    return "drone";
-  }
+  const assetKey = normalizeReplayVehicle(String(event.payload?.assetKey || ""));
+  if (assetKey) return assetKey;
+
+  const delivery = normalizeReplayVehicle(String(event.payload?.delivery || ""));
+  if (delivery) return delivery;
+
+  return normalizeReplayVehicle(replaySemanticEventType(event));
+}
+
+function normalizeReplayVehicle(value: string): string {
+  const normalized = value.trim().toLowerCase().replace(/^rust:/, "");
+  if (!normalized) return "";
+  if (normalized === "cargo_plane_jet" || normalized === "jet" || normalized === "f15" || normalized.includes("f15")) return "f15";
+  if (normalized === "patrol_heli" || normalized.includes("patrol_helicopter") || normalized.includes("attack_heli") || normalized.includes("attackhelicopter")) return "attack_heli";
+  if (normalized === "ch47" || normalized.includes("ch47")) return "chinook";
+  if (normalized.includes("cargo_ship") || normalized.includes("cargoship")) return "cargo_ship";
+  if (normalized.includes("bradley")) return "bradley";
+  if (normalized.includes("cargo_plane")) return "cargo_plane";
+  if (normalized.includes("drone")) return "drone";
   return "";
+}
+
+function replaySemanticEventType(event: MapReplayEvent): string {
+  const payloadType = String(event.payload?.eventType || "").trim().toLowerCase();
+  return payloadType || String(event.eventType || "").trim().toLowerCase();
+}
+
+function replayEventIsWorldVehicle(event: MapReplayEvent): boolean {
+  return String(event.payload?.kind || "").toLowerCase() === "world_vehicle";
+}
+
+function replayVehicleHasViewerModel(vehicle: string): boolean {
+  return ["f15", "a10", "attack_heli", "cargo_plane", "drone", "chinook", "bradley", "cargo_ship"].includes(vehicle);
+}
+
+function replayVehicleIsAirborne(vehicle: string): boolean {
+  return ["f15", "a10", "attack_heli", "cargo_plane", "drone", "chinook"].includes(vehicle);
+}
+
+function replayEventHeading(event: MapReplayEvent): number {
+  const rotation = event.payload?.rotation;
+  if (rotation && typeof rotation === "object") {
+    const x = Number((rotation as Record<string, unknown>).x);
+    const y = Number((rotation as Record<string, unknown>).y);
+    const z = Number((rotation as Record<string, unknown>).z);
+    const w = Number((rotation as Record<string, unknown>).w);
+    if ([x, y, z, w].every(Number.isFinite)) {
+      const heading = unityQuaternionValueToThreeQuaternion({ x, y, z, w });
+      const forward = new Vector3(0, 0, -1).applyQuaternion(heading);
+      return Math.atan2(-forward.x, -forward.z);
+    }
+  }
+  return 0;
+}
+
+function replayEventForward(event: MapReplayEvent): Vector3 {
+  const heading = replayEventHeading(event);
+  return new Vector3(-Math.sin(heading), 0, -Math.cos(heading)).normalize();
+}
+
+function replayWorldEventRoute(event: MapReplayEvent): WorldEventRouteSample[] {
+  const rawRoute = event.payload?.route;
+  if (!Array.isArray(rawRoute)) return [];
+
+  return rawRoute.flatMap((sample) => {
+    if (!Array.isArray(sample) || sample.length < 8) return [];
+    const [timestampMs, x, y, z, qx, qy, qz, qw] = sample.map(Number);
+    if (![timestampMs, x, y, z, qx, qy, qz, qw].every(Number.isFinite)) return [];
+    return [{
+      timestampMs,
+      position: rustWorldToViewerPosition(x, y, z),
+      rotation: unityQuaternionValueToThreeQuaternion({ x: qx, y: qy, z: qz, w: qw }).normalize(),
+    }];
+  }).sort((left, right) => left.timestampMs - right.timestampMs);
+}
+
+function sampleWorldEventRoute(route: WorldEventRouteSample[], progress: number): { position: Vector3; rotation: Quaternion } | null {
+  if (route.length === 0) return null;
+  if (route.length === 1) return { position: route[0]!.position.clone(), rotation: route[0]!.rotation.clone() };
+  const scaled = MathUtils.clamp(progress, 0, 1) * (route.length - 1);
+  const index = Math.min(route.length - 2, Math.floor(scaled));
+  const next = route[index + 1]!;
+  const current = route[index]!;
+  const fraction = scaled - index;
+  return {
+    position: current.position.clone().lerp(next.position, fraction),
+    rotation: current.rotation.clone().slerp(next.rotation, fraction),
+  };
+}
+
+function replayAirdropCarrierEvent(event: MapReplayEvent, eventsByKey: Map<string, MapReplayEvent>): MapReplayEvent | null {
+  const carrierKey = String(event.payload?.carrierEntityKey || "").trim();
+  return carrierKey ? eventsByKey.get(carrierKey) || null : null;
 }
 
 function lastFrameTime(frames: RuntimeVisualFrame[]): number {
@@ -4609,7 +4758,20 @@ function replayEventPosition(event: MapReplayEvent, terrain: TerrainPayload): Ve
 }
 
 function replayEventColor(event: MapReplayEvent): number {
-  const type = String(event.eventType || "").toLowerCase();
+  const type = replaySemanticEventType(event);
+  const vehicle = replayVehicleForEvent(event);
+  if (vehicle === "attack_heli") {
+    return 0xff8766;
+  }
+  if (vehicle === "chinook") {
+    return 0xdac78c;
+  }
+  if (vehicle === "bradley") {
+    return 0x94c77c;
+  }
+  if (vehicle === "cargo_plane" || vehicle === "cargo_ship") {
+    return 0xd5ecff;
+  }
   if (type.includes("oil")) {
     return 0x5fb4ff;
   }
@@ -4747,6 +4909,87 @@ function prepareLoadedAircraftForMap(object: Object3D): void {
       child.receiveShadow = false;
     }
   });
+}
+
+const worldEventModelCache = new Map<string, Promise<Object3D>>();
+const worldEventDraco = new DRACOLoader();
+worldEventDraco.setDecoderPath(DRACO_DECODER_URL);
+const worldEventModelLoader = new GLTFLoader();
+worldEventModelLoader.setDRACOLoader(worldEventDraco);
+worldEventModelLoader.setMeshoptDecoder(MeshoptDecoder);
+
+function worldEventModelUrl(assetBase: string, file: string): string {
+  const base = new URL(assetBase || "/assets/", window.location.href);
+  return new URL(`media/models/world-events/${file}`, base).href;
+}
+
+function markSharedWorldEventModel(object: Object3D): void {
+  object.traverse((child) => {
+    child.userData.preserveSharedVehicleAsset = true;
+    if (child instanceof Mesh) {
+      child.castShadow = false;
+      child.receiveShadow = false;
+    }
+  });
+}
+
+async function loadWorldEventModel(assetBase: string, file: string): Promise<Object3D> {
+  const url = worldEventModelUrl(assetBase, file);
+  let cached = worldEventModelCache.get(url);
+  if (!cached) {
+    cached = worldEventModelLoader.loadAsync(url).then((gltf) => {
+      gltf.scene.updateMatrixWorld(true);
+      const bounds = new Box3().setFromObject(gltf.scene);
+      if (!bounds.isEmpty()) {
+        const center = new Vector3();
+        bounds.getCenter(center);
+        gltf.scene.position.sub(center);
+      }
+      markSharedWorldEventModel(gltf.scene);
+      return gltf.scene;
+    });
+    worldEventModelCache.set(url, cached);
+  }
+  return cached;
+}
+
+function createAirdropAssetMarker(
+  assetBase: string,
+  file: string,
+  name: string,
+  fallback: Mesh,
+): Group {
+  const marker = new Group();
+  marker.name = name;
+  marker.add(fallback);
+  void loadWorldEventModel(assetBase, file).then((template) => {
+    if (!marker.parent) return;
+    const asset = template.clone(true);
+    marker.remove(fallback);
+    disposeObjectTree(fallback);
+    marker.add(asset);
+  }).catch((error) => {
+    console.info(`Raidlands could not load RustRelay world-event asset ${file}.`, error);
+  });
+  return marker;
+}
+
+function createAirdropPackageMarker(assetBase: string, index: number): Group {
+  const fallback = new Mesh(
+    new BoxGeometry(11, 10, 6),
+    new MeshStandardMaterial({ color: 0x8a5f36, roughness: 0.82, metalness: 0.05 }),
+  );
+  fallback.name = "airdrop-package-fallback";
+  return createAirdropAssetMarker(assetBase, "supply_drop.glb", `airdrop-replay-package-${index}`, fallback);
+}
+
+function createAirdropParachuteMarker(assetBase: string, index: number): Group {
+  const fallback = new Mesh(
+    new ConeGeometry(6, 3, 24, 1, true),
+    new MeshStandardMaterial({ color: 0xf5ead8, roughness: 0.74, transparent: true, opacity: 0.88, side: DoubleSide }),
+  );
+  fallback.name = "airdrop-parachute-fallback";
+  return createAirdropAssetMarker(assetBase, "parachute_supplydrop.glb", `airdrop-replay-parachute-${index}`, fallback);
 }
 
 function createPayloadPrimitive(payloadName: string, impactRadius: number): Mesh {
@@ -8018,7 +8261,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       });
     } else if (navigationTab === "events") {
       recentUniqueNavigationEvents(navigationEvents.filter((event) => matches(event.eventType, event.vehicle, event.profileKey))).forEach((event) => {
-        const label = String(event.eventType || "server_event").replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+        const label = replaySemanticEventType(event).replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
         const when = event.occurredAt ? new Date(event.occurredAt).toLocaleString() : "Recent";
         addNavigationButton(label, `${when} · X ${Math.round(event.x)} Z ${Math.round(event.z)}`, () => {
           if (heatmapPlayback) heatmapPlayback.checked = true;
@@ -8672,7 +8915,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
           playbackVirtualFrame = eventFrame;
           if (heatmapFrame) heatmapFrame.value = String(eventFrame);
           showPlaybackFrame(eventFrame);
-          const label = String(event.eventType || "server_event").replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+          const label = replaySemanticEventType(event).replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
           viewer.focusWorldPoint(event.x, Number(event.y) || 0, event.z, label, 110);
           viewer.clearReplayEvents();
           viewer.showReplayEvents([event], 1);

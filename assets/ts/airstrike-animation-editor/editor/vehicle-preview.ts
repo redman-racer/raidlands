@@ -12,12 +12,20 @@ import {
   SphereGeometry,
   Vector3,
 } from "three";
+import { DRACOLoader } from "three/examples/jsm/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/examples/jsm/loaders/GLTFLoader.js";
+import { MeshoptDecoder } from "three/examples/jsm/libs/meshopt_decoder.module.js";
 import { clone as cloneSkinnedScene } from "three/examples/jsm/utils/SkeletonUtils.js";
 import { unityPositionToThreeVector } from "./coordinates";
 import type { VehiclePreviewMetadata, VehiclePreviewMetadataFile } from "../types";
 
 const vehiclePreviewCache = new Map<string, Promise<Object3D>>();
+const DRACO_DECODER_URL = new URL(/* @vite-ignore */ "../../../media/models/draco/", import.meta.url).href;
+const vehiclePreviewDraco = new DRACOLoader();
+vehiclePreviewDraco.setDecoderPath(DRACO_DECODER_URL);
+const vehiclePreviewLoader = new GLTFLoader();
+vehiclePreviewLoader.setDRACOLoader(vehiclePreviewDraco);
+vehiclePreviewLoader.setMeshoptDecoder(MeshoptDecoder);
 
 const DEFAULT_METADATA: VehiclePreviewMetadata = {
   vehicle: "f15",
@@ -108,7 +116,7 @@ function markSharedVehicleAssets(object: Object3D): void {
 async function loadVehiclePreviewTemplate(resolvedUrl: string): Promise<Object3D> {
   let cached = vehiclePreviewCache.get(resolvedUrl);
   if (!cached) {
-    cached = new GLTFLoader().loadAsync(resolvedUrl).then((gltf) => {
+    cached = vehiclePreviewLoader.loadAsync(resolvedUrl).then((gltf) => {
       centerLoadedScene(gltf.scene);
       markSharedVehicleAssets(gltf.scene);
       return gltf.scene;
@@ -179,14 +187,50 @@ function addHelicopterProxy(group: Group, metadata: VehiclePreviewMetadata): voi
   group.add(nose);
 }
 
+function addGroundVehicleProxy(group: Group, metadata: VehiclePreviewMetadata): void {
+  const width = Math.max(metadata.bounds.x, 2.8);
+  const height = Math.max(metadata.bounds.y, 1.8);
+  const length = Math.max(metadata.bounds.z, 4.8);
+  const treadColor = 0x30393a;
+  addBox(group, "ground-hull", [width * 0.72, height * 0.4, length * 0.68], new Vector3(0, height * 0.04, 0), 0x65706a);
+  addBox(group, "ground-tread-left", [width * 0.22, height * 0.28, length * 0.88], new Vector3(-width * 0.37, -height * 0.1, 0), treadColor);
+  addBox(group, "ground-tread-right", [width * 0.22, height * 0.28, length * 0.88], new Vector3(width * 0.37, -height * 0.1, 0), treadColor);
+  addBox(group, "ground-turret", [width * 0.42, height * 0.25, length * 0.28], new Vector3(0, height * 0.3, -length * 0.04), 0x778278);
+  addBox(group, "ground-barrel", [Math.max(width * 0.08, 0.18), Math.max(height * 0.08, 0.16), length * 0.5], new Vector3(0, height * 0.32, -length * 0.34), 0x3b4543);
+}
+
+function addShipProxy(group: Group, metadata: VehiclePreviewMetadata): void {
+  const width = Math.max(metadata.bounds.x, 18);
+  const height = Math.max(metadata.bounds.y, 12);
+  const length = Math.max(metadata.bounds.z, 72);
+  addBox(group, "ship-hull", [width, height * 0.34, length], new Vector3(0, -height * 0.08, 0), 0x4d5d61);
+  addBox(group, "ship-deck", [width * 0.88, height * 0.08, length * 0.82], new Vector3(0, height * 0.14, 0), 0x798080);
+  addBox(group, "ship-bridge", [width * 0.45, height * 0.36, length * 0.2], new Vector3(0, height * 0.36, -length * 0.2), 0x7f8b89);
+  addBox(group, "ship-stack", [width * 0.18, height * 0.46, length * 0.12], new Vector3(0, height * 0.46, length * 0.2), 0x34383b);
+}
+
 export function createVehicleProxy(metadata: VehiclePreviewMetadata, options: { showBounds?: boolean } = {}): Group {
   const group = new Group();
   group.name = `vehicle-proxy:${metadata.vehicle}`;
-  const proxy = metadata.proxy ?? (metadata.vehicle === "drone" ? "drone" : metadata.vehicle === "attack_heli" ? "helicopter" : "plane");
+  const proxy = metadata.proxy ?? (
+    metadata.vehicle === "drone"
+      ? "drone"
+      : metadata.vehicle === "attack_heli" || metadata.vehicle === "chinook"
+        ? "helicopter"
+        : metadata.vehicle === "bradley"
+          ? "ground"
+          : metadata.vehicle === "cargo_ship"
+            ? "ship"
+            : "plane"
+  );
   if (proxy === "drone") {
     addDroneProxy(group, metadata);
   } else if (proxy === "helicopter") {
     addHelicopterProxy(group, metadata);
+  } else if (proxy === "ground") {
+    addGroundVehicleProxy(group, metadata);
+  } else if (proxy === "ship") {
+    addShipProxy(group, metadata);
   } else {
     addPlaneProxy(group, metadata);
   }

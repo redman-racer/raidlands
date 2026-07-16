@@ -257,7 +257,7 @@ export interface VehiclePreviewMetadata {
   bounds: Vector3Value;
   mapDisplaySize?: number;
   visualOriginY?: number;
-  proxy?: "drone" | "plane" | "helicopter";
+  proxy?: "drone" | "plane" | "helicopter" | "ground" | "ship";
   hardpoints: VehicleHardpointMetadata[];
 }
 

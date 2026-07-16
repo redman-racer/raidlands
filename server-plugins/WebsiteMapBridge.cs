@@ -17,12 +17,14 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteMapBridge", "Raidlands", "1.0.14")]
+    [Info("WebsiteMapBridge", "Raidlands", "1.0.18")]
     [Description("Publishes the current RustMapApi map image and sampled terrain to the Raidlands website.")]
     public class WebsiteMapBridge : CovalencePlugin
     {
         [PluginReference] private Plugin RustMapApi;
         [PluginReference] private Plugin Clans;
+        [PluginReference] private Plugin RaidlandsEvents;
+        [PluginReference] private Plugin PortableAirstrikes;
 
         private const string SecretsConfigName = "Secrets.local";
         private const string VipBridgeConfigName = "WebsiteVipBridge";
@@ -33,6 +35,7 @@ namespace Oxide.Plugins
         private Timer autoPublishTimer;
         private Timer playerLocationTimer;
         private Timer environmentTimer;
+        private Timer worldEventTimer;
         private Dictionary<string, string> secrets;
         private string secretsConfigSource;
         private JObject vipBridgeConfig;
@@ -42,6 +45,14 @@ namespace Oxide.Plugins
         private string lastEnvironmentDiagnosticSummary = "awaiting first environment sample";
         private long lastEnvironmentSampleMilliseconds;
         private string lastWeatherOverrideSignature = "";
+        private bool worldEventPublishInFlight;
+        private string lastWorldEventSyncAt = "never";
+        private string lastWorldEventError = "none";
+        private int lastWorldEventAccepted;
+        private int lastWorldEventPayloadBytes;
+        private readonly Dictionary<ulong, TrackedWorldEntity> trackedWorldEntities = new Dictionary<ulong, TrackedWorldEntity>();
+        private readonly Dictionary<ulong, bool> discreteEntityStates = new Dictionary<ulong, bool>();
+        private readonly Dictionary<ulong, AirdropCorrelation> airdropCorrelations = new Dictionary<ulong, AirdropCorrelation>();
         private readonly Dictionary<string, MemberInfo> weatherConVarMemberCache = new Dictionary<string, MemberInfo>(StringComparer.OrdinalIgnoreCase);
 
         private class Configuration
@@ -68,6 +79,13 @@ namespace Oxide.Plugins
             public bool PublishPlayerLocations = true;
             public int PlayerLocationIntervalSeconds = 15;
             public bool PublishReplayEvents = true;
+            public bool PublishRaidlandsEvents = true;
+            public bool PublishWorldEvents = true;
+            public bool PublishDiscreteServerEvents = true;
+            public int WorldEventIntervalSeconds = 5;
+            public int WorldEventRouteMaxSamples = 96;
+            public int WorldEventPayloadMaxBytes = 11500;
+            public float AirdropCarrierSearchRadiusMeters = 600f;
             public bool PublishEnvironment = true;
             public int EnvironmentIntervalSeconds = 30;
         }
@@ -318,6 +336,64 @@ namespace Oxide.Plugins
             public Dictionary<string, object> payload;
         }
 
+        private class ReplayEventSnapshotResponse
+        {
+            public bool ok;
+            public string error;
+            public ReplayEventSnapshotResult events;
+        }
+
+        private class ReplayEventSnapshotResult
+        {
+            public int acceptedEvents;
+        }
+
+        private class WorldEntityDescriptor
+        {
+            public string eventType;
+            public string envelopeType;
+            public string vehicle;
+            public string assetKey;
+        }
+
+        private class WorldRouteSample
+        {
+            public long timestampMilliseconds;
+            public Vector3 position;
+            public Quaternion rotation;
+        }
+
+        private class TrackedWorldEntity
+        {
+            public ulong networkId;
+            public string eventKey;
+            public string prefab;
+            public string state;
+            public string spawnedAt;
+            public string sampledAt;
+            public string endedAt;
+            public string endReason;
+            public string monumentContext;
+            public WorldEntityDescriptor descriptor;
+            public BaseEntity entity;
+            public Vector3 lastPosition;
+            public DateTime lastSampleUtc;
+            public Vector3 velocity;
+            public bool dirty;
+            public int revision;
+            public readonly List<WorldRouteSample> route = new List<WorldRouteSample>();
+        }
+
+        private class AirdropCorrelation
+        {
+            public string carrierEntityKey;
+            public string carrierPrefab;
+            public string vehicle;
+            public string assetKey;
+            public string releasedAt;
+            public Vector3 releasePosition;
+        }
+
         protected override void LoadDefaultConfig()
         {
             PrintWarning("Creating default WebsiteMapBridge config.");
@@ -343,6 +419,7 @@ namespace Oxide.Plugins
             }
             StartPlayerLocationPublisher();
             StartEnvironmentPublisher();
+            StartWorldEventPublisher();
         }
 
         private void OnEntitySpawned(BaseNetworkable entity)
@@ -354,12 +431,46 @@ namespace Oxide.Plugins
 
             var baseEntity = entity as BaseEntity;
             var prefab = baseEntity == null ? "" : (baseEntity.PrefabName ?? baseEntity.ShortPrefabName ?? "");
-            if (prefab.IndexOf("supply_drop", StringComparison.OrdinalIgnoreCase) < 0)
+            if (prefab.IndexOf("supply_drop", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                timer.Once(0.25f, () => PublishAirdropReplayEvent(baseEntity, false));
+            }
+
+            timer.Once(0.5f, () => TryTrackWorldEntity(baseEntity, true));
+        }
+
+        private void OnEntityKill(BaseNetworkable entity)
+        {
+            var baseEntity = entity as BaseEntity;
+            if (baseEntity == null || baseEntity.net == null)
             {
                 return;
             }
 
-            timer.Once(0.25f, () => PublishAirdropReplayEvent(baseEntity));
+            EndTrackedWorldEntity(baseEntity.net.ID.Value, "killed_or_despawned");
+            discreteEntityStates.Remove(baseEntity.net.ID.Value);
+            if ((baseEntity.PrefabName ?? baseEntity.ShortPrefabName ?? "").IndexOf("supply_drop", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                airdropCorrelations.Remove(baseEntity.net.ID.Value);
+            }
+        }
+
+        private void OnSupplyDropLanded(SupplyDrop entity)
+        {
+            if (config.PublishReplayEvents && entity != null)
+            {
+                PublishAirdropReplayEvent(entity, true);
+            }
+        }
+
+        private void OnCrateHack(HackableLockedCrate crate)
+        {
+            PublishCrateHackEvent(crate, false);
+        }
+
+        private void OnCrateHackEnd(HackableLockedCrate crate)
+        {
+            PublishCrateHackEvent(crate, true);
         }
 
         private void Unload()
@@ -370,6 +481,11 @@ namespace Oxide.Plugins
             playerLocationTimer = null;
             environmentTimer?.Destroy();
             environmentTimer = null;
+            worldEventTimer?.Destroy();
+            worldEventTimer = null;
+            trackedWorldEntities.Clear();
+            discreteEntityStates.Clear();
+            airdropCorrelations.Clear();
         }
 
         private void OnRustMapApiReady()
@@ -406,7 +522,6 @@ namespace Oxide.Plugins
             PublishMap("manual command", message => ReplyToCommand(arg, message), true, renderName, scale);
         }
 
-        [ConsoleCommand("rl_map_status")]
         private void StatusCommand(ConsoleSystem.Arg arg)
         {
             if (!CanUsePublishCommand(arg))
@@ -415,7 +530,7 @@ namespace Oxide.Plugins
                 return;
             }
 
-            ReplyToCommand(arg, "WebsiteMapBridge v1.0.14 status requested; reading cached diagnostics.");
+            ReplyToCommand(arg, "WebsiteMapBridge v1.0.18 status requested; reading cached diagnostics.");
 
             try
             {
@@ -425,7 +540,7 @@ namespace Oxide.Plugins
 
                 ReplyToCommand(
                     arg,
-                    $"WebsiteMapBridge v1.0.14 status: server={ResolveServerId()}, api={apiState}, ready=not-probed, secret={secretState}, render={config.RenderName}, textureRender={config.TextureRenderName}, autoPublishReady={config.AutoPublishOnRustMapApiReady}, autoPublishInit={config.AutoPublishOnServerInitialized}, terrainEnabled={config.PublishTerrain}, terrainResolution={config.TerrainSampleResolution}, monumentsEnabled={config.IncludeMonuments}, powerLines=enabled, skybox={config.PublishSkybox}/{config.SkyboxImagePath}, playerLocations={config.PublishPlayerLocations}/{config.PlayerLocationIntervalSeconds}s, environment={config.PublishEnvironment}/{config.EnvironmentIntervalSeconds}s last={FirstNonEmpty(lastEnvironmentSyncAt, "never")}, sampleMs={lastEnvironmentSampleMilliseconds}, sampled=[{lastEnvironmentDiagnosticSummary}], replayEvents={config.PublishReplayEvents}, heightMap={heightMapState}, lastWipe={lastPublishedWipeKey}."
+                    $"WebsiteMapBridge v1.0.18 status: server={ResolveServerId()}, api={apiState}, ready=not-probed, secret={secretState}, render={config.RenderName}, textureRender={config.TextureRenderName}, autoPublishReady={config.AutoPublishOnRustMapApiReady}, autoPublishInit={config.AutoPublishOnServerInitialized}, terrainEnabled={config.PublishTerrain}, terrainResolution={config.TerrainSampleResolution}, monumentsEnabled={config.IncludeMonuments}, powerLines=enabled, skybox={config.PublishSkybox}/{config.SkyboxImagePath}, playerLocations={config.PublishPlayerLocations}/{config.PlayerLocationIntervalSeconds}s, raidlandsEvents={config.PublishRaidlandsEvents}/{(RaidlandsEvents != null && RaidlandsEvents.IsLoaded ? "ready" : "missing")}, worldEvents={config.PublishWorldEvents}/{config.WorldEventIntervalSeconds}s active={trackedWorldEntities.Values.Count(entry => entry.state != "ended")} last={lastWorldEventSyncAt} accepted={lastWorldEventAccepted} error={lastWorldEventError}, environment={config.PublishEnvironment}/{config.EnvironmentIntervalSeconds}s last={FirstNonEmpty(lastEnvironmentSyncAt, "never")}, sampleMs={lastEnvironmentSampleMilliseconds}, sampled=[{lastEnvironmentDiagnosticSummary}], replayEvents={config.PublishReplayEvents}, heightMap={heightMapState}, lastWipe={lastPublishedWipeKey}."
                 );
             }
             catch (Exception ex)
@@ -435,7 +550,19 @@ namespace Oxide.Plugins
             }
         }
 
-        [ConsoleCommand("rl_map_locations_sync")]
+        [Command("websitemapbridge.status", "rl_map_status")]
+        private void CovalenceStatusCommand(IPlayer caller, string command, string[] args)
+        {
+            if (!CanUseCovalenceCommand(caller))
+            {
+                caller?.Reply("You must be server console or an admin to inspect the website map bridge.");
+                return;
+            }
+
+            Puts($"Covalence command received: {command}");
+            StatusCommand(null);
+        }
+
         private void PlayerLocationsSyncCommand(ConsoleSystem.Arg arg)
         {
             if (!CanUsePublishCommand(arg))
@@ -446,6 +573,50 @@ namespace Oxide.Plugins
 
             ReplyToCommand(arg, "Website player location sync requested.");
             PublishPlayerLocations(message => ReplyToCommand(arg, message), true);
+        }
+
+        [Command("websitemapbridge.locations_sync", "rl_map_locations_sync")]
+        private void CovalencePlayerLocationsSyncCommand(IPlayer caller, string command, string[] args)
+        {
+            if (!CanUseCovalenceCommand(caller))
+            {
+                caller?.Reply("You must be server console or an admin to sync website player locations.");
+                return;
+            }
+
+            Puts($"Covalence command received: {command}");
+            PlayerLocationsSyncCommand(null);
+        }
+
+        [Command("websitemapbridge.events_status", "rl_map_events_status")]
+        private void CovalenceEventsStatusCommand(IPlayer caller, string command, string[] args)
+        {
+            if (!CanUseCovalenceCommand(caller))
+            {
+                caller?.Reply("You must be server console or an admin to inspect website map events.");
+                return;
+            }
+
+            var message = BuildWorldEventStatus();
+            Puts(message);
+            caller?.Reply(message);
+        }
+
+        [Command("websitemapbridge.events_sync", "rl_map_events_sync")]
+        private void CovalenceEventsSyncCommand(IPlayer caller, string command, string[] args)
+        {
+            if (!CanUseCovalenceCommand(caller))
+            {
+                caller?.Reply("You must be server console or an admin to sync website map events.");
+                return;
+            }
+
+            Puts($"Covalence command received: {command}");
+            SampleAndPublishWorldEvents(message =>
+            {
+                Puts(message);
+                caller?.Reply(message);
+            }, true);
         }
 
         [ConsoleCommand("rl_map_environment_sync")]
@@ -477,6 +648,11 @@ namespace Oxide.Plugins
             }
 
             return arg.Connection.authLevel >= 2;
+        }
+
+        private bool CanUseCovalenceCommand(IPlayer caller)
+        {
+            return caller == null || caller.IsServer || caller.IsAdmin;
         }
 
         private void ReplyToCommand(ConsoleSystem.Arg arg, string message)
@@ -521,7 +697,7 @@ namespace Oxide.Plugins
             playerLocationTimer?.Destroy();
             playerLocationTimer = null;
 
-            if (!config.PublishPlayerLocations)
+            if (!config.PublishPlayerLocations && !config.PublishRaidlandsEvents)
             {
                 return;
             }
@@ -544,6 +720,22 @@ namespace Oxide.Plugins
             var interval = Math.Max(30, config.EnvironmentIntervalSeconds);
             environmentTimer = timer.Every(interval, () => PublishEnvironment(message => Puts(message), false));
             timer.Once(Math.Max(3, Math.Min(10, interval)), () => PublishEnvironment(message => Puts(message), false));
+        }
+
+        private void StartWorldEventPublisher()
+        {
+            worldEventTimer?.Destroy();
+            worldEventTimer = null;
+
+            if (!config.PublishReplayEvents || (!config.PublishWorldEvents && !config.PublishDiscreteServerEvents))
+            {
+                return;
+            }
+
+            DiscoverWorldEntities();
+            var interval = Math.Max(3, config.WorldEventIntervalSeconds);
+            worldEventTimer = timer.Every(interval, () => SampleAndPublishWorldEvents(message => Puts(message), false));
+            timer.Once(Math.Max(2, Math.Min(5, interval)), () => SampleAndPublishWorldEvents(message => Puts(message), false));
         }
 
         private void PublishEnvironment(Action<string> reply, bool verbose)
@@ -1510,6 +1702,13 @@ namespace Oxide.Plugins
                 return;
             }
 
+            PublishAnnouncedRaidlandsEvents(reply, verbose);
+
+            if (!config.PublishPlayerLocations)
+            {
+                return;
+            }
+
             var players = new List<PlayerLocationPayload>();
 
             foreach (var player in BasePlayer.activePlayerList)
@@ -1588,48 +1787,889 @@ namespace Oxide.Plugins
             });
         }
 
-        private void PublishAirdropReplayEvent(BaseEntity entity)
+        private void DiscoverWorldEntities()
         {
-            var secret = ResolveBridgeSharedSecret();
-            if (entity == null || entity.IsDestroyed || string.IsNullOrWhiteSpace(secret))
+            if (!config.PublishWorldEvents || BaseNetworkable.serverEntities == null)
             {
                 return;
             }
 
-            var position = entity.transform.position;
-            var payload = new ReplayEventSnapshotPayload
+            foreach (var networkable in BaseNetworkable.serverEntities.ToList())
+            {
+                TryTrackWorldEntity(networkable as BaseEntity, false);
+            }
+        }
+
+        private void TryTrackWorldEntity(BaseEntity entity, bool spawnedNow)
+        {
+            if (!config.PublishReplayEvents || !config.PublishWorldEvents || entity == null || entity.IsDestroyed || entity.net == null)
+            {
+                return;
+            }
+
+            WorldEntityDescriptor descriptor;
+            if (!TryDescribeWorldEntity(entity, out descriptor) || IsPortableAirstrikeCarrier(entity.net.ID.Value))
+            {
+                trackedWorldEntities.Remove(entity.net.ID.Value);
+                return;
+            }
+
+            TrackedWorldEntity tracked;
+            var newlyTracked = false;
+            if (!trackedWorldEntities.TryGetValue(entity.net.ID.Value, out tracked))
+            {
+                var now = DateTime.UtcNow;
+                tracked = new TrackedWorldEntity
+                {
+                    networkId = entity.net.ID.Value,
+                    eventKey = "world-entity:" + descriptor.eventType + ":" + entity.net.ID.Value.ToString(CultureInfo.InvariantCulture),
+                    prefab = entity.PrefabName ?? entity.ShortPrefabName ?? "",
+                    state = spawnedNow ? "spawned" : "active",
+                    spawnedAt = now.ToString("o", CultureInfo.InvariantCulture),
+                    sampledAt = now.ToString("o", CultureInfo.InvariantCulture),
+                    descriptor = descriptor,
+                    entity = entity,
+                    monumentContext = FindNearestMonumentContext(entity.transform.position),
+                    lastPosition = entity.transform.position,
+                    lastSampleUtc = now,
+                    dirty = true
+                };
+                trackedWorldEntities[tracked.networkId] = tracked;
+                newlyTracked = true;
+                if (spawnedNow && config.PublishDiscreteServerEvents && descriptor.eventType == "ch47" && tracked.monumentContext.IndexOf("oil", StringComparison.OrdinalIgnoreCase) >= 0)
+                {
+                    PublishDiscreteReplayEvent(
+                        "oilrig-call:" + tracked.networkId.ToString(CultureInfo.InvariantCulture),
+                        "oilrig_call",
+                        entity.transform.position,
+                        "ch47",
+                        new Dictionary<string, object>
+                        {
+                            ["kind"] = "server_event",
+                            ["eventType"] = "oilrig_call",
+                            ["state"] = "called",
+                            ["networkId"] = tracked.networkId.ToString(CultureInfo.InvariantCulture),
+                            ["prefab"] = tracked.prefab,
+                            ["assetKey"] = descriptor.assetKey,
+                            ["monument"] = tracked.monumentContext
+                        });
+                }
+            }
+            else
+            {
+                tracked.entity = entity;
+                tracked.descriptor = descriptor;
+                tracked.prefab = entity.PrefabName ?? entity.ShortPrefabName ?? tracked.prefab;
+            }
+
+            if (newlyTracked)
+            {
+                SampleTrackedWorldEntity(tracked, DateTime.UtcNow);
+            }
+        }
+
+        private bool TryDescribeWorldEntity(BaseEntity entity, out WorldEntityDescriptor descriptor)
+        {
+            descriptor = null;
+            if (entity == null)
+            {
+                return false;
+            }
+
+            var prefab = (entity.PrefabName ?? entity.ShortPrefabName ?? "").ToLowerInvariant();
+            var typeName = entity.GetType().Name.ToLowerInvariant();
+
+            if (entity is BradleyAPC || prefab.Contains("bradleyapc") || prefab.Contains("m2bradley"))
+            {
+                descriptor = DescribeWorldEntity("bradley", "server_event", "bradley", "rust:bradley_apc");
+            }
+            else if (entity is PatrolHelicopter || prefab.Contains("patrolhelicopter") || prefab.Contains("patrol helicopter"))
+            {
+                descriptor = DescribeWorldEntity("patrol_heli", "server_event", "patrol_heli", "rust:patrol_helicopter");
+            }
+            else if (typeName == "f15" || prefab.Contains("/f15/") || prefab.Contains("f15e.prefab"))
+            {
+                descriptor = DescribeWorldEntity("f15", "server_event", "f15", "rust:f15");
+            }
+            else if (entity is CargoPlane || prefab.Contains("cargo_plane"))
+            {
+                descriptor = DescribeWorldEntity("cargo_plane", "server_event", "cargo_plane", "rust:cargo_plane");
+            }
+            else if (typeName.Contains("ch47") || prefab.Contains("/ch47/") || prefab.Contains("ch47scientists"))
+            {
+                descriptor = DescribeWorldEntity("ch47", "server_event", "ch47", "rust:ch47");
+            }
+            else if (entity is CargoShip || prefab.Contains("cargoship"))
+            {
+                descriptor = DescribeWorldEntity("cargo_ship", "cargo_ship", "cargo_ship", "rust:cargo_ship");
+            }
+
+            return descriptor != null;
+        }
+
+        private WorldEntityDescriptor DescribeWorldEntity(string eventType, string envelopeType, string vehicle, string assetKey)
+        {
+            return new WorldEntityDescriptor
+            {
+                eventType = eventType,
+                envelopeType = envelopeType,
+                vehicle = vehicle,
+                assetKey = assetKey
+            };
+        }
+
+        private bool IsPortableAirstrikeCarrier(ulong networkId)
+        {
+            if (networkId == 0 || PortableAirstrikes == null || !PortableAirstrikes.IsLoaded)
+            {
+                return false;
+            }
+
+            try
+            {
+                var result = PortableAirstrikes.Call("API_IsWebsiteReplayCarrier", networkId);
+                return result is bool && (bool)result;
+            }
+            catch
+            {
+                return false;
+            }
+        }
+
+        private void SampleAndPublishWorldEvents(Action<string> reply, bool verbose)
+        {
+            if (!config.PublishReplayEvents || (!config.PublishWorldEvents && !config.PublishDiscreteServerEvents))
+            {
+                if (verbose)
+                {
+                    reply?.Invoke("Website world-event publishing is disabled.");
+                }
+                return;
+            }
+
+            DiscoverWorldEntities();
+            if (config.PublishDiscreteServerEvents)
+            {
+                SampleDiscreteEntityStates();
+            }
+
+            var now = DateTime.UtcNow;
+            foreach (var tracked in trackedWorldEntities.Values.ToList())
+            {
+                if (tracked.state == "ended")
+                {
+                    continue;
+                }
+
+                if (tracked.entity == null || tracked.entity.IsDestroyed || tracked.entity.net == null)
+                {
+                    EndTrackedWorldEntity(tracked.networkId, "missing_from_server");
+                    continue;
+                }
+
+                if (IsPortableAirstrikeCarrier(tracked.networkId))
+                {
+                    trackedWorldEntities.Remove(tracked.networkId);
+                    continue;
+                }
+
+                SampleTrackedWorldEntity(tracked, now);
+            }
+
+            PublishTrackedWorldEntities(reply, verbose);
+        }
+
+        private void SampleTrackedWorldEntity(TrackedWorldEntity tracked, DateTime now)
+        {
+            if (tracked == null || tracked.entity == null || tracked.entity.IsDestroyed)
+            {
+                return;
+            }
+
+            var position = tracked.entity.transform.position;
+            var elapsed = Math.Max(0.001, (now - tracked.lastSampleUtc).TotalSeconds);
+            tracked.velocity = (position - tracked.lastPosition) / (float)elapsed;
+            tracked.lastPosition = position;
+            tracked.lastSampleUtc = now;
+            tracked.sampledAt = now.ToString("o", CultureInfo.InvariantCulture);
+            tracked.route.Add(new WorldRouteSample
+            {
+                timestampMilliseconds = new DateTimeOffset(now).ToUnixTimeMilliseconds(),
+                position = position,
+                rotation = tracked.entity.transform.rotation
+            });
+            CompactWorldRoute(tracked.route);
+            tracked.dirty = true;
+            tracked.revision++;
+        }
+
+        private void CompactWorldRoute(List<WorldRouteSample> route)
+        {
+            var maximum = Math.Max(12, Math.Min(160, config.WorldEventRouteMaxSamples));
+            if (route == null || route.Count <= maximum)
+            {
+                return;
+            }
+
+            var recentCount = Math.Min(24, maximum / 2);
+            var recentStart = Math.Max(0, route.Count - recentCount);
+            var stride = 2;
+            List<WorldRouteSample> compacted;
+            do
+            {
+                compacted = new List<WorldRouteSample>();
+                for (var index = 0; index < recentStart; index += stride)
+                {
+                    compacted.Add(route[index]);
+                }
+                for (var index = recentStart; index < route.Count; index++)
+                {
+                    compacted.Add(route[index]);
+                }
+                stride++;
+            }
+            while (compacted.Count > maximum && stride < 32);
+
+            route.Clear();
+            route.AddRange(compacted.Take(maximum));
+        }
+
+        private void EndTrackedWorldEntity(ulong networkId, string reason)
+        {
+            TrackedWorldEntity tracked;
+            if (!trackedWorldEntities.TryGetValue(networkId, out tracked) || tracked.state == "ended")
+            {
+                return;
+            }
+
+            var now = DateTime.UtcNow;
+            if (tracked.entity != null && !tracked.entity.IsDestroyed)
+            {
+                SampleTrackedWorldEntity(tracked, now);
+            }
+            tracked.state = "ended";
+            tracked.endedAt = now.ToString("o", CultureInfo.InvariantCulture);
+            tracked.sampledAt = tracked.endedAt;
+            tracked.endReason = string.IsNullOrWhiteSpace(reason) ? "ended" : reason;
+            tracked.dirty = true;
+            tracked.revision++;
+        }
+
+        private void PublishTrackedWorldEntities(Action<string> reply, bool verbose)
+        {
+            if (worldEventPublishInFlight)
+            {
+                if (verbose)
+                {
+                    reply?.Invoke("Website world-event sync is already in flight.");
+                }
+                return;
+            }
+
+            var secret = ResolveBridgeSharedSecret();
+            if (string.IsNullOrWhiteSpace(secret))
+            {
+                lastWorldEventError = "shared secret missing";
+                if (verbose)
+                {
+                    reply?.Invoke("Cannot sync website world events because the bridge SharedSecret is empty.");
+                }
+                return;
+            }
+
+            var trackedToPublish = trackedWorldEntities.Values.Where(entry => entry.dirty).Take(250).ToList();
+            if (trackedToPublish.Count == 0)
+            {
+                if (verbose)
+                {
+                    reply?.Invoke("Website world-event sync found no changed tracked entities. " + BuildWorldEventStatus());
+                }
+                return;
+            }
+
+            var events = trackedToPublish.Select(CreateTrackedWorldReplayEvent).Where(entry => entry != null).ToList();
+            if (events.Count == 0)
+            {
+                return;
+            }
+
+            var snapshot = new ReplayEventSnapshotPayload
             {
                 server_id = ResolveServerId(),
                 wipe_key = ResolveWipeKey(),
-                events = new List<ReplayEventPayload>
-                {
-                    new ReplayEventPayload
-                    {
-                        event_key = "airdrop:" + entity.net.ID.Value + ":" + DateTimeOffset.UtcNow.ToUnixTimeSeconds().ToString(),
-                        event_type = "airdrop",
-                        occurred_at = DateTime.UtcNow.ToString("o"),
-                        x = (float)Math.Round(position.x, 3),
-                        y = (float)Math.Round(position.y, 3),
-                        z = (float)Math.Round(position.z, 3),
-                        vehicle = "cargo_plane",
-                        payload = new Dictionary<string, object>
-                        {
-                            ["prefab"] = entity.PrefabName ?? entity.ShortPrefabName ?? "",
-                            ["networkId"] = entity.net.ID.Value.ToString()
-                        }
-                    }
-                }
+                events = events
             };
-            var body = JsonConvert.SerializeObject(payload);
+            var body = JsonConvert.SerializeObject(snapshot);
+            var publishedRevisions = trackedToPublish.ToDictionary(entry => entry.networkId, entry => entry.revision);
+            lastWorldEventPayloadBytes = Encoding.UTF8.GetByteCount(body);
             var url = $"{TrimSlash(ResolveApiBaseUrl())}/api/server/map-replay-events-snapshot.php";
-
+            worldEventPublishInFlight = true;
             SendPost(url, body, (code, response) =>
             {
-                if (!IsSuccess(code, response, out var requestError))
+                worldEventPublishInFlight = false;
+                int accepted;
+                string requestError;
+                if (!TryValidateReplayEventResponse(code, response, events.Count, out accepted, out requestError))
                 {
-                    PrintWarning("Website airdrop replay event post failed: " + requestError);
+                    lastWorldEventAccepted = accepted;
+                    lastWorldEventError = requestError;
+                    if (verbose)
+                    {
+                        reply?.Invoke("Website world-event sync failed: " + requestError);
+                    }
+                    return;
+                }
+
+                lastWorldEventAccepted = accepted;
+                lastWorldEventError = "none";
+                lastWorldEventSyncAt = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
+                foreach (var tracked in trackedToPublish)
+                {
+                    int publishedRevision;
+                    if (!publishedRevisions.TryGetValue(tracked.networkId, out publishedRevision) || tracked.revision != publishedRevision)
+                    {
+                        continue;
+                    }
+                    tracked.dirty = false;
+                    if (tracked.state == "spawned")
+                    {
+                        tracked.state = "active";
+                        tracked.dirty = true;
+                        tracked.revision++;
+                    }
+                    else if (tracked.state == "ended")
+                    {
+                        trackedWorldEntities.Remove(tracked.networkId);
+                    }
+                }
+
+                if (verbose)
+                {
+                    reply?.Invoke($"Website world events synced: {accepted}/{events.Count} accepted. {BuildWorldEventStatus()}");
                 }
             });
+        }
+
+        private ReplayEventPayload CreateTrackedWorldReplayEvent(TrackedWorldEntity tracked)
+        {
+            if (tracked == null || tracked.descriptor == null)
+            {
+                return null;
+            }
+
+            var rotation = tracked.entity != null && !tracked.entity.IsDestroyed
+                ? tracked.entity.transform.rotation
+                : tracked.route.Count == 0 ? Quaternion.identity : tracked.route[tracked.route.Count - 1].rotation;
+            var payload = new Dictionary<string, object>
+            {
+                ["kind"] = "world_vehicle",
+                ["eventType"] = tracked.descriptor.eventType,
+                ["entityKey"] = tracked.eventKey,
+                ["networkId"] = tracked.networkId.ToString(CultureInfo.InvariantCulture),
+                ["prefab"] = tracked.prefab ?? "",
+                ["assetKey"] = tracked.descriptor.assetKey,
+                ["state"] = tracked.state,
+                ["spawnedAt"] = tracked.spawnedAt ?? "",
+                ["sampledAt"] = tracked.sampledAt ?? "",
+                ["endedAt"] = tracked.endedAt ?? "",
+                ["endReason"] = tracked.endReason ?? "",
+                ["monument"] = tracked.monumentContext ?? "",
+                ["position"] = VectorPayload(tracked.lastPosition),
+                ["rotation"] = QuaternionPayload(rotation),
+                ["velocity"] = VectorPayload(tracked.velocity),
+                ["routeSchema"] = "unix_ms,x,y,z,qx,qy,qz,qw",
+                ["route"] = tracked.route.Select(RoutePayload).ToList()
+            };
+            EnforceReplayPayloadLimit(payload);
+
+            return new ReplayEventPayload
+            {
+                event_key = tracked.eventKey,
+                event_type = tracked.descriptor.envelopeType,
+                occurred_at = tracked.sampledAt,
+                x = RoundWorldValue(tracked.lastPosition.x),
+                y = RoundWorldValue(tracked.lastPosition.y),
+                z = RoundWorldValue(tracked.lastPosition.z),
+                vehicle = tracked.descriptor.vehicle,
+                payload = payload
+            };
+        }
+
+        private Dictionary<string, object> VectorPayload(Vector3 value)
+        {
+            return new Dictionary<string, object>
+            {
+                ["x"] = RoundWorldValue(value.x),
+                ["y"] = RoundWorldValue(value.y),
+                ["z"] = RoundWorldValue(value.z)
+            };
+        }
+
+        private Dictionary<string, object> QuaternionPayload(Quaternion value)
+        {
+            return new Dictionary<string, object>
+            {
+                ["x"] = RoundWorldValue(value.x),
+                ["y"] = RoundWorldValue(value.y),
+                ["z"] = RoundWorldValue(value.z),
+                ["w"] = RoundWorldValue(value.w)
+            };
+        }
+
+        private object[] RoutePayload(WorldRouteSample sample)
+        {
+            return new object[]
+            {
+                sample.timestampMilliseconds,
+                RoundWorldValue(sample.position.x), RoundWorldValue(sample.position.y), RoundWorldValue(sample.position.z),
+                RoundWorldValue(sample.rotation.x), RoundWorldValue(sample.rotation.y), RoundWorldValue(sample.rotation.z), RoundWorldValue(sample.rotation.w)
+            };
+        }
+
+        private float RoundWorldValue(float value)
+        {
+            return (float)Math.Round(value, 3);
+        }
+
+        private void EnforceReplayPayloadLimit(Dictionary<string, object> payload)
+        {
+            var maximumBytes = Math.Max(2000, Math.Min(11900, config.WorldEventPayloadMaxBytes));
+            var route = payload["route"] as List<object[]>;
+            while (route != null && route.Count > 2 && Encoding.UTF8.GetByteCount(JsonConvert.SerializeObject(payload)) > maximumBytes)
+            {
+                route.RemoveAt(route.Count > 24 ? 1 : 0);
+            }
+        }
+
+        private bool TryValidateReplayEventResponse(int code, string response, int expected, out int accepted, out string error)
+        {
+            accepted = 0;
+            if (!IsSuccess(code, response, out error))
+            {
+                return false;
+            }
+
+            try
+            {
+                var result = JsonConvert.DeserializeObject<ReplayEventSnapshotResponse>(response);
+                accepted = result?.events?.acceptedEvents ?? 0;
+                if (result == null || !result.ok)
+                {
+                    error = result?.error ?? "invalid replay response";
+                    return false;
+                }
+                if (expected > 0 && accepted <= 0)
+                {
+                    error = $"HTTP {code} returned success but acceptedEvents=0 for {expected} submitted event(s)";
+                    return false;
+                }
+                if (accepted < expected)
+                {
+                    error = $"website accepted only {accepted}/{expected} submitted event(s)";
+                    return false;
+                }
+                error = "";
+                return true;
+            }
+            catch (Exception ex)
+            {
+                error = "invalid replay response JSON: " + ex.Message;
+                return false;
+            }
+        }
+
+        private string BuildWorldEventStatus()
+        {
+            var counts = trackedWorldEntities.Values
+                .Where(entry => entry.state != "ended" && entry.descriptor != null)
+                .GroupBy(entry => entry.descriptor.vehicle)
+                .OrderBy(group => group.Key)
+                .Select(group => group.Key + "=" + group.Count())
+                .ToArray();
+            var routeSamples = trackedWorldEntities.Values.Sum(entry => entry.route.Count);
+            var assets = trackedWorldEntities.Values
+                .Where(entry => entry.descriptor != null)
+                .Select(entry => entry.descriptor.assetKey)
+                .Distinct()
+                .OrderBy(value => value)
+                .ToArray();
+            return $"WebsiteMapBridge events: enabled={config.PublishWorldEvents}, active={trackedWorldEntities.Values.Count(entry => entry.state != "ended")}, endedPending={trackedWorldEntities.Values.Count(entry => entry.state == "ended")}, counts=[{string.Join(",", counts)}], routeSamples={routeSamples}, assets=[{string.Join(",", assets)}], inFlight={worldEventPublishInFlight}, last={lastWorldEventSyncAt}, accepted={lastWorldEventAccepted}, payloadBytes={lastWorldEventPayloadBytes}, error={lastWorldEventError}.";
+        }
+
+        private void PublishAirdropReplayEvent(BaseEntity entity, bool landed)
+        {
+            var secret = ResolveBridgeSharedSecret();
+            if (entity == null || entity.net == null || string.IsNullOrWhiteSpace(secret))
+            {
+                return;
+            }
+
+            var networkId = entity.net.ID.Value;
+            var position = entity.transform.position;
+            AirdropCorrelation correlation;
+            if (!airdropCorrelations.TryGetValue(networkId, out correlation))
+            {
+                TrackedWorldEntity carrier;
+                TryFindNearestCargoPlane(position, out carrier);
+                correlation = new AirdropCorrelation
+                {
+                    carrierEntityKey = carrier?.eventKey ?? "",
+                    carrierPrefab = carrier?.prefab ?? "",
+                    vehicle = carrier == null ? "" : "cargo_plane",
+                    assetKey = carrier == null ? "rust:supply_drop" : "rust:cargo_plane",
+                    releasedAt = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture),
+                    releasePosition = position
+                };
+                airdropCorrelations[networkId] = correlation;
+            }
+
+            var occurredAt = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
+            var eventPayload = new ReplayEventPayload
+            {
+                event_key = "airdrop:" + networkId.ToString(CultureInfo.InvariantCulture),
+                event_type = "airdrop",
+                occurred_at = occurredAt,
+                x = RoundWorldValue(position.x),
+                y = RoundWorldValue(position.y),
+                z = RoundWorldValue(position.z),
+                vehicle = correlation.vehicle,
+                payload = new Dictionary<string, object>
+                {
+                    ["kind"] = "airdrop",
+                    ["eventType"] = landed ? "airdrop_landed" : "airdrop_released",
+                    ["state"] = landed ? "landed" : "released",
+                    ["prefab"] = entity.PrefabName ?? entity.ShortPrefabName ?? "",
+                    ["assetKey"] = correlation.assetKey,
+                    ["networkId"] = networkId.ToString(CultureInfo.InvariantCulture),
+                    ["dropEntityKey"] = "supply-drop:" + networkId.ToString(CultureInfo.InvariantCulture),
+                    ["carrierEntityKey"] = correlation.carrierEntityKey ?? "",
+                    ["carrierPrefab"] = correlation.carrierPrefab ?? "",
+                    ["releasedAt"] = correlation.releasedAt,
+                    ["releasePosition"] = VectorPayload(correlation.releasePosition),
+                    ["landedAt"] = landed ? occurredAt : "",
+                    ["landingPosition"] = landed ? VectorPayload(position) : null,
+                    ["noPlane"] = string.IsNullOrWhiteSpace(correlation.carrierEntityKey)
+                }
+            };
+            PublishReplayEvents(new List<ReplayEventPayload> { eventPayload }, "airdrop", null, false);
+            if (landed)
+            {
+                airdropCorrelations.Remove(networkId);
+            }
+        }
+
+        private bool TryFindNearestCargoPlane(Vector3 position, out TrackedWorldEntity nearest)
+        {
+            nearest = null;
+            var maximumDistance = Math.Max(50f, config.AirdropCarrierSearchRadiusMeters);
+            var bestDistance = maximumDistance;
+            foreach (var candidate in trackedWorldEntities.Values)
+            {
+                if (candidate.state == "ended" || candidate.descriptor == null || candidate.descriptor.vehicle != "cargo_plane" || IsPortableAirstrikeCarrier(candidate.networkId))
+                {
+                    continue;
+                }
+                var distance = Vector3.Distance(position, candidate.lastPosition);
+                if (distance <= bestDistance)
+                {
+                    bestDistance = distance;
+                    nearest = candidate;
+                }
+            }
+            return nearest != null;
+        }
+
+        private void PublishCrateHackEvent(HackableLockedCrate crate, bool completed)
+        {
+            if (!config.PublishReplayEvents || !config.PublishDiscreteServerEvents || crate == null || crate.net == null)
+            {
+                return;
+            }
+
+            var position = crate.transform.position;
+            var context = FindNearestMonumentContext(position);
+            var eventType = completed ? "crate_hack_complete" : "crate_hack_start";
+            var eventPayload = new Dictionary<string, object>
+            {
+                ["kind"] = "server_event",
+                ["eventType"] = eventType,
+                ["state"] = completed ? "completed" : "active",
+                ["networkId"] = crate.net.ID.Value.ToString(CultureInfo.InvariantCulture),
+                ["prefab"] = crate.PrefabName ?? crate.ShortPrefabName ?? "",
+                ["monument"] = context
+            };
+            PublishDiscreteReplayEvent("crate-hack:" + crate.net.ID.Value.ToString(CultureInfo.InvariantCulture), eventType, position, "", eventPayload);
+
+            if (context.IndexOf("oil", StringComparison.OrdinalIgnoreCase) >= 0)
+            {
+                var oilRigType = completed ? "oilrig_stop" : "oilrig_start";
+                var oilPayload = new Dictionary<string, object>(eventPayload)
+                {
+                    ["eventType"] = oilRigType,
+                    ["sourceEventType"] = eventType
+                };
+                PublishDiscreteReplayEvent("oilrig-activity:" + crate.net.ID.Value.ToString(CultureInfo.InvariantCulture), oilRigType, position, "", oilPayload);
+            }
+        }
+
+        private void SampleDiscreteEntityStates()
+        {
+            if (BaseNetworkable.serverEntities == null)
+            {
+                return;
+            }
+
+            var seen = new HashSet<ulong>();
+            foreach (var networkable in BaseNetworkable.serverEntities.ToList())
+            {
+                var entity = networkable as BaseEntity;
+                if (entity == null || entity.IsDestroyed || entity.net == null)
+                {
+                    continue;
+                }
+
+                var prefab = (entity.PrefabName ?? entity.ShortPrefabName ?? "").ToLowerInvariant();
+                if (!prefab.Contains("diesel_engine") && !prefab.Contains("dieselengine"))
+                {
+                    continue;
+                }
+
+                var monument = FindNearestMonumentContext(entity.transform.position);
+                var isExcavator = monument.IndexOf("excavator", StringComparison.OrdinalIgnoreCase) >= 0;
+                var isQuarry = monument.IndexOf("quarry", StringComparison.OrdinalIgnoreCase) >= 0;
+                if (!isExcavator && !isQuarry)
+                {
+                    continue;
+                }
+
+                var networkId = entity.net.ID.Value;
+                seen.Add(networkId);
+                var isOn = entity.HasFlag(BaseEntity.Flags.On);
+                bool previous;
+                if (!discreteEntityStates.TryGetValue(networkId, out previous))
+                {
+                    discreteEntityStates[networkId] = isOn;
+                    if (!isOn)
+                    {
+                        continue;
+                    }
+                }
+                else if (previous == isOn)
+                {
+                    continue;
+                }
+                else
+                {
+                    discreteEntityStates[networkId] = isOn;
+                }
+
+                var family = isExcavator ? "excavator" : "quarry";
+                var eventType = family + (isOn ? "_start" : "_stop");
+                PublishDiscreteReplayEvent(
+                    "industrial:" + family + ":" + networkId.ToString(CultureInfo.InvariantCulture),
+                    eventType,
+                    entity.transform.position,
+                    "",
+                    new Dictionary<string, object>
+                    {
+                        ["kind"] = "server_event",
+                        ["eventType"] = eventType,
+                        ["state"] = isOn ? "active" : "ended",
+                        ["networkId"] = networkId.ToString(CultureInfo.InvariantCulture),
+                        ["prefab"] = entity.PrefabName ?? entity.ShortPrefabName ?? "",
+                        ["monument"] = monument
+                    });
+            }
+
+            foreach (var networkId in discreteEntityStates.Keys.Where(id => !seen.Contains(id)).ToList())
+            {
+                discreteEntityStates.Remove(networkId);
+            }
+        }
+
+        private string FindNearestMonumentContext(Vector3 position)
+        {
+            if (TerrainMeta.Path == null || TerrainMeta.Path.Monuments == null)
+            {
+                return "";
+            }
+
+            MonumentInfo nearest = null;
+            var bestDistance = 600f;
+            foreach (var monument in TerrainMeta.Path.Monuments)
+            {
+                if (monument == null || monument.transform == null)
+                {
+                    continue;
+                }
+                var distance = Vector3.Distance(position, monument.transform.position);
+                if (distance < bestDistance)
+                {
+                    bestDistance = distance;
+                    nearest = monument;
+                }
+            }
+            if (nearest == null)
+            {
+                return "";
+            }
+            return MonumentDisplayName(nearest, ShortPrefabName(nearest.name));
+        }
+
+        private void PublishDiscreteReplayEvent(string eventKey, string eventType, Vector3 position, string vehicle, Dictionary<string, object> eventPayload)
+        {
+            PublishReplayEvents(new List<ReplayEventPayload>
+            {
+                new ReplayEventPayload
+                {
+                    event_key = eventKey,
+                    event_type = eventType,
+                    occurred_at = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture),
+                    x = RoundWorldValue(position.x),
+                    y = RoundWorldValue(position.y),
+                    z = RoundWorldValue(position.z),
+                    vehicle = vehicle ?? "",
+                    payload = eventPayload ?? new Dictionary<string, object>()
+                }
+            }, eventType, null, false);
+        }
+
+        private void PublishReplayEvents(List<ReplayEventPayload> events, string label, Action<string> reply, bool verbose)
+        {
+            if (events == null || events.Count == 0 || string.IsNullOrWhiteSpace(ResolveBridgeSharedSecret()))
+            {
+                return;
+            }
+
+            var submitted = events.Take(250).ToList();
+            var snapshot = new ReplayEventSnapshotPayload
+            {
+                server_id = ResolveServerId(),
+                wipe_key = ResolveWipeKey(),
+                events = submitted
+            };
+            var body = JsonConvert.SerializeObject(snapshot);
+            var url = $"{TrimSlash(ResolveApiBaseUrl())}/api/server/map-replay-events-snapshot.php";
+            SendPost(url, body, (code, response) =>
+            {
+                int accepted;
+                string requestError;
+                if (!TryValidateReplayEventResponse(code, response, submitted.Count, out accepted, out requestError))
+                {
+                    lastWorldEventError = requestError;
+                    PrintWarning("Website " + label + " replay event post failed: " + requestError);
+                    if (verbose)
+                    {
+                        reply?.Invoke("Website " + label + " event sync failed: " + requestError);
+                    }
+                    return;
+                }
+
+                lastWorldEventAccepted = accepted;
+                lastWorldEventError = "none";
+                lastWorldEventSyncAt = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
+                if (verbose)
+                {
+                    reply?.Invoke($"Website {label} events synced: {accepted}/{submitted.Count} accepted.");
+                }
+            });
+        }
+
+        private void PublishAnnouncedRaidlandsEvents(Action<string> reply, bool verbose)
+        {
+            if (!config.PublishReplayEvents || !config.PublishRaidlandsEvents || RaidlandsEvents == null || !RaidlandsEvents.IsLoaded)
+            {
+                if (verbose && config.PublishRaidlandsEvents && (RaidlandsEvents == null || !RaidlandsEvents.IsLoaded))
+                {
+                    reply?.Invoke("Cannot sync Raidlands events because RaidlandsEvents is not loaded.");
+                }
+                return;
+            }
+
+            object result;
+            try
+            {
+                result = RaidlandsEvents.Call("API_GetAnnouncedActiveEvents");
+            }
+            catch (Exception ex)
+            {
+                if (verbose)
+                {
+                    reply?.Invoke($"Website Raidlands event sync failed while reading RaidlandsEvents: {ex.Message}");
+                }
+                return;
+            }
+
+            if (result == null)
+            {
+                if (verbose)
+                {
+                    reply?.Invoke("Website Raidlands event sync received no response from RaidlandsEvents.");
+                }
+                return;
+            }
+
+            JArray eventsToken;
+            try
+            {
+                eventsToken = JArray.FromObject(result);
+            }
+            catch (Exception ex)
+            {
+                if (verbose)
+                {
+                    reply?.Invoke($"Website Raidlands event sync received an invalid event list: {ex.Message}");
+                }
+                return;
+            }
+
+            var now = DateTime.UtcNow.ToString("o");
+            var events = new List<ReplayEventPayload>();
+            foreach (var token in eventsToken.OfType<JObject>())
+            {
+                var instanceId = token.Value<string>("instanceId");
+                var x = token.Value<float?>("x");
+                var z = token.Value<float?>("z");
+                if (string.IsNullOrWhiteSpace(instanceId) || !x.HasValue || !z.HasValue)
+                {
+                    continue;
+                }
+
+                events.Add(new ReplayEventPayload
+                {
+                    event_key = "raidlands-event:" + instanceId,
+                    event_type = "server_event",
+                    occurred_at = now,
+                    x = x.Value,
+                    y = token.Value<float?>("y") ?? 0f,
+                    z = z.Value,
+                    vehicle = "",
+                    payload = new Dictionary<string, object>
+                    {
+                        ["kind"] = "server_event",
+                        ["eventType"] = "raid_base",
+                        ["instanceId"] = instanceId,
+                        ["eventTypeId"] = token.Value<string>("eventTypeId") ?? "raid-base",
+                        ["publicName"] = token.Value<string>("publicName") ?? "Public Raid Base",
+                        ["layoutId"] = token.Value<string>("layoutId") ?? "",
+                        ["radiusMeters"] = token.Value<float?>("radiusMeters") ?? 90f,
+                        ["startedAt"] = token.Value<string>("startedAt") ?? "",
+                        ["expiresAt"] = token.Value<string>("expiresAt") ?? "",
+                        ["active"] = true
+                    }
+                });
+            }
+
+            if (events.Count == 0)
+            {
+                if (verbose)
+                {
+                    reply?.Invoke("Website Raidlands events synced: no announced active events.");
+                }
+                return;
+            }
+
+            PublishReplayEvents(events, "Raidlands", reply, verbose);
         }
 
         private string ResolveClanTag(BasePlayer player)
@@ -2606,6 +3646,10 @@ namespace Oxide.Plugins
             }
             config.PlayerLocationIntervalSeconds = Math.Max(5, config.PlayerLocationIntervalSeconds <= 0 ? defaults.PlayerLocationIntervalSeconds : config.PlayerLocationIntervalSeconds);
             config.EnvironmentIntervalSeconds = Math.Max(30, config.EnvironmentIntervalSeconds <= 0 ? defaults.EnvironmentIntervalSeconds : config.EnvironmentIntervalSeconds);
+            config.WorldEventIntervalSeconds = Math.Max(3, config.WorldEventIntervalSeconds <= 0 ? defaults.WorldEventIntervalSeconds : config.WorldEventIntervalSeconds);
+            config.WorldEventRouteMaxSamples = Math.Max(12, Math.Min(160, config.WorldEventRouteMaxSamples <= 0 ? defaults.WorldEventRouteMaxSamples : config.WorldEventRouteMaxSamples));
+            config.WorldEventPayloadMaxBytes = Math.Max(2000, Math.Min(11900, config.WorldEventPayloadMaxBytes <= 0 ? defaults.WorldEventPayloadMaxBytes : config.WorldEventPayloadMaxBytes));
+            config.AirdropCarrierSearchRadiusMeters = Math.Max(50f, Math.Min(2000f, config.AirdropCarrierSearchRadiusMeters <= 0f ? defaults.AirdropCarrierSearchRadiusMeters : config.AirdropCarrierSearchRadiusMeters));
         }
 
         private bool ConfigHasProperty(string propertyName)
