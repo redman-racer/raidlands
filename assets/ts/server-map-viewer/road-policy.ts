@@ -37,7 +37,7 @@ function normalizeRoadKind(value: unknown): RoadKind {
 }
 
 export function roadKindForWidth(width: number): RoadKind {
-  if (width >= 11) return "main";
+  if (width >= 9) return "main";
   if (width <= 5.5) return "trail";
   return "side";
 }

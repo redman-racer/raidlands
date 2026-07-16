@@ -19,16 +19,16 @@ describe("server map roads", () => {
   });
 
   it("uses surviving road widths when category metadata is wrong", () => {
-    expect(roadKindForWidth(14)).toBe("main");
+    expect(roadKindForWidth(10)).toBe("main");
     expect(roadKindForWidth(8)).toBe("side");
     expect(roadKindForWidth(3.5)).toBe("trail");
 
     const points = [{ x: -10, y: 0, z: 0 }, { x: 10, y: 0, z: 0 }];
     expect(normalizeRoads([
-      { kind: "side", width: 14, points },
+      { kind: "side", width: 10, points },
       { kind: "main", width: 3.5, points },
     ], 1000)).toMatchObject([
-      { kind: "main", width: 14 },
+      { kind: "main", width: 10 },
       { kind: "trail", width: 3.5 },
     ]);
   });
