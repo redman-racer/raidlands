@@ -221,6 +221,10 @@ export class TreeModelController {
   private syncDiagnostics(groups?: Map<string, { tier: TreeModelTier; placements: VegetationPlacement[] }>): void {
     const tierCounts = { map: 0, mid: 0, close: 0 };
     for (const group of groups?.values() || []) tierCounts[group.tier] += group.placements.length;
+    const biomeCounts = this.options.placements.reduce<Record<string, number>>((counts, placement) => {
+      counts[placement.biome] = (counts[placement.biome] || 0) + 1;
+      return counts;
+    }, {});
     Object.assign(this.options.root.dataset, {
       treeManifestVersion: String(treeManifestVersion()),
       treeRecipeVersion: String(treeRecipeVersion()),
@@ -232,6 +236,7 @@ export class TreeModelController {
       treeFailedAssets: String(this.failures.size),
       treeDecodeQueue: String(this.pending.size),
       treeFallbackActive: String(this.options.fallback.visible),
+      treeBiomeInstances: JSON.stringify(biomeCounts),
     });
   }
 }

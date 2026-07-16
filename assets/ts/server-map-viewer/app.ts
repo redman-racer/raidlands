@@ -1265,7 +1265,7 @@ class TerrainViewer {
   private readonly lockCameraInput: boolean;
   private monumentMode: MonumentMode = "auto";
   private readonly monumentModels: MonumentModelController;
-  private readonly treeModels: TreeModelController;
+  private treeModels: TreeModelController | null = null;
   private transitionFrom: CameraPose | null = null;
   private transitionTo: CameraPose | null = null;
   private transitionFinal: CameraPose | null = null;
@@ -1408,20 +1408,7 @@ class TerrainViewer {
     this.terrainMesh = this.createTerrainMesh();
     this.scene.add(this.terrainMesh);
     this.vegetationLayer.name = "raidlands-terrain-vegetation";
-    const vegetation = createTerrainVegetation(this.terrain, this.qualityProfile.resolved);
-    this.vegetationLayer.add(vegetation);
-    this.root.dataset.vegetationInstances = String(vegetation.userData.instanceCount || 0);
     this.scene.add(this.vegetationLayer);
-    this.treeModels = new TreeModelController({
-      assetBase: this.root.dataset.assetBase || new URL(/* @vite-ignore */ "../../", import.meta.url).href,
-      camera: this.camera,
-      quality: this.qualityProfile.resolved,
-      placements: vegetation.userData.placements as VegetationPlacement[],
-      fallback: vegetation,
-      parent: this.vegetationLayer,
-      root: this.root,
-      dracoDecoderUrl: DRACO_DECODER_URL,
-    });
     this.terrainLightUniforms.waterLevel.value = resolveOceanWaterLevel(this.terrain);
     this.terrainLightUniforms.minHeight.value = Number(this.terrain.minHeight) || 0;
     this.terrainLightUniforms.maxHeight.value = Number(this.terrain.maxHeight) || 300;
@@ -1533,7 +1520,7 @@ class TerrainViewer {
     if (document.pointerLockElement === this.renderer.domElement) document.exitPointerLock();
     this.setBrowserFill(false);
     this.monumentModels.dispose();
-    this.treeModels.dispose();
+    this.treeModels?.dispose();
     this.controls.dispose();
     this.floatingControls?.remove();
     this.floatingControls = null;
@@ -2578,6 +2565,7 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
 
   private loadTexture(): void {
     if (!this.textureUrl) {
+      this.initializeTerrainVegetation();
       return;
     }
 
@@ -2589,9 +2577,31 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
         this.terrainMaterial.roughness = 0.88;
         this.terrainMaterial.vertexColors = false;
         this.terrainMaterial.needsUpdate = true;
+        this.initializeTerrainVegetation(sampleTerrainSurfaceColors(texture.image, this.terrain.resolution));
       },
-      () => setStatus(this.status, ""),
+      () => {
+        setStatus(this.status, "");
+        this.initializeTerrainVegetation();
+      },
     );
+  }
+
+  private initializeTerrainVegetation(surfaceColors?: string[]): void {
+    if (this.disposed || this.treeModels) return;
+    const vegetation = createTerrainVegetation(this.terrain, this.qualityProfile.resolved, surfaceColors);
+    this.vegetationLayer.add(vegetation);
+    this.root.dataset.vegetationInstances = String(vegetation.userData.instanceCount || 0);
+    this.root.dataset.vegetationBiomeSource = surfaceColors ? "map-texture" : "terrain-fallback";
+    this.treeModels = new TreeModelController({
+      assetBase: this.root.dataset.assetBase || new URL(/* @vite-ignore */ "../../", import.meta.url).href,
+      camera: this.camera,
+      quality: this.qualityProfile.resolved,
+      placements: vegetation.userData.placements as VegetationPlacement[],
+      fallback: vegetation,
+      parent: this.vegetationLayer,
+      root: this.root,
+      dracoDecoderUrl: DRACO_DECODER_URL,
+    });
   }
 
   private addMonuments(): void {
@@ -2944,7 +2954,7 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
     this.airstrikeLayer.userData.tick?.((now - this.clockStart) / 1000);
     this.monumentLayer.traverse((object) => object.userData.tick?.((now - this.clockStart) / 1000));
     this.monumentModels.tick(now);
-    this.treeModels.tick(now);
+    this.treeModels?.tick(now);
     this.updateAircraftCameraSafety();
     this.composer.render();
     this.root.dataset.viewerDrawCalls = String(this.renderer.info.render.calls);
@@ -8165,7 +8175,55 @@ function createGroundFogBanks(terrain: TerrainPayload): Group {
   return group;
 }
 
-function createTerrainVegetation(terrain: TerrainPayload, quality: EnvironmentQuality): Group {
+function sampleTerrainSurfaceColors(image: unknown, resolution: number): string[] | undefined {
+  if (!image || resolution < 2) return undefined;
+  try {
+    const canvas = document.createElement("canvas");
+    canvas.width = resolution;
+    canvas.height = resolution;
+    const context = canvas.getContext("2d", { willReadFrequently: true });
+    if (!context) return undefined;
+    context.drawImage(image as CanvasImageSource, 0, 0, resolution, resolution);
+    const pixels = context.getImageData(0, 0, resolution, resolution).data;
+    const colors: string[] = [];
+    const radius = 3;
+    for (let row = 0; row < resolution; row += 1) {
+      for (let col = 0; col < resolution; col += 1) {
+        let red = 0;
+        let green = 0;
+        let blue = 0;
+        let count = 0;
+        for (let sampleRow = Math.max(0, row - radius); sampleRow <= Math.min(resolution - 1, row + radius); sampleRow += 1) {
+          for (let sampleCol = Math.max(0, col - radius); sampleCol <= Math.min(resolution - 1, col + radius); sampleCol += 1) {
+            const offset = (sampleRow * resolution + sampleCol) * 4;
+            const sampleRed = pixels[offset] || 0;
+            const sampleGreen = pixels[offset + 1] || 0;
+            const sampleBlue = pixels[offset + 2] || 0;
+            const waterLike = sampleBlue > sampleRed * 1.18 && sampleBlue > sampleGreen * 1.05;
+            if (waterLike) continue;
+            red += sampleRed;
+            green += sampleGreen;
+            blue += sampleBlue;
+            count += 1;
+          }
+        }
+        if (count === 0) {
+          const offset = (row * resolution + col) * 4;
+          red = pixels[offset] || 0;
+          green = pixels[offset + 1] || 0;
+          blue = pixels[offset + 2] || 0;
+          count = 1;
+        }
+        colors.push(`#${[red, green, blue].map((value) => Math.round(value / count).toString(16).padStart(2, "0")).join("")}`);
+      }
+    }
+    return colors;
+  } catch {
+    return undefined;
+  }
+}
+
+function createTerrainVegetation(terrain: TerrainPayload, quality: EnvironmentQuality, surfaceColors?: string[]): Group {
   const group = new Group();
   const placements = buildTerrainVegetation({
     resolution: terrain.resolution,
@@ -8176,6 +8234,7 @@ function createTerrainVegetation(terrain: TerrainPayload, quality: EnvironmentQu
     maxHeight: terrain.maxHeight,
     heights: terrain.heights,
     colors: terrain.colors,
+    surfaceColors,
     // The exported monument positions are Rust coordinates; tree generation
     // runs in the mirrored viewer coordinate space.
     monuments: terrain.monuments?.map((monument) => ({

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
-import { buildTerrainVegetation } from "../assets/ts/server-map-viewer/vegetation-policy";
+import { buildTerrainVegetation, type TerrainVegetationInput } from "../assets/ts/server-map-viewer/vegetation-policy";
 
-function terrain(resolution = 17) {
+function terrain(resolution = 17): TerrainVegetationInput {
   return {
     resolution,
     worldSize: 1200,
@@ -23,7 +23,7 @@ describe("server map terrain vegetation policy", () => {
   it("does not place a canopy on water or blue terrain", () => {
     const input = terrain();
     input.heights.fill(-4);
-    input.colors.fill("#2f6f86");
+    input.colors!.fill("#2f6f86");
     expect(buildTerrainVegetation(input, 80)).toEqual([]);
   });
 
@@ -42,17 +42,28 @@ describe("server map terrain vegetation policy", () => {
 
   it("assigns deterministic biome-specific tree families", () => {
     const arid = terrain();
-    arid.colors.fill("#9a6742");
+    arid.surfaceColors = Array.from({ length: arid.resolution * arid.resolution }, () => "#c0a070");
     const aridPlacements = buildTerrainVegetation(arid, 80);
     expect(aridPlacements.length).toBeGreaterThan(0);
     expect(new Set(aridPlacements.map((placement) => placement.biome))).toEqual(new Set(["arid"]));
 
     const arctic = terrain();
-    arctic.minHeight = 0;
-    arctic.maxHeight = 12;
-    arctic.heights.fill(10);
+    arctic.surfaceColors = Array.from({ length: arctic.resolution * arctic.resolution }, () => "#dce8e8");
     const arcticPlacements = buildTerrainVegetation(arctic, 80);
     expect(arcticPlacements.length).toBeGreaterThan(0);
     expect(new Set(arcticPlacements.map((placement) => placement.biome))).toEqual(new Set(["arctic"]));
+  });
+
+  it("keeps deserts sparse and does not mistake lush jungle for swamp", () => {
+    const arid = terrain(33);
+    arid.surfaceColors = Array.from({ length: arid.resolution * arid.resolution }, () => "#c0a070");
+    const jungle = terrain(33);
+    jungle.surfaceColors = Array.from({ length: jungle.resolution * jungle.resolution }, () => "#426b2d");
+    const aridPlacements = buildTerrainVegetation(arid, 300);
+    const junglePlacements = buildTerrainVegetation(jungle, 300);
+
+    expect(aridPlacements.length).toBeLessThan(junglePlacements.length / 4);
+    expect(junglePlacements.some((placement) => placement.biome === "jungle")).toBe(true);
+    expect(junglePlacements.some((placement) => placement.biome === "swamp")).toBe(false);
   });
 });

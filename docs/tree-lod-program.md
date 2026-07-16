@@ -17,7 +17,9 @@ Generated Map, Mid, and Close GLBs and their versioned manifest live in `assets/
 
 ## Runtime policy
 
-The terrain placement policy assigns a biome using terrain colour, elevation, height above water, slope, and deterministic seeded noise. It then chooses a weighted model variant for that biome. Placements are grouped into instanced draw calls by model and tier.
+The terrain payload's fallback colours distinguish only land from water, so they are not a reliable biome source. Once the aligned current-map texture loads, the viewer samples and locally smooths that texture into a surface-colour grid. The placement policy combines that grid with elevation, height above water, slope, and deterministic seeded noise, then chooses a weighted model variant for the resulting biome. Placements are grouped into instanced draw calls by model and tier.
+
+Desert placement is intentionally sparse and limited to low-lying palms. Snow-like surfaces always select snow-covered arctic families. Saturated green regions prefer jungle/tropical families; swamp trees require a rare, low shoreline condition and cannot take over a general jungle region.
 
 - Map is the normal distant tier and always uses a textured RustRelay asset.
 - Mid promotes within 650 world units, capped by environment quality.

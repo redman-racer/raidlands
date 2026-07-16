@@ -20,6 +20,7 @@ export type TerrainVegetationInput = {
   maxHeight?: number;
   heights: number[];
   colors?: string[];
+  surfaceColors?: string[];
   monuments?: Array<{ x: number; z: number; radius?: number }>;
 };
 
@@ -80,10 +81,15 @@ export function buildTerrainVegetation(
     const slopeFertility = 1 - clamp((slope - 0.12) / 0.6, 0, 1) * 0.68;
     const highlandFertility = 1 - clamp((elevation - 0.56) / 0.44, 0, 1) * 0.72;
     const fertility = clamp(colorFertility * slopeFertility * highlandFertility, 0, 1);
-    const density = clamp(0.26 + fertility * 0.56 + tropical * 0.18, 0, 0.94);
+    const biome = vegetationBiome(sample.color, elevation, height - waterLevel, tropical, hashUnit(key + 41));
+    if (biome === "arid" && height - waterLevel > 18) continue;
+    const density = clamp(
+      (0.26 + fertility * 0.56 + tropical * 0.18) * vegetationDensityMultiplier(biome),
+      0,
+      0.94,
+    );
     if (hashUnit(key + 37) > density) continue;
 
-    const biome = vegetationBiome(sample.color, elevation, height - waterLevel, tropical, hashUnit(key + 41));
     const jungle = biome === "jungle" || biome === "tropical" || biome === "swamp";
     const pine = biome === "tundra" || biome === "arctic" || (!jungle && hashUnit(key + 43) < 0.34);
     const scaleBase = jungle ? 1.2 : pine ? 0.92 : 1;
@@ -113,12 +119,30 @@ function vegetationBiome(
     ? [Number.parseInt(color!.slice(1, 3), 16), Number.parseInt(color!.slice(3, 5), 16), Number.parseInt(color!.slice(5, 7), 16)]
     : [80, 105, 70];
   const [red, green, blue] = rgb;
-  if (elevation > 0.78 || (red > 155 && green > 155 && blue > 155)) return "arctic";
-  if (heightAboveWater < 7 && green > red * 0.95 && tropicalNoise > 0.42) return "swamp";
-  if (red > green * 1.16 && red > blue * 1.25) return "arid";
-  if (tropicalNoise > 0.7 && elevation < 0.58) return variation > 0.68 ? "tropical" : "jungle";
-  if (elevation > 0.5 || blue > red * 1.08) return "tundra";
+  const brightness = (red + green + blue) / 3;
+  const chroma = Math.max(red, green, blue) - Math.min(red, green, blue);
+  const snowLike = brightness > 142 && chroma < 62 && blue >= red * 0.82 && green >= red * 0.88;
+  const sandLike = brightness > 112 && red - blue > 24 && green - blue > 14 && red >= green * 0.96;
+  const lushGreen = green > red * 1.09 && green > blue * 1.18;
+
+  if (snowLike) return "arctic";
+  if (sandLike) return "arid";
+  if (heightAboveWater < 3.5 && lushGreen && blue > red * 0.62 && variation < 0.08) return "swamp";
+  if (lushGreen && tropicalNoise > 0.48 && elevation < 0.68) {
+    return heightAboveWater < 16 && variation > 0.74 ? "tropical" : "jungle";
+  }
+  if (brightness > 112 && chroma < 68 && blue >= red * 0.8 && green >= red * 0.86) return "tundra";
   return "temperate";
+}
+
+function vegetationDensityMultiplier(biome: VegetationBiome): number {
+  if (biome === "arid") return 0.035;
+  if (biome === "arctic") return 0.34;
+  if (biome === "tundra") return 0.5;
+  if (biome === "swamp") return 0.42;
+  if (biome === "tropical") return 0.72;
+  if (biome === "jungle") return 1.12;
+  return 1;
 }
 
 function terrainSample(
@@ -134,7 +158,10 @@ function terrainSample(
   const col = resolution - 1 - Math.round(u * (resolution - 1));
   const row = Math.round(v * (resolution - 1));
   const index = row * resolution + col;
-  return { height: finite(terrain.heights[index], 0), color: terrain.colors?.[index] };
+  return {
+    height: finite(terrain.heights[index], 0),
+    color: terrain.surfaceColors?.[index] || terrain.colors?.[index],
+  };
 }
 
 function terrainSlope(
