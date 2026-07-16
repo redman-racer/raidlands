@@ -531,12 +531,12 @@ function raidlands_airstrike_animation_validate_profile(
         );
     }
 
-    if (($source['RotationMode'] ?? null) !== 'follow_path_plus_offset') {
+    if (!in_array(($source['RotationMode'] ?? null), ['follow_path_plus_offset', 'authored_orientation'], true)) {
         raidlands_airstrike_animation_validation_error(
             $errors,
             $path . '.RotationMode',
             'rotation_mode',
-            'Only follow_path_plus_offset is currently supported.'
+            'Must be follow_path_plus_offset or authored_orientation.'
         );
     }
     $waypoints = $source['Waypoints'] ?? null;
@@ -1212,7 +1212,12 @@ function raidlands_airstrike_animation_waypoint_tangent(array $waypoints, int $i
     );
 }
 
-function raidlands_airstrike_animation_evaluate_route(array $waypoints, bool $stop_at_waypoints, float $time): array
+function raidlands_airstrike_animation_evaluate_route(
+    array $waypoints,
+    bool $stop_at_waypoints,
+    float $time,
+    string $rotation_mode = 'follow_path_plus_offset'
+): array
 {
     $last = count($waypoints) - 1;
     $time = max((float) $waypoints[0]['Time'], min((float) $waypoints[$last]['Time'], $time));
@@ -1286,11 +1291,15 @@ function raidlands_airstrike_animation_evaluate_route(array $waypoints, bool $st
     $rotation_x = (float) $left['RotationX'] + (((float) $right['RotationX'] - (float) $left['RotationX']) * $rotation_progress);
     $rotation_y = (float) $left['RotationY'] + (((float) $right['RotationY'] - (float) $left['RotationY']) * $rotation_progress);
     $rotation_z = (float) $left['RotationZ'] + (((float) $right['RotationZ'] - (float) $left['RotationZ']) * $rotation_progress);
-    $look = raidlands_airstrike_animation_look_rotation($tangent);
     $authored = raidlands_airstrike_animation_unity_euler_quaternion($rotation_x, $rotation_y, $rotation_z);
-    $quaternion = raidlands_airstrike_animation_quaternion_normalize(
-        raidlands_airstrike_animation_quaternion_multiply($look, $authored)
-    );
+    $quaternion = $rotation_mode === 'authored_orientation'
+        ? $authored
+        : raidlands_airstrike_animation_quaternion_normalize(
+            raidlands_airstrike_animation_quaternion_multiply(
+                raidlands_airstrike_animation_look_rotation($tangent),
+                $authored
+            )
+        );
 
     return [
         'position' => $position,
@@ -1304,6 +1313,7 @@ function raidlands_airstrike_animation_compile_track(array $source, array $waypo
     $sample_rate = (int) $limits['sample_rate_hz'];
     $duration = (float) $source['DurationSeconds'];
     $stop_at_waypoints = !empty($source['StopAtWaypoints']);
+    $rotation_mode = (string) ($source['RotationMode'] ?? 'follow_path_plus_offset');
     $frames = [];
     $previous_quaternion = null;
 
@@ -1314,7 +1324,7 @@ function raidlands_airstrike_animation_compile_track(array $source, array $waypo
             break;
         }
 
-        $evaluation = raidlands_airstrike_animation_evaluate_route($waypoints, $stop_at_waypoints, $time);
+        $evaluation = raidlands_airstrike_animation_evaluate_route($waypoints, $stop_at_waypoints, $time, $rotation_mode);
         $quaternion = $evaluation['quaternion'];
 
         if ($previous_quaternion !== null) {
@@ -1333,7 +1343,7 @@ function raidlands_airstrike_animation_compile_track(array $source, array $waypo
         $previous_quaternion = $quaternion;
     }
 
-    $evaluation = raidlands_airstrike_animation_evaluate_route($waypoints, $stop_at_waypoints, $duration);
+    $evaluation = raidlands_airstrike_animation_evaluate_route($waypoints, $stop_at_waypoints, $duration, $rotation_mode);
     $quaternion = $evaluation['quaternion'];
 
     if ($previous_quaternion !== null) {

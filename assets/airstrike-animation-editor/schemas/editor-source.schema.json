@@ -148,7 +148,7 @@
         "StopAtWaypoints": { "type": "boolean" },
         "MinimumTerrainClearance": { "type": "number", "minimum": 0, "maximum": 250 },
         "PositionInterpolation": { "const": "time_hermite" },
-        "RotationMode": { "const": "follow_path_plus_offset" },
+        "RotationMode": { "enum": ["follow_path_plus_offset", "authored_orientation"] },
         "Waypoints": { "type": "array", "minItems": 2, "maxItems": 256, "items": { "$ref": "#/$defs/waypoint" } },
         "ReleaseSource": { "oneOf": [{ "$ref": "#/$defs/manualRelease" }, { "$ref": "#/$defs/repeatedRelease" }] },
         "EditorMetadata": {

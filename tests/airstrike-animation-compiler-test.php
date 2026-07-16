@@ -160,6 +160,23 @@ airstrike_compiler_close((float) $straight_frames[15]['Qw'], 1.0, 0.000001, 'for
 airstrike_compiler_test(!array_key_exists('CompiledReleaseEvents', $straight), 'legacy dynamic manual profile omits compiled release field');
 airstrike_compiler_close((float) $straight['FirstPayloadDelaySeconds'], 0.25, 0.000001, 'FirstPayloadDelaySeconds is preserved');
 
+$manual_rotation_source = airstrike_compiler_source([
+    'ProfileKey' => 'manual_reverse_pass',
+    'RotationMode' => 'authored_orientation',
+    'Waypoints' => [
+        ['Id' => 'wp_01', 'Time' => 0.0, 'X' => 0.0, 'Y' => 50.0, 'Z' => 10.0, 'RotationX' => 0.0, 'RotationY' => 0.0, 'RotationZ' => 0.0],
+        ['Id' => 'wp_02', 'Time' => 1.0, 'X' => 0.0, 'Y' => 50.0, 'Z' => -10.0, 'RotationX' => 0.0, 'RotationY' => 0.0, 'RotationZ' => 0.0],
+    ],
+]);
+$manual_rotation_validation = raidlands_airstrike_animation_validate_profile($manual_rotation_source, 'Profiles.manual_reverse_pass');
+airstrike_compiler_test($manual_rotation_validation['ok'], 'authored orientation mode is accepted');
+$manual_rotation = raidlands_airstrike_animation_compile_profile($manual_rotation_source);
+$manual_midpoint = $manual_rotation['CompiledTrack']['Frames'][15];
+airstrike_compiler_close((float) $manual_midpoint['Qx'], 0.0, 0.000001, 'manual rotation ignores reverse path pitch');
+airstrike_compiler_close((float) $manual_midpoint['Qy'], 0.0, 0.000001, 'manual rotation ignores reverse path yaw');
+airstrike_compiler_close((float) $manual_midpoint['Qz'], 0.0, 0.000001, 'manual rotation ignores reverse path roll');
+airstrike_compiler_close((float) $manual_midpoint['Qw'], 1.0, 0.000001, 'manual rotation preserves authored identity');
+
 $stop_source = airstrike_compiler_source([
     'ProfileKey' => 'stop_pass',
     'StopAtWaypoints' => true,

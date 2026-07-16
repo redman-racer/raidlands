@@ -94,6 +94,7 @@ interface EditorElements {
   deleteWaypoint: HTMLButtonElement;
   globalSpeed: HTMLInputElement;
   globalSpeedMph: HTMLElement;
+  rotationMode: HTMLSelectElement;
   releaseMode: HTMLSelectElement;
   manualReleaseList: HTMLElement;
   manualReleaseEditor: HTMLElement;
@@ -352,6 +353,7 @@ class AirstrikeEditorApp {
     this.elements.key.addEventListener("change", () => this.syncIdentityIntoSource());
     this.elements.name.addEventListener("change", () => this.syncIdentityIntoSource());
     this.elements.vehicle.addEventListener("change", () => this.syncIdentityIntoSource());
+    this.elements.rotationMode.addEventListener("change", () => this.handleRotationModeChange());
     this.elements.search.addEventListener("input", () => this.renderProfiles());
     this.elements.timeRange.addEventListener("input", () => this.setScrubTime(Number(this.elements.timeRange.value)));
     this.elements.timeNumber.addEventListener("input", () => this.setScrubTime(Number(this.elements.timeNumber.value)));
@@ -552,9 +554,9 @@ class AirstrikeEditorApp {
       X: { minimum: -500, maximum: 500 },
       Y: { minimum: 0, maximum: 500 },
       Z: { minimum: -500, maximum: 500 },
-      RotationX: { minimum: -180, maximum: 180 },
-      RotationY: { minimum: -180, maximum: 180 },
-      RotationZ: { minimum: -180, maximum: 180 },
+      RotationX: { minimum: -100_000, maximum: 100_000 },
+      RotationY: { minimum: -100_000, maximum: 100_000 },
+      RotationZ: { minimum: -100_000, maximum: 100_000 },
     };
     if (waypointField && waypointRanges[waypointField]) {
       return waypointRanges[waypointField];
@@ -806,8 +808,21 @@ class AirstrikeEditorApp {
     this.elements.key.value = String(source.ProfileKey || "");
     this.elements.name.value = String(source.DisplayName || "");
     this.elements.vehicle.value = String(source.Vehicle || "f15");
+    this.elements.rotationMode.value = source.RotationMode || "follow_path_plus_offset";
     this.elements.key.disabled = this.state.baseVersion > 0;
     this.elements.title.textContent = String(source.DisplayName || source.ProfileKey || "New profile");
+  }
+
+  private handleRotationModeChange(): void {
+    if (!this.state.profile) {
+      return;
+    }
+    const source = JSON.parse(JSON.stringify(this.state.profile)) as EditorSourceProfile;
+    source.RotationMode =
+      this.elements.rotationMode.value === "authored_orientation"
+        ? "authored_orientation"
+        : "follow_path_plus_offset";
+    this.previewProfileUpdate(source, true);
   }
 
   private readCurrentSource(): EditorSourceProfile {
@@ -2342,6 +2357,7 @@ function collectElements(root: HTMLElement): EditorElements {
     deleteWaypoint: query(root, "[data-editor-waypoint-delete]"),
     globalSpeed: query(root, "[data-editor-global-speed]"),
     globalSpeedMph: query(root, "[data-editor-global-speed-mph]"),
+    rotationMode: query(root, "[data-editor-rotation-mode]"),
     releaseMode: query(root, "[data-editor-release-mode]"),
     manualReleaseList: query(root, "[data-editor-manual-releases]"),
     manualReleaseEditor: query(root, "[data-editor-manual-editor]"),

@@ -161,7 +161,7 @@ export interface EditorSourceProfile {
   StopAtWaypoints: boolean;
   MinimumTerrainClearance: number;
   PositionInterpolation: "time_hermite";
-  RotationMode: "follow_path_plus_offset";
+  RotationMode: "follow_path_plus_offset" | "authored_orientation";
   Waypoints: SourceWaypoint[];
   ReleaseSource: ReleaseSource;
   EditorMetadata: EditorMetadata;

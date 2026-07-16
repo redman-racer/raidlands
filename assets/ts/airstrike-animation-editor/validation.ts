@@ -142,8 +142,13 @@ function validateProfile(
   if (profile.PositionInterpolation !== "time_hermite") {
     addIssue(issues, `${path}.PositionInterpolation`, "interpolation", "Only time_hermite is currently supported.");
   }
-  if (profile.RotationMode !== "follow_path_plus_offset") {
-    addIssue(issues, `${path}.RotationMode`, "rotation_mode", "Only follow_path_plus_offset is currently supported.");
+  if (profile.RotationMode !== "follow_path_plus_offset" && profile.RotationMode !== "authored_orientation") {
+    addIssue(
+      issues,
+      `${path}.RotationMode`,
+      "rotation_mode",
+      "Must be follow_path_plus_offset or authored_orientation.",
+    );
   }
 
   if (!Array.isArray(profile.Waypoints)) {

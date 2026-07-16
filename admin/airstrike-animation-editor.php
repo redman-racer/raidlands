@@ -252,6 +252,14 @@ $editor_config = [
                 </summary>
                 <div class="airstrike-editor-palette-body">
                   <label class="admin-field">
+                    <span>Vehicle orientation</span>
+                    <select data-editor-rotation-mode>
+                      <option value="follow_path_plus_offset">Follow path + rotation offset</option>
+                      <option value="authored_orientation">Full manual rotation</option>
+                    </select>
+                  </label>
+                  <p class="airstrike-editor-muted">Full manual rotation disables automatic path-facing and keeps Rot X/Y/Z entirely under your control.</p>
+                  <label class="admin-field">
                     <span>Global target speed (m/s)</span>
                     <input type="number" min="0.1" max="500" step="0.1" data-editor-global-speed>
                   </label>

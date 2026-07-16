@@ -329,9 +329,11 @@ export function evaluateSourcePose(profile: EditorSourceProfile, requestedTime: 
     start.RotationY + (end.RotationY - start.RotationY) * interpolationProgress,
     start.RotationZ + (end.RotationZ - start.RotationZ) * interpolationProgress,
   );
-  const look = lookRotation(tangent, WORLD_UP, LOCAL_FORWARD);
   const offset = unityEulerQuaternion(euler.x, euler.y, euler.z);
-  const rotation = normalizeQuaternion(multiplyQuaternion(look, offset));
+  const rotation =
+    profile.RotationMode === "authored_orientation"
+      ? offset
+      : normalizeQuaternion(multiplyQuaternion(lookRotation(tangent, WORLD_UP, LOCAL_FORWARD), offset));
   return { position, tangent: normalizeVector(tangent, LOCAL_FORWARD), rotation, euler };
 }
 

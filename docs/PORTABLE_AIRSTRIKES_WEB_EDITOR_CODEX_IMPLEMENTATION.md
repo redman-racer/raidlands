@@ -973,7 +973,13 @@ finalLocalRotation =
   * authoredRotationOffset
 ```
 
-Also support an explicit authored-orientation mode if practical, but the existing follow-path-plus-offset behavior is required.
+The editor supports `RotationMode: "authored_orientation"` for fully manual rotation. In that mode:
+
+```text
+finalLocalRotation = authoredRotation
+```
+
+Path tangents do not affect vehicle orientation. The existing `follow_path_plus_offset` behavior remains the default.
 
 ## 10.2 Runtime compilation
 

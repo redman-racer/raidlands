@@ -111,6 +111,25 @@ describe("airstrike animation golden fixtures", () => {
     );
   });
 
+  it("keeps path direction out of full manual rotation", async () => {
+    const metadata = await json<VehiclePreviewMetadataFile>(metadataPath);
+    const source = await json<EditorSourceBundle>(join(fixtureRoot, "straight-constant-speed", "source.json"));
+    const sourceProfile = source.Profiles.straight_constant_speed!;
+    sourceProfile.RotationMode = "authored_orientation";
+    sourceProfile.Waypoints[0]!.Z = 100;
+    sourceProfile.Waypoints[1]!.Z = -100;
+
+    const profile = Object.values(
+      compileSourceBundle(source, { publishedRevision: 1, vehicleMetadata: metadata }).bundle.Profiles,
+    )[0]!;
+    for (const frame of profile.CompiledTrack.Frames) {
+      expect(frame.Qx).toBeCloseTo(0, 6);
+      expect(frame.Qy).toBeCloseTo(0, 6);
+      expect(frame.Qz).toBeCloseTo(0, 6);
+      expect(frame.Qw).toBeCloseTo(1, 6);
+    }
+  });
+
   it("retains 360/540 authored turns through quaternion sign continuity", async () => {
     const metadata = await json<VehiclePreviewMetadataFile>(metadataPath);
     for (const directory of ["barrel-roll-360", "barrel-roll-540"]) {
