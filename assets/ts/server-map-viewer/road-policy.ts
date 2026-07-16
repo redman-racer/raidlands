@@ -36,6 +36,12 @@ function normalizeRoadKind(value: unknown): RoadKind {
   }
 }
 
+export function roadKindForWidth(width: number): RoadKind {
+  if (width >= 11) return "main";
+  if (width <= 5.5) return "trail";
+  return "side";
+}
+
 export function normalizeRoads(value: unknown, worldSize: number): RoadPayload[] {
   if (!Array.isArray(value)) return [];
   const half = worldSize / 2;
@@ -52,13 +58,19 @@ export function normalizeRoads(value: unknown, worldSize: number): RoadPayload[]
     }).filter((point): point is TerrainPointPayload => point !== null);
 
     if (points.length < 2) return null;
-    const kind = normalizeRoadKind(road.kind);
-    const fallbackWidth = kind === "main" ? 14 : kind === "trail" ? 3.5 : 8;
+    const authoredKind = normalizeRoadKind(road.kind);
+    const fallbackWidth = authoredKind === "main" ? 14 : authoredKind === "trail" ? 3.5 : 8;
+    const suppliedWidth = Number(road.width);
+    const hasSuppliedWidth = Number.isFinite(suppliedWidth) && suppliedWidth > 0;
+    const width = Math.max(2.5, Math.min(38, hasSuppliedWidth ? suppliedWidth : fallbackWidth));
+    // Some deployed terrain payloads flatten every category to "side". Rust's
+    // authored widths remain distinct, so prefer them whenever they are present.
+    const kind = hasSuppliedWidth ? roadKindForWidth(width) : authoredKind;
 
     return {
       name: String(road.name || `${kind}-road-${index + 1}`).slice(0, 80),
       kind,
-      width: Math.max(2.5, Math.min(38, Number(road.width) || fallbackWidth)),
+      width,
       points,
     };
   }).filter((road): road is RoadPayload => road !== null);

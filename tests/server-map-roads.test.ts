@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { Vector3 } from "three";
-import { normalizeRoads, sampleSmoothRoadCenterline } from "../assets/ts/server-map-viewer/road-policy";
+import { normalizeRoads, roadKindForWidth, sampleSmoothRoadCenterline } from "../assets/ts/server-map-viewer/road-policy";
 
 describe("server map roads", () => {
   it("keeps the Rust-authored road category, width, and terrain path", () => {
@@ -16,6 +16,21 @@ describe("server map roads", () => {
       { x: -10, y: 0, z: 0 }, { x: 10, y: 0, z: 0 },
     ] }], 1000)).toMatchObject([{ kind: "trail", width: 3.5 }]);
     expect(normalizeRoads([{ points: [{ x: 9999, y: 0, z: 0 }, { x: 0, y: 0, z: 0 }] }], 1000)).toEqual([]);
+  });
+
+  it("uses surviving road widths when category metadata is wrong", () => {
+    expect(roadKindForWidth(14)).toBe("main");
+    expect(roadKindForWidth(8)).toBe("side");
+    expect(roadKindForWidth(3.5)).toBe("trail");
+
+    const points = [{ x: -10, y: 0, z: 0 }, { x: 10, y: 0, z: 0 }];
+    expect(normalizeRoads([
+      { kind: "side", width: 14, points },
+      { kind: "main", width: 3.5, points },
+    ], 1000)).toMatchObject([
+      { kind: "main", width: 14 },
+      { kind: "trail", width: 3.5 },
+    ]);
   });
 
   it("samples authored corners as a smooth, distance-bounded curve", () => {
