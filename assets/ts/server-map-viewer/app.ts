@@ -135,7 +135,7 @@ import {
 } from "./monument-model-registry";
 import { monumentPrimitiveKind, monumentPrimitiveSearchKey, monumentPrimitiveSize } from "./monument-primitive-policy";
 import { normalizePowerLines, type PowerLinePayload } from "./power-line-policy";
-import { normalizeRoads, type RoadPayload } from "./road-policy";
+import { normalizeRoads, sampleSmoothRoadCenterline, type RoadPayload } from "./road-policy";
 import { sampleTerrainSurfaceHeight } from "./terrain-height-policy";
 import {
   desiredMonumentTier,
@@ -2672,15 +2672,7 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
     const worldSize = this.terrain.worldSize || 4500;
     const terrainCellSize = worldSize / Math.max(1, this.terrain.resolution - 1);
     const maximumSegmentLength = MathUtils.clamp(terrainCellSize * 0.24, 6, 10);
-    const centers: Vector3[] = [authoredCenters[0]!];
-    for (let index = 1; index < authoredCenters.length; index += 1) {
-      const start = authoredCenters[index - 1]!;
-      const end = authoredCenters[index]!;
-      const segments = Math.max(1, Math.ceil(start.distanceTo(end) / maximumSegmentLength));
-      for (let step = 1; step <= segments; step += 1) {
-        centers.push(start.clone().lerp(end, step / segments));
-      }
-    }
+    const centers = sampleSmoothRoadCenterline(authoredCenters, maximumSegmentLength);
 
     const layer = new Group();
     const crossSections = Math.max(2, Math.ceil(road.width / Math.max(3.5, terrainCellSize * 0.2)));
@@ -2710,12 +2702,10 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
     };
 
     if (road.kind === "main") {
-      // Rust's MainRoads are the paved arterial network. A compacted shoulder,
-      // charcoal carriageway, and muted centre marking keep that identity legible
-      // without turning the shared map into a traffic simulator.
-      addRibbon("road-main-shoulder", road.width + Math.min(2.6, road.width * 0.18), 0.38, 0, 0x746b5c, 1);
-      addRibbon("road-main-asphalt", road.width * 0.86, 0.62, 0, 0x292d2d, 0.92, 0x070909, 0.17);
-      addRibbon("road-main-centreline", MathUtils.clamp(road.width * 0.035, 0.32, 0.5), 0.78, 0, 0xc2ac7d, 0.82, 0x17140d, 0.14);
+      // Rust's MainRoads are broad, nearly black asphalt without painted lane
+      // markings. Leave only a narrow compacted shoulder to blend into terrain.
+      addRibbon("road-main-shoulder", road.width + Math.min(1.8, road.width * 0.12), 0.38, 0, 0x655e52, 1);
+      addRibbon("road-main-asphalt", road.width * 0.94, 0.62, 0, 0x151719, 0.96, 0x030404, 0.08);
     } else if (road.kind === "side") {
       // SideRoads are unpaved/gravel routes. The darker parallel ruts distinguish
       // them from both the asphalt network and the narrow foot trails.

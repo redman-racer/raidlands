@@ -1,4 +1,5 @@
 import type { TerrainPointPayload } from "./power-line-policy";
+import { CatmullRomCurve3, Vector3 } from "three";
 
 export type RoadKind = "main" | "side" | "trail";
 
@@ -8,6 +9,24 @@ export type RoadPayload = {
   width: number;
   points: TerrainPointPayload[];
 };
+
+export function sampleSmoothRoadCenterline(points: Vector3[], maximumSegmentLength: number): Vector3[] {
+  if (points.length < 2) return points.map((point) => point.clone());
+
+  const safeSegmentLength = Math.max(0.1, maximumSegmentLength);
+  if (points.length === 2) {
+    const divisions = Math.max(1, Math.ceil(points[0]!.distanceTo(points[1]!) / safeSegmentLength));
+    return Array.from({ length: divisions + 1 }, (_, index) => (
+      points[0]!.clone().lerp(points[1]!, index / divisions)
+    ));
+  }
+
+  // Centripetal Catmull-Rom follows unevenly spaced Rust path nodes without the
+  // loops and sharp overshoot that a uniform spline can introduce at corners.
+  const curve = new CatmullRomCurve3(points, false, "centripetal");
+  const divisions = Math.max(1, Math.ceil(curve.getLength() / safeSegmentLength));
+  return curve.getSpacedPoints(divisions);
+}
 
 function normalizeRoadKind(value: unknown): RoadKind {
   switch (String(value || "").trim().toLowerCase()) {
