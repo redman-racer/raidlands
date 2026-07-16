@@ -39,8 +39,8 @@ export function resolveMonumentQuality(
 ): MonumentQualityPolicy {
   const closeLimits: Record<EnvironmentQuality, number> = { low: 1, medium: 1, high: 2, ultra: 3 };
   const midLimits: Record<EnvironmentQuality, number> = { low: 4, medium: 9, high: 16, ultra: 24 };
-  const triangleBudgets: Record<EnvironmentQuality, number> = { low: 750_000, medium: 1_250_000, high: 2_000_000, ultra: 3_000_000 };
-  const drawCallBudgets: Record<EnvironmentQuality, number> = { low: 500, medium: 650, high: 800, ultra: 1_000 };
+  const triangleBudgets: Record<EnvironmentQuality, number> = { low: 3_000_000, medium: 4_000_000, high: 5_000_000, ultra: 6_000_000 };
+  const drawCallBudgets: Record<EnvironmentQuality, number> = { low: 2_500, medium: 3_000, high: 3_500, ultra: 4_000 };
   const activeCloseLimit = mode === "primitives" ? 0 : closeLimits[quality];
   const activeMidLimit = mode === "primitives" ? 0 : midLimits[quality];
   return {

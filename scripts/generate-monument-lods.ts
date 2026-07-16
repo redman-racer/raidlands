@@ -56,11 +56,11 @@ const TIER_ORDER: MonumentTierName[] = ["map", "mid", "close"];
 const TIER_INDEX = new Map(TIER_ORDER.map((tier, index) => [tier, index]));
 const TIER_BUDGETS: Record<MonumentTierName, TierBudget> = {
   map: {
-    maxBytes: 250 * 1024,
-    maxTriangles: 50_000,
+    maxBytes: 1536 * 1024,
+    maxTriangles: 250_000,
     targetTriangles: { tiny: 5_000, small: 10_000, medium: 22_000, large: 30_000, xlarge: 42_000 },
-    maxDrawCalls: 12,
-    textureSize: 0,
+    maxDrawCalls: 120,
+    textureSize: 128,
     simplifyError: 0.025,
   },
   mid: {
@@ -273,6 +273,9 @@ function selectStructuralNodes(source: Document, recipe: MonumentLodRecipe, tier
   const compactMapSelection = tier === "map" && recipe.preferAuthoredMap !== false;
   const minimumExtent = Math.max(compactMapSelection ? 2 : 0.55, footprint * (compactMapSelection ? 0.014 : 0.003));
   const authored = authoredHlodNodes(source);
+  if (recipe.id === "apartments_complex_1" && authored.length) {
+    return summarizeSelection(authored, "authored-hlod");
+  }
   if (tier === "map" && recipe.preferAuthoredMap !== false && authored.length) {
     return summarizeSelection(authored, "authored-hlod");
   }
@@ -471,6 +474,19 @@ async function applyPalette(document: Document, paletteLimit = MAP_PALETTE.lengt
   }
 }
 
+function stripSecondaryTextures(document: Document): void {
+  for (const material of document.getRoot().listMaterials()) {
+    material
+      .setNormalTexture(null)
+      .setOcclusionTexture(null)
+      .setEmissiveTexture(null)
+      .setMetallicRoughnessTexture(null)
+      .setMetallicFactor(0)
+      .setRoughnessFactor(1)
+      .setEmissiveFactor([0, 0, 0]);
+  }
+}
+
 async function simplifyPerComponent(document: Document, targetTriangles: number, error: number, lockBorder: boolean, preserveInstances: boolean): Promise<void> {
   await document.transform(weld({ overwrite: true }), prune());
   const current = documentStats(document).triangles;
@@ -538,7 +554,9 @@ async function buildTierDocument(
   const composites = await addComposites(document, scene, recipe, tier, reader);
   const budget = TIER_BUDGETS[tier];
   const targetTriangles = Math.max(1_000, Math.round(Math.min(budget.maxTriangles, budget.targetTriangles[recipe.sizeClass]) * targetScale));
-  const materialMode = tier === "map" || forcePalette ? "palette" : "textured";
+  const hasBaseColorTextures = document.getRoot().listMaterials().some((material) => material.getBaseColorTexture());
+  const materialMode = forcePalette || !hasBaseColorTextures ? "palette" : "textured";
+  if (tier === "map" && materialMode === "textured") stripSecondaryTextures(document);
   if (materialMode === "palette") await applyPalette(document, tier === "mid" ? 3 : tier === "close" ? 6 : MAP_PALETTE.length);
   await simplifyPerComponent(
     document,
@@ -781,8 +799,8 @@ async function main(): Promise<void> {
   }
   if (entries.length !== 78) throw new Error(`Expected 78 manifest entries, received ${entries.length}.`);
   const manifest = {
-    version: 8,
-    recipeVersion: 3,
+    version: 9,
+    recipeVersion: 4,
     generatedBy: "gltf-transform@4.3.0",
     sourceRepository: RUSTRELAY_SOURCE,
     thresholds: { mapToMidPixels: 48, midToClosePixels: 220, hysteresis: 0.2 },

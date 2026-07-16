@@ -59,6 +59,7 @@ import { UnrealBloomPass } from "three/examples/jsm/postprocessing/UnrealBloomPa
 import { unityPositionToThreeVector, unityQuaternionValueToThreeQuaternion } from "../airstrike-animation-editor/editor/coordinates";
 import { createVehicleProxy, loadVehiclePreview, metadataForVehicle } from "../airstrike-animation-editor/editor/vehicle-preview";
 import type { VehiclePreviewMetadataFile } from "../airstrike-animation-editor/types";
+import { mapVehicleUsesDetailedModel } from "./world-event-model-policy";
 import {
   fogRayMarchSamples,
   lowDetailFogNearVisibility,
@@ -120,6 +121,7 @@ import {
 import { monumentPrimitiveKind, monumentPrimitiveSearchKey, monumentPrimitiveSize } from "./monument-primitive-policy";
 import { normalizePowerLines, type PowerLinePayload } from "./power-line-policy";
 import { normalizeRoads, type RoadPayload } from "./road-policy";
+import { sampleTerrainSurfaceHeight } from "./terrain-height-policy";
 import {
   desiredMonumentTier,
   monumentCacheEvictionKeys,
@@ -2600,19 +2602,91 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
     this.scene.add(this.roadLayer);
   }
 
-  private createRoadSurface(road: RoadPayload): Mesh | null {
-    const centers: Vector3[] = [];
+  private createRoadSurface(road: RoadPayload): Group | null {
+    const authoredCenters: Vector3[] = [];
     road.points.forEach((point) => {
       const position = rustWorldToViewerPosition(point.x, point.y, point.z);
-      const prior = centers[centers.length - 1];
-      if (!prior || prior.distanceToSquared(position) > 0.01) centers.push(position);
+      const prior = authoredCenters[authoredCenters.length - 1];
+      if (!prior || prior.distanceToSquared(position) > 0.01) authoredCenters.push(position);
     });
-    if (centers.length < 2) return null;
+    if (authoredCenters.length < 2) return null;
 
-    const elevation = road.kind === "main" ? 0.9 : road.kind === "side" ? 0.72 : 0.56;
+    const worldSize = this.terrain.worldSize || 4500;
+    const terrainCellSize = worldSize / Math.max(1, this.terrain.resolution - 1);
+    const maximumSegmentLength = MathUtils.clamp(terrainCellSize * 0.24, 6, 10);
+    const centers: Vector3[] = [authoredCenters[0]!];
+    for (let index = 1; index < authoredCenters.length; index += 1) {
+      const start = authoredCenters[index - 1]!;
+      const end = authoredCenters[index]!;
+      const segments = Math.max(1, Math.ceil(start.distanceTo(end) / maximumSegmentLength));
+      for (let step = 1; step <= segments; step += 1) {
+        centers.push(start.clone().lerp(end, step / segments));
+      }
+    }
+
+    const layer = new Group();
+    const crossSections = Math.max(2, Math.ceil(road.width / Math.max(3.5, terrainCellSize * 0.2)));
+    const addRibbon = (
+      name: string,
+      width: number,
+      elevation: number,
+      lateralOffset: number,
+      color: number,
+      roughness: number,
+      emissive = 0x000000,
+      emissiveIntensity = 0,
+    ): void => {
+      const mesh = this.createRoadRibbon(centers, width, elevation, lateralOffset, crossSections, new MeshStandardMaterial({
+        color,
+        roughness,
+        metalness: 0,
+        emissive,
+        emissiveIntensity,
+        polygonOffset: true,
+        polygonOffsetFactor: -1,
+        polygonOffsetUnits: -1,
+        side: DoubleSide,
+      }));
+      mesh.name = name;
+      layer.add(mesh);
+    };
+
+    if (road.kind === "main") {
+      // Rust's MainRoads are the paved arterial network. A compacted shoulder,
+      // charcoal carriageway, and muted centre marking keep that identity legible
+      // without turning the shared map into a traffic simulator.
+      addRibbon("road-main-shoulder", road.width + Math.min(2.6, road.width * 0.18), 0.38, 0, 0x746b5c, 1);
+      addRibbon("road-main-asphalt", road.width * 0.86, 0.62, 0, 0x292d2d, 0.92, 0x070909, 0.17);
+      addRibbon("road-main-centreline", MathUtils.clamp(road.width * 0.035, 0.32, 0.5), 0.78, 0, 0xc2ac7d, 0.82, 0x17140d, 0.14);
+    } else if (road.kind === "side") {
+      // SideRoads are unpaved/gravel routes. The darker parallel ruts distinguish
+      // them from both the asphalt network and the narrow foot trails.
+      addRibbon("road-side-bed", road.width + Math.min(1.5, road.width * 0.18), 0.36, 0, 0x84613e, 1);
+      addRibbon("road-side-compacted", road.width * 0.82, 0.54, 0, 0x9a734d, 0.98, 0x120b05, 0.1);
+      const rutWidth = MathUtils.clamp(road.width * 0.095, 0.54, 0.9);
+      const rutOffset = road.width * 0.22;
+      addRibbon("road-side-rut-left", rutWidth, 0.7, -rutOffset, 0x59412d, 1);
+      addRibbon("road-side-rut-right", rutWidth, 0.7, rutOffset, 0x59412d, 1);
+    } else {
+      // TrailRoads are deliberately slimmer and earth-toned: visible enough to
+      // navigate from the air, but never mistaken for a vehicle road.
+      addRibbon("road-trail-bed", road.width * 1.25, 0.34, 0, 0x714c30, 1);
+      addRibbon("road-trail-tread", road.width * 0.56, 0.52, 0, 0x9a6d43, 1, 0x130a04, 0.08);
+    }
+
+    return layer;
+  }
+
+  private createRoadRibbon(
+    centers: Vector3[],
+    width: number,
+    elevation: number,
+    lateralOffset: number,
+    crossSections: number,
+    material: MeshStandardMaterial,
+  ): Mesh {
     const positions: number[] = [];
     const indices: number[] = [];
-    const halfWidth = road.width / 2;
 
     centers.forEach((center, index) => {
       const previous = centers[Math.max(0, index - 1)]!;
@@ -2621,17 +2695,21 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
       direction.y = 0;
       if (direction.lengthSq() < 0.0001) direction.set(1, 0, 0);
       direction.normalize();
-      const lateral = new Vector3(-direction.z, 0, direction.x).multiplyScalar(halfWidth);
-      const left = center.clone().add(lateral);
-      const right = center.clone().sub(lateral);
-      left.y = sampleTerrainHeight(this.terrain, left.x, left.z) + elevation;
-      right.y = sampleTerrainHeight(this.terrain, right.x, right.z) + elevation;
-      positions.push(left.x, left.y, left.z, right.x, right.y, right.z);
+      const lateral = new Vector3(-direction.z, 0, direction.x);
+      for (let cross = 0; cross <= crossSections; cross += 1) {
+        const offset = lateralOffset + width * (cross / crossSections - 0.5);
+        const position = center.clone().addScaledVector(lateral, offset);
+        position.y = sampleTerrainHeight(this.terrain, position.x, position.z) + elevation;
+        positions.push(position.x, position.y, position.z);
+      }
 
       if (index > 0) {
-        const prior = (index - 1) * 2;
-        const current = index * 2;
-        indices.push(prior, prior + 1, current + 1, prior, current + 1, current);
+        const stride = crossSections + 1;
+        const prior = (index - 1) * stride;
+        const current = index * stride;
+        for (let cross = 0; cross < crossSections; cross += 1) {
+          indices.push(prior + cross, prior + cross + 1, current + cross + 1, prior + cross, current + cross + 1, current + cross);
+        }
       }
     });
 
@@ -2639,21 +2717,6 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
     geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
     geometry.setIndex(new Uint32BufferAttribute(indices, 1));
     geometry.computeVertexNormals();
-
-    const style = road.kind === "main"
-      ? { color: 0x3e4140, roughness: 0.98, opacity: 0.91 }
-      : road.kind === "side"
-        ? { color: 0x75684f, roughness: 1, opacity: 0.85 }
-        : { color: 0x70543d, roughness: 1, opacity: 0.78 };
-    const material = new MeshStandardMaterial({
-      ...style,
-      transparent: true,
-      depthWrite: true,
-      polygonOffset: true,
-      polygonOffsetFactor: -1,
-      polygonOffsetUnits: -1,
-      side: DoubleSide,
-    });
     const mesh = new Mesh(geometry, material);
     mesh.castShadow = false;
     mesh.receiveShadow = true;
@@ -5020,6 +5083,16 @@ function createAircraftMarker(vehicle: string, metadataFile: VehiclePreviewMetad
   const fallback = createVehicleProxy(metadata);
   prepareLoadedAircraftForMap(fallback);
   group.add(fallback);
+
+  // The Cargo Ship source model is the complete explorable Rust entity, not a
+  // map-scale visual. Decoding it brings hundreds of thousands of vertices
+  // and dozens of textures into an already busy terrain scene, which can
+  // stall or crash the browser as the replay starts. Its dimensioned ship
+  // proxy is intentional here: it preserves position, heading, and scale
+  // without putting the viewer's render budget at risk.
+  if (!mapVehicleUsesDetailedModel(vehicle)) {
+    return group;
+  }
 
   void loadVehiclePreview(metadata, assetBase || "/assets/").then((result) => {
     if (result.usedFallback) {
@@ -8358,16 +8431,7 @@ function shouldHideMonumentPrimitive(monument: MonumentPayload): boolean {
   return key.includes("ice_lake") || key.includes("ice_lakes") || key.includes("wild_swamp");
 }
 
-function sampleTerrainHeight(terrain: TerrainPayload, x: number, z: number): number {
-  const resolution = terrain.resolution;
-  const worldSize = terrain.worldSize || 4500;
-  const half = worldSize / 2;
-  const u = MathUtils.clamp((x + half) / worldSize, 0, 1);
-  const v = MathUtils.clamp((half - z) / worldSize, 0, 1);
-  const col = resolution - 1 - Math.round(u * (resolution - 1));
-  const row = Math.round(v * (resolution - 1));
-  return terrain.heights[row * resolution + col] || 0;
-}
+const sampleTerrainHeight = sampleTerrainSurfaceHeight;
 
 function rustWorldToViewerPosition(x: number, y: number, z: number): Vector3 {
   return new Vector3(-x, y, z);

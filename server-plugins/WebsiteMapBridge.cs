@@ -531,6 +531,48 @@ namespace Oxide.Plugins
             PublishMap("manual command", message => ReplyToCommand(arg, message), true, renderName, scale);
         }
 
+        [Command("websitemapbridge.publish")]
+        private void CovalencePublishCommand(IPlayer caller, string command, string[] args)
+        {
+            if (!CanUseCovalenceCommand(caller))
+            {
+                caller?.Reply("You must be server console or an admin to publish the website map.");
+                return;
+            }
+
+            if (args != null && args.Length > 2)
+            {
+                caller?.Reply("Invalid syntax. Use websitemapbridge.publish <renderName:optional> <resolutionScale:optional>");
+                return;
+            }
+
+            var renderName = args != null && args.Length > 0 && !string.IsNullOrWhiteSpace(args[0]) ? args[0] : config.RenderName;
+            var scale = config.ImageResolutionScale;
+
+            if (args != null && args.Length > 1)
+            {
+                float parsedScale;
+
+                if (!float.TryParse(args[1], out parsedScale) || parsedScale <= 0f)
+                {
+                    caller?.Reply("Invalid syntax. Use websitemapbridge.publish <renderName:optional> <resolutionScale:optional>");
+                    return;
+                }
+
+                scale = parsedScale;
+            }
+
+            Puts($"Covalence command received: {command}");
+            var requested = $"Website map publish requested for render '{renderName}' at scale {scale:0.###}.";
+            Puts(requested);
+            caller?.Reply(requested);
+            PublishMap("manual Covalence command", message =>
+            {
+                Puts(message);
+                caller?.Reply(message);
+            }, true, renderName, scale);
+        }
+
         private void StatusCommand(ConsoleSystem.Arg arg)
         {
             if (!CanUsePublishCommand(arg))
@@ -539,7 +581,7 @@ namespace Oxide.Plugins
                 return;
             }
 
-            ReplyToCommand(arg, "WebsiteMapBridge v1.0.18 status requested; reading cached diagnostics.");
+                ReplyToCommand(arg, "WebsiteMapBridge v1.0.19 status requested; reading cached diagnostics.");
 
             try
             {

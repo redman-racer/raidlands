@@ -20,10 +20,10 @@ describe("monument quality policy", () => {
   });
 
   it("applies the requested tier caps and total resource budgets", () => {
-    expect(resolveMonumentQuality("auto", "low")).toMatchObject({ activeCloseLimit: 1, activeMidLimit: 4, triangleBudget: 750_000, drawCallBudget: 500 });
-    expect(resolveMonumentQuality("auto", "medium")).toMatchObject({ activeCloseLimit: 1, activeMidLimit: 9, triangleBudget: 1_250_000, drawCallBudget: 650 });
-    expect(resolveMonumentQuality("auto", "high")).toMatchObject({ activeCloseLimit: 2, activeMidLimit: 16, triangleBudget: 2_000_000, drawCallBudget: 800 });
-    expect(resolveMonumentQuality("auto", "ultra")).toMatchObject({ activeCloseLimit: 3, activeMidLimit: 24, triangleBudget: 3_000_000, drawCallBudget: 1_000 });
+    expect(resolveMonumentQuality("auto", "low")).toMatchObject({ activeCloseLimit: 1, activeMidLimit: 4, triangleBudget: 3_000_000, drawCallBudget: 2_500 });
+    expect(resolveMonumentQuality("auto", "medium")).toMatchObject({ activeCloseLimit: 1, activeMidLimit: 9, triangleBudget: 4_000_000, drawCallBudget: 3_000 });
+    expect(resolveMonumentQuality("auto", "high")).toMatchObject({ activeCloseLimit: 2, activeMidLimit: 16, triangleBudget: 5_000_000, drawCallBudget: 3_500 });
+    expect(resolveMonumentQuality("auto", "ultra")).toMatchObject({ activeCloseLimit: 3, activeMidLimit: 24, triangleBudget: 6_000_000, drawCallBudget: 4_000 });
     expect(resolveMonumentQuality("primitives", "ultra")).toMatchObject({ activeCloseLimit: 0, activeMidLimit: 0 });
   });
 
@@ -63,13 +63,13 @@ describe("monument quality policy", () => {
   it("rejects an oversized tier before it can consume the scene budget", () => {
     const policy = resolveMonumentQuality("auto", "ultra");
     expect(monumentTierFitsBudget(
-      { triangles: 2_900_000, drawCalls: 950 },
+      { triangles: 5_900_000, drawCalls: 3_950 },
       { triangles: 20_000, drawCalls: 8 },
       { triangles: 300_000, drawCalls: 90 },
       policy,
     )).toBe(false);
     expect(monumentTierFitsBudget(
-      { triangles: 2_000_000, drawCalls: 700 },
+      { triangles: 5_000_000, drawCalls: 3_700 },
       { triangles: 20_000, drawCalls: 8 },
       { triangles: 120_000, drawCalls: 40 },
       policy,

@@ -6,781 +6,781 @@
       "status": "approved",
       "sourceSha256": "dbb7f76836ba3efb70b0a1814d7087a9b0f8239e89e45b5cc9b998bf422a4321",
       "tierSha256": {
-        "map": "4792685cf98bcf8de5723f301810f3e3e7c87ada4395a7438d1f64c536c4875b",
-        "mid": "28b2eba29262f93e22070ce4a92bf53eb6a025accd526aba8d89322cb1fcb66b",
+        "map": "fac3bf73cf191fa3eecb3baa5c1357e9a7e62006200f732e399f5a1064e96297",
+        "mid": "6a8e8f0aa79fc2b8416a47388a510e57e89dcdc3bad044e3df6a77e82024055e",
         "close": "99ffb1cde791b4f63e00668d37ac236ec2ddcfa7e880ea65b2ee03973d2a7331"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "apartments_complex_1": {
       "status": "approved",
       "sourceSha256": "34ab86baa23a40784358d2a0238018696fe471bfc8ed5d597b82e0a63d1f262c",
       "tierSha256": {
-        "map": "c1dd69aae37b30a2ab6b1d08d31e9c6650dbd4405fabbcbf7eb84a32a990d40f",
-        "mid": "44f9d21748d63474c4d8a6aa1b4685a31b927d7d0cfc533162fd2ed87ae1882e",
-        "close": "9574ca6b2b0ccdf7a6902a1d5457354462f67156d55630293ace2b179ecedbc9"
+        "map": "fb9a6c967a797300285486a986e706a24acfccce063b956e9f44dd070b3844eb",
+        "mid": "31308255e13cced7e2b8353609e60656f900debe77a48fa274e558460be59d8e",
+        "close": "31308255e13cced7e2b8353609e60656f900debe77a48fa274e558460be59d8e"
       },
-      "reviewedAt": "2026-07-16T05:58:05.907Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "arctic_research_base_a": {
       "status": "approved",
       "sourceSha256": "e0aa2e0df68760a1e8d197b673710080ae426c5a16104b43aa71da67a565c7cf",
       "tierSha256": {
-        "map": "1df8d364e22a73e59797f831e275cf0f58737b786c58024e33f119b860459a7c",
-        "mid": "4997474b9ce653ff4b67e3676acb6e9490e715ccbdcd338d04ad2987fbfb8c97",
+        "map": "51a558a9bfdda1853613314a6351b2d14046fa8f37929cda62067f065cc0c5cc",
+        "mid": "1eab1a588ad0aa5cccf89b810da6770c48759160eb0aa383b1946cf714899e92",
         "close": "970cc1942efc6ca0810d69123e717bf371d32e45220f976223211eb6b78a2fea"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "bandit_town": {
       "status": "approved",
       "sourceSha256": "dcf26bc49a392ffb28ad7fa8cef97093795ef1314f8d96f4ec8f3c342f2e7935",
       "tierSha256": {
-        "map": "a6c3bbe928dd9ea87d2ca4f022f2fe29f899e8a16e67d91f22efd87cfca48a98",
+        "map": "ae2405856a9455a71d4432c04275f284ec04df3b25addf055b6c3a2aefff2646",
         "mid": "00444da5decacfc719001583fa0bd8ca29321c0504b7d715892544eebb4d3b5d",
         "close": "2efec317146ac07b7ad6fba8e6c57a372af65b58c13a3b9d2c718c564e3321df"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "cave_large_hard": {
       "status": "approved",
       "sourceSha256": "92a8eb0b904b02e4307c0e632dbe289a2ac2dfa387d0603cd516fae5c8e0ebc5",
       "tierSha256": {
-        "map": "eb30cc7b99f6fd009085aafc54e726f2655f16bc9f07cfb239f6458637565c72",
-        "mid": "3eadb5bc2494aec3edc1dcc5d2defbf39e4cccf863a254185fd3074d836c50a6",
+        "map": "ac37f062559fad7c47acd38e2585a17035a160f1d02c432309accbb9f41b50c7",
+        "mid": "4cbb0c29b15f3965ebe6f408e1e2a4aca1c467aee65de98e99593c7c8e40556c",
         "close": "402fdbdca7a2333a3fcd233b1acaf1c53123f01567de8edda9f2c76e325a582b"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "cave_large_medium": {
       "status": "approved",
       "sourceSha256": "fa361f706900b16a677f9be9dfe8c60f599e6b490f20c4e2494e10a27cf8f622",
       "tierSha256": {
-        "map": "fde56d99c9d4fc57d110e615adc958481efa115f2b084190b770edd27bc25be6",
-        "mid": "fbeddc50007b6c51cff18fc6b30bda9e8ff2d83204a7eb7e0c5e71523111030e",
+        "map": "416d1f070f2fcef621b9b932b9e95bbeadf6dac01d9245216bf7e98083451407",
+        "mid": "e4b34399ce3bc0cbd8d59a4586efb96f1c0150fda7866faa4f807349f8ffca9a",
         "close": "fbddf7d28345518ceecffc1d6d7c620d9a480ff88b69c96232292071b2ad475e"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "cave_large_sewers_hard": {
       "status": "approved",
       "sourceSha256": "c96714c23260787e84764aa392f4063178b476972d92f6065b9804b9ac8633ae",
       "tierSha256": {
-        "map": "393f6053a428c40d5bf61f1ef76a90bca28d8355a3decd8d25b08d3536436654",
+        "map": "df910cee1ae9d1c6158cc9a8d0683bf4056f04536377309846234a3bc324306d",
         "mid": "21f5e10a3de3658c86669137c7b6d2e42bdf670f2c322fa95443464b0be926f9",
         "close": "d6619be82909afcd66f365a7d93e8d89dd9518a81101bf2ae3197f293505317a"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "cave_medium_easy": {
       "status": "approved",
       "sourceSha256": "674f9ff27200959ccd121a73765e3ccedccd621fa3de61fbd5d0689f53f99848",
       "tierSha256": {
-        "map": "7f866782dd08a926056f653fbbbdbe001580f72345c3980d5da78fba2843758d",
-        "mid": "d2f6c47da4ea04dcba03ad8f6810e19bb19f3a01535f315821612ccf04659547",
+        "map": "5732c2ee065e3132231ecf8192a0181f5e4207efc99a367131998f68f5fd6800",
+        "mid": "048c3611856432ade5ec618b03797a17eb9e5f82954d687fc12bf2b508649dfe",
         "close": "b70001949f849f695ecd0aabb5cf0a6e9054a43e82fd00bc0d4101136f142aae"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "cave_medium_hard": {
       "status": "approved",
       "sourceSha256": "2773dafcfcfdd76fadfbbe41640647331e49a7d028b644f6f8cfb01a26801fee",
       "tierSha256": {
-        "map": "79291c3ab19add2d84e8660b22535fdc7fc60be6886763151b0b82e50c02d2ad",
-        "mid": "3cd077d13b3bf4f7961d5d9ad9766942371b27fb62ca272ea81048a84048dfe2",
+        "map": "e7250b814616a778a6c5d9cf9cbacc365ad9622070bd93b744a3f33c8dbdaabd",
+        "mid": "da3d439fb2609ef363769459b1f1d3ba4d5f2502cb678e7d14215834d14e5ff9",
         "close": "9f4d3978aacd057f9c6401e82f1fcfa3e77df3d775ae1eac380b3dd380895c81"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "cave_medium_medium": {
       "status": "approved",
       "sourceSha256": "acfa8658f4aafed56ac925a6e4d32bf1db379804d02eeede1a3b77435e21d943",
       "tierSha256": {
-        "map": "2fcfa49b811e540e69a527f77cfb9d8f86ad1492409c4756d3668c799154f54e",
+        "map": "f81e83697165f89b0859cf0193de50620065b6c0da96b622347de882eedb2fff",
         "mid": "fa34ac442adb34225027daaf4c41ca2619b85effab602251820ddb9deaa99b36",
         "close": "847775fa59c628197c44d26fe980292161d627027784999aab8523579a6dc7dc"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "cave_small_easy": {
       "status": "approved",
       "sourceSha256": "b1dd4a053b2b546be801f490d0ff3a416d4add7243c8c7320c25eacaecb29424",
       "tierSha256": {
-        "map": "3b5cbda26a082860fbab5bb757dddb53ccf24910e887cb5fbcdc2af9b4120a83",
+        "map": "3143ff78ba7f7dc5a949d5a6eb13cf4355b1a6d3e9342dee912ac8d2774413da",
         "mid": "16d8b0a9f2620ec258f89667e37ad2079a791b0463c6540b2eef5e59c6cb5329",
         "close": "fdfe5ac753e312a97da5fca84cd2090e47932a64837fcda19d157d9594a8df29"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "cave_small_hard": {
       "status": "approved",
       "sourceSha256": "e2c2489c91660c68321cf6e56e5391bde96b0974061b91b54e8538bbee5f0bef",
       "tierSha256": {
-        "map": "916610cf0b616f111ac2ae8562841820bbdd2617544ebaf68f64916b1a495168",
+        "map": "c25fff9cd1a9c00763d9ea4583faa9c5cf16811455eefb27a753bdf6f8276e99",
         "mid": "509834176a4a8d49ce3a44502b6d5bf7495fe55465e7a796a566385e74845b8d",
         "close": "52efbf9ae6d165774028efafbfe734c98ff73fc57d993b89f38aa5733d06aac6"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "cave_small_medium": {
       "status": "approved",
       "sourceSha256": "b9adc61be1cf8a5f77dac849ac7b3163f206a1c7ccc1691972b46009446f24e4",
       "tierSha256": {
-        "map": "81d23fcb3c7ba4a5b195f596be4252d7f09331e3bd24328235657d088831d382",
+        "map": "09792da07e6946654d38e6282bc65da6f1cc40894d2873e65bf421b4deeb15ed",
         "mid": "d96b19b092c9b0d3ea378af963fbbe6b5c65697565dcb03b645394903ff120e8",
         "close": "bc0af76b61d871fcc5b0e12a3f3062da0225f3b79c3943126dd80bb11a91f3e4"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "compound": {
       "status": "approved",
       "sourceSha256": "3cae5ca3a7e53a876fd9134ddbbcad799b11abd25872e4f7ff3c7ace4e492991",
       "tierSha256": {
-        "map": "7e100d93f28f7c8f0cbd1092b598681c62021086967dd8bb426b0fbb7ac9f6dc",
+        "map": "199ed4b828d8cea88987d4aeb2456bb68e293797f541d7512c2621336bf208eb",
         "mid": "e0dc7c31946998aadd51e4a60de6181ff547e5d772e62292432c5a5586ce3e4a",
         "close": "609fdc9e47868da16761992dab3c65390b33bbce7d7821b0fd69d2cbb6bf902c"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "desert_military_base_a": {
       "status": "approved",
       "sourceSha256": "2efd5185a22040a67eba0655acdb2bc6507458f8782b69fe892b6d33faffbc54",
       "tierSha256": {
-        "map": "de42a81ddf56a186bb3427cf0f32ea25632a075eb622ac9afdc5aff7aa3e1373",
+        "map": "3925e1b3a3b05ef1a1c7cf0f38a788ef6fa1b53e2cd99ce6366ff278d05a0d4a",
         "mid": "8325718e34fc57c02b12db00f236d79a756f25835eeec9b8400f23d44190b7ed",
         "close": "2a85035049e5b69816765208e5885a77fe85e17cc6107a4bbd5418621a838e5a"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "desert_military_base_b": {
       "status": "approved",
       "sourceSha256": "077079da1b3a6303c76c6c823c58bbe48730958874151ca385cbc116cc98e09d",
       "tierSha256": {
-        "map": "47de32ca6fb20eceb7368abf6484b4f7b23f568266dd12b60639d0a47246d529",
+        "map": "e33dd39fa99a3c3db57e47e08903b970c9b8078c5fc47f2830d779353bd80f31",
         "mid": "c0988bf2c32b7c81203f664f7582b5fa3c6463794017d5b400e7c20031dc8fb8",
         "close": "0a6cac8a8d18627a31023260d26b3ae6f6d66be03d3970c81b5e3185cfd66f9d"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "desert_military_base_c": {
       "status": "approved",
       "sourceSha256": "3eb585960525828226ef5162d6ebc19bfef0e4165350dc4e9df0145b92718c55",
       "tierSha256": {
-        "map": "58061374a4b2fec6efca8fee3459dba6b7fde3ea2002a7bffa2dbd08d664c567",
-        "mid": "3a79ca705fea60badc35d743ed6cde83b2ec9f20400ce090045ad90498889bf5",
+        "map": "dd073864aa375992cb9875c1ee8cf9e3d7192e595f71004612cfdda8c0fe6e5c",
+        "mid": "8ac567188f1d5f94bcc9f2f9de747f6997d1da3eac616d72b630ecce8226a401",
         "close": "eba3bcb2056e34a20c02aa8250909ee017ecdb0aae6d900b5efccd426ead7f1b"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "desert_military_base_d": {
       "status": "approved",
       "sourceSha256": "cbc5b14a391675515c3e4dfaad543e04eed21e8c56e33dcda3bbbbc0f4ab16d5",
       "tierSha256": {
-        "map": "0fd2c332285a66d067fecf5aa20a6b9614af810a13775381cafe11c88acf524c",
+        "map": "4f1232c01963fa252853596c854b5c69b26eb9037c02a43c3042766e096b7252",
         "mid": "bb8da4146ae374ce51fd2f453f82730c284a2b1410e70b85a6ae13eeae30ec55",
         "close": "2367f9194a0d4707217a963cd3f918da525319ac194373cffeab28d01a891714"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "entrance_bunker_a": {
       "status": "approved",
       "sourceSha256": "87ec4c993b9b8d042ef8c350351a59bc02f646be602f763b81419337e22d69dc",
       "tierSha256": {
-        "map": "8942ae18ddc83500d508ac08387543bb0729d9c9cf44bf85e27ae37c3acaafc7",
+        "map": "8c984c70993b3dbcb452d47ed5a562028114a62a898a59823203f1897cb385a8",
         "mid": "2a18e0172c9af10d6cd50d3b317f7180a57968870438ff47bb99121c75541a85",
         "close": "2a18e0172c9af10d6cd50d3b317f7180a57968870438ff47bb99121c75541a85"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "entrance_bunker_b": {
       "status": "approved",
       "sourceSha256": "56f454970bb6e8283a3e6a3bd8cce3a170023862c8e86bb2e8107b3f649d61f8",
       "tierSha256": {
-        "map": "302d89197c7dd85c2aa24c587eac4d4c350ce1159d56cd7182f6d0562cdac1ff",
+        "map": "1fc95008ce51190c1e827893c0dc82f4678111fa57d44150fdeb7483d99e6776",
         "mid": "e7b547393162f74506ca73c64d5400d8b041b612de72737cc988db802915201d",
         "close": "a0dd121be3ed05a0ca845e708289cb62027e0fc9f6a2f0c7eee70fd99d834cce"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "entrance_bunker_c": {
       "status": "approved",
       "sourceSha256": "cda87904715db7f715c2660297e3946d0c251d69124e7dc90af70e0513788e52",
       "tierSha256": {
-        "map": "8942ae18ddc83500d508ac08387543bb0729d9c9cf44bf85e27ae37c3acaafc7",
+        "map": "d6dd1c3898c6d753a8b38e61131af941885e4b4101735048295fef34c1f2597a",
         "mid": "45482b97f06b509e0bd172a205f9b2900124b8d05dde71ed6dbb0942ab685cc8",
         "close": "45482b97f06b509e0bd172a205f9b2900124b8d05dde71ed6dbb0942ab685cc8"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "entrance_bunker_d": {
       "status": "approved",
       "sourceSha256": "ceba2284fb36d3e49f6279af36807afc6bbd0984c922946e37b05ac87bea41c9",
       "tierSha256": {
-        "map": "8942ae18ddc83500d508ac08387543bb0729d9c9cf44bf85e27ae37c3acaafc7",
+        "map": "8c984c70993b3dbcb452d47ed5a562028114a62a898a59823203f1897cb385a8",
         "mid": "86ba7c16f391c8c9d50608ad8efca1ea49333acb3e56c08ec9236ce668758349",
         "close": "86ba7c16f391c8c9d50608ad8efca1ea49333acb3e56c08ec9236ce668758349"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "excavator_1": {
       "status": "approved",
       "sourceSha256": "66e010436a01771092cde869c3c8cad8f3510b303098936e2e25149a2a8e5f01",
       "tierSha256": {
-        "map": "6b8c459bb43226f28dcc60cf8edc40af45ed18b3cfd1898e98df43d3c19d3f39",
+        "map": "fa1b7c966ddb3dfff663018f78ff9be8ac5e88c28b1c8c301f173495a60ffd93",
         "mid": "87ba1e157f0da9aeead85a09143d614fe6d1532e5288e91f10b22fdf58e5e696",
         "close": "30a1d6839637331b55b022f8df56ee6c1cc48479a97cbddd8cb67cdd74fa33b3"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "ferry_terminal_1": {
       "status": "approved",
       "sourceSha256": "4a0b596f97aeca0051a6ac3dbaa895fe2a1d3fad803c36d345cbb50a4369bad2",
       "tierSha256": {
-        "map": "d8f6e22e3496680382b09282cc20fbcb323f1ee8367652733a3973ae858218a2",
-        "mid": "dba61f85a93fc65ba570efacb72e126bda54d7d32e34218ccf29f0b5ad27651d",
+        "map": "c1244e4d6dd7ced48314c979e7d7933f50095a02acef0628cc07134f1aa3f105",
+        "mid": "ca196bf01354d551635bfc51d99736187e9a964a77cad9be3a2cdda3a1b840d6",
         "close": "3ddb6340bc2582e920476663e989c80954ab4e1de81a6246f6fc09fb30aa5ec5"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "fishing_village_a": {
       "status": "approved",
       "sourceSha256": "3e86b65fada7248522a54d4787be30e32d8c8e7d53049b2e693a19703c9303f5",
       "tierSha256": {
-        "map": "4734db774228d381b523ab7f940fee9de8de263bbedbb7370f3cb6df6cd40d47",
+        "map": "65f1f65efc6c3dc2fa5a717f4e12756e03549dea744b12339876ced101a0c8d2",
         "mid": "5aa2c34fe00fd0be0d810d1b0cd5229f17c0142eff3db377a50f993cd279e376",
         "close": "da7947768911e3835edfd1e0361d59ceaf9d389db15a59c6f8e85ed321cc149c"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "fishing_village_b": {
       "status": "approved",
       "sourceSha256": "cb8e20f740f085c6791fa5210532a8d8d5d96ee9bb1e331c87fc9d109554068e",
       "tierSha256": {
-        "map": "4d02acaf1316ba18f4e9fb43bdf297d7d573da78689136fcfd21d5eefad9ce3a",
+        "map": "d8a8e40a6c3bcf28f2b4fafc1b7b028338101d6447e3088cfa03c87c42a32e64",
         "mid": "3c2f27eac3dc737834227b7b50260aadef2e3940f9fa9d0f11b1dbbe4617b8a7",
         "close": "a99787bc64ee4dd58f895b23054e7f11edefd33b506ca8339e8c5ca76609c7c9"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "fishing_village_c": {
       "status": "approved",
       "sourceSha256": "96a3d7b23f4550b32c96350644369729d21dc0552d34a88ba829b38b2b545c83",
       "tierSha256": {
-        "map": "d5ea4d22d2ad0f98f1282992496c37d92f550716ae253b4a4ac07ee63b3033ff",
+        "map": "57c9cc2bbd25f241c3e665593be5024d77a2debc3e038119f4e06b5a63cd3b4e",
         "mid": "8df1b50a7ceefbaf4aadac70f69a913d3425bd0c340fbc7a5b1535b9b7db2b51",
         "close": "23f96cce7ce01f9e086c38c3435f284248f46044aa91ea66177c3c69c0425aa6"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "gas_station_1": {
       "status": "approved",
       "sourceSha256": "f04db5e8fcd67ef0f2be1e8675acb16d597612ffb8eeb4c25dfc5a3d85e291a3",
       "tierSha256": {
-        "map": "fb51aea463b333ffc2d0e2b10f36b45b241e04903520acc8e901dfa46cb625c2",
+        "map": "515184ef674a59e156243b6cd14d576f0ee2489de61170740d73bbe856345d54",
         "mid": "9ea85971e04f1e69c396dd3d8df995893a0bd48757e51e31dbb8e7603eb42694",
         "close": "6d070a000dbb92a344faef195ef9824ac85f758792f536cb785718a02e6b0715"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "harbor_1": {
       "status": "approved",
       "sourceSha256": "3e2e658ffd4f31b8ba3434af20df9220ec3bbd04897c811c858f79dc08f03d32",
       "tierSha256": {
-        "map": "03253c1cb511895c394b1daf45f8435e723716597f2c3b69d0a2f307e2239468",
+        "map": "c0244fba33d4aa8e74aa7a9aa0247067b7cdb336898e04147505bd1de6b6529e",
         "mid": "c7cb82664b9f57c6d096bef588be52d58d48522ff53f58eff14a7c54206b3c38",
         "close": "4d43ccf200a540176ced2eeca00d4caed1bbbe55121bd6f2daa0f8c7b89b086b"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "harbor_2": {
       "status": "approved",
       "sourceSha256": "a659a25dcbc48b2019c9c4c733991c0b420d581a6914460e5069abb7fb136ee6",
       "tierSha256": {
-        "map": "238fbbfdce92ab4118d19c283e3cbb9cdf2ef814b4659962b3fa8938447bbe60",
+        "map": "d04348f6e6d6a86f1bfce780e6f61689da832aa1c3b225c726e2feecee0276d3",
         "mid": "62677e0c23f5ae109236389ef02088928db8c027d697837109c78280692c95dc",
         "close": "71bf5d1a64c66bbd3ef0d8a8809805ca01d8ee49d1ff0ae3c940834e1e42687f"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "ice_lake_1": {
       "status": "approved",
       "sourceSha256": "ffb39666b93c27bcbf23ca764386538f6707718409ec6e4a20c33abb1d1f925d",
       "tierSha256": {
-        "map": "b11bb26cb7621f1167429878a1fbf919797e67c12e0771effadd64b4201344fa",
+        "map": "05ffc64a75dc5b03ba7e27e3e9e44d84479f5c20841edae6d1e2e9374b180651",
         "mid": "94ffc08d9c8c937129e01607a6577f8f3c0e8d33bbf1e9e4747234a1ac62a634",
         "close": "94ffc08d9c8c937129e01607a6577f8f3c0e8d33bbf1e9e4747234a1ac62a634"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "ice_lake_2": {
       "status": "approved",
       "sourceSha256": "4fe728695de2fafee66a33547c866e6218e6d62f4553bf0c34bb02b1aefadc44",
       "tierSha256": {
-        "map": "7af3c881389ac9aaa44b283debebe7fc5419b72ce36541073dd816cfe5d3e987",
+        "map": "cdc6a5ef52b5d57295263e47b1d47e5b893777c885e722ddd2a8f8c928a9d9aa",
         "mid": "fbc5f577b91212328422b9ebbed6b02eac66d09e7455c20174fb5920b5940a66",
         "close": "fbc5f577b91212328422b9ebbed6b02eac66d09e7455c20174fb5920b5940a66"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "ice_lake_3": {
       "status": "approved",
       "sourceSha256": "056633e02569c8808abfe0990ac850d6b1b7c2ae517c0f25183998f6f7d28a9c",
       "tierSha256": {
-        "map": "296fb1887db3a1844a0d225d99f81e31947ba85cc9d2accdeac2c131d6e22a84",
+        "map": "a3adbf0a2da10b1b3b60e0f86a52d90b3eec0a51b64e2c41129273ec3eedb2f6",
         "mid": "8d8fba189a8dfd04a7da8f2676d3e32e74537995b7be7e3131b3515dc55240d8",
         "close": "8d8fba189a8dfd04a7da8f2676d3e32e74537995b7be7e3131b3515dc55240d8"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "ice_lake_4": {
       "status": "approved",
       "sourceSha256": "c01c5f6b6391deeee4030de50eefa1bb2acc085455900b6232bcb77ca53dfa30",
       "tierSha256": {
-        "map": "16e434d265484dd8807be01a06ff8756a4b8847867016a587285710d1f9910f1",
+        "map": "e3c75671680bb21750ecc617edf7afa69082d6026053b44e71a2de9cd262c5b0",
         "mid": "4d072314c3370dfbce8f0364b164b6f73e17e4fcad1583af2db9b8b87edd0d44",
         "close": "4d072314c3370dfbce8f0364b164b6f73e17e4fcad1583af2db9b8b87edd0d44"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "jungle_ruins_a": {
       "status": "approved",
       "sourceSha256": "6c59667a2e5a7b34cf6c47d9f08611839bffd0153a8b8132c73e75039bdf9744",
       "tierSha256": {
-        "map": "caa3c70d58988948076cf3bf287bfbbc6f5b9d39aab7e085ac93184960443c72",
-        "mid": "336be31b153582c0f80631ee1c8318709f253b10d3f7412aec382f7761333d85",
+        "map": "cc7f0243b7653998628a9d094729f592bb498db3db7255f829756bafa932ec63",
+        "mid": "4d8994c0783c8acc7913700cbe79239f209e922c322017e2a2bcba3ddb4864e4",
         "close": "8d06eff5aef13c9cf2d27b46d7398a814a442b971fc9e30cbd80a64fbf1da08c"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "jungle_ruins_b": {
       "status": "approved",
       "sourceSha256": "528e085f5e6dadf9ced95e02eb3f04d29002c9cf3b73d73115b04fa344cd5d31",
       "tierSha256": {
-        "map": "229f8e54aa5fa7e5e853a5b514336056fe43849fb91e49cb62464c13f58d0504",
+        "map": "d0b9db34a4a96f5bb7f5b7c5210d868e57bbb5c981c1dbc14b46e7a84be0a19a",
         "mid": "d0a9bc38554208a151ea1ada64a75ff7e2f5597cc9d88530b09490a3cc558085",
         "close": "668b71dcb32283a26c2cc791ef67f370ac802e70a7252785a016a32cd7018426"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "jungle_ruins_c": {
       "status": "approved",
       "sourceSha256": "8f866eef58f340cd3e9f4e74ddaaa8ab0e79f7b7675fdd47e64f838223ca2733",
       "tierSha256": {
-        "map": "bbcfaf988a8eb90a2962140f2651bb74bee2bfc1af678a7be69c46334818627d",
+        "map": "f2bb16e5e883a3fa7ece635f5b96efe91762c81fdd6b066876877dbebc840ab6",
         "mid": "8bbd75388696e2b346d6425999825fd139928068c34ca19391591f55a8f22c47",
         "close": "06747b3721d56adb62beef4f2bd2207757788a5e587872c596b118623630521e"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "jungle_ruins_d": {
       "status": "approved",
       "sourceSha256": "f820c815d68fd8abc4d52c9705290d1a6662489e5aec23b24a7ca9b2ed64cc80",
       "tierSha256": {
-        "map": "d6150e5a3a920e3683c9248d84853322bd0f6113e02d31cf2313c067ad175f68",
+        "map": "73820af0fbbdb8b250fb3db60c21dde1879dda69fd118c561cc29a71d6098d06",
         "mid": "5294795e399fe1c9744abdc85cc9dc220ccd388b7d128d1ddbab88ef71f2a1af",
         "close": "53dfd73b8b8d5e88d56899b1236b48810b59a396af5c7af2dc417b554d00de30"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "jungle_ruins_e": {
       "status": "approved",
       "sourceSha256": "7bea0eefbf5bb14af531c168ef004599725226dc49ce0214c133a1b7ab223cbb",
       "tierSha256": {
-        "map": "a52f2b1d9abafd5a0a12eed7936bba8c2917740984545d75e465dd104bee0ec2",
-        "mid": "b21e7b820daae59b594727073f92edf60638e8b7584eab298cc1b7263c0a24b1",
+        "map": "297e0fde7b359c28860bd0472b907efe0fdff95d2d20602c04bf5c551db1de83",
+        "mid": "2c6b5b8e070cdff4fccfba72f21b89547e44ef96983d5e01943e88f93368eae6",
         "close": "81b66ab39a0abdf785e3f8b20c02108f16bb499817c1cf61ccbc807ad660f848"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "jungle_ziggurat_a": {
       "status": "approved",
       "sourceSha256": "8755d336d700a7febe25183e1f491e7830e331203f93c56fc51fb39466860a6a",
       "tierSha256": {
-        "map": "27b57c1f9541a0b25a1feb8e5af47b6a32c062e8aa449355828479f6c2aa9c11",
-        "mid": "6d4a5caaa48bd781c06bb5ac3cb3980d240f521d3671c73090ed841a12f67645",
+        "map": "d69d3a0ab53588d0fc00f38227cb9c6b5363614067846e2d4c3c93d986b07298",
+        "mid": "3d0667fb5938530e912d013c1faf2caf8685f80426cdd12782c01ae8ebcdc111",
         "close": "ba68f09129c1274f9638219b5e9910aae5ba7c8636a3510fbadb95e5c42b9da6"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "junkyard_1": {
       "status": "approved",
       "sourceSha256": "2909eaeeae9f92fb23bf0a76595846aa3703f989f50be85e5d605b1ddeb59973",
       "tierSha256": {
-        "map": "02d982aea18f57fa5b29524cfd6629ed4fbf9e881cc32a787e3ca3f6ab47c6a0",
-        "mid": "3f97baaab21e59e4c9bd22d946f2dd94ee18bec1eab7ef1814e7341ba9477218",
+        "map": "9ae717eea4b8c95ad8a7b786cc33ede7c89bb3e66a1ac524b2442b7d5ad1e3a4",
+        "mid": "ac427b4436d99d660dbd50dac1817e1e9b32e4efb63f830fc77d89841dd696a1",
         "close": "24261d8d64ce228778d7a5449f055876b5fbebdbb802d6e2e96c8572c7af474a"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "launch_site_1": {
       "status": "approved",
       "sourceSha256": "1b25c4233f5731671d49d351103cc83795b8b61e2afb71c388c0d729d037f445",
       "tierSha256": {
-        "map": "1d7705c58378b54c6b05da18c8f682815c2417c77b013899e5bf4de8057e8d03",
+        "map": "247b0f3dabcc709e7af7d025dc850e12259cedbf493020bb2ab602922b4c5ee5",
         "mid": "25cf38c6e1807bd812183627b896c769b0bfbf5eac8cbcba4b5dfff80301bfb1",
         "close": "3b085ab239c1ce883a71ab218e9f882ad3a383a34c3d5e5d721545c45e354cc9"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "lighthouse": {
       "status": "approved",
       "sourceSha256": "bb9a8a5164cfff4bbd72fa40d7740b6c88f7a648c2c0362abf99a415ddafd695",
       "tierSha256": {
-        "map": "063aa98ea444ac8bc3938d56f8a7b6ed3521daaf2f310a0dc731e56eba298643",
-        "mid": "d6a9b2ddface995452fe3b7070d5dd3958a884a2dd67443e6218ef22695734eb",
+        "map": "490c15b112593bbac61dafe79a45beb8e95f53b9d1cd5f18a6d669f34f05dc11",
+        "mid": "79541fd890bd7270b494a5b73df60d5bca734b1300abd40f718c26d9804cd908",
         "close": "5454ee811654ff3faa880e7c332b300d5ae7a4bc605b84399ab44353938ea532"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "military_tunnel_1": {
       "status": "approved",
       "sourceSha256": "0954bd16ce42875efe7f7722304fc97d748082916bc19aae0febdab95b14f401",
       "tierSha256": {
-        "map": "08255239734c055766fcfbbdae7292f3ad3657facf0a5cd932702073dc8f012e",
+        "map": "d14a713dc7bc5003791dab6ef63318bb0988f32540ef9c386c98f05669b997cc",
         "mid": "5991f0255ed008cc8929068a41e7d19fadf55bf4594187027396c436a645b770",
         "close": "484b0459db779fa7b4c30092961d8cad1843b63edd27753d63d8140c59393379"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "mining_quarry_a": {
       "status": "approved",
       "sourceSha256": "6b49aaf0d1240201b97574785e3f501a8e93d3e4a49b64fa64333a8c48856742",
       "tierSha256": {
-        "map": "e93c8d3e675df2bef36f4e955223a47900b69c99fee86faf664c4b4ae75800a7",
-        "mid": "8c5eda677bfb1696bfa18c95d660bcbb2c6c7523d58cf6ba0a32696b32cdf56f",
+        "map": "bf6487edc365c31eb573d0b4c4bc7c698adf03843c949140e01370a82fe04228",
+        "mid": "f62edb3281db33195bd72cadc7798b3bbcf162accf7215da2b7618bd90aff713",
         "close": "5b9306b58dd5a3f6582978f90ad29cf0e9724121362d88db9372f9d319b9cc69"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "mining_quarry_b": {
       "status": "approved",
       "sourceSha256": "6a135c111ccd8b05b5c8f1facb372c29fdca01d7b5ab0baf8498e1a86011d260",
       "tierSha256": {
-        "map": "8ee53410c7a955f633b421803c35cf2f3f0098b718321a3a94193d85e7e3ae9e",
-        "mid": "f757725f655924796f43a833b4aaee6daa34eba0a725d00236f9aa4b270443e2",
+        "map": "ecb86f40316b7489b464b82f9be880bc10692fb30235e039f923598970011528",
+        "mid": "b9241740c55f14faf91f68b7f4e4ed6896575e2789ebd1cc70e366c7a94a7155",
         "close": "1605c26d5a4f9934083e4fedc0f75a870decb2abe2a9599e95f4154cee77900c"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "mining_quarry_c": {
       "status": "approved",
       "sourceSha256": "fe558d9bb46281248a468652e4dc18a0071c7f3e03a64ada1402591e7d6954fb",
       "tierSha256": {
-        "map": "decd3c800fae8f5fdad091928918bd3aca7eb8026a22bd22bca575de4272f52a",
-        "mid": "db4438f292fe4843a59249770721aed02596e4a12b1d0bab13d9f82f7a7bcaff",
+        "map": "df697577f8eac4e9d6b621ff996058361a15713ea00a9d0904294812d42b0476",
+        "mid": "a22fd5a269e9be44d14c2bec59f20b9d41e5002389a5f082a6623e2679848d10",
         "close": "3aba2391b72a0d044cfd0d8b865f454ca97198ce9ee38fb3829ec27416ffec7d"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "nuclear_missile_silo": {
       "status": "approved",
       "sourceSha256": "3eb1bc55ed32683ed105599364bf36e6538b1aa8cc4189cf3df65f99219ea2d1",
       "tierSha256": {
-        "map": "c2ad80d9d2f33ab6d8267160dc9f956a840e8938333861d680421086167e383e",
-        "mid": "0c527fba5d9264a07de73aaae22b6457d90261615c26a06b4fae2b92de20ad85",
+        "map": "fb2ba6223a37c4434a9040e8cfadf3c6c24e410b9708892648d3cdb376b9d701",
+        "mid": "dfa4e5a4ce2a1871e2b3e62152c738d4ac328c4027a2a0164d45cdfb232c04b9",
         "close": "1d938fed31087e574403a0cac54ab090079be0c33ebd50345706abd774643170"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "oilrig_1": {
       "status": "approved",
       "sourceSha256": "05077866304db9066a11e4b42d3d8d5e3e05564ae18e56d1c3175d3f8d967be0",
       "tierSha256": {
-        "map": "3ac2c4180957a1cd6686eb9fc4427281785b90a9cd53115c47a6932d1a032aae",
+        "map": "ad2100aab361058c2a0795b95b1b0078c25e4671a82b87353019e703802d7b00",
         "mid": "279691688bafd2299e05a34091b72843a2a144934e972d0b0f26af37df99e763",
         "close": "ffed4d22b4092aa0a6e031cbe2d8898b37c6eec261a319774538a4a845b974e2"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "oilrig_2": {
       "status": "approved",
       "sourceSha256": "3bfa4f93241f0e0fa838d23bc8fd64e080b7dd7b8591858caefc71dfdd36e6ab",
       "tierSha256": {
-        "map": "e9f0feb2b5d18ea0342cbc4b641ec71a9d9032478686fd67876b8a836f104c1b",
-        "mid": "3131899bfab5f5d329528981d7dc849a8cd76dd4a21ee0581ac5d1402898ebfd",
+        "map": "e989cc2d273e955db1de87b99e413be4f73fb2839beeab282add72e371f9747d",
+        "mid": "99ef10bf0a0b0ccf00f3bb75117ae62aaa83dd79b129aa1b1273c3b600ff9a2b",
         "close": "3d9f64229191920d9316920aeb8cd3a018965fc8e2270fa2bfea403f276c0b00"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "power_sub_big_1": {
       "status": "approved",
       "sourceSha256": "f275a5f433b4498b1da84ef611a6d903571c3dce7f1111c19498e0759ad7fa19",
       "tierSha256": {
-        "map": "f0d481bddea2c0c7ced1e83e474d9e248162fa837d55b7deaa7a19ea2c2d6181",
+        "map": "7bd2a56dbd35433b197d8913cd04c5adb3df403ef2f4d37539f54cd29ddd5366",
         "mid": "6fd44cd57fd6f7ed08c148126a7ef8fb4768ac590721fbf8c9a3c1341b5d27ca",
         "close": "6fd44cd57fd6f7ed08c148126a7ef8fb4768ac590721fbf8c9a3c1341b5d27ca"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "power_sub_big_2": {
       "status": "approved",
       "sourceSha256": "7d6003133dec03dacbc583b29312605484389e2641b77d46f679c9cdb29971e9",
       "tierSha256": {
-        "map": "b4db999874c6836b94126abf59a0fcb3a2134dd1f86dd0ce2ca2f26b3e3a35ac",
+        "map": "91149620da019c9e6e4015865d62ae67e628c150a3257d6a1439c6d3bc83034d",
         "mid": "867c553a36eb631c509f4929dfa0f5f75d0caae9d1ca246342b7b65c23524aae",
         "close": "867c553a36eb631c509f4929dfa0f5f75d0caae9d1ca246342b7b65c23524aae"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "power_sub_small_1": {
       "status": "approved",
       "sourceSha256": "b21c77eabc596dd25371e285aaa485a727ae8ae4d3e349f285c0ffde691ddb60",
       "tierSha256": {
-        "map": "0632aac8fb82f3e4bf9f461d93aa9475df1e561a45dbb3cf2bdddb69996daa2b",
+        "map": "ca2645d6db48fc40e56e0a94b339862b49a01f7527f7649f04f9a55ea7b5bf7e",
         "mid": "0e88fcb5892639580c7a83c9b56d83af06cd1cb32dccdc6a6b5d18949aa59b92",
         "close": "0e88fcb5892639580c7a83c9b56d83af06cd1cb32dccdc6a6b5d18949aa59b92"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "power_sub_small_2": {
       "status": "approved",
       "sourceSha256": "4dd0114320fc20f821697c41e1b9c753ad377abf7dc61aeea7a1988f0da21590",
       "tierSha256": {
-        "map": "35c4f5b8da5219006a1ad50df2daefa5952326a5be0922d5535e956c146ead4e",
+        "map": "9208d1a093f2829b5232ec7810422867f0fecf56e7258b1bb8e86ec7d21172f3",
         "mid": "cde52f27ba457da95828e0e3d146de5e75c0be71b0b7642034c746a8892d9644",
         "close": "cde52f27ba457da95828e0e3d146de5e75c0be71b0b7642034c746a8892d9644"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "powerplant_1": {
       "status": "approved",
       "sourceSha256": "06b4e9676ae7beda4ee6718499d8b44bd0fbebdf39a2339fdfd870c3f7a8f268",
       "tierSha256": {
-        "map": "85429214ffa571148355cbd0c5ee4174e0440783e5bad5a7efb05314e4c74716",
+        "map": "dc39380723345d37e760454f10df294cdccda090cadfc8f316f7385a95bfeecf",
         "mid": "86c9151211c6ce59492522b15d782f5fc60090434a9874d8ec25243f46fc65b1",
         "close": "b77dce1b066ed231b7ed183f8275f4c9f2a23578c207f2780e696a89e40d5c61"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "radtown_1": {
       "status": "approved",
       "sourceSha256": "41c72c5395ff9749f897713a41eb271a11883c6aab51cebeb2466e906a392f6d",
       "tierSha256": {
-        "map": "f34942e80d94a5e8f5fd34f88f13a997c065838ffb6513ff70630c8a409cdf15",
+        "map": "c7639f4d4471103b2e3a43a5aa6c8d9763bd768ba97a06b5fb3b78f5f444f811",
         "mid": "706f3da45ad4385c81ef4e034280c8a8496ecbab843c687f5dc72386c27528b9",
         "close": "3fae27cbfc91c3cd6ef69ba50272eafce0025a7b33ac79c8a8b405688e8fc3cc"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "radtown_small_3": {
       "status": "approved",
       "sourceSha256": "3c7db2b1cc3d9df962feee5e7d31ebf790b4dea8128e071a39ea2c4c35705628",
       "tierSha256": {
-        "map": "677bd1cb8ba3ac2ecd1bd78e85de8129598ef57c802e462b40c1cf4adc226236",
+        "map": "1cc71ed01e0923fc594e8ab219e10cb9b35724c92a590479e9874cf72497bd29",
         "mid": "f86b9f381e4119c89e0506dd6963a92c47ec09177e53788435050c35cab59c44",
         "close": "f86b9f381e4119c89e0506dd6963a92c47ec09177e53788435050c35cab59c44"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "satellite_dish": {
       "status": "approved",
       "sourceSha256": "580b5c6974b12b5826b26f4f25203bccd06449dfc82abd8e76a99b1f1ba48038",
       "tierSha256": {
-        "map": "665ff83a28bf369934df145d78da9dd86f88ab9c107680f50d4ec87b79f236cf",
+        "map": "30a71679e191a953c15c94759c6e27f74ee45f4b042d16922149bd0348f53c23",
         "mid": "7128ea0422c5e22026c0b0123d6467f8c064c5fa8353fabe495bde2018ec7555",
         "close": "b9894bf28bbb7b9a7f7672600047055e2ea0dc85166941ce8eda877bb391f5b2"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "sphere_tank": {
       "status": "approved",
       "sourceSha256": "862ee2130dc2823eb2138dfc92bb0ea3964976dfd942f4a9704568bdd62731a7",
       "tierSha256": {
-        "map": "32d55338a67804c0271c595e23fea39b0cdc0238c2767ad6b020b2d22be218de",
-        "mid": "73c7d9d22024bd224d556fb922ff1746d26677c7247a213c720655618cb591ae",
+        "map": "ed2334fcd81901145dffcccef135b026231081a943e7bfda255de44f1cd117e6",
+        "mid": "933325724e34dc7dae62757b0a8f509599fd6c235eea6fc9b88bd58c7ebb91bb",
         "close": "9c68f0fe0104ed893bd29f168b1595616bd18d4f5414c69327b5a270deb5f8a1"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "stables_a": {
       "status": "approved",
       "sourceSha256": "83d3f0493bdc819be5d06b1211ed9ff285dde6dffe9feadcd68917f93b35aea1",
       "tierSha256": {
-        "map": "bc1c60e31e975f3a11c19ee48518e6bafda954125fec8e910ff173080e2631f6",
-        "mid": "aff1a9deadc771a8ad0ca9cf26fcf584a0424bad437ac9552ee715132cf014b2",
+        "map": "68ff259c7e297211735a73f500782083c8b591b5c0bcf90cbe5fef3e432b0a84",
+        "mid": "34b944cd552a7efc10c93afbf7c347324ab3a72d41c91836554d2cd2c2ccb18a",
         "close": "76e20f0b243a0e91f1158a03b41d0ea6ae2dd241f67dcc33ad1509afd690ded0"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "stables_b": {
       "status": "approved",
       "sourceSha256": "776f130deb0a11d3a38c9b98667ae3adff417d583a488c3fce0b93b8dc5c72cb",
       "tierSha256": {
-        "map": "017c81b9dd714007566c37d60382076dc45d81c2055bd4072e3ea1961ec477bb",
-        "mid": "0b916b85c4c66d38bc1a3fa8b692c5e672f8a62cd4df6383189483438a134a43",
+        "map": "ee53eaf9dd415279c7b9f77ae25c6ddb6515a9535ce23e68f4cf84c7b6d7a65a",
+        "mid": "2151f64e942ff41a01698ab0285343b52202c99f7eb1c2a87d16ed16cdcc7059",
         "close": "7d9ee95891111300a6c3d80266e88ae91f3286794960baf48d983b8d4913dde3"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "supermarket_1": {
       "status": "approved",
       "sourceSha256": "cd8b021ad9cdf35ad6b6b09e82d676dbf1b3adec6dee7e3fc67654bec6e56445",
       "tierSha256": {
-        "map": "4680db291c4db2f6e228c6da902ae6e878fd78a0e301b046141fdebd9000b4a1",
+        "map": "4efaea3146aa8ff5bfd9159defb3377522b2cccb3966687daa476fd4522b092f",
         "mid": "6155c8737c4465df07c7fe4cb391e3834262bd9af58710a5d4db78b54fec523a",
         "close": "6155c8737c4465df07c7fe4cb391e3834262bd9af58710a5d4db78b54fec523a"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "swamp_a": {
       "status": "approved",
       "sourceSha256": "1a788d39d66a6dbdb8ca318015dfb6f1adfc2e2785e0977050e0445acfd49f85",
       "tierSha256": {
-        "map": "f485af3184f1aa5d6e19b90e0a9fc122353d3c3eeb5dc6a05e1a56f39a6cecf6",
+        "map": "ef0b99dfeb764b0905787ebec584b7e32f25c7bf4c9c92839046efc8d7ffb448",
         "mid": "3b9d8baa1dc5d4b0fb478d9ab27a7c35b6c2dfdc3c91b33a4fe58466ab607a46",
         "close": "3b9d8baa1dc5d4b0fb478d9ab27a7c35b6c2dfdc3c91b33a4fe58466ab607a46"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "swamp_b": {
       "status": "approved",
       "sourceSha256": "72d38f7971c3bea64de024eb047034b6c4294c105df6e045b0743c810f25d854",
       "tierSha256": {
-        "map": "1df8c5c615873fa9488e8768e92782b52cd61f4d0761997aa827fc1ea2d4f948",
+        "map": "a83942df473090a3c947306803553c265f7e78181cfbc64737c0e081d8158653",
         "mid": "1e623464152b3e347f0e5f042f105509a92e270bc5cc6db2b71aeecad21f94cb",
         "close": "1e623464152b3e347f0e5f042f105509a92e270bc5cc6db2b71aeecad21f94cb"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "swamp_c": {
       "status": "approved",
       "sourceSha256": "1e8b385448d094d76a89ee84dba78cd2a6b8c64de3fb7dd9e5412cc1592ab042",
       "tierSha256": {
-        "map": "cc50aeea1102789f53db4bf667d0442c49af5eeb6fbd008fb9f9e4a66703df0d",
+        "map": "9bdf2b775e7887d676128ab27d71b763fca4b087c34bc804e400695c11f05f34",
         "mid": "84568f724473123bb28f45e27d9d2b4e511eae47f9922db2d028d075d02d20d6",
         "close": "84568f724473123bb28f45e27d9d2b4e511eae47f9922db2d028d075d02d20d6"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "trainyard_1": {
       "status": "approved",
       "sourceSha256": "4e708307ca739632a286e77913e68fa298e55fd183ae0c234cac42c5aada863e",
       "tierSha256": {
-        "map": "7b223a802dd73ee9ce7879f3a7eda8d8e8d8b975b859f94f5dacdb7299989575",
+        "map": "c62518146fc8170430e11b6bef6c7cbc0ce428979623a20f25273c311a510111",
         "mid": "977c6051ea9df5015a4832c3683030fe4796275aeb02df984afc9aed09298e96",
-        "close": "ab242961abb2084851205d66be9aac24e8aa3fc2efb0afe2db8cb11a53b0a18f"
+        "close": "43e1afe7c43cfd7b21c4e93912db9cf1064588238e35fcb81ea9203264261899"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "ue_jungle_swamp_a": {
       "status": "approved",
       "sourceSha256": "034034f39e588ded8e611acfead60293906b9e1559c04d4494987cac7c8f3f9a",
       "tierSha256": {
         "map": "86c33a94ba20c9928866c22180ef2e87c7dde3ccd245c3628a46f344b433ef69",
-        "mid": "985efaa9702117f98efb179c44f82a730975316914ad087dd6a1c35c1988d3c3",
-        "close": "985efaa9702117f98efb179c44f82a730975316914ad087dd6a1c35c1988d3c3"
+        "mid": "754cb0f29a759b1a3a9683f1e05a5f49f312fbd81a5ea2e1226c76dd941f260d",
+        "close": "0c5e1eea748761499209b4bc9d5d6267809698da4efb4d1e14a31da09c48c909"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "underwater_lab_a": {
       "status": "approved",
       "sourceSha256": "6913a54ba35066c04d8bc4656a3912694cd613dc7c7c3d81294774cf26261259",
       "tierSha256": {
-        "map": "888af0d308bf7772f9298f69076fd45dcf81382e5f1c2a6d1ffa94226746f1df",
-        "mid": "3f727f9b519c5c36afac7fc5dc62a9389318946e393b151a805837fb5a7e9495",
+        "map": "3a6aef0f0ddd379b5302db5ff63c04c7257ee8aafa2f8f2f9f7750b48b83082a",
+        "mid": "827c8946021f41204a733c8be34809f3fd7cc46923d4097c91f5682f0383da4e",
         "close": "b2e6c81e9d9402aaf5e6a7156927ed749af9f51563acac526f836a08eab606f2"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "underwater_lab_b": {
       "status": "approved",
       "sourceSha256": "7b93037a400c98dcbfa152669b13cbae2bbed51a9b4aeee08f9b346d33d0059a",
       "tierSha256": {
-        "map": "500cea749d7b271137dca69b0d92af6338d63ebf60607c3642a6289e1e220147",
-        "mid": "18715f628c8af15e19ad1a5015824e63407aca1575d88ff31b6a2d1d8cdbd20d",
+        "map": "6858484add49089909cb3cefb92ea14a0e1f3fd652b548ebca9327f33fcf8156",
+        "mid": "ea2965a60a53c389851288bc48210ebc7023b167a3103c1e770a26620c168706",
         "close": "5dcde20c33e25ea86c9231e5281b2f4b58961c51e90b9597636d5264ac6a15c2"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "underwater_lab_c": {
       "status": "approved",
       "sourceSha256": "48585167a9aadcd180dff50a62e4f6517ecba533eecf08bbcc4d031a99df51cc",
       "tierSha256": {
-        "map": "1f0c1fe5c55fa00b3e59b05f7fccd9bd687438a7acdc33a06abda85c47c84b14",
-        "mid": "8c6f613c3189f7d5fd7185c9a68fe8edb2f814dbb238035ae8117b8784274e7e",
+        "map": "134558d762dc57ec5d376a18c2b64d8a8b304fc5c1bc5209b6766cbb3464abc1",
+        "mid": "211435e6532400a5b5e62a9ef80602d274d9dd6d32491ad034931ccfdd200cf3",
         "close": "c4fe3163ff4fc7eb6c64a4b1664f8da35fce3202ea569edd737120fe521c3faa"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "underwater_lab_d": {
       "status": "approved",
       "sourceSha256": "2dbd0b3dc805209fc08c8f5ab881ac93ad217a3829a834979512a2edc00f66e8",
       "tierSha256": {
-        "map": "0a8d6a2512ee3446c224bc86f3a1b97aebcfcd34ae0b41d67715054fe28ba3e5",
+        "map": "6715c1f78363eb0e0d5a95bf741a40150ef209765e1b90947811587e196ea3e1",
         "mid": "d9ece718746c93105c1c73c079e9c6a47da84e819e74fb382f1154d38105eaa0",
         "close": "3e472c6bb573dfc53fc8f156f0ffa89fe23e7c31774c5aed33f08f37ee2838df"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "warehouse": {
       "status": "approved",
       "sourceSha256": "b5e69f701da92f592dfb0a73337883fda6b7ad4b7073e6a265fe8d687883495d",
       "tierSha256": {
-        "map": "4bae93428e1844e4f2a29b7dfb60928e380326e496dfcadbe9005584f1c4567b",
+        "map": "1350bcb5af23b1526f1655414012e5e26be19b7fbd4ef37dbec623fbc3061aff",
         "mid": "a5c97c071639036e7feff89a5e638ce53aee4128c05a8f02ece93e12fba596cc",
         "close": "a5c97c071639036e7feff89a5e638ce53aee4128c05a8f02ece93e12fba596cc"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "water_treatment_plant_1": {
       "status": "approved",
       "sourceSha256": "84e5afe57e4ccfeae0f22618251e166d40213e11a44aa0718af7c48c1eab24b0",
       "tierSha256": {
-        "map": "1378631a7e233c78f436e0b185c43c224c60b7ce53366948022180c026566e7e",
+        "map": "77e6a71c1da70dd124635be8c56da32d798f46ede3f54d2fe716ca8e52f66945",
         "mid": "71ebae92d180c7dc04306b9387eb5e8a4c2d70c3e7752eeb95674078a1872598",
         "close": "0ae4e57a7c6ae44efe9205084e995db3a58c86809ee85189e3b88025208482ae"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "water_well_a": {
       "status": "approved",
       "sourceSha256": "db2ace2b85711bfdb4eba5b17aaffcd70b252684a3aa9d34d4dc73c110da58b8",
       "tierSha256": {
-        "map": "1c799350d41b8ba73e22950ae0f157949712bb24fb574797c2155f59724d67cf",
-        "mid": "58f1a894a6b5fe33793ad7932ad03ad4f51a19cefc502b3698c25595c07c5a5c",
+        "map": "ad172dfc06c3e06676391a6ca6323d15fb3c18e97bda7f483e620b252966650b",
+        "mid": "7885b2a5976e21529f43700b7edf31c303770d1961cdc818399529213f8564df",
         "close": "2816aa363b6483ced1b47f017d1e12935427a2259182216b3a490cd052f78c54"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "water_well_b": {
       "status": "approved",
       "sourceSha256": "c89c0d6020208e6c2f3fc1330ccd691c04f059b5999048d16066be057271bde4",
       "tierSha256": {
-        "map": "18773c0fa554acc06bf0e36de5457abb4bb1647ee1d384c19e379aa84fad6bb8",
+        "map": "bf04542169b671e1dccaf857f61b887f3defcdb70aa80c46583e5add3afb122f",
         "mid": "e180cbe96133f35a36c2b925caa11ac4dc1b82c1705b7f103faf239b2fc63f48",
         "close": "e180cbe96133f35a36c2b925caa11ac4dc1b82c1705b7f103faf239b2fc63f48"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "water_well_c": {
       "status": "approved",
       "sourceSha256": "3dd1d91ae6fd080e9debd1aeea18f180934cdd4aadbde4646ba46004487d2467",
       "tierSha256": {
-        "map": "2365ff92a9677fb8526830f39be90fab836366d8a743bb9c59a632a43302959d",
+        "map": "0c610bdc308567b61fe57aa4904c218feb5b5e1927139ecc6cc3cf3e178a52a1",
         "mid": "22cf4f56ab9eca24c85d8dbb1c355f0a021a76305cd44681377116107ae0312d",
         "close": "22cf4f56ab9eca24c85d8dbb1c355f0a021a76305cd44681377116107ae0312d"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "water_well_d": {
       "status": "approved",
       "sourceSha256": "ab3f7c472f009802fc808750919e2e00f53e5cdf558c46f6d9dc0e5da850d9c6",
       "tierSha256": {
-        "map": "48bacf757abf8130ad4403c8a2342ef548189faf443129410310c89344062f9a",
-        "mid": "61a4b97e919edeaf1ca54041992eb87390f54d70991750706eca8f4d463a1ff0",
+        "map": "298822a6148a7e95903363b911f526d9d474ebea2b8a9d4ee25183c04d9827c0",
+        "mid": "fc102ab3c1680bdbd65a9f116b4a38e3bcba878b066bd693f26818b93b6c0aa4",
         "close": "06a74518fe337f071544594b12ce658d00aaf7f5d03c1a8f52b9a89b6d47c4a7"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     },
     "water_well_e": {
       "status": "approved",
       "sourceSha256": "aca9ac5418c165dd594d740e0cacb49778b492cfc3ab121e399a71dbcca401c3",
       "tierSha256": {
-        "map": "7e719862c70336cdd6ee3785a3e495f23898ecff7fb8e05da008f94c37a29456",
-        "mid": "d8d74f0c23c0f1db77b8960396121e5b6a6bab8ac070cd58d0b0d6651274f753",
+        "map": "9e64adbd6f4a2fadadf1b0f269c558a330422975227be080f17f7099bfb11fa1",
+        "mid": "23fdbb632ceec5064f718d9efb40d5a8e6faf666fd8a2735197e7a1afca8faff",
         "close": "d503ce3c2fac5083614f4f5944e2db72b17db90e076bd09698b0410cb4540565"
       },
-      "reviewedAt": "2026-07-16T02:26:43.956Z"
+      "reviewedAt": "2026-07-16T09:42:16.513Z"
     }
   }
 }

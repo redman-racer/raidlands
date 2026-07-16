@@ -22,7 +22,7 @@ The catalog command refuses to run when the sibling checkout is not at the pinne
 
 `npm run monuments:lod` generates `Map`, `Mid`, and `Close` GLBs under `assets/media/models/monuments-lod/` plus a versioned manifest containing URLs, SHA-256 hashes, byte sizes, triangles, draw calls, bounds, structural selections, exclusions, budgets, and review status. `npm run monuments:lod:parallel` runs those same isolated recipe builds through a bounded three-process queue and reconciles the deterministic manifest afterward.
 
-The generator selects structural components before simplification, keeps component transforms from the full layout GLB, applies standalone overrides from the recipe, simplifies components independently, and only then joins compatible materials. Map uses a texture-free palette; Mid and Close always retain WebP textures and progressively reduce their maximum texture resolution before reducing geometry. They never silently fall back to an untextured palette.
+The generator selects structural components before simplification, keeps component transforms from the full layout GLB, applies standalone overrides from the recipe, simplifies components independently, and only then joins compatible materials. Map retains compressed base-color WebP textures while dropping secondary material maps; Mid and Close retain progressively larger WebP textures. Textured sources never silently fall back to an untextured palette.
 
 Validation commands:
 
@@ -58,7 +58,7 @@ Home and Server load the same `server-map-viewer.js` bundle and the same monumen
 - Close: above 220 projected pixels or focused.
 - Preloading begins 20 percent before promotion; 20 percent hysteresis prevents rapid demotion and swapping.
 - Map LOD never promotes. Auto follows projected size. Detailed prioritizes the nearest or focused monuments for Close.
-- Low, Medium, High, and Ultra cap Close at 1/1/2/3 and Mid candidates at 4/9/16/24, with total triangle budgets of 0.75/1.25/2/3 million and draw-call budgets of 500/650/800/1,000. The resource budgets remain authoritative when fewer candidates fit.
+- Low, Medium, High, and Ultra cap Close at 1/1/2/3 and Mid candidates at 4/9/16/24, with total triangle budgets of 3/4/5/6 million and draw-call budgets of 2,500/3,000/3,500/4,000. The resource budgets remain authoritative when fewer candidates fit.
 - A failed or pending tier retains the best successfully loaded lower tier or procedural fallback, so a monument never disappears.
 
 The viewer root exposes active asset names, Map/Mid/Close counts, active and loaded bytes, triangles, draw calls, decode queue depth, failures, manifest version, recipe version, and RustRelay revision through `data-monument-*` diagnostics.

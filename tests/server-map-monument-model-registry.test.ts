@@ -72,10 +72,7 @@ describe("RustRelay monument model registry", () => {
         expect(tier.structuralBounds.max).toHaveLength(3);
         expect(tier.sourceNodes.length).toBeGreaterThan(0);
         expect(tier.componentResolutions.every((resolution) => resolution.resolution === "standalone-catalog" || resolution.resolution === "embedded-layout")).toBe(true);
-        if (tierName === "map") {
-          expect(tier.materialMode).toBe("palette");
-          expect(tier.textureSize).toBe(0);
-        } else if (metadata.id === "ue_jungle_swamp_a") {
+        if (metadata.id === "ue_jungle_swamp_a") {
           expect(tier.materialMode).toBe("palette");
           expect(tier.textureBytes).toBe(0);
           expect(tier.textureSize).toBe(0);
@@ -83,7 +80,7 @@ describe("RustRelay monument model registry", () => {
           expect(tier.materialMode).toBe("textured");
           expect(tier.textureBytes).toBeGreaterThan(0);
           expect(tier.textureSize).toBeGreaterThan(0);
-          expect(tier.textureSize).toBeLessThanOrEqual(tierName === "mid" ? 512 : 1024);
+          expect(tier.textureSize).toBeLessThanOrEqual(tierName === "map" ? 128 : tierName === "mid" ? 512 : 1024);
           expect(tier.baseColorTexturedTriangles).toBeGreaterThan(0);
           expect(tier.baseColorTextureCoverage).toBeGreaterThanOrEqual(0.95);
         }
@@ -103,7 +100,7 @@ describe("RustRelay monument model registry", () => {
       expect(metadata.tiers.close.normalizedElevationOffset).toBeLessThanOrEqual(0.05);
       totalMapBytes += metadata.tiers.map.bytes;
     }
-    expect(totalMapBytes).toBeLessThan(20 * 1024 * 1024);
+    expect(totalMapBytes).toBeLessThan(80 * 1024 * 1024);
     expect(totalInstanceBatches).toBeGreaterThan(0);
   });
 
@@ -117,19 +114,20 @@ describe("RustRelay monument model registry", () => {
     expect(outpost.tiers.close.sourceNodes.some((name) => /sewer|tunnel|interior/i.test(name))).toBe(false);
   });
 
-  it("keeps authored HLODs out of Mid and Close assemblies", () => {
+  it("keeps authored HLODs out of Mid and Close assemblies except the complete Apartments exterior", () => {
     for (const assetName of monumentModelAssetNames()) {
       const metadata = monumentModelMetadata(assetName)!;
-      expect(metadata.tiers.mid.sourceNodes.some((name) => /hlod/i.test(name)), metadata.id).toBe(false);
-      expect(metadata.tiers.close.sourceNodes.some((name) => /hlod/i.test(name)), metadata.id).toBe(false);
+      const expectsAuthoredExterior = metadata.id === "apartments_complex_1";
+      expect(metadata.tiers.mid.sourceNodes.some((name) => /hlod/i.test(name)), metadata.id).toBe(expectsAuthoredExterior);
+      expect(metadata.tiers.close.sourceNodes.some((name) => /hlod/i.test(name)), metadata.id).toBe(expectsAuthoredExterior);
     }
   });
 
   it("publishes complete non-overlapping assemblies for the reported monuments", () => {
     const apartments = monumentModelMetadata("apartments_complex_1")!;
-    expect(apartments.tiers.map.sourceNodes.some((name) => /hlod/i.test(name))).toBe(false);
-    expect(apartments.tiers.close.sourceNodes.some((name) => /apartments?_complex.*corridor_(?:1st_floor|mid_floors|upper_floor|[a-e])/i.test(name))).toBe(true);
-    expect(apartments.tiers.close.sourceNodes.some((name) => /hlod|_sp|bathroom|(?:elevator|lift)_shaft|corridor_train_tunnel|basement|fridge|pillow|bed|blanket|wood_stove|sofa|coat_hanger|kitchen_(?:counter|cupboard)|magazine_stand/i.test(name))).toBe(false);
+    expect(apartments.tiers.map.sourceNodes.some((name) => /hlod/i.test(name))).toBe(true);
+    expect(apartments.tiers.mid.sourceNodes).toEqual(apartments.tiers.map.sourceNodes);
+    expect(apartments.tiers.close.sourceNodes).toEqual(apartments.tiers.map.sourceNodes);
 
     const arctic = monumentModelMetadata("arctic_research_base_a")!;
     expect(arctic.tiers.close.sourceNodes.some((name) => /arctic_base_a_exterior/i.test(name))).toBe(true);
