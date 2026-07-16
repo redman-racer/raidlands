@@ -16,11 +16,11 @@
       "status": "approved",
       "sourceSha256": "34ab86baa23a40784358d2a0238018696fe471bfc8ed5d597b82e0a63d1f262c",
       "tierSha256": {
-        "map": "53877bc817bc370a8f30efc2c49b9e17e809fabe13a44064fa535121243ad90a",
-        "mid": "ffb1f11e6c97b60a05c20225cf78cc32af9b4b011b58d1fd0c62147dd1caf60c",
-        "close": "2f774f3f2cb09bbb51833fbfa58c0a623b20d342ec62df1ca70dc45d076da721"
+        "map": "c1dd69aae37b30a2ab6b1d08d31e9c6650dbd4405fabbcbf7eb84a32a990d40f",
+        "mid": "44f9d21748d63474c4d8a6aa1b4685a31b927d7d0cfc533162fd2ed87ae1882e",
+        "close": "9574ca6b2b0ccdf7a6902a1d5457354462f67156d55630293ace2b179ecedbc9"
       },
-      "reviewedAt": "2026-07-16T03:22:22.919Z"
+      "reviewedAt": "2026-07-16T05:58:05.907Z"
     },
     "arctic_research_base_a": {
       "status": "approved",

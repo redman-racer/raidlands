@@ -53,12 +53,12 @@ Only an `approved` entry uses its generated tiers by default. Candidate or rejec
 
 Home and Server load the same `server-map-viewer.js` bundle and the same monument manifest.
 
-- Map: below 80 projected pixels.
-- Mid: 80 to 220 projected pixels.
+- Map: below 48 projected pixels.
+- Mid: 48 to 220 projected pixels.
 - Close: above 220 projected pixels or focused.
 - Preloading begins 20 percent before promotion; 20 percent hysteresis prevents rapid demotion and swapping.
 - Map LOD never promotes. Auto follows projected size. Detailed prioritizes the nearest or focused monuments for Close.
-- Low, Medium, High, and Ultra cap Close at 1/1/2/3 and Mid at 3/5/8/12, with total triangle budgets of 0.75/1.25/2/3 million and draw-call budgets of 500/650/800/1,000.
+- Low, Medium, High, and Ultra cap Close at 1/1/2/3 and Mid candidates at 4/9/16/24, with total triangle budgets of 0.75/1.25/2/3 million and draw-call budgets of 500/650/800/1,000. The resource budgets remain authoritative when fewer candidates fit.
 - A failed or pending tier retains the best successfully loaded lower tier or procedural fallback, so a monument never disappears.
 
 The viewer root exposes active asset names, Map/Mid/Close counts, active and loaded bytes, triangles, draw calls, decode queue depth, failures, manifest version, recipe version, and RustRelay revision through `data-monument-*` diagnostics.

@@ -26,7 +26,16 @@ const manifestOnly = process.argv.includes("--manifest-only");
 const onlyAsset = process.argv.find((argument) => argument.startsWith("--only="))?.slice("--only=".length) || "";
 
 type Bounds = { min: number[]; max: number[] };
-type Stats = { triangles: number; drawCalls: number; textureBytes: number; bounds: Bounds; instanceBatches: number; instances: number };
+type Stats = {
+  triangles: number;
+  drawCalls: number;
+  textureBytes: number;
+  baseColorTexturedTriangles: number;
+  baseColorTextureCoverage: number;
+  bounds: Bounds;
+  instanceBatches: number;
+  instances: number;
+};
 type SelectedNodes = { nodes: Node[]; names: string[]; roles: Record<string, string[]>; kind: "authored-hlod" | "recipe-structural" | "surface-structural" | "largest-structural" | "standalone-override" };
 type ReviewApproval = {
   status: "approved" | "rejected";
@@ -138,6 +147,7 @@ function documentStats(document: Document): Stats {
   const scene = documentRoot.getDefaultScene() || documentRoot.listScenes()[0];
   if (!scene) throw new Error("glTF document has no scene.");
   let triangles = 0;
+  let baseColorTexturedTriangles = 0;
   let drawCalls = 0;
   let instanceBatches = 0;
   let instances = 0;
@@ -150,13 +160,17 @@ function documentStats(document: Document): Stats {
     drawCalls += mesh.listPrimitives().length;
     for (const primitive of mesh.listPrimitives()) {
       if (primitive.getMode() !== 4) continue;
-      triangles += Math.floor((primitive.getIndices()?.getCount() ?? primitive.getAttribute("POSITION")?.getCount() ?? 0) / 3) * instanceCount;
+      const primitiveTriangles = Math.floor((primitive.getIndices()?.getCount() ?? primitive.getAttribute("POSITION")?.getCount() ?? 0) / 3) * instanceCount;
+      triangles += primitiveTriangles;
+      if (primitive.getMaterial()?.getBaseColorTexture()) baseColorTexturedTriangles += primitiveTriangles;
     }
   });
   return {
     triangles,
     drawCalls,
     textureBytes: documentRoot.listTextures().reduce((sum, texture) => sum + (texture.getImage()?.byteLength ?? 0), 0),
+    baseColorTexturedTriangles,
+    baseColorTextureCoverage: triangles > 0 ? baseColorTexturedTriangles / triangles : 0,
     bounds: documentBounds(scene),
     instanceBatches,
     instances,
@@ -686,6 +700,8 @@ async function main(): Promise<void> {
         instances: stats.instances,
         textureBytes: stats.textureBytes,
         textureSize: materialMode === "textured" ? documentTextureSize(outputDocument) : 0,
+        baseColorTexturedTriangles: stats.baseColorTexturedTriangles,
+        baseColorTextureCoverage: stats.baseColorTextureCoverage,
         materialMode,
         selectionKind: selection.kind,
         sourceNodes: selection.names,
@@ -765,11 +781,11 @@ async function main(): Promise<void> {
   }
   if (entries.length !== 78) throw new Error(`Expected 78 manifest entries, received ${entries.length}.`);
   const manifest = {
-    version: 7,
-    recipeVersion: 2,
+    version: 8,
+    recipeVersion: 3,
     generatedBy: "gltf-transform@4.3.0",
     sourceRepository: RUSTRELAY_SOURCE,
-    thresholds: { mapToMidPixels: 80, midToClosePixels: 220, hysteresis: 0.2 },
+    thresholds: { mapToMidPixels: 48, midToClosePixels: 220, hysteresis: 0.2 },
     targets: TIER_BUDGETS,
     entries,
   };

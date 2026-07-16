@@ -1,9 +1,9 @@
 {
-  "manifestSha256": "1882108ca6ef01dfb2e72a47b5ab0efdbd2bf0fd7a77424b23023f4186697fe0",
-  "generatedAt": "2026-07-16T03:25:57.177Z",
+  "manifestSha256": "4e37236009e3c0abffe60d7094d1608c56a0fcb0b112b2ac496f958696176838",
+  "generatedAt": "2026-07-16T06:02:48.716Z",
   "sheets": {
     "airfield_1": "4744ec6979c97fe11d9928109cf728aacc205a93027b0e95bbbd8b5c7db08eaa",
-    "apartments_complex_1": "59798af96d7385d9b087adeea535a0a79e2bbd2c51d9101845d803a0700b3c54",
+    "apartments_complex_1": "d1025f06e92b0c62fbef013d08b2b2b9876e8cb0daa1600e07550b23b85e76ee",
     "arctic_research_base_a": "f8bea0b7a8f7240f6e022315405bf2d7add98bfaca7e2692f0bbfca1337fb298",
     "bandit_town": "d2278a692aefd214284d6bff1dcb9bdcf6f62fe6cbdc9d76bf993b620a675733",
     "cave_large_hard": "b879f2c6bd3e0754189baa5dba2299b9ddb0d9b7a824348e1f9ff3cbf842e561",

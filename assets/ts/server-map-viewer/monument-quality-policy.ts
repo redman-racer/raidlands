@@ -35,10 +35,10 @@ export function parseMonumentMode(value: unknown, fallback: MonumentMode = "auto
 export function resolveMonumentQuality(
   mode: MonumentMode,
   quality: EnvironmentQuality,
-  thresholds: MonumentLodThresholds = { mapToMidPixels: 80, midToClosePixels: 220, hysteresis: 0.2 },
+  thresholds: MonumentLodThresholds = { mapToMidPixels: 48, midToClosePixels: 220, hysteresis: 0.2 },
 ): MonumentQualityPolicy {
   const closeLimits: Record<EnvironmentQuality, number> = { low: 1, medium: 1, high: 2, ultra: 3 };
-  const midLimits: Record<EnvironmentQuality, number> = { low: 3, medium: 5, high: 8, ultra: 12 };
+  const midLimits: Record<EnvironmentQuality, number> = { low: 4, medium: 9, high: 16, ultra: 24 };
   const triangleBudgets: Record<EnvironmentQuality, number> = { low: 750_000, medium: 1_250_000, high: 2_000_000, ultra: 3_000_000 };
   const drawCallBudgets: Record<EnvironmentQuality, number> = { low: 500, medium: 650, high: 800, ultra: 1_000 };
   const activeCloseLimit = mode === "primitives" ? 0 : closeLimits[quality];

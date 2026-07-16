@@ -20,17 +20,17 @@ describe("monument quality policy", () => {
   });
 
   it("applies the requested tier caps and total resource budgets", () => {
-    expect(resolveMonumentQuality("auto", "low")).toMatchObject({ activeCloseLimit: 1, activeMidLimit: 3, triangleBudget: 750_000, drawCallBudget: 500 });
-    expect(resolveMonumentQuality("auto", "medium")).toMatchObject({ activeCloseLimit: 1, activeMidLimit: 5, triangleBudget: 1_250_000, drawCallBudget: 650 });
-    expect(resolveMonumentQuality("auto", "high")).toMatchObject({ activeCloseLimit: 2, activeMidLimit: 8, triangleBudget: 2_000_000, drawCallBudget: 800 });
-    expect(resolveMonumentQuality("auto", "ultra")).toMatchObject({ activeCloseLimit: 3, activeMidLimit: 12, triangleBudget: 3_000_000, drawCallBudget: 1_000 });
+    expect(resolveMonumentQuality("auto", "low")).toMatchObject({ activeCloseLimit: 1, activeMidLimit: 4, triangleBudget: 750_000, drawCallBudget: 500 });
+    expect(resolveMonumentQuality("auto", "medium")).toMatchObject({ activeCloseLimit: 1, activeMidLimit: 9, triangleBudget: 1_250_000, drawCallBudget: 650 });
+    expect(resolveMonumentQuality("auto", "high")).toMatchObject({ activeCloseLimit: 2, activeMidLimit: 16, triangleBudget: 2_000_000, drawCallBudget: 800 });
+    expect(resolveMonumentQuality("auto", "ultra")).toMatchObject({ activeCloseLimit: 3, activeMidLimit: 24, triangleBudget: 3_000_000, drawCallBudget: 1_000 });
     expect(resolveMonumentQuality("primitives", "ultra")).toMatchObject({ activeCloseLimit: 0, activeMidLimit: 0 });
   });
 
   it("selects by projected screen diameter and focuses Close", () => {
     const policy = resolveMonumentQuality("auto", "high");
-    expect(desiredMonumentTier(79, "map", policy)).toBe("map");
-    expect(desiredMonumentTier(80, "map", policy)).toBe("mid");
+    expect(desiredMonumentTier(47, "map", policy)).toBe("map");
+    expect(desiredMonumentTier(48, "map", policy)).toBe("mid");
     expect(desiredMonumentTier(219, "mid", policy)).toBe("mid");
     expect(desiredMonumentTier(220, "mid", policy)).toBe("close");
     expect(desiredMonumentTier(1, "map", policy, true)).toBe("close");
@@ -39,8 +39,8 @@ describe("monument quality policy", () => {
 
   it("uses 20 percent hysteresis for demotion", () => {
     const policy = resolveMonumentQuality("auto", "high");
-    expect(desiredMonumentTier(70, "mid", policy)).toBe("mid");
-    expect(desiredMonumentTier(63, "mid", policy)).toBe("map");
+    expect(desiredMonumentTier(39, "mid", policy)).toBe("mid");
+    expect(desiredMonumentTier(38, "mid", policy)).toBe("map");
     expect(desiredMonumentTier(190, "close", policy)).toBe("close");
     expect(desiredMonumentTier(175, "close", policy)).toBe("mid");
   });

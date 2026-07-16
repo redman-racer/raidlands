@@ -84,6 +84,8 @@ describe("RustRelay monument model registry", () => {
           expect(tier.textureBytes).toBeGreaterThan(0);
           expect(tier.textureSize).toBeGreaterThan(0);
           expect(tier.textureSize).toBeLessThanOrEqual(tierName === "mid" ? 512 : 1024);
+          expect(tier.baseColorTexturedTriangles).toBeGreaterThan(0);
+          expect(tier.baseColorTextureCoverage).toBeGreaterThanOrEqual(0.95);
         }
         triangleCounts.push(tier.triangles);
         totalInstanceBatches += tier.instanceBatches;
@@ -126,7 +128,8 @@ describe("RustRelay monument model registry", () => {
   it("publishes complete non-overlapping assemblies for the reported monuments", () => {
     const apartments = monumentModelMetadata("apartments_complex_1")!;
     expect(apartments.tiers.map.sourceNodes.some((name) => /hlod/i.test(name))).toBe(false);
-    expect(apartments.tiers.close.sourceNodes.some((name) => /hlod|_sp|corridor|bathroom|elevator_shaft/i.test(name))).toBe(false);
+    expect(apartments.tiers.close.sourceNodes.some((name) => /apartments?_complex.*corridor_(?:1st_floor|mid_floors|upper_floor|[a-e])/i.test(name))).toBe(true);
+    expect(apartments.tiers.close.sourceNodes.some((name) => /hlod|_sp|bathroom|(?:elevator|lift)_shaft|corridor_train_tunnel|basement|fridge|pillow|bed|blanket|wood_stove|sofa|coat_hanger|kitchen_(?:counter|cupboard)|magazine_stand/i.test(name))).toBe(false);
 
     const arctic = monumentModelMetadata("arctic_research_base_a")!;
     expect(arctic.tiers.close.sourceNodes.some((name) => /arctic_base_a_exterior/i.test(name))).toBe(true);

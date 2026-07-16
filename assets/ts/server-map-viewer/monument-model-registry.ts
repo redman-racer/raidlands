@@ -14,6 +14,8 @@ export type MonumentModelTierMetadata = {
   instances: number;
   textureBytes: number;
   textureSize: number;
+  baseColorTexturedTriangles: number;
+  baseColorTextureCoverage: number;
   materialMode: MonumentMaterialMode;
   selectionKind: "authored-hlod" | "recipe-structural" | "surface-structural" | "largest-structural" | "standalone-override";
   sourceNodes: string[];

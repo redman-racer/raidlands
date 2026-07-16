@@ -203,7 +203,11 @@ const EXPLICIT_INCLUDES: Record<string, string[]> = {
 };
 
 const EXPLICIT_EXCLUDES: Record<string, string[]> = {
-  apartments_complex_1: ["_SP", "corridor", "bathroom", "elevator_shaft"],
+  apartments_complex_1: [
+    "_SP", "bathroom", "elevator_shaft", "lift_shaft", "corridor_train_tunnel", "apartment_fridge", "apartment_pillow", "apartment_queen_bed",
+    "apartment_single_bed", "apartment_single_blanket", "apartment_wood_stove", "bulky_apartment_sofa",
+    "coat_hanger", "kitchen_counter", "kitchen_cupboard", "magazine_stand",
+  ],
   compound: ["corridor_train_tunnel", "sewer_tunnel"],
   ice_lake_1: ["cliff", "rock_formation"],
   ice_lake_2: ["cliff", "rock_formation"],
@@ -214,7 +218,11 @@ const EXPLICIT_EXCLUDES: Record<string, string[]> = {
 };
 
 const MAP_INCLUDES: Record<string, string[]> = {
-  apartments_complex_1: EXPLICIT_INCLUDES.apartments_complex_1!,
+  apartments_complex_1: [
+    "apartment_complex_core_", "apartment_complex_facade", "apartment_complex_side", "apartment_complex_roof",
+    "apartments_complex_b_facade", "apartments_complex_roof", "apartments_complex_b_entrance",
+    "apartment_complex_foundation", "rentable_shop_", "wall_",
+  ],
   compound: EXPLICIT_INCLUDES.compound!,
 };
 const FORCE_RECIPE_MAP = new Set([

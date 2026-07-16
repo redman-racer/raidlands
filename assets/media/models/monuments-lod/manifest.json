@@ -1,6 +1,6 @@
 {
-  "version": 7,
-  "recipeVersion": 2,
+  "version": 8,
+  "recipeVersion": 3,
   "generatedBy": "gltf-transform@4.3.0",
   "sourceRepository": {
     "repository": "Facepunch/RustRelay.Assets",
@@ -8,7 +8,7 @@
     "defaultSibling": "../RustRelay.Assets/assets"
   },
   "thresholds": {
-    "mapToMidPixels": 80,
+    "mapToMidPixels": 48,
     "midToClosePixels": 220,
     "hysteresis": 0.2
   },
@@ -130,6 +130,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -765,6 +767,8 @@
           "instances": 42,
           "textureBytes": 659916,
           "textureSize": 256,
+          "baseColorTexturedTriangles": 154116,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -1400,6 +1404,8 @@
           "instances": 42,
           "textureBytes": 2514558,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 248514,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -2032,11 +2038,11 @@
       "review": {
         "sourceSha256": "34ab86baa23a40784358d2a0238018696fe471bfc8ed5d597b82e0a63d1f262c",
         "tierSha256": {
-          "map": "53877bc817bc370a8f30efc2c49b9e17e809fabe13a44064fa535121243ad90a",
-          "mid": "ffb1f11e6c97b60a05c20225cf78cc32af9b4b011b58d1fd0c62147dd1caf60c",
-          "close": "2f774f3f2cb09bbb51833fbfa58c0a623b20d342ec62df1ca70dc45d076da721"
+          "map": "c1dd69aae37b30a2ab6b1d08d31e9c6650dbd4405fabbcbf7eb84a32a990d40f",
+          "mid": "44f9d21748d63474c4d8a6aa1b4685a31b927d7d0cfc533162fd2ed87ae1882e",
+          "close": "9574ca6b2b0ccdf7a6902a1d5457354462f67156d55630293ace2b179ecedbc9"
         },
-        "reviewedAt": "2026-07-16T03:22:22.919Z"
+        "reviewedAt": "2026-07-16T05:58:05.907Z"
       },
       "layoutSource": "bundled/prefabs/autospawn/monument/medium/apartments_complex_1.glb",
       "sizeClass": "large",
@@ -2091,31 +2097,27 @@
         "map": {
           "file": "apartments_complex_1-map.glb",
           "url": "media/models/monuments-lod/apartments_complex_1-map.glb",
-          "sha256": "53877bc817bc370a8f30efc2c49b9e17e809fabe13a44064fa535121243ad90a",
-          "bytes": 151920,
-          "triangles": 28412,
-          "drawCalls": 7,
+          "sha256": "c1dd69aae37b30a2ab6b1d08d31e9c6650dbd4405fabbcbf7eb84a32a990d40f",
+          "bytes": 175840,
+          "triangles": 29598,
+          "drawCalls": 8,
           "instanceBatches": 0,
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
+            "LOD0",
             "apartment_complex_core_facade_LOD0",
             "apartment_complex_core_ground_LOD0",
             "apartment_complex_core_mid_floors_LOD0",
             "apartment_complex_core_upper_floor_LOD0",
-            "apartment_complex_entryway_frame",
             "apartment_complex_facade_LOD0",
             "apartment_complex_facade_damaged_LOD0",
             "apartment_complex_foundation",
-            "apartment_complex_planter_bench_a",
-            "apartment_complex_planter_bench_b",
-            "apartment_complex_rebar_large_LOD0",
-            "apartment_complex_rebar_medium_LOD0",
-            "apartment_complex_rebar_single_LOD0",
-            "apartment_complex_rebar_small_LOD0",
             "apartment_complex_roof_LOD0",
             "apartment_complex_roof_damaged_LOD0",
             "apartment_complex_side_LOD0",
@@ -2143,50 +2145,52 @@
             "apartments_complex_roof_chimney_a_LOD0",
             "apartments_complex_roof_exit_a_LOD0",
             "apartments_complex_roof_exit_b_LOD0",
-            "playground_swings_a_frame_LOD0",
-            "roof_aircon_unit_150x150_a_lod0",
-            "roof_aircon_unit_150x150_b_lod0",
-            "roof_aircon_unit_300x150_a_lod0",
-            "roof_aircon_unit_300x150_b_lod0",
-            "roof_barrier_900_LOD0",
-            "roof_barrier_corner",
-            "roof_hatch_LOD0"
+            "rentable_shop_A_exterior_LOD0",
+            "rentable_shop_A_shutters_LOD0",
+            "rentable_shop_B_decals",
+            "rentable_shop_B_exterior_LOD0",
+            "rentable_shop_C_exterior_LOD0",
+            "rentable_shop_C_signs",
+            "rentable_shop_D_exterior_LOD0",
+            "rentable_shop_D_shutters_LOD0",
+            "rentable_shop_D_signs",
+            "rentable_shop_E_exterior_LOD0",
+            "rentable_shop_E_signs",
+            "rentable_shop_F_exterior_LOD0",
+            "rentable_shop_F_shutters_LOD0",
+            "rentable_shop_F_signs",
+            "rentable_shop_notice_box_LOD0",
+            "rentable_shop_sign_A_LOD0",
+            "rentable_shop_sign_B_LOD0",
+            "rentable_shop_sign_C_LOD0",
+            "rentable_shop_sign_D_LOD0",
+            "rentable_shop_sign_E_LOD0",
+            "rentable_shop_sign_F_LOD0",
+            "wall_125_pillar_LOD0",
+            "wall_125x600_LOD0",
+            "wall_125x900_LOD0",
+            "wall_300_pillar_LOD0",
+            "wall_300x300_LOD0",
+            "wall_300x900_LOD0",
+            "wall_300x900_end_LOD0"
           ],
           "roleNodes": {
-            "roof": [
-              "apartment_complex_roof_LOD0",
-              "apartment_complex_roof_damaged_LOD0",
-              "apartments_complex_roof_a_LOD0",
-              "apartments_complex_roof_b_LOD0",
-              "apartments_complex_roof_barrier_a_LOD0",
-              "apartments_complex_roof_barrier_b_LOD0",
-              "apartments_complex_roof_barrier_c_LOD0",
-              "apartments_complex_roof_barrier_d_LOD0",
-              "apartments_complex_roof_barrier_e_LOD0",
-              "apartments_complex_roof_chimney_a_LOD0",
-              "apartments_complex_roof_exit_a_LOD0",
-              "apartments_complex_roof_exit_b_LOD0",
-              "roof_aircon_unit_150x150_a_lod0",
-              "roof_aircon_unit_150x150_b_lod0",
-              "roof_aircon_unit_300x150_a_lod0",
-              "roof_aircon_unit_300x150_b_lod0",
-              "roof_barrier_900_LOD0",
-              "roof_barrier_corner",
-              "roof_hatch_LOD0"
+            "perimeter": [
+              "LOD0",
+              "wall_125_pillar_LOD0",
+              "wall_125x600_LOD0",
+              "wall_125x900_LOD0",
+              "wall_300_pillar_LOD0",
+              "wall_300x300_LOD0",
+              "wall_300x900_LOD0",
+              "wall_300x900_end_LOD0"
             ],
             "shell": [
               "apartment_complex_core_facade_LOD0",
               "apartment_complex_core_mid_floors_LOD0",
               "apartment_complex_core_upper_floor_LOD0",
-              "apartment_complex_entryway_frame",
               "apartment_complex_facade_LOD0",
               "apartment_complex_facade_damaged_LOD0",
-              "apartment_complex_planter_bench_a",
-              "apartment_complex_planter_bench_b",
-              "apartment_complex_rebar_large_LOD0",
-              "apartment_complex_rebar_medium_LOD0",
-              "apartment_complex_rebar_single_LOD0",
-              "apartment_complex_rebar_small_LOD0",
               "apartment_complex_side_LOD0",
               "apartment_complex_side_damaged_LOD0",
               "apartments_complex_b_entrance_a_LOD0",
@@ -2201,20 +2205,60 @@
               "apartments_complex_b_facade_e_LOD0",
               "apartments_complex_b_facade_end_a_LOD0",
               "apartments_complex_b_facade_end_b_LOD0",
-              "apartments_complex_b_facade_pillar_LOD0"
+              "apartments_complex_b_facade_pillar_LOD0",
+              "rentable_shop_A_exterior_LOD0",
+              "rentable_shop_A_shutters_LOD0",
+              "rentable_shop_B_decals",
+              "rentable_shop_B_exterior_LOD0",
+              "rentable_shop_C_exterior_LOD0",
+              "rentable_shop_C_signs",
+              "rentable_shop_D_exterior_LOD0",
+              "rentable_shop_D_shutters_LOD0",
+              "rentable_shop_D_signs",
+              "rentable_shop_E_exterior_LOD0",
+              "rentable_shop_E_signs",
+              "rentable_shop_F_exterior_LOD0",
+              "rentable_shop_F_shutters_LOD0",
+              "rentable_shop_F_signs",
+              "rentable_shop_notice_box_LOD0",
+              "rentable_shop_sign_A_LOD0",
+              "rentable_shop_sign_B_LOD0",
+              "rentable_shop_sign_C_LOD0",
+              "rentable_shop_sign_D_LOD0",
+              "rentable_shop_sign_E_LOD0",
+              "rentable_shop_sign_F_LOD0"
             ],
             "ground-pad": [
               "apartment_complex_core_ground_LOD0",
-              "apartment_complex_foundation",
-              "playground_swings_a_frame_LOD0"
+              "apartment_complex_foundation"
+            ],
+            "roof": [
+              "apartment_complex_roof_LOD0",
+              "apartment_complex_roof_damaged_LOD0",
+              "apartments_complex_roof_a_LOD0",
+              "apartments_complex_roof_b_LOD0",
+              "apartments_complex_roof_barrier_a_LOD0",
+              "apartments_complex_roof_barrier_b_LOD0",
+              "apartments_complex_roof_barrier_c_LOD0",
+              "apartments_complex_roof_barrier_d_LOD0",
+              "apartments_complex_roof_barrier_e_LOD0",
+              "apartments_complex_roof_chimney_a_LOD0",
+              "apartments_complex_roof_exit_a_LOD0",
+              "apartments_complex_roof_exit_b_LOD0"
             ]
           },
           "roleCounts": {
-            "roof": 19,
-            "shell": 27,
-            "ground-pad": 3
+            "perimeter": 8,
+            "shell": 41,
+            "ground-pad": 2,
+            "roof": 12
           },
           "componentResolutions": [
+            {
+              "sourceNode": "LOD0",
+              "resolution": "embedded-layout",
+              "catalogPath": null
+            },
             {
               "sourceNode": "apartment_complex_core_facade_LOD0",
               "resolution": "standalone-catalog",
@@ -2236,11 +2280,6 @@
               "catalogPath": "Content/structures/apartments_complex/nested_prefabs/apartment_complex_core_upper_floor.glb"
             },
             {
-              "sourceNode": "apartment_complex_entryway_frame",
-              "resolution": "embedded-layout",
-              "catalogPath": null
-            },
-            {
               "sourceNode": "apartment_complex_facade_LOD0",
               "resolution": "standalone-catalog",
               "catalogPath": "Content/structures/apartments_complex/nested_prefabs/apartment_complex_facade.glb"
@@ -2254,36 +2293,6 @@
               "sourceNode": "apartment_complex_foundation",
               "resolution": "standalone-catalog",
               "catalogPath": "Content/structures/apartments_complex/apartment_complex_foundation.glb"
-            },
-            {
-              "sourceNode": "apartment_complex_planter_bench_a",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/structures/apartments_complex/nested_prefabs/apartment_complex_planter_bench_a.glb"
-            },
-            {
-              "sourceNode": "apartment_complex_planter_bench_b",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/structures/apartments_complex/nested_prefabs/apartment_complex_planter_bench_b.glb"
-            },
-            {
-              "sourceNode": "apartment_complex_rebar_large_LOD0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/structures/apartments_complex/apartment_complex_rebar_large.glb"
-            },
-            {
-              "sourceNode": "apartment_complex_rebar_medium_LOD0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/structures/apartments_complex/apartment_complex_rebar_medium.glb"
-            },
-            {
-              "sourceNode": "apartment_complex_rebar_single_LOD0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/structures/apartments_complex/apartment_complex_rebar_single.glb"
-            },
-            {
-              "sourceNode": "apartment_complex_rebar_small_LOD0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/structures/apartments_complex/apartment_complex_rebar_small.glb"
             },
             {
               "sourceNode": "apartment_complex_roof_LOD0",
@@ -2421,57 +2430,157 @@
               "catalogPath": "Content/structures/apartments_complex_roof_structures/apartments_complex_roof_exit_b.glb"
             },
             {
-              "sourceNode": "playground_swings_a_frame_LOD0",
+              "sourceNode": "rentable_shop_A_exterior_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/rentable_shops/models/model_prefabs/rentable_shop_a_exterior.glb"
+            },
+            {
+              "sourceNode": "rentable_shop_A_shutters_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/rentable_shops/models/model_prefabs/rentable_shop_a_shutters.glb"
+            },
+            {
+              "sourceNode": "rentable_shop_B_decals",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/rentable_shops/models/model_prefabs/rentable_shop_b_decals.glb"
+            },
+            {
+              "sourceNode": "rentable_shop_B_exterior_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/rentable_shops/models/model_prefabs/rentable_shop_b_exterior.glb"
+            },
+            {
+              "sourceNode": "rentable_shop_C_exterior_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/rentable_shops/models/model_prefabs/rentable_shop_c_exterior.glb"
+            },
+            {
+              "sourceNode": "rentable_shop_C_signs",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/rentable_shops/models/model_prefabs/rentable_shop_c_signs.glb"
+            },
+            {
+              "sourceNode": "rentable_shop_D_exterior_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/rentable_shops/models/model_prefabs/rentable_shop_d_exterior.glb"
+            },
+            {
+              "sourceNode": "rentable_shop_D_shutters_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/rentable_shops/models/model_prefabs/rentable_shop_d_shutters.glb"
+            },
+            {
+              "sourceNode": "rentable_shop_D_signs",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/rentable_shops/models/model_prefabs/rentable_shop_d_signs.glb"
+            },
+            {
+              "sourceNode": "rentable_shop_E_exterior_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/rentable_shops/models/model_prefabs/rentable_shop_e_exterior.glb"
+            },
+            {
+              "sourceNode": "rentable_shop_E_signs",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/rentable_shops/models/model_prefabs/rentable_shop_e_signs.glb"
+            },
+            {
+              "sourceNode": "rentable_shop_F_exterior_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/rentable_shops/models/model_prefabs/rentable_shop_f_exterior.glb"
+            },
+            {
+              "sourceNode": "rentable_shop_F_shutters_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/rentable_shops/models/model_prefabs/rentable_shop_f_shutters.glb"
+            },
+            {
+              "sourceNode": "rentable_shop_F_signs",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/rentable_shops/models/model_prefabs/rentable_shop_f_signs.glb"
+            },
+            {
+              "sourceNode": "rentable_shop_notice_box_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/Props/rentable_shops_notice_box/rentable_shop_notice_box.glb"
+            },
+            {
+              "sourceNode": "rentable_shop_sign_A_LOD0",
               "resolution": "embedded-layout",
               "catalogPath": null
             },
             {
-              "sourceNode": "roof_aircon_unit_150x150_a_lod0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/AC_units/roof_aircon_unit_150x150_a.glb"
+              "sourceNode": "rentable_shop_sign_B_LOD0",
+              "resolution": "embedded-layout",
+              "catalogPath": null
             },
             {
-              "sourceNode": "roof_aircon_unit_150x150_b_lod0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/AC_units/roof_aircon_unit_150x150_b.glb"
+              "sourceNode": "rentable_shop_sign_C_LOD0",
+              "resolution": "embedded-layout",
+              "catalogPath": null
             },
             {
-              "sourceNode": "roof_aircon_unit_300x150_a_lod0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/AC_units/roof_aircon_unit_300x150_a.glb"
+              "sourceNode": "rentable_shop_sign_D_LOD0",
+              "resolution": "embedded-layout",
+              "catalogPath": null
             },
             {
-              "sourceNode": "roof_aircon_unit_300x150_b_lod0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/AC_units/roof_aircon_unit_300x150_b.glb"
+              "sourceNode": "rentable_shop_sign_E_LOD0",
+              "resolution": "embedded-layout",
+              "catalogPath": null
             },
             {
-              "sourceNode": "roof_barrier_900_LOD0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/structures/apartments_complex/nested_prefabs/roof_barrier_900.glb"
+              "sourceNode": "rentable_shop_sign_F_LOD0",
+              "resolution": "embedded-layout",
+              "catalogPath": null
             },
             {
-              "sourceNode": "roof_barrier_corner",
+              "sourceNode": "wall_125_pillar_LOD0",
               "resolution": "standalone-catalog",
-              "catalogPath": "Content/structures/apartments_complex/nested_prefabs/roof_barrier_corner.glb"
+              "catalogPath": "Content/structures/Fences_walls/wall_125_pillar.glb"
             },
             {
-              "sourceNode": "roof_hatch_LOD0",
+              "sourceNode": "wall_125x600_LOD0",
               "resolution": "standalone-catalog",
-              "catalogPath": "Content/structures/apartments_complex/nested_prefabs/roof_hatch.glb"
+              "catalogPath": "Content/structures/Fences_walls/wall_125x600.glb"
+            },
+            {
+              "sourceNode": "wall_125x900_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/Fences_walls/wall_125x900.glb"
+            },
+            {
+              "sourceNode": "wall_300_pillar_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/Fences_walls/wall_300_pillar.glb"
+            },
+            {
+              "sourceNode": "wall_300x300_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/Fences_walls/wall_300x300.glb"
+            },
+            {
+              "sourceNode": "wall_300x900_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/Fences_walls/wall_300x900.glb"
+            },
+            {
+              "sourceNode": "wall_300x900_end_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/Fences_walls/wall_300x900_end.glb"
             }
           ],
           "compositeSources": [],
           "bounds": {
             "min": [
               -56.704498291015625,
-              -1.425608515739441,
+              -7.353896382183608,
               -51.80000305175781
             ],
             "max": [
               112.74588012695312,
-              30.257020950317383,
-              80.00538635253906
+              30.23311424255371,
+              105.8954086303711
             ]
           },
           "structuralBounds": {
@@ -2483,47 +2592,40 @@
             "max": [
               112.75000902459949,
               30.33533477783203,
-              80.0524673461914
+              105.93322184041813
             ]
           },
           "maxBytes": 256000,
           "maxTriangles": 50000,
           "maxDrawCalls": 12,
           "footprintCoverage": 0.85742,
-          "normalizedCenterOffset": 0.029714,
+          "normalizedCenterOffset": 0.035748,
           "normalizedElevationOffset": 0.001961
         },
         "mid": {
           "file": "apartments_complex_1-mid.glb",
           "url": "media/models/monuments-lod/apartments_complex_1-mid.glb",
-          "sha256": "ffb1f11e6c97b60a05c20225cf78cc32af9b4b011b58d1fd0c62147dd1caf60c",
-          "bytes": 1558888,
-          "triangles": 175236,
-          "drawCalls": 93,
+          "sha256": "44f9d21748d63474c4d8a6aa1b4685a31b927d7d0cfc533162fd2ed87ae1882e",
+          "bytes": 1525928,
+          "triangles": 184964,
+          "drawCalls": 87,
           "instanceBatches": 0,
           "instances": 0,
-          "textureBytes": 338878,
+          "textureBytes": 319890,
           "textureSize": 128,
+          "baseColorTexturedTriangles": 184964,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
-            "Coat_Hanger_Wall_Mounted_LOD0",
-            "Large_Apartment_Kitchen_Counter_Double_Drawers_LOD0",
-            "Large_Apartment_Kitchen_Counter_Double_LOD0",
-            "Large_Apartment_Kitchen_Counter_Left_End_LOD0",
-            "Large_Apartment_Kitchen_Counter_Right_End_LOD0",
-            "Large_Apartment_Kitchen_Counter_Single_A_LOD0",
-            "Large_Apartment_Kitchen_Counter_Single_B_LOD0",
-            "Large_Apartment_Kitchen_Counter_Sink_LOD0",
-            "Large_Apartment_Kitchen_Cupboard_A_LOD0",
-            "Large_Apartment_Kitchen_Cupboard_B_LOD0",
-            "Large_Apartment_Kitchen_Cupboard_Double_A_LOD0",
-            "Large_Apartment_Kitchen_Cupboard_Double_B_LOD0",
-            "Large_Apartment_Kitchen_Cupboard_Large_LOD0",
             "apartment_complex_core_facade_LOD0",
             "apartment_complex_core_ground_LOD0",
             "apartment_complex_core_mid_floors_LOD0",
             "apartment_complex_core_upper_floor_LOD0",
+            "apartment_complex_corridors_1st_floor_LOD0",
+            "apartment_complex_corridors_damaged_LOD0",
+            "apartment_complex_corridors_mid_floors_LOD0",
+            "apartment_complex_corridors_upper_floor_LOD0",
             "apartment_complex_entryway_frame",
             "apartment_complex_facade_LOD0",
             "apartment_complex_facade_damaged_LOD0",
@@ -2538,21 +2640,24 @@
             "apartment_complex_roof_damaged_LOD0",
             "apartment_complex_side_LOD0",
             "apartment_complex_side_damaged_LOD0",
-            "apartment_fridge_lod0",
             "apartment_large_LOD0",
             "apartment_large_decals_LOD0",
             "apartment_large_mezzanine_LOD0",
             "apartment_medium_LOD0",
-            "apartment_pillow_lod0",
-            "apartment_queen_bed_lod0",
-            "apartment_single_bed_lod0",
-            "apartment_single_blanket_lod0",
             "apartment_small_LOD0",
             "apartment_wood_shutter_A_lod0",
             "apartment_wood_shutter_B_lod0",
             "apartment_wood_shutter_C_lod0",
             "apartment_wood_shutter_D_lod0",
-            "apartment_wood_stove_LOD0",
+            "apartments_complex_b_corridor_a_LOD0",
+            "apartments_complex_b_corridor_a_partition_a_LOD0",
+            "apartments_complex_b_corridor_a_partition_b_LOD0",
+            "apartments_complex_b_corridor_b_LOD0",
+            "apartments_complex_b_corridor_b_large_doorframe_a_LOD0",
+            "apartments_complex_b_corridor_b_large_doorframe_b_LOD0",
+            "apartments_complex_b_corridor_c_LOD0",
+            "apartments_complex_b_corridor_d_LOD0",
+            "apartments_complex_b_corridor_e_LOD0",
             "apartments_complex_b_entrance_a_LOD0",
             "apartments_complex_b_entrance_b_LOD0",
             "apartments_complex_b_entrance_c_LOD0",
@@ -2576,7 +2681,6 @@
             "apartments_complex_roof_chimney_a_LOD0",
             "apartments_complex_roof_exit_a_LOD0",
             "apartments_complex_roof_exit_b_LOD0",
-            "bulky_apartment_sofa_lod0",
             "chainlink_fence_low_3x3_gate_LOD0",
             "city_hall_helipad_LOD0",
             "door.apartment.a_LOD0",
@@ -2638,7 +2742,6 @@
             "roof_barrier_900_LOD0",
             "roof_barrier_corner",
             "roof_hatch_LOD0",
-            "supermarket_magazine_stand_a_LOD0",
             "trolley_platform_LOD0",
             "wall_125_pillar_LOD0",
             "wall_125x600_LOD0",
@@ -2647,6 +2750,8 @@
             "wall_300x300_LOD0",
             "wall_300x900_LOD0",
             "wall_300x900_end_LOD0",
+            "window_corridor_large",
+            "window_corridor_small",
             "window_penthouse_flat_LOD0",
             "window_penthouse_flat_damaged_LOD0",
             "window_regular_flat_LOD0",
@@ -2659,7 +2764,6 @@
           ],
           "roleNodes": {
             "perimeter": [
-              "Coat_Hanger_Wall_Mounted_LOD0",
               "chainlink_fence_low_3x3_gate_LOD0",
               "wall_125_pillar_LOD0",
               "wall_125x600_LOD0",
@@ -2708,21 +2812,13 @@
               "zipline_platform_step_b_LOD0"
             ],
             "shell": [
-              "Large_Apartment_Kitchen_Counter_Double_Drawers_LOD0",
-              "Large_Apartment_Kitchen_Counter_Double_LOD0",
-              "Large_Apartment_Kitchen_Counter_Left_End_LOD0",
-              "Large_Apartment_Kitchen_Counter_Right_End_LOD0",
-              "Large_Apartment_Kitchen_Counter_Single_A_LOD0",
-              "Large_Apartment_Kitchen_Counter_Single_B_LOD0",
-              "Large_Apartment_Kitchen_Counter_Sink_LOD0",
-              "Large_Apartment_Kitchen_Cupboard_A_LOD0",
-              "Large_Apartment_Kitchen_Cupboard_B_LOD0",
-              "Large_Apartment_Kitchen_Cupboard_Double_A_LOD0",
-              "Large_Apartment_Kitchen_Cupboard_Double_B_LOD0",
-              "Large_Apartment_Kitchen_Cupboard_Large_LOD0",
               "apartment_complex_core_facade_LOD0",
               "apartment_complex_core_mid_floors_LOD0",
               "apartment_complex_core_upper_floor_LOD0",
+              "apartment_complex_corridors_1st_floor_LOD0",
+              "apartment_complex_corridors_damaged_LOD0",
+              "apartment_complex_corridors_mid_floors_LOD0",
+              "apartment_complex_corridors_upper_floor_LOD0",
               "apartment_complex_entryway_frame",
               "apartment_complex_facade_LOD0",
               "apartment_complex_facade_damaged_LOD0",
@@ -2734,21 +2830,24 @@
               "apartment_complex_rebar_small_LOD0",
               "apartment_complex_side_LOD0",
               "apartment_complex_side_damaged_LOD0",
-              "apartment_fridge_lod0",
               "apartment_large_LOD0",
               "apartment_large_decals_LOD0",
               "apartment_large_mezzanine_LOD0",
               "apartment_medium_LOD0",
-              "apartment_pillow_lod0",
-              "apartment_queen_bed_lod0",
-              "apartment_single_bed_lod0",
-              "apartment_single_blanket_lod0",
               "apartment_small_LOD0",
               "apartment_wood_shutter_A_lod0",
               "apartment_wood_shutter_B_lod0",
               "apartment_wood_shutter_C_lod0",
               "apartment_wood_shutter_D_lod0",
-              "apartment_wood_stove_LOD0",
+              "apartments_complex_b_corridor_a_LOD0",
+              "apartments_complex_b_corridor_a_partition_a_LOD0",
+              "apartments_complex_b_corridor_a_partition_b_LOD0",
+              "apartments_complex_b_corridor_b_LOD0",
+              "apartments_complex_b_corridor_b_large_doorframe_a_LOD0",
+              "apartments_complex_b_corridor_b_large_doorframe_b_LOD0",
+              "apartments_complex_b_corridor_c_LOD0",
+              "apartments_complex_b_corridor_d_LOD0",
+              "apartments_complex_b_corridor_e_LOD0",
               "apartments_complex_b_entrance_a_LOD0",
               "apartments_complex_b_entrance_b_LOD0",
               "apartments_complex_b_entrance_c_LOD0",
@@ -2762,7 +2861,6 @@
               "apartments_complex_b_facade_end_a_LOD0",
               "apartments_complex_b_facade_end_b_LOD0",
               "apartments_complex_b_facade_pillar_LOD0",
-              "bulky_apartment_sofa_lod0",
               "door.apartment.a_LOD0",
               "door.apartment.b_LOD0",
               "door.apartment.c_LOD0",
@@ -2795,7 +2893,8 @@
               "rentable_shop_F_exterior_LOD0",
               "rentable_shop_F_shutters_LOD0",
               "rentable_shop_F_signs",
-              "supermarket_magazine_stand_a_LOD0",
+              "window_corridor_large",
+              "window_corridor_small",
               "window_penthouse_flat_LOD0",
               "window_penthouse_flat_damaged_LOD0",
               "window_regular_flat_LOD0",
@@ -2819,78 +2918,13 @@
             ]
           },
           "roleCounts": {
-            "perimeter": 9,
+            "perimeter": 8,
             "roof": 19,
             "platform": 15,
-            "shell": 92,
+            "shell": 87,
             "ground-pad": 14
           },
           "componentResolutions": [
-            {
-              "sourceNode": "Coat_Hanger_Wall_Mounted_LOD0",
-              "resolution": "embedded-layout",
-              "catalogPath": null
-            },
-            {
-              "sourceNode": "Large_Apartment_Kitchen_Counter_Double_Drawers_LOD0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/kitchen_furniture/Apartment Set Large/large_apartment_kitchen_counter_double_drawers.glb"
-            },
-            {
-              "sourceNode": "Large_Apartment_Kitchen_Counter_Double_LOD0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/kitchen_furniture/Apartment Set Large/large_apartment_kitchen_counter_double.glb"
-            },
-            {
-              "sourceNode": "Large_Apartment_Kitchen_Counter_Left_End_LOD0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/kitchen_furniture/Apartment Set Large/large_apartment_kitchen_counter_left_end.glb"
-            },
-            {
-              "sourceNode": "Large_Apartment_Kitchen_Counter_Right_End_LOD0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/kitchen_furniture/Apartment Set Large/large_apartment_kitchen_counter_right_end.glb"
-            },
-            {
-              "sourceNode": "Large_Apartment_Kitchen_Counter_Single_A_LOD0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/kitchen_furniture/Apartment Set Large/large_apartment_kitchen_counter_single_a.glb"
-            },
-            {
-              "sourceNode": "Large_Apartment_Kitchen_Counter_Single_B_LOD0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/kitchen_furniture/Apartment Set Large/large_apartment_kitchen_counter_single_b.glb"
-            },
-            {
-              "sourceNode": "Large_Apartment_Kitchen_Counter_Sink_LOD0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/kitchen_furniture/Apartment Set Large/large_apartment_kitchen_counter_sink.glb"
-            },
-            {
-              "sourceNode": "Large_Apartment_Kitchen_Cupboard_A_LOD0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/kitchen_furniture/Apartment Set Large/large_apartment_kitchen_cupboard_a.glb"
-            },
-            {
-              "sourceNode": "Large_Apartment_Kitchen_Cupboard_B_LOD0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/kitchen_furniture/Apartment Set Large/large_apartment_kitchen_cupboard_b.glb"
-            },
-            {
-              "sourceNode": "Large_Apartment_Kitchen_Cupboard_Double_A_LOD0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/kitchen_furniture/Apartment Set Large/large_apartment_kitchen_cupboard_double_a.glb"
-            },
-            {
-              "sourceNode": "Large_Apartment_Kitchen_Cupboard_Double_B_LOD0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/kitchen_furniture/Apartment Set Large/large_apartment_kitchen_cupboard_double_b.glb"
-            },
-            {
-              "sourceNode": "Large_Apartment_Kitchen_Cupboard_Large_LOD0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/kitchen_furniture/Apartment Set Large/large_apartment_kitchen_cupboard_large.glb"
-            },
             {
               "sourceNode": "apartment_complex_core_facade_LOD0",
               "resolution": "standalone-catalog",
@@ -2910,6 +2944,26 @@
               "sourceNode": "apartment_complex_core_upper_floor_LOD0",
               "resolution": "standalone-catalog",
               "catalogPath": "Content/structures/apartments_complex/nested_prefabs/apartment_complex_core_upper_floor.glb"
+            },
+            {
+              "sourceNode": "apartment_complex_corridors_1st_floor_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/apartments_complex/nested_prefabs/apartment_complex_corridors_1st_floor.glb"
+            },
+            {
+              "sourceNode": "apartment_complex_corridors_damaged_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/apartments_complex/nested_prefabs/apartment_complex_corridors_damaged.glb"
+            },
+            {
+              "sourceNode": "apartment_complex_corridors_mid_floors_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/apartments_complex/nested_prefabs/apartment_complex_corridors_mid_floors.glb"
+            },
+            {
+              "sourceNode": "apartment_complex_corridors_upper_floor_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/apartments_complex/nested_prefabs/apartment_complex_corridors_upper_floor.glb"
             },
             {
               "sourceNode": "apartment_complex_entryway_frame",
@@ -2982,11 +3036,6 @@
               "catalogPath": "Content/structures/apartments_complex/nested_prefabs/apartment_complex_side_damaged.glb"
             },
             {
-              "sourceNode": "apartment_fridge_lod0",
-              "resolution": "embedded-layout",
-              "catalogPath": null
-            },
-            {
               "sourceNode": "apartment_large_LOD0",
               "resolution": "standalone-catalog",
               "catalogPath": "Content/structures/apartments_complex/apartment_large.glb"
@@ -3005,26 +3054,6 @@
               "sourceNode": "apartment_medium_LOD0",
               "resolution": "standalone-catalog",
               "catalogPath": "Content/structures/apartments_complex/apartment_medium.glb"
-            },
-            {
-              "sourceNode": "apartment_pillow_lod0",
-              "resolution": "embedded-layout",
-              "catalogPath": null
-            },
-            {
-              "sourceNode": "apartment_queen_bed_lod0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/apartments_beds/apartment_queen_bed.glb"
-            },
-            {
-              "sourceNode": "apartment_single_bed_lod0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/apartments_beds/apartment_single_bed.glb"
-            },
-            {
-              "sourceNode": "apartment_single_blanket_lod0",
-              "resolution": "embedded-layout",
-              "catalogPath": null
             },
             {
               "sourceNode": "apartment_small_LOD0",
@@ -3052,9 +3081,49 @@
               "catalogPath": null
             },
             {
-              "sourceNode": "apartment_wood_stove_LOD0",
+              "sourceNode": "apartments_complex_b_corridor_a_LOD0",
               "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/apartment_wood_stove/apartment_wood_stove.glb"
+              "catalogPath": "Content/structures/apartment_complex_b/Prefabs/apartments_complex_b_corridor_a.glb"
+            },
+            {
+              "sourceNode": "apartments_complex_b_corridor_a_partition_a_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/apartment_complex_b/Prefabs/apartments_complex_b_corridor_a_partition_a.glb"
+            },
+            {
+              "sourceNode": "apartments_complex_b_corridor_a_partition_b_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/apartment_complex_b/Prefabs/apartments_complex_b_corridor_a_partition_b.glb"
+            },
+            {
+              "sourceNode": "apartments_complex_b_corridor_b_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/apartment_complex_b/Prefabs/apartments_complex_b_corridor_b.glb"
+            },
+            {
+              "sourceNode": "apartments_complex_b_corridor_b_large_doorframe_a_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/apartment_complex_b/Prefabs/apartments_complex_b_corridor_b_large_doorframe_a.glb"
+            },
+            {
+              "sourceNode": "apartments_complex_b_corridor_b_large_doorframe_b_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/apartment_complex_b/Prefabs/apartments_complex_b_corridor_b_large_doorframe_b.glb"
+            },
+            {
+              "sourceNode": "apartments_complex_b_corridor_c_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/apartment_complex_b/Prefabs/apartments_complex_b_corridor_c.glb"
+            },
+            {
+              "sourceNode": "apartments_complex_b_corridor_d_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/apartment_complex_b/Prefabs/apartments_complex_b_corridor_d.glb"
+            },
+            {
+              "sourceNode": "apartments_complex_b_corridor_e_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/apartment_complex_b/Prefabs/apartments_complex_b_corridor_e.glb"
             },
             {
               "sourceNode": "apartments_complex_b_entrance_a_LOD0",
@@ -3170,11 +3239,6 @@
               "sourceNode": "apartments_complex_roof_exit_b_LOD0",
               "resolution": "standalone-catalog",
               "catalogPath": "Content/structures/apartments_complex_roof_structures/apartments_complex_roof_exit_b.glb"
-            },
-            {
-              "sourceNode": "bulky_apartment_sofa_lod0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/apartment_bulky_sofa/bulky_apartment_sofa.glb"
             },
             {
               "sourceNode": "chainlink_fence_low_3x3_gate_LOD0",
@@ -3482,11 +3546,6 @@
               "catalogPath": "Content/structures/apartments_complex/nested_prefabs/roof_hatch.glb"
             },
             {
-              "sourceNode": "supermarket_magazine_stand_a_LOD0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/supermarket_magazine_stand/supermarket_magazine_stand_a.glb"
-            },
-            {
               "sourceNode": "trolley_platform_LOD0",
               "resolution": "embedded-layout",
               "catalogPath": null
@@ -3525,6 +3584,16 @@
               "sourceNode": "wall_300x900_end_LOD0",
               "resolution": "standalone-catalog",
               "catalogPath": "Content/structures/Fences_walls/wall_300x900_end.glb"
+            },
+            {
+              "sourceNode": "window_corridor_large",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/apartments_complex/nested_prefabs/window_corridor_large.glb"
+            },
+            {
+              "sourceNode": "window_corridor_small",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/apartments_complex/nested_prefabs/window_corridor_small.glb"
             },
             {
               "sourceNode": "window_penthouse_flat_LOD0",
@@ -3576,12 +3645,12 @@
           "bounds": {
             "min": [
               -56.744483947753906,
-              -3.541561213433784,
+              -2.1999759674072266,
               -78.83986558550944
             ],
             "max": [
               112.75074190839138,
-              30.338787078857422,
+              30.335447311401367,
               118.83984787089281
             ]
           },
@@ -3607,34 +3676,27 @@
         "close": {
           "file": "apartments_complex_1-close.glb",
           "url": "media/models/monuments-lod/apartments_complex_1-close.glb",
-          "sha256": "2f774f3f2cb09bbb51833fbfa58c0a623b20d342ec62df1ca70dc45d076da721",
-          "bytes": 6189680,
-          "triangles": 243653,
-          "drawCalls": 93,
+          "sha256": "9574ca6b2b0ccdf7a6902a1d5457354462f67156d55630293ace2b179ecedbc9",
+          "bytes": 5902664,
+          "triangles": 246748,
+          "drawCalls": 87,
           "instanceBatches": 0,
           "instances": 0,
-          "textureBytes": 4641978,
+          "textureBytes": 4416868,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 246748,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
-            "Coat_Hanger_Wall_Mounted_LOD0",
-            "Large_Apartment_Kitchen_Counter_Double_Drawers_LOD0",
-            "Large_Apartment_Kitchen_Counter_Double_LOD0",
-            "Large_Apartment_Kitchen_Counter_Left_End_LOD0",
-            "Large_Apartment_Kitchen_Counter_Right_End_LOD0",
-            "Large_Apartment_Kitchen_Counter_Single_A_LOD0",
-            "Large_Apartment_Kitchen_Counter_Single_B_LOD0",
-            "Large_Apartment_Kitchen_Counter_Sink_LOD0",
-            "Large_Apartment_Kitchen_Cupboard_A_LOD0",
-            "Large_Apartment_Kitchen_Cupboard_B_LOD0",
-            "Large_Apartment_Kitchen_Cupboard_Double_A_LOD0",
-            "Large_Apartment_Kitchen_Cupboard_Double_B_LOD0",
-            "Large_Apartment_Kitchen_Cupboard_Large_LOD0",
             "apartment_complex_core_facade_LOD0",
             "apartment_complex_core_ground_LOD0",
             "apartment_complex_core_mid_floors_LOD0",
             "apartment_complex_core_upper_floor_LOD0",
+            "apartment_complex_corridors_1st_floor_LOD0",
+            "apartment_complex_corridors_damaged_LOD0",
+            "apartment_complex_corridors_mid_floors_LOD0",
+            "apartment_complex_corridors_upper_floor_LOD0",
             "apartment_complex_entryway_frame",
             "apartment_complex_facade_LOD0",
             "apartment_complex_facade_damaged_LOD0",
@@ -3649,21 +3711,24 @@
             "apartment_complex_roof_damaged_LOD0",
             "apartment_complex_side_LOD0",
             "apartment_complex_side_damaged_LOD0",
-            "apartment_fridge_lod0",
             "apartment_large_LOD0",
             "apartment_large_decals_LOD0",
             "apartment_large_mezzanine_LOD0",
             "apartment_medium_LOD0",
-            "apartment_pillow_lod0",
-            "apartment_queen_bed_lod0",
-            "apartment_single_bed_lod0",
-            "apartment_single_blanket_lod0",
             "apartment_small_LOD0",
             "apartment_wood_shutter_A_lod0",
             "apartment_wood_shutter_B_lod0",
             "apartment_wood_shutter_C_lod0",
             "apartment_wood_shutter_D_lod0",
-            "apartment_wood_stove_LOD0",
+            "apartments_complex_b_corridor_a_LOD0",
+            "apartments_complex_b_corridor_a_partition_a_LOD0",
+            "apartments_complex_b_corridor_a_partition_b_LOD0",
+            "apartments_complex_b_corridor_b_LOD0",
+            "apartments_complex_b_corridor_b_large_doorframe_a_LOD0",
+            "apartments_complex_b_corridor_b_large_doorframe_b_LOD0",
+            "apartments_complex_b_corridor_c_LOD0",
+            "apartments_complex_b_corridor_d_LOD0",
+            "apartments_complex_b_corridor_e_LOD0",
             "apartments_complex_b_entrance_a_LOD0",
             "apartments_complex_b_entrance_b_LOD0",
             "apartments_complex_b_entrance_c_LOD0",
@@ -3687,7 +3752,6 @@
             "apartments_complex_roof_chimney_a_LOD0",
             "apartments_complex_roof_exit_a_LOD0",
             "apartments_complex_roof_exit_b_LOD0",
-            "bulky_apartment_sofa_lod0",
             "chainlink_fence_low_3x3_gate_LOD0",
             "city_hall_helipad_LOD0",
             "door.apartment.a_LOD0",
@@ -3749,7 +3813,6 @@
             "roof_barrier_900_LOD0",
             "roof_barrier_corner",
             "roof_hatch_LOD0",
-            "supermarket_magazine_stand_a_LOD0",
             "trolley_platform_LOD0",
             "wall_125_pillar_LOD0",
             "wall_125x600_LOD0",
@@ -3758,6 +3821,8 @@
             "wall_300x300_LOD0",
             "wall_300x900_LOD0",
             "wall_300x900_end_LOD0",
+            "window_corridor_large",
+            "window_corridor_small",
             "window_penthouse_flat_LOD0",
             "window_penthouse_flat_damaged_LOD0",
             "window_regular_flat_LOD0",
@@ -3770,7 +3835,6 @@
           ],
           "roleNodes": {
             "perimeter": [
-              "Coat_Hanger_Wall_Mounted_LOD0",
               "chainlink_fence_low_3x3_gate_LOD0",
               "wall_125_pillar_LOD0",
               "wall_125x600_LOD0",
@@ -3819,21 +3883,13 @@
               "zipline_platform_step_b_LOD0"
             ],
             "shell": [
-              "Large_Apartment_Kitchen_Counter_Double_Drawers_LOD0",
-              "Large_Apartment_Kitchen_Counter_Double_LOD0",
-              "Large_Apartment_Kitchen_Counter_Left_End_LOD0",
-              "Large_Apartment_Kitchen_Counter_Right_End_LOD0",
-              "Large_Apartment_Kitchen_Counter_Single_A_LOD0",
-              "Large_Apartment_Kitchen_Counter_Single_B_LOD0",
-              "Large_Apartment_Kitchen_Counter_Sink_LOD0",
-              "Large_Apartment_Kitchen_Cupboard_A_LOD0",
-              "Large_Apartment_Kitchen_Cupboard_B_LOD0",
-              "Large_Apartment_Kitchen_Cupboard_Double_A_LOD0",
-              "Large_Apartment_Kitchen_Cupboard_Double_B_LOD0",
-              "Large_Apartment_Kitchen_Cupboard_Large_LOD0",
               "apartment_complex_core_facade_LOD0",
               "apartment_complex_core_mid_floors_LOD0",
               "apartment_complex_core_upper_floor_LOD0",
+              "apartment_complex_corridors_1st_floor_LOD0",
+              "apartment_complex_corridors_damaged_LOD0",
+              "apartment_complex_corridors_mid_floors_LOD0",
+              "apartment_complex_corridors_upper_floor_LOD0",
               "apartment_complex_entryway_frame",
               "apartment_complex_facade_LOD0",
               "apartment_complex_facade_damaged_LOD0",
@@ -3845,21 +3901,24 @@
               "apartment_complex_rebar_small_LOD0",
               "apartment_complex_side_LOD0",
               "apartment_complex_side_damaged_LOD0",
-              "apartment_fridge_lod0",
               "apartment_large_LOD0",
               "apartment_large_decals_LOD0",
               "apartment_large_mezzanine_LOD0",
               "apartment_medium_LOD0",
-              "apartment_pillow_lod0",
-              "apartment_queen_bed_lod0",
-              "apartment_single_bed_lod0",
-              "apartment_single_blanket_lod0",
               "apartment_small_LOD0",
               "apartment_wood_shutter_A_lod0",
               "apartment_wood_shutter_B_lod0",
               "apartment_wood_shutter_C_lod0",
               "apartment_wood_shutter_D_lod0",
-              "apartment_wood_stove_LOD0",
+              "apartments_complex_b_corridor_a_LOD0",
+              "apartments_complex_b_corridor_a_partition_a_LOD0",
+              "apartments_complex_b_corridor_a_partition_b_LOD0",
+              "apartments_complex_b_corridor_b_LOD0",
+              "apartments_complex_b_corridor_b_large_doorframe_a_LOD0",
+              "apartments_complex_b_corridor_b_large_doorframe_b_LOD0",
+              "apartments_complex_b_corridor_c_LOD0",
+              "apartments_complex_b_corridor_d_LOD0",
+              "apartments_complex_b_corridor_e_LOD0",
               "apartments_complex_b_entrance_a_LOD0",
               "apartments_complex_b_entrance_b_LOD0",
               "apartments_complex_b_entrance_c_LOD0",
@@ -3873,7 +3932,6 @@
               "apartments_complex_b_facade_end_a_LOD0",
               "apartments_complex_b_facade_end_b_LOD0",
               "apartments_complex_b_facade_pillar_LOD0",
-              "bulky_apartment_sofa_lod0",
               "door.apartment.a_LOD0",
               "door.apartment.b_LOD0",
               "door.apartment.c_LOD0",
@@ -3906,7 +3964,8 @@
               "rentable_shop_F_exterior_LOD0",
               "rentable_shop_F_shutters_LOD0",
               "rentable_shop_F_signs",
-              "supermarket_magazine_stand_a_LOD0",
+              "window_corridor_large",
+              "window_corridor_small",
               "window_penthouse_flat_LOD0",
               "window_penthouse_flat_damaged_LOD0",
               "window_regular_flat_LOD0",
@@ -3930,78 +3989,13 @@
             ]
           },
           "roleCounts": {
-            "perimeter": 9,
+            "perimeter": 8,
             "roof": 19,
             "platform": 15,
-            "shell": 92,
+            "shell": 87,
             "ground-pad": 14
           },
           "componentResolutions": [
-            {
-              "sourceNode": "Coat_Hanger_Wall_Mounted_LOD0",
-              "resolution": "embedded-layout",
-              "catalogPath": null
-            },
-            {
-              "sourceNode": "Large_Apartment_Kitchen_Counter_Double_Drawers_LOD0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/kitchen_furniture/Apartment Set Large/large_apartment_kitchen_counter_double_drawers.glb"
-            },
-            {
-              "sourceNode": "Large_Apartment_Kitchen_Counter_Double_LOD0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/kitchen_furniture/Apartment Set Large/large_apartment_kitchen_counter_double.glb"
-            },
-            {
-              "sourceNode": "Large_Apartment_Kitchen_Counter_Left_End_LOD0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/kitchen_furniture/Apartment Set Large/large_apartment_kitchen_counter_left_end.glb"
-            },
-            {
-              "sourceNode": "Large_Apartment_Kitchen_Counter_Right_End_LOD0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/kitchen_furniture/Apartment Set Large/large_apartment_kitchen_counter_right_end.glb"
-            },
-            {
-              "sourceNode": "Large_Apartment_Kitchen_Counter_Single_A_LOD0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/kitchen_furniture/Apartment Set Large/large_apartment_kitchen_counter_single_a.glb"
-            },
-            {
-              "sourceNode": "Large_Apartment_Kitchen_Counter_Single_B_LOD0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/kitchen_furniture/Apartment Set Large/large_apartment_kitchen_counter_single_b.glb"
-            },
-            {
-              "sourceNode": "Large_Apartment_Kitchen_Counter_Sink_LOD0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/kitchen_furniture/Apartment Set Large/large_apartment_kitchen_counter_sink.glb"
-            },
-            {
-              "sourceNode": "Large_Apartment_Kitchen_Cupboard_A_LOD0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/kitchen_furniture/Apartment Set Large/large_apartment_kitchen_cupboard_a.glb"
-            },
-            {
-              "sourceNode": "Large_Apartment_Kitchen_Cupboard_B_LOD0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/kitchen_furniture/Apartment Set Large/large_apartment_kitchen_cupboard_b.glb"
-            },
-            {
-              "sourceNode": "Large_Apartment_Kitchen_Cupboard_Double_A_LOD0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/kitchen_furniture/Apartment Set Large/large_apartment_kitchen_cupboard_double_a.glb"
-            },
-            {
-              "sourceNode": "Large_Apartment_Kitchen_Cupboard_Double_B_LOD0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/kitchen_furniture/Apartment Set Large/large_apartment_kitchen_cupboard_double_b.glb"
-            },
-            {
-              "sourceNode": "Large_Apartment_Kitchen_Cupboard_Large_LOD0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/kitchen_furniture/Apartment Set Large/large_apartment_kitchen_cupboard_large.glb"
-            },
             {
               "sourceNode": "apartment_complex_core_facade_LOD0",
               "resolution": "standalone-catalog",
@@ -4021,6 +4015,26 @@
               "sourceNode": "apartment_complex_core_upper_floor_LOD0",
               "resolution": "standalone-catalog",
               "catalogPath": "Content/structures/apartments_complex/nested_prefabs/apartment_complex_core_upper_floor.glb"
+            },
+            {
+              "sourceNode": "apartment_complex_corridors_1st_floor_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/apartments_complex/nested_prefabs/apartment_complex_corridors_1st_floor.glb"
+            },
+            {
+              "sourceNode": "apartment_complex_corridors_damaged_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/apartments_complex/nested_prefabs/apartment_complex_corridors_damaged.glb"
+            },
+            {
+              "sourceNode": "apartment_complex_corridors_mid_floors_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/apartments_complex/nested_prefabs/apartment_complex_corridors_mid_floors.glb"
+            },
+            {
+              "sourceNode": "apartment_complex_corridors_upper_floor_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/apartments_complex/nested_prefabs/apartment_complex_corridors_upper_floor.glb"
             },
             {
               "sourceNode": "apartment_complex_entryway_frame",
@@ -4093,11 +4107,6 @@
               "catalogPath": "Content/structures/apartments_complex/nested_prefabs/apartment_complex_side_damaged.glb"
             },
             {
-              "sourceNode": "apartment_fridge_lod0",
-              "resolution": "embedded-layout",
-              "catalogPath": null
-            },
-            {
               "sourceNode": "apartment_large_LOD0",
               "resolution": "standalone-catalog",
               "catalogPath": "Content/structures/apartments_complex/apartment_large.glb"
@@ -4116,26 +4125,6 @@
               "sourceNode": "apartment_medium_LOD0",
               "resolution": "standalone-catalog",
               "catalogPath": "Content/structures/apartments_complex/apartment_medium.glb"
-            },
-            {
-              "sourceNode": "apartment_pillow_lod0",
-              "resolution": "embedded-layout",
-              "catalogPath": null
-            },
-            {
-              "sourceNode": "apartment_queen_bed_lod0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/apartments_beds/apartment_queen_bed.glb"
-            },
-            {
-              "sourceNode": "apartment_single_bed_lod0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/apartments_beds/apartment_single_bed.glb"
-            },
-            {
-              "sourceNode": "apartment_single_blanket_lod0",
-              "resolution": "embedded-layout",
-              "catalogPath": null
             },
             {
               "sourceNode": "apartment_small_LOD0",
@@ -4163,9 +4152,49 @@
               "catalogPath": null
             },
             {
-              "sourceNode": "apartment_wood_stove_LOD0",
+              "sourceNode": "apartments_complex_b_corridor_a_LOD0",
               "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/apartment_wood_stove/apartment_wood_stove.glb"
+              "catalogPath": "Content/structures/apartment_complex_b/Prefabs/apartments_complex_b_corridor_a.glb"
+            },
+            {
+              "sourceNode": "apartments_complex_b_corridor_a_partition_a_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/apartment_complex_b/Prefabs/apartments_complex_b_corridor_a_partition_a.glb"
+            },
+            {
+              "sourceNode": "apartments_complex_b_corridor_a_partition_b_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/apartment_complex_b/Prefabs/apartments_complex_b_corridor_a_partition_b.glb"
+            },
+            {
+              "sourceNode": "apartments_complex_b_corridor_b_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/apartment_complex_b/Prefabs/apartments_complex_b_corridor_b.glb"
+            },
+            {
+              "sourceNode": "apartments_complex_b_corridor_b_large_doorframe_a_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/apartment_complex_b/Prefabs/apartments_complex_b_corridor_b_large_doorframe_a.glb"
+            },
+            {
+              "sourceNode": "apartments_complex_b_corridor_b_large_doorframe_b_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/apartment_complex_b/Prefabs/apartments_complex_b_corridor_b_large_doorframe_b.glb"
+            },
+            {
+              "sourceNode": "apartments_complex_b_corridor_c_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/apartment_complex_b/Prefabs/apartments_complex_b_corridor_c.glb"
+            },
+            {
+              "sourceNode": "apartments_complex_b_corridor_d_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/apartment_complex_b/Prefabs/apartments_complex_b_corridor_d.glb"
+            },
+            {
+              "sourceNode": "apartments_complex_b_corridor_e_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/apartment_complex_b/Prefabs/apartments_complex_b_corridor_e.glb"
             },
             {
               "sourceNode": "apartments_complex_b_entrance_a_LOD0",
@@ -4281,11 +4310,6 @@
               "sourceNode": "apartments_complex_roof_exit_b_LOD0",
               "resolution": "standalone-catalog",
               "catalogPath": "Content/structures/apartments_complex_roof_structures/apartments_complex_roof_exit_b.glb"
-            },
-            {
-              "sourceNode": "bulky_apartment_sofa_lod0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/apartment_bulky_sofa/bulky_apartment_sofa.glb"
             },
             {
               "sourceNode": "chainlink_fence_low_3x3_gate_LOD0",
@@ -4593,11 +4617,6 @@
               "catalogPath": "Content/structures/apartments_complex/nested_prefabs/roof_hatch.glb"
             },
             {
-              "sourceNode": "supermarket_magazine_stand_a_LOD0",
-              "resolution": "standalone-catalog",
-              "catalogPath": "Content/Props/supermarket_magazine_stand/supermarket_magazine_stand_a.glb"
-            },
-            {
               "sourceNode": "trolley_platform_LOD0",
               "resolution": "embedded-layout",
               "catalogPath": null
@@ -4636,6 +4655,16 @@
               "sourceNode": "wall_300x900_end_LOD0",
               "resolution": "standalone-catalog",
               "catalogPath": "Content/structures/Fences_walls/wall_300x900_end.glb"
+            },
+            {
+              "sourceNode": "window_corridor_large",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/apartments_complex/nested_prefabs/window_corridor_large.glb"
+            },
+            {
+              "sourceNode": "window_corridor_small",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/apartments_complex/nested_prefabs/window_corridor_small.glb"
             },
             {
               "sourceNode": "window_penthouse_flat_LOD0",
@@ -4687,12 +4716,12 @@
           "bounds": {
             "min": [
               -56.744483947753906,
-              -3.541992206112834,
+              -2.200798749923706,
               -78.83986558550944
             ],
             "max": [
               112.75074190839138,
-              30.338787078857422,
+              30.335447311401367,
               118.83984787089281
             ]
           },
@@ -4790,6 +4819,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -5288,6 +5319,8 @@
           "instances": 68,
           "textureBytes": 426744,
           "textureSize": 256,
+          "baseColorTexturedTriangles": 112089,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -5786,6 +5819,8 @@
           "instances": 68,
           "textureBytes": 1558932,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 177077,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -6348,6 +6383,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -6874,6 +6911,8 @@
           "instances": 53,
           "textureBytes": 521176,
           "textureSize": 256,
+          "baseColorTexturedTriangles": 136054,
+          "baseColorTextureCoverage": 0.9998236305648232,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -7400,6 +7439,8 @@
           "instances": 53,
           "textureBytes": 1828014,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 178566,
+          "baseColorTextureCoverage": 0.9996864887863757,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -7990,6 +8031,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -8273,6 +8316,8 @@
           "instances": 18,
           "textureBytes": 648562,
           "textureSize": 256,
+          "baseColorTexturedTriangles": 61749,
+          "baseColorTextureCoverage": 0.994780339277947,
           "materialMode": "textured",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -8703,6 +8748,8 @@
           "instances": 18,
           "textureBytes": 2218322,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 105555,
+          "baseColorTextureCoverage": 0.9928327548745732,
           "materialMode": "textured",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -9197,6 +9244,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -9431,6 +9480,8 @@
           "instances": 11,
           "textureBytes": 1664930,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 38999,
+          "baseColorTextureCoverage": 0.9829615626969124,
           "materialMode": "textured",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -9784,6 +9835,8 @@
           "instances": 11,
           "textureBytes": 1664930,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 81014,
+          "baseColorTextureCoverage": 0.9821783618641191,
           "materialMode": "textured",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -10201,6 +10254,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -10648,6 +10703,8 @@
           "instances": 90,
           "textureBytes": 648200,
           "textureSize": 256,
+          "baseColorTexturedTriangles": 105455,
+          "baseColorTextureCoverage": 0.994924193107092,
           "materialMode": "textured",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -11396,6 +11453,8 @@
           "instances": 90,
           "textureBytes": 2295490,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 152485,
+          "baseColorTextureCoverage": 0.9926181006255737,
           "materialMode": "textured",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -12208,6 +12267,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -12411,6 +12472,8 @@
           "instances": 10,
           "textureBytes": 1106772,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 34008,
+          "baseColorTextureCoverage": 0.9809056821459475,
           "materialMode": "textured",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -12705,6 +12768,8 @@
           "instances": 10,
           "textureBytes": 1106772,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 74990,
+          "baseColorTextureCoverage": 0.9796211626387982,
           "materialMode": "textured",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -13063,6 +13128,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -13259,6 +13326,8 @@
           "instances": 7,
           "textureBytes": 1334302,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 33630,
+          "baseColorTextureCoverage": 0.980009325096165,
           "materialMode": "textured",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -13546,6 +13615,8 @@
           "instances": 7,
           "textureBytes": 1334302,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 74745,
+          "baseColorTextureCoverage": 0.9789399237750972,
           "materialMode": "textured",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -13897,6 +13968,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -14089,6 +14162,8 @@
           "instances": 23,
           "textureBytes": 1729076,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 35838,
+          "baseColorTextureCoverage": 0.9812715623459832,
           "materialMode": "textured",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -14351,6 +14426,8 @@
           "instances": 23,
           "textureBytes": 1729076,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 78209,
+          "baseColorTextureCoverage": 0.9816002510197678,
           "materialMode": "textured",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -14677,6 +14754,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -14824,6 +14903,8 @@
           "instances": 2,
           "textureBytes": 1765776,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 31324,
+          "baseColorTextureCoverage": 0.9734601280377898,
           "materialMode": "textured",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -15013,6 +15094,8 @@
           "instances": 2,
           "textureBytes": 1765776,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 72960,
+          "baseColorTextureCoverage": 0.9732152385017607,
           "materialMode": "textured",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -15266,6 +15349,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -15392,6 +15477,8 @@
           "instances": 9,
           "textureBytes": 1270734,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 32274,
+          "baseColorTextureCoverage": 0.9795435231273522,
           "materialMode": "textured",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -15560,6 +15647,8 @@
           "instances": 9,
           "textureBytes": 1270734,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 74150,
+          "baseColorTextureCoverage": 0.980120020091469,
           "materialMode": "textured",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -15792,6 +15881,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -15932,6 +16023,8 @@
           "instances": 4,
           "textureBytes": 1640398,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 31692,
+          "baseColorTextureCoverage": 0.9759793052475979,
           "materialMode": "textured",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -16114,6 +16207,8 @@
           "instances": 4,
           "textureBytes": 1640398,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 73303,
+          "baseColorTextureCoverage": 0.9755393194128372,
           "materialMode": "textured",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -16360,6 +16455,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -16632,6 +16729,8 @@
           "instances": 0,
           "textureBytes": 697886,
           "textureSize": 256,
+          "baseColorTexturedTriangles": 151561,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -17403,6 +17502,8 @@
           "instances": 0,
           "textureBytes": 2623716,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 212534,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -18386,6 +18487,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -18613,6 +18716,8 @@
           "instances": 46,
           "textureBytes": 1321298,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 65892,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -18843,6 +18948,8 @@
           "instances": 52,
           "textureBytes": 1391676,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 133178,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -19287,6 +19394,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -19521,6 +19630,8 @@
           "instances": 64,
           "textureBytes": 1321298,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 66339,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -19758,6 +19869,8 @@
           "instances": 70,
           "textureBytes": 1391676,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 145856,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -20209,6 +20322,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -20415,6 +20530,8 @@
           "instances": 37,
           "textureBytes": 1321298,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 65672,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -20624,6 +20741,8 @@
           "instances": 43,
           "textureBytes": 1391676,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 129336,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -21047,6 +21166,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -21225,6 +21346,8 @@
           "instances": 49,
           "textureBytes": 1321298,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 65651,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -21406,6 +21529,8 @@
           "instances": 55,
           "textureBytes": 1391676,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 126963,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -21653,6 +21778,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -21750,6 +21877,8 @@
           "instances": 0,
           "textureBytes": 490314,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 14750,
+          "baseColorTextureCoverage": 0.9943373331535661,
           "materialMode": "textured",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -21868,6 +21997,8 @@
           "instances": 0,
           "textureBytes": 490314,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 14750,
+          "baseColorTextureCoverage": 0.9943373331535661,
           "materialMode": "textured",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -22050,6 +22181,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -22161,6 +22294,8 @@
           "instances": 0,
           "textureBytes": 729818,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 31624,
+          "baseColorTextureCoverage": 0.9975395874077345,
           "materialMode": "textured",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -22286,6 +22421,8 @@
           "instances": 0,
           "textureBytes": 729818,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 33535,
+          "baseColorTextureCoverage": 0.9975014128915197,
           "materialMode": "textured",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -22475,6 +22612,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -22572,6 +22711,8 @@
           "instances": 0,
           "textureBytes": 448148,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 14634,
+          "baseColorTextureCoverage": 0.9942927028128822,
           "materialMode": "textured",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -22676,6 +22817,8 @@
           "instances": 0,
           "textureBytes": 448148,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 14634,
+          "baseColorTextureCoverage": 0.9942927028128822,
           "materialMode": "textured",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -22844,6 +22987,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -22941,6 +23086,8 @@
           "instances": 2,
           "textureBytes": 508436,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 15242,
+          "baseColorTextureCoverage": 0.9945191178389665,
           "materialMode": "textured",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -23066,6 +23213,8 @@
           "instances": 2,
           "textureBytes": 508436,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 15242,
+          "baseColorTextureCoverage": 0.9945191178389665,
           "materialMode": "textured",
           "selectionKind": "surface-structural",
           "sourceNodes": [
@@ -23255,6 +23404,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -23753,6 +23904,8 @@
           "instances": 44,
           "textureBytes": 582960,
           "textureSize": 256,
+          "baseColorTexturedTriangles": 231727,
+          "baseColorTextureCoverage": 0.9993444857015944,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -24251,6 +24404,8 @@
           "instances": 44,
           "textureBytes": 2101910,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 276933,
+          "baseColorTextureCoverage": 0.999076442427369,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -24813,6 +24968,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -25468,6 +25625,8 @@
           "instances": 45,
           "textureBytes": 795816,
           "textureSize": 256,
+          "baseColorTexturedTriangles": 151805,
+          "baseColorTextureCoverage": 0.9989405524920048,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -26123,6 +26282,8 @@
           "instances": 45,
           "textureBytes": 2906492,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 231854,
+          "baseColorTextureCoverage": 0.9983895137537248,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -26842,6 +27003,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "authored-hlod",
           "sourceNodes": [
@@ -26905,6 +27068,8 @@
           "instances": 52,
           "textureBytes": 903648,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 139057,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -27309,6 +27474,8 @@
           "instances": 52,
           "textureBytes": 903648,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 163481,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -27777,6 +27944,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "authored-hlod",
           "sourceNodes": [
@@ -27840,6 +28009,8 @@
           "instances": 48,
           "textureBytes": 842672,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 116858,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -28206,6 +28377,8 @@
           "instances": 48,
           "textureBytes": 842672,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 142623,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -28636,6 +28809,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "authored-hlod",
           "sourceNodes": [
@@ -28699,6 +28874,8 @@
           "instances": 53,
           "textureBytes": 807314,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 124697,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -29009,6 +29186,8 @@
           "instances": 53,
           "textureBytes": 807314,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 143363,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -29383,6 +29562,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -29602,6 +29783,8 @@
           "instances": 16,
           "textureBytes": 1313244,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 36027,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -29849,6 +30032,8 @@
           "instances": 16,
           "textureBytes": 1313244,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 52993,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -30160,6 +30345,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "authored-hlod",
           "sourceNodes": [
@@ -30223,6 +30410,8 @@
           "instances": 0,
           "textureBytes": 272362,
           "textureSize": 128,
+          "baseColorTexturedTriangles": 252794,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -31179,6 +31368,8 @@
           "instances": 0,
           "textureBytes": 3785010,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 348331,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -32199,6 +32390,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -32970,6 +33163,8 @@
           "instances": 0,
           "textureBytes": 240678,
           "textureSize": 128,
+          "baseColorTexturedTriangles": 209993,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -33741,6 +33936,8 @@
           "instances": 108,
           "textureBytes": 3284662,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 285260,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -34576,6 +34773,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -34639,6 +34838,8 @@
           "instances": 0,
           "textureBytes": 19998,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 1423,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -34702,6 +34903,8 @@
           "instances": 0,
           "textureBytes": 19998,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 1423,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -34829,6 +35032,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -34892,6 +35097,8 @@
           "instances": 0,
           "textureBytes": 19998,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 1423,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -34955,6 +35162,8 @@
           "instances": 0,
           "textureBytes": 19998,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 1423,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -35082,6 +35291,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -35145,6 +35356,8 @@
           "instances": 0,
           "textureBytes": 73330,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 1424,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -35208,6 +35421,8 @@
           "instances": 0,
           "textureBytes": 73330,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 1424,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -35335,6 +35550,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -35398,6 +35615,8 @@
           "instances": 0,
           "textureBytes": 19998,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 1424,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -35461,6 +35680,8 @@
           "instances": 0,
           "textureBytes": 19998,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 1424,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -35588,6 +35809,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -35871,6 +36094,8 @@
           "instances": 40,
           "textureBytes": 767732,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 37985,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -36154,6 +36379,8 @@
           "instances": 40,
           "textureBytes": 767732,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 81440,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -36501,6 +36728,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "authored-hlod",
           "sourceNodes": [
@@ -36564,6 +36793,8 @@
           "instances": 37,
           "textureBytes": 767732,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 38211,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -36868,6 +37099,8 @@
           "instances": 37,
           "textureBytes": 767732,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 80617,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -37236,6 +37469,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "authored-hlod",
           "sourceNodes": [
@@ -37299,6 +37534,8 @@
           "instances": 16,
           "textureBytes": 742280,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 32127,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -37512,6 +37749,8 @@
           "instances": 16,
           "textureBytes": 742280,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 46170,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -37789,6 +38028,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "authored-hlod",
           "sourceNodes": [
@@ -37852,6 +38093,8 @@
           "instances": 39,
           "textureBytes": 742280,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 34162,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -38079,6 +38322,8 @@
           "instances": 39,
           "textureBytes": 742280,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 75546,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -38370,6 +38615,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -38684,6 +38931,8 @@
           "instances": 41,
           "textureBytes": 1050014,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 41041,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -38998,6 +39247,8 @@
           "instances": 41,
           "textureBytes": 1050014,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 84762,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -39376,6 +39627,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -39665,6 +39918,8 @@
           "instances": 17,
           "textureBytes": 1239480,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 79854,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -39954,6 +40209,8 @@
           "instances": 17,
           "textureBytes": 1239480,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 140096,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -40307,6 +40564,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -40648,6 +40907,8 @@
           "instances": 34,
           "textureBytes": 557882,
           "textureSize": 256,
+          "baseColorTexturedTriangles": 85806,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -40989,6 +41250,8 @@
           "instances": 34,
           "textureBytes": 1990162,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 144563,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -41394,6 +41657,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -42238,6 +42503,8 @@
           "instances": 0,
           "textureBytes": 219184,
           "textureSize": 128,
+          "baseColorTexturedTriangles": 258510,
+          "baseColorTextureCoverage": 0.9999767906048368,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -43495,6 +43762,8 @@
           "instances": 161,
           "textureBytes": 2968438,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 339670,
+          "baseColorTextureCoverage": 0.9999793921872838,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -44816,6 +45085,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -44886,6 +45157,8 @@
           "instances": 0,
           "textureBytes": 892614,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 31458,
+          "baseColorTextureCoverage": 0.9925537956711049,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -44966,6 +45239,8 @@
           "instances": 0,
           "textureBytes": 892614,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 45193,
+          "baseColorTextureCoverage": 0.9925982868438392,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -45110,6 +45385,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -45636,6 +45913,8 @@
           "instances": 0,
           "textureBytes": 674464,
           "textureSize": 256,
+          "baseColorTexturedTriangles": 176031,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -46162,6 +46441,8 @@
           "instances": 62,
           "textureBytes": 2476556,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 275592,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -46752,6 +47033,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -46877,6 +47160,8 @@
           "instances": 5,
           "textureBytes": 395200,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 36725,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -47002,6 +47287,8 @@
           "instances": 5,
           "textureBytes": 395200,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 57360,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -47191,6 +47478,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -47309,6 +47598,8 @@
           "instances": 5,
           "textureBytes": 353558,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 35356,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -47427,6 +47718,8 @@
           "instances": 5,
           "textureBytes": 353558,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 54671,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -47609,6 +47902,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -47734,6 +48029,8 @@
           "instances": 5,
           "textureBytes": 395200,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 36728,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -47859,6 +48156,8 @@
           "instances": 5,
           "textureBytes": 395200,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 57378,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -48048,6 +48347,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -48483,6 +48784,8 @@
           "instances": 47,
           "textureBytes": 791874,
           "textureSize": 256,
+          "baseColorTexturedTriangles": 123282,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -48918,6 +49221,8 @@
           "instances": 47,
           "textureBytes": 2757964,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 238232,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -49417,6 +49722,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -49919,6 +50226,8 @@
           "instances": 23,
           "textureBytes": 522756,
           "textureSize": 256,
+          "baseColorTexturedTriangles": 163614,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -50421,6 +50730,8 @@
           "instances": 23,
           "textureBytes": 1877514,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 240668,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -50987,6 +51298,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -51321,6 +51634,8 @@
           "instances": 19,
           "textureBytes": 1581554,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 90794,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -51655,6 +51970,8 @@
           "instances": 19,
           "textureBytes": 1581554,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 147232,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -52053,6 +52370,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -52161,6 +52480,8 @@
           "instances": 0,
           "textureBytes": 225530,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 15363,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -52269,6 +52590,8 @@
           "instances": 0,
           "textureBytes": 225530,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 15363,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -52441,6 +52764,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "authored-hlod",
           "sourceNodes": [
@@ -52504,6 +52829,8 @@
           "instances": 5,
           "textureBytes": 266678,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 27023,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -52661,6 +52988,8 @@
           "instances": 5,
           "textureBytes": 266678,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 27023,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -52882,6 +53211,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -52962,6 +53293,8 @@
           "instances": 0,
           "textureBytes": 184320,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 4413,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -53042,6 +53375,8 @@
           "instances": 0,
           "textureBytes": 184320,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 4413,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -53186,6 +53521,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -53259,6 +53596,8 @@
           "instances": 0,
           "textureBytes": 100988,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 3747,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -53332,6 +53671,8 @@
           "instances": 0,
           "textureBytes": 100988,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 3747,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -53469,6 +53810,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "authored-hlod",
           "sourceNodes": [
@@ -53532,6 +53875,8 @@
           "instances": 0,
           "textureBytes": 527800,
           "textureSize": 256,
+          "baseColorTexturedTriangles": 190655,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -54467,6 +54812,8 @@
           "instances": 142,
           "textureBytes": 1945722,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 277683,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -55466,6 +55813,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "authored-hlod",
           "sourceNodes": [
@@ -55529,6 +55878,8 @@
           "instances": 89,
           "textureBytes": 532838,
           "textureSize": 256,
+          "baseColorTexturedTriangles": 85949,
+          "baseColorTextureCoverage": 0.9903213540886517,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -56128,6 +56479,8 @@
           "instances": 89,
           "textureBytes": 1975848,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 127347,
+          "baseColorTextureCoverage": 0.9870406684286811,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -56791,6 +57144,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -57066,6 +57421,8 @@
           "instances": 38,
           "textureBytes": 936106,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 51674,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -57341,6 +57698,8 @@
           "instances": 38,
           "textureBytes": 936106,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 51674,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -57680,6 +58039,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "authored-hlod",
           "sourceNodes": [
@@ -57743,6 +58104,8 @@
           "instances": 41,
           "textureBytes": 1192506,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 80413,
+          "baseColorTextureCoverage": 0.9997762056918352,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -58077,6 +58440,8 @@
           "instances": 45,
           "textureBytes": 1192506,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 113612,
+          "baseColorTextureCoverage": 0.9996304573530188,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -58475,6 +58840,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -58756,6 +59123,8 @@
           "instances": 21,
           "textureBytes": 921042,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 41756,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -59037,6 +59406,8 @@
           "instances": 21,
           "textureBytes": 921042,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 73383,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -59382,6 +59753,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -59531,6 +59904,8 @@
           "instances": 6,
           "textureBytes": 931254,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 33132,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -59680,6 +60055,8 @@
           "instances": 6,
           "textureBytes": 931254,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 36105,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -59893,6 +60270,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -60063,6 +60442,8 @@
           "instances": 15,
           "textureBytes": 913080,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 53688,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -60233,6 +60614,8 @@
           "instances": 15,
           "textureBytes": 913080,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 67587,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -60467,6 +60850,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -60575,6 +60960,8 @@
           "instances": 4,
           "textureBytes": 688536,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 13486,
+          "baseColorTextureCoverage": 0.9768924302788845,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -60683,6 +61070,8 @@
           "instances": 4,
           "textureBytes": 688536,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 13486,
+          "baseColorTextureCoverage": 0.9768924302788845,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -60855,6 +61244,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -60918,6 +61309,8 @@
           "instances": 0,
           "textureBytes": 61198,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 984,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -60981,6 +61374,8 @@
           "instances": 0,
           "textureBytes": 61198,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 984,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -61108,6 +61503,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -61171,6 +61568,8 @@
           "instances": 0,
           "textureBytes": 61198,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 984,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -61234,6 +61633,8 @@
           "instances": 0,
           "textureBytes": 61198,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 984,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -61361,6 +61762,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -61549,6 +61952,8 @@
           "instances": 11,
           "textureBytes": 343990,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 19263,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -61744,6 +62149,8 @@
           "instances": 11,
           "textureBytes": 343990,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 19263,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -62003,6 +62410,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -63068,6 +63477,8 @@
           "instances": 0,
           "textureBytes": 203126,
           "textureSize": 128,
+          "baseColorTexturedTriangles": 223451,
+          "baseColorTextureCoverage": 0.9986324450184799,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -64133,6 +64544,8 @@
           "instances": 0,
           "textureBytes": 2710022,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 291540,
+          "baseColorTextureCoverage": 0.9986914312727372,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -65262,6 +65675,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "largest-structural",
           "sourceNodes": [
@@ -65325,6 +65740,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "largest-structural",
           "sourceNodes": [
@@ -65388,6 +65805,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "largest-structural",
           "sourceNodes": [
@@ -65530,6 +65949,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "standalone-override",
           "sourceNodes": [
@@ -65595,6 +66016,8 @@
           "instances": 68,
           "textureBytes": 1193494,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 32621,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "standalone-override",
           "sourceNodes": [
@@ -65660,6 +66083,8 @@
           "instances": 68,
           "textureBytes": 1193494,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 48038,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "standalone-override",
           "sourceNodes": [
@@ -65804,6 +66229,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "standalone-override",
           "sourceNodes": [
@@ -65869,6 +66296,8 @@
           "instances": 140,
           "textureBytes": 1734944,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 62386,
+          "baseColorTextureCoverage": 0.9932811106865368,
           "materialMode": "textured",
           "selectionKind": "standalone-override",
           "sourceNodes": [
@@ -65934,6 +66363,8 @@
           "instances": 140,
           "textureBytes": 1734944,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 95950,
+          "baseColorTextureCoverage": 0.9944447899177082,
           "materialMode": "textured",
           "selectionKind": "standalone-override",
           "sourceNodes": [
@@ -66078,6 +66509,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "standalone-override",
           "sourceNodes": [
@@ -66143,6 +66576,8 @@
           "instances": 91,
           "textureBytes": 1227862,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 36985,
+          "baseColorTextureCoverage": 0.9999459269473058,
           "materialMode": "textured",
           "selectionKind": "standalone-override",
           "sourceNodes": [
@@ -66208,6 +66643,8 @@
           "instances": 91,
           "textureBytes": 1227862,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 74920,
+          "baseColorTextureCoverage": 0.9999733055711273,
           "materialMode": "textured",
           "selectionKind": "standalone-override",
           "sourceNodes": [
@@ -66352,6 +66789,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "standalone-override",
           "sourceNodes": [
@@ -66417,6 +66856,8 @@
           "instances": 26,
           "textureBytes": 512192,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 31986,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "standalone-override",
           "sourceNodes": [
@@ -66482,6 +66923,8 @@
           "instances": 26,
           "textureBytes": 512192,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 40357,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "standalone-override",
           "sourceNodes": [
@@ -66611,6 +67054,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "authored-hlod",
           "sourceNodes": [
@@ -66674,6 +67119,8 @@
           "instances": 0,
           "textureBytes": 753014,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 10561,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -66751,6 +67198,8 @@
           "instances": 0,
           "textureBytes": 753014,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 10561,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -66892,6 +67341,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -67579,6 +68030,8 @@
           "instances": 91,
           "textureBytes": 549168,
           "textureSize": 256,
+          "baseColorTexturedTriangles": 144529,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -68266,6 +68719,8 @@
           "instances": 91,
           "textureBytes": 2008988,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 238538,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -69017,6 +69472,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -69166,6 +69623,8 @@
           "instances": 18,
           "textureBytes": 295550,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 18203,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -69329,6 +69788,8 @@
           "instances": 18,
           "textureBytes": 295550,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 25473,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -69556,6 +70017,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -69726,6 +70189,8 @@
           "instances": 20,
           "textureBytes": 608184,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 15846,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -69910,6 +70375,8 @@
           "instances": 20,
           "textureBytes": 608184,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 15846,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -70158,6 +70625,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -70293,6 +70762,8 @@
           "instances": 4,
           "textureBytes": 243646,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 16290,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -70442,6 +70913,8 @@
           "instances": 4,
           "textureBytes": 243646,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 16290,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -70655,6 +71128,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -70884,6 +71359,8 @@
           "instances": 23,
           "textureBytes": 762816,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 20704,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -71120,6 +71597,8 @@
           "instances": 23,
           "textureBytes": 762816,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 35586,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -71420,6 +71899,8 @@
           "instances": 0,
           "textureBytes": 0,
           "textureSize": 0,
+          "baseColorTexturedTriangles": 0,
+          "baseColorTextureCoverage": 0,
           "materialMode": "palette",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -71596,6 +72077,8 @@
           "instances": 19,
           "textureBytes": 676336,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 19146,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
@@ -71786,6 +72269,8 @@
           "instances": 19,
           "textureBytes": 676336,
           "textureSize": 512,
+          "baseColorTexturedTriangles": 26937,
+          "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
