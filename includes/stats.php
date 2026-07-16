@@ -472,6 +472,14 @@ function raidlands_stats_upsert_player(PDO $pdo, string $steam_id64, string $dis
     return (int) $row['id'];
 }
 
+function raidlands_stats_reward_points_baseline(int $raw_reward_points, int $baseline_reward_points): int
+{
+    // ServerRewards can clear balances just after the bridge sends the first
+    // snapshot for a new wipe. Keep the lowest observed balance as the baseline
+    // so that a pre-reset snapshot cannot hide RP earned later in the wipe.
+    return min(max(0, $raw_reward_points), max(0, $baseline_reward_points));
+}
+
 function raidlands_stats_upsert_player_wipe(PDO $pdo, int $wipe_id, int $player_id, string $display_name, array $raw, bool $is_first_season): void
 {
     $existing = raidlands_db_fetch_one(
@@ -510,6 +518,11 @@ function raidlands_stats_upsert_player_wipe(PDO $pdo, int $wipe_id, int $player_
         ];
     }
 
+    $baseline['reward_points'] = raidlands_stats_reward_points_baseline(
+        $raw['reward_points'],
+        $baseline['reward_points']
+    );
+
     $kills = max(0, $raw['kills'] - $baseline['kills']);
     $deaths = max(0, $raw['deaths'] - $baseline['deaths']);
     $playtime = max(0, $raw['playtime_seconds'] - $baseline['playtime_seconds']);
@@ -539,6 +552,7 @@ function raidlands_stats_upsert_player_wipe(PDO $pdo, int $wipe_id, int $player_
             raw_playtime_seconds = VALUES(raw_playtime_seconds),
             raw_afk_seconds = VALUES(raw_afk_seconds),
             raw_reward_points = VALUES(raw_reward_points),
+            baseline_reward_points = VALUES(baseline_reward_points),
             raw_npc_kills = VALUES(raw_npc_kills),
             raw_deaths_by_npc = VALUES(raw_deaths_by_npc),
             kills = VALUES(kills),
