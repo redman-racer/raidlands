@@ -21,4 +21,12 @@ describe("shared Home and Server monument viewer", () => {
       "monumentDecodeQueue", "monumentFailedAssets",
     ]) expect(source).toContain(diagnostic);
   });
+
+  it("wires replay events and adaptive performance into the cinematic director", () => {
+    const source = readFileSync(resolve("assets/ts/server-map-viewer/app.ts"), "utf8");
+    expect(source).toContain("directorActionSubjects()");
+    expect(source).toContain("replayWorldEventRoute(event)");
+    expect(source).toContain("updateDirectorFpsState(this.directorFps, frameMs)");
+    expect(source).toContain('if (this.cameraMode === "orbit"');
+  });
 });

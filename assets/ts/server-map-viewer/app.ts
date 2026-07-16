@@ -111,6 +111,16 @@ import {
   type CameraMode,
   type ManualCameraStyle,
 } from "./camera-policy";
+import {
+  cameraYForTerrainSightline,
+  selectDirectorShot,
+  updateDirectorFpsState,
+  type DirectorActionSubject,
+  type DirectorFpsState,
+  type DirectorLandscapeFeature,
+  type DirectorMode,
+  type DirectorShotPlan,
+} from "./camera-director-policy";
 import { versionMapAssetUrl } from "./map-asset-policy";
 import { monumentNavigationLabels, recentUniqueNavigationEvents, validNavigationCoordinate } from "./navigation-policy";
 import {
@@ -227,6 +237,15 @@ type CameraPose = {
 type CameraTourKind = "coastal-sweep" | "ridge-crossing" | "monument-orbit" | "map-run" | "home-orbit";
 
 type CameraTourStyle = "cinematic" | "orbit";
+
+type DirectorShotRuntime = {
+  plan: DirectorShotPlan;
+  from: CameraPose;
+  to: CameraPose;
+  waypoint: CameraPose | null;
+  fromFov: number;
+  startedAt: number;
+};
 
 type ActionHighlightSource = "heatmap" | "players";
 
@@ -1236,6 +1255,12 @@ class TerrainViewer {
   private readonly tourStyle: CameraTourStyle;
   private readonly actionHighlights = new Map<ActionHighlightSource, ActionHighlightFocus>();
   private actionTourStartedAt = performance.now();
+  private directorShot: DirectorShotRuntime | null = null;
+  private directorShotSequence = 0;
+  private directorLastHeroSequence = -100;
+  private readonly directorRecentShotIds: string[] = [];
+  private readonly directorFeatures: DirectorLandscapeFeature[];
+  private directorFps: DirectorFpsState = { smoothedFps: 60, tier: "healthy" };
   private readonly lockCameraInput: boolean;
   private monumentMode: MonumentMode = "auto";
   private readonly monumentModels: MonumentModelController;
@@ -1266,6 +1291,7 @@ class TerrainViewer {
         radius: monument.radius,
       })),
     );
+    this.directorFeatures = buildDirectorLandscapeFeatures(this.terrain);
     this.root.dataset.cameraBounds = [
       this.cameraBounds.minX,
       this.cameraBounds.maxX,
@@ -1556,6 +1582,7 @@ class TerrainViewer {
     this.automaticPausedUntil = 0;
     this.transitionFrom = null;
     this.transitionTo = null;
+    this.directorShot = null;
     this.activePose = this.currentPose();
     if (mode === "top") {
       this.focusCamera(this.topPose());
@@ -1792,10 +1819,14 @@ class TerrainViewer {
   }
 
   public showReplayEvents(events: MapReplayEvent[], playbackSpeed: number, options: ReplayDisplayOptions = {}): void {
+    const previousSignature = replayDirectorSignature(this.latestReplayEvents);
     this.latestReplayEvents = events;
     this.latestReplaySpeed = playbackSpeed;
     this.latestReplayOptions = options;
     this.airstrikeReplay?.showEvents(events, playbackSpeed, options);
+    if (previousSignature !== replayDirectorSignature(events) && isDirectorMode(this.cameraMode)) {
+      this.directorShot = null;
+    }
   }
 
   public clearReplayEvents(): void {
@@ -1803,6 +1834,7 @@ class TerrainViewer {
     this.latestReplaySpeed = 1;
     this.latestReplayOptions = {};
     this.airstrikeReplay?.clear();
+    if (isDirectorMode(this.cameraMode)) this.directorShot = null;
   }
 
   public frameIso(cycle = true): void {
@@ -2889,8 +2921,11 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
       return;
     }
     const now = performance.now();
-    const deltaSeconds = Math.min(0.05, Math.max(0, (now - this.lastAnimationTick) / 1000));
+    const frameMs = Math.max(0, now - this.lastAnimationTick);
+    const deltaSeconds = Math.min(0.05, frameMs / 1000);
     this.lastAnimationTick = now;
+    this.directorFps = updateDirectorFpsState(this.directorFps, frameMs);
+    this.root.dataset.cameraPerformanceTier = this.directorFps.tier;
     this.updateFreeFlight(deltaSeconds);
     this.updateSelfLocationOrbit(now);
     this.updateCameraTour(now);
@@ -3646,19 +3681,16 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
       this.activePose = this.currentPose();
       this.actionTourStartedAt = now;
       this.tourStartedAt = now;
+      this.directorShot = null;
     }
     if (this.automaticPausedUntil > now || this.cameraMode === "manual" || this.cameraMode === "top") {
       return;
     }
 
-    const actionPose = this.cameraMode === "director" || this.cameraMode === "action"
-      ? this.actionHighlightPose(now)
-      : null;
-    if (actionPose) {
-      this.applyBlendedTourPose(actionPose, now - this.actionTourStartedAt);
+    if (isDirectorMode(this.cameraMode)) {
+      this.updateDirectorShot(now);
       return;
     }
-    if (this.cameraMode === "action") return;
 
     if (this.focusUntil > 0) {
       this.focusUntil = 0;
@@ -3682,12 +3714,174 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
     this.applyBlendedTourPose(pose, elapsed);
   }
 
+  private startDirectorShot(now: number): void {
+    const environment = this.currentEnvironment(now) || normalizeEnvironment({
+      sunDirection: { x: 0.5, y: 0.78, z: 0.36 },
+      fogIntensity: 0,
+      rainIntensity: 0,
+      cloudCoverage: 0.2,
+    })!;
+    const sequence = this.directorShotSequence;
+    const plan = selectDirectorShot({
+      mode: this.cameraMode as DirectorMode,
+      worldSize: this.terrain.worldSize || 4500,
+      waterLevel: resolveOceanWaterLevel(this.terrain),
+      environment: {
+        sunDirection: vectorPoint(environment.sunDirection),
+        fogIntensity: visualFogStrengthForEnvironment(environment),
+        rainIntensity: environment.rainIntensity,
+        cloudCoverage: environment.cloudCoverage,
+      },
+      features: this.directorFeatures,
+      actions: this.directorActionSubjects(),
+      performanceTier: this.directorFps.tier,
+      recentShotIds: this.directorRecentShotIds,
+      shotSequence: sequence,
+      lastHeroSequence: this.directorLastHeroSequence,
+    });
+    const worldSize = this.terrain.worldSize || 4500;
+    const mapLimit = worldSize * 0.49;
+    const requestedPosition = pointVector(plan.position);
+    requestedPosition.x = MathUtils.clamp(requestedPosition.x, -mapLimit, mapLimit);
+    requestedPosition.z = MathUtils.clamp(requestedPosition.z, -mapLimit, mapLimit);
+    requestedPosition.y = cameraYForTerrainSightline(
+      requestedPosition.y,
+      requestedPosition,
+      plan.target,
+      (x, z) => sampleTerrainHeight(this.terrain, x, z),
+      Math.max(18, worldSize * 0.006),
+      18,
+    );
+    const to = this.aboveTerrainPose(
+      requestedPosition,
+      pointVector(plan.target),
+      Math.max(36, worldSize * 0.035),
+    );
+    const from = this.currentPose();
+    const needsWaypoint = transitionNeedsSafeWaypoint(
+      from.position,
+      to.position,
+      (x, z) => sampleTerrainHeight(this.terrain, x, z),
+      Math.max(24, worldSize * 0.012),
+      24,
+    );
+    const waypoint = needsWaypoint ? {
+      position: new Vector3(
+        (from.position.x + to.position.x) * 0.5,
+        Math.max(from.position.y, to.position.y, (this.terrain.maxHeight || 300) + worldSize * 0.14),
+        (from.position.z + to.position.z) * 0.5,
+      ),
+      target: from.target.clone().lerp(to.target, 0.5),
+      up: new Vector3(0, 1, 0),
+    } : null;
+    this.directorShot = { plan, from, to, waypoint, fromFov: this.camera.fov, startedAt: now };
+    this.directorShotSequence += 1;
+    if (plan.kind === "hero") this.directorLastHeroSequence = sequence;
+    this.directorRecentShotIds.unshift(plan.id);
+    this.directorRecentShotIds.splice(6);
+    this.root.dataset.cameraShotKind = plan.kind;
+    this.root.dataset.cameraShotId = plan.id;
+  }
+
+  private updateDirectorShot(now: number): void {
+    if (!this.directorShot) this.startDirectorShot(now);
+    const shot = this.directorShot;
+    if (!shot) return;
+    const elapsed = now - shot.startedAt;
+    if (elapsed < shot.plan.transitionMs) {
+      const progress = easeInOutCubic(MathUtils.clamp(elapsed / Math.max(1, shot.plan.transitionMs), 0, 1));
+      const pose = shot.waypoint
+        ? progress < 0.5
+          ? interpolatePose(shot.from, shot.waypoint, easeInOutCubic(progress * 2))
+          : interpolatePose(shot.waypoint, shot.to, easeInOutCubic((progress - 0.5) * 2))
+        : interpolatePose(shot.from, shot.to, progress);
+      this.applyCameraPose(pose);
+      this.setCameraFov(MathUtils.lerp(shot.fromFov, shot.plan.fov, progress));
+      return;
+    }
+
+    const holdElapsed = elapsed - shot.plan.transitionMs;
+    if (holdElapsed >= shot.plan.holdMs) {
+      this.startDirectorShot(now);
+      return;
+    }
+
+    const holdProgress = MathUtils.clamp(holdElapsed / Math.max(1, shot.plan.holdMs), 0, 1);
+    const pose = clonePose(shot.to);
+    if (shot.plan.kind === "hero" && shot.plan.heroRoute && shot.plan.heroRoute.length > 1) {
+      const routePose = sampleDirectorRoute(shot.plan.heroRoute, holdProgress);
+      const routeStart = pointVector(shot.plan.heroRoute[0]!);
+      const offset = pointVector(shot.plan.position).sub(routeStart);
+      pose.position.copy(routePose).add(offset);
+      pose.target.copy(routePose);
+      pose.target.y += Math.max(16, (this.terrain.worldSize || 4500) * 0.008);
+    } else {
+      const view = pose.target.clone().sub(pose.position).setY(0).normalize();
+      const right = new Vector3(-view.z, 0, view.x);
+      const worldSize = this.terrain.worldSize || 4500;
+      const drift = Math.sin(holdProgress * Math.PI * 1.2) * worldSize * 0.004 * shot.plan.motionScale;
+      const dolly = Math.sin(holdProgress * Math.PI) * worldSize * 0.005 * shot.plan.motionScale;
+      pose.position.addScaledVector(right, drift).addScaledVector(view, dolly);
+      pose.target.addScaledVector(right, drift * 0.28);
+    }
+    const safePose = this.aboveTerrainPose(
+      pose.position,
+      pose.target,
+      Math.max(28, (this.terrain.worldSize || 4500) * 0.018),
+    );
+    this.applyCameraPose(safePose);
+    this.setCameraFov(shot.plan.fov + Math.sin(holdProgress * Math.PI * 2) * 0.55 * shot.plan.motionScale);
+  }
+
+  private directorActionSubjects(): DirectorActionSubject[] {
+    const nowEpoch = Date.now();
+    const nowPerformance = performance.now();
+    const overlays = Array.from(this.actionHighlights.entries()).map(([source, highlight]) => ({
+      id: `overlay:${source}`,
+      kind: "overlay" as const,
+      position: vectorPoint(highlight.center),
+      radius: highlight.radius,
+      weight: MathUtils.clamp(highlight.weight, 0.2, 9),
+      updatedAt: nowEpoch - Math.max(0, nowPerformance - highlight.updatedAt),
+    }));
+    const events = this.latestReplayEvents.slice(0, 20).map((event, index): DirectorActionSubject => {
+      const position = replayEventPosition(event, this.terrain);
+      const route = replayWorldEventRoute(event).map((sample) => vectorPoint(sample.position));
+      const vehicle = replayVehicleForEvent(event);
+      const state = String(event.payload?.state || "").toLowerCase();
+      const occurredAt = Date.parse(String(event.occurredAt || ""));
+      return {
+        id: `event:${replayEventKey(event, index)}`,
+        kind: route.length > 1 && vehicle ? "vehicle" : "event",
+        position: vectorPoint(position),
+        radius: event.eventType === "airstrike" ? 220 : route.length > 1 ? 150 : 130,
+        weight: event.eventType === "airstrike" ? 8 : vehicle === "attack_heli" ? 7 : route.length > 1 ? 5.5 : 4,
+        updatedAt: Number.isFinite(occurredAt) ? occurredAt : nowEpoch,
+        vehicle,
+        destroyed: state === "destroyed" || state === "ended",
+        route,
+      };
+    });
+    return [...events, ...overlays];
+  }
+
+  private setCameraFov(fov: number): void {
+    if (Math.abs(this.camera.fov - fov) < 0.001) return;
+    this.camera.fov = fov;
+    this.camera.updateProjectionMatrix();
+  }
+
   private startNextTour(now: number, blendFromCurrent: boolean): void {
     if (this.cameraMode === "orbit" || (this.lockCameraInput && this.tourStyle === "orbit")) {
       this.tourKind = "home-orbit";
       this.tourStartedAt = now;
       this.tourDuration = 32000;
       this.activePose = blendFromCurrent ? this.currentPose() : null;
+      return;
+    }
+
+    if (isDirectorMode(this.cameraMode)) {
+      this.startDirectorShot(now);
       return;
     }
 
@@ -3962,6 +4156,7 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
     if (movedFarEnough) {
       this.actionTourStartedAt = now;
       this.activePose = this.currentPose();
+      if (isDirectorMode(this.cameraMode)) this.directorShot = null;
     }
   }
 
@@ -5049,6 +5244,115 @@ function randomEntry<T>(values: T[]): T | null {
   }
 
   return values[Math.floor(Math.random() * values.length)] || null;
+}
+
+function isDirectorMode(mode: CameraMode): mode is DirectorMode {
+  return mode === "director" || mode === "action" || mode === "cinematic";
+}
+
+function vectorPoint(vector: { x: number; y: number; z: number }): { x: number; y: number; z: number } {
+  return { x: vector.x, y: vector.y, z: vector.z };
+}
+
+function pointVector(point: { x: number; y: number; z: number }): Vector3 {
+  return new Vector3(point.x, point.y, point.z);
+}
+
+function sampleDirectorRoute(route: Array<{ x: number; y: number; z: number }>, progress: number): Vector3 {
+  if (route.length === 0) return new Vector3();
+  if (route.length === 1) return pointVector(route[0]!);
+  const scaled = MathUtils.clamp(progress, 0, 1) * (route.length - 1);
+  const index = Math.min(route.length - 2, Math.floor(scaled));
+  return pointVector(route[index]!).lerp(pointVector(route[index + 1]!), scaled - index);
+}
+
+function replayDirectorSignature(events: MapReplayEvent[]): string {
+  return events.slice(0, 20).map((event, index) => {
+    const route = Array.isArray(event.payload?.route) ? event.payload.route.length : 0;
+    return `${replayEventKey(event, index)}:${event.x}:${event.z}:${String(event.payload?.state || "")}:${route}`;
+  }).join("|");
+}
+
+function buildDirectorLandscapeFeatures(terrain: TerrainPayload): DirectorLandscapeFeature[] {
+  const worldSize = terrain.worldSize || 4500;
+  const half = worldSize / 2;
+  const water = resolveOceanWaterLevel(terrain);
+  const samples: Array<{ x: number; y: number; z: number; prominence: number; coast: boolean }> = [];
+  const grid = 11;
+  const spacing = worldSize * 0.9 / (grid - 1);
+  for (let row = 0; row < grid; row += 1) {
+    for (let column = 0; column < grid; column += 1) {
+      const x = MathUtils.lerp(-half * 0.9, half * 0.9, column / (grid - 1));
+      const z = MathUtils.lerp(-half * 0.9, half * 0.9, row / (grid - 1));
+      const y = sampleTerrainHeight(terrain, x, z);
+      const neighbors = [
+        sampleTerrainHeight(terrain, x + spacing, z),
+        sampleTerrainHeight(terrain, x - spacing, z),
+        sampleTerrainHeight(terrain, x, z + spacing),
+        sampleTerrainHeight(terrain, x, z - spacing),
+      ];
+      const neighborAverage = neighbors.reduce((sum, height) => sum + height, 0) / neighbors.length;
+      const prominence = MathUtils.clamp((y - neighborAverage) / Math.max(40, (terrain.maxHeight || 300) * 0.3), 0, 1.5);
+      const coast = Math.abs(y - water) < Math.max(12, (terrain.maxHeight || 300) * 0.06)
+        && neighbors.some((height) => height < water + 2)
+        && neighbors.some((height) => height > water + 10);
+      samples.push({ x, y, z, prominence, coast });
+    }
+  }
+
+  const separated = (candidate: { x: number; z: number }, selected: DirectorLandscapeFeature[]) => selected.every((feature) => (
+    Math.hypot(feature.position.x - candidate.x, feature.position.z - candidate.z) > worldSize * 0.16
+  ));
+  const terrainFeatures: DirectorLandscapeFeature[] = [];
+  samples
+    .filter((sample) => sample.y > water + 24)
+    .sort((left, right) => (right.y + right.prominence * 100) - (left.y + left.prominence * 100))
+    .forEach((sample) => {
+      if (terrainFeatures.length >= 6 || !separated(sample, terrainFeatures)) return;
+      terrainFeatures.push({
+        id: `terrain-${terrainFeatures.length}`,
+        kind: sample.prominence > 0.38 ? "peak" : "ridge",
+        position: { x: sample.x, y: sample.y + 28, z: sample.z },
+        radius: worldSize * 0.09,
+        prominence: Math.max(0.45, sample.prominence),
+      });
+    });
+  samples.filter((sample) => sample.coast).forEach((sample) => {
+    if (terrainFeatures.filter((feature) => feature.kind === "coast").length >= 3 || !separated(sample, terrainFeatures)) return;
+    terrainFeatures.push({
+      id: `coast-${terrainFeatures.length}`,
+      kind: "coast",
+      position: { x: sample.x, y: Math.max(sample.y, water) + 24, z: sample.z },
+      radius: worldSize * 0.08,
+      prominence: 0.58,
+    });
+  });
+
+  const monumentFeatures = [...(terrain.monuments || [])]
+    .sort((left, right) => right.radius - left.radius)
+    .slice(0, 8)
+    .map((monument, index): DirectorLandscapeFeature => {
+      const position = rustWorldToViewerPosition(monument.x, monument.y, monument.z);
+      const ground = sampleTerrainHeight(terrain, position.x, position.z);
+      return {
+        id: `monument-${index}-${monument.name}`,
+        kind: "monument",
+        position: { x: position.x, y: Math.max(position.y, ground) + Math.max(24, monument.radius * 0.3), z: position.z },
+        radius: Math.max(60, monument.radius),
+        prominence: MathUtils.clamp(0.55 + monument.radius / Math.max(1, worldSize) * 3, 0.55, 1.25),
+      };
+    });
+  return [
+    ...terrainFeatures,
+    ...monumentFeatures,
+    {
+      id: "map-center",
+      kind: "center",
+      position: { x: 0, y: sampleTerrainHeight(terrain, 0, 0) + 34, z: 0 },
+      radius: worldSize * 0.12,
+      prominence: 0.4,
+    },
+  ];
 }
 
 function clonePose(pose: CameraPose): CameraPose {
