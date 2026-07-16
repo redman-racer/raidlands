@@ -38,8 +38,24 @@ describe("server-map live world-event replay", () => {
 
   it("keeps portable-airstrike carriers in the live world-entity feed", () => {
     const source = readFileSync(resolve("server-plugins/WebsiteMapBridge.cs"), "utf8");
-    expect(source).toContain('[Info("WebsiteMapBridge", "Raidlands", "1.0.22")]');
+    expect(source).toContain('[Info("WebsiteMapBridge", "Raidlands", "1.0.23")]');
     expect(source).not.toContain("API_IsWebsiteReplayCarrier");
     expect(source).toContain("if (!TryDescribeWorldEntity(entity, out descriptor))");
+    expect(source).toContain('typeName.Contains("f15") || prefab.Contains("f15")');
+    expect(source).toContain('prefab.Contains("cargoplane")');
+    expect(source).toContain("WorldEventInFlightTimeoutSeconds()");
+  });
+
+  it("polls live events even when heat-map and player overlays are off", () => {
+    const viewerSource = readFileSync(resolve("assets/ts/server-map-viewer/app.ts"), "utf8");
+    expect(viewerSource).not.toContain("wantsTimelineOverlay() || !(wantsHeatmap() || wantsPlayers())");
+    expect(viewerSource).toContain("selectLiveReplayEvents(normalizedFrames");
+  });
+
+  it("serves replay frames live and bounds them by the active wipe start", () => {
+    const serverSource = readFileSync(resolve("includes/server-status.php"), "utf8");
+    expect(serverSource).toContain("['label' => 'Live', 'delay_seconds' => 0]");
+    expect(serverSource).toContain("raidlands_server_map_replay_current_wipe_started_at");
+    expect(serverSource).not.toContain("wipe_key IN (' . implode(', ', $wipe_placeholders)");
   });
 });

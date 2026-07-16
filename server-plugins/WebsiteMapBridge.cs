@@ -17,7 +17,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteMapBridge", "Raidlands", "1.0.22")]
+    [Info("WebsiteMapBridge", "Raidlands", "1.0.23")]
     [Description("Publishes the current RustMapApi map image and sampled terrain to the Raidlands website.")]
     public class WebsiteMapBridge : CovalencePlugin
     {
@@ -45,6 +45,9 @@ namespace Oxide.Plugins
         private long lastEnvironmentSampleMilliseconds;
         private string lastWeatherOverrideSignature = "";
         private bool worldEventPublishInFlight;
+        private DateTime worldEventPublishStartedUtc = DateTime.MinValue;
+        private long worldEventPublishGeneration;
+        private long activeWorldEventPublishGeneration;
         private string lastWorldEventSyncAt = "never";
         private string lastWorldEventError = "none";
         private int lastWorldEventAccepted;
@@ -587,7 +590,7 @@ namespace Oxide.Plugins
                 return;
             }
 
-            ReplyToCommand(arg, "WebsiteMapBridge v1.0.22 status requested; reading cached diagnostics.");
+            ReplyToCommand(arg, "WebsiteMapBridge v1.0.23 status requested; reading cached diagnostics.");
 
             try
             {
@@ -597,7 +600,7 @@ namespace Oxide.Plugins
 
                 ReplyToCommand(
                     arg,
-                    $"WebsiteMapBridge v1.0.22 status: server={ResolveServerId()}, api={apiState}, ready=not-probed, secret={secretState}, render={config.RenderName}, textureRender={config.TextureRenderName}, autoPublishReady={config.AutoPublishOnRustMapApiReady}, autoPublishInit={config.AutoPublishOnServerInitialized}, terrainEnabled={config.PublishTerrain}, terrainResolution={config.TerrainSampleResolution}, monumentsEnabled={config.IncludeMonuments}, roads=enabled, powerLines=enabled, skybox={config.PublishSkybox}/{config.SkyboxImagePath}, playerLocations={config.PublishPlayerLocations}/{config.PlayerLocationIntervalSeconds}s, raidlandsEvents={config.PublishRaidlandsEvents}/{(RaidlandsEvents != null && RaidlandsEvents.IsLoaded ? "ready" : "missing")}, worldEvents={config.PublishWorldEvents}/{config.WorldEventIntervalSeconds}s active={trackedWorldEntities.Values.Count(entry => entry.state != "ended")} last={lastWorldEventSyncAt} accepted={lastWorldEventAccepted} error={lastWorldEventError}, environment={config.PublishEnvironment}/{config.EnvironmentIntervalSeconds}s last={FirstNonEmpty(lastEnvironmentSyncAt, "never")}, sampleMs={lastEnvironmentSampleMilliseconds}, sampled=[{lastEnvironmentDiagnosticSummary}], replayEvents={config.PublishReplayEvents}, heightMap={heightMapState}, lastWipe={lastPublishedWipeKey}."
+                    $"WebsiteMapBridge v1.0.23 status: server={ResolveServerId()}, api={apiState}, ready=not-probed, secret={secretState}, render={config.RenderName}, textureRender={config.TextureRenderName}, autoPublishReady={config.AutoPublishOnRustMapApiReady}, autoPublishInit={config.AutoPublishOnServerInitialized}, terrainEnabled={config.PublishTerrain}, terrainResolution={config.TerrainSampleResolution}, monumentsEnabled={config.IncludeMonuments}, roads=enabled, powerLines=enabled, skybox={config.PublishSkybox}/{config.SkyboxImagePath}, playerLocations={config.PublishPlayerLocations}/{config.PlayerLocationIntervalSeconds}s, raidlandsEvents={config.PublishRaidlandsEvents}/{(RaidlandsEvents != null && RaidlandsEvents.IsLoaded ? "ready" : "missing")}, worldEvents={config.PublishWorldEvents}/{config.WorldEventIntervalSeconds}s active={trackedWorldEntities.Values.Count(entry => entry.state != "ended")} last={lastWorldEventSyncAt} accepted={lastWorldEventAccepted} inFlight={worldEventPublishInFlight}/{WorldEventPublishAgeSeconds():0.0}s error={lastWorldEventError}, environment={config.PublishEnvironment}/{config.EnvironmentIntervalSeconds}s last={FirstNonEmpty(lastEnvironmentSyncAt, "never")}, sampleMs={lastEnvironmentSampleMilliseconds}, sampled=[{lastEnvironmentDiagnosticSummary}], replayEvents={config.PublishReplayEvents}, heightMap={heightMapState}, lastWipe={lastPublishedWipeKey}."
                 );
             }
             catch (Exception ex)
@@ -1944,11 +1947,11 @@ namespace Oxide.Plugins
             {
                 descriptor = DescribeWorldEntity("patrol_heli", "server_event", "patrol_heli", "rust:patrol_helicopter");
             }
-            else if (typeName == "f15" || prefab.Contains("/f15/") || prefab.Contains("f15e.prefab"))
+            else if (typeName.Contains("f15") || prefab.Contains("f15"))
             {
                 descriptor = DescribeWorldEntity("f15", "server_event", "f15", "rust:f15");
             }
-            else if (entity is CargoPlane || prefab.Contains("cargo_plane"))
+            else if (entity is CargoPlane || prefab.Contains("cargo_plane") || prefab.Contains("cargoplane") || prefab.Contains("cargo plane"))
             {
                 descriptor = DescribeWorldEntity("cargo_plane", "server_event", "cargo_plane", "rust:cargo_plane");
             }
@@ -2092,11 +2095,21 @@ namespace Oxide.Plugins
         {
             if (worldEventPublishInFlight)
             {
-                if (verbose)
+                var inFlightAgeSeconds = WorldEventPublishAgeSeconds();
+                if (inFlightAgeSeconds <= WorldEventInFlightTimeoutSeconds())
                 {
-                    reply?.Invoke("Website world-event sync is already in flight.");
+                    if (verbose)
+                    {
+                        reply?.Invoke($"Website world-event sync is already in flight ({inFlightAgeSeconds:0.0}s).");
+                    }
+                    return;
                 }
-                return;
+
+                lastWorldEventError = $"abandoned stuck request after {inFlightAgeSeconds:0.0}s";
+                PrintWarning("Website world-event sync watchdog released a stuck request: " + lastWorldEventError);
+                worldEventPublishInFlight = false;
+                worldEventPublishStartedUtc = DateTime.MinValue;
+                activeWorldEventPublishGeneration = 0;
             }
 
             var secret = ResolveBridgeSharedSecret();
@@ -2136,10 +2149,19 @@ namespace Oxide.Plugins
             var publishedRevisions = trackedToPublish.ToDictionary(entry => entry.networkId, entry => entry.revision);
             lastWorldEventPayloadBytes = Encoding.UTF8.GetByteCount(body);
             var url = $"{TrimSlash(ResolveApiBaseUrl())}/api/server/map-replay-events-snapshot.php";
+            var publishGeneration = ++worldEventPublishGeneration;
+            activeWorldEventPublishGeneration = publishGeneration;
+            worldEventPublishStartedUtc = DateTime.UtcNow;
             worldEventPublishInFlight = true;
             SendPost(url, body, (code, response) =>
             {
+                if (activeWorldEventPublishGeneration != publishGeneration)
+                {
+                    return;
+                }
                 worldEventPublishInFlight = false;
+                worldEventPublishStartedUtc = DateTime.MinValue;
+                activeWorldEventPublishGeneration = 0;
                 int accepted;
                 string requestError;
                 if (!TryValidateReplayEventResponse(code, response, events.Count, out accepted, out requestError))
@@ -2274,6 +2296,19 @@ namespace Oxide.Plugins
             }
         }
 
+        private double WorldEventPublishAgeSeconds()
+        {
+            return worldEventPublishStartedUtc == DateTime.MinValue
+                ? (worldEventPublishInFlight ? double.PositiveInfinity : 0d)
+                : Math.Max(0d, (DateTime.UtcNow - worldEventPublishStartedUtc).TotalSeconds);
+        }
+
+        private double WorldEventInFlightTimeoutSeconds()
+        {
+            var requestTimeoutSeconds = Math.Max(5d, config.WebRequestTimeoutMilliseconds / 1000d);
+            return Math.Max(requestTimeoutSeconds + 15d, Math.Max(20d, config.WorldEventIntervalSeconds * 4d));
+        }
+
         private bool TryValidateReplayEventResponse(int code, string response, int expected, out int accepted, out string error)
         {
             accepted = 0;
@@ -2326,7 +2361,7 @@ namespace Oxide.Plugins
                 .Distinct()
                 .OrderBy(value => value)
                 .ToArray();
-            return $"WebsiteMapBridge events: enabled={config.PublishWorldEvents}, active={trackedWorldEntities.Values.Count(entry => entry.state != "ended")}, endedPending={trackedWorldEntities.Values.Count(entry => entry.state == "ended")}, counts=[{string.Join(",", counts)}], routeSamples={routeSamples}, assets=[{string.Join(",", assets)}], inFlight={worldEventPublishInFlight}, last={lastWorldEventSyncAt}, accepted={lastWorldEventAccepted}, payloadBytes={lastWorldEventPayloadBytes}, error={lastWorldEventError}.";
+            return $"WebsiteMapBridge events: enabled={config.PublishWorldEvents}, active={trackedWorldEntities.Values.Count(entry => entry.state != "ended")}, endedPending={trackedWorldEntities.Values.Count(entry => entry.state == "ended")}, counts=[{string.Join(",", counts)}], routeSamples={routeSamples}, assets=[{string.Join(",", assets)}], inFlight={worldEventPublishInFlight}/{WorldEventPublishAgeSeconds():0.0}s, last={lastWorldEventSyncAt}, accepted={lastWorldEventAccepted}, payloadBytes={lastWorldEventPayloadBytes}, error={lastWorldEventError}.";
         }
 
         private void PublishAirdropReplayEvent(BaseEntity entity, bool landed)

@@ -1,6 +1,7 @@
 <?php
 
 require_once __DIR__ . '/database.php';
+require_once __DIR__ . '/server-map-replay-policy.php';
 
 function raidlands_server_status_server_id(): string
 {
@@ -2539,19 +2540,6 @@ function raidlands_server_map_replay_active_wipe_key(string $server_id): string
     return $wipe_key !== '' ? $wipe_key : ($server_id . '-current');
 }
 
-function raidlands_server_map_replay_read_wipe_keys(string $server_id, string $wipe_key): array
-{
-    $keys = [];
-    foreach ([$wipe_key, $server_id . '-current'] as $candidate) {
-        $candidate = trim($candidate);
-        if ($candidate !== '' && !in_array($candidate, $keys, true)) {
-            $keys[] = $candidate;
-        }
-    }
-
-    return $keys;
-}
-
 function raidlands_server_map_replay_event_payload(array $event): string
 {
     $payload = $event['payload'] ?? $event['details'] ?? [];
@@ -2577,7 +2565,7 @@ function raidlands_server_map_replay_events_ingest_snapshot(array $payload, stri
     }
 
     $wipe_key = raidlands_server_status_clean_text($payload['wipe_key'] ?? '', 160);
-    if ($wipe_key === '' || hash_equals($server_id . '-current', $wipe_key)) {
+    if (raidlands_server_map_replay_wipe_key_is_generic($wipe_key, $server_id)) {
         $wipe_key = raidlands_server_map_replay_active_wipe_key($server_id);
     }
 
@@ -2667,23 +2655,25 @@ function raidlands_server_map_replay_event_from_row(array $row): array
 function raidlands_server_map_replay_events_history_public(string $range, int $frames = 12): array
 {
     $range_info = raidlands_server_heatmap_range($range);
-    $delay = raidlands_server_heatmap_viewer_delay();
+    $delay = ['label' => 'Live', 'delay_seconds' => 0];
     $status = raidlands_server_status_latest();
     $server_id = (string) ($status['server_id'] ?? raidlands_server_status_server_id());
     $wipe_key = (string) ($status['wipe_key'] ?? ($server_id . '-current'));
-    $location_context = raidlands_server_location_viewer_context($server_id);
-    $window_end_time = raidlands_server_history_window_end_time(
-        $server_id,
-        $wipe_key,
-        (int) $delay['delay_seconds'],
-        !empty($location_context['authenticated']) || !empty($location_context['canViewAll'])
+    $active_wipe = raidlands_server_status_active_wipe_signal($server_id);
+    $wipe_started_at = raidlands_server_map_replay_current_wipe_started_at(
+        is_array($status) ? $status : [],
+        $active_wipe
     );
-    $window_start_time = $range_info['range'] === 'wipe'
-        ? max(0, $window_end_time - (60 * 60 * 24 * 31))
-        : $window_end_time - ((int) $range_info['minutes'] * 60);
-    $duration = max(1, $window_end_time - $window_start_time);
+    $window = raidlands_server_map_replay_window_bounds($range_info, time(), $wipe_started_at);
+    $window_end_time = (int) $window['end'];
+    $window_start_time = (int) $window['start'];
+    $duration = (int) $window['duration'];
     [$frames, $frame_seconds] = raidlands_server_history_frame_shape($duration, $frames);
-    $start_aligned = $window_end_time - ($frame_seconds * $frames);
+    if ($duration < 120) {
+        $frames = 2;
+        $frame_seconds = max(1, (int) ceil($duration / $frames));
+    }
+    $start_aligned = max($window_start_time, $window_end_time - ($frame_seconds * $frames));
     $frames_payload = [];
 
     for ($frame = 0; $frame < $frames; $frame += 1) {
@@ -2711,30 +2701,23 @@ function raidlands_server_map_replay_events_history_public(string $range, int $f
         ];
     }
 
-    $read_wipe_keys = raidlands_server_map_replay_read_wipe_keys($server_id, $wipe_key);
-    $wipe_placeholders = [];
     $params = [
         'server_id' => $server_id,
         'window_start' => gmdate('Y-m-d H:i:s', $start_aligned),
         'window_end' => gmdate('Y-m-d H:i:s', $window_end_time),
     ];
-    foreach ($read_wipe_keys as $index => $read_wipe_key) {
-        $key = 'wipe_key_' . $index;
-        $wipe_placeholders[] = ':' . $key;
-        $params[$key] = $read_wipe_key;
-    }
 
     $rows = raidlands_db_fetch_all(
         'SELECT *
          FROM server_map_replay_events
          WHERE server_id = :server_id
-           AND wipe_key IN (' . implode(', ', $wipe_placeholders) . ')
            AND occurred_at >= :window_start
            AND occurred_at <= :window_end
-         ORDER BY occurred_at ASC
+         ORDER BY occurred_at DESC
          LIMIT 800',
         $params
     );
+    $rows = array_reverse($rows);
 
     $airdrop_groups = [];
     foreach ($rows as $row) {
@@ -2802,6 +2785,7 @@ function raidlands_server_map_replay_events_history_public(string $range, int $f
         'wipeKey' => $wipe_key,
         'range' => $range_info['range'],
         'rangeLabel' => $range_info['label'],
+        'wipeStartedAt' => $wipe_started_at === null ? null : gmdate('c', $wipe_started_at),
         'windowEnd' => gmdate('c', $window_end_time),
         'frameSeconds' => $frame_seconds,
         'delay' => [

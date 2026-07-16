@@ -60,6 +60,7 @@ import { unityPositionToThreeVector, unityQuaternionValueToThreeQuaternion } fro
 import { createVehicleProxy, loadVehiclePreview, metadataForVehicle } from "../airstrike-animation-editor/editor/vehicle-preview";
 import type { VehiclePreviewMetadataFile } from "../airstrike-animation-editor/types";
 import { mapVehicleUsesDetailedModel } from "./world-event-model-policy";
+import { selectLiveReplayEvents } from "./live-replay-policy";
 import {
   replayTimelineFrameIntervalMs,
   replayTimelineHistoryRate,
@@ -337,6 +338,8 @@ type MapReplayHistoryPayload = {
     events?: MapReplayEvent[];
   }>;
 };
+
+const LIVE_REPLAY_EVENT_LIMIT = 16;
 
 type EnvironmentSnapshot = {
   sampledAt?: string;
@@ -4349,7 +4352,7 @@ class AirstrikeReplayPlayer {
     this.explicitEventsVisible = events.length > 0;
 
     const eventsByKey = new Map(events.map((event, index) => [replayEventKey(event, index), event]));
-    events.slice(0, mode === "timeline" ? 80 : 8).forEach((event, index) => {
+    events.slice(0, mode === "timeline" ? 80 : LIVE_REPLAY_EVENT_LIMIT).forEach((event, index) => {
       const key = replayEventKey(event, index);
       visibleKeys.add(key);
       const startAt = Number(this.layer.userData.lastTickTime || 0);
@@ -9385,7 +9388,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     }
 
     playerPollTimer = window.setInterval(() => {
-      if (wantsTimelineOverlay() || !(wantsHeatmap() || wantsPlayers())) {
+      if (wantsTimelineOverlay()) {
         stopLiveOverlayPolling();
         return;
       }
@@ -10305,35 +10308,18 @@ function latestReplayEventsFromPayload(payload: MapReplayHistoryPayload, maxAgeM
       ? frameWindowEnd
       : Date.now();
 
-  const activeWorldVehicles = new Map<string, MapReplayEvent>();
-  let latestTransientEvents: MapReplayEvent[] = [];
-  for (let index = frames.length - 1; index >= 0; index -= 1) {
-    const events = Array.isArray(frames[index]?.events)
-      ? frames[index]!.events!.map(normalizeReplayEvent).filter((event): event is MapReplayEvent => event !== null)
-      : [];
-    const freshEvents = maxAgeMs > 0
-      ? events.filter((event) => {
-        const occurred = Date.parse(String(event.occurredAt || ""));
-        return Number.isFinite(occurred) ? referenceTime - occurred <= maxAgeMs : true;
-      })
-      : events;
+  const normalizedFrames = frames.map((frame) => ({
+    events: Array.isArray(frame.events)
+      ? frame.events.map(normalizeReplayEvent).filter((event): event is MapReplayEvent => event !== null)
+      : [],
+  }));
 
-    if (maxAgeMs <= 0 && freshEvents.length > 0) {
-      return freshEvents.slice(0, 8);
-    }
-
-    freshEvents.forEach((event, eventIndex) => {
-      if (replayWorldVehicleIsActive(event)) {
-        const key = replayEventKey(event, eventIndex);
-        if (!activeWorldVehicles.has(key)) activeWorldVehicles.set(key, event);
-      }
-    });
-    if (latestTransientEvents.length === 0) {
-      latestTransientEvents = freshEvents.filter((event) => !replayEventIsWorldVehicle(event));
-    }
+  if (maxAgeMs <= 0) {
+    const latestFrame = [...normalizedFrames].reverse().find((frame) => frame.events.length > 0);
+    return latestFrame?.events.slice(0, LIVE_REPLAY_EVENT_LIMIT) || [];
   }
 
-  return [...activeWorldVehicles.values(), ...latestTransientEvents].slice(0, 8);
+  return selectLiveReplayEvents(normalizedFrames, referenceTime, maxAgeMs, LIVE_REPLAY_EVENT_LIMIT);
 }
 
 function mergeReplayEventsIntoFrames(frames: HeatmapHistoryFrame[], replayPayload: MapReplayHistoryPayload): void {
