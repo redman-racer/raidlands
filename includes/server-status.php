@@ -978,6 +978,43 @@ function raidlands_server_map_latest(?string $server_id = null, string $wipe_key
     );
 }
 
+function raidlands_server_map_promote_wipe_key(string $server_id, string $wipe_key, $wipe_started_at): bool
+{
+    if (!raidlands_server_map_images_is_ready()) {
+        return false;
+    }
+
+    $server_id = raidlands_server_status_clean_text($server_id, 120);
+    $wipe_key = raidlands_server_status_clean_text($wipe_key, 160);
+    $started_at = raidlands_server_status_timestamp($wipe_started_at);
+
+    if ($server_id === '' || $wipe_key === '' || $started_at === null) {
+        return false;
+    }
+
+    $started_timestamp = strtotime($started_at);
+
+    if ($started_timestamp === false) {
+        return false;
+    }
+
+    $statement = raidlands_db_required()->prepare(
+        'UPDATE server_map_images
+         SET wipe_key = :new_wipe_key, updated_at = NOW()
+         WHERE server_id = :server_id
+           AND wipe_key <> :current_wipe_key
+           AND generated_at >= :generated_cutoff'
+    );
+    $statement->execute([
+        'server_id' => $server_id,
+        'new_wipe_key' => $wipe_key,
+        'current_wipe_key' => $wipe_key,
+        'generated_cutoff' => gmdate('Y-m-d H:i:s', $started_timestamp - 3600),
+    ]);
+
+    return $statement->rowCount() > 0;
+}
+
 function raidlands_server_map_row_public(?array $row): ?array
 {
     if ($row === null) {

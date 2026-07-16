@@ -15,13 +15,25 @@ try {
         raidlands_store_json_response(['ok' => false, 'error' => 'Invalid JSON body.'], 400);
     }
 
+    $server_id = (string) ($_SERVER['HTTP_X_RAIDLANDS_SERVER'] ?? raidlands_server_status_server_id());
+    $payload['wipe_key'] = raidlands_stats_canonical_wipe_key(
+        $server_id,
+        (string) ($payload['wipe_key'] ?? ''),
+        $payload['wipe_started_at'] ?? null
+    );
+
     $result = raidlands_server_status_ingest_heartbeat(
         $payload,
-        (string) ($_SERVER['HTTP_X_RAIDLANDS_SERVER'] ?? raidlands_server_status_server_id()),
+        $server_id,
         $body
     );
     $wipe = raidlands_stats_activate_wipe_signal(
         (string) ($result['server_id'] ?? $_SERVER['HTTP_X_RAIDLANDS_SERVER'] ?? raidlands_server_status_server_id()),
+        (string) ($payload['wipe_key'] ?? ''),
+        $payload['wipe_started_at'] ?? null
+    );
+    $map_wipe_promoted = raidlands_server_map_promote_wipe_key(
+        $server_id,
         (string) ($payload['wipe_key'] ?? ''),
         $payload['wipe_started_at'] ?? null
     );
@@ -30,6 +42,7 @@ try {
         'ok' => true,
         'status' => $result,
         'wipe' => $wipe,
+        'map_wipe_promoted' => $map_wipe_promoted,
     ]);
 } catch (InvalidArgumentException $error) {
     raidlands_store_json_response(['ok' => false, 'error' => $error->getMessage()], 422);

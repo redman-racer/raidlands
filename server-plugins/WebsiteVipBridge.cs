@@ -15,7 +15,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteVipBridge", "Raidlands", "1.7.0")]
+    [Info("WebsiteVipBridge", "Raidlands", "1.7.1")]
     [Description("Syncs website VIP entitlements and player stats between Raidlands.net and the Rust server.")]
     public class WebsiteVipBridge : CovalencePlugin
     {
@@ -5882,13 +5882,13 @@ namespace Oxide.Plugins
         private string ResolveWipeKey(DateTime wipeStartedAt)
         {
             var wipeKey = ResolveSecretValue(config.WipeKey);
+            var serverId = CleanWipeKeySegment(config.ServerId, "raidlands-main");
 
-            if (!string.IsNullOrWhiteSpace(wipeKey))
+            if (!string.IsNullOrWhiteSpace(wipeKey) && !IsGenericWipeKey(wipeKey, serverId))
             {
                 return wipeKey.Trim();
             }
 
-            var serverId = CleanWipeKeySegment(config.ServerId, "raidlands-main");
             var startedAt = wipeStartedAt == DateTime.MinValue ? GetWipeStartedAt() : wipeStartedAt.ToUniversalTime();
 
             if (startedAt != DateTime.MinValue)
@@ -5922,6 +5922,16 @@ namespace Oxide.Plugins
                 || ch == '-'
                 || ch == '.'
                 || ch == ':';
+        }
+
+        private static bool IsGenericWipeKey(string wipeKey, string serverId)
+        {
+            var normalized = (wipeKey ?? "").Trim().ToLowerInvariant();
+            var normalizedServer = (serverId ?? "").Trim().ToLowerInvariant();
+            return normalized == "current"
+                || normalized == normalizedServer
+                || normalized == normalizedServer + "-current"
+                || normalized.EndsWith("-current", StringComparison.Ordinal);
         }
 
         public string GetRaidlandsBrandAssetUrl(string key)

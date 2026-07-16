@@ -15,9 +15,16 @@ try {
         raidlands_store_json_response(['ok' => false, 'error' => 'Invalid JSON body.'], 400);
     }
 
+    $server_id = (string) ($_SERVER['HTTP_X_RAIDLANDS_SERVER'] ?? raidlands_server_status_server_id());
+    $payload['wipe_key'] = raidlands_stats_canonical_wipe_key(
+        $server_id,
+        (string) ($payload['wipe_key'] ?? ''),
+        $payload['wipe_started_at'] ?? null
+    );
+
     $map = raidlands_server_map_ingest_upload(
         $payload,
-        (string) ($_SERVER['HTTP_X_RAIDLANDS_SERVER'] ?? raidlands_server_status_server_id())
+        $server_id
     );
     $wipe = raidlands_stats_activate_wipe_signal(
         (string) ($map['serverId'] ?? $_SERVER['HTTP_X_RAIDLANDS_SERVER'] ?? raidlands_server_status_server_id()),

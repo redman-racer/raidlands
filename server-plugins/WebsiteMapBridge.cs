@@ -17,7 +17,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteMapBridge", "Raidlands", "1.0.21")]
+    [Info("WebsiteMapBridge", "Raidlands", "1.0.22")]
     [Description("Publishes the current RustMapApi map image and sampled terrain to the Raidlands website.")]
     public class WebsiteMapBridge : CovalencePlugin
     {
@@ -587,7 +587,7 @@ namespace Oxide.Plugins
                 return;
             }
 
-            ReplyToCommand(arg, "WebsiteMapBridge v1.0.21 status requested; reading cached diagnostics.");
+            ReplyToCommand(arg, "WebsiteMapBridge v1.0.22 status requested; reading cached diagnostics.");
 
             try
             {
@@ -597,7 +597,7 @@ namespace Oxide.Plugins
 
                 ReplyToCommand(
                     arg,
-                    $"WebsiteMapBridge v1.0.21 status: server={ResolveServerId()}, api={apiState}, ready=not-probed, secret={secretState}, render={config.RenderName}, textureRender={config.TextureRenderName}, autoPublishReady={config.AutoPublishOnRustMapApiReady}, autoPublishInit={config.AutoPublishOnServerInitialized}, terrainEnabled={config.PublishTerrain}, terrainResolution={config.TerrainSampleResolution}, monumentsEnabled={config.IncludeMonuments}, roads=enabled, powerLines=enabled, skybox={config.PublishSkybox}/{config.SkyboxImagePath}, playerLocations={config.PublishPlayerLocations}/{config.PlayerLocationIntervalSeconds}s, raidlandsEvents={config.PublishRaidlandsEvents}/{(RaidlandsEvents != null && RaidlandsEvents.IsLoaded ? "ready" : "missing")}, worldEvents={config.PublishWorldEvents}/{config.WorldEventIntervalSeconds}s active={trackedWorldEntities.Values.Count(entry => entry.state != "ended")} last={lastWorldEventSyncAt} accepted={lastWorldEventAccepted} error={lastWorldEventError}, environment={config.PublishEnvironment}/{config.EnvironmentIntervalSeconds}s last={FirstNonEmpty(lastEnvironmentSyncAt, "never")}, sampleMs={lastEnvironmentSampleMilliseconds}, sampled=[{lastEnvironmentDiagnosticSummary}], replayEvents={config.PublishReplayEvents}, heightMap={heightMapState}, lastWipe={lastPublishedWipeKey}."
+                    $"WebsiteMapBridge v1.0.22 status: server={ResolveServerId()}, api={apiState}, ready=not-probed, secret={secretState}, render={config.RenderName}, textureRender={config.TextureRenderName}, autoPublishReady={config.AutoPublishOnRustMapApiReady}, autoPublishInit={config.AutoPublishOnServerInitialized}, terrainEnabled={config.PublishTerrain}, terrainResolution={config.TerrainSampleResolution}, monumentsEnabled={config.IncludeMonuments}, roads=enabled, powerLines=enabled, skybox={config.PublishSkybox}/{config.SkyboxImagePath}, playerLocations={config.PublishPlayerLocations}/{config.PlayerLocationIntervalSeconds}s, raidlandsEvents={config.PublishRaidlandsEvents}/{(RaidlandsEvents != null && RaidlandsEvents.IsLoaded ? "ready" : "missing")}, worldEvents={config.PublishWorldEvents}/{config.WorldEventIntervalSeconds}s active={trackedWorldEntities.Values.Count(entry => entry.state != "ended")} last={lastWorldEventSyncAt} accepted={lastWorldEventAccepted} error={lastWorldEventError}, environment={config.PublishEnvironment}/{config.EnvironmentIntervalSeconds}s last={FirstNonEmpty(lastEnvironmentSyncAt, "never")}, sampleMs={lastEnvironmentSampleMilliseconds}, sampled=[{lastEnvironmentDiagnosticSummary}], replayEvents={config.PublishReplayEvents}, heightMap={heightMapState}, lastWipe={lastPublishedWipeKey}."
                 );
             }
             catch (Exception ex)
@@ -3574,21 +3574,21 @@ namespace Oxide.Plugins
 
         private string ResolveWipeKey(DateTime wipeStartedAt)
         {
+            var serverId = CleanWipeKeySegment(ResolveServerId(), "raidlands-main");
             var configured = ResolveSecretValue(config.WipeKey);
 
-            if (!string.IsNullOrWhiteSpace(configured))
+            if (!string.IsNullOrWhiteSpace(configured) && !IsGenericWipeKey(configured, serverId))
             {
                 return configured.Trim();
             }
 
             configured = ResolveSecretValue(LoadVipBridgeSetting("WipeKey"));
 
-            if (!string.IsNullOrWhiteSpace(configured))
+            if (!string.IsNullOrWhiteSpace(configured) && !IsGenericWipeKey(configured, serverId))
             {
                 return configured.Trim();
             }
 
-            var serverId = CleanWipeKeySegment(ResolveServerId(), "raidlands-main");
             var startedAt = wipeStartedAt == DateTime.MinValue ? GetWipeStartedAt() : wipeStartedAt.ToUniversalTime();
 
             if (startedAt != DateTime.MinValue)
@@ -3622,6 +3622,16 @@ namespace Oxide.Plugins
                 || ch == '-'
                 || ch == '.'
                 || ch == ':';
+        }
+
+        private static bool IsGenericWipeKey(string wipeKey, string serverId)
+        {
+            var normalized = (wipeKey ?? "").Trim().ToLowerInvariant();
+            var normalizedServer = (serverId ?? "").Trim().ToLowerInvariant();
+            return normalized == "current"
+                || normalized == normalizedServer
+                || normalized == normalizedServer + "-current"
+                || normalized.EndsWith("-current", StringComparison.Ordinal);
         }
 
         private string ResolveBridgeSharedSecret()

@@ -104,6 +104,26 @@ function raidlands_stats_wipe_key_is_generic(string $wipe_key, string $server_id
         || str_ends_with($normalized_key, '-current');
 }
 
+function raidlands_stats_canonical_wipe_key(string $server_id, string $wipe_key, $started_at): string
+{
+    $server_id = raidlands_stats_clean_text($server_id !== '' ? $server_id : raidlands_stats_server_id(), 120);
+    $wipe_key = raidlands_stats_wipe_key($wipe_key);
+    $started_at = raidlands_stats_timestamp($started_at);
+
+    if ($started_at === null || !raidlands_stats_wipe_key_is_generic($wipe_key, $server_id)) {
+        return $wipe_key;
+    }
+
+    $server_key = raidlands_stats_wipe_key($server_id);
+    $timestamp = strtotime($started_at);
+
+    if ($timestamp === false) {
+        return $wipe_key;
+    }
+
+    return substr($server_key . '-' . gmdate('Ymd\\THis\\Z', $timestamp), 0, 160);
+}
+
 function raidlands_stats_activate_wipe_signal(string $server_id, string $wipe_key, $started_at): ?array
 {
     if (!raidlands_stats_wipes_are_ready()) {
@@ -111,12 +131,13 @@ function raidlands_stats_activate_wipe_signal(string $server_id, string $wipe_ke
     }
 
     $server_id = raidlands_stats_clean_text($server_id !== '' ? $server_id : raidlands_stats_server_id(), 120);
-    $wipe_key = raidlands_stats_wipe_key($wipe_key);
     $started_at = raidlands_stats_timestamp($started_at);
 
-    if ($started_at === null || raidlands_stats_wipe_key_is_generic($wipe_key, $server_id)) {
+    if ($started_at === null) {
         return null;
     }
+
+    $wipe_key = raidlands_stats_canonical_wipe_key($server_id, $wipe_key, $started_at);
 
     $pdo = raidlands_db_required();
     $pdo->beginTransaction();
@@ -238,8 +259,8 @@ function raidlands_stats_ingest_snapshot(array $payload, string $server_id, stri
     }
 
     $server_id = raidlands_stats_clean_text($server_id !== '' ? $server_id : raidlands_stats_server_id(), 120);
-    $wipe_key = raidlands_stats_wipe_key((string) ($payload['wipe_key'] ?? ''));
     $wipe_started_at = raidlands_stats_timestamp($payload['wipe_started_at'] ?? null);
+    $wipe_key = raidlands_stats_canonical_wipe_key($server_id, (string) ($payload['wipe_key'] ?? ''), $wipe_started_at);
     $generated_at = raidlands_stats_timestamp($payload['generated_at'] ?? null) ?? gmdate('Y-m-d H:i:s');
     $players = $payload['players'] ?? [];
     $bots = $payload['bots'] ?? [];
