@@ -248,6 +248,50 @@ airstrike_compiler_test(array_column($releases, 'Time') === [0.2, 0.2, 0.5], 're
 airstrike_compiler_test(array_column($releases, 'CarrierOffsetX') === [-1.75, 2.25, -1.75], 'alternating hardpoints are materialized into carrier offsets');
 airstrike_compiler_test(array_column($releases, 'Index') === [1, 2, 3], 'compiled release indexes are stable and sequential');
 
+$multi_burst_source = airstrike_compiler_source([
+    'ProfileKey' => 'multi_burst_strafe',
+    'FirstPayloadDelaySeconds' => 0.1,
+    'ReleaseSource' => [
+        'Mode' => 'repeated',
+        'Groups' => [
+            [
+                'Id' => 'automatic_001',
+                'Name' => 'Automatic group 1',
+                'StartTime' => 0.1,
+                'IntervalSeconds' => 0.01,
+                'UnitsPerRelease' => 10,
+                'MaximumUnits' => 120,
+                'Template' => airstrike_compiler_payload(['Payload' => 'bradley_longbarrel_burst', 'Count' => 10]),
+                'HardpointSequence' => [],
+            ],
+            [
+                'Id' => 'automatic_002',
+                'Name' => 'Automatic group 2',
+                'StartTime' => 0.4,
+                'IntervalSeconds' => 0.01,
+                'UnitsPerRelease' => 10,
+                'MaximumUnits' => 120,
+                'Template' => airstrike_compiler_payload(['Payload' => 'bradley_longbarrel_burst', 'Count' => 10]),
+                'HardpointSequence' => [],
+            ],
+            [
+                'Id' => 'automatic_003',
+                'Name' => 'Automatic group 3',
+                'StartTime' => 0.7,
+                'IntervalSeconds' => 0.01,
+                'UnitsPerRelease' => 10,
+                'MaximumUnits' => 86,
+                'Template' => airstrike_compiler_payload(['Payload' => 'bradley_longbarrel_burst', 'Count' => 10]),
+                'HardpointSequence' => [],
+            ],
+        ],
+    ],
+]);
+$multi_burst_validation = raidlands_airstrike_animation_validate_profile($multi_burst_source, 'Profiles.multi_burst_strafe');
+airstrike_compiler_test($multi_burst_validation['ok'], 'multi-burst strafing schedules above 200 release units are valid');
+$multi_burst = raidlands_airstrike_animation_compile_profile($multi_burst_source);
+airstrike_compiler_test(count($multi_burst['CompiledReleaseEvents']) === 326, 'multi-burst strafing schedule compiles every unit');
+
 $manual_hardpoint_source = airstrike_compiler_source([
     'ProfileKey' => 'manual_hardpoint',
     'FirstPayloadDelaySeconds' => 0.2,

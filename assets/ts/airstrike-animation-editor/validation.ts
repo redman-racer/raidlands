@@ -16,7 +16,7 @@ const DICTIONARY_KEY_PATTERN = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/;
 const MAX_DURATION_SECONDS = 120;
 const MAX_WAYPOINTS = 256;
 const MAX_MANUAL_EVENTS = 80;
-const MAX_COMPILED_RELEASE_UNITS = 200;
+const MAX_COMPILED_RELEASE_UNITS = 2000;
 const MAX_REPEATED_GROUPS = 40;
 
 function addIssue(issues: ValidationIssue[], path: string, code: string, message: string): void {

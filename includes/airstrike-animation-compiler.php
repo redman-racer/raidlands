@@ -21,7 +21,7 @@ function raidlands_airstrike_animation_compiler_limits(): array
         'max_waypoints_per_profile' => 256,
         'max_manual_events_per_profile' => 80,
         'max_repeated_groups_per_profile' => 40,
-        'max_release_events_per_profile' => 200,
+        'max_release_events_per_profile' => 2000,
         'max_duration_seconds' => 120.0,
         'max_compiled_frames_per_profile' => 6000,
         'max_bundle_bytes' => 20 * 1024 * 1024,
@@ -448,6 +448,7 @@ function raidlands_airstrike_animation_validate_profile(
 ): array
 {
     $limits = raidlands_airstrike_animation_compiler_limits();
+    $max_release_units = (int) $limits['max_release_events_per_profile'];
     $errors = [];
     $warnings = [];
     $profile_key = raidlands_airstrike_animation_profile_key($source);
@@ -711,12 +712,12 @@ function raidlands_airstrike_animation_validate_profile(
             );
         }
 
-        if ($release_units > (int) $limits['max_release_events_per_profile']) {
+        if ($release_units > $max_release_units) {
             raidlands_airstrike_animation_validation_error(
                 $errors,
                 $path . '.ReleaseSource.Events',
                 'compiled_unit_count',
-                'Materialized releases must not exceed 200 units.'
+                'Materialized releases must not exceed ' . $max_release_units . ' units.'
             );
         }
 
@@ -737,12 +738,12 @@ function raidlands_airstrike_animation_validate_profile(
             }
         }
 
-        if ($release['maximum_units'] < 0 || $release['maximum_units'] > 200) {
+        if ($release['maximum_units'] < 0 || $release['maximum_units'] > $max_release_units) {
             raidlands_airstrike_animation_validation_error(
                 $errors,
                 $path . '.ReleaseSource.MaximumUnits',
                 'count',
-                'MaximumUnits must be between 0 and 200.'
+                'MaximumUnits must be between 0 and ' . $max_release_units . '.'
             );
         }
 
@@ -829,13 +830,13 @@ function raidlands_airstrike_animation_validate_profile(
                         $earliest_start = min($earliest_start, (float) $raw_start);
                     }
 
-                    raidlands_airstrike_animation_validate_number($errors, $raw_units, $group_path . '.UnitsPerRelease', 1.0, 200.0);
+                    raidlands_airstrike_animation_validate_number($errors, $raw_units, $group_path . '.UnitsPerRelease', 1.0, (float) $max_release_units);
 
                     if ((is_int($raw_units) || is_float($raw_units)) && floor((float) $raw_units) !== (float) $raw_units) {
                         raidlands_airstrike_animation_validation_error($errors, $group_path . '.UnitsPerRelease', 'integer', 'Must be an integer.');
                     }
 
-                    raidlands_airstrike_animation_validate_number($errors, $raw_maximum, $group_path . '.MaximumUnits', 1.0, 200.0);
+                    raidlands_airstrike_animation_validate_number($errors, $raw_maximum, $group_path . '.MaximumUnits', 1.0, (float) $max_release_units);
 
                     if ((is_int($raw_maximum) || is_float($raw_maximum)) && floor((float) $raw_maximum) !== (float) $raw_maximum) {
                         raidlands_airstrike_animation_validation_error($errors, $group_path . '.MaximumUnits', 'integer', 'Must be an integer.');
@@ -866,8 +867,13 @@ function raidlands_airstrike_animation_validate_profile(
                     }
                 }
 
-                if ($total_units > (int) $limits['max_release_events_per_profile']) {
-                    raidlands_airstrike_animation_validation_error($errors, $path . '.ReleaseSource.Groups', 'compiled_unit_count', 'Automatic groups must not exceed 200 total units.');
+                if ($total_units > $max_release_units) {
+                    raidlands_airstrike_animation_validation_error(
+                        $errors,
+                        $path . '.ReleaseSource.Groups',
+                        'compiled_unit_count',
+                        'Automatic groups must not exceed ' . $max_release_units . ' total units.'
+                    );
                 }
 
                 $first_delay = raidlands_airstrike_animation_number($source['FirstPayloadDelaySeconds'] ?? -1.0, -1.0);
@@ -903,12 +909,12 @@ function raidlands_airstrike_animation_validate_profile(
 
         $minimum_units = $release['legacy_dynamic'] ? 0 : 1;
 
-        if ($release['maximum_units'] < $minimum_units || $release['maximum_units'] > (int) $limits['max_release_events_per_profile']) {
+        if ($release['maximum_units'] < $minimum_units || $release['maximum_units'] > $max_release_units) {
             raidlands_airstrike_animation_validation_error(
                 $errors,
                 $path . '.ReleaseSource.MaximumUnits',
                 'count',
-                'MaximumUnits must be between ' . $minimum_units . ' and 200.'
+                'MaximumUnits must be between ' . $minimum_units . ' and ' . $max_release_units . '.'
             );
         }
 

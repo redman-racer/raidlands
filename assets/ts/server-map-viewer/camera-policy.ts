@@ -53,11 +53,6 @@ export function parseCameraPreferences(value: string | null): CameraPreferences 
   }
 }
 
-export function clampMapCoordinate(value: number, worldSize: number, margin = 0): number {
-  const half = Math.max(1, worldSize) / 2;
-  return Math.min(half - margin, Math.max(-half + margin, value));
-}
-
 /**
  * Rust can place offshore monuments outside the square sampled by the height
  * map. Keep a bounded, data-driven allowance for those real map features
@@ -90,13 +85,6 @@ export function resolveCameraBounds(worldSize: number, features: CameraBoundsFea
   });
 
   return bounds;
-}
-
-export function clampMapCoordinateToBounds(value: number, minimum: number, maximum: number, margin = 0): number {
-  const low = Math.min(minimum, maximum);
-  const high = Math.max(minimum, maximum);
-  const safeMargin = Math.min(Math.max(0, margin), Math.max(0, (high - low) / 2));
-  return Math.min(high - safeMargin, Math.max(low + safeMargin, value));
 }
 
 export function cameraHeightAboveTerrain(requestedY: number, terrainY: number, clearance = 12): number {

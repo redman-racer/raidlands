@@ -17,14 +17,13 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteMapBridge", "Raidlands", "1.0.19")]
+    [Info("WebsiteMapBridge", "Raidlands", "1.0.20")]
     [Description("Publishes the current RustMapApi map image and sampled terrain to the Raidlands website.")]
     public class WebsiteMapBridge : CovalencePlugin
     {
         [PluginReference] private Plugin RustMapApi;
         [PluginReference] private Plugin Clans;
         [PluginReference] private Plugin RaidlandsEvents;
-        [PluginReference] private Plugin PortableAirstrikes;
 
         private const string SecretsConfigName = "Secrets.local";
         private const string VipBridgeConfigName = "WebsiteVipBridge";
@@ -1859,7 +1858,7 @@ namespace Oxide.Plugins
             }
 
             WorldEntityDescriptor descriptor;
-            if (!TryDescribeWorldEntity(entity, out descriptor) || IsPortableAirstrikeCarrier(entity.net.ID.Value))
+            if (!TryDescribeWorldEntity(entity, out descriptor))
             {
                 trackedWorldEntities.Remove(entity.net.ID.Value);
                 return;
@@ -1969,24 +1968,6 @@ namespace Oxide.Plugins
             };
         }
 
-        private bool IsPortableAirstrikeCarrier(ulong networkId)
-        {
-            if (networkId == 0 || PortableAirstrikes == null || !PortableAirstrikes.IsLoaded)
-            {
-                return false;
-            }
-
-            try
-            {
-                var result = PortableAirstrikes.Call("API_IsWebsiteReplayCarrier", networkId);
-                return result is bool && (bool)result;
-            }
-            catch
-            {
-                return false;
-            }
-        }
-
         private void SampleAndPublishWorldEvents(Action<string> reply, bool verbose)
         {
             if (!config.PublishReplayEvents || (!config.PublishWorldEvents && !config.PublishDiscreteServerEvents))
@@ -2015,12 +1996,6 @@ namespace Oxide.Plugins
                 if (tracked.entity == null || tracked.entity.IsDestroyed || tracked.entity.net == null)
                 {
                     EndTrackedWorldEntity(tracked.networkId, "missing_from_server");
-                    continue;
-                }
-
-                if (IsPortableAirstrikeCarrier(tracked.networkId))
-                {
-                    trackedWorldEntities.Remove(tracked.networkId);
                     continue;
                 }
 
@@ -2416,7 +2391,7 @@ namespace Oxide.Plugins
             var bestDistance = maximumDistance;
             foreach (var candidate in trackedWorldEntities.Values)
             {
-                if (candidate.state == "ended" || candidate.descriptor == null || candidate.descriptor.vehicle != "cargo_plane" || IsPortableAirstrikeCarrier(candidate.networkId))
+                if (candidate.state == "ended" || candidate.descriptor == null || candidate.descriptor.vehicle != "cargo_plane")
                 {
                     continue;
                 }

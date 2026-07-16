@@ -1,8 +1,6 @@
 import { describe, expect, it } from "vitest";
 import {
   cameraHeightAboveTerrain,
-  clampMapCoordinate,
-  clampMapCoordinateToBounds,
   parseCameraPreferences,
   resolveCameraBounds,
   shouldResumeAutomaticCamera,
@@ -17,9 +15,7 @@ describe("server map camera policy", () => {
     expect(parseCameraPreferences('{"mode":"unknown"}').mode).toBe("director");
   });
 
-  it("clamps flight to map bounds and above terrain", () => {
-    expect(clampMapCoordinate(2600, 4500, 20)).toBe(2230);
-    expect(clampMapCoordinate(-2600, 4500, 20)).toBe(-2230);
+  it("keeps the camera above sampled terrain", () => {
     expect(cameraHeightAboveTerrain(90, 100, 12)).toBe(112);
   });
 
@@ -30,8 +26,6 @@ describe("server map camera policy", () => {
     ]);
 
     expect(bounds).toEqual({ minX: -1750, maxX: 2304.929, minZ: -1750, maxZ: 1750 });
-    expect(clampMapCoordinateToBounds(2600, bounds.minX, bounds.maxX, 2)).toBe(2302.929);
-    expect(clampMapCoordinateToBounds(-2600, bounds.minX, bounds.maxX, 2)).toBe(-1748);
   });
 
   it("resumes automatic modes only after the pause deadline", () => {

@@ -61,6 +61,11 @@ import { createVehicleProxy, loadVehiclePreview, metadataForVehicle } from "../a
 import type { VehiclePreviewMetadataFile } from "../airstrike-animation-editor/types";
 import { mapVehicleUsesDetailedModel } from "./world-event-model-policy";
 import {
+  replayTimelineFrameIntervalMs,
+  replayTimelineHistoryRate,
+  rustWorldQuaternionToViewerQuaternion,
+} from "./world-event-replay-policy";
+import {
   fogRayMarchSamples,
   lowDetailFogNearVisibility,
   parseFogDetail,
@@ -95,7 +100,6 @@ import {
   type EnvironmentQualityProfile,
 } from "./environment-quality";
 import {
-  clampMapCoordinateToBounds,
   cameraHeightAboveTerrain,
   offshoreCameraCoordinateLimit,
   parseCameraPreferences,
@@ -2972,8 +2976,6 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
     if (movement.lengthSq() > 1) movement.normalize();
     this.camera.position.addScaledVector(movement, speed * deltaSeconds);
     const worldSize = this.terrain.worldSize || 4500;
-    this.camera.position.x = clampMapCoordinateToBounds(this.camera.position.x, this.cameraBounds.minX, this.cameraBounds.maxX, 4);
-    this.camera.position.z = clampMapCoordinateToBounds(this.camera.position.z, this.cameraBounds.minZ, this.cameraBounds.maxZ, 4);
     this.camera.position.y = cameraHeightAboveTerrain(
       this.camera.position.y,
       sampleTerrainHeight(this.terrain, this.camera.position.x, this.camera.position.z),
@@ -2984,15 +2986,11 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
   }
 
   private enforceCameraTerrainSafety(): void {
-    this.camera.position.x = clampMapCoordinateToBounds(this.camera.position.x, this.cameraBounds.minX, this.cameraBounds.maxX, 2);
-    this.camera.position.z = clampMapCoordinateToBounds(this.camera.position.z, this.cameraBounds.minZ, this.cameraBounds.maxZ, 2);
     this.camera.position.y = cameraHeightAboveTerrain(
       this.camera.position.y,
       sampleTerrainHeight(this.terrain, this.camera.position.x, this.camera.position.z),
       12,
     );
-    this.controls.target.x = clampMapCoordinateToBounds(this.controls.target.x, this.cameraBounds.minX, this.cameraBounds.maxX, 2);
-    this.controls.target.z = clampMapCoordinateToBounds(this.controls.target.z, this.cameraBounds.minZ, this.cameraBounds.maxZ, 2);
     this.controls.target.y = Math.max(
       this.controls.target.y,
       sampleTerrainHeight(this.terrain, this.controls.target.x, this.controls.target.z) + 4,
@@ -3817,10 +3815,6 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
 
   private aboveTerrainPose(position: Vector3, target: Vector3, clearance: number): CameraPose {
     const worldSize = this.terrain.worldSize || 4500;
-    position.x = clampMapCoordinateToBounds(position.x, this.cameraBounds.minX, this.cameraBounds.maxX, 2);
-    position.z = clampMapCoordinateToBounds(position.z, this.cameraBounds.minZ, this.cameraBounds.maxZ, 2);
-    target.x = clampMapCoordinateToBounds(target.x, this.cameraBounds.minX, this.cameraBounds.maxX, 2);
-    target.z = clampMapCoordinateToBounds(target.z, this.cameraBounds.minZ, this.cameraBounds.maxZ, 2);
     const ground = sampleTerrainHeight(this.terrain, position.x, position.z);
     const targetGround = sampleTerrainHeight(this.terrain, target.x, target.z);
     const targetY = Math.max(target.y, targetGround + 28);
@@ -4084,20 +4078,30 @@ class AirstrikeReplayPlayer {
     events.slice(0, mode === "timeline" ? 80 : 8).forEach((event, index) => {
       const key = replayEventKey(event, index);
       visibleKeys.add(key);
+      const startAt = Number(this.layer.userData.lastTickTime || 0);
       const existing = this.runs.find((run) => run.key === key);
       if (existing) {
+        existing.refresh?.(event, startAt);
         if (mode === "timeline" && Number.isFinite(cursorMs)) {
           existing.syncToTimeline(cursorMs, playbackSpeed);
         }
         return;
       }
 
-      const startAt = Number(this.layer.userData.lastTickTime || 0);
       const run = event.eventType === "airstrike"
         ? new AirstrikeReplayRun(key, event, this.terrain, this.profileForEvent(event), startAt, playbackSpeed, this.vehicleMetadata, this.assetBase)
         : event.eventType === "airdrop"
           ? new AirdropReplayRun(key, event, this.terrain, startAt, playbackSpeed, this.vehicleMetadata, this.assetBase, replayAirdropCarrierEvent(event, eventsByKey))
-          : new GenericMapEventReplayRun(key, event, this.terrain, startAt, playbackSpeed, this.vehicleMetadata, this.assetBase);
+          : new GenericMapEventReplayRun(
+            key,
+            event,
+            this.terrain,
+            startAt,
+            playbackSpeed,
+            this.vehicleMetadata,
+            this.assetBase,
+            mode !== "timeline",
+          );
       if (mode === "timeline" && Number.isFinite(cursorMs)) {
         run.syncToTimeline(cursorMs, playbackSpeed);
       }
@@ -4105,16 +4109,15 @@ class AirstrikeReplayPlayer {
       this.active.add(run.group);
     });
 
-    if (mode === "timeline") {
-      this.runs = this.runs.filter((run) => {
-        if (visibleKeys.has(run.key) || (run.source === "ambient" && this.ambientEnabled && visibleKeys.size === 0)) {
-          return true;
-        }
-        this.active.remove(run.group);
-        disposeObjectTree(run.group);
-        return false;
-      });
-    }
+    this.runs = this.runs.filter((run) => {
+      const shouldPrune = mode === "timeline" || run.persistent === true;
+      if (!shouldPrune || visibleKeys.has(run.key) || (run.source === "ambient" && this.ambientEnabled && visibleKeys.size === 0)) {
+        return true;
+      }
+      this.active.remove(run.group);
+      disposeObjectTree(run.group);
+      return false;
+    });
   }
 
   public clear(): void {
@@ -4196,6 +4199,8 @@ type MapReplayRun = {
   key: string;
   source: "ambient" | "event";
   group: Group;
+  persistent?: boolean;
+  refresh?: (event: MapReplayEvent, now: number) => void;
   update: (now: number) => boolean;
   syncToTimeline: (cursorMs: number, playbackSpeed: number) => void;
 };
@@ -4569,11 +4574,12 @@ class GenericMapEventReplayRun implements MapReplayRun {
   public readonly key: string;
   public readonly source = "event" as const;
   public readonly group = new Group();
-  private readonly event: MapReplayEvent;
+  public readonly persistent: boolean;
+  private event: MapReplayEvent;
   private readonly terrain: TerrainPayload;
-  private readonly target: Vector3;
-  private readonly sourcePosition: Vector3;
-  private readonly route: WorldEventRouteSample[];
+  private target: Vector3;
+  private sourcePosition: Vector3;
+  private route: WorldEventRouteSample[];
   private readonly vehicle: string;
   private readonly semanticType: string;
   private readonly airborne: boolean;
@@ -4594,6 +4600,7 @@ class GenericMapEventReplayRun implements MapReplayRun {
     playbackSpeed: number,
     vehicleMetadata: VehiclePreviewMetadataFile | null,
     assetBase: string,
+    liveMode = false,
   ) {
     this.key = key;
     this.event = event;
@@ -4603,6 +4610,7 @@ class GenericMapEventReplayRun implements MapReplayRun {
     this.vehicle = replayVehicleForEvent(event);
     this.semanticType = replaySemanticEventType(event);
     this.airborne = replayVehicleIsAirborne(this.vehicle);
+    this.persistent = liveMode && replayWorldVehicleIsActive(event);
     this.sourcePosition = replayEventPosition(event, terrain);
     this.route = replayWorldEventRoute(event);
     this.target = this.sourcePosition.clone();
@@ -4640,26 +4648,29 @@ class GenericMapEventReplayRun implements MapReplayRun {
     }
 
     const eventTime = elapsed * this.playbackSpeed;
-    if (eventTime > this.duration) {
+    if (!this.persistent && eventTime > this.duration) {
       return false;
     }
 
     this.group.visible = true;
-    const progress = MathUtils.clamp(eventTime / this.duration, 0, 1);
-    const pulse = 0.5 + (Math.sin(progress * Math.PI * 6) * 0.5);
+    const progress = this.persistent
+      ? (0.5 + Math.sin(elapsed * 0.8) * 0.5)
+      : MathUtils.clamp(eventTime / this.duration, 0, 1);
+    const pulse = 0.5 + (Math.sin(elapsed * Math.PI * 2) * 0.5);
     this.marker.position.copy(this.target).add(new Vector3(0, 10 + pulse * 10, 0));
     this.marker.scale.setScalar(MathUtils.lerp(0.8, 1.25, pulse));
     this.ring.position.copy(this.target);
-    this.ring.scale.setScalar(MathUtils.lerp(0.5, 2.8, easeOutCubic(progress)));
+    this.ring.scale.setScalar(this.persistent ? MathUtils.lerp(0.8, 1.15, pulse) : MathUtils.lerp(0.5, 2.8, easeOutCubic(progress)));
     this.beacon.position.copy(this.target).add(new Vector3(0, 54, 0));
     this.beacon.scale.setScalar(MathUtils.lerp(38, 92, easeOutCubic(progress)));
-    setMaterialOpacity(this.ring.material, MathUtils.lerp(0.62, 0, progress));
-    setMaterialOpacity(this.beacon.material, MathUtils.lerp(0.48, 0, progress));
+    setMaterialOpacity(this.ring.material, this.persistent ? MathUtils.lerp(0.2, 0.38, pulse) : MathUtils.lerp(0.62, 0, progress));
+    setMaterialOpacity(this.beacon.material, this.persistent ? MathUtils.lerp(0.14, 0.3, pulse) : MathUtils.lerp(0.48, 0, progress));
 
     if (this.vehicleMarker) {
-      const routePose = this.route.length > 1 ? sampleWorldEventRoute(this.route, progress) : null;
-      const position = routePose?.position.clone() ?? this.sourcePosition.clone();
-      if (this.airborne && !routePose) {
+      const routePose = !this.persistent && this.route.length > 1 ? sampleWorldEventRoute(this.route, progress) : null;
+      const currentPose = this.persistent && this.route.length > 0 ? this.route[this.route.length - 1] : null;
+      const position = routePose?.position.clone() ?? currentPose?.position.clone() ?? this.sourcePosition.clone();
+      if (this.airborne && !this.persistent && !routePose && !currentPose) {
         const forward = replayEventForward(this.event);
         const travel = Math.max(280, (this.semanticType === "cargo_plane" ? 0.34 : 0.16) * (this.terrain.worldSize || 4500));
         position.addScaledVector(forward, (progress - 0.5) * travel);
@@ -4668,14 +4679,29 @@ class GenericMapEventReplayRun implements MapReplayRun {
         position.y = Math.max(position.y, this.target.y);
       }
       this.vehicleMarker.position.copy(position);
-      if (routePose) {
-        this.vehicleMarker.quaternion.copy(routePose.rotation);
+      if (routePose || currentPose) {
+        this.vehicleMarker.quaternion.copy((routePose || currentPose)!.rotation);
       } else {
         this.vehicleMarker.rotation.set(0, replayEventHeading(this.event), 0);
       }
       this.vehicleMarker.visible = true;
     }
     return true;
+  }
+
+  public refresh(event: MapReplayEvent): void {
+    if (!this.persistent || !replayWorldVehicleIsActive(event)) {
+      return;
+    }
+
+    this.event = event;
+    this.sourcePosition = replayEventPosition(event, this.terrain);
+    this.route = replayWorldEventRoute(event);
+    this.target = this.sourcePosition.clone();
+    const ground = sampleTerrainHeight(this.terrain, this.target.x, this.target.z);
+    this.target.y = this.vehicle === "cargo_ship"
+      ? Math.max(Number(this.terrain.waterLevel) || 0, ground) + 4
+      : ground + 5;
   }
 
   public syncToTimeline(cursorMs: number, playbackSpeed: number): void {
@@ -4876,6 +4902,12 @@ function replayEventIsWorldVehicle(event: MapReplayEvent): boolean {
   return String(event.payload?.kind || "").toLowerCase() === "world_vehicle";
 }
 
+function replayWorldVehicleIsActive(event: MapReplayEvent): boolean {
+  if (!replayEventIsWorldVehicle(event)) return false;
+  const state = String(event.payload?.state || "active").trim().toLowerCase();
+  return state !== "ended" && state !== "destroyed";
+}
+
 function replayVehicleHasViewerModel(vehicle: string): boolean {
   return ["f15", "a10", "attack_heli", "cargo_plane", "drone", "chinook", "bradley", "cargo_ship"].includes(vehicle);
 }
@@ -4885,6 +4917,15 @@ function replayVehicleIsAirborne(vehicle: string): boolean {
 }
 
 function replayEventHeading(event: MapReplayEvent): number {
+  const rotation = replayEventRotation(event);
+  if (rotation) {
+    const forward = new Vector3(0, 0, -1).applyQuaternion(rotation);
+    return Math.atan2(-forward.x, -forward.z);
+  }
+  return 0;
+}
+
+function replayEventRotation(event: MapReplayEvent): Quaternion | null {
   const rotation = event.payload?.rotation;
   if (rotation && typeof rotation === "object") {
     const x = Number((rotation as Record<string, unknown>).x);
@@ -4892,12 +4933,10 @@ function replayEventHeading(event: MapReplayEvent): number {
     const z = Number((rotation as Record<string, unknown>).z);
     const w = Number((rotation as Record<string, unknown>).w);
     if ([x, y, z, w].every(Number.isFinite)) {
-      const heading = unityQuaternionValueToThreeQuaternion({ x, y, z, w });
-      const forward = new Vector3(0, 0, -1).applyQuaternion(heading);
-      return Math.atan2(-forward.x, -forward.z);
+      return rustWorldQuaternionToViewerQuaternion({ x, y, z, w });
     }
   }
-  return 0;
+  return null;
 }
 
 function replayEventForward(event: MapReplayEvent): Vector3 {
@@ -4916,7 +4955,7 @@ function replayWorldEventRoute(event: MapReplayEvent): WorldEventRouteSample[] {
     return [{
       timestampMs,
       position: rustWorldToViewerPosition(x, y, z),
-      rotation: unityQuaternionValueToThreeQuaternion({ x: qx, y: qy, z: qz, w: qw }).normalize(),
+      rotation: rustWorldQuaternionToViewerQuaternion({ x: qx, y: qy, z: qz, w: qw }),
     }];
   }).sort((left, right) => left.timestampMs - right.timestampMs);
 }
@@ -8506,6 +8545,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   let playbackLastTick = 0;
   let playbackShownFrame = -1;
   let playbackSpeedIndex = 2;
+  let playbackFrameSeconds = 60;
   let playerPollTimer = 0;
   let environmentPollTimer = 0;
   let playbackHistoryPollTimer = 0;
@@ -8811,7 +8851,9 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
 
   const playbackSpeed = (): number => playbackSpeeds[playbackSpeedIndex] || 1;
 
-  const playbackIntervalMs = (): number => Math.max(80, Math.round(900 / playbackSpeed()));
+  const playbackIntervalMs = (): number => replayTimelineFrameIntervalMs(playbackFrameSeconds, playbackSpeed());
+
+  const timelineHistoryRate = (): number => replayTimelineHistoryRate(playbackFrameSeconds, playbackSpeed());
 
   const playbackHistoryPollDelayMs = (): number => playerLocationRefreshMs;
 
@@ -8882,14 +8924,14 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     void loadLiveReplayEvents(root).then((events) => {
       navigationEvents = events;
       if (navigationTab === "events") renderNavigation();
-      if (!wantsTimelineOverlay() && events.length > 0) {
+      if (!wantsTimelineOverlay()) {
         viewer.showReplayEvents(events, 1);
       }
     });
   };
 
   const startLiveOverlayPolling = () => {
-    if (wantsTimelineOverlay() || !(wantsHeatmap() || wantsPlayers())) {
+    if (wantsTimelineOverlay()) {
       stopLiveOverlayPolling();
       return;
     }
@@ -8967,7 +9009,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       viewer.clearReplayEvents();
       return;
     }
-    viewer.showReplayEvents(timelineReplayEvents(cursorMs), playbackSpeed(), {
+    viewer.showReplayEvents(timelineReplayEvents(cursorMs), timelineHistoryRate(), {
       mode: "timeline",
       cursorMs,
     });
@@ -9214,12 +9256,13 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
 
     if (!heatmapEnabled && !playersEnabled) {
       stopHeatmapPlayback();
-      stopLiveOverlayPolling();
       stopPlaybackHistoryPolling();
       heatmapHistory = [];
       viewer.clearReplayEvents();
       viewer.setHeatmapVisible(false);
       viewer.setPlayerLocationsVisible(false);
+      startLiveOverlayPolling();
+      startEnvironmentPolling();
       updatePlaybackControlAvailability();
       return;
     }
@@ -9251,6 +9294,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
         heatmapHistory = trimHistoryFramesToRange(Array.isArray(payload.frames) ? payload.frames : [], requestRange, payload.windowEnd);
         mergeReplayEventsIntoFrames(heatmapHistory, replayPayload);
         mergeEnvironmentIntoFrames(heatmapHistory, environmentPayload);
+        playbackFrameSeconds = Math.max(1, Number(payload.frameSeconds) || Math.ceil(selectedRangeSeconds() / Math.max(1, heatmapHistory.length)));
         setFrameIntervalLabel(payload.frameSeconds);
         const latestFrame = preferredFrame !== undefined
           ? MathUtils.clamp(Math.round(preferredFrame), 0, Math.max(0, heatmapHistory.length - 1))
@@ -9443,10 +9487,11 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
 
   const reloadPlayers = () => {
     if (!wantsPlayers()) {
-      stopLiveOverlayPolling();
       viewer.setPlayerLocationsVisible(false);
-      if (wantsHeatmap() && !wantsTimelineOverlay()) {
+      if (!wantsTimelineOverlay()) {
         startLiveOverlayPolling();
+      } else {
+        stopLiveOverlayPolling();
       }
       return;
     }
@@ -9560,7 +9605,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
     }
   });
 
-  if (!wantsPlayback()) {
+  if (!wantsTimelineOverlay()) {
     startLiveOverlayPolling();
   }
   if (wantsTimelineOverlay()) {
@@ -9818,6 +9863,8 @@ function latestReplayEventsFromPayload(payload: MapReplayHistoryPayload, maxAgeM
       ? frameWindowEnd
       : Date.now();
 
+  const activeWorldVehicles = new Map<string, MapReplayEvent>();
+  let latestTransientEvents: MapReplayEvent[] = [];
   for (let index = frames.length - 1; index >= 0; index -= 1) {
     const events = Array.isArray(frames[index]?.events)
       ? frames[index]!.events!.map(normalizeReplayEvent).filter((event): event is MapReplayEvent => event !== null)
@@ -9829,12 +9876,22 @@ function latestReplayEventsFromPayload(payload: MapReplayHistoryPayload, maxAgeM
       })
       : events;
 
-    if (freshEvents.length > 0) {
+    if (maxAgeMs <= 0 && freshEvents.length > 0) {
       return freshEvents.slice(0, 8);
+    }
+
+    freshEvents.forEach((event, eventIndex) => {
+      if (replayWorldVehicleIsActive(event)) {
+        const key = replayEventKey(event, eventIndex);
+        if (!activeWorldVehicles.has(key)) activeWorldVehicles.set(key, event);
+      }
+    });
+    if (latestTransientEvents.length === 0) {
+      latestTransientEvents = freshEvents.filter((event) => !replayEventIsWorldVehicle(event));
     }
   }
 
-  return [];
+  return [...activeWorldVehicles.values(), ...latestTransientEvents].slice(0, 8);
 }
 
 function mergeReplayEventsIntoFrames(frames: HeatmapHistoryFrame[], replayPayload: MapReplayHistoryPayload): void {

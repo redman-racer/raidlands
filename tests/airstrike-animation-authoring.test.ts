@@ -1,6 +1,7 @@
 import { describe, expect, it } from "vitest";
 import {
   compileSourceBundle,
+  validateSourceBundle,
   type EditorSourceBundle,
   type EditorSourceProfile,
   type PayloadEventFields,
@@ -134,6 +135,59 @@ describe("airstrike authoring speed normalization", () => {
 });
 
 describe("airstrike authoring release sources", () => {
+  it("validates and compiles multi-burst strafing schedules above 200 release units", () => {
+    const source = profileFixture({
+      DurationSeconds: 70,
+      FirstPayloadDelaySeconds: 1,
+      Waypoints: [
+        { Id: "wp_001", Time: 0, X: 0, Y: 0, Z: 0, RotationX: 0, RotationY: 0, RotationZ: 0 },
+        { Id: "wp_002", Time: 35, X: 0, Y: 0, Z: 100, RotationX: 0, RotationY: 0, RotationZ: 0 },
+        { Id: "wp_003", Time: 70, X: 0, Y: 0, Z: 220, RotationX: 0, RotationY: 0, RotationZ: 0 },
+      ],
+      ReleaseSource: {
+        Mode: "repeated",
+        Groups: [
+          {
+            Id: "automatic_001",
+            Name: "Automatic group 1",
+            StartTime: 1,
+            IntervalSeconds: 0.3,
+            UnitsPerRelease: 10,
+            MaximumUnits: 120,
+            Template: payload({ Payload: "bradley_longbarrel_burst", Count: 10 }),
+            HardpointSequence: [],
+          },
+          {
+            Id: "automatic_002",
+            Name: "Automatic group 2",
+            StartTime: 20,
+            IntervalSeconds: 0.3,
+            UnitsPerRelease: 10,
+            MaximumUnits: 120,
+            Template: payload({ Payload: "bradley_longbarrel_burst", Count: 10 }),
+            HardpointSequence: [],
+          },
+          {
+            Id: "automatic_003",
+            Name: "Automatic group 3",
+            StartTime: 40,
+            IntervalSeconds: 0.3,
+            UnitsPerRelease: 10,
+            MaximumUnits: 86,
+            Template: payload({ Payload: "bradley_longbarrel_burst", Count: 10 }),
+            HardpointSequence: [],
+          },
+        ],
+      },
+    });
+
+    expect(validateSourceBundle(bundle(source), metadata())).toEqual([]);
+    expect(
+      compileSourceBundle(bundle(source), { publishedRevision: 1, vehicleMetadata: metadata() }).bundle.Profiles
+        .authoring_test!.CompiledReleaseEvents,
+    ).toHaveLength(326);
+  });
+
   it("materializes manual HardpointId into runtime carrier offsets and source hashes", () => {
     const source = profileFixture({
       ReleaseSource: {
