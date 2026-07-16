@@ -1,4 +1,5 @@
 export type VegetationKind = "pine" | "broadleaf" | "jungle";
+export type VegetationBiome = "temperate" | "tundra" | "arctic" | "arid" | "tropical" | "jungle" | "swamp";
 
 export type VegetationPlacement = {
   x: number;
@@ -6,6 +7,7 @@ export type VegetationPlacement = {
   z: number;
   scale: number;
   kind: VegetationKind;
+  biome: VegetationBiome;
   variation: number;
 };
 
@@ -81,8 +83,9 @@ export function buildTerrainVegetation(
     const density = clamp(0.26 + fertility * 0.56 + tropical * 0.18, 0, 0.94);
     if (hashUnit(key + 37) > density) continue;
 
-    const jungle = tropical > 0.58 && elevation < 0.62 && hashUnit(key + 41) < 0.72;
-    const pine = !jungle && (elevation > 0.54 || slope > 0.3 || hashUnit(key + 43) < 0.34);
+    const biome = vegetationBiome(sample.color, elevation, height - waterLevel, tropical, hashUnit(key + 41));
+    const jungle = biome === "jungle" || biome === "tropical" || biome === "swamp";
+    const pine = biome === "tundra" || biome === "arctic" || (!jungle && hashUnit(key + 43) < 0.34);
     const scaleBase = jungle ? 1.2 : pine ? 0.92 : 1;
     const scale = scaleBase * (0.72 + hashUnit(key + 53) * 0.78);
     placements.push({
@@ -91,11 +94,31 @@ export function buildTerrainVegetation(
       z,
       scale,
       kind: jungle ? "jungle" : pine ? "pine" : "broadleaf",
+      biome,
       variation: hashUnit(key + 61),
     });
   }
 
   return placements;
+}
+
+function vegetationBiome(
+  color: string | undefined,
+  elevation: number,
+  heightAboveWater: number,
+  tropicalNoise: number,
+  variation: number,
+): VegetationBiome {
+  const rgb = /^#[0-9a-f]{6}$/i.test(color || "")
+    ? [Number.parseInt(color!.slice(1, 3), 16), Number.parseInt(color!.slice(3, 5), 16), Number.parseInt(color!.slice(5, 7), 16)]
+    : [80, 105, 70];
+  const [red, green, blue] = rgb;
+  if (elevation > 0.78 || (red > 155 && green > 155 && blue > 155)) return "arctic";
+  if (heightAboveWater < 7 && green > red * 0.95 && tropicalNoise > 0.42) return "swamp";
+  if (red > green * 1.16 && red > blue * 1.25) return "arid";
+  if (tropicalNoise > 0.7 && elevation < 0.58) return variation > 0.68 ? "tropical" : "jungle";
+  if (elevation > 0.5 || blue > red * 1.08) return "tundra";
+  return "temperate";
 }
 
 function terrainSample(

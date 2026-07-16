@@ -1,0 +1,1322 @@
+{
+  "version": 1,
+  "recipeVersion": 1,
+  "sourceRepository": {
+    "repository": "Facepunch/RustRelay.Assets",
+    "revision": "494242b",
+    "defaultSibling": "../RustRelay.Assets/assets"
+  },
+  "thresholds": {
+    "mapToMidDistance": 650,
+    "midToCloseDistance": 180,
+    "hysteresis": 0.18
+  },
+  "entries": [
+    {
+      "id": "temperate-pine-a",
+      "biome": "temperate",
+      "source": "bundled/prefabs/autospawn/resource/v3_temp_forest_pine/pine_a.glb",
+      "weight": 1.1,
+      "nominalHeight": 48,
+      "sourceSha256": "29bb99ee914f697908342413c4b2a1852633ed438ca6199a40f294d720d5e618",
+      "sourceBytes": 237588,
+      "tiers": {
+        "map": {
+          "file": "temperate-pine-a-map.glb",
+          "url": "media/models/trees-lod/temperate-pine-a-map.glb",
+          "bytes": 23976,
+          "sha256": "c669908d69da3f668e112b1602e1a478402432303084cb6218d2a8c4d23b264b",
+          "triangles": 518,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -10.183255195617676,
+              -1.2179510593414307,
+              -9.606728553771973
+            ],
+            "max": [
+              9.296401023864746,
+              44.680973052978516,
+              9.054856300354004
+            ]
+          }
+        },
+        "mid": {
+          "file": "temperate-pine-a-mid.glb",
+          "url": "media/models/trees-lod/temperate-pine-a-mid.glb",
+          "bytes": 77004,
+          "sha256": "5251143d40ab7e6c4b61b7a35c0c723294212c717e55e3b25612874a9f50d9af",
+          "triangles": 1824,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -10.183255195617676,
+              -1.2179510593414307,
+              -9.606728553771973
+            ],
+            "max": [
+              9.353180885314941,
+              46.6960334777832,
+              9.05524730682373
+            ]
+          }
+        },
+        "close": {
+          "file": "temperate-pine-a-close.glb",
+          "url": "media/models/trees-lod/temperate-pine-a-close.glb",
+          "bytes": 232960,
+          "sha256": "044c4164087d3e4bac16485f844f83842b0c13be4abd2d2d3c4dd1dc49f3f0e4",
+          "triangles": 3523,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -10.183255195617676,
+              -1.2179510593414307,
+              -9.606728553771973
+            ],
+            "max": [
+              9.353180885314941,
+              46.6960334777832,
+              9.05524730682373
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "temperate-beech-a",
+      "biome": "temperate",
+      "source": "bundled/prefabs/autospawn/resource/v3_temp_forest/american_beech_a.glb",
+      "weight": 1,
+      "nominalHeight": 28,
+      "sourceSha256": "45726e1beb2808c7e3ca43368d1c76ec00ec31c47ee1bb11187445a9051b430a",
+      "sourceBytes": 186444,
+      "tiers": {
+        "map": {
+          "file": "temperate-beech-a-map.glb",
+          "url": "media/models/trees-lod/temperate-beech-a-map.glb",
+          "bytes": 40196,
+          "sha256": "d9750643d4be9be3f454b887ccbea59bc529b9decdc68e37f4bf34f4a5f3ccdd",
+          "triangles": 1757,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -6.618218898773193,
+              -0.41886138916015625,
+              -6.773465633392334
+            ],
+            "max": [
+              6.988304615020752,
+              18.134252548217773,
+              7.170530796051025
+            ]
+          }
+        },
+        "mid": {
+          "file": "temperate-beech-a-mid.glb",
+          "url": "media/models/trees-lod/temperate-beech-a-mid.glb",
+          "bytes": 71656,
+          "sha256": "d8def873a48d62f213ee78ed6a0faa20e8ded78f1e9998da0058e5e2ed2efd0d",
+          "triangles": 2210,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -6.618218898773193,
+              -1.621377944946289,
+              -6.773465633392334
+            ],
+            "max": [
+              6.988723278045654,
+              18.134252548217773,
+              7.169911861419678
+            ]
+          }
+        },
+        "close": {
+          "file": "temperate-beech-a-close.glb",
+          "url": "media/models/trees-lod/temperate-beech-a-close.glb",
+          "bytes": 183096,
+          "sha256": "b5d980e54d38d8b2ab00e9bfe8670968acb373e28fcf87dbd67eebb70c5c58e2",
+          "triangles": 4285,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -6.618218898773193,
+              -3.1869921684265137,
+              -6.773465633392334
+            ],
+            "max": [
+              6.988178730010986,
+              18.134252548217773,
+              7.17000150680542
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "temperate-birch-big",
+      "biome": "temperate",
+      "source": "bundled/prefabs/autospawn/resource/v3_temp_forest/birch_big_temp.glb",
+      "weight": 0.75,
+      "nominalHeight": 27,
+      "sourceSha256": "f0a3795b3938de4c08da66853a0cb5f0f71547ea584f19a99e028f9ab069d504",
+      "sourceBytes": 127696,
+      "tiers": {
+        "map": {
+          "file": "temperate-birch-big-map.glb",
+          "url": "media/models/trees-lod/temperate-birch-big-map.glb",
+          "bytes": 18332,
+          "sha256": "2168d148fae12856441168d1d0850937d474d0d17ec0c0ad672437950033215d",
+          "triangles": 333,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -5.997169017791748,
+              -0.04872533679008484,
+              -5.333317756652832
+            ],
+            "max": [
+              5.357025623321533,
+              24.98367691040039,
+              6.214926719665527
+            ]
+          }
+        },
+        "mid": {
+          "file": "temperate-birch-big-mid.glb",
+          "url": "media/models/trees-lod/temperate-birch-big-mid.glb",
+          "bytes": 47900,
+          "sha256": "8f3a5e47842c986d2820386976c634e417756d68fafa546491f56aecf493ec79",
+          "triangles": 1003,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -5.997169017791748,
+              -0.04872533679008484,
+              -5.333317756652832
+            ],
+            "max": [
+              5.357132434844971,
+              25.163732528686523,
+              6.2148895263671875
+            ]
+          }
+        },
+        "close": {
+          "file": "temperate-birch-big-close.glb",
+          "url": "media/models/trees-lod/temperate-birch-big-close.glb",
+          "bytes": 124140,
+          "sha256": "5550dfe8d88d732cf0f6e857eef5027767927909c9453f13684b3bd5f146ad31",
+          "triangles": 2211,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -5.997169017791748,
+              -0.04872533679008484,
+              -5.333317756652832
+            ],
+            "max": [
+              5.357132434844971,
+              25.163732528686523,
+              6.2148895263671875
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "tundra-fir-a",
+      "biome": "tundra",
+      "source": "bundled/prefabs/autospawn/resource/v3_tundra_forest/douglas_fir_a.glb",
+      "weight": 1,
+      "nominalHeight": 42,
+      "sourceSha256": "9b9752b078504c8143a36b1675ef23b7ab4c398ddc441e61fe8c73ffa41ffedb",
+      "sourceBytes": 210912,
+      "tiers": {
+        "map": {
+          "file": "tundra-fir-a-map.glb",
+          "url": "media/models/trees-lod/tundra-fir-a-map.glb",
+          "bytes": 23308,
+          "sha256": "9cd8cbca2d098b54a8b66179acbb21467cb873a5db2a471eb4382df905e408a5",
+          "triangles": 546,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -6.137107849121094,
+              -1.1463478803634644,
+              -6.802095890045166
+            ],
+            "max": [
+              6.624434471130371,
+              40.39395523071289,
+              5.776885509490967
+            ]
+          }
+        },
+        "mid": {
+          "file": "tundra-fir-a-mid.glb",
+          "url": "media/models/trees-lod/tundra-fir-a-mid.glb",
+          "bytes": 76360,
+          "sha256": "5fc567fbc1deab99a57edd55d2692c34e3c76ac63216ef9d06ea5fe18ab5920b",
+          "triangles": 1870,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -6.137107849121094,
+              -1.1463478803634644,
+              -6.802095890045166
+            ],
+            "max": [
+              6.624434471130371,
+              40.39395523071289,
+              5.964517116546631
+            ]
+          }
+        },
+        "close": {
+          "file": "tundra-fir-a-close.glb",
+          "url": "media/models/trees-lod/tundra-fir-a-close.glb",
+          "bytes": 206680,
+          "sha256": "b7ad1628bc7e532c25a40e8364f924b790b86148b95eb280129f8ffb669b24f5",
+          "triangles": 3615,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -6.137107849121094,
+              -1.1463478803634644,
+              -6.802095890045166
+            ],
+            "max": [
+              6.624434471130371,
+              40.39395523071289,
+              5.964517116546631
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "tundra-birch-big",
+      "biome": "tundra",
+      "source": "bundled/prefabs/autospawn/resource/v3_tundra_forest/birch_big_tundra.glb",
+      "weight": 0.75,
+      "nominalHeight": 27,
+      "sourceSha256": "2485482fa30036a15887bec0b05840e3a65aa5e886c23379b175e7b38f939c26",
+      "sourceBytes": 130824,
+      "tiers": {
+        "map": {
+          "file": "tundra-birch-big-map.glb",
+          "url": "media/models/trees-lod/tundra-birch-big-map.glb",
+          "bytes": 18656,
+          "sha256": "ceb17ad3e01f320205312471608c77f43161f198dfff6439a42906a02987d1ba",
+          "triangles": 333,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -5.997169017791748,
+              -0.04872533679008484,
+              -5.333317756652832
+            ],
+            "max": [
+              5.357025623321533,
+              24.98367691040039,
+              6.214926719665527
+            ]
+          }
+        },
+        "mid": {
+          "file": "tundra-birch-big-mid.glb",
+          "url": "media/models/trees-lod/tundra-birch-big-mid.glb",
+          "bytes": 48840,
+          "sha256": "f2f74fd599042b8899c43d907b1558f1e5c2b559b8f1723668d9df4288c5765b",
+          "triangles": 1003,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -5.997169017791748,
+              -0.04872533679008484,
+              -5.333317756652832
+            ],
+            "max": [
+              5.357132434844971,
+              25.163732528686523,
+              6.2148895263671875
+            ]
+          }
+        },
+        "close": {
+          "file": "tundra-birch-big-close.glb",
+          "url": "media/models/trees-lod/tundra-birch-big-close.glb",
+          "bytes": 127152,
+          "sha256": "b50e1b75412c51f0b8da3746b01244f7f3e461bd1e01da9da77e540b9258f477",
+          "triangles": 2211,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -5.997169017791748,
+              -0.04872533679008484,
+              -5.333317756652832
+            ],
+            "max": [
+              5.357132434844971,
+              25.163732528686523,
+              6.2148895263671875
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "tundra-dead-pine-a",
+      "biome": "tundra",
+      "source": "bundled/prefabs/autospawn/resource/v3_tundra_forest_dead/pine_dead_a.glb",
+      "weight": 0.22,
+      "nominalHeight": 25,
+      "tags": [
+        "dead"
+      ],
+      "sourceSha256": "7ad5885dd5b964395d8eda9dc4a3ff376bff137cfead17b00d4ac3ec0f0c9f91",
+      "sourceBytes": 23192,
+      "tiers": {
+        "map": {
+          "file": "tundra-dead-pine-a-map.glb",
+          "url": "media/models/trees-lod/tundra-dead-pine-a-map.glb",
+          "bytes": 3892,
+          "sha256": "761f7f691e70ff7cb3ecdc4b16bf7e4e025f3dbf0eb278edf68c1c8f65522dad",
+          "triangles": 93,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -0.961738109588623,
+              -0.5314942598342896,
+              -0.8173609375953674
+            ],
+            "max": [
+              0.8278638124465942,
+              14.004474639892578,
+              0.7371172308921814
+            ]
+          }
+        },
+        "mid": {
+          "file": "tundra-dead-pine-a-mid.glb",
+          "url": "media/models/trees-lod/tundra-dead-pine-a-mid.glb",
+          "bytes": 8728,
+          "sha256": "c093369f96785684061039b0b75555a141775c9f450d905211d86c7bcb3bc7f5",
+          "triangles": 297,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -2.4085514545440674,
+              -0.5314942598342896,
+              -1.1184319257736206
+            ],
+            "max": [
+              1.1074252128601074,
+              14.469090461730957,
+              2.0120692253112793
+            ]
+          }
+        },
+        "close": {
+          "file": "tundra-dead-pine-a-close.glb",
+          "url": "media/models/trees-lod/tundra-dead-pine-a-close.glb",
+          "bytes": 22344,
+          "sha256": "4363f17501bf33f92bcb2e8bf74ef0b795ef533fcca56637992f1cfc949f3d35",
+          "triangles": 628,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -2.428994655609131,
+              -0.5314942598342896,
+              -1.3693244457244873
+            ],
+            "max": [
+              1.2322444915771484,
+              14.596395492553711,
+              2.0259785652160645
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "arctic-pine-a",
+      "biome": "arctic",
+      "source": "bundled/prefabs/autospawn/resource/v3_arctic_forest/pine_a_snow.glb",
+      "weight": 1,
+      "nominalHeight": 48,
+      "tags": [
+        "snow"
+      ],
+      "sourceSha256": "43f1e4a3d6e50409f7c02d95cb8cab2e8284ae9330708bdf1af137a1e4200dcd",
+      "sourceBytes": 223168,
+      "tiers": {
+        "map": {
+          "file": "arctic-pine-a-map.glb",
+          "url": "media/models/trees-lod/arctic-pine-a-map.glb",
+          "bytes": 24444,
+          "sha256": "92c125a4d7e8419ca6692aa4ab11d83fa3a8c9ddef383831b062ba6ce13a0495",
+          "triangles": 518,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -10.183255195617676,
+              -1.2179510593414307,
+              -9.606728553771973
+            ],
+            "max": [
+              9.296401023864746,
+              44.680973052978516,
+              9.054856300354004
+            ]
+          }
+        },
+        "mid": {
+          "file": "arctic-pine-a-mid.glb",
+          "url": "media/models/trees-lod/arctic-pine-a-mid.glb",
+          "bytes": 75776,
+          "sha256": "c7b234245705a47ab2354d09451ca1035f11b1f8e5c7279c55f42bf5dc4624e9",
+          "triangles": 1824,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -10.183255195617676,
+              -1.2179510593414307,
+              -9.606728553771973
+            ],
+            "max": [
+              9.353180885314941,
+              46.6960334777832,
+              9.05524730682373
+            ]
+          }
+        },
+        "close": {
+          "file": "arctic-pine-a-close.glb",
+          "url": "media/models/trees-lod/arctic-pine-a-close.glb",
+          "bytes": 220180,
+          "sha256": "bf0a550ec85e69596c87fec079130e1c8c777ee53c0262dbecaa053b43f9f292",
+          "triangles": 3523,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -10.183255195617676,
+              -1.2179510593414307,
+              -9.606728553771973
+            ],
+            "max": [
+              9.353180885314941,
+              46.6960334777832,
+              9.05524730682373
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "arctic-fir-a",
+      "biome": "arctic",
+      "source": "bundled/prefabs/autospawn/resource/v3_arctic_forest/douglas_fir_a_snow.glb",
+      "weight": 0.85,
+      "nominalHeight": 42,
+      "tags": [
+        "snow"
+      ],
+      "sourceSha256": "10920d20969699cebe3b6987ee71fe74b96166e5b6b0d687823928b7e6452ff4",
+      "sourceBytes": 199752,
+      "tiers": {
+        "map": {
+          "file": "arctic-fir-a-map.glb",
+          "url": "media/models/trees-lod/arctic-fir-a-map.glb",
+          "bytes": 23924,
+          "sha256": "3bfa95fe420f97aee484aecfb833719510a3d7a36d91a234fe19a3adadf372e4",
+          "triangles": 546,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -6.137107849121094,
+              -1.1463478803634644,
+              -6.802095890045166
+            ],
+            "max": [
+              6.624434471130371,
+              40.39395523071289,
+              5.776885509490967
+            ]
+          }
+        },
+        "mid": {
+          "file": "arctic-fir-a-mid.glb",
+          "url": "media/models/trees-lod/arctic-fir-a-mid.glb",
+          "bytes": 75848,
+          "sha256": "376b8ad2bb9ca7d529f5e2b6e98df91ec0e72a200eab0fa891586f178a89446a",
+          "triangles": 1870,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -6.137107849121094,
+              -1.1463478803634644,
+              -6.802095890045166
+            ],
+            "max": [
+              6.624434471130371,
+              40.39395523071289,
+              5.964517116546631
+            ]
+          }
+        },
+        "close": {
+          "file": "arctic-fir-a-close.glb",
+          "url": "media/models/trees-lod/arctic-fir-a-close.glb",
+          "bytes": 196520,
+          "sha256": "437c1688e9e582cc304ef7854674b10cb38b31997b694b64a3abde9417460ff0",
+          "triangles": 3615,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -6.137107849121094,
+              -1.1463478803634644,
+              -6.802095890045166
+            ],
+            "max": [
+              6.624434471130371,
+              40.39395523071289,
+              5.964517116546631
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "arctic-dead-pine-a",
+      "biome": "arctic",
+      "source": "bundled/prefabs/autospawn/resource/v3_arctic_forest/pine_dead_snow_a.glb",
+      "weight": 0.18,
+      "nominalHeight": 25,
+      "tags": [
+        "dead",
+        "snow"
+      ],
+      "sourceSha256": "5df4fe56444ecf19a597ebae2d8af005458f30c56978057770b1a7195435562e",
+      "sourceBytes": 34824,
+      "tiers": {
+        "map": {
+          "file": "arctic-dead-pine-a-map.glb",
+          "url": "media/models/trees-lod/arctic-dead-pine-a-map.glb",
+          "bytes": 5328,
+          "sha256": "cc026f4cf94615afd9801bd7b7fa925ca4c2c419a299d4a8a2da28862d0008fb",
+          "triangles": 142,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -1.620584487915039,
+              -0.5314942598342896,
+              -0.5229606628417969
+            ],
+            "max": [
+              1.1071441173553467,
+              14.469639778137207,
+              1.6654486656188965
+            ]
+          }
+        },
+        "mid": {
+          "file": "arctic-dead-pine-a-mid.glb",
+          "url": "media/models/trees-lod/arctic-dead-pine-a-mid.glb",
+          "bytes": 12224,
+          "sha256": "a79c45889e6926914c5a3affde33f7eec2b061e05e92e364c929c427c9c636ed",
+          "triangles": 436,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -2.409069061279297,
+              -0.5314942598342896,
+              -1.117882251739502
+            ],
+            "max": [
+              1.1070363521575928,
+              14.469639778137207,
+              1.664785385131836
+            ]
+          }
+        },
+        "close": {
+          "file": "arctic-dead-pine-a-close.glb",
+          "url": "media/models/trees-lod/arctic-dead-pine-a-close.glb",
+          "bytes": 34180,
+          "sha256": "00f8686dc4f575f30ec6040a7cc444d9aaeda0b9de12cd0c1da09510c0f8359e",
+          "triangles": 929,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -2.428994655609131,
+              -0.5314942598342896,
+              -1.1387567520141602
+            ],
+            "max": [
+              1.2432224750518799,
+              14.691667556762695,
+              2.0251853466033936
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "arid-palm-tall-a",
+      "biome": "arid",
+      "source": "bundled/prefabs/autospawn/resource/v3_arid_forest/palm_tree_tall_a_entity.glb",
+      "weight": 1,
+      "nominalHeight": 22,
+      "tags": [
+        "palm"
+      ],
+      "sourceSha256": "d31c14002b31f54823d62e49b47efa91519e7f2803ef2ea72e4cc7cf1a881ef0",
+      "sourceBytes": 161852,
+      "tiers": {
+        "map": {
+          "file": "arid-palm-tall-a-map.glb",
+          "url": "media/models/trees-lod/arid-palm-tall-a-map.glb",
+          "bytes": 16680,
+          "sha256": "bdad2854dfc724949d584e775851af99f923ffbf1ee589fc63b9cab3f654ac04",
+          "triangles": 250,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -8.79464054107666,
+              -0.6730139255523682,
+              -8.537507057189941
+            ],
+            "max": [
+              8.09019947052002,
+              26.758989334106445,
+              8.700634956359863
+            ]
+          }
+        },
+        "mid": {
+          "file": "arid-palm-tall-a-mid.glb",
+          "url": "media/models/trees-lod/arid-palm-tall-a-mid.glb",
+          "bytes": 50468,
+          "sha256": "363d2abe82a345f5a7b1a991ef63c9ca8e445c82bdeb1cd48bca1f24ee1047f9",
+          "triangles": 750,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -8.79464054107666,
+              -0.6730139255523682,
+              -8.537507057189941
+            ],
+            "max": [
+              8.09019947052002,
+              26.758989334106445,
+              8.700634956359863
+            ]
+          }
+        },
+        "close": {
+          "file": "arid-palm-tall-a-close.glb",
+          "url": "media/models/trees-lod/arid-palm-tall-a-close.glb",
+          "bytes": 156524,
+          "sha256": "174a74a6974ceb065bc07e0ed0c1238c0d59f47b2689ea6f42f5f2e106e3e5c5",
+          "triangles": 1571,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -8.79464054107666,
+              -0.6730139255523682,
+              -8.537507057189941
+            ],
+            "max": [
+              8.09019947052002,
+              26.758989334106445,
+              8.700634956359863
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "arid-palm-short-b",
+      "biome": "arid",
+      "source": "bundled/prefabs/autospawn/resource/v3_arid_forest/palm_tree_short_b_entity.glb",
+      "weight": 0.7,
+      "nominalHeight": 13,
+      "tags": [
+        "palm"
+      ],
+      "sourceSha256": "a1f8358dfc71930aa8e72a919023697ae295dc49d35e179465cc8f8d158c1c1b",
+      "sourceBytes": 157492,
+      "tiers": {
+        "map": {
+          "file": "arid-palm-short-b-map.glb",
+          "url": "media/models/trees-lod/arid-palm-short-b-map.glb",
+          "bytes": 16320,
+          "sha256": "6e8186ea84a8aeabef4430f3d3ebe0a2d691bb36422aca22a0a32b16a04d4959",
+          "triangles": 215,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -2.9928133487701416,
+              -0.37347689270973206,
+              -2.2294299602508545
+            ],
+            "max": [
+              3.5411980152130127,
+              6.390927791595459,
+              3.7038238048553467
+            ]
+          }
+        },
+        "mid": {
+          "file": "arid-palm-short-b-mid.glb",
+          "url": "media/models/trees-lod/arid-palm-short-b-mid.glb",
+          "bytes": 48472,
+          "sha256": "1543771054a7e3d5d65bad40b913445cdfbacd335c9a62f1f05f6d2aef9d1be2",
+          "triangles": 639,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -2.9928133487701416,
+              -0.37347689270973206,
+              -2.2294299602508545
+            ],
+            "max": [
+              3.5411980152130127,
+              6.390927791595459,
+              3.7038238048553467
+            ]
+          }
+        },
+        "close": {
+          "file": "arid-palm-short-b-close.glb",
+          "url": "media/models/trees-lod/arid-palm-short-b-close.glb",
+          "bytes": 152980,
+          "sha256": "01c127c9f7b7c63ebf3890fd661219360d521b337a43c57c983a8bd15aef27a7",
+          "triangles": 1340,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -2.9928133487701416,
+              -0.37347689270973206,
+              -2.2294299602508545
+            ],
+            "max": [
+              3.5411980152130127,
+              6.390927791595459,
+              3.7038238048553467
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "tropical-palm-tall-a",
+      "biome": "tropical",
+      "source": "bundled/prefabs/autospawn/resource/v3_tropical_forest/palm_tree_tropical_tall_a_entity.glb",
+      "weight": 1,
+      "nominalHeight": 23,
+      "tags": [
+        "palm"
+      ],
+      "sourceSha256": "0b622d949a46b62d820414d79bda2602920484cd1137a57ab9db41f8ff821644",
+      "sourceBytes": 152336,
+      "tiers": {
+        "map": {
+          "file": "tropical-palm-tall-a-map.glb",
+          "url": "media/models/trees-lod/tropical-palm-tall-a-map.glb",
+          "bytes": 15676,
+          "sha256": "667a1dea6f1169058880ad60daca77ff21421ae16062ad876f94f7fceb30e56b",
+          "triangles": 250,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -8.79464054107666,
+              -0.6730139255523682,
+              -8.537507057189941
+            ],
+            "max": [
+              8.09019947052002,
+              26.758989334106445,
+              8.700634956359863
+            ]
+          }
+        },
+        "mid": {
+          "file": "tropical-palm-tall-a-mid.glb",
+          "url": "media/models/trees-lod/tropical-palm-tall-a-mid.glb",
+          "bytes": 47392,
+          "sha256": "c53f2d83c7a5e73d379db4d64246cb5f3600925cee7c866d5c078258dbb2bd56",
+          "triangles": 750,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -8.79464054107666,
+              -0.6730139255523682,
+              -8.537507057189941
+            ],
+            "max": [
+              8.09019947052002,
+              26.758989334106445,
+              8.700634956359863
+            ]
+          }
+        },
+        "close": {
+          "file": "tropical-palm-tall-a-close.glb",
+          "url": "media/models/trees-lod/tropical-palm-tall-a-close.glb",
+          "bytes": 147416,
+          "sha256": "43a2160ee5a3f4665aa51d4bf7b6f84f6e141640e90c92e82fb8f5884282f5bd",
+          "triangles": 1571,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -8.79464054107666,
+              -0.6730139255523682,
+              -8.537507057189941
+            ],
+            "max": [
+              8.09019947052002,
+              26.758989334106445,
+              8.700634956359863
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "tropical-palm-small-a",
+      "biome": "tropical",
+      "source": "bundled/prefabs/autospawn/resource/v3_tropical_forest/palm_tree_tropical_small_a_entity.glb",
+      "weight": 0.65,
+      "nominalHeight": 14,
+      "tags": [
+        "palm"
+      ],
+      "sourceSha256": "7c8e3c9cbac3c0aa8d01243a367a0e23f4d0a9982929b89fc65ecea9e524a371",
+      "sourceBytes": 152444,
+      "tiers": {
+        "map": {
+          "file": "tropical-palm-small-a-map.glb",
+          "url": "media/models/trees-lod/tropical-palm-small-a-map.glb",
+          "bytes": 15812,
+          "sha256": "bf4d069b740de6b6e66ccb676ba7ee127adc615a5a8b06ad02e7136c021094ad",
+          "triangles": 287,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -2.389708995819092,
+              -0.671902596950531,
+              -0.7451620697975159
+            ],
+            "max": [
+              11.003866195678711,
+              14.994952201843262,
+              16.93914794921875
+            ]
+          }
+        },
+        "mid": {
+          "file": "tropical-palm-small-a-mid.glb",
+          "url": "media/models/trees-lod/tropical-palm-small-a-mid.glb",
+          "bytes": 48276,
+          "sha256": "3523ad72086a6258d6502116f0f1b53ee538391c0f000243bf0db4e0d5b7449e",
+          "triangles": 861,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -2.389708995819092,
+              -0.671902596950531,
+              -0.8341206312179565
+            ],
+            "max": [
+              11.003976821899414,
+              14.994566917419434,
+              16.93914794921875
+            ]
+          }
+        },
+        "close": {
+          "file": "tropical-palm-small-a-close.glb",
+          "url": "media/models/trees-lod/tropical-palm-small-a-close.glb",
+          "bytes": 148148,
+          "sha256": "2cae0b100996020f28122ad0ebe53b0986ed490027df4a2f39bbebf15266a334",
+          "triangles": 1804,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -2.389708995819092,
+              -0.671902596950531,
+              -0.8341206312179565
+            ],
+            "max": [
+              11.003976821899414,
+              14.994566917419434,
+              16.93914794921875
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "jungle-hura-a",
+      "biome": "jungle",
+      "source": "bundled/prefabs/autospawn/resource/v3_jungle_forest/hura_crepitans_a.glb",
+      "weight": 1,
+      "nominalHeight": 19,
+      "sourceSha256": "9020ac3a3467aa8ae76b26ab8581dd7d81550455052fa0465ec360c146e342ee",
+      "sourceBytes": 220288,
+      "tiers": {
+        "map": {
+          "file": "jungle-hura-a-map.glb",
+          "url": "media/models/trees-lod/jungle-hura-a-map.glb",
+          "bytes": 38024,
+          "sha256": "af16e98fa1bb6028c4e3642a014abbe7c33af1492a781b7a4e281b939e844df1",
+          "triangles": 1502,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -10.278775215148926,
+              -0.2600000202655792,
+              -9.532124519348145
+            ],
+            "max": [
+              10.84435749053955,
+              17.938926696777344,
+              8.84472942352295
+            ]
+          }
+        },
+        "mid": {
+          "file": "jungle-hura-a-mid.glb",
+          "url": "media/models/trees-lod/jungle-hura-a-mid.glb",
+          "bytes": 86460,
+          "sha256": "c7255146ce6e902481f4b6be08fd533ed65f5c7c24a70f90fad663251ae9f872",
+          "triangles": 4343,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -10.278775215148926,
+              -0.2600000202655792,
+              -9.532124519348145
+            ],
+            "max": [
+              10.84435749053955,
+              17.950531005859375,
+              8.84472942352295
+            ]
+          }
+        },
+        "close": {
+          "file": "jungle-hura-a-close.glb",
+          "url": "media/models/trees-lod/jungle-hura-a-close.glb",
+          "bytes": 207088,
+          "sha256": "d1db9e6a2e2ee846df81dfcee61f34982491a98362535b83dbff81f3d4d3acb3",
+          "triangles": 9420,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -10.278775215148926,
+              -0.2600000202655792,
+              -9.532124519348145
+            ],
+            "max": [
+              10.84435749053955,
+              17.950531005859375,
+              8.84472942352295
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "jungle-trumpet-a",
+      "biome": "jungle",
+      "source": "bundled/prefabs/autospawn/resource/v3_jungle_forest/trumpet_tree_a.glb",
+      "weight": 0.85,
+      "nominalHeight": 23,
+      "sourceSha256": "500f213c313d92506a9a03454d5dce36dd6d804c972e9d1754b7c6c6f2b1f666",
+      "sourceBytes": 266468,
+      "tiers": {
+        "map": {
+          "file": "jungle-trumpet-a-map.glb",
+          "url": "media/models/trees-lod/jungle-trumpet-a-map.glb",
+          "bytes": 34936,
+          "sha256": "ddb00359345ea06f6c66d63ea52d322fef73cbf861c1ebe4ae6e4998ab3ffeba",
+          "triangles": 1575,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -6.329186916351318,
+              -0.00028748030308634043,
+              -5.439996719360352
+            ],
+            "max": [
+              6.372847080230713,
+              17.30079460144043,
+              6.12257194519043
+            ]
+          }
+        },
+        "mid": {
+          "file": "jungle-trumpet-a-mid.glb",
+          "url": "media/models/trees-lod/jungle-trumpet-a-mid.glb",
+          "bytes": 98884,
+          "sha256": "5dc5392c52fef985b81bb4ef98f6bf1d2a3955dfc4d21b7d2d3b816ca1db7350",
+          "triangles": 4746,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -6.329186916351318,
+              -0.00028748030308634043,
+              -5.439996719360352
+            ],
+            "max": [
+              6.372847080230713,
+              17.30079460144043,
+              6.12257194519043
+            ]
+          }
+        },
+        "close": {
+          "file": "jungle-trumpet-a-close.glb",
+          "url": "media/models/trees-lod/jungle-trumpet-a-close.glb",
+          "bytes": 256476,
+          "sha256": "375bc5d698e23e3eb41abf6110193f0dcfe85eb22e7c19dfc1bb34dd88ed8697",
+          "triangles": 10016,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -6.329186916351318,
+              -0.00028748030308634043,
+              -5.439996719360352
+            ],
+            "max": [
+              6.372847080230713,
+              17.30079460144043,
+              6.12257194519043
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "jungle-mauritia-l",
+      "biome": "jungle",
+      "source": "bundled/prefabs/autospawn/resource/v3_jungle_forest/mauritia_flexuosa_l.glb",
+      "weight": 0.6,
+      "nominalHeight": 22,
+      "tags": [
+        "palm"
+      ],
+      "sourceSha256": "22fd7047b99a23f6419f8616d51f01923eb776e00d1c694c691ee3daee39bcb6",
+      "sourceBytes": 186844,
+      "tiers": {
+        "map": {
+          "file": "jungle-mauritia-l-map.glb",
+          "url": "media/models/trees-lod/jungle-mauritia-l-map.glb",
+          "bytes": 26320,
+          "sha256": "52c79b0d5c1045247a77512bed2abf5991c0e8e4427705ee02a6efea078bc7a6",
+          "triangles": 780,
+          "drawCalls": 2,
+          "bounds": {
+            "min": [
+              -6.533210277557373,
+              -0.2510969340801239,
+              -5.912622451782227
+            ],
+            "max": [
+              6.204396724700928,
+              35.53388595581055,
+              6.329991340637207
+            ]
+          }
+        },
+        "mid": {
+          "file": "jungle-mauritia-l-mid.glb",
+          "url": "media/models/trees-lod/jungle-mauritia-l-mid.glb",
+          "bytes": 69480,
+          "sha256": "49c707ea37a15ce5564d28a658b8ac6a8353d6e4a62af117acb45305510ba622",
+          "triangles": 2340,
+          "drawCalls": 2,
+          "bounds": {
+            "min": [
+              -6.533210277557373,
+              -0.2510969340801239,
+              -5.912622451782227
+            ],
+            "max": [
+              6.217907428741455,
+              35.607173919677734,
+              6.32972526550293
+            ]
+          }
+        },
+        "close": {
+          "file": "jungle-mauritia-l-close.glb",
+          "url": "media/models/trees-lod/jungle-mauritia-l-close.glb",
+          "bytes": 181812,
+          "sha256": "fcc0f9b52fe3a72ed934acc702e38a4d653409a9fc0ef2e83eae411fad471bef",
+          "triangles": 4949,
+          "drawCalls": 2,
+          "bounds": {
+            "min": [
+              -6.533210277557373,
+              -0.2510969340801239,
+              -5.912622451782227
+            ],
+            "max": [
+              6.217907428741455,
+              35.607173919677734,
+              6.32972526550293
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "swamp-tree-a",
+      "biome": "swamp",
+      "source": "bundled/prefabs/autospawn/resource/swamp-trees/swamp_tree_a.glb",
+      "weight": 1,
+      "nominalHeight": 18,
+      "sourceSha256": "fd0e34e318d416751180c1be94a4d8789751b82fdb97bd29e9f7a232252ff806",
+      "sourceBytes": 84740,
+      "tiers": {
+        "map": {
+          "file": "swamp-tree-a-map.glb",
+          "url": "media/models/trees-lod/swamp-tree-a-map.glb",
+          "bytes": 9952,
+          "sha256": "5fdf71689edb3443cf973bc75d70688f3de0d8461e48088124a9faa5423c2f53",
+          "triangles": 324,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -3.1473705768585205,
+              -0.24059149622917175,
+              -2.0954625606536865
+            ],
+            "max": [
+              4.839329719543457,
+              14.127049446105957,
+              5.921054840087891
+            ]
+          }
+        },
+        "mid": {
+          "file": "swamp-tree-a-mid.glb",
+          "url": "media/models/trees-lod/swamp-tree-a-mid.glb",
+          "bytes": 27616,
+          "sha256": "8b8e5a4ced483f76e985fc4674ddc9d83c58b05c67abeae4c08f4de9a2126993",
+          "triangles": 999,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -3.1473705768585205,
+              -0.26694929599761963,
+              -2.0954625606536865
+            ],
+            "max": [
+              4.839045524597168,
+              14.127049446105957,
+              5.920825004577637
+            ]
+          }
+        },
+        "close": {
+          "file": "swamp-tree-a-close.glb",
+          "url": "media/models/trees-lod/swamp-tree-a-close.glb",
+          "bytes": 81720,
+          "sha256": "5ce6e8f649d46f4d2895013da8f95118cad769537802e0b9c9e485fb936760a2",
+          "triangles": 2104,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -3.1473705768585205,
+              -0.26694929599761963,
+              -2.0954625606536865
+            ],
+            "max": [
+              4.839045524597168,
+              14.127049446105957,
+              5.920825004577637
+            ]
+          }
+        }
+      }
+    },
+    {
+      "id": "swamp-tree-b",
+      "biome": "swamp",
+      "source": "bundled/prefabs/autospawn/resource/swamp-trees/swamp_tree_b.glb",
+      "weight": 0.8,
+      "nominalHeight": 20,
+      "sourceSha256": "df147b462018f1b3e38a94fc98377bed5eed0a6d61fcc25647985c729ef98ede",
+      "sourceBytes": 87556,
+      "tiers": {
+        "map": {
+          "file": "swamp-tree-b-map.glb",
+          "url": "media/models/trees-lod/swamp-tree-b-map.glb",
+          "bytes": 10416,
+          "sha256": "b5abc89e7120d28883b6ecdfb22b0d9118cda6bac75b52ecec1e0f3cdccadecc",
+          "triangles": 425,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -1.6198508739471436,
+              -1.5287225246429443,
+              -6.464205741882324
+            ],
+            "max": [
+              7.006219863891602,
+              7.901473045349121,
+              1.4866762161254883
+            ]
+          }
+        },
+        "mid": {
+          "file": "swamp-tree-b-mid.glb",
+          "url": "media/models/trees-lod/swamp-tree-b-mid.glb",
+          "bytes": 28600,
+          "sha256": "af26f32da70498f986f3a3e01b80a1bbbd227ccb9385c75e9d437e32914c9c65",
+          "triangles": 1279,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -1.6198508739471436,
+              -1.5686074495315552,
+              -6.464205741882324
+            ],
+            "max": [
+              7.00628662109375,
+              7.901473045349121,
+              1.4867773056030273
+            ]
+          }
+        },
+        "close": {
+          "file": "swamp-tree-b-close.glb",
+          "url": "media/models/trees-lod/swamp-tree-b-close.glb",
+          "bytes": 84400,
+          "sha256": "a73c4eb0a784884058a8250a78c341cc54fdcef841a5219c23b6f4e5b808e2b3",
+          "triangles": 2720,
+          "drawCalls": 1,
+          "bounds": {
+            "min": [
+              -1.6198508739471436,
+              -1.5686074495315552,
+              -6.464205741882324
+            ],
+            "max": [
+              7.00628662109375,
+              7.901473045349121,
+              1.4867773056030273
+            ]
+          }
+        }
+      }
+    }
+  ]
+}

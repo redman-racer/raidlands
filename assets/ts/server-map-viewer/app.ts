@@ -155,6 +155,7 @@ import {
   vegetationInstanceBudget,
   type VegetationPlacement,
 } from "./vegetation-policy";
+import { TreeModelController } from "./tree-model-controller";
 
 const ENVIRONMENT_QUALITY_STORAGE_KEY = "raidlands:map-environment-quality";
 const CAMERA_PREFERENCES_STORAGE_KEY = "raidlands:map-camera-preferences";
@@ -1264,6 +1265,7 @@ class TerrainViewer {
   private readonly lockCameraInput: boolean;
   private monumentMode: MonumentMode = "auto";
   private readonly monumentModels: MonumentModelController;
+  private readonly treeModels: TreeModelController;
   private transitionFrom: CameraPose | null = null;
   private transitionTo: CameraPose | null = null;
   private transitionFinal: CameraPose | null = null;
@@ -1410,6 +1412,16 @@ class TerrainViewer {
     this.vegetationLayer.add(vegetation);
     this.root.dataset.vegetationInstances = String(vegetation.userData.instanceCount || 0);
     this.scene.add(this.vegetationLayer);
+    this.treeModels = new TreeModelController({
+      assetBase: this.root.dataset.assetBase || new URL(/* @vite-ignore */ "../../", import.meta.url).href,
+      camera: this.camera,
+      quality: this.qualityProfile.resolved,
+      placements: vegetation.userData.placements as VegetationPlacement[],
+      fallback: vegetation,
+      parent: this.vegetationLayer,
+      root: this.root,
+      dracoDecoderUrl: DRACO_DECODER_URL,
+    });
     this.terrainLightUniforms.waterLevel.value = resolveOceanWaterLevel(this.terrain);
     this.terrainLightUniforms.minHeight.value = Number(this.terrain.minHeight) || 0;
     this.terrainLightUniforms.maxHeight.value = Number(this.terrain.maxHeight) || 300;
@@ -1521,6 +1533,7 @@ class TerrainViewer {
     if (document.pointerLockElement === this.renderer.domElement) document.exitPointerLock();
     this.setBrowserFill(false);
     this.monumentModels.dispose();
+    this.treeModels.dispose();
     this.controls.dispose();
     this.floatingControls?.remove();
     this.floatingControls = null;
@@ -2941,6 +2954,7 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
     this.airstrikeLayer.userData.tick?.((now - this.clockStart) / 1000);
     this.monumentLayer.traverse((object) => object.userData.tick?.((now - this.clockStart) / 1000));
     this.monumentModels.tick(now);
+    this.treeModels.tick(now);
     this.updateAircraftCameraSafety();
     this.composer.render();
     this.root.dataset.viewerDrawCalls = String(this.renderer.info.render.calls);
@@ -8182,6 +8196,7 @@ function createTerrainVegetation(terrain: TerrainPayload, quality: EnvironmentQu
   }, vegetationInstanceBudget(quality));
 
   group.userData.instanceCount = placements.length;
+  group.userData.placements = placements;
   if (placements.length === 0) return group;
 
   group.add(createVegetationTrunks(placements));

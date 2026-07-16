@@ -39,4 +39,20 @@ describe("server map terrain vegetation policy", () => {
       expect(Math.hypot(placement.x, placement.z)).toBeGreaterThanOrEqual(270);
     });
   });
+
+  it("assigns deterministic biome-specific tree families", () => {
+    const arid = terrain();
+    arid.colors.fill("#9a6742");
+    const aridPlacements = buildTerrainVegetation(arid, 80);
+    expect(aridPlacements.length).toBeGreaterThan(0);
+    expect(new Set(aridPlacements.map((placement) => placement.biome))).toEqual(new Set(["arid"]));
+
+    const arctic = terrain();
+    arctic.minHeight = 0;
+    arctic.maxHeight = 12;
+    arctic.heights.fill(10);
+    const arcticPlacements = buildTerrainVegetation(arctic, 80);
+    expect(arcticPlacements.length).toBeGreaterThan(0);
+    expect(new Set(arcticPlacements.map((placement) => placement.biome))).toEqual(new Set(["arctic"]));
+  });
 });
