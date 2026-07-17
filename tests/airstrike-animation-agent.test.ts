@@ -35,10 +35,11 @@ describe("airstrike agent SSE parsing", () => {
 
 describe("airstrike agent editor integration contract", () => {
   it("keeps the dock, proposal workflow, save attribution, and ghost preview wired together", async () => {
-    const [markup, app, viewport] = await Promise.all([
+    const [markup, app, viewport, server] = await Promise.all([
       readFile(resolve("admin/airstrike-animation-editor.php"), "utf8"),
       readFile(resolve("assets/ts/airstrike-animation-editor/app.ts"), "utf8"),
       readFile(resolve("assets/ts/airstrike-animation-editor/editor/viewport.ts"), "utf8"),
+      readFile(resolve("includes/airstrike-agent.php"), "utf8"),
     ]);
 
     expect(markup).toContain('data-editor-right-tab="agent"');
@@ -55,5 +56,7 @@ describe("airstrike agent editor integration contract", () => {
     expect(app).toContain("canonicalJson(this.toolSession.profile)");
     expect(viewport).toContain('route.name = "agent-proposal-route"');
     expect(viewport).toContain("getReleasePreviewEvents(profile, this.options.metadata)");
+    expect(server).toContain("p.profile_key = :saved_profile_key");
+    expect(server).toContain("t.client_profile_key = :client_profile_key");
   });
 });

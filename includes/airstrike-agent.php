@@ -99,8 +99,10 @@ function raidlands_airstrike_agent_list_threads(string $profile_key = '', bool $
         $where[] = 't.archived_at IS NULL';
     }
     if (trim($profile_key) !== '') {
-        $params['profile_key'] = raidlands_airstrike_animations_clean_key($profile_key);
-        $where[] = '(p.profile_key = :profile_key OR (t.profile_id IS NULL AND t.client_profile_key = :profile_key))';
+        $clean_profile_key = raidlands_airstrike_animations_clean_key($profile_key);
+        $params['saved_profile_key'] = $clean_profile_key;
+        $params['client_profile_key'] = $clean_profile_key;
+        $where[] = '(p.profile_key = :saved_profile_key OR (t.profile_id IS NULL AND t.client_profile_key = :client_profile_key))';
     }
     $rows = raidlands_db_fetch_all(
         'SELECT t.*, p.profile_key FROM airstrike_agent_threads t
