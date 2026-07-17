@@ -54,6 +54,7 @@ describe("airstrike animation golden fixtures", () => {
     }
 
     expect(metadata.vehicles.cargo_ship?.mapModelUrl).toContain("cargo_ship_map.glb");
+    expect(metadata.vehicles.cargo_ship?.mapRotationCorrection?.y).toBe(180);
   });
 
   it("recompiles every expected canonical bundle byte-for-byte", async () => {

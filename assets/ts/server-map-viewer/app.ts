@@ -5671,13 +5671,20 @@ function createAircraftMarker(vehicle: string, metadataFile: VehiclePreviewMetad
   const group = new Group();
   group.name = `airstrike-preview-aircraft-${vehicle}`;
   const metadata = metadataForVehicle(metadataFile, vehicle);
+  const mapMetadata = metadata.mapModelUrl
+    ? {
+      ...metadata,
+      modelUrl: metadata.mapModelUrl,
+      rotationCorrection: metadata.mapRotationCorrection || metadata.rotationCorrection,
+    }
+    : metadata;
   const largestDimension = Math.max(metadata.bounds.x, metadata.bounds.y, metadata.bounds.z);
   const mapDisplaySize = Number(metadata.mapDisplaySize || 48);
   const mapVisualScale = Math.max(1, mapDisplaySize / Math.max(1, largestDimension));
   const displayedLargestDimension = largestDimension * mapVisualScale;
   group.scale.setScalar(mapVisualScale);
   group.userData.cameraSafetyRadius = MathUtils.clamp(displayedLargestDimension * 3.25, 72, 220);
-  const fallback = createVehicleProxy(metadata);
+  const fallback = createVehicleProxy(mapMetadata);
   prepareLoadedAircraftForMap(fallback);
   group.add(fallback);
 
@@ -5687,9 +5694,6 @@ function createAircraftMarker(vehicle: string, metadataFile: VehiclePreviewMetad
     return group;
   }
 
-  const mapMetadata = metadata.mapModelUrl
-    ? { ...metadata, modelUrl: metadata.mapModelUrl }
-    : metadata;
   void loadVehiclePreview(mapMetadata, assetBase || "/assets/").then((result) => {
     if (result.usedFallback) {
       return;

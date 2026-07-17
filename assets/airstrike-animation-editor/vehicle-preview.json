@@ -79,6 +79,7 @@
       "vehicle": "cargo_ship",
       "modelUrl": "/assets/media/models/world-events/cargo_ship.glb",
       "mapModelUrl": "/assets/media/models/world-events/cargo_ship_map.glb",
+      "mapRotationCorrection": { "x": 0, "y": 180, "z": 0 },
       "prefabLabel": "assets/content/vehicles/boats/cargoship/cargoshiptest.prefab",
       "scale": 1,
       "positionCorrection": { "x": 0, "y": 0, "z": 0 },

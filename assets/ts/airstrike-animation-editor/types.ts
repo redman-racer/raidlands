@@ -252,6 +252,8 @@ export interface VehiclePreviewMetadata {
   modelUrl: string;
   /** Optional exterior-only asset used by the whole-map viewer. */
   mapModelUrl?: string;
+  /** Optional orientation override for the whole-map asset. */
+  mapRotationCorrection?: Vector3Value;
   prefabLabel?: string;
   scale: number;
   positionCorrection: Vector3Value;

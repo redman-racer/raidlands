@@ -50,6 +50,7 @@
         "vehicle": { "type": "string" },
         "modelUrl": { "type": "string" },
         "mapModelUrl": { "type": "string" },
+        "mapRotationCorrection": { "$ref": "#/$defs/vector" },
         "prefabLabel": { "type": "string" },
         "scale": { "type": "number", "exclusiveMinimum": 0 },
         "positionCorrection": { "$ref": "#/$defs/vector" },
