@@ -115,10 +115,18 @@ function raidlands_podium_ingest_observation(PDO $pdo, int $player_id, int $wipe
         $statement = $pdo->prepare(
             'INSERT INTO player_outfit_observations
                 (player_id, server_id, wipe_id, outfit_signature, items_json, sample_count, first_seen_at, last_seen_at)
-             VALUES (:player_id, :server_id, :wipe_id, :signature, :items_json, 1, :observed_at, :observed_at)
+             VALUES (:player_id, :server_id, :wipe_id, :signature, :items_json, 1, :first_seen_at, :last_seen_at)
              ON DUPLICATE KEY UPDATE sample_count = sample_count + 1, last_seen_at = VALUES(last_seen_at), items_json = VALUES(items_json), updated_at = NOW()'
         );
-        $statement->execute(['player_id' => $player_id, 'server_id' => $server_id, 'wipe_id' => $wipe_id, 'signature' => $signature, 'items_json' => $json, 'observed_at' => $observed_at]);
+        $statement->execute([
+            'player_id' => $player_id,
+            'server_id' => $server_id,
+            'wipe_id' => $wipe_id,
+            'signature' => $signature,
+            'items_json' => $json,
+            'first_seen_at' => $observed_at,
+            'last_seen_at' => $observed_at,
+        ]);
     }
 
     $weapon = raidlands_podium_normalize_weapon($appearance['active_weapon'] ?? null);
@@ -132,10 +140,18 @@ function raidlands_podium_ingest_observation(PDO $pdo, int $player_id, int $wipe
         $statement = $pdo->prepare(
             'INSERT INTO player_weapon_observations
                 (player_id, server_id, wipe_id, weapon_shortname, skin_id, sample_count, first_seen_at, last_seen_at)
-             VALUES (:player_id, :server_id, :wipe_id, :shortname, :skin_id, 1, :observed_at, :observed_at)
+             VALUES (:player_id, :server_id, :wipe_id, :shortname, :skin_id, 1, :first_seen_at, :last_seen_at)
              ON DUPLICATE KEY UPDATE sample_count = sample_count + 1, last_seen_at = VALUES(last_seen_at), updated_at = NOW()'
         );
-        $statement->execute(['player_id' => $player_id, 'server_id' => $server_id, 'wipe_id' => $wipe_id, 'shortname' => $weapon['shortname'], 'skin_id' => $weapon['skin_id'], 'observed_at' => $observed_at]);
+        $statement->execute([
+            'player_id' => $player_id,
+            'server_id' => $server_id,
+            'wipe_id' => $wipe_id,
+            'shortname' => $weapon['shortname'],
+            'skin_id' => $weapon['skin_id'],
+            'first_seen_at' => $observed_at,
+            'last_seen_at' => $observed_at,
+        ]);
     }
 }
 
