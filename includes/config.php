@@ -86,6 +86,14 @@ $openai_config = [
     'timeoutSeconds' => raidlands_env_int('OPENAI_RAIDLANDS_TIMEOUT_SECONDS', 4),
 ];
 
+$openai_airstrike_agent_config = [
+    'enabled' => raidlands_env_bool('OPENAI_RAIDLANDS_AGENT_ENABLED', false),
+    'apiKey' => raidlands_env('OPENAI_RAIDLANDS_API_KEY', ''),
+    'model' => raidlands_env('OPENAI_RAIDLANDS_AGENT_MODEL', 'gpt-5.6'),
+    'timeoutSeconds' => raidlands_env_int('OPENAI_RAIDLANDS_AGENT_TIMEOUT_SECONDS', 90),
+    'maxToolRounds' => raidlands_env_int('OPENAI_RAIDLANDS_AGENT_MAX_TOOL_ROUNDS', 8),
+];
+
 $vip_bridge_config = [
     'serverId' => raidlands_env('RAIDLANDS_BRIDGE_SERVER_ID', 'raidlands-main'),
     'sharedSecret' => trim(raidlands_env('RAIDLANDS_BRIDGE_SHARED_SECRET', '')),

@@ -50,6 +50,7 @@ over `.env` and stay ignored by Git.
 - `RAIDLANDS_BRIDGE_SERVER_ID`, `RAIDLANDS_BRIDGE_SHARED_SECRET`
 - `RAIDLANDS_STEAM_API_KEY`
 - `OPENAI_RAIDLANDS_API_KEY`, `OPENAI_RAIDLANDS_MODEL`, `OPENAI_RAIDLANDS_AI_ENABLED`, `OPENAI_RAIDLANDS_TIMEOUT_SECONDS`
+- `OPENAI_RAIDLANDS_AGENT_ENABLED`, `OPENAI_RAIDLANDS_AGENT_MODEL`, `OPENAI_RAIDLANDS_AGENT_TIMEOUT_SECONDS`, `OPENAI_RAIDLANDS_AGENT_MAX_TOOL_ROUNDS`
 - `RAIDLANDS_CONNECT_COMMAND`, `RAIDLANDS_STEAM_CONNECT_URL`, `RAIDLANDS_DISCORD_INVITE_URL`
 - `RAIDLANDS_SERVER_STATS_PROVIDER`, `RAIDLANDS_SERVER_STATUS_CACHE_SECONDS`, `RAIDLANDS_SERVER_STATUS_STALE_SECONDS`
 - `RAIDLANDS_SERVER_STATUS_SAMPLE_RETENTION_DAYS`, `RAIDLANDS_SERVER_STATUS_HOURLY_RETENTION_MONTHS`
@@ -74,6 +75,8 @@ Discord client secrets and bot tokens remain environment-only. Admin shows readi
 Steam avatars and profile links are only fetched when `RAIDLANDS_STEAM_API_KEY` is set in `.env`. Without that key, account and leaderboard pages render without Steam profile metadata.
 
 AI feedback triage is optional. When `OPENAI_RAIDLANDS_AI_ENABLED=true` and `OPENAI_RAIDLANDS_API_KEY` is set to a real key, new support feedback and feature suggestions are sent through OpenAI with content-only payloads. Multi-idea submissions can be split into standalone child suggestions, then each child is checked again for grouping or public-card creation. Missing keys, placeholder keys, or API failures leave items unchecked so Admin > Feedback or Admin > Features can retry them. Admin > TODO always shows a live ranked work queue, and can save an AI-generated daily brief when the OpenAI key and TODO snapshot table are ready.
+
+The airstrike editor agent is a separate feature flag and model configuration. Run `database/migrations/067_airstrike_animation_agent.sql`, set `OPENAI_RAIDLANDS_AGENT_ENABLED=true`, and provide the server-only `OPENAI_RAIDLANDS_API_KEY` to enable it. Its Plan mode is read-only; Regular mode edits an ephemeral profile copy and only exposes a validated proposal. Apply changes the browser's unsaved draft, while Save and Publish remain explicit editor actions.
 
 The admin panel uses Steam sign-in once `database/migrations/007_admin_auth.sql` is installed. Add approved Steam IDs to `admin_users` and attach roles through `admin_user_roles`; the migration includes a commented owner bootstrap query.
 
@@ -112,7 +115,7 @@ The store uses MySQL as the source of truth, Stripe Checkout for cash purchases,
 29. Run `database/migrations/027_ai_feedback_triage.sql`.
 30. Run `database/migrations/028_ai_feedback_split_suggestions.sql`.
 31. Run `database/migrations/029_admin_todo_snapshots.sql`.
-32. Run every later numbered migration in order through `database/migrations/066_raid_stats.sql`.
+32. Run every later numbered migration in order through `database/migrations/067_airstrike_animation_agent.sql`.
 33. Run `database/seeds/001_store_products.sql`.
 34. Copy `.env.example` to `.env`.
 35. Fill in MySQL, Stripe, Steam API, OpenAI AI triage key if enabled, bridge secret, clan API limit values, and chat settings.

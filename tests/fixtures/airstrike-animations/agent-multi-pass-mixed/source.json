@@ -1,0 +1,73 @@
+{
+  "EditorSourceSchemaVersion": 1,
+  "AllowDangerousPayloadPreview": false,
+  "Profiles": {
+    "agent_multi_pass_mixed": {
+      "EditorSourceSchemaVersion": 1,
+      "ProfileKey": "agent_multi_pass_mixed",
+      "DisplayName": "Agent Multi-pass Mixed Strafe",
+      "Vehicle": "a10",
+      "DurationSeconds": 18,
+      "FirstPayloadDelaySeconds": 3,
+      "RotationSmoothTimeSeconds": 0.12,
+      "StopAtWaypoints": false,
+      "MinimumTerrainClearance": 55,
+      "PositionInterpolation": "time_hermite",
+      "RotationMode": "follow_path_plus_offset",
+      "Waypoints": [
+        { "Id": "wp_pass_1_in", "Time": 0, "X": -38, "Y": 92, "Z": -520, "RotationX": 0, "RotationY": 0, "RotationZ": -4 },
+        { "Id": "wp_pass_1_exit", "Time": 5.5, "X": 42, "Y": 78, "Z": 420, "RotationX": 0, "RotationY": 0, "RotationZ": 5 },
+        { "Id": "wp_reset_1", "Time": 8, "X": 230, "Y": 155, "Z": 520, "RotationX": 0, "RotationY": 155, "RotationZ": 18 },
+        { "Id": "wp_pass_2_in", "Time": 10, "X": 54, "Y": 94, "Z": -500, "RotationX": 0, "RotationY": 180, "RotationZ": -5 },
+        { "Id": "wp_pass_2_exit", "Time": 15.5, "X": -46, "Y": 80, "Z": 430, "RotationX": 0, "RotationY": 180, "RotationZ": 6 },
+        { "Id": "wp_egress", "Time": 18, "X": -260, "Y": 170, "Z": 610, "RotationX": 0, "RotationY": 205, "RotationZ": -20 }
+      ],
+      "ReleaseSource": {
+        "Mode": "mixed",
+        "Events": [
+          {
+            "Id": "manual_smoke_marker", "Time": 8.5, "Payload": "smoke", "Count": 1, "HardpointId": "left_gun",
+            "CarrierOffsetX": 0, "CarrierOffsetY": -0.25, "CarrierOffsetZ": 0.4,
+            "TargetOffsetX": 18, "TargetOffsetY": 0, "TargetOffsetZ": -12,
+            "SpreadRadius": 2, "LaunchSpeed": -1, "FuseSeconds": 0.5,
+            "DamageScale": 1, "VehicleDamageScale": -1, "SplashRadius": -1, "ImpactRadius": -1,
+            "MaxTrackingSeconds": -1, "MaxTrackingDistance": -1, "DamageScales": {}
+          }
+        ],
+        "Groups": [
+          {
+            "Id": "strafe_pass_alpha", "Name": "Left-to-right gun pass", "StartTime": 3,
+            "IntervalSeconds": 0.18, "UnitIntervalSeconds": 0.035, "UnitsPerRelease": 2, "MaximumUnits": 8,
+            "HardpointSequence": ["left_gun", "right_gun"],
+            "Template": {
+              "Payload": "bradley_longbarrel_burst", "Count": 2,
+              "CarrierOffsetX": 0, "CarrierOffsetY": -0.15, "CarrierOffsetZ": 0.3,
+              "TargetOffsetX": -14, "TargetOffsetY": 0, "TargetOffsetZ": 8,
+              "SpreadRadius": 1.5, "LaunchSpeed": -1, "FuseSeconds": -1,
+              "DamageScale": 1, "VehicleDamageScale": 1, "SplashRadius": 0, "ImpactRadius": 0,
+              "MaxTrackingSeconds": -1, "MaxTrackingDistance": -1, "DamageScales": {}
+            }
+          },
+          {
+            "Id": "strafe_pass_bravo", "Name": "Right-to-left gun pass", "StartTime": 11.5,
+            "IntervalSeconds": 0.16, "UnitIntervalSeconds": 0.03, "UnitsPerRelease": 2, "MaximumUnits": 8,
+            "HardpointSequence": ["right_gun", "left_gun"],
+            "Template": {
+              "Payload": "bradley_longbarrel_burst", "Count": 2,
+              "CarrierOffsetX": 0, "CarrierOffsetY": -0.15, "CarrierOffsetZ": 0.3,
+              "TargetOffsetX": 16, "TargetOffsetY": 0, "TargetOffsetZ": -6,
+              "SpreadRadius": 1.25, "LaunchSpeed": -1, "FuseSeconds": -1,
+              "DamageScale": 1, "VehicleDamageScale": 1, "SplashRadius": 0, "ImpactRadius": 0,
+              "MaxTrackingSeconds": -1, "MaxTrackingDistance": -1, "DamageScales": {}
+            }
+          }
+        ]
+      },
+      "EditorMetadata": {
+        "Notes": "Representative agent fixture: two independent strafes, alternating hardpoints, distinct aim offsets, and a manual marker.",
+        "Tags": ["agent", "mixed", "multi-pass", "strafe"],
+        "VehiclePreviewOverrides": {}
+      }
+    }
+  }
+}

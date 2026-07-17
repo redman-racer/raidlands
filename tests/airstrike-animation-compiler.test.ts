@@ -63,7 +63,7 @@ describe("airstrike animation golden fixtures", () => {
       .filter((entry) => entry.isDirectory())
       .map((entry) => entry.name)
       .sort();
-    expect(directories).toHaveLength(14);
+    expect(directories).toHaveLength(15);
 
     for (const directory of directories) {
       const path = join(fixtureRoot, directory);

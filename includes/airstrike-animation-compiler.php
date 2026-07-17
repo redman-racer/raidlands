@@ -241,6 +241,7 @@ function raidlands_airstrike_animation_repeated_group(array $group, int $index =
         'start_time' => raidlands_airstrike_animation_number($group['StartTime'] ?? 0.0),
         'interval_seconds' => raidlands_airstrike_animation_number($group['IntervalSeconds'] ?? 0.5, 0.5),
         'unit_interval_seconds' => raidlands_airstrike_animation_number($group['UnitIntervalSeconds'] ?? 0.0),
+        'unit_interval_present' => array_key_exists('UnitIntervalSeconds', $group),
         'units_per_release' => raidlands_airstrike_animation_int(
             $group['UnitsPerRelease'] ?? ($group['Template']['Count'] ?? null) ?? 1,
             1
@@ -1651,7 +1652,7 @@ function raidlands_airstrike_animation_source_hash_projection(
             $groups = [];
 
             foreach ($release['groups'] as $group) {
-                $groups[] = [
+                $group_projection = [
                     'StartTime' => $group['start_time'],
                     'IntervalSeconds' => $group['interval_seconds'],
                     'UnitsPerRelease' => $group['units_per_release'],
@@ -1659,11 +1660,14 @@ function raidlands_airstrike_animation_source_hash_projection(
                     'Template' => raidlands_airstrike_animation_payload_object_shape($group['template']),
                     'HardpointSequence' => $group['hardpoint_sequence'],
                 ];
+                if (!empty($group['unit_interval_present'])) {
+                    $group_projection['UnitIntervalSeconds'] = $group['unit_interval_seconds'];
+                }
+                $groups[] = $group_projection;
             }
 
             $release_projection = [
                 'Mode' => $release['mode'] === 'mixed' ? 'mixed' : 'repeated',
-                'LegacyDynamic' => false,
                 'Groups' => $groups,
                 'ResolvedHardpointOffsets' => $resolved_hardpoint_offsets === []
                     ? new stdClass()
@@ -1674,6 +1678,8 @@ function raidlands_airstrike_animation_source_hash_projection(
                     unset($event['Id']);
                     return raidlands_airstrike_animation_payload_object_shape($event);
                 }, array_values(array_filter($release['events'], 'is_array')));
+            } else {
+                $release_projection['LegacyDynamic'] = false;
             }
         } else {
             $release_projection = [

@@ -5,6 +5,7 @@ $base_path = '../';
 
 require dirname(__DIR__) . '/includes/bootstrap.php';
 require_once $site_root . '/includes/admin.php';
+require_once $site_root . '/includes/airstrike-agent.php';
 
 raidlands_admin_boot();
 
@@ -29,6 +30,7 @@ $editor_config = [
     'profileKey' => $profile_key,
     'csrf' => raidlands_admin_csrf_token(),
     'apiBase' => $base_path . 'api/admin/airstrike-animations',
+    'agentApiBase' => $base_path . 'api/admin/airstrike-agent',
     'assetBase' => $base_path . 'assets/',
     'serverStatusUrl' => $base_path . 'api/server-status.php',
     'managementUrl' => './?section=airstrike-animations',
@@ -45,6 +47,9 @@ $editor_config = [
         'sourceWorkbench' => false,
         'threeViewport' => true,
         'rconPublishNotification' => false,
+        'airstrikeAgent' => raidlands_airstrike_agent_config()['enabled'],
+        'airstrikeAgentConfigured' => raidlands_airstrike_agent_is_configured(),
+        'airstrikeAgentStorageReady' => raidlands_airstrike_agent_schema_ready(),
     ],
 ];
 ?>
@@ -196,13 +201,13 @@ $editor_config = [
 
       <aside class="airstrike-editor-right">
         <div class="airstrike-editor-dock-head">
-          <div>
-            <p class="section-kicker">Inspector</p>
-            <strong>Palettes</strong>
+          <div class="airstrike-editor-right-tabs" role="tablist" aria-label="Right panel">
+            <button class="is-active" type="button" role="tab" aria-selected="true" data-editor-right-tab="inspector">Inspector</button>
+            <button type="button" role="tab" aria-selected="false" data-editor-right-tab="agent">Agent</button>
           </div>
           <button class="airstrike-editor-panel-collapse airstrike-editor-panel-collapse-right" type="button" data-editor-toggle-panel="right" aria-label="Minimize inspector" title="Minimize inspector"></button>
         </div>
-        <div class="airstrike-editor-palette-groups">
+        <div class="airstrike-editor-palette-groups" data-editor-inspector-panel>
           <section class="airstrike-editor-palette-group" aria-label="Edit palettes">
             <div class="airstrike-editor-palette-group-head">
               <span>Edit</span>
@@ -387,6 +392,38 @@ $editor_config = [
             </div>
           </section>
         </div>
+        <section class="airstrike-agent-panel" data-editor-agent-panel hidden aria-label="Airstrike AI agent">
+          <div class="airstrike-agent-threadbar">
+            <select data-agent-thread aria-label="Agent conversation"><option value="">New conversation</option></select>
+            <button type="button" data-agent-new title="New conversation">+</button>
+            <button type="button" data-agent-delete title="Delete conversation">×</button>
+          </div>
+          <div class="airstrike-agent-mode" role="group" aria-label="Agent mode">
+            <button class="is-active" type="button" data-agent-mode="plan">Plan</button>
+            <button type="button" data-agent-mode="regular">Regular</button>
+            <span data-agent-context-note>Current draft context</span>
+          </div>
+          <div class="airstrike-agent-unavailable" data-agent-unavailable hidden></div>
+          <div class="airstrike-agent-messages" data-agent-messages aria-live="polite"></div>
+          <article class="airstrike-agent-proposal" data-agent-proposal hidden>
+            <header><strong>Proposed profile change</strong><span data-agent-proposal-status></span></header>
+            <div data-agent-proposal-summary></div>
+            <div class="airstrike-agent-proposal-actions">
+              <button type="button" class="airstrike-editor-action-button" data-agent-apply>Apply to draft</button>
+              <button type="button" class="airstrike-editor-action-button" data-agent-discard>Discard</button>
+              <button type="button" class="airstrike-editor-action-button" data-agent-undo hidden>Undo agent edit</button>
+              <button type="button" class="airstrike-editor-action-button" data-agent-rerun hidden>Rerun on current draft</button>
+            </div>
+          </article>
+          <form class="airstrike-agent-composer" data-agent-form>
+            <textarea rows="3" maxlength="12000" data-agent-input placeholder="Describe the route or ordnance change…"></textarea>
+            <div>
+              <button type="button" class="airstrike-editor-action-button" data-agent-use-plan hidden>Use this plan</button>
+              <span data-agent-run-status></span>
+              <button type="submit" class="airstrike-editor-action-button" data-agent-send>Send</button>
+            </div>
+          </form>
+        </section>
       </aside>
 
       <section class="airstrike-editor-bottom">

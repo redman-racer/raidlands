@@ -55,6 +55,7 @@ import {
 } from "./editor/waypoint-source";
 import type { EditorSourceProfile, PayloadEventFields, SourcePayloadEvent, VehiclePreviewMetadataFile } from "./types";
 import { payloadCatalogEntry } from "./payload-catalog";
+import { AirstrikeAgentController, type AgentEditorContext } from "./editor/agent";
 
 interface EditorConfig {
   profileKey?: string;
@@ -63,6 +64,12 @@ interface EditorConfig {
   assetBase?: string;
   serverStatusUrl?: string;
   managementUrl?: string;
+  agentApiBase?: string;
+  featureFlags?: {
+    airstrikeAgent?: boolean;
+    airstrikeAgentConfigured?: boolean;
+    airstrikeAgentStorageReady?: boolean;
+  };
 }
 
 interface ProfileSummary {
@@ -311,6 +318,7 @@ class AirstrikeEditorApp {
     vehicleFilter: "all",
   };
   private readonly viewport: AirstrikeViewport;
+  private readonly agent: AirstrikeAgentController;
   private metadata: VehiclePreviewMetadataFile | null = null;
   private playbackFrame = 0;
   private playbackStartedAt = 0;
@@ -337,6 +345,16 @@ class AirstrikeEditorApp {
       },
       onViewOrientation: (orientation) => this.updateOrientationWidget(orientation),
     });
+    this.agent = new AirstrikeAgentController(elements.root, {
+      apiBase: String(config.agentApiBase || "../api/admin/airstrike-agent"),
+      csrf: String(config.csrf || ""),
+      enabled: Boolean(config.featureFlags?.airstrikeAgent),
+      configured: Boolean(config.featureFlags?.airstrikeAgentConfigured),
+      storageReady: Boolean(config.featureFlags?.airstrikeAgentStorageReady),
+      getContext: () => this.agentEditorContext(),
+      applySource: (source) => this.applyProfile(source, true),
+      previewSource: (source) => this.viewport.updateProposalProfile(source),
+    });
     this.bindEvents();
     this.bindMenus();
     this.restorePanelState();
@@ -362,6 +380,30 @@ class AirstrikeEditorApp {
       this.showFeedback(error instanceof Error ? error.message : String(error), "error");
       this.setStatus("Editor started without server profile list");
     }
+    await this.agent.initialize(String(this.state.profile?.ProfileKey || this.config.profileKey || ""));
+  }
+
+  private agentEditorContext(): AgentEditorContext | null {
+    if (!this.state.profile) {
+      return null;
+    }
+    return {
+      source: JSON.parse(JSON.stringify(this.state.profile)) as EditorSourceProfile,
+      draftVersion: this.state.baseVersion,
+      dirty: this.state.dirty,
+      scrubTime: this.state.scrubTime,
+      selectedWaypointId: this.state.selectedWaypointId,
+      selectedReleaseId: this.state.selectedReleaseId,
+      selectedRepeatedGroupId: this.state.selectedRepeatedGroupId,
+      viewport: {
+        sceneExtras: this.elements.sceneExtras.checked,
+        terrainReference: this.elements.terrainReference.checked,
+        groundGrid: this.elements.groundGrid.checked,
+        followVehicle: this.elements.followVehicle.checked,
+        rideVehicle: this.elements.rideVehicle.checked,
+        releaseVisibility: this.elements.releaseVisibility.value,
+      },
+    };
   }
 
   private bindEvents(): void {
@@ -2334,6 +2376,7 @@ class AirstrikeEditorApp {
       this.loadSource(profile.source ?? starterSource(), String(profile.profileKey || profileKey), Number(profile.draftVersion || 0));
       window.history.replaceState({}, "", `./airstrike-animation-editor.php?profile=${encodeURIComponent(profileKey)}`);
       this.renderProfiles();
+      await this.agent.profileChanged(profileKey);
     } catch (error) {
       this.showFeedback(error instanceof Error ? error.message : String(error), "error");
       this.setStatus("Load failed");
@@ -2347,6 +2390,7 @@ class AirstrikeEditorApp {
     this.loadSource(starterSource(), "", 0);
     window.history.replaceState({}, "", "./airstrike-animation-editor.php");
     this.renderProfiles();
+    void this.agent.profileChanged("new_airstrike_profile");
   }
 
   private async duplicateCurrentProfile(): Promise<void> {
@@ -2397,6 +2441,7 @@ class AirstrikeEditorApp {
       window.history.replaceState({}, "", `./airstrike-animation-editor.php?profile=${encodeURIComponent(loadedKey)}`);
       this.showFeedback(`Duplicated ${sourceProfileKey} as ${loadedKey}.`, "success");
       this.setStatus(`Duplicated draft v${String(profile.draftVersion || 1)} loaded`);
+      await this.agent.profileChanged(loadedKey);
     } catch (error) {
       this.showFeedback(error instanceof Error ? error.message : String(error), "error");
       this.setStatus("Duplicate failed");
@@ -2443,8 +2488,8 @@ class AirstrikeEditorApp {
       const path = this.state.baseVersion > 0 ? "save.php" : "create.php";
       const body =
         this.state.baseVersion > 0
-          ? { profileKey: this.state.profileKey, baseVersion: this.state.baseVersion, source }
-          : { source };
+          ? { profileKey: this.state.profileKey, baseVersion: this.state.baseVersion, source, agentProposalId: this.agent.proposalIdForSave() }
+          : { source, agentProposalId: this.agent.proposalIdForSave() };
       const payload = await this.request(path, { method: "POST", body: JSON.stringify(body) });
       const profile = payload.profile as { source?: EditorSourceProfile; profileKey?: string; draftVersion?: number };
       this.loadSource(profile.source ?? source, String(profile.profileKey || source.ProfileKey), Number(profile.draftVersion || 0));
@@ -2460,6 +2505,7 @@ class AirstrikeEditorApp {
         `./airstrike-animation-editor.php?profile=${encodeURIComponent(String(profile.profileKey || source.ProfileKey))}`,
       );
       this.showFeedback(`Draft v${profile.draftVersion} saved.`, "success");
+      await this.agent.profileSaved(String(profile.profileKey || source.ProfileKey));
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
       this.showFeedback(`${message}\n\nA local recovery copy was kept in this browser. Sign back in, reload this editor, and restore the recovery draft if prompted.`, "error");

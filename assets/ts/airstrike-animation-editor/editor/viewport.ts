@@ -110,6 +110,10 @@ const releaseMaterial = new MeshStandardMaterial({ color: 0xf97316, emissive: 0x
 const selectedReleaseMaterial = new MeshStandardMaterial({ color: 0xffd166, emissive: 0x322000, roughness: 0.28 });
 const releaseTargetMaterial = new MeshBasicMaterial({ color: 0xf43f5e, transparent: true, opacity: 0.75 });
 const releaseLineMaterial = new LineBasicMaterial({ color: 0xf59e0b, transparent: true, opacity: 0.68 });
+const proposalRouteMaterial = new LineBasicMaterial({ color: 0xa78bfa, transparent: true, opacity: 0.95 });
+const proposalWaypointMaterial = new MeshBasicMaterial({ color: 0xc4b5fd, transparent: true, opacity: 0.82 });
+const proposalReleaseMaterial = new MeshBasicMaterial({ color: 0xf0abfc, transparent: true, opacity: 0.82 });
+const proposalReleaseLineMaterial = new LineBasicMaterial({ color: 0xe879f9, transparent: true, opacity: 0.55 });
 const groundMaterial = new MeshBasicMaterial({ color: 0x0c1518, side: DoubleSide, transparent: true, opacity: 0.22 });
 const scaleReferenceMaterials = {
   player: new MeshStandardMaterial({ color: 0x8fd3ff, metalness: 0.02, roughness: 0.68 }),
@@ -147,6 +151,7 @@ export class AirstrikeViewport {
   private readonly pointer = new Vector2();
   private readonly waypointGroup = new Group();
   private readonly releaseGroup = new Group();
+  private readonly proposalGroup = new Group();
   private readonly vehicleRoot = new Group();
   private readonly scaleReferenceGroup = new Group();
   private readonly terrainReferenceGroup = new Group();
@@ -168,6 +173,7 @@ export class AirstrikeViewport {
   private targetMarker: Mesh | null = null;
   private approachMarker: Mesh | null = null;
   private profile: EditorSourceProfile | null = null;
+  private proposalProfile: EditorSourceProfile | null = null;
   private selectedWaypointId = "";
   private selectedReleaseId = "";
   private releaseVisibilityMode: ReleaseVisibilityMode = "near";
@@ -228,6 +234,7 @@ export class AirstrikeViewport {
 
     this.scene.add(this.waypointGroup);
     this.scene.add(this.releaseGroup);
+    this.scene.add(this.proposalGroup);
     this.scene.add(this.vehicleRoot);
     this.scene.add(this.scaleReferenceGroup);
     this.scene.add(this.transform);
@@ -312,6 +319,11 @@ export class AirstrikeViewport {
     this.createScaleReferenceEntities();
     this.syncSceneChromeMarkers();
     this.applyDynamicControls();
+  }
+
+  public updateProposalProfile(profile: EditorSourceProfile | null): void {
+    this.proposalProfile = profile;
+    this.refreshProposalComparison();
   }
 
   public updateSelectedWaypoint(waypointId: string): void {
@@ -1247,6 +1259,59 @@ export class AirstrikeViewport {
     this.routeLine = new Line(geometry, this.routeMaterial);
     this.routeLine.name = "route-preview";
     this.scene.add(this.routeLine);
+  }
+
+  private refreshProposalComparison(): void {
+    for (const child of [...this.proposalGroup.children]) {
+      if (child instanceof Line) {
+        child.geometry.dispose();
+      }
+    }
+    this.proposalGroup.clear();
+    const profile = this.proposalProfile;
+    if (!profile || profile.Waypoints.length < 2) {
+      return;
+    }
+
+    const samples = Math.max(24, Math.min(180, Math.ceil(profile.DurationSeconds * 12)));
+    const routePoints: Vector3[] = [];
+    for (let index = 0; index <= samples; index += 1) {
+      const pose = evaluateSourcePose(profile, (profile.DurationSeconds * index) / samples);
+      routePoints.push(unityPositionToThreeVector(pose.position));
+    }
+    const route = new Line(new BufferGeometry().setFromPoints(routePoints), proposalRouteMaterial);
+    route.name = "agent-proposal-route";
+    this.proposalGroup.add(route);
+
+    for (const waypoint of profile.Waypoints) {
+      const marker = new Mesh(this.handleGeometry, proposalWaypointMaterial);
+      marker.name = `agent-proposal-waypoint:${waypoint.Id}`;
+      marker.position.copy(unityPositionToThreeVector({ x: waypoint.X, y: waypoint.Y, z: waypoint.Z }));
+      marker.scale.setScalar(0.72);
+      this.proposalGroup.add(marker);
+    }
+
+    for (const release of getReleasePreviewEvents(profile, this.options.metadata)) {
+      const pose = evaluateSourcePose(profile, release.time);
+      const origin = unityPositionToThreeVector(pose.position);
+      const carrierOffset = unityPositionToThreeVector({
+        x: release.fields.CarrierOffsetX,
+        y: release.fields.CarrierOffsetY,
+        z: release.fields.CarrierOffsetZ,
+      });
+      carrierOffset.applyQuaternion(unityQuaternionValueToThreeQuaternion(pose.rotation));
+      origin.add(carrierOffset);
+      const target = unityPositionToThreeVector({
+        x: release.fields.TargetOffsetX,
+        y: release.fields.TargetOffsetY,
+        z: release.fields.TargetOffsetZ,
+      });
+      const marker = new Mesh(this.releaseGeometry, proposalReleaseMaterial);
+      marker.position.copy(origin);
+      marker.scale.setScalar(0.72);
+      this.proposalGroup.add(marker);
+      this.proposalGroup.add(new Line(new BufferGeometry().setFromPoints([origin, target]), proposalReleaseLineMaterial));
+    }
   }
 
   private syncSceneFloor(): void {
