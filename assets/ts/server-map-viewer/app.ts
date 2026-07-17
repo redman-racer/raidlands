@@ -68,11 +68,14 @@ import {
   RECORDED_BUFFER_SPLIT_BYTES,
   RECORDED_PLAYBACK_SPEEDS,
   RECORDED_REPLAY_LEAD_IN_MS,
+  RecordedTimelineBatchCache,
   RecordedTimelineBuffer,
   RecordedTimelineClock,
   initialRecordedReplayCursor,
   latestRecordedAvailability,
   recordedSampleEverySeconds,
+  recordedTimelineFramesAround,
+  recordedTimelineRenderIntervalMs,
   relativeTimelineCursor,
   type RecordedTimelineBufferEntry,
   type RecordedTimelineMode,
@@ -439,6 +442,7 @@ type RecordedTimelineStream<T> = {
 
 type RecordedTimelinePayload = {
   ok?: boolean;
+  wipeKey?: string;
   serverTime?: string;
   wipeStartedAt?: string;
   windowStart?: string;
@@ -10384,29 +10388,6 @@ function mergeRecordedEvents(current: MapReplayEvent[], incoming: MapReplayEvent
   return [...events.values()].sort((left, right) => recordedEventTime(left) - recordedEventTime(right));
 }
 
-function recordedFramesAround<T extends { timestamp: string }>(frames: T[], cursorMs: number): { lower: T | null; upper: T | null; progress: number } {
-  if (frames.length === 0) return { lower: null, upper: null, progress: 0 };
-  let lower: T | null = null;
-  let upper: T | null = null;
-  for (const frame of frames) {
-    const timestamp = recordedItemTime(frame);
-    if (timestamp <= cursorMs) lower = frame;
-    if (timestamp > cursorMs) {
-      upper = frame;
-      break;
-    }
-  }
-  if (!lower) return { lower: null, upper: frames[0] || null, progress: 0 };
-  if (!upper) return { lower, upper: lower, progress: 0 };
-  const lowerMs = recordedItemTime(lower);
-  const upperMs = recordedItemTime(upper);
-  return {
-    lower,
-    upper,
-    progress: MathUtils.clamp((cursorMs - lowerMs) / Math.max(1, upperMs - lowerMs), 0, 1),
-  };
-}
-
 function interpolateRecordedPlayers(
   lower: RecordedTimelineItem<{ players: PlayerLocation[] }> | null,
   upper: RecordedTimelineItem<{ players: PlayerLocation[] }> | null,
@@ -10450,12 +10431,18 @@ function bindRecordedTimelineControls(
   const clock = new RecordedTimelineClock();
   const disposers: Array<() => void> = [];
   const buffer = new RecordedTimelineBuffer<RecordedTimelinePayload>();
+  const responseCache = new RecordedTimelineBatchCache<{
+    response: RecordedTimelineResponse;
+    wipeKey: string;
+    expiresAt: number;
+  }>(4);
   const activeReplayRequests = new Map<string, { controller: AbortController; priority: number }>();
   const liveRequestControllers = new Set<AbortController>();
   let mode: RecordedTimelineMode = root.dataset.overlayMode === "replay" ? "replay" : "live";
   let speedIndex = 2;
   let animationFrame = 0;
   let lastTick = performance.now();
+  let lastTimelineRenderAt = 0;
   let pollTimer = 0;
   let disposed = false;
   let requestGeneration = 0;
@@ -10476,8 +10463,11 @@ function bindRecordedTimelineControls(
   let liveWindowStartMs = 0;
   let liveWindowEndMs = 0;
   let liveEncodedBytes = 0;
-  let activeReplayRevision = -1;
-  let activeReplaySignature = "";
+  let activeReplaySignature = "#invalid";
+  let residentReplaySignature = "#invalid";
+  let knownWipeKey = "";
+  let timelineParseChain: Promise<void> = Promise.resolve();
+  let lastControlsSignature = "";
   let lastBufferUiRevision = -1;
   let lastBufferUiAt = 0;
   let seekWasPlaying: boolean | null = null;
@@ -10493,6 +10483,20 @@ function bindRecordedTimelineControls(
   const speed = () => Number(RECORDED_PLAYBACK_SPEEDS[speedIndex] || 1);
   const selectedIncludes = () => ["environment", "events", ...(hooks.wantsHeatmap() ? ["heatmap"] : []), ...(hooks.wantsPlayers() ? ["players"] : [])];
   const rangeDurationMs = () => historyRangeSeconds(hooks.selectedRange()) * 1000;
+
+  const parseTimelinePayload = (text: string, signal?: AbortSignal): Promise<RecordedTimelinePayload> => {
+    const parse = timelineParseChain.then(async () => {
+      if (signal?.aborted) throw new DOMException("Timeline request was aborted.", "AbortError");
+      await new Promise<void>((resolve) => {
+        if (document.visibilityState === "hidden") window.setTimeout(resolve, 0);
+        else window.requestAnimationFrame(() => resolve());
+      });
+      if (signal?.aborted) throw new DOMException("Timeline request was aborted.", "AbortError");
+      return JSON.parse(text) as RecordedTimelinePayload;
+    });
+    timelineParseChain = parse.then(() => undefined, () => undefined);
+    return parse;
+  };
 
   const requestTimeline = async (
     fromMs: number,
@@ -10511,6 +10515,11 @@ function bindRecordedTimelineControls(
     url.searchParams.set("sampleEvery", String(sampleEvery));
     if (hooks.wantsAllPlayers()) url.searchParams.set("all", "1");
     if (headOnly) url.searchParams.set("head", "1");
+    const cacheKey = url.toString();
+    const cached = headOnly ? undefined : responseCache.get(cacheKey);
+    if (cached && cached.expiresAt >= Date.now() && (!knownWipeKey || !cached.wipeKey || cached.wipeKey === knownWipeKey)) {
+      return cached.response;
+    }
     const response = await fetch(url, {
       cache: "no-store",
       credentials: "same-origin",
@@ -10521,9 +10530,21 @@ function bindRecordedTimelineControls(
     const encodedBytes = new TextEncoder().encode(text).byteLength;
     if (!response.ok) throw new Error(`Timeline request failed with HTTP ${response.status}.`);
     if (encodedBytes > maximumBytesBeforeParse) return { payload: null, encodedBytes, oversized: true };
-    const payload = JSON.parse(text) as RecordedTimelinePayload;
+    const payload = await parseTimelinePayload(text, signal);
     if (payload.ok === false) throw new Error(`Timeline request failed with HTTP ${response.status}.`);
-    return { payload, encodedBytes, oversized: false };
+    const payloadWipeKey = String(payload.wipeKey || "");
+    if (knownWipeKey && payloadWipeKey && payloadWipeKey !== knownWipeKey) responseCache.clear();
+    if (payloadWipeKey) knownWipeKey = payloadWipeKey;
+    const result = { payload, encodedBytes, oversized: false };
+    if (!headOnly && encodedBytes <= RECORDED_BUFFER_SPLIT_BYTES) {
+      const historical = toMs <= Date.now() - 15 * 60_000;
+      responseCache.set(cacheKey, {
+        response: result,
+        wipeKey: payloadWipeKey,
+        expiresAt: Date.now() + (historical ? 6 * 60 * 60_000 : 15_000),
+      });
+    }
+    return result;
   };
 
   const payloadHead = (payload: RecordedTimelinePayload): number => {
@@ -10558,8 +10579,8 @@ function bindRecordedTimelineControls(
     replayEvents = [];
     lastHeatmapTimestamp = "";
     lastPlayerFrameTimestamp = "";
-    activeReplayRevision = -1;
-    activeReplaySignature = "";
+    activeReplaySignature = "#invalid";
+    residentReplaySignature = "#invalid";
     viewer.clearReplayEvents();
     viewer.setHeatmapVisible(false);
     viewer.setPlayerLocationsVisible(false);
@@ -10609,30 +10630,32 @@ function bindRecordedTimelineControls(
   };
 
   const residentReplayEvents = (): MapReplayEvent[] => {
-    let events: MapReplayEvent[] = [];
-    for (const entry of buffer.readyEntries()) {
-      events = mergeRecordedEvents(events, entry.value?.streams?.events?.items || []);
-    }
-    return events;
+    return mergeRecordedEvents([], buffer.readyEntries().flatMap((entry) => entry.value?.streams?.events?.items || []));
   };
 
-  const activateReplayData = (cursorMs: number, force = false) => {
+  const syncResidentReplayEvents = (force = false) => {
+    const signature = buffer.readyEntries()
+      .sort((left, right) => left.startMs - right.startMs)
+      .map((entry) => `${entry.key}:${entry.encodedBytes}`)
+      .join("|");
+    if (!force && signature === residentReplaySignature) return;
+    residentReplaySignature = signature;
+    hooks.onEvents(residentReplayEvents());
+  };
+
+  const activateReplayData = (cursorMs: number) => {
     if (mode !== "replay") return;
     const entries = buffer.readyEntriesAround(cursorMs);
     const signature = entries.map((entry) => entry.key).join("|");
-    if (!force && activeReplayRevision === buffer.revision && activeReplaySignature === signature) return;
-    environmentFrames = [];
-    playerFrames = [];
-    heatmapFrames = [];
-    replayEvents = [];
+    if (activeReplaySignature === signature) return;
+    const payloads = entries.flatMap((entry) => entry.value ? [entry.value] : []);
+    environmentFrames = mergeRecordedItems([], payloads.flatMap((payload) => payload.streams?.environment?.items || []));
+    playerFrames = mergeRecordedItems([], payloads.flatMap((payload) => payload.streams?.players?.items || []));
+    heatmapFrames = mergeRecordedItems([], payloads.flatMap((payload) => payload.streams?.heatmap?.items || []));
+    replayEvents = mergeRecordedEvents([], payloads.flatMap((payload) => payload.streams?.events?.items || []));
     lastHeatmapTimestamp = "";
     lastPlayerFrameTimestamp = "";
-    for (const entry of entries) {
-      if (entry.value) mergePayload(entry.value, Number.NEGATIVE_INFINITY, false);
-    }
     if (entries.length === 0) viewer.clearReplayEvents();
-    hooks.onEvents(residentReplayEvents());
-    activeReplayRevision = buffer.revision;
     activeReplaySignature = signature;
   };
 
@@ -10701,7 +10724,7 @@ function bindRecordedTimelineControls(
   const renderCursor = () => {
     const cursorMs = clock.cursorMs;
     if (mode === "replay") activateReplayData(cursorMs);
-    const environment = recordedFramesAround(environmentFrames, cursorMs);
+    const environment = recordedTimelineFramesAround(environmentFrames, cursorMs);
     if (environment.lower || environment.upper) {
       viewer.setTimelineEnvironment(
         environment.lower?.environment || environment.upper?.environment || null,
@@ -10710,7 +10733,7 @@ function bindRecordedTimelineControls(
       );
     }
 
-    const playerPair = recordedFramesAround(playerFrames, cursorMs);
+    const playerPair = recordedTimelineFramesAround(playerFrames, cursorMs);
     const currentPlayers = interpolateRecordedPlayers(playerPair.lower, playerPair.upper, playerPair.progress);
     if (hooks.wantsPlayers()) {
       viewer.setPlayerLocationsInterpolated(currentPlayers);
@@ -10724,7 +10747,7 @@ function bindRecordedTimelineControls(
       hooks.onPlayers(currentPlayers);
     }
 
-    const heatPair = recordedFramesAround(heatmapFrames, cursorMs);
+    const heatPair = recordedTimelineFramesAround(heatmapFrames, cursorMs);
     const currentHeat = heatPair.lower;
     if (hooks.wantsHeatmap() && currentHeat) {
       if (currentHeat.timestamp !== lastHeatmapTimestamp) {
@@ -10753,25 +10776,30 @@ function bindRecordedTimelineControls(
   };
 
   const updateControls = (waiting = false) => {
-    modeButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.mapViewerTimelineMode === mode)));
     const replay = mode === "replay";
     const busy = replay && wantsToPlay && (buffering || tailChecking || pendingWrap);
-    if (play) {
-      play.disabled = !replay;
-      play.textContent = replay ? (busy ? "Buffering" : wantsToPlay ? "Pause" : "Play") : (waiting ? "Waiting" : "Live");
-      play.setAttribute("aria-pressed", String(replay && wantsToPlay));
+    const state = busy ? "buffering" : waiting ? "waiting" : wantsToPlay ? "playing" : "paused";
+    const signature = `${mode}|${state}|${speedIndex}|${loop?.checked ? 1 : 0}`;
+    if (signature !== lastControlsSignature) {
+      lastControlsSignature = signature;
+      modeButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.mapViewerTimelineMode === mode)));
+      if (play) {
+        play.disabled = !replay;
+        play.textContent = replay ? (busy ? "Buffering" : wantsToPlay ? "Pause" : "Play") : (waiting ? "Waiting" : "Live");
+        play.setAttribute("aria-pressed", String(replay && wantsToPlay));
+      }
+      if (loop) loop.disabled = !replay;
+      if (speedDown) speedDown.disabled = !replay || speedIndex <= 0;
+      if (speedUp) speedUp.disabled = !replay || speedIndex >= RECORDED_PLAYBACK_SPEEDS.length - 1;
+      if (speedLabel) {
+        speedLabel.value = replay ? `${speed()}x` : "1x";
+        speedLabel.textContent = speedLabel.value;
+      }
+      if (slider) slider.disabled = !replay;
+      if (range) range.disabled = !replay;
+      root.dataset.timelineMode = mode;
+      root.dataset.timelineState = state;
     }
-    if (loop) loop.disabled = !replay;
-    if (speedDown) speedDown.disabled = !replay || speedIndex <= 0;
-    if (speedUp) speedUp.disabled = !replay || speedIndex >= RECORDED_PLAYBACK_SPEEDS.length - 1;
-    if (speedLabel) {
-      speedLabel.value = replay ? `${speed()}x` : "1x";
-      speedLabel.textContent = speedLabel.value;
-    }
-    if (slider) slider.disabled = !replay;
-    if (range) range.disabled = !replay;
-    root.dataset.timelineMode = mode;
-    root.dataset.timelineState = busy ? "buffering" : waiting ? "waiting" : wantsToPlay ? "playing" : "paused";
     updateBufferPresentation();
   };
 
@@ -10838,7 +10866,8 @@ function bindRecordedTimelineControls(
       if (!response.payload) throw new Error("Timeline buffer returned no payload.");
       buffer.markReady(entry.key, response.payload, response.encodedBytes);
       buffer.enforceLimits(protectedBufferKeys());
-      activateReplayData(clock.cursorMs, true);
+      syncResidentReplayEvents();
+      activateReplayData(clock.cursorMs);
       buffering = wantsToPlay && buffer.entryAt(clock.cursorMs) === null;
     }).catch((error) => {
       if (isAbortError(error) || generation !== bufferGeneration || mode !== "replay") return;
@@ -10893,6 +10922,7 @@ function bindRecordedTimelineControls(
     enqueueForward(current.endMs + 1, clock.cursorMs);
     if (destination) enqueueForward(destination.endMs + 1, destination.startMs);
     buffer.enforceLimits(protectedBufferKeys());
+    syncResidentReplayEvents();
     updateBufferPresentation();
     pumpBufferQueue();
   }
@@ -10903,7 +10933,7 @@ function bindRecordedTimelineControls(
     pendingWrap = false;
     buffer.updateRange(clock.rangeStartMs, clock.rangeEndMs);
     clock.playing = wantsToPlay;
-    activeReplayRevision = -1;
+    activeReplaySignature = "#invalid";
     planBuffer();
     return result.wrapped;
   };
@@ -10950,27 +10980,34 @@ function bindRecordedTimelineControls(
     const delta = document.visibilityState === "hidden" ? 0 : Math.max(0, now - lastTick);
     lastTick = now;
     if (mode === "replay") {
-      completePendingWrap();
-      planBuffer();
+      const wrappedPending = completePendingWrap();
+      const wasBuffering = buffering;
       if (!tailChecking && !pendingWrap) clock.playing = wantsToPlay;
       const playableThrough = buffer.contiguousReadyEnd(clock.cursorMs) ?? clock.cursorMs;
       const destinationReady = buffer.entryAt(wrapDestinationMs()) !== null;
       const result = clock.tick(delta, playableThrough, destinationReady);
       if (result.wrapped) {
         buffer.updateRange(clock.rangeStartMs, clock.rangeEndMs);
-        activeReplayRevision = -1;
+        activeReplaySignature = "#invalid";
       }
       if (result.stopped) wantsToPlay = false;
       if (result.needsTailCheck) void resolveTail();
       buffering = wantsToPlay && (result.buffering || tailChecking || pendingWrap || buffer.entryAt(clock.cursorMs) === null);
-      renderCursor();
-      planBuffer();
-      updateControls();
+      const renderInterval = wantsToPlay ? recordedTimelineRenderIntervalMs(speed()) : 250;
+      if (wrappedPending || result.wrapped || result.stopped || buffering !== wasBuffering || (now - lastTimelineRenderAt) >= renderInterval) {
+        lastTimelineRenderAt = now;
+        renderCursor();
+        planBuffer();
+        updateControls();
+      }
     } else {
       const result = clock.tick(delta);
       buffering = false;
-      renderCursor();
-      updateControls(result.waiting);
+      if ((now - lastTimelineRenderAt) >= 33) {
+        lastTimelineRenderAt = now;
+        renderCursor();
+        updateControls(result.waiting);
+      }
     }
     animationFrame = window.requestAnimationFrame(tick);
   };
@@ -11065,7 +11102,7 @@ function bindRecordedTimelineControls(
       }
     }
     replayInitialized = true;
-    activeReplayRevision = -1;
+    activeReplaySignature = "#invalid";
     buffering = wantsToPlay && buffer.entryAt(clock.cursorMs) === null;
     planBuffer();
     renderCursor();
@@ -11130,6 +11167,22 @@ function bindRecordedTimelineControls(
     updateControls();
   };
 
+  const reuseReplayBuffer = () => {
+    if (mode !== "replay") return;
+    abortReplayRequests();
+    buffer.updateRange(clock.rangeStartMs, clock.cycleEndMs);
+    buffer.setSpeed(speed());
+    pendingWrap = false;
+    tailChecking = false;
+    activeReplaySignature = "#invalid";
+    syncResidentReplayEvents();
+    buffering = wantsToPlay && buffer.entryAt(clock.cursorMs) === null;
+    planBuffer();
+    renderCursor();
+    updateBufferPresentation(true);
+    updateControls();
+  };
+
   const reload = () => {
     if (mode === "live") {
       liveNextPoll.clear();
@@ -11147,13 +11200,13 @@ function bindRecordedTimelineControls(
     const startMs = endMs - rangeDurationMs();
     const cursorMs = relativeTimelineCursor(clock.cursorMs, oldStart, oldEnd, startMs, endMs);
     clock.configureReplay({ startMs, endMs, cursorMs, speed: speed(), playing: wantsToPlay, loop: Boolean(loop?.checked) });
-    resetReplayBuffer();
+    reuseReplayBuffer();
   };
 
   const reprioritizeSeek = () => {
     if (mode !== "replay") return;
     abortReplayRequests();
-    activeReplayRevision = -1;
+    activeReplaySignature = "#invalid";
     buffering = wantsToPlay && buffer.entryAt(clock.cursorMs) === null;
     planBuffer();
     renderCursor();
@@ -11207,16 +11260,16 @@ function bindRecordedTimelineControls(
     clock.setReplayLoop(Boolean(loop?.checked));
     planBuffer();
   });
-  bind(speedDown, "click", () => {
-    speedIndex = Math.max(0, speedIndex - 1);
+  const changeSpeed = (direction: -1 | 1) => {
+    const previousSampleEvery = recordedSampleEverySeconds(speed());
+    speedIndex = MathUtils.clamp(speedIndex + direction, 0, RECORDED_PLAYBACK_SPEEDS.length - 1);
     clock.setReplaySpeed(speed());
-    resetReplayBuffer();
-  });
-  bind(speedUp, "click", () => {
-    speedIndex = Math.min(RECORDED_PLAYBACK_SPEEDS.length - 1, speedIndex + 1);
-    clock.setReplaySpeed(speed());
-    resetReplayBuffer();
-  });
+    lastTimelineRenderAt = 0;
+    if (recordedSampleEverySeconds(speed()) < previousSampleEvery) resetReplayBuffer();
+    else reuseReplayBuffer();
+  };
+  bind(speedDown, "click", () => changeSpeed(-1));
+  bind(speedUp, "click", () => changeSpeed(1));
   bind(range, "change", changeRange);
   bind(slider, "pointerdown", () => {
     if (mode !== "replay" || seekWasPlaying !== null) return;
@@ -11231,7 +11284,7 @@ function bindRecordedTimelineControls(
     clock.playing = false;
     const progress = MathUtils.clamp((Number(slider.value) || 0) / 1000, 0, 1);
     clock.seek(MathUtils.lerp(clock.rangeStartMs, clock.rangeEndMs, progress));
-    activeReplayRevision = -1;
+    activeReplaySignature = "#invalid";
     renderCursor();
     scheduleSeek();
     updateControls();
@@ -11298,6 +11351,7 @@ function bindRecordedTimelineControls(
       requestGeneration += 1;
       abortReplayRequests();
       abortLiveRequests();
+      responseCache.clear();
       window.clearTimeout(seekDebounceTimer);
       window.cancelAnimationFrame(animationFrame);
       window.clearInterval(pollTimer);

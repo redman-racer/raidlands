@@ -54,6 +54,39 @@ export function recordedPrefetchThresholdMs(speed: number): number {
   return Math.max(0.25, speed) * 30_000;
 }
 
+export function recordedTimelineRenderIntervalMs(speed: number): number {
+  if (speed <= 4) return 16;
+  if (speed <= 32) return 33;
+  if (speed <= 128) return 50;
+  return 67;
+}
+
+export function recordedTimelineFramesAround<T extends { timestamp: string }>(
+  frames: T[],
+  cursorMs: number,
+): { lower: T | null; upper: T | null; progress: number } {
+  if (frames.length === 0) return { lower: null, upper: null, progress: 0 };
+  let low = 0;
+  let high = frames.length;
+  while (low < high) {
+    const midpoint = (low + high) >>> 1;
+    const timestamp = Date.parse(frames[midpoint]?.timestamp || "");
+    if (Number.isFinite(timestamp) && timestamp <= cursorMs) low = midpoint + 1;
+    else high = midpoint;
+  }
+  const upperIndex = low;
+  const lower = upperIndex > 0 ? frames[upperIndex - 1] || null : null;
+  const upper = frames[upperIndex] || lower || frames[0] || null;
+  if (!lower || !upper || lower === upper) return { lower, upper, progress: 0 };
+  const lowerMs = Date.parse(lower.timestamp);
+  const upperMs = Date.parse(upper.timestamp);
+  return {
+    lower,
+    upper,
+    progress: clamp((cursorMs - lowerMs) / Math.max(1, upperMs - lowerMs), 0, 1),
+  };
+}
+
 export function latestRecordedAvailability(
   streams: Record<string, { availableThrough?: string } | undefined> | null | undefined,
 ): number | null {
@@ -178,6 +211,13 @@ export class RecordedTimelineBuffer<T> {
     for (const [key, entry] of this.entries) {
       if (entry.endMs < this.rangeStartMs || entry.startMs > this.rangeEndMs) this.entries.delete(key);
     }
+    this.revision += 1;
+  }
+
+  public setSpeed(speed: number): void {
+    const nextSpeed = clamp(speed, 0.25, 512);
+    if (nextSpeed === this.speed) return;
+    this.speed = nextSpeed;
     this.revision += 1;
   }
 

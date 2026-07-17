@@ -11,6 +11,8 @@ import {
   recordedBatchSpanSeconds,
   recordedPrefetchThresholdMs,
   recordedSampleEverySeconds,
+  recordedTimelineFramesAround,
+  recordedTimelineRenderIntervalMs,
   relativeTimelineCursor,
 } from "../assets/ts/server-map-viewer/recorded-timeline";
 
@@ -73,6 +75,22 @@ describe("recorded server timeline", () => {
     expect(recordedSampleEverySeconds(512)).toBe(43);
     expect(recordedPrefetchThresholdMs(8)).toBe(240_000);
     expect(RECORDED_PLAYBACK_SPEEDS[RECORDED_PLAYBACK_SPEEDS.length - 1]).toBe(512);
+    expect(recordedTimelineRenderIntervalMs(1)).toBe(16);
+    expect(recordedTimelineRenderIntervalMs(512)).toBe(67);
+  });
+
+  it("finds surrounding frames with a binary search friendly sorted timeline", () => {
+    const frames = [0, 10, 20, 30].map((second) => ({ timestamp: new Date(second * 1_000).toISOString(), second }));
+    expect(recordedTimelineFramesAround(frames, 15_000)).toMatchObject({
+      lower: { second: 10 },
+      upper: { second: 20 },
+      progress: 0.5,
+    });
+    expect(recordedTimelineFramesAround(frames, 40_000)).toMatchObject({
+      lower: { second: 30 },
+      upper: { second: 30 },
+      progress: 0,
+    });
   });
 
   it("keeps four replay state batches and evicts the least recently used batch", () => {
@@ -139,6 +157,18 @@ describe("recorded server timeline", () => {
     buffer.discardPending();
     expect(buffer.readyEntries()).toHaveLength(1);
     expect(buffer.entriesCount()).toBe(1);
+  });
+
+  it("keeps ready payloads while the range expands or playback speed increases", () => {
+    const buffer = new RecordedTimelineBuffer<string>();
+    buffer.configure(11 * 60 * 60_000, 12 * 60 * 60_000, 1);
+    const tail = buffer.ensureAt(12 * 60 * 60_000 - 1, 0);
+    buffer.markLoading(tail.key);
+    buffer.markReady(tail.key, "tail", 100);
+    buffer.updateRange(0, 12 * 60 * 60_000);
+    buffer.setSpeed(128);
+    expect(buffer.entryAt(12 * 60 * 60_000 - 1)?.value).toBe("tail");
+    expect(buffer.speed).toBe(128);
   });
 
   it("backs off failed required chunks and retries them after the deadline", () => {
