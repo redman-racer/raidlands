@@ -50,6 +50,7 @@ import {
   type EditableWaypointField,
 } from "./editor/waypoint-source";
 import type { EditorSourceProfile, PayloadEventFields, SourcePayloadEvent, VehiclePreviewMetadataFile } from "./types";
+import { payloadCatalogEntry } from "./payload-catalog";
 
 interface EditorConfig {
   profileKey?: string;
@@ -1179,12 +1180,39 @@ class AirstrikeEditorApp {
     for (const field of fieldNames) {
       if (field === "Payload") {
         const select = document.createElement("select");
+        const groups = new Map<string, HTMLOptGroupElement>();
         for (const payload of payloadOptions()) {
-          select.appendChild(new Option(payload, payload));
+          let group = groups.get(payload.category);
+          if (!group) {
+            group = document.createElement("optgroup");
+            group.label = payload.category;
+            groups.set(payload.category, group);
+            select.appendChild(group);
+          }
+          const option = new Option(payload.label, payload.id);
+          option.title = [payload.nativeSource, payload.restriction].filter(Boolean).join(" — ");
+          group.appendChild(option);
+        }
+        const selectedPayload = payloadCatalogEntry(fields.Payload);
+        if (fields.Payload && selectedPayload?.deprecated) {
+          const legacyGroup = document.createElement("optgroup");
+          legacyGroup.label = "Legacy — existing profiles only";
+          legacyGroup.appendChild(new Option(`${selectedPayload.label} (deprecated)`, selectedPayload.id));
+          select.insertBefore(legacyGroup, select.firstChild);
         }
         select.value = fields.Payload;
         select.addEventListener("change", () => onChange(field, select.value, "live"));
-        grid.appendChild(this.fieldWrapper(field, select));
+        const wrapper = this.fieldWrapper(field, select);
+        const descriptor = selectedPayload;
+        if (descriptor) {
+          const detail = document.createElement("small");
+          detail.className = descriptor.deprecated ? "airstrike-payload-detail is-warning" : "airstrike-payload-detail";
+          detail.textContent = descriptor.deprecated
+            ? `Deprecated; use ${descriptor.replacementId}. Existing value is preserved until you change it.`
+            : `${descriptor.nativeSource}${descriptor.restriction ? ` · ${descriptor.restriction}` : ""}`;
+          wrapper.appendChild(detail);
+        }
+        grid.appendChild(wrapper);
       } else if (field === "DamageScales") {
         const input = document.createElement("textarea");
         input.rows = 3;

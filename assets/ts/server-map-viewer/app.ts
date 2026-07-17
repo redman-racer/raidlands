@@ -2826,6 +2826,7 @@ diffuseColor.a = mix(diffuseColor.a, 1.0, raidlandsWaterHorizonFade);
           new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), rotationY),
           new Vector3(Math.max(5, size * 0.22), Math.max(4, size * 0.05), Math.max(5, size * 0.22)),
         ));
+        group.userData.mapLodPlaceholder = true;
         group.visible = false;
       }
       group.traverse((object) => {
@@ -2865,7 +2866,7 @@ diffuseColor.a = mix(diffuseColor.a, 1.0, raidlandsWaterHorizonFade);
     const batched = this.monumentMode === "auto" && this.runtimeEnvironmentQuality() === "low";
     if (this.monumentMapLodBatch) this.monumentMapLodBatch.visible = batched;
     this.monumentLayer.children.forEach((child) => {
-      if (child.userData.primitiveKind === "map-lod-placeholder") child.visible = !batched;
+      if (child.userData.mapLodPlaceholder === true) child.visible = !batched;
     });
   }
 

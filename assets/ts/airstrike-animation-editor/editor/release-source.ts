@@ -1,7 +1,6 @@
 import { compileReleaseSchedule } from "../release-compiler";
 import {
   DEFAULT_PAYLOAD_EVENT,
-  SUPPORTED_PAYLOADS,
   type EditorSourceProfile,
   type PayloadEventFields,
   type RepeatedReleaseGroup,
@@ -9,6 +8,8 @@ import {
   type VehicleHardpointMetadata,
   type VehiclePreviewMetadataFile,
 } from "../types";
+import { PAYLOAD_CATALOG } from "../payload-catalog";
+import type { PayloadCatalogEntry } from "../types";
 import {
   cloneRepeatedReleaseGroup,
   firstRepeatedReleaseTime,
@@ -514,8 +515,8 @@ export function updateRepeatedGroupTemplateField(
   return next;
 }
 
-export function payloadOptions(): readonly string[] {
-  return SUPPORTED_PAYLOADS;
+export function payloadOptions(): readonly PayloadCatalogEntry[] {
+  return PAYLOAD_CATALOG;
 }
 
 function assignPayloadField(

@@ -1496,6 +1496,16 @@
   gap: 7px;
 }
 
+.airstrike-payload-detail {
+  color: var(--muted-text, #8fa4b5);
+  font-size: 0.72rem;
+  line-height: 1.25;
+}
+
+.airstrike-payload-detail.is-warning {
+  color: #f3b85b;
+}
+
 .airstrike-editor-drawer-main {
   grid-template-rows: 34px 28px 20px;
   align-content: center;

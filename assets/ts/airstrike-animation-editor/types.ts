@@ -14,9 +14,18 @@ export const SUPPORTED_VEHICLES = [
 
 export type SupportedVehicle = (typeof SUPPORTED_VEHICLES)[number];
 
-export const SUPPORTED_PAYLOADS = [
+export const AUTHORABLE_PAYLOADS = [
+  "patrol_heli_gun",
+  "bradley_coax_gun",
+  "autoturret_gun",
+  "bradley_main_cannon",
+  "patrol_heli_rocket",
+  "patrol_heli_rocket_airburst",
+  "patrol_heli_rocket_napalm",
+  "sam_rocket",
   "bee_grenade",
   "bee_catapult_bomb",
+  "catapult_boulder",
   "beancan",
   "f1_grenade",
   "smoke",
@@ -30,10 +39,30 @@ export const SUPPORTED_PAYLOADS = [
   "incendiary_rocket",
   "mortar_he_payload",
   "mortar_frag_payload",
-  "bradley_longbarrel_burst",
+  "cannon_ball",
+  "ballista_hammerhead",
+  "ballista_incendiary",
+  "ballista_piercer",
+  "ballista_pitchfork",
+  "flame_turret_fireball",
+  "torpedo",
   "homing_missile",
   "mlrs_rocket",
 ] as const;
+
+export const LEGACY_SUPPORTED_PAYLOADS = ["bradley_longbarrel_burst"] as const;
+export const SUPPORTED_PAYLOADS = [...AUTHORABLE_PAYLOADS, ...LEGACY_SUPPORTED_PAYLOADS] as const;
+
+export interface PayloadCatalogEntry {
+  id: (typeof SUPPORTED_PAYLOADS)[number];
+  label: string;
+  category: string;
+  nativeSource: string;
+  executionType: "hitscan_round" | "native_projectile" | "tracked_projectile" | "simulated_pulse";
+  restriction?: string;
+  deprecated?: boolean;
+  replacementId?: (typeof AUTHORABLE_PAYLOADS)[number];
+}
 
 export type SupportedPayload = (typeof SUPPORTED_PAYLOADS)[number];
 
