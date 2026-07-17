@@ -3,6 +3,7 @@ import type { RaidlandsCloudDetail } from "../shared/three-cloud-detail";
 import type { RaidlandsSunDetail } from "../shared/three-sun-detail";
 
 export type EnvironmentQuality = "ultra" | "high" | "medium" | "low";
+export type ViewerPerformanceTier = "healthy" | "constrained" | "low";
 
 export type EnvironmentQualityProfile = {
   requested: EnvironmentQuality;
@@ -49,6 +50,19 @@ export function preferredEnvironmentQuality(
   }
   const deviceDefault = defaultEnvironmentQuality(coarsePointer, viewportWidth);
   return deviceDefault === "medium" ? deviceDefault : parseEnvironmentQuality(markup, "ultra");
+}
+
+/** Caps a user's requested detail only while measured frame rate is struggling. */
+export function adaptiveEnvironmentQuality(
+  quality: EnvironmentQuality,
+  performanceTier: ViewerPerformanceTier,
+): EnvironmentQuality {
+  const cap: EnvironmentQuality = performanceTier === "healthy"
+    ? "ultra"
+    : performanceTier === "constrained"
+      ? "medium"
+      : "low";
+  return QUALITY_ORDER[Math.min(QUALITY_ORDER.indexOf(quality), QUALITY_ORDER.indexOf(cap))] || "low";
 }
 
 export function resolveEnvironmentQuality(

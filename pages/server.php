@@ -275,7 +275,7 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
       <div
         class="server-terrain-viewer"
         data-server-map-viewer
-        data-environment-quality="ultra"
+        data-environment-quality="high"
         data-detailed-monuments="true"
         data-terrain-url="<?= e($server_terrain_url) ?>"
         data-texture-url="<?= e($server_texture_url) ?>"

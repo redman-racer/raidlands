@@ -14,6 +14,7 @@
     "monuments:lod:approve": "tsx scripts/review-monument-lod.ts",
     "trees:lod": "tsx scripts/generate-tree-lods.ts",
     "trees:lod:check": "tsx scripts/generate-tree-lods.ts --check",
+    "world-events:lod": "tsx scripts/generate-world-event-lods.ts",
     "compiler": "tsx assets/ts/airstrike-animation-editor/cli.ts",
     "fixtures:update": "tsx assets/ts/airstrike-animation-editor/cli.ts fixtures tests/fixtures/airstrike-animations --update",
     "test": "vitest run",

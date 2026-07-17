@@ -49,6 +49,7 @@
       "properties": {
         "vehicle": { "type": "string" },
         "modelUrl": { "type": "string" },
+        "mapModelUrl": { "type": "string" },
         "prefabLabel": { "type": "string" },
         "scale": { "type": "number", "exclusiveMinimum": 0 },
         "positionCorrection": { "$ref": "#/$defs/vector" },
@@ -56,7 +57,7 @@
         "bounds": { "$ref": "#/$defs/vector" },
         "mapDisplaySize": { "type": "number", "exclusiveMinimum": 0 },
         "visualOriginY": { "type": "number", "minimum": 0, "maximum": 1 },
-        "proxy": { "enum": ["drone", "plane", "helicopter"] },
+        "proxy": { "enum": ["drone", "plane", "helicopter", "ground", "ship"] },
         "hardpoints": { "type": "array", "items": { "$ref": "#/$defs/hardpoint" } }
       }
     }

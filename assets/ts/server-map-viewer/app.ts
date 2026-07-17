@@ -106,6 +106,7 @@ import {
   type RaidlandsSunMotion,
 } from "../shared/three-sun-motion";
 import {
+  adaptiveEnvironmentQuality,
   parseEnvironmentQuality,
   preferredEnvironmentQuality,
   resolveEnvironmentQuality,
@@ -1328,6 +1329,7 @@ class TerrainViewer {
   private readonly directorRecentShotIds: string[] = [];
   private readonly directorFeatures: DirectorLandscapeFeature[];
   private directorFps: DirectorFpsState = { smoothedFps: 60, tier: "healthy" };
+  private adaptivePerformanceTier: DirectorFpsState["tier"] = "healthy";
   private readonly lockCameraInput: boolean;
   private monumentMode: MonumentMode = "auto";
   private readonly monumentModels: MonumentModelController;
@@ -1375,6 +1377,7 @@ class TerrainViewer {
     );
     this.root.dataset.environmentQualityRequested = this.qualityProfile.requested;
     this.root.dataset.environmentQualityResolved = this.qualityProfile.resolved;
+    this.root.dataset.environmentQualityRuntime = this.qualityProfile.resolved;
     this.root.dataset.environmentCapabilities = [
       capabilities.webgl2 ? "webgl2" : "webgl1",
       capabilities.depthTexture ? "depth" : "no-depth",
@@ -1619,7 +1622,7 @@ class TerrainViewer {
   public setMonumentMode(mode: MonumentMode): void {
     this.monumentMode = mode;
     this.root.dataset.monumentMode = mode;
-    this.monumentModels.setPolicy(resolveMonumentQuality(mode, this.qualityProfile.resolved, monumentModelThresholds()));
+    this.monumentModels.setPolicy(resolveMonumentQuality(mode, this.runtimeEnvironmentQuality(), monumentModelThresholds()));
     this.root.closest<HTMLElement>(".server-terrain-panel")
       ?.querySelectorAll<HTMLInputElement | HTMLSelectElement>("[data-map-detailed-monuments]")
       .forEach((control) => {
@@ -3082,6 +3085,9 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
     this.lastAnimationTick = now;
     this.directorFps = updateDirectorFpsState(this.directorFps, frameMs);
     this.root.dataset.cameraPerformanceTier = this.directorFps.tier;
+    if (this.directorFps.tier !== this.adaptivePerformanceTier) {
+      this.applyAdaptivePerformanceTier(this.directorFps.tier);
+    }
     this.updateFreeFlight(deltaSeconds);
     this.updateSelfLocationOrbit(now);
     this.updateCameraTour(now);
@@ -3102,6 +3108,27 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
     this.composer.render();
     this.root.dataset.viewerDrawCalls = String(this.renderer.info.render.calls);
     this.root.dataset.viewerTriangles = String(this.renderer.info.render.triangles);
+  }
+
+  private runtimeEnvironmentQuality(): EnvironmentQuality {
+    return adaptiveEnvironmentQuality(this.qualityProfile.resolved, this.adaptivePerformanceTier);
+  }
+
+  private applyAdaptivePerformanceTier(tier: DirectorFpsState["tier"]): void {
+    this.adaptivePerformanceTier = tier;
+    const runtimeQuality = this.runtimeEnvironmentQuality();
+    const runtimeProfile = resolveEnvironmentQuality(runtimeQuality, fogCapabilities(this.renderer));
+    this.root.dataset.environmentQualityRuntime = runtimeQuality;
+    this.monumentModels.setPolicy(resolveMonumentQuality(this.monumentMode, runtimeQuality, monumentModelThresholds()));
+
+    this.ambientOcclusionPass.enabled = runtimeQuality !== "low";
+    if (this.volumetricFogPass) this.volumetricFogPass.enabled = runtimeQuality === "high" || runtimeQuality === "ultra";
+    if (this.bloomPass) this.bloomPass.enabled = runtimeProfile.bloom;
+    if (this.antialiasPass) this.antialiasPass.enabled = runtimeProfile.stableAntialiasing;
+
+    this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, runtimeProfile.pixelRatioCap));
+    this.composer.setPixelRatio(Math.min(this.renderer.getPixelRatio(), runtimeProfile.composerPixelRatioCap));
+    this.resize();
   }
 
   private pauseAutomaticCamera(): void {
@@ -5654,17 +5681,16 @@ function createAircraftMarker(vehicle: string, metadataFile: VehiclePreviewMetad
   prepareLoadedAircraftForMap(fallback);
   group.add(fallback);
 
-  // The Cargo Ship source model is the complete explorable Rust entity, not a
-  // map-scale visual. Decoding it brings hundreds of thousands of vertices
-  // and dozens of textures into an already busy terrain scene, which can
-  // stall or crash the browser as the replay starts. Its dimensioned ship
-  // proxy is intentional here: it preserves position, heading, and scale
-  // without putting the viewer's render budget at risk.
-  if (!mapVehicleUsesDetailedModel(vehicle)) {
+  // Complete world entities such as Cargo Ship must opt into a dedicated
+  // exterior-only map asset; the explorable source is too expensive here.
+  if (!mapVehicleUsesDetailedModel(vehicle, metadata.mapModelUrl)) {
     return group;
   }
 
-  void loadVehiclePreview(metadata, assetBase || "/assets/").then((result) => {
+  const mapMetadata = metadata.mapModelUrl
+    ? { ...metadata, modelUrl: metadata.mapModelUrl }
+    : metadata;
+  void loadVehiclePreview(mapMetadata, assetBase || "/assets/").then((result) => {
     if (result.usedFallback) {
       return;
     }
@@ -5897,7 +5923,7 @@ class MonumentModelController {
   private readonly bindings: MonumentBinding[] = [];
   private readonly cache = new Map<string, MonumentCacheEntry>();
   private readonly pending = new Map<string, Promise<Group>>();
-  private readonly queue: Array<() => Promise<void>> = [];
+  private readonly queue: Array<{ binding: MonumentBinding; tier: MonumentModelTier; run: () => Promise<void> }> = [];
   private activeLoads = 0;
   private disposed = false;
   private focused: MonumentPayload | null = null;
@@ -5927,6 +5953,10 @@ class MonumentModelController {
 
   public setPolicy(policy: MonumentQualityPolicy): void {
     this.policy = policy;
+    // Drop work selected under the old budget. Tasks already decoding are no
+    // longer in this queue and finish normally; the next tick requeues only
+    // assets that still fit the new policy.
+    this.queue.splice(0).forEach(({ binding, tier }) => binding.loading.delete(tier));
     this.lastTick = 0;
     this.syncDiagnostics();
   }
@@ -6073,8 +6103,11 @@ class MonumentModelController {
   private ensure(binding: MonumentBinding, tier: MonumentModelTier): void {
     if (binding[tier] || binding.loading.has(tier) || binding.failed.has(tier) || this.disposed) return;
     binding.loading.add(tier);
-    this.queue.push(async () => {
+    this.queue.push({ binding, tier, run: async () => {
       try {
+        // A frame-rate downgrade can demote this monument while its decode is
+        // still queued. Skip stale work before allocating CPU and GPU memory.
+        if (this.disposed || this.tierRank(binding.desired) < this.tierRank(tier)) return;
         const source = await this.load(binding, tier);
         if (this.disposed || this.tierRank(binding.desired) < this.tierRank(tier)) {
           if (this.disposed) this.disposeSource(source);
@@ -6101,14 +6134,14 @@ class MonumentModelController {
         binding.loading.delete(tier);
         this.applyVisibility(binding);
       }
-    });
+    } });
     this.pump();
   }
 
   private preload(binding: MonumentBinding, tier: MonumentModelTier): void {
     if (binding[tier] || binding.loading.has(tier) || binding.failed.has(tier) || this.cache.has(this.key(binding, tier)) || this.disposed) return;
     binding.loading.add(tier);
-    this.queue.push(async () => {
+    this.queue.push({ binding, tier, run: async () => {
       try {
         await this.load(binding, tier);
       } catch (error) {
@@ -6117,7 +6150,7 @@ class MonumentModelController {
       } finally {
         binding.loading.delete(tier);
       }
-    });
+    } });
     this.pump();
   }
 
@@ -6150,7 +6183,7 @@ class MonumentModelController {
     while (!this.disposed && this.activeLoads < this.policy.decodeConcurrency && this.queue.length) {
       const task = this.queue.shift()!;
       this.activeLoads++;
-      void task().finally(() => { this.activeLoads--; this.pump(); });
+      void task.run().finally(() => { this.activeLoads--; this.pump(); });
     }
   }
 

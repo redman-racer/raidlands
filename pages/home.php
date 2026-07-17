@@ -174,7 +174,7 @@ $home_is_linked = raidlands_has_linked_account();
           <div
             class="server-terrain-viewer home-map-frame home-map-terrain"
             data-server-map-viewer
-            data-environment-quality="ultra"
+            data-environment-quality="high"
             data-detailed-monuments="true"
             data-terrain-url="<?= e($home_server_terrain_url) ?>"
             data-texture-url="<?= e($home_server_texture_url) ?>"

@@ -250,6 +250,8 @@ export interface VehicleHardpointMetadata {
 export interface VehiclePreviewMetadata {
   vehicle: string;
   modelUrl: string;
+  /** Optional exterior-only asset used by the whole-map viewer. */
+  mapModelUrl?: string;
   prefabLabel?: string;
   scale: number;
   positionCorrection: Vector3Value;

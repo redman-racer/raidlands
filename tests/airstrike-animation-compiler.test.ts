@@ -1,4 +1,4 @@
-import { access, readFile, readdir } from "node:fs/promises";
+import { access, readFile, readdir, stat } from "node:fs/promises";
 import { join, resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -39,7 +39,21 @@ describe("airstrike animation golden fixtures", () => {
 
       expect(localPath, vehicle).not.toBeNull();
       await expect(access(localPath!)).resolves.toBeUndefined();
+
+      if (preview.mapModelUrl) {
+        expect(preview.mapModelUrl, vehicle).toMatch(/\.glb(?:$|\?)/);
+        const mapLocalPath = preview.mapModelUrl.startsWith("/assets/")
+          ? resolve(preview.mapModelUrl.slice(1))
+          : preview.mapModelUrl.startsWith("assets/")
+            ? resolve(preview.mapModelUrl)
+            : null;
+        expect(mapLocalPath, vehicle).not.toBeNull();
+        await expect(access(mapLocalPath!)).resolves.toBeUndefined();
+        expect((await stat(mapLocalPath!)).size, vehicle).toBeLessThanOrEqual(1_000_000);
+      }
     }
+
+    expect(metadata.vehicles.cargo_ship?.mapModelUrl).toContain("cargo_ship_map.glb");
   });
 
   it("recompiles every expected canonical bundle byte-for-byte", async () => {
