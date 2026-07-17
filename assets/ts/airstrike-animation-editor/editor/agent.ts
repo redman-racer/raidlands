@@ -607,10 +607,12 @@ export class AirstrikeAgentController {
     }
     if (event.event === "completed") {
       const finalMessage = String(data.message || "");
+      const availableTools = Array.isArray(data.availableTools) ? data.availableTools.map(String) : [];
+      const completedScope = String(data.workspaceScope || this.workspace);
       if (!this.streamAssistant && finalMessage) this.streamAssistant = this.addMessage("assistant", finalMessage);
       this.latestAssistantText = finalMessage || this.latestAssistantText;
       this.elements.usePlan.hidden = this.mode !== "plan" || this.latestAssistantText === "";
-      this.setRunStatus("Complete");
+      this.setRunStatus(availableTools.length > 0 ? `Complete · ${completedScope} · ${availableTools.length} tools` : "Complete");
       this.renderContextRails();
       return;
     }

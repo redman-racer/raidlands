@@ -18,7 +18,7 @@ function raidlands_airstrike_agent_config(): array
         'enabled' => !empty($config['enabled']),
         'apiKey' => trim((string) ($config['apiKey'] ?? '')),
         'model' => trim((string) ($config['model'] ?? '')) ?: 'gpt-5.6',
-        'timeoutSeconds' => max(20, min(180, (int) ($config['timeoutSeconds'] ?? 90))),
+        'timeoutSeconds' => max(20, min(180, (int) ($config['timeoutSeconds'] ?? 180))),
         'maxToolRounds' => max(1, min(8, (int) ($config['maxToolRounds'] ?? 8))),
     ];
 }
@@ -792,9 +792,16 @@ function raidlands_airstrike_agent_candidate_matches_source(string $candidate_ha
         && hash_equals($candidate_hash, raidlands_airstrike_agent_source_hash($source));
 }
 
-function raidlands_airstrike_agent_developer_prompt(string $mode, string $pinned_plan, string $scope = 'full'): string
+function raidlands_airstrike_agent_developer_prompt(string $mode, string $pinned_plan, string $scope = 'full', array $available_tool_names = []): string
 {
     $scope = raidlands_airstrike_agent_workspace_scope($scope);
+    if ($available_tool_names === []) {
+        $available_tool_names = array_column(raidlands_airstrike_agent_tools($mode, $scope), 'name');
+    }
+    $available_tool_names = array_values(array_filter(
+        array_map('strval', $available_tool_names),
+        static fn (string $name): bool => $name !== ''
+    ));
     $mode_rule = $mode === 'plan'
         ? 'PLAN MODE: inspect, validate, and reason only. Never call a mutating tool. Return Goal, Assumptions, Ordered edits, Affected stable IDs, and Verification.'
         : 'REGULAR MODE: use only the supplied domain tools for requested changes. Mutations affect an ephemeral working copy and require validation before completion.';
@@ -807,9 +814,29 @@ function raidlands_airstrike_agent_developer_prompt(string $mode, string $pinned
         'For complex multiple strafes, model independent repeated Groups (or mixed manual plus Groups), ensure all releases fit inside DurationSeconds, and align FirstPayloadDelaySeconds to the earliest release.',
         'After mutations, call validate_working_profile and compile_working_profile. Repair validation errors when the user intent is clear; otherwise explain the missing decision.',
         $scope === 'full' ? 'WORKSPACE SCOPE: full profile.' : 'WORKSPACE SCOPE: ' . $scope . '. Mutate only fields exposed by the supplied scoped tools; explain when another workspace is required.',
+        'TOOLS AVAILABLE THIS TURN: ' . ($available_tool_names === [] ? 'none' : implode(', ', $available_tool_names)) . '.',
+        'A tool named in the available-tools list is available in this request. Do not claim it is missing. In the ordnance workspace, use replace_ordnance_schedule, upsert_ordnance_items, or delete_ordnance_items for schedule changes.',
         $mode_rule,
         $pinned_plan !== '' ? "PINNED USER-ACCEPTED PLAN:\n" . $pinned_plan : 'No plan is pinned.',
     ]);
+}
+
+function raidlands_airstrike_agent_pinned_plan_tool_choice(
+    string $mode,
+    string $scope,
+    string $message,
+    string $pinned_plan
+): array|string|null {
+    if ($mode !== 'regular' || trim($pinned_plan) === '' || preg_match('/\bimplement\b/i', $message) !== 1) {
+        return null;
+    }
+    return match (raidlands_airstrike_agent_workspace_scope($scope)) {
+        'profile' => ['type' => 'function', 'name' => 'set_profile_settings'],
+        'flight-path' => ['type' => 'function', 'name' => 'replace_route'],
+        'ordnance' => ['type' => 'function', 'name' => 'replace_ordnance_schedule'],
+        'full' => 'required',
+        default => null,
+    };
 }
 
 function raidlands_airstrike_agent_openai_error_message(string $raw_response, int $status): string
@@ -895,9 +922,18 @@ function raidlands_airstrike_agent_openai_stream(array $body, array $config, cal
     ]);
     $result = curl_exec($handle);
     $status = (int) curl_getinfo($handle, CURLINFO_RESPONSE_CODE);
+    $curl_errno = curl_errno($handle);
     $curl_error = curl_error($handle);
     curl_close($handle);
-    if ($result === false) throw new RuntimeException($curl_error !== '' ? $curl_error : 'OpenAI streaming request failed.');
+    if ($result === false) {
+        if ($curl_errno === CURLE_OPERATION_TIMEDOUT) {
+            throw new RuntimeException(
+                'OpenAI generation exceeded ' . (int) $config['timeoutSeconds'] .
+                ' seconds before completing. This is a model response timeout, not a browser connection failure; the draft was not changed. Retry the request or increase OPENAI_RAIDLANDS_AGENT_TIMEOUT_SECONDS (maximum 180).'
+            );
+        }
+        throw new RuntimeException($curl_error !== '' ? $curl_error : 'OpenAI streaming request failed.');
+    }
     if ($api_error !== null) throw new RuntimeException($api_error);
     if ($status < 200 || $status >= 300) throw new RuntimeException(raidlands_airstrike_agent_openai_error_message($raw_response, $status));
     if (!is_array($completed)) throw new RuntimeException('OpenAI stream ended without a completed response.');
@@ -933,16 +969,30 @@ function raidlands_airstrike_agent_run(
     if ($message === '' || strlen($message) > RAIDLANDS_AIRSTRIKE_AGENT_MAX_MESSAGE_BYTES) throw new InvalidArgumentException('Message must be between 1 and 12,000 bytes.');
     $context = raidlands_airstrike_agent_context($editor_context);
     $workspace_scope = raidlands_airstrike_agent_workspace_scope((string) ($context['activeWorkspace'] ?? 'full'));
+    $available_tools = raidlands_airstrike_agent_tools($mode, $workspace_scope);
+    $available_tool_names = array_column($available_tools, 'name');
+    $pinned_plan = (string) ($thread['pinned_plan'] ?? '');
+    $pinned_plan_tool_choice = raidlands_airstrike_agent_pinned_plan_tool_choice(
+        $mode,
+        $workspace_scope,
+        $message,
+        $pinned_plan
+    );
     $base_source = (array) $context['source'];
     $working_source = json_decode((string) json_encode($base_source), true) ?: [];
     raidlands_airstrike_agent_update_thread($thread_id, ['mode' => $mode]);
-    $user_item_id = raidlands_airstrike_agent_add_item($thread_id, 'message', 'user', $message, ['sourceHash' => $context['sourceHash'], 'mode' => $mode]);
+    $user_item_id = raidlands_airstrike_agent_add_item($thread_id, 'message', 'user', $message, [
+        'sourceHash' => $context['sourceHash'],
+        'mode' => $mode,
+        'workspaceScope' => $workspace_scope,
+        'availableTools' => $available_tool_names,
+    ]);
     if ((string) $thread['title'] === 'New conversation') {
         raidlands_airstrike_agent_update_thread($thread_id, ['title' => mb_substr(preg_replace('/\s+/', ' ', $message) ?: $message, 0, 80)]);
     }
     $input = [[
         'role' => 'developer',
-        'content' => [['type' => 'input_text', 'text' => raidlands_airstrike_agent_developer_prompt($mode, (string) ($thread['pinned_plan'] ?? ''), $workspace_scope)]],
+        'content' => [['type' => 'input_text', 'text' => raidlands_airstrike_agent_developer_prompt($mode, $pinned_plan, $workspace_scope, $available_tool_names)]],
     ]];
     $history = raidlands_airstrike_agent_history_input($thread_id);
     if ($history !== []) array_pop($history); // The current user message is appended explicitly below.
@@ -959,17 +1009,27 @@ function raidlands_airstrike_agent_run(
     $started = microtime(true);
     $transport = $transport ?? 'raidlands_airstrike_agent_openai_stream';
     for ($round = 1; $round <= (int) $config['maxToolRounds']; $round++) {
-        $emit('status', ['message' => $round === 1 ? 'Thinking with the current profile context…' : 'Continuing after tool results…', 'round' => $round]);
+        $emit('status', [
+            'message' => $round === 1
+                ? 'Thinking in the ' . $workspace_scope . ' workspace with ' . count($available_tools) . ' available tools…'
+                : 'Continuing after tool results…',
+            'round' => $round,
+            'workspaceScope' => $workspace_scope,
+            'availableTools' => $available_tool_names,
+        ]);
         $body = [
             'model' => (string) $config['model'],
             'store' => false,
             'parallel_tool_calls' => false,
             'max_output_tokens' => 8000,
             'input' => $input,
-            'tools' => raidlands_airstrike_agent_tools($mode, $workspace_scope),
+            'tools' => $available_tools,
             'text' => ['verbosity' => 'medium'],
             'include' => ['reasoning.encrypted_content'],
         ];
+        if ($round === 1 && $pinned_plan_tool_choice !== null) {
+            $body['tool_choice'] = $pinned_plan_tool_choice;
+        }
         $response = $transport($body, $config, $emit);
         $last_response = $response;
         $output = (array) ($response['output'] ?? []);
@@ -1024,6 +1084,15 @@ function raidlands_airstrike_agent_run(
         'assistant_item_id' => $assistant_item_id,
         'proposal_id' => $proposal['id'] ?? null,
         'model' => (string) ($last_response['model'] ?? $config['model']),
+        'workspace_scope' => $workspace_scope,
+        'available_tools' => $available_tool_names,
     ]);
-    return ['threadId' => $thread_id, 'assistantItemId' => $assistant_item_id, 'message' => $final_text, 'proposal' => $proposal];
+    return [
+        'threadId' => $thread_id,
+        'assistantItemId' => $assistant_item_id,
+        'message' => $final_text,
+        'proposal' => $proposal,
+        'workspaceScope' => $workspace_scope,
+        'availableTools' => $available_tool_names,
+    ];
 }
