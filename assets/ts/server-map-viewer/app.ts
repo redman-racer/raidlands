@@ -1353,6 +1353,8 @@ class TerrainViewer {
   ) {
     this.root = root;
     this.terrain = terrain;
+    this.camera.far = Math.max(12_000, (this.terrain.worldSize || 4500) * 3.2);
+    this.camera.updateProjectionMatrix();
     this.cameraBounds = resolveCameraBounds(
       this.terrain.worldSize || 4500,
       (this.terrain.monuments || []).map((monument) => ({
@@ -1426,18 +1428,29 @@ class TerrainViewer {
     this.ambientOcclusionPass.maxDistance = 0.009;
     const renderAmbientOcclusion = this.ambientOcclusionPass.render.bind(this.ambientOcclusionPass);
     this.ambientOcclusionPass.render = ((...args: Parameters<SSAOPass["render"]>) => {
-      const visibleSprites: Sprite[] = [];
+      const hiddenForAmbientOcclusion: Object3D[] = [];
+      const excludedLayerNames = new Set([
+        "raidlands-dynamic-sky-dome",
+        "raidlands-infinite-ocean-floor",
+        "raidlands-infinite-ocean-surface",
+        "raidlands-volumetric-cloud-slices",
+        "raidlands-floating-weather-clouds",
+        "raidlands-distance-ground-fog",
+        "raidlands-rain-sheet-layer",
+        "raidlands-rain-surface-splashes",
+        "raidlands-heatmap-cloud-volume-layer",
+      ]);
       this.scene.traverse((object) => {
-        if (object instanceof Sprite && object.visible) {
-          visibleSprites.push(object);
+        if ((object instanceof Sprite || excludedLayerNames.has(object.name)) && object.visible) {
+          hiddenForAmbientOcclusion.push(object);
           object.visible = false;
         }
       });
       try {
         renderAmbientOcclusion(...args);
       } finally {
-        visibleSprites.forEach((sprite) => {
-          sprite.visible = true;
+        hiddenForAmbientOcclusion.forEach((object) => {
+          object.visible = true;
         });
       }
     }) as SSAOPass["render"];
@@ -2337,7 +2350,9 @@ outgoingLight = mix(outgoingLight, raidlandsFogColor, raidlandsTerrainHorizon * 
       ? this.terrain.minHeight || 0
       : Math.min(...this.terrain.heights.filter((height) => Number.isFinite(height)));
     const oceanFloorHeight = Number.isFinite(sampledMinHeight) ? sampledMinHeight - 3 : -12;
-    const oceanSize = worldSize * 6;
+    // Keep the physical edge well beyond the camera frustum. The visible edge
+    // is then made by atmospheric extinction rather than a square plane.
+    const oceanSize = Math.max(worldSize * 12, 28_000);
     const geometry = new PlaneGeometry(oceanSize, oceanSize, 1, 1);
     const material = new MeshStandardMaterial({
       color: 0x063646,
@@ -2358,7 +2373,7 @@ outgoingLight = mix(outgoingLight, raidlandsFogColor, raidlandsTerrainHorizon * 
 
   private createOceanSurfaceMesh(): Mesh {
     const worldSize = this.terrain.worldSize || 4500;
-    const oceanSize = worldSize * 6;
+    const oceanSize = Math.max(worldSize * 12, 28_000);
     const waterLevel = resolveOceanWaterLevel(this.terrain);
     const geometry = new PlaneGeometry(oceanSize, oceanSize, 1, 1);
     const material = new MeshStandardMaterial({
@@ -2483,12 +2498,22 @@ outgoingLight += vec3(0.16, 0.2, 0.22) * max(raidlandsWaterRainRipple, 0.0) * ra
 float raidlandsWaterFogDistance = length(vViewPosition);
 float raidlandsWaterFogDistanceScaled = raidlandsWaterFogDensity * raidlandsWaterFogDistance;
 float raidlandsWaterFogFactor = 1.0 - exp(-raidlandsWaterFogDistanceScaled * raidlandsWaterFogDistanceScaled);
-outgoingLight = mix(outgoingLight, raidlandsWaterFogColor, clamp(raidlandsWaterFogFactor, 0.0, 0.86));
+// Clear air still has enough optical depth at the horizon to merge a flat map
+// with the sky. This also hides the far-plane circle before it can reveal the
+// ocean's underlying square geometry.
+float raidlandsWaterHorizonFade = smoothstep(
+  raidlandsWaterWorldSize * 0.82,
+  raidlandsWaterWorldSize * 2.42,
+  raidlandsWaterFogDistance
+);
+float raidlandsWaterAtmosphere = max(raidlandsWaterFogFactor, raidlandsWaterHorizonFade);
+outgoingLight = mix(outgoingLight, raidlandsWaterFogColor, clamp(raidlandsWaterAtmosphere, 0.0, 1.0));
 diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlandsShallowWater);
+diffuseColor.a = mix(diffuseColor.a, 1.0, raidlandsWaterHorizonFade);
 #include <opaque_fragment>`,
         );
     };
-    material.customProgramCacheKey = () => `raidlands-water-ultra-${this.qualityProfile.resolved}-${this.cloudDetail}-v6`;
+    material.customProgramCacheKey = () => `raidlands-water-ultra-${this.qualityProfile.resolved}-${this.cloudDetail}-v7`;
     const mesh = new Mesh(geometry, material);
     mesh.name = "raidlands-infinite-ocean-surface";
     mesh.rotation.x = -Math.PI / 2;
@@ -3516,7 +3541,10 @@ diffuseColor.a *= mix(0.72, 1.0, raidlandsWaterFresnel) * mix(1.0, 0.68, raidlan
     this.aerialCloudLayer.children.forEach((child) => {
       child.position.y = cloudBase + (Number(child.userData.layerFraction) || 0) * (cloudTop - cloudBase);
     });
-    this.aerialCloudLayer.visible = this.aerialCloudUniforms.visibility.value > 0.002 && visualCloudCoverage > 0.015;
+    // The camera-centered sky shader already raymarches this same cloud volume.
+    // Rendering the legacy horizontal slices as well creates a flat seam where
+    // the planes cross the horizon, especially at ultra detail.
+    this.aerialCloudLayer.visible = false;
     const horizonDrama = MathUtils.clamp(1 - Math.abs(MathUtils.clamp(sunHeight, -0.1, 0.46) - 0.18) / 0.28, 0, 1);
     this.scene.backgroundIntensity = (MathUtils.lerp(0.7, 1.02, daylight) + horizonDrama * 0.11 - night * 0.18) * MathUtils.lerp(0.72, 1.16, atmosphereBrightness / 1.4);
     this.scene.environmentIntensity = (MathUtils.lerp(0.46, 0.96, daylight) + horizonDrama * 0.04) * MathUtils.lerp(0.82, 1.18, atmosphereContrast / 1.4);
@@ -8927,9 +8955,8 @@ function environmentFogColor(environment: NormalizedEnvironment, sunFacing: numb
   const daylight = MathUtils.smoothstep(sunHeight, -0.05, 0.55);
   const twilight = MathUtils.smoothstep(sunHeight, -0.2, -0.04)
     * (1 - MathUtils.smoothstep(sunHeight, 0.3, 0.56));
-  const night = 1 - MathUtils.smoothstep(sunHeight, -0.14, 0.03);
   const mie = MathUtils.clamp(environment.atmosphereMie / 4, 0, 1);
-  const atmosphereBrightness = MathUtils.clamp(environment.atmosphereBrightness / 1.5, 0, 1);
+  const atmosphereBrightness = MathUtils.clamp(environment.atmosphereBrightness / 1.4, 0, 1);
   const cloudShade = environment.cloudCoverage * MathUtils.lerp(0.36, 0.7, environment.cloudAttenuation);
   const weatherAttenuation = 1 - MathUtils.clamp(
     cloudShade + environment.rainIntensity * 0.46 + environment.fogIntensity * 0.18,
@@ -8943,12 +8970,11 @@ function environmentFogColor(environment: NormalizedEnvironment, sunFacing: numb
     * MathUtils.lerp(0.16, 0.58, MathUtils.clamp(sunFacing, 0, 1))
     * MathUtils.lerp(0.42, 1, mie)
     * weatherAttenuation;
-  return new Color(0x172235)
-    .lerp(new Color(0xc8dfe8), daylight)
+  return new Color(0x132333)
+    .lerp(new Color(0xd7edf4), daylight)
     .lerp(warmFog, warmStrength)
     .lerp(new Color(0x8f9faa), environment.rainIntensity * 0.2)
-    .lerp(new Color(0x0d1625), night * 0.52)
-    .multiplyScalar(MathUtils.lerp(0.82, 1.06, atmosphereBrightness));
+    .multiplyScalar(MathUtils.lerp(0.72, 1.2, atmosphereBrightness));
 }
 
 function visualFogStrengthForEnvironment(environment: NormalizedEnvironment): number {
