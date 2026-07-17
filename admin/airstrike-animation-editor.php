@@ -283,6 +283,7 @@ $editor_config = [
                     <select data-editor-release-mode>
                       <option value="manual">Manual events</option>
                       <option value="repeated">Automatic groups</option>
+                      <option value="mixed">Mixed events + groups</option>
                     </select>
                   </label>
                   <p class="airstrike-editor-muted">Automatic groups can schedule several independent bursts or strafe runs on the same flight path.</p>

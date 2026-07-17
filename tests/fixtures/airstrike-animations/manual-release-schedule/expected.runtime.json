@@ -1,5 +1,5 @@
 {
-  "SchemaVersion": 2,
+  "SchemaVersion": 3,
   "CompilerVersion": "raidlands-airanim-1",
   "PublishedRevision": 1,
   "AllowDangerousPayloadPreview": false,
@@ -1323,79 +1323,7 @@
             "Qw": 1
           }
         ]
-      },
-      "CompiledReleaseEvents": [
-        {
-          "Time": 1,
-          "Payload": "hv_rocket",
-          "Index": 1,
-          "Count": 1,
-          "CarrierOffsetX": 0,
-          "CarrierOffsetY": -0.5,
-          "CarrierOffsetZ": 1,
-          "TargetOffsetX": 0,
-          "TargetOffsetY": 0,
-          "TargetOffsetZ": 0,
-          "SpreadRadius": 0,
-          "LaunchSpeed": 85,
-          "FuseSeconds": 0,
-          "DamageScale": 1,
-          "VehicleDamageScale": 1,
-          "SplashRadius": 0,
-          "ImpactRadius": 0,
-          "MaxTrackingSeconds": -1,
-          "MaxTrackingDistance": -1,
-          "DamageScales": {
-            "Vehicles": 1.2
-          }
-        },
-        {
-          "Time": 1,
-          "Payload": "hv_rocket",
-          "Index": 2,
-          "Count": 1,
-          "CarrierOffsetX": 0,
-          "CarrierOffsetY": -0.5,
-          "CarrierOffsetZ": 1,
-          "TargetOffsetX": 0,
-          "TargetOffsetY": 0,
-          "TargetOffsetZ": 0,
-          "SpreadRadius": 0,
-          "LaunchSpeed": 85,
-          "FuseSeconds": 0,
-          "DamageScale": 1,
-          "VehicleDamageScale": 1,
-          "SplashRadius": 0,
-          "ImpactRadius": 0,
-          "MaxTrackingSeconds": -1,
-          "MaxTrackingDistance": -1,
-          "DamageScales": {
-            "Vehicles": 1.2
-          }
-        },
-        {
-          "Time": 2.5,
-          "Payload": "smoke",
-          "Index": 3,
-          "Count": 1,
-          "CarrierOffsetX": 0,
-          "CarrierOffsetY": -0.4,
-          "CarrierOffsetZ": 0,
-          "TargetOffsetX": 5,
-          "TargetOffsetY": 0,
-          "TargetOffsetZ": 0,
-          "SpreadRadius": 3,
-          "LaunchSpeed": -1,
-          "FuseSeconds": 1,
-          "DamageScale": 1,
-          "VehicleDamageScale": -1,
-          "SplashRadius": -1,
-          "ImpactRadius": -1,
-          "MaxTrackingSeconds": -1,
-          "MaxTrackingDistance": -1,
-          "DamageScales": {}
-        }
-      ]
+      }
     }
   }
 }

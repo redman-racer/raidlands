@@ -2149,9 +2149,9 @@ class TerrainViewer {
       <label class="server-terrain-detail-select server-terrain-monument-select">
         <span>Monuments</span>
         <select data-map-detailed-monuments aria-label="Monument model detail">
-          <option value="auto"${this.monumentMode === "auto" ? " selected" : ""}>Auto</option>
-          <option value="primitives"${this.monumentMode === "primitives" ? " selected" : ""}>Map LOD</option>
-          <option value="detailed"${this.monumentMode === "detailed" ? " selected" : ""}>Detailed</option>
+          <option value="auto"${this.monumentMode === "auto" ? " selected" : ""}>Auto (distance-based)</option>
+          <option value="primitives"${this.monumentMode === "primitives" ? " selected" : ""}>Map LOD (authored models)</option>
+          <option value="detailed"${this.monumentMode === "detailed" ? " selected" : ""}>Detailed (higher LODs)</option>
         </select>
       </label>
       ${this.root.dataset.cameraProfile === "full" ? `

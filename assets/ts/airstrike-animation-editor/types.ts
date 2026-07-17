@@ -1,5 +1,7 @@
-export const EDITOR_SOURCE_SCHEMA_VERSION = 1 as const;
-export const RUNTIME_SCHEMA_VERSION = 2 as const;
+import payloadCatalogJson from "../../airstrike-animation-editor/payload-catalog.json";
+
+export const EDITOR_SOURCE_SCHEMA_VERSION = 2 as const;
+export const RUNTIME_SCHEMA_VERSION = 3 as const;
 export const DEFAULT_COMPILER_VERSION = "raidlands-airanim-1";
 export const RUNTIME_COORDINATE_SYSTEM = "unity-target-relative-local-v1";
 export const DEFAULT_SAMPLE_RATE_HZ = 30;
@@ -14,57 +16,23 @@ export const SUPPORTED_VEHICLES = [
 
 export type SupportedVehicle = (typeof SUPPORTED_VEHICLES)[number];
 
-export const AUTHORABLE_PAYLOADS = [
-  "patrol_heli_gun",
-  "bradley_coax_gun",
-  "autoturret_gun",
-  "bradley_main_cannon",
-  "patrol_heli_rocket",
-  "patrol_heli_rocket_airburst",
-  "patrol_heli_rocket_napalm",
-  "sam_rocket",
-  "bee_grenade",
-  "bee_catapult_bomb",
-  "catapult_boulder",
-  "beancan",
-  "f1_grenade",
-  "smoke",
-  "flashbang",
-  "he_40mm",
-  "molotov",
-  "firebomb",
-  "propane_bomb",
-  "hv_rocket",
-  "rocket",
-  "incendiary_rocket",
-  "mortar_he_payload",
-  "mortar_frag_payload",
-  "cannon_ball",
-  "ballista_hammerhead",
-  "ballista_incendiary",
-  "ballista_piercer",
-  "ballista_pitchfork",
-  "flame_turret_fireball",
-  "torpedo",
-  "homing_missile",
-  "mlrs_rocket",
-] as const;
-
-export const LEGACY_SUPPORTED_PAYLOADS = ["bradley_longbarrel_burst"] as const;
-export const SUPPORTED_PAYLOADS = [...AUTHORABLE_PAYLOADS, ...LEGACY_SUPPORTED_PAYLOADS] as const;
-
 export interface PayloadCatalogEntry {
-  id: (typeof SUPPORTED_PAYLOADS)[number];
+  id: string;
   label: string;
   category: string;
   nativeSource: string;
   executionType: "hitscan_round" | "native_projectile" | "tracked_projectile" | "simulated_pulse";
   restriction?: string;
   deprecated?: boolean;
-  replacementId?: (typeof AUTHORABLE_PAYLOADS)[number];
+  replacementId?: string;
 }
 
-export type SupportedPayload = (typeof SUPPORTED_PAYLOADS)[number];
+export const PAYLOAD_CATALOG_ENTRIES = payloadCatalogJson as PayloadCatalogEntry[];
+export const AUTHORABLE_PAYLOADS = PAYLOAD_CATALOG_ENTRIES.filter((entry) => !entry.deprecated).map((entry) => entry.id);
+export const LEGACY_SUPPORTED_PAYLOADS = PAYLOAD_CATALOG_ENTRIES.filter((entry) => entry.deprecated).map((entry) => entry.id);
+export const SUPPORTED_PAYLOADS = PAYLOAD_CATALOG_ENTRIES.map((entry) => entry.id);
+
+export type SupportedPayload = string;
 
 export interface Vector3Value {
   x: number;
@@ -150,13 +118,20 @@ export interface RepeatedReleaseGroup {
   Name: string;
   StartTime: number;
   IntervalSeconds: number;
+  UnitIntervalSeconds?: number;
   UnitsPerRelease: number;
   MaximumUnits: number;
   Template: PayloadEventFields;
   HardpointSequence: string[];
 }
 
-export type ReleaseSource = ManualReleaseSource | RepeatedReleaseSource;
+export interface MixedReleaseSource {
+  Mode: "mixed";
+  Events: SourcePayloadEvent[];
+  Groups: RepeatedReleaseGroup[];
+}
+
+export type ReleaseSource = ManualReleaseSource | RepeatedReleaseSource | MixedReleaseSource;
 
 export interface SourceHardpointOverride {
   Id: string;
@@ -180,7 +155,7 @@ export interface EditorMetadata {
 }
 
 export interface EditorSourceProfile {
-  EditorSourceSchemaVersion: 1;
+  EditorSourceSchemaVersion: 1 | 2;
   ProfileKey: string;
   DisplayName: string;
   Vehicle: string;
@@ -197,7 +172,7 @@ export interface EditorSourceProfile {
 }
 
 export interface EditorSourceBundle {
-  EditorSourceSchemaVersion: 1;
+  EditorSourceSchemaVersion: 1 | 2;
   AllowDangerousPayloadPreview: boolean;
   Profiles: Record<string, EditorSourceProfile>;
 }
@@ -215,6 +190,22 @@ export interface RuntimeWaypoint {
 export interface RuntimePayloadEvent extends PayloadEventFields {
   Time: number;
   Index: number;
+}
+
+export interface RuntimeReleaseOffset {
+  X: number;
+  Y: number;
+  Z: number;
+}
+
+export interface RuntimeGeneratedReleaseGroup {
+  StartTime: number;
+  IntervalSeconds: number;
+  UnitIntervalSeconds: number;
+  UnitsPerRelease: number;
+  MaximumUnits: number;
+  Template: RuntimePayloadEvent;
+  HardpointOffsets: RuntimeReleaseOffset[];
 }
 
 export interface CompiledVisualFrame {
@@ -242,7 +233,7 @@ export interface RuntimeVisualProfile {
   Vehicle: string;
   DurationSeconds: number;
   FirstPayloadDelaySeconds: number;
-  PayloadReleaseMode: "manual" | "generated";
+  PayloadReleaseMode: "manual" | "generated" | "mixed";
   MaxPayloadCount: number;
   PayloadReleaseIntervalSeconds: number;
   ReleaseTemplate: RuntimePayloadEvent;
@@ -251,12 +242,13 @@ export interface RuntimeVisualProfile {
   MinimumTerrainClearance: number;
   Waypoints: RuntimeWaypoint[];
   PayloadEvents: RuntimePayloadEvent[];
+  GeneratedReleaseGroups?: RuntimeGeneratedReleaseGroup[];
   CompiledTrack: CompiledVisualTrack;
   CompiledReleaseEvents?: RuntimePayloadEvent[];
 }
 
 export interface RuntimeVisualProfileFile {
-  SchemaVersion: 2;
+  SchemaVersion: 3;
   CompilerVersion: string;
   PublishedRevision: number;
   AllowDangerousPayloadPreview: boolean;

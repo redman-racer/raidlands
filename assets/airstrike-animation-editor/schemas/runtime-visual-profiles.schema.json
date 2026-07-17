@@ -1,12 +1,12 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
   "$id": "https://raidlands.net/schemas/airstrike-animation-editor/runtime-visual-profiles.schema.json",
-  "title": "PortableAirstrikes VisualProfiles Schema 2",
+  "title": "PortableAirstrikes VisualProfiles Schema 3",
   "type": "object",
   "additionalProperties": true,
   "required": ["SchemaVersion", "CompilerVersion", "PublishedRevision", "AllowDangerousPayloadPreview", "Profiles"],
   "properties": {
-    "SchemaVersion": { "const": 2 },
+    "SchemaVersion": { "const": 3 },
     "CompilerVersion": { "type": "string", "minLength": 1 },
     "PublishedRevision": { "type": "integer", "minimum": 1 },
     "AllowDangerousPayloadPreview": { "type": "boolean" },
@@ -70,6 +70,26 @@
         "Frames": { "type": "array", "minItems": 2, "maxItems": 6000, "items": { "$ref": "#/$defs/frame" } }
       }
     },
+    "releaseOffset": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["X", "Y", "Z"],
+      "properties": { "X": { "type": "number" }, "Y": { "type": "number" }, "Z": { "type": "number" } }
+    },
+    "generatedReleaseGroup": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["StartTime", "IntervalSeconds", "UnitIntervalSeconds", "UnitsPerRelease", "MaximumUnits", "Template", "HardpointOffsets"],
+      "properties": {
+        "StartTime": { "type": "number", "minimum": 0 },
+        "IntervalSeconds": { "type": "number", "minimum": 0.001, "maximum": 30 },
+        "UnitIntervalSeconds": { "type": "number", "minimum": 0, "maximum": 30 },
+        "UnitsPerRelease": { "type": "integer", "minimum": 1, "maximum": 200 },
+        "MaximumUnits": { "type": "integer", "minimum": 1, "maximum": 2000 },
+        "Template": { "$ref": "#/$defs/payloadEvent" },
+        "HardpointOffsets": { "type": "array", "items": { "$ref": "#/$defs/releaseOffset" } }
+      }
+    },
     "profile": {
       "type": "object",
       "additionalProperties": true,
@@ -82,8 +102,8 @@
         "Vehicle": { "enum": ["drone", "cargo_plane", "f15", "a10", "attack_heli"] },
         "DurationSeconds": { "type": "number", "minimum": 0.5, "maximum": 120 },
         "FirstPayloadDelaySeconds": { "type": "number", "minimum": 0, "maximum": 120 },
-        "PayloadReleaseMode": { "enum": ["manual", "generated"] },
-        "MaxPayloadCount": { "type": "integer", "minimum": 0, "maximum": 200 },
+        "PayloadReleaseMode": { "enum": ["manual", "generated", "mixed"] },
+        "MaxPayloadCount": { "type": "integer", "minimum": 0, "maximum": 2000 },
         "PayloadReleaseIntervalSeconds": { "type": "number", "minimum": 0.01, "maximum": 30 },
         "ReleaseTemplate": { "$ref": "#/$defs/payloadEvent" },
         "RotationSmoothTimeSeconds": { "type": "number" },
@@ -91,6 +111,7 @@
         "MinimumTerrainClearance": { "type": "number" },
         "Waypoints": { "type": "array", "minItems": 2, "maxItems": 256, "items": { "$ref": "#/$defs/waypoint" } },
         "PayloadEvents": { "type": "array", "maxItems": 80, "items": { "$ref": "#/$defs/payloadEvent" } },
+        "GeneratedReleaseGroups": { "type": "array", "maxItems": 40, "items": { "$ref": "#/$defs/generatedReleaseGroup" } },
         "CompiledTrack": { "$ref": "#/$defs/compiledTrack" },
         "CompiledReleaseEvents": { "type": "array", "maxItems": 200, "items": { "$ref": "#/$defs/payloadEvent" } }
       }

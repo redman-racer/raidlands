@@ -5,7 +5,7 @@ export type MonumentLodTier = "fallback" | "map" | "mid" | "close";
 
 export type MonumentQualityPolicy = {
   requested: MonumentMode;
-  resolved: "primitives" | "detailed";
+  resolved: "primitives" | "map" | "detailed";
   activeCloseLimit: number;
   activeMidLimit: number;
   activeMapLimit: number;
@@ -39,7 +39,7 @@ export function resolveMonumentQuality(
 ): MonumentQualityPolicy {
   const closeLimits: Record<EnvironmentQuality, number> = { low: 1, medium: 1, high: 2, ultra: 3 };
   const midLimits: Record<EnvironmentQuality, number> = { low: 4, medium: 9, high: 16, ultra: 24 };
-  const mapLimits: Record<EnvironmentQuality, number> = { low: 12, medium: 36, high: 64, ultra: 96 };
+  const mapLimits: Record<EnvironmentQuality, number> = { low: 12, medium: 48, high: 72, ultra: 96 };
   const triangleBudgets: Record<EnvironmentQuality, number> = { low: 3_000_000, medium: 4_000_000, high: 5_000_000, ultra: 6_000_000 };
   const drawCallBudgets: Record<EnvironmentQuality, number> = { low: 2_500, medium: 3_000, high: 3_500, ultra: 4_000 };
   const mapOnlyAutomatic = mode === "auto" && quality === "low";
@@ -47,7 +47,9 @@ export function resolveMonumentQuality(
   const activeMidLimit = mode === "primitives" || mapOnlyAutomatic ? 0 : midLimits[quality];
   return {
     requested: mode,
-    resolved: activeCloseLimit > 0 || activeMidLimit > 0 ? "detailed" : "primitives",
+    resolved: activeCloseLimit > 0 || activeMidLimit > 0
+      ? "detailed"
+      : (mapOnlyAutomatic ? "primitives" : "map"),
     activeCloseLimit,
     activeMidLimit,
     activeMapLimit: mapOnlyAutomatic ? 0 : mapLimits[quality],

@@ -1,4 +1,3 @@
-import { compileReleaseSchedule } from "../release-compiler";
 import {
   DEFAULT_PAYLOAD_EVENT,
   type EditorSourceProfile,
@@ -113,19 +112,21 @@ function nextRepeatedGroupId(groups: RepeatedReleaseGroup[]): string {
 }
 
 function materializeRepeatedGroups(profile: EditorSourceProfile): RepeatedReleaseGroup[] {
-  if (profile.ReleaseSource.Mode !== "repeated") {
+  if (profile.ReleaseSource.Mode !== "repeated" && profile.ReleaseSource.Mode !== "mixed") {
     return [];
   }
   const release = profile.ReleaseSource;
   const groups = repeatedReleaseGroups(release).map(cloneRepeatedReleaseGroup);
   release.Groups = groups;
-  delete release.StartTime;
-  delete release.IntervalSeconds;
-  delete release.UnitsPerRelease;
-  delete release.MaximumUnits;
-  delete release.Template;
-  delete release.HardpointSequence;
-  delete release.LegacyDynamic;
+  if (release.Mode === "repeated") {
+    delete release.StartTime;
+    delete release.IntervalSeconds;
+    delete release.UnitsPerRelease;
+    delete release.MaximumUnits;
+    delete release.Template;
+    delete release.HardpointSequence;
+    delete release.LegacyDynamic;
+  }
   return groups;
 }
 
@@ -136,11 +137,17 @@ function repeatedGroupEndTime(group: RepeatedReleaseGroup): number {
 
 function firstReleaseTime(profile: EditorSourceProfile): number {
   const release = profile.ReleaseSource;
-  if (release.Mode === "manual" && release.Events.length > 0) {
+  if ((release.Mode === "manual" || release.Mode === "mixed") && release.Events.length > 0) {
     return Math.min(...release.Events.map((event) => event.Time));
   }
   if (release.Mode === "repeated") {
     return firstRepeatedReleaseTime(release);
+  }
+  if (release.Mode === "mixed") {
+    return Math.min(
+      ...release.Events.map((event) => event.Time),
+      ...release.Groups.map((group) => group.StartTime),
+    );
   }
   return Math.min(profile.DurationSeconds, Math.max(0, profile.FirstPayloadDelaySeconds));
 }
@@ -189,8 +196,7 @@ export function getReleasePreviewEvents(
   metadata?: VehiclePreviewMetadataFile | null,
 ): ReleasePreviewEvent[] {
   const release = profile.ReleaseSource;
-  if (release.Mode === "manual") {
-    return release.Events.map((event, index) => ({
+  const manualEvents: ReleasePreviewEvent[] = release.Mode === "manual" || release.Mode === "mixed" ? release.Events.map((event, index) => ({
       id: event.Id,
       time: event.Time,
       index: index + 1,
@@ -199,26 +205,62 @@ export function getReleasePreviewEvents(
       sourceId: event.Id,
       hardpointId: event.HardpointId,
       fields: materializePayloadHardpoint(event, event.HardpointId, profile, metadata),
-    }));
+    })) : [];
+  if (release.Mode === "manual") {
+    return manualEvents;
   }
 
-  const schedule = compileReleaseSchedule(profile, metadata ?? undefined);
-  return (schedule.compiledEvents ?? []).map((event) => ({
-    id: `generated_${event.Index}`,
-    time: event.Time,
-    index: event.Index,
-    mode: "repeated",
-    editable: false,
-    fields: event,
-  }));
+  const generated: ReleasePreviewEvent[] = [];
+  const previewLimit = 400;
+  for (const group of repeatedReleaseGroups(release)) {
+    for (let unit = 0; unit < group.MaximumUnits && generated.length < previewLimit; unit += 1) {
+      const burst = Math.floor(unit / group.UnitsPerRelease);
+      const withinBurst = unit % group.UnitsPerRelease;
+      const time = group.StartTime + burst * group.IntervalSeconds + withinBurst * (group.UnitIntervalSeconds ?? 0);
+      if (time > profile.DurationSeconds + 1e-9) break;
+      const hardpointId = group.HardpointSequence.length > 0
+        ? group.HardpointSequence[unit % group.HardpointSequence.length]
+        : undefined;
+      generated.push({
+        id: `${group.Id}_${unit + 1}`,
+        time,
+        index: manualEvents.length + generated.length + 1,
+        mode: "repeated",
+        editable: false,
+        hardpointId,
+        fields: { ...materializePayloadHardpoint(group.Template, hardpointId, profile, metadata), Count: 1 },
+      });
+    }
+  }
+  return [...manualEvents, ...generated].sort((left, right) => left.time - right.time || left.index - right.index);
 }
 
-export function updateReleaseMode(profile: EditorSourceProfile, mode: "manual" | "repeated"): EditorSourceProfile {
+export function updateReleaseMode(profile: EditorSourceProfile, mode: "manual" | "repeated" | "mixed"): EditorSourceProfile {
   if (profile.ReleaseSource.Mode === mode) {
     return cloneProfile(profile);
   }
   const next = cloneProfile(profile);
   const release = next.ReleaseSource;
+  if (mode === "mixed") {
+    const events = release.Mode === "manual" || release.Mode === "mixed" ? release.Events.map(cloneEvent) : [];
+    const groups = release.Mode === "repeated" || release.Mode === "mixed"
+      ? repeatedReleaseGroups(release).map(cloneRepeatedReleaseGroup)
+      : [{
+          Id: "automatic_001",
+          Name: "Automatic group 1",
+          StartTime: next.FirstPayloadDelaySeconds,
+          IntervalSeconds: 0.5,
+          UnitIntervalSeconds: 0,
+          UnitsPerRelease: 1,
+          MaximumUnits: 1,
+          Template: { ...clonePayloadFields(events[0] ?? DEFAULT_PAYLOAD_EVENT), Count: 1 },
+          HardpointSequence: [],
+        }];
+    next.EditorSourceSchemaVersion = 2;
+    next.ReleaseSource = { Mode: "mixed", Events: events, Groups: groups };
+    syncFirstPayloadDelay(next);
+    return next;
+  }
   if (mode === "manual") {
     const repeatedGroup = release.Mode === "repeated" ? repeatedReleaseGroups(release)[0] : undefined;
     const template = repeatedGroup ? clonePayloadFields(repeatedGroup.Template) : clonePayloadFields(DEFAULT_PAYLOAD_EVENT);
@@ -238,16 +280,18 @@ export function updateReleaseMode(profile: EditorSourceProfile, mode: "manual" |
     };
   } else {
     const events = release.Mode === "manual" ? release.Events : [];
-    const template = clonePayloadFields(events[0] ?? release.Template ?? DEFAULT_PAYLOAD_EVENT);
+    const repeatedTemplate = release.Mode === "repeated" ? release.Template : undefined;
+    const template = clonePayloadFields(events[0] ?? repeatedTemplate ?? DEFAULT_PAYLOAD_EVENT);
     const totalUnits = events.reduce((sum, event) => sum + Math.max(1, event.Count), 0);
     const group: RepeatedReleaseGroup = {
       Id: "automatic_001",
       Name: "Automatic group 1",
       StartTime: roundEditorNumber(events[0]?.Time ?? next.FirstPayloadDelaySeconds, 3),
       IntervalSeconds: release.Mode === "manual" ? release.FallbackIntervalSeconds ?? 0.5 : 0.5,
+      UnitIntervalSeconds: 0,
       UnitsPerRelease: Math.max(1, template.Count),
       MaximumUnits: Math.max(1, totalUnits || template.Count || 1),
-      Template: template,
+      Template: { ...template, Count: 1 },
       HardpointSequence: [],
     };
     next.ReleaseSource = {
@@ -260,31 +304,32 @@ export function updateReleaseMode(profile: EditorSourceProfile, mode: "manual" |
 }
 
 export function addManualRelease(profile: EditorSourceProfile, time: number): { profile: EditorSourceProfile; releaseId: string } {
-  const next = profile.ReleaseSource.Mode === "manual" ? cloneProfile(profile) : updateReleaseMode(profile, "manual");
+  const next = profile.ReleaseSource.Mode === "manual" || profile.ReleaseSource.Mode === "mixed" ? cloneProfile(profile) : updateReleaseMode(profile, "manual");
   const release = next.ReleaseSource;
-  if (release.Mode !== "manual") {
+  if (release.Mode !== "manual" && release.Mode !== "mixed") {
     return { profile: next, releaseId: "" };
   }
-  const template = clonePayloadFields(release.Template ?? release.Events[0] ?? DEFAULT_PAYLOAD_EVENT);
+  const manualTemplate = release.Mode === "manual" ? release.Template : undefined;
+  const template = clonePayloadFields(manualTemplate ?? release.Events[0] ?? DEFAULT_PAYLOAD_EVENT);
   const event: SourcePayloadEvent = {
     ...template,
     Id: nextReleaseId(release.Events),
     Time: roundEditorNumber(Math.min(next.DurationSeconds, Math.max(0, time)), 3),
   };
   release.Events.push(event);
-  release.LegacyDynamic = false;
+  if (release.Mode === "manual") release.LegacyDynamic = false;
   sortManualEvents(release.Events);
   syncFirstPayloadDelay(next);
   return { profile: next, releaseId: event.Id };
 }
 
 export function duplicateManualRelease(profile: EditorSourceProfile, releaseId: string): { profile: EditorSourceProfile; releaseId: string } {
-  if (profile.ReleaseSource.Mode !== "manual") {
+  if (profile.ReleaseSource.Mode !== "manual" && profile.ReleaseSource.Mode !== "mixed") {
     return { profile: cloneProfile(profile), releaseId: "" };
   }
   const next = cloneProfile(profile);
   const release = next.ReleaseSource;
-  if (release.Mode !== "manual") {
+  if (release.Mode !== "manual" && release.Mode !== "mixed") {
     return { profile: next, releaseId: "" };
   }
   const source = release.Events.find((event) => event.Id === releaseId) ?? release.Events[0];
@@ -301,26 +346,26 @@ export function duplicateManualRelease(profile: EditorSourceProfile, releaseId: 
 }
 
 export function deleteManualRelease(profile: EditorSourceProfile, releaseId: string): EditorSourceProfile {
-  if (profile.ReleaseSource.Mode !== "manual") {
+  if (profile.ReleaseSource.Mode !== "manual" && profile.ReleaseSource.Mode !== "mixed") {
     return cloneProfile(profile);
   }
   const next = cloneProfile(profile);
   const release = next.ReleaseSource;
-  if (release.Mode === "manual") {
+  if (release.Mode === "manual" || release.Mode === "mixed") {
     release.Events = release.Events.filter((event) => event.Id !== releaseId);
-    release.LegacyDynamic = release.Events.length === 0;
+    if (release.Mode === "manual") release.LegacyDynamic = release.Events.length === 0;
   }
   syncFirstPayloadDelay(next);
   return next;
 }
 
 export function updateManualReleaseTime(profile: EditorSourceProfile, releaseId: string, time: number): EditorSourceProfile {
-  if (profile.ReleaseSource.Mode !== "manual") {
+  if (profile.ReleaseSource.Mode !== "manual" && profile.ReleaseSource.Mode !== "mixed") {
     return cloneProfile(profile);
   }
   const next = cloneProfile(profile);
   const release = next.ReleaseSource;
-  if (release.Mode === "manual") {
+  if (release.Mode === "manual" || release.Mode === "mixed") {
     const event = release.Events.find((entry) => entry.Id === releaseId);
     if (event) {
       event.Time = roundEditorNumber(Math.min(next.DurationSeconds, Math.max(0, time)), 3);
@@ -332,12 +377,12 @@ export function updateManualReleaseTime(profile: EditorSourceProfile, releaseId:
 }
 
 export function updateManualReleaseHardpoint(profile: EditorSourceProfile, releaseId: string, hardpointId: string): EditorSourceProfile {
-  if (profile.ReleaseSource.Mode !== "manual") {
+  if (profile.ReleaseSource.Mode !== "manual" && profile.ReleaseSource.Mode !== "mixed") {
     return cloneProfile(profile);
   }
   const next = cloneProfile(profile);
   const release = next.ReleaseSource;
-  if (release.Mode === "manual") {
+  if (release.Mode === "manual" || release.Mode === "mixed") {
     const event = release.Events.find((entry) => entry.Id === releaseId);
     if (event) {
       if (hardpointId) {
@@ -356,12 +401,12 @@ export function updateManualPayloadField(
   field: keyof PayloadEventFields,
   value: string | number | Record<string, number>,
 ): EditorSourceProfile {
-  if (profile.ReleaseSource.Mode !== "manual") {
+  if (profile.ReleaseSource.Mode !== "manual" && profile.ReleaseSource.Mode !== "mixed") {
     return cloneProfile(profile);
   }
   const next = cloneProfile(profile);
   const release = next.ReleaseSource;
-  if (release.Mode === "manual") {
+  if (release.Mode === "manual" || release.Mode === "mixed") {
     const event = release.Events.find((entry) => entry.Id === releaseId);
     if (event) {
       assignPayloadField(event, field, value);
@@ -376,12 +421,12 @@ export function updateRepeatedField(
   field: "StartTime" | "IntervalSeconds" | "UnitsPerRelease" | "MaximumUnits",
   value: number,
 ): EditorSourceProfile {
-  const groupId = profile.ReleaseSource.Mode === "repeated" ? repeatedReleaseGroups(profile.ReleaseSource)[0]?.Id ?? "" : "";
+  const groupId = profile.ReleaseSource.Mode === "repeated" || profile.ReleaseSource.Mode === "mixed" ? repeatedReleaseGroups(profile.ReleaseSource)[0]?.Id ?? "" : "";
   return updateRepeatedGroupField(profile, groupId, field, value);
 }
 
 export function updateRepeatedHardpointSequence(profile: EditorSourceProfile, sequence: string[]): EditorSourceProfile {
-  const groupId = profile.ReleaseSource.Mode === "repeated" ? repeatedReleaseGroups(profile.ReleaseSource)[0]?.Id ?? "" : "";
+  const groupId = profile.ReleaseSource.Mode === "repeated" || profile.ReleaseSource.Mode === "mixed" ? repeatedReleaseGroups(profile.ReleaseSource)[0]?.Id ?? "" : "";
   return updateRepeatedGroupHardpointSequence(profile, groupId, sequence);
 }
 
@@ -390,19 +435,19 @@ export function updateRepeatedTemplateField(
   field: keyof PayloadEventFields,
   value: string | number | Record<string, number>,
 ): EditorSourceProfile {
-  const groupId = profile.ReleaseSource.Mode === "repeated" ? repeatedReleaseGroups(profile.ReleaseSource)[0]?.Id ?? "" : "";
+  const groupId = profile.ReleaseSource.Mode === "repeated" || profile.ReleaseSource.Mode === "mixed" ? repeatedReleaseGroups(profile.ReleaseSource)[0]?.Id ?? "" : "";
   return updateRepeatedGroupTemplateField(profile, groupId, field, value);
 }
 
 export function getRepeatedReleaseGroups(profile: EditorSourceProfile): RepeatedReleaseGroup[] {
-  return profile.ReleaseSource.Mode === "repeated" ? repeatedReleaseGroups(profile.ReleaseSource) : [];
+  return profile.ReleaseSource.Mode === "repeated" || profile.ReleaseSource.Mode === "mixed" ? repeatedReleaseGroups(profile.ReleaseSource) : [];
 }
 
 export function addRepeatedReleaseGroup(
   profile: EditorSourceProfile,
   sourceGroupId = "",
 ): { profile: EditorSourceProfile; groupId: string } {
-  if (profile.ReleaseSource.Mode !== "repeated") {
+  if (profile.ReleaseSource.Mode !== "repeated" && profile.ReleaseSource.Mode !== "mixed") {
     const converted = updateReleaseMode(profile, "repeated");
     const first = converted.ReleaseSource.Mode === "repeated" ? repeatedReleaseGroups(converted.ReleaseSource)[0] : undefined;
     return { profile: converted, groupId: first?.Id ?? "" };
@@ -433,12 +478,12 @@ export function duplicateRepeatedReleaseGroup(
 }
 
 export function deleteRepeatedReleaseGroup(profile: EditorSourceProfile, groupId: string): EditorSourceProfile {
-  if (profile.ReleaseSource.Mode !== "repeated") {
+  if (profile.ReleaseSource.Mode !== "repeated" && profile.ReleaseSource.Mode !== "mixed") {
     return cloneProfile(profile);
   }
   const next = cloneProfile(profile);
   const groups = materializeRepeatedGroups(next);
-  if (groups.length > 1 && next.ReleaseSource.Mode === "repeated") {
+  if (groups.length > 1 && (next.ReleaseSource.Mode === "repeated" || next.ReleaseSource.Mode === "mixed")) {
     next.ReleaseSource.Groups = groups.filter((group) => group.Id !== groupId);
   }
   syncFirstPayloadDelay(next);
@@ -446,7 +491,7 @@ export function deleteRepeatedReleaseGroup(profile: EditorSourceProfile, groupId
 }
 
 export function updateRepeatedGroupName(profile: EditorSourceProfile, groupId: string, name: string): EditorSourceProfile {
-  if (profile.ReleaseSource.Mode !== "repeated") {
+  if (profile.ReleaseSource.Mode !== "repeated" && profile.ReleaseSource.Mode !== "mixed") {
     return cloneProfile(profile);
   }
   const next = cloneProfile(profile);
@@ -460,10 +505,10 @@ export function updateRepeatedGroupName(profile: EditorSourceProfile, groupId: s
 export function updateRepeatedGroupField(
   profile: EditorSourceProfile,
   groupId: string,
-  field: "StartTime" | "IntervalSeconds" | "UnitsPerRelease" | "MaximumUnits",
+  field: "StartTime" | "IntervalSeconds" | "UnitIntervalSeconds" | "UnitsPerRelease" | "MaximumUnits",
   value: number,
 ): EditorSourceProfile {
-  if (profile.ReleaseSource.Mode !== "repeated") {
+  if (profile.ReleaseSource.Mode !== "repeated" && profile.ReleaseSource.Mode !== "mixed") {
     return cloneProfile(profile);
   }
   const next = cloneProfile(profile);
@@ -471,9 +516,7 @@ export function updateRepeatedGroupField(
   if (group) {
     const rounded = field === "UnitsPerRelease" || field === "MaximumUnits" ? Math.max(0, Math.round(value)) : roundEditorNumber(value, 3);
     group[field] = field === "UnitsPerRelease" ? Math.max(1, rounded) : rounded;
-    if (field === "UnitsPerRelease") {
-      group.Template.Count = group.UnitsPerRelease;
-    }
+    if (field === "UnitIntervalSeconds") next.EditorSourceSchemaVersion = 2;
   }
   syncFirstPayloadDelay(next);
   return next;
@@ -484,7 +527,7 @@ export function updateRepeatedGroupHardpointSequence(
   groupId: string,
   sequence: string[],
 ): EditorSourceProfile {
-  if (profile.ReleaseSource.Mode !== "repeated") {
+  if (profile.ReleaseSource.Mode !== "repeated" && profile.ReleaseSource.Mode !== "mixed") {
     return cloneProfile(profile);
   }
   const next = cloneProfile(profile);
@@ -501,16 +544,14 @@ export function updateRepeatedGroupTemplateField(
   field: keyof PayloadEventFields,
   value: string | number | Record<string, number>,
 ): EditorSourceProfile {
-  if (profile.ReleaseSource.Mode !== "repeated") {
+  if (profile.ReleaseSource.Mode !== "repeated" && profile.ReleaseSource.Mode !== "mixed") {
     return cloneProfile(profile);
   }
   const next = cloneProfile(profile);
   const group = materializeRepeatedGroups(next).find((entry) => entry.Id === groupId);
   if (group) {
     assignPayloadField(group.Template, field, value);
-    if (field === "Count") {
-      group.UnitsPerRelease = Math.max(1, Math.round(group.Template.Count));
-    }
+    group.Template.Count = 1;
   }
   return next;
 }

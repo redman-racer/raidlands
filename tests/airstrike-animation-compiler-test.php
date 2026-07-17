@@ -121,6 +121,15 @@ function airstrike_compiler_source(array $overrides = []): array
     ], $overrides);
 }
 
+$catalog_path = dirname(__DIR__) . '/assets/airstrike-animation-editor/payload-catalog.json';
+$catalog = airstrike_compiler_json($catalog_path);
+$catalog_ids = array_column($catalog, 'id');
+$php_payload_ids = raidlands_airstrike_animation_supported_payloads();
+sort($catalog_ids, SORT_STRING);
+sort($php_payload_ids, SORT_STRING);
+airstrike_compiler_test($php_payload_ids === $catalog_ids, 'PHP validation reads every TypeScript catalog ID from the shared artifact');
+airstrike_compiler_test(!in_array('shotgun_trap', $php_payload_ids, true), 'shotgun trap is absent from the shared payload catalog');
+
 $canonical = raidlands_airstrike_animation_canonical_json([
     'z' => -0.0,
     'a' => ['y' => 1.23456789, 'x' => 2],
@@ -241,12 +250,12 @@ $repeated_source = airstrike_compiler_source([
     ],
 ]);
 $repeated = raidlands_airstrike_animation_compile_profile($repeated_source);
-$releases = $repeated['CompiledReleaseEvents'];
-airstrike_compiler_test(count($releases) === 3, 'non-even repeated total reduces final group');
-airstrike_compiler_test(array_column($releases, 'Count') === [1, 1, 1], 'compiled releases materialize one unit per event');
-airstrike_compiler_test(array_column($releases, 'Time') === [0.2, 0.2, 0.5], 'repeated release schedule uses group interval');
-airstrike_compiler_test(array_column($releases, 'CarrierOffsetX') === [-1.75, 2.25, -1.75], 'alternating hardpoints are materialized into carrier offsets');
-airstrike_compiler_test(array_column($releases, 'Index') === [1, 2, 3], 'compiled release indexes are stable and sequential');
+$repeated_group = $repeated['GeneratedReleaseGroups'][0];
+airstrike_compiler_test(!array_key_exists('CompiledReleaseEvents', $repeated), 'v3 repeated profiles omit expanded release events');
+airstrike_compiler_test($repeated_group['MaximumUnits'] === 3, 'non-even repeated totals remain compact');
+airstrike_compiler_test($repeated_group['Template']['Count'] === 1, 'compact group template represents one unit');
+airstrike_compiler_test($repeated_group['StartTime'] === 0.2 && $repeated_group['IntervalSeconds'] === 0.3, 'compact group preserves burst timing');
+airstrike_compiler_test(array_column($repeated_group['HardpointOffsets'], 'X') === [-2.0, 2.0], 'alternating hardpoint offsets are compiler-resolved');
 
 $multi_burst_source = airstrike_compiler_source([
     'ProfileKey' => 'multi_burst_strafe',
@@ -290,7 +299,34 @@ $multi_burst_source = airstrike_compiler_source([
 $multi_burst_validation = raidlands_airstrike_animation_validate_profile($multi_burst_source, 'Profiles.multi_burst_strafe');
 airstrike_compiler_test($multi_burst_validation['ok'], 'multi-burst strafing schedules above 200 release units are valid');
 $multi_burst = raidlands_airstrike_animation_compile_profile($multi_burst_source);
-airstrike_compiler_test(count($multi_burst['CompiledReleaseEvents']) === 326, 'multi-burst strafing schedule compiles every unit');
+airstrike_compiler_test(count($multi_burst['GeneratedReleaseGroups']) === 3, 'multi-burst strafing schedule stays as three compact groups');
+airstrike_compiler_test(array_sum(array_column($multi_burst['GeneratedReleaseGroups'], 'MaximumUnits')) === 326, 'compact groups retain the exact effective unit total');
+
+$large_compact_source = airstrike_compiler_source([
+    'EditorSourceSchemaVersion' => 2,
+    'ProfileKey' => 'large_compact_guns',
+    'DurationSeconds' => 80.0,
+    'FirstPayloadDelaySeconds' => 12.0,
+    'Waypoints' => [
+        ['Id' => 'wp_01', 'Time' => 0.0, 'X' => 0.0, 'Y' => 50.0, 'Z' => -100.0, 'RotationX' => 0.0, 'RotationY' => 0.0, 'RotationZ' => 0.0],
+        ['Id' => 'wp_02', 'Time' => 80.0, 'X' => 0.0, 'Y' => 50.0, 'Z' => 100.0, 'RotationX' => 0.0, 'RotationY' => 0.0, 'RotationZ' => 0.0],
+    ],
+    'ReleaseSource' => [
+        'Mode' => 'mixed',
+        'Events' => [],
+        'Groups' => [
+            ['Id' => 'bradley', 'Name' => 'Bradley Coax Gun', 'StartTime' => 12.0, 'IntervalSeconds' => 0.23, 'UnitsPerRelease' => 30, 'UnitIntervalSeconds' => 0.007, 'MaximumUnits' => 600, 'Template' => airstrike_compiler_payload(['Payload' => 'bradley_coax_gun']), 'HardpointSequence' => []],
+            ['Id' => 'patrol', 'Name' => 'Patrol Heli Gun', 'StartTime' => 34.42, 'IntervalSeconds' => 0.3, 'UnitsPerRelease' => 30, 'UnitIntervalSeconds' => 0.009, 'MaximumUnits' => 600, 'Template' => airstrike_compiler_payload(['Payload' => 'patrol_heli_gun']), 'HardpointSequence' => []],
+            ['Id' => 'turret', 'Name' => 'Auto Turret Gun', 'StartTime' => 54.0, 'IntervalSeconds' => 0.3, 'UnitsPerRelease' => 35, 'UnitIntervalSeconds' => 0.008, 'MaximumUnits' => 600, 'Template' => airstrike_compiler_payload(['Payload' => 'autoturret_gun']), 'HardpointSequence' => []],
+        ],
+    ],
+]);
+$large_compact_validation = raidlands_airstrike_animation_validate_profile($large_compact_source, 'Profiles.large_compact_guns');
+airstrike_compiler_test($large_compact_validation['ok'], 'the reported 600 + 600 + 600 gun configuration validates');
+$large_compact_runtime = raidlands_airstrike_animation_compile_profile($large_compact_source);
+airstrike_compiler_test(strlen(json_encode($large_compact_source, JSON_THROW_ON_ERROR)) < 10000, 'the 1,800-unit source remains only a few kilobytes');
+airstrike_compiler_test(array_sum(array_column($large_compact_runtime['GeneratedReleaseGroups'], 'MaximumUnits')) === 1800, 'the compact runtime reports exactly 1,800 effective units');
+airstrike_compiler_test(!array_key_exists('CompiledReleaseEvents', $large_compact_runtime), 'the 1,800-unit runtime contains no expanded event array');
 
 $manual_hardpoint_source = airstrike_compiler_source([
     'ProfileKey' => 'manual_hardpoint',
@@ -311,10 +347,11 @@ $manual_hardpoint_source = airstrike_compiler_source([
     ],
 ]);
 $manual_hardpoint = raidlands_airstrike_animation_compile_profile($manual_hardpoint_source);
-airstrike_compiler_test(count($manual_hardpoint['CompiledReleaseEvents']) === 2, 'manual hardpoint event materializes per-unit releases');
-airstrike_compiler_test(array_column($manual_hardpoint['CompiledReleaseEvents'], 'CarrierOffsetX') === [-1.75, -1.75], 'manual hardpoint offsets are materialized into compiled events');
+airstrike_compiler_test(!array_key_exists('CompiledReleaseEvents', $manual_hardpoint), 'v3 manual profiles omit expanded release events');
+airstrike_compiler_test(count($manual_hardpoint['PayloadEvents']) === 1 && $manual_hardpoint['PayloadEvents'][0]['Count'] === 2, 'manual release count remains compact');
+airstrike_compiler_close((float) $manual_hardpoint['PayloadEvents'][0]['CarrierOffsetX'], -1.75, 0.000001, 'manual hardpoint offset is materialized into the runtime event');
 airstrike_compiler_close((float) $manual_hardpoint['PayloadEvents'][0]['CarrierOffsetY'], -0.5, 0.000001, 'manual hardpoint offsets are materialized into legacy payload events');
-airstrike_compiler_test(!array_key_exists('HardpointId', $manual_hardpoint['CompiledReleaseEvents'][0]), 'runtime release output omits authoring-only HardpointId');
+airstrike_compiler_test(!array_key_exists('HardpointId', $manual_hardpoint['PayloadEvents'][0]), 'runtime release output omits authoring-only HardpointId');
 
 $manual_hardpoint_shifted = airstrike_compiler_source([
     'ProfileKey' => 'manual_hardpoint',
@@ -331,7 +368,7 @@ airstrike_compiler_test(
 );
 
 $bundle_result = raidlands_airstrike_animation_compile_bundle([$straight_source, $repeated_source], 17, false);
-airstrike_compiler_test($bundle_result['bundle']['SchemaVersion'] === 2, 'compiled bundle uses schema version 2');
+airstrike_compiler_test($bundle_result['bundle']['SchemaVersion'] === 3, 'compiled bundle uses schema version 3');
 airstrike_compiler_test($bundle_result['bundle']['PublishedRevision'] === 17, 'compiled bundle carries published revision');
 airstrike_compiler_test(!array_key_exists('PublishedSha256', $bundle_result['bundle']), 'canonical bundle excludes recursive PublishedSha256 field');
 airstrike_compiler_test(

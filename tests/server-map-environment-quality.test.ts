@@ -85,9 +85,11 @@ describe("server map environment quality", () => {
     expect(preferredEnvironmentQuality(null, "high", false, 1440)).toBe("high");
   });
 
-  it("temporarily caps detail when measured frame rate is constrained", () => {
+  it("locks ultra fidelity while adaptively capping lower requested tiers", () => {
     expect(adaptiveEnvironmentQuality("ultra", "healthy")).toBe("ultra");
-    expect(adaptiveEnvironmentQuality("ultra", "constrained")).toBe("medium");
+    expect(adaptiveEnvironmentQuality("ultra", "constrained")).toBe("ultra");
+    expect(adaptiveEnvironmentQuality("ultra", "low")).toBe("ultra");
+    expect(adaptiveEnvironmentQuality("high", "constrained")).toBe("medium");
     expect(adaptiveEnvironmentQuality("high", "low")).toBe("low");
     expect(adaptiveEnvironmentQuality("low", "healthy")).toBe("low");
   });

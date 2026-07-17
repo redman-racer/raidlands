@@ -222,15 +222,33 @@ function seed_airstrike_profiles(): array
         );
     }
 
-    $profiles[] = seed_airstrike_profile(
+    $a10_profile = seed_airstrike_profile(
         'a10_strafe',
         'A-10 BRRRRT Run',
         'a10',
         8.5,
         seed_airstrike_waypoints([[0, 0, 150, -430], [2.3, -5, 115, -220], [3.8, 0, 82, -45], [5.3, 0, 82, 65], [8.5, 4, 155, 430]]),
-        [seed_airstrike_event('brrrrt', 3.8, 'bradley_longbarrel_burst', 1, -1.0)],
+        [seed_airstrike_event('brrrrt', 3.8, 'patrol_heli_gun', 1, -1.0)],
         3.8
     );
+    $a10_template = seed_airstrike_event('brrrrt_template', 3.8, 'patrol_heli_gun', 1, -1.0);
+    unset($a10_template['Id'], $a10_template['Time']);
+    $a10_profile['EditorSourceSchemaVersion'] = 2;
+    $a10_profile['ReleaseSource'] = [
+        'Mode' => 'repeated',
+        'Groups' => [[
+            'Id' => 'brrrrt_001',
+            'Name' => 'A-10 BRRRRT',
+            'StartTime' => 3.8,
+            'IntervalSeconds' => 1.5,
+            'UnitsPerRelease' => 24,
+            'UnitIntervalSeconds' => 0.06,
+            'MaximumUnits' => 24,
+            'Template' => $a10_template,
+            'HardpointSequence' => [],
+        ]],
+    ];
+    $profiles[] = $a10_profile;
 
     foreach ([
         ['homing_heli', 'Heli Homing Strike', 'attack_heli', 2, 10.0, 300.0],

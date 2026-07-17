@@ -6,7 +6,7 @@
   "additionalProperties": false,
   "required": ["EditorSourceSchemaVersion", "AllowDangerousPayloadPreview", "Profiles"],
   "properties": {
-    "EditorSourceSchemaVersion": { "const": 1 },
+    "EditorSourceSchemaVersion": { "enum": [1, 2] },
     "AllowDangerousPayloadPreview": { "type": "boolean" },
     "Profiles": {
       "type": "object",
@@ -77,6 +77,7 @@
         "Name": { "type": "string", "minLength": 1, "maxLength": 100 },
         "StartTime": { "type": "number", "minimum": 0 },
         "IntervalSeconds": { "type": "number", "exclusiveMinimum": 0 },
+        "UnitIntervalSeconds": { "type": "number", "minimum": 0, "maximum": 30 },
         "UnitsPerRelease": { "type": "integer", "minimum": 1, "maximum": 200 },
         "MaximumUnits": { "type": "integer", "minimum": 1, "maximum": 200 },
         "Template": { "$ref": "#/$defs/payloadFields" },
@@ -109,6 +110,16 @@
         "LegacyDynamic": { "type": "boolean" }
       }
     },
+    "mixedRelease": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["Mode", "Events", "Groups"],
+      "properties": {
+        "Mode": { "const": "mixed" },
+        "Events": { "type": "array", "maxItems": 80, "items": { "$ref": "#/$defs/manualEvent" } },
+        "Groups": { "type": "array", "minItems": 1, "maxItems": 40, "items": { "$ref": "#/$defs/repeatedGroup" } }
+      }
+    },
     "waypoint": {
       "type": "object",
       "additionalProperties": false,
@@ -138,7 +149,7 @@
         "PositionInterpolation", "RotationMode", "Waypoints", "ReleaseSource", "EditorMetadata"
       ],
       "properties": {
-        "EditorSourceSchemaVersion": { "const": 1 },
+        "EditorSourceSchemaVersion": { "enum": [1, 2] },
         "ProfileKey": { "type": "string", "pattern": "^[a-z0-9][a-z0-9._-]{0,99}$" },
         "DisplayName": { "type": "string", "minLength": 1, "maxLength": 160 },
         "Vehicle": { "enum": ["drone", "cargo_plane", "f15", "a10", "attack_heli"] },
@@ -150,7 +161,7 @@
         "PositionInterpolation": { "const": "time_hermite" },
         "RotationMode": { "enum": ["follow_path_plus_offset", "authored_orientation"] },
         "Waypoints": { "type": "array", "minItems": 2, "maxItems": 256, "items": { "$ref": "#/$defs/waypoint" } },
-        "ReleaseSource": { "oneOf": [{ "$ref": "#/$defs/manualRelease" }, { "$ref": "#/$defs/repeatedRelease" }] },
+        "ReleaseSource": { "oneOf": [{ "$ref": "#/$defs/manualRelease" }, { "$ref": "#/$defs/repeatedRelease" }, { "$ref": "#/$defs/mixedRelease" }] },
         "EditorMetadata": {
           "type": "object",
           "additionalProperties": false,

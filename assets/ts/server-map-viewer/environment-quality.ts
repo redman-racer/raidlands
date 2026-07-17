@@ -52,11 +52,17 @@ export function preferredEnvironmentQuality(
   return deviceDefault === "medium" ? deviceDefault : parseEnvironmentQuality(markup, "ultra");
 }
 
-/** Caps a user's requested detail only while measured frame rate is struggling. */
+/**
+ * Caps a user's requested detail only while measured frame rate is struggling.
+ * Ultra is an explicit visual-fidelity lock: the bounded loaders and caches
+ * still protect the page, but adaptive FPS handling must not silently replace
+ * authored trees, monuments, or weather with a lower detail tier.
+ */
 export function adaptiveEnvironmentQuality(
   quality: EnvironmentQuality,
   performanceTier: ViewerPerformanceTier,
 ): EnvironmentQuality {
+  if (quality === "ultra") return "ultra";
   const cap: EnvironmentQuality = performanceTier === "healthy"
     ? "ultra"
     : performanceTier === "constrained"

@@ -98,7 +98,7 @@ function profileFixture(overrides: Partial<EditorSourceProfile> = {}): EditorSou
 
 function bundle(profile: EditorSourceProfile): EditorSourceBundle {
   return {
-    EditorSourceSchemaVersion: 1,
+    EditorSourceSchemaVersion: profile.EditorSourceSchemaVersion,
     AllowDangerousPayloadPreview: false,
     Profiles: { [profile.ProfileKey]: profile },
   };
@@ -135,6 +135,65 @@ describe("airstrike authoring speed normalization", () => {
 });
 
 describe("airstrike authoring release sources", () => {
+  it("compiles mixed manual and intra-burst schedules without expanding them", () => {
+    const source = profileFixture({
+      EditorSourceSchemaVersion: 2,
+      FirstPayloadDelaySeconds: 1,
+      ReleaseSource: {
+        Mode: "mixed",
+        Events: [{ ...payload({ Payload: "patrol_heli_rocket" }), Id: "manual_rocket", Time: 1 }],
+        Groups: [{
+          Id: "gun_burst",
+          Name: "Gun burst",
+          StartTime: 1,
+          IntervalSeconds: 0.2,
+          UnitsPerRelease: 3,
+          UnitIntervalSeconds: 0.05,
+          MaximumUnits: 5,
+          Template: payload({ Payload: "patrol_heli_gun", Count: 99 }),
+          HardpointSequence: [],
+        }],
+      },
+    });
+
+    expect(validateSourceBundle(bundle(source), metadata())).toEqual([]);
+    const runtime = compileSourceBundle(bundle(source), { publishedRevision: 1, vehicleMetadata: metadata() }).bundle.Profiles.authoring_test!;
+    expect(runtime.PayloadReleaseMode).toBe("mixed");
+    expect(runtime.PayloadEvents).toHaveLength(1);
+    expect(runtime.GeneratedReleaseGroups).toMatchObject([{
+      UnitIntervalSeconds: 0.05,
+      UnitsPerRelease: 3,
+      MaximumUnits: 5,
+      Template: { Payload: "patrol_heli_gun", Count: 1 },
+    }]);
+    expect(runtime.CompiledReleaseEvents).toBeUndefined();
+    expect(getReleasePreviewEvents(source, metadata()).map((event) => event.time)).toEqual([1, 1, 1.05, 1.1, 1.2, 1.25]);
+  });
+
+  it("rejects overlapping bursts and combined schedules above 2,000 units", () => {
+    const source = profileFixture({
+      EditorSourceSchemaVersion: 2,
+      ReleaseSource: {
+        Mode: "mixed",
+        Events: [{ ...payload({ Count: 2 }), Id: "manual", Time: 2 }],
+        Groups: [{
+          Id: "overlap",
+          Name: "Overlap",
+          StartTime: 2,
+          IntervalSeconds: 0.3,
+          UnitsPerRelease: 3,
+          UnitIntervalSeconds: 0.11,
+          MaximumUnits: 1999,
+          Template: payload({ Payload: "patrol_heli_gun" }),
+          HardpointSequence: [],
+        }],
+      },
+    });
+    const issues = validateSourceBundle(bundle(source), metadata());
+    expect(issues.map((issue) => issue.code)).toContain("burst_overlap");
+    expect(issues.map((issue) => issue.code)).toContain("compiled_unit_count");
+  });
+
   it("validates and compiles multi-burst strafing schedules above 200 release units", () => {
     const source = profileFixture({
       DurationSeconds: 70,
@@ -182,10 +241,11 @@ describe("airstrike authoring release sources", () => {
     });
 
     expect(validateSourceBundle(bundle(source), metadata())).toEqual([]);
-    expect(
-      compileSourceBundle(bundle(source), { publishedRevision: 1, vehicleMetadata: metadata() }).bundle.Profiles
-        .authoring_test!.CompiledReleaseEvents,
-    ).toHaveLength(326);
+    const runtime = compileSourceBundle(bundle(source), { publishedRevision: 1, vehicleMetadata: metadata() }).bundle.Profiles
+      .authoring_test!;
+    expect(runtime.GeneratedReleaseGroups).toHaveLength(3);
+    expect(runtime.GeneratedReleaseGroups?.reduce((total, group) => total + group.MaximumUnits, 0)).toBe(326);
+    expect(runtime.CompiledReleaseEvents).toBeUndefined();
   });
 
   it("materializes manual HardpointId into runtime carrier offsets and source hashes", () => {
@@ -203,9 +263,9 @@ describe("airstrike authoring release sources", () => {
     const firstProfile = first.bundle.Profiles.authoring_test!;
     const secondProfile = second.bundle.Profiles.authoring_test!;
 
-    expect(firstProfile.CompiledReleaseEvents?.[0]?.CarrierOffsetX).toBe(-2.7);
     expect(firstProfile.PayloadEvents[0]?.CarrierOffsetX).toBe(-2.7);
-    expect(secondProfile.CompiledReleaseEvents?.[0]?.CarrierOffsetX).toBe(-0.7);
+    expect(secondProfile.PayloadEvents[0]?.CarrierOffsetX).toBe(-0.7);
+    expect(firstProfile.CompiledReleaseEvents).toBeUndefined();
     expect(first.sourceHashes.authoring_test).not.toBe(second.sourceHashes.authoring_test);
   });
 
@@ -223,11 +283,18 @@ describe("airstrike authoring release sources", () => {
       },
     });
     const preview = getReleasePreviewEvents(source, metadata());
-    const compiled = compileSourceBundle(bundle(source), { publishedRevision: 1, vehicleMetadata: metadata() }).bundle.Profiles
-      .authoring_test!.CompiledReleaseEvents!;
+    const group = compileSourceBundle(bundle(source), { publishedRevision: 1, vehicleMetadata: metadata() }).bundle.Profiles
+      .authoring_test!.GeneratedReleaseGroups![0]!;
+    const compactOffsets = Array.from({ length: group.MaximumUnits }, (_, index) => {
+      const hardpoint = group.HardpointOffsets?.[index % (group.HardpointOffsets.length || 1)];
+      return group.Template.CarrierOffsetX + (hardpoint?.X ?? 0);
+    });
+    const compactTimes = Array.from({ length: group.MaximumUnits }, (_, index) =>
+      group.StartTime + Math.floor(index / group.UnitsPerRelease) * group.IntervalSeconds + (index % group.UnitsPerRelease) * group.UnitIntervalSeconds,
+    );
 
-    expect(preview.map((event) => event.fields.CarrierOffsetX)).toEqual(compiled.map((event) => event.CarrierOffsetX));
-    expect(preview.map((event) => event.time)).toEqual(compiled.map((event) => event.Time));
+    expect(preview.map((event) => event.fields.CarrierOffsetX)).toEqual(compactOffsets);
+    expect(preview.map((event) => event.time)).toEqual(compactTimes);
   });
 
   it("adds independently editable automatic groups without overwriting earlier group edits", () => {

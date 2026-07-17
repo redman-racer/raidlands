@@ -102,8 +102,9 @@ describe("airstrike animation golden fixtures", () => {
           ).toBeGreaterThanOrEqual(-0.000002);
         }
       }
-      for (const event of profile.CompiledReleaseEvents ?? []) {
-        expect(event.Count, `${directory} release ${event.Index}`).toBe(1);
+      expect(profile.CompiledReleaseEvents, directory).toBeUndefined();
+      for (const group of profile.GeneratedReleaseGroups ?? []) {
+        expect(group.Template.Count, `${directory} generated template`).toBe(1);
       }
     }
   });
@@ -166,32 +167,37 @@ describe("airstrike animation golden fixtures", () => {
     }
   });
 
-  it("materializes manual, repeated, grouped, remainder, and alternating-hardpoint releases", async () => {
+  it("keeps manual events granular and repeated schedules compact", async () => {
     const metadata = await json<VehiclePreviewMetadataFile>(metadataPath);
     const compileFixture = async (directory: string) => {
       const source = await json<EditorSourceBundle>(join(fixtureRoot, directory, "source.json"));
       return Object.values(compileSourceBundle(source, { publishedRevision: 1, vehicleMetadata: metadata }).bundle.Profiles)[0]!;
     };
     const manual = await compileFixture("manual-release-schedule");
-    expect(manual.CompiledReleaseEvents?.map((event) => event.Time)).toEqual([1, 1, 2.5]);
+    expect(manual.CompiledReleaseEvents).toBeUndefined();
+    expect(manual.PayloadEvents.map((event) => event.Time)).toEqual([1, 2.5]);
     expect(manual.PayloadEvents.map((event) => event.Count)).toEqual([2, 1]);
 
     const repeated = await compileFixture("repeated-release-schedule");
-    expect(repeated.CompiledReleaseEvents?.map((event) => event.Time)).toEqual([1, 1, 1.5, 1.5, 2, 2]);
+    expect(repeated.GeneratedReleaseGroups).toMatchObject([
+      { StartTime: 1, IntervalSeconds: 0.5, UnitIntervalSeconds: 0, UnitsPerRelease: 2, MaximumUnits: 6 },
+    ]);
 
     const grouped = await compileFixture("grouped-repeated-schedule");
-    expect(grouped.CompiledReleaseEvents).toHaveLength(17);
-    expect(grouped.CompiledReleaseEvents?.slice(0, 8).map((event) => event.Time)).toEqual([2, 2, 2.2, 2.2, 2.4, 2.4, 2.6, 2.6]);
-    expect(grouped.CompiledReleaseEvents?.slice(8).map((event) => event.Time)).toEqual([6, 6, 6, 6.15, 6.15, 6.15, 6.3, 6.3, 6.3]);
-    expect(grouped.CompiledReleaseEvents?.every((event) => event.Payload === "bradley_longbarrel_burst")).toBe(true);
+    expect(grouped.GeneratedReleaseGroups).toHaveLength(2);
+    expect(grouped.GeneratedReleaseGroups?.map((group) => group.MaximumUnits)).toEqual([8, 9]);
+    expect(grouped.GeneratedReleaseGroups?.map((group) => group.IntervalSeconds)).toEqual([0.2, 0.15]);
+    expect(grouped.GeneratedReleaseGroups?.every((group) => group.Template.Payload === "bradley_longbarrel_burst")).toBe(true);
 
     const remainder = await compileFixture("non-even-repeated-total");
-    expect(remainder.CompiledReleaseEvents).toHaveLength(10);
-    expect(remainder.CompiledReleaseEvents?.filter((event) => event.Time === 2.5)).toHaveLength(1);
+    expect(remainder.GeneratedReleaseGroups).toMatchObject([{ UnitsPerRelease: 3, MaximumUnits: 10 }]);
 
     const alternating = await compileFixture("alternating-hardpoints");
-    expect(alternating.CompiledReleaseEvents?.map((event) => event.CarrierOffsetX)).toEqual([-2.4, 2.3, -2.4, 2.3]);
-    expect(alternating.CompiledReleaseEvents?.every((event) => event.Count === 1)).toBe(true);
+    const alternatingGroup = alternating.GeneratedReleaseGroups?.[0]!;
+    const alternatingOffsets = alternatingGroup.HardpointOffsets?.map((offset) => alternatingGroup.Template.CarrierOffsetX + offset.X) ?? [];
+    expect(alternatingOffsets[0]).toBeCloseTo(-2.4, 10);
+    expect(alternatingOffsets[1]).toBeCloseTo(2.3, 10);
+    expect(alternatingGroup.Template.Count).toBe(1);
   });
 
   it("uses explicit Unity/Three reflection helpers and Unity Euler order", () => {

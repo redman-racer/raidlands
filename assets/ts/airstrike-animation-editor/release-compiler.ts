@@ -4,6 +4,7 @@ import {
   type EditorSourceProfile,
   type PayloadEventFields,
   type RuntimePayloadEvent,
+  type RuntimeGeneratedReleaseGroup,
   type SourcePayloadEvent,
   type VehicleHardpointMetadata,
   type VehiclePreviewMetadataFile,
@@ -12,7 +13,7 @@ import { clonePayloadFields } from "./validation";
 import { hasGroupedRepeatedReleases, repeatedReleaseGroups } from "./repeated-release";
 
 function orderedManualEvents(profile: EditorSourceProfile) {
-  return profile.ReleaseSource.Mode === "manual"
+  return profile.ReleaseSource.Mode === "manual" || profile.ReleaseSource.Mode === "mixed"
     ? profile.ReleaseSource.Events.map((event, sourceIndex) => ({ event, sourceIndex })).sort(
         (left, right) => left.event.Time - right.event.Time || left.sourceIndex - right.sourceIndex,
       )
@@ -96,12 +97,12 @@ function manualHardpointId(event: SourcePayloadEvent): string | undefined {
 }
 
 export interface ReleaseCompilationResult {
-  legacyMode: "manual" | "generated";
+  legacyMode: "manual" | "generated" | "mixed";
   legacyMaximumUnits: number;
   legacyIntervalSeconds: number;
   legacyTemplate: RuntimePayloadEvent;
   legacyEvents: RuntimePayloadEvent[];
-  compiledEvents?: RuntimePayloadEvent[];
+  generatedGroups: RuntimeGeneratedReleaseGroup[];
   resolvedHardpointOffsets: Record<string, { X: number; Y: number; Z: number }>;
 }
 
@@ -128,28 +129,18 @@ export function compileReleaseSchedule(
         legacyIntervalSeconds: release.FallbackIntervalSeconds ?? 0.5,
         legacyTemplate: runtimeEvent(legacyTemplateFields, 0, 0),
         legacyEvents,
+        generatedGroups: [],
         resolvedHardpointOffsets,
       };
     }
 
-    const cap = release.MaximumUnits && release.MaximumUnits > 0 ? release.MaximumUnits : Number.POSITIVE_INFINITY;
-    const compiledEvents: RuntimePayloadEvent[] = [];
-    let sequence = 1;
-    for (const { event } of ordered) {
-      for (let unit = 0; unit < event.Count && compiledEvents.length < cap; unit += 1) {
-        compiledEvents.push(
-          runtimeEvent({ ...applyHardpoint(event, hardpoints, manualHardpointId(event)), Count: 1 }, event.Time, sequence),
-        );
-        sequence += 1;
-      }
-    }
     return {
       legacyMode: "manual",
-      legacyMaximumUnits: release.MaximumUnits ?? compiledEvents.length,
+      legacyMaximumUnits: release.MaximumUnits ?? legacyEvents.reduce((sum, event) => sum + event.Count, 0),
       legacyIntervalSeconds: release.FallbackIntervalSeconds ?? 0.5,
       legacyTemplate: runtimeEvent(legacyTemplateFields, 0, 0),
       legacyEvents,
-      compiledEvents,
+      generatedGroups: [],
       resolvedHardpointOffsets,
     };
   }
@@ -161,55 +152,47 @@ export function compileReleaseSchedule(
   const hardpoints = resolveHardpoints(profile, metadata);
   const resolvedHardpointOffsets = hardpointProjection(hardpoints, groups.flatMap((group) => group.HardpointSequence));
   const grouped = hasGroupedRepeatedReleases(release);
-  if (!grouped && release.LegacyDynamic === true && primaryGroup.MaximumUnits === 0) {
+  if (release.Mode === "repeated" && !grouped && release.LegacyDynamic === true && primaryGroup.MaximumUnits === 0) {
     return {
       legacyMode: "generated",
       legacyMaximumUnits: 0,
       legacyIntervalSeconds: primaryGroup.IntervalSeconds,
       legacyTemplate: runtimeEvent(template, primaryGroup.StartTime, 0),
       legacyEvents: [],
+      generatedGroups: [],
       resolvedHardpointOffsets,
     };
   }
-
-  const generated: Array<{ fields: PayloadEventFields; time: number; groupIndex: number; unitIndex: number }> = [];
-  groups.forEach((automaticGroup, groupIndex) => {
-    let released = 0;
-    let releaseIndex = 0;
-    while (released < automaticGroup.MaximumUnits) {
-      const time = automaticGroup.StartTime + releaseIndex * automaticGroup.IntervalSeconds;
-      if (time > profile.DurationSeconds + 1e-9) {
-        break;
-      }
-      const unitsThisRelease = Math.min(automaticGroup.UnitsPerRelease, automaticGroup.MaximumUnits - released);
-      for (let unit = 0; unit < unitsThisRelease; unit += 1) {
-        const fields = clonePayloadFields(automaticGroup.Template);
-        fields.Count = 1;
-        if (automaticGroup.HardpointSequence.length > 0) {
-          const hardpointId = automaticGroup.HardpointSequence[released % automaticGroup.HardpointSequence.length]!;
-          const hardpoint = hardpoints.get(hardpointId);
-          if (hardpoint) {
-            fields.CarrierOffsetX += hardpoint.x;
-            fields.CarrierOffsetY += hardpoint.y;
-            fields.CarrierOffsetZ += hardpoint.z;
-          }
-        }
-        generated.push({ fields, time, groupIndex, unitIndex: released });
-        released += 1;
-      }
-      releaseIndex += 1;
-    }
+  const generatedGroups: RuntimeGeneratedReleaseGroup[] = groups.map((group) => {
+    const templateFields = clonePayloadFields(group.Template);
+    templateFields.Count = 1;
+    return {
+      StartTime: quantizeCanonicalNumber(group.StartTime),
+      IntervalSeconds: quantizeCanonicalNumber(group.IntervalSeconds),
+      UnitIntervalSeconds: quantizeCanonicalNumber(group.UnitIntervalSeconds ?? 0),
+      UnitsPerRelease: group.UnitsPerRelease,
+      MaximumUnits: group.MaximumUnits,
+      Template: runtimeEvent(templateFields, group.StartTime, 0),
+      HardpointOffsets: group.HardpointSequence.flatMap((id) => {
+        const point = hardpoints.get(id);
+        return point ? [{ X: point.x, Y: point.y, Z: point.z }] : [];
+      }),
+    };
   });
-  generated.sort((left, right) => left.time - right.time || left.groupIndex - right.groupIndex || left.unitIndex - right.unitIndex);
-  const compiledEvents = generated.map((event, index) => runtimeEvent(event.fields, event.time, index + 1));
+  const mixedEvents = release.Mode === "mixed"
+    ? orderedManualEvents(profile).map(({ event }, index) =>
+        runtimeEvent(applyHardpoint(event, hardpoints, manualHardpointId(event)), event.Time, index + 1),
+      )
+    : [];
 
   return {
-    legacyMode: "generated",
-    legacyMaximumUnits: groups.reduce((sum, group) => sum + group.MaximumUnits, 0),
+    legacyMode: release.Mode === "mixed" ? "mixed" : "generated",
+    legacyMaximumUnits: groups.reduce((sum, group) => sum + group.MaximumUnits, 0)
+      + mixedEvents.reduce((sum, event) => sum + event.Count, 0),
     legacyIntervalSeconds: primaryGroup.IntervalSeconds,
     legacyTemplate: runtimeEvent(template, primaryGroup.StartTime, 0),
-    legacyEvents: [],
-    compiledEvents,
+    legacyEvents: mixedEvents,
+    generatedGroups,
     resolvedHardpointOffsets,
   };
 }

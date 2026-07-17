@@ -480,7 +480,7 @@ function raidlands_airstrike_animations_repair_bundle_from_revisions(int $revisi
         'CompilerVersion' => (string) ($row['compiler_version'] ?? RAIDLANDS_AIRSTRIKE_ANIMATION_COMPILER_VERSION),
         'Profiles' => $profiles === [] ? new stdClass() : $profiles,
         'PublishedRevision' => $revision,
-        'SchemaVersion' => (int) ($row['schema_version'] ?? 2) ?: 2,
+        'SchemaVersion' => (int) ($row['schema_version'] ?? 3) ?: 3,
     ];
     $canonical_json = raidlands_airstrike_animation_canonical_json($bundle);
 
@@ -811,7 +811,7 @@ function raidlands_airstrike_animations_publish(string $notes = ''): array
         $insert = $pdo->prepare(
             'INSERT INTO airstrike_animation_bundles
                 (schema_version, compiler_version, bundle_json, sha256, profile_count, publish_notes, published_by)
-             VALUES (2, :compiler_version, :bundle_json, :sha256, :profile_count, :notes, :published_by)'
+             VALUES (3, :compiler_version, :bundle_json, :sha256, :profile_count, :notes, :published_by)'
         );
         $insert->execute([
             'compiler_version' => RAIDLANDS_AIRSTRIKE_ANIMATION_COMPILER_VERSION,

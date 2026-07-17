@@ -118,8 +118,8 @@ function validateProfile(
     addIssue(issues, path, "object", "Must be an object.");
     return;
   }
-  if (profile.EditorSourceSchemaVersion !== EDITOR_SOURCE_SCHEMA_VERSION) {
-    addIssue(issues, `${path}.EditorSourceSchemaVersion`, "schema_version", "Must be editor source schema version 1.");
+  if (profile.EditorSourceSchemaVersion !== 1 && profile.EditorSourceSchemaVersion !== EDITOR_SOURCE_SCHEMA_VERSION) {
+    addIssue(issues, `${path}.EditorSourceSchemaVersion`, "schema_version", "Must be editor source schema version 1 or 2.");
   }
   if (typeof profile.ProfileKey !== "string" || !PROFILE_KEY_PATTERN.test(profile.ProfileKey)) {
     addIssue(issues, `${path}.ProfileKey`, "safe_profile_key", "Must match ^[a-z0-9][a-z0-9._-]{0,99}$.");
@@ -198,14 +198,14 @@ function validateProfile(
     return;
   }
   const release = profile.ReleaseSource;
-  if (release.Mode === "manual") {
+  if (release.Mode === "manual" || release.Mode === "mixed") {
     if (!Array.isArray(release.Events)) {
       addIssue(issues, `${path}.ReleaseSource.Events`, "array", "Must be an array.");
     } else {
       if (release.Events.length > MAX_MANUAL_EVENTS) {
         addIssue(issues, `${path}.ReleaseSource.Events`, "event_count", `Must not exceed ${MAX_MANUAL_EVENTS} source events.`);
       }
-      if (release.Events.length === 0 && release.LegacyDynamic !== true) {
+      if (release.Mode === "manual" && release.Events.length === 0 && release.LegacyDynamic !== true) {
         addIssue(issues, `${path}.ReleaseSource.Events`, "empty_manual_schedule", "An empty manual schedule must be marked LegacyDynamic.");
       }
       let totalUnits = 0;
@@ -245,7 +245,7 @@ function validateProfile(
       if (totalUnits > MAX_COMPILED_RELEASE_UNITS) {
         addIssue(issues, `${path}.ReleaseSource.Events`, "compiled_unit_count", `Materialized releases must not exceed ${MAX_COMPILED_RELEASE_UNITS} units.`);
       }
-      if (release.Events.length > 0 && typeof profile.FirstPayloadDelaySeconds === "number") {
+      if (release.Mode === "manual" && release.Events.length > 0 && typeof profile.FirstPayloadDelaySeconds === "number") {
         const earliest = Math.min(...release.Events.map((event) => Number(isRecord(event) ? event.Time : Infinity)));
         if (Number.isFinite(earliest) && Math.abs(profile.FirstPayloadDelaySeconds - earliest) > 1e-6) {
           addIssue(issues, `${path}.FirstPayloadDelaySeconds`, "first_release_sync", "Must equal the earliest manual release event time.");
@@ -261,7 +261,8 @@ function validateProfile(
     if (release.Template !== undefined) {
       validatePayloadFields(release.Template, `${path}.ReleaseSource.Template`, issues, true);
     }
-  } else if (release.Mode === "repeated") {
+  }
+  if (release.Mode === "repeated" || release.Mode === "mixed") {
     if (release.Groups !== undefined) {
       if (!Array.isArray(release.Groups) || release.Groups.length === 0) {
         addIssue(issues, `${path}.ReleaseSource.Groups`, "array", "Must contain at least one automatic release group.");
@@ -292,10 +293,29 @@ function validateProfile(
           if (validateFinite(group.StartTime, `${groupPath}.StartTime`, issues, 0, Number(profile.DurationSeconds))) {
             earliest = Math.min(earliest, group.StartTime);
           }
-          validateFinite(group.IntervalSeconds, `${groupPath}.IntervalSeconds`, issues, 0.01, 30);
-          validateInteger(group.UnitsPerRelease, `${groupPath}.UnitsPerRelease`, issues, 1, MAX_COMPILED_RELEASE_UNITS);
-          if (validateInteger(group.MaximumUnits, `${groupPath}.MaximumUnits`, issues, 1, MAX_COMPILED_RELEASE_UNITS)) {
-            totalUnits += group.MaximumUnits;
+          validateFinite(group.IntervalSeconds, `${groupPath}.IntervalSeconds`, issues, 0.001, 30);
+          const unitsValid = validateInteger(group.UnitsPerRelease, `${groupPath}.UnitsPerRelease`, issues, 1, 200);
+          const unitsPerRelease = Number(group.UnitsPerRelease);
+          const unitInterval = group.UnitIntervalSeconds ?? 0;
+          const unitIntervalValid = validateFinite(unitInterval, `${groupPath}.UnitIntervalSeconds`, issues, 0, 30);
+          if (unitsValid && unitIntervalValid && typeof group.IntervalSeconds === "number"
+            && Number(group.UnitsPerRelease) * unitInterval > group.IntervalSeconds + 1e-9) {
+            addIssue(issues, `${groupPath}.UnitIntervalSeconds`, "burst_overlap", "All units in a burst must fit before the next burst starts.");
+          }
+          const maximumValid = validateInteger(group.MaximumUnits, `${groupPath}.MaximumUnits`, issues, 1, MAX_COMPILED_RELEASE_UNITS);
+          const maximumUnits = Number(group.MaximumUnits);
+          if (maximumValid) {
+            totalUnits += maximumUnits;
+          }
+          if (unitsValid && maximumValid && unitIntervalValid && typeof group.StartTime === "number"
+            && typeof group.IntervalSeconds === "number" && typeof profile.DurationSeconds === "number") {
+            const finalUnit = maximumUnits - 1;
+            const finalTime = group.StartTime
+              + Math.floor(finalUnit / unitsPerRelease) * group.IntervalSeconds
+              + (finalUnit % unitsPerRelease) * unitInterval;
+            if (finalTime > profile.DurationSeconds + 1e-9) {
+              addIssue(issues, `${groupPath}.MaximumUnits`, "release_after_duration", "All generated units must occur within the profile duration.");
+            }
           }
           validatePayloadFields(group.Template, `${groupPath}.Template`, issues, false);
           if (!Array.isArray(group.HardpointSequence)) {
@@ -313,7 +333,7 @@ function validateProfile(
         if (totalUnits > MAX_COMPILED_RELEASE_UNITS) {
           addIssue(issues, `${path}.ReleaseSource.Groups`, "compiled_unit_count", `Automatic groups must not exceed ${MAX_COMPILED_RELEASE_UNITS} total units.`);
         }
-        if (typeof profile.FirstPayloadDelaySeconds === "number" && Number.isFinite(earliest) && Math.abs(profile.FirstPayloadDelaySeconds - earliest) > 1e-6) {
+        if (release.Mode === "repeated" && typeof profile.FirstPayloadDelaySeconds === "number" && Number.isFinite(earliest) && Math.abs(profile.FirstPayloadDelaySeconds - earliest) > 1e-6) {
           addIssue(issues, `${path}.FirstPayloadDelaySeconds`, "first_release_sync", "Must equal the earliest automatic group start time.");
         }
       }
@@ -328,6 +348,17 @@ function validateProfile(
         release.LegacyDynamic === true ? 0 : 1,
         MAX_COMPILED_RELEASE_UNITS,
       );
+      const legacyUnitsPerRelease = Number(release.UnitsPerRelease);
+      const legacyMaximumUnits = Number(release.MaximumUnits);
+      if (typeof release.StartTime === "number" && typeof release.IntervalSeconds === "number"
+        && Number.isInteger(legacyUnitsPerRelease) && legacyUnitsPerRelease > 0
+        && Number.isInteger(legacyMaximumUnits) && legacyMaximumUnits > 0
+        && typeof profile.DurationSeconds === "number") {
+        const finalTime = release.StartTime + Math.floor((legacyMaximumUnits - 1) / legacyUnitsPerRelease) * release.IntervalSeconds;
+        if (finalTime > profile.DurationSeconds + 1e-9) {
+          addIssue(issues, `${path}.ReleaseSource.MaximumUnits`, "release_after_duration", "All generated units must occur within the profile duration.");
+        }
+      }
       validatePayloadFields(release.Template, `${path}.ReleaseSource.Template`, issues, false);
       if (!Array.isArray(release.HardpointSequence)) {
         addIssue(issues, `${path}.ReleaseSource.HardpointSequence`, "array", "Must be an array.");
@@ -345,8 +376,28 @@ function validateProfile(
         addIssue(issues, `${path}.FirstPayloadDelaySeconds`, "first_release_sync", "Must equal repeated StartTime.");
       }
     }
-  } else {
-    addIssue(issues, `${path}.ReleaseSource.Mode`, "release_mode", "Must be manual or repeated.");
+  }
+  if (release.Mode !== "manual" && release.Mode !== "repeated" && release.Mode !== "mixed") {
+    addIssue(issues, `${path}.ReleaseSource.Mode`, "release_mode", "Must be manual, repeated, or mixed.");
+  }
+  if (release.Mode === "mixed") {
+    const manualUnits = Array.isArray(release.Events)
+      ? release.Events.reduce((sum, event) => sum + (isRecord(event) && typeof event.Count === "number" ? event.Count : 0), 0)
+      : 0;
+    const generatedUnits = Array.isArray(release.Groups)
+      ? release.Groups.reduce((sum, group) => sum + (isRecord(group) && typeof group.MaximumUnits === "number" ? group.MaximumUnits : 0), 0)
+      : 0;
+    if (manualUnits + generatedUnits > MAX_COMPILED_RELEASE_UNITS) {
+      addIssue(issues, `${path}.ReleaseSource`, "compiled_unit_count", `Mixed releases must not exceed ${MAX_COMPILED_RELEASE_UNITS} total units.`);
+    }
+    const times = [
+      ...(Array.isArray(release.Events) ? release.Events.map((event) => isRecord(event) ? Number(event.Time) : Infinity) : []),
+      ...(Array.isArray(release.Groups) ? release.Groups.map((group) => isRecord(group) ? Number(group.StartTime) : Infinity) : []),
+    ].filter(Number.isFinite);
+    if (times.length > 0 && typeof profile.FirstPayloadDelaySeconds === "number"
+      && Math.abs(profile.FirstPayloadDelaySeconds - Math.min(...times)) > 1e-6) {
+      addIssue(issues, `${path}.FirstPayloadDelaySeconds`, "first_release_sync", "Must equal the earliest mixed release time.");
+    }
   }
 
   const editorMetadata = isRecord(profile.EditorMetadata) ? profile.EditorMetadata : {};
@@ -372,8 +423,8 @@ export function validateSourceBundle(value: unknown, metadata?: VehiclePreviewMe
   if (!isRecord(value)) {
     return [{ path: "$root", code: "object", message: "Source bundle must be an object." }];
   }
-  if (value.EditorSourceSchemaVersion !== EDITOR_SOURCE_SCHEMA_VERSION) {
-    addIssue(issues, "EditorSourceSchemaVersion", "schema_version", "Must be editor source schema version 1.");
+  if (value.EditorSourceSchemaVersion !== 1 && value.EditorSourceSchemaVersion !== EDITOR_SOURCE_SCHEMA_VERSION) {
+    addIssue(issues, "EditorSourceSchemaVersion", "schema_version", "Must be editor source schema version 1 or 2.");
   }
   if (typeof value.AllowDangerousPayloadPreview !== "boolean") {
     addIssue(issues, "AllowDangerousPayloadPreview", "boolean", "Must be boolean.");

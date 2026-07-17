@@ -172,9 +172,9 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
           <label class="server-terrain-field">
             <span>Monuments</span>
             <select data-map-detailed-monuments>
-              <option value="auto">Auto</option>
-              <option value="primitives">Map LOD</option>
-              <option value="detailed">Detailed</option>
+              <option value="auto">Auto (distance-based)</option>
+              <option value="primitives">Map LOD (authored models)</option>
+              <option value="detailed">Detailed (higher LODs)</option>
             </select>
           </label>
           <label class="server-terrain-field server-terrain-camera-mode">

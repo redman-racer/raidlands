@@ -40,6 +40,13 @@ function sourceHashProjection(
             ? { ResolvedHardpointOffsets: resolvedHardpointOffsets }
             : {}),
         }
+      : release.Mode === "mixed"
+        ? {
+            Mode: release.Mode,
+            Events: release.Events.map(({ Id: _id, ...event }) => event),
+            Groups: release.Groups.map(({ Id: _id, Name: _name, ...group }) => group),
+            ResolvedHardpointOffsets: resolvedHardpointOffsets,
+          }
       : hasGroupedRepeatedReleases(release)
         ? {
             Mode: release.Mode,
@@ -131,6 +138,11 @@ export function compileSourceProfile(
       ? Math.min(...profile.ReleaseSource.Events.map((event) => event.Time))
       : profile.ReleaseSource.Mode === "repeated"
         ? firstRepeatedReleaseTime(profile.ReleaseSource)
+        : profile.ReleaseSource.Mode === "mixed"
+          ? Math.min(
+              ...profile.ReleaseSource.Events.map((event) => event.Time),
+              ...profile.ReleaseSource.Groups.map((group) => group.StartTime),
+            )
         : profile.FirstPayloadDelaySeconds;
 
   const runtimeProfile: RuntimeVisualProfile = {
@@ -154,6 +166,7 @@ export function compileSourceProfile(
       RotationZ: quantizeCanonicalNumber(waypoint.RotationZ),
     })),
     PayloadEvents: releases.legacyEvents,
+    ...(releases.generatedGroups.length === 0 ? {} : { GeneratedReleaseGroups: releases.generatedGroups }),
     CompiledTrack: {
       CompilerVersion: options.compilerVersion,
       SourceHash: sourceHash,
@@ -163,7 +176,6 @@ export function compileSourceProfile(
       DurationSeconds: quantizeCanonicalNumber(profile.DurationSeconds),
       Frames: frames,
     },
-    ...(releases.compiledEvents === undefined ? {} : { CompiledReleaseEvents: releases.compiledEvents }),
   };
   return { profile: runtimeProfile, sourceHash };
 }
