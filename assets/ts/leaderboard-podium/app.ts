@@ -1,5 +1,5 @@
 import {
-  ACESFilmicToneMapping, AdditiveBlending, AmbientLight, Box3, BufferGeometry, Color,
+  ACESFilmicToneMapping, AdditiveBlending, AmbientLight, Box3, BufferAttribute, BufferGeometry, Color,
   CylinderGeometry, DirectionalLight, FogExp2, Float32BufferAttribute, Group, Mesh, MeshStandardMaterial, PlaneGeometry, SphereGeometry,
   Object3D, PerspectiveCamera, PointLight, Points, PointsMaterial, Scene, SkinnedMesh, SRGBColorSpace,
   TorusGeometry, Vector3, WebGLRenderer,
@@ -8,9 +8,10 @@ import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import {
-  Leader, LEADERBOARD_PODIUM_ASSETS, LEADERBOARD_PODIUM_THEMES,
+  Leader, LEADERBOARD_PODIUM_ASSETS, LEADERBOARD_PODIUM_PRESETS, LEADERBOARD_PODIUM_THEMES,
   leaderboardPodiumMetricValue, podiumWearables, podiumWeapon,
 } from "./policy";
+import { normalizeWearableOrigin, podiumCharacterYaw, podiumWeaponLayout } from "./layout";
 
 type Payload = { leaders?: Leader[]; metric?: string; board?: string };
 
@@ -85,6 +86,12 @@ function staticBounds(root: Object3D): Box3 {
   root.traverse((node) => {
     const mesh = node as Mesh;
     if (!mesh.isMesh || !mesh.geometry) return;
+    if ((mesh as SkinnedMesh).isSkinnedMesh) {
+      const skinned = mesh as SkinnedMesh;
+      skinned.skeleton.update(); skinned.computeBoundingBox();
+      if (skinned.boundingBox) bounds.union(skinned.boundingBox.clone().applyMatrix4(skinned.matrixWorld));
+      return;
+    }
     if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
     if (mesh.geometry.boundingBox) bounds.union(mesh.geometry.boundingBox.clone().applyMatrix4(mesh.matrixWorld));
   });
@@ -92,13 +99,28 @@ function staticBounds(root: Object3D): Box3 {
   return bounds;
 }
 
-function mannequinHead(rank: number): Mesh {
-  const head = new Mesh(
-    new SphereGeometry(.13, 20, 16),
-    new MeshStandardMaterial({ color: [0x9b6b4c, 0x875d45, 0x704936][rank], roughness: .92 }),
-  );
-  head.position.set(0, 1.01, -.012); head.scale.set(.86, 1.08, .92);
-  head.frustumCulled = false; head.receiveShadow = true; return head;
+function component(attribute: { getX(index: number): number; getY(index: number): number; getZ(index: number): number; getW(index: number): number }, index: number, item: number): number {
+  return [attribute.getX(index), attribute.getY(index), attribute.getZ(index), attribute.getW(index)][item] || 0;
+}
+
+function expandSkinAttributes(mesh: SkinnedMesh): boolean {
+  const position = mesh.geometry.getAttribute("position");
+  const indices = mesh.geometry.getAttribute("skinIndex");
+  const weights = mesh.geometry.getAttribute("skinWeight");
+  if (!position || !indices || !weights || indices.count !== position.count || weights.count !== position.count) return false;
+  if (indices.itemSize === 4 && weights.itemSize === 4) return true;
+
+  const expandedIndices = new Uint16Array(position.count * 4);
+  const expandedWeights = new Float32Array(position.count * 4);
+  for (let vertex = 0; vertex < position.count; vertex += 1) {
+    for (let item = 0; item < 4; item += 1) {
+      if (item < indices.itemSize) expandedIndices[vertex * 4 + item] = component(indices, vertex, item);
+      if (item < weights.itemSize) expandedWeights[vertex * 4 + item] = component(weights, vertex, item);
+    }
+  }
+  mesh.geometry.setAttribute("skinIndex", new BufferAttribute(expandedIndices, 4));
+  mesh.geometry.setAttribute("skinWeight", new BufferAttribute(expandedWeights, 4));
+  return true;
 }
 
 class PodiumScene {
@@ -195,21 +217,21 @@ class PodiumScene {
     const keys = podiumWearables(leader, rank); const roots: Object3D[] = [];
     await Promise.all(keys.map(async (key) => {
       const file = LEADERBOARD_PODIUM_ASSETS[key]; if (!file) return;
-      try { const model = await this.loadInstance(file); poseWearable(model, rank); roots.push(model); } catch { /* A missing layer falls back to the remaining mannequin. */ }
+      try { const model = await this.loadInstance(file); normalizeWearableOrigin(model); poseWearable(model, rank); roots.push(model); } catch { /* A missing layer falls back to the remaining mannequin. */ }
     }));
     if (!roots.length) {
-      const fallbackKeys = ["body-torso", "body-legs", "body-hands", "body-feet", "hoodie", "pants", "boots"];
+      const fallbackKeys = LEADERBOARD_PODIUM_PRESETS.survivor;
       await Promise.all(fallbackKeys.map(async (key) => {
-        try { const model = await this.loadInstance(LEADERBOARD_PODIUM_ASSETS[key]); poseWearable(model, rank); roots.push(model); } catch { /* The card remains if the base mannequin cannot load. */ }
+        try { const model = await this.loadInstance(LEADERBOARD_PODIUM_ASSETS[key]); normalizeWearableOrigin(model); poseWearable(model, rank); roots.push(model); } catch { /* The card remains if the base mannequin cannot load. */ }
       }));
     }
     if (generation !== this.generation || this.disposed || !roots.length) return;
-    const visual = new Group(); roots.forEach((root) => visual.add(root)); visual.add(mannequinHead(rank));
+    const visual = new Group(); roots.forEach((root) => visual.add(root));
     const box = staticBounds(visual); const size = box.getSize(new Vector3()); visual.scale.setScalar(2.65 / Math.max(size.y, .01));
     const fitted = staticBounds(visual); const center = fitted.getCenter(new Vector3());
     visual.position.x -= center.x; visual.position.y -= fitted.min.y; visual.position.z -= center.z;
     const wrapper = new Group(); wrapper.add(visual); wrapper.position.set(RANK_X[rank], RANK_HEIGHTS[rank] + .08, 0);
-    wrapper.rotation.y = Math.PI + [0, .12, -.12][rank]; wrapper.userData.baseY = wrapper.position.y; wrapper.userData.phase = rank * 1.7;
+    wrapper.rotation.y = podiumCharacterYaw(rank); wrapper.userData.baseY = wrapper.position.y; wrapper.userData.phase = rank * 1.7;
     const weaponKey = podiumWeapon(leader);
     if (weaponKey) {
       try {
@@ -217,10 +239,11 @@ class PodiumScene {
         if (generation !== this.generation) return;
         weapon.traverse((node) => { if ((node as Mesh).isMesh) (node as Mesh).castShadow = false; });
         const weaponBox = staticBounds(weapon); const weaponSize = weaponBox.getSize(new Vector3());
-        weapon.scale.setScalar((weaponKey === "sap" ? .58 : 1.02) / Math.max(weaponSize.x, weaponSize.y, weaponSize.z, .01));
+        const layout = podiumWeaponLayout(weaponKey, rank);
+        weapon.scale.setScalar(layout.size / Math.max(weaponSize.x, weaponSize.y, weaponSize.z, .01));
         const scaled = staticBounds(weapon); const weaponCenter = scaled.getCenter(new Vector3()); weapon.position.sub(weaponCenter);
-        const mount = new Group(); mount.add(weapon); mount.position.set(0, 1.35, -.3);
-        mount.rotation.set(weaponKey === "rocket-launcher" ? 0 : -.08, weaponKey === "rocket-launcher" ? Math.PI / 2 : .2, weaponKey === "sap" ? -.25 : -.12);
+        const mount = new Group(); mount.name = "weapon-mount"; mount.add(weapon);
+        mount.position.set(...layout.position); mount.rotation.set(...layout.rotation);
         wrapper.add(mount);
       } catch { /* The character remains the representative if a weapon fails. */ }
     }
@@ -244,9 +267,11 @@ class PodiumScene {
       if ((node as Mesh).isMesh) (node as Mesh).frustumCulled = false;
       if ((node as SkinnedMesh).isSkinnedMesh) {
         const skinned = node as SkinnedMesh;
-        // RustRelay wearables are already authored in a usable standing bind pose.
-        // Render that geometry rigidly because several exports intentionally omit
-        // helper-joint weights that Three's runtime skinning requires.
+        // Keep valid wearable skins live so their mannequin bones establish the
+        // attachment frame and the shared pose can affect every clothing layer.
+        if (expandSkinAttributes(skinned)) return;
+        // A few decorative props carry an unusable skin with no weight stream.
+        // Those props are genuinely rigid and remain safe to flatten.
         const rigidGeometry = skinned.geometry.clone();
         rigidGeometry.applyMatrix4(skinned.bindMatrix);
         const replacement = new Mesh(rigidGeometry, skinned.material);
