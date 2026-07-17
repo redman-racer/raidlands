@@ -47,6 +47,12 @@ describe("server map cinematic camera director", () => {
     expect(state.tier).toBe("constrained");
   });
 
+  it("treats visible long frames as immediate low-performance evidence", () => {
+    let state: DirectorFpsState = { smoothedFps: 60, tier: "healthy" };
+    for (let index = 0; index < 12; index += 1) state = updateDirectorFpsState(state, 500, 0.25);
+    expect(state.tier).toBe("low");
+  });
+
   it("keeps generated scenic positions inside the current playable world", () => {
     const shot = selectDirectorShot(baseInput());
     expect(Math.abs(shot.position.x)).toBeLessThanOrEqual(3500 * 0.47);

@@ -71,8 +71,10 @@ import {
   RecordedTimelineBatchCache,
   RecordedTimelineBuffer,
   RecordedTimelineClock,
+  effectiveRecordedReplayRange,
   initialRecordedReplayCursor,
   latestRecordedAvailability,
+  recordedCoverageDurationMs,
   recordedSampleEverySeconds,
   recordedTimelineFramesAround,
   recordedTimelineRenderIntervalMs,
@@ -159,6 +161,7 @@ import { monumentPrimitiveKind, monumentPrimitiveSearchKey, monumentPrimitiveSiz
 import { normalizePowerLines, type PowerLinePayload } from "./power-line-policy";
 import { normalizeRoads, roadRibbonUvs, sampleSmoothRoadCenterline, type RoadPayload } from "./road-policy";
 import { sampleTerrainSurfaceHeight } from "./terrain-height-policy";
+import { installMapViewerDiagnostics, type MapViewerDiagnostics } from "./viewer-diagnostics";
 import {
   desiredMonumentTier,
   monumentCacheEvictionKeys,
@@ -702,6 +705,9 @@ type ServerStatusMapImage = {
   publishedAt?: string;
   updatedAt?: string;
   generatedAt?: string;
+  assetState?: string;
+  assetLabel?: string;
+  representativeAssets?: boolean;
 };
 
 type ViewerBinding = {
@@ -855,9 +861,16 @@ function persistMonumentMode(mode: MonumentMode): void {
 async function initTerrainViewer(root: HTMLElement): Promise<TerrainViewerInstance | null> {
   const terrainUrl = root.dataset.terrainUrl || "";
   const status = root.querySelector<HTMLElement>("[data-map-viewer-status]");
+  const assetState = root.dataset.mapAssetState || "remote";
+  const assetLabel = root.dataset.mapAssetLabel || "";
+
+  if (assetState === "stale" || assetState === "missing") {
+    setStatus(status, assetLabel || "Local map assets are unavailable. Run npm run map:sync.");
+    return null;
+  }
 
   if (!terrainUrl) {
-    setStatus(status, "Terrain export pending.");
+    setStatus(status, assetLabel || "Terrain asset unavailable.");
     return null;
   }
 
@@ -881,12 +894,12 @@ async function initTerrainViewer(root: HTMLElement): Promise<TerrainViewerInstan
     viewer.mount();
     const binding = bindExternalControls(root, viewer);
     void bindAirstrikePreview(root, viewer);
-    setStatus(status, "");
+    setStatus(status, assetState === "representative" ? assetLabel : "");
     root.dataset.mapFingerprint = terrainViewerFingerprint(root);
     return { viewer, binding };
   } catch (error) {
     console.info("Raidlands terrain viewer could not be loaded.", error);
-    setStatus(status, "Terrain export pending.");
+    setStatus(status, assetLabel || "Terrain asset could not be loaded.");
     return null;
   }
 }
@@ -959,6 +972,8 @@ function bindLiveTerrainUpdates(root: HTMLElement, initial: TerrainViewerInstanc
       root.dataset.terrainHash = metadata.terrainHash || "";
       root.dataset.skyboxHash = metadata.skyboxHash || "";
       root.dataset.mapPublishedAt = metadata.publishedAt || "";
+      root.dataset.mapAssetState = metadata.assetState || "remote";
+      root.dataset.mapAssetLabel = metadata.assetLabel || "Remote map assets";
 
       await replaceViewer();
       if (instance) {
@@ -1162,6 +1177,7 @@ class TerrainViewer {
   private readonly airstrikeLayer = new Group();
   private readonly roadLayer = new Group();
   private readonly monumentLayer = new Group();
+  private monumentMapLodBatch: InstancedMesh | null = null;
   private readonly powerLineLayer = new Group();
   private readonly vegetationLayer = new Group();
   private readonly weatherCloudLayer = new Group();
@@ -1344,11 +1360,18 @@ class TerrainViewer {
   private readonly directorRecentShotIds: string[] = [];
   private readonly directorFeatures: DirectorLandscapeFeature[];
   private directorFps: DirectorFpsState = { smoothedFps: 60, tier: "healthy" };
-  private adaptivePerformanceTier: DirectorFpsState["tier"] = "healthy";
+  private adaptivePerformanceTier: DirectorFpsState["tier"] = "low";
+  private adaptiveRecoveryTier: DirectorFpsState["tier"] | null = null;
+  private adaptiveRecoveryStartedAt = 0;
   private readonly lockCameraInput: boolean;
   private monumentMode: MonumentMode = "auto";
   private readonly monumentModels: MonumentModelController;
   private treeModels: TreeModelController | null = null;
+  private diagnostics: MapViewerDiagnostics | null = null;
+  private viewportObserver: IntersectionObserver | null = null;
+  private viewerVisible = true;
+  private lastSceneStatsAt = 0;
+  private interactionSettleTimer = 0;
   private transitionFrom: CameraPose | null = null;
   private transitionTo: CameraPose | null = null;
   private transitionFinal: CameraPose | null = null;
@@ -1411,7 +1434,7 @@ class TerrainViewer {
     this.monumentModels = new MonumentModelController({
       assetBase: this.root.dataset.assetBase || new URL(/* @vite-ignore */ "../../", import.meta.url).href,
       camera: this.camera,
-      policy: resolveMonumentQuality(this.monumentMode, this.qualityProfile.resolved, monumentModelThresholds()),
+      policy: resolveMonumentQuality(this.monumentMode, this.runtimeEnvironmentQuality(), monumentModelThresholds()),
       root: this.root,
     });
     this.tourEnabled = this.root.dataset.cameraTour === "true";
@@ -1421,6 +1444,7 @@ class TerrainViewer {
       ? (this.tourStyle === "orbit" ? "orbit" : "cinematic")
       : parseCameraMode(this.root.dataset.cameraMode, this.tourEnabled ? "director" : "manual");
     this.renderer.setPixelRatio(Math.min(window.devicePixelRatio || 1, this.qualityProfile.pixelRatioCap));
+    this.renderer.info.autoReset = false;
     this.renderer.outputColorSpace = SRGBColorSpace;
     this.renderer.shadowMap.enabled = this.qualityProfile.resolved === "ultra" || this.qualityProfile.resolved === "high";
     this.renderer.shadowMap.type = PCFSoftShadowMap;
@@ -1571,11 +1595,31 @@ class TerrainViewer {
     this.controls.minDistance = Math.max(120, (this.terrain.worldSize || 4500) * 0.08);
     this.controls.maxDistance = Math.max(1600, this.cameraFrameSize() * 1.4);
     (this.controls as OrbitControls & { zoomToCursor?: boolean }).zoomToCursor = true;
-    this.controls.addEventListener("start", () => this.pauseAutomaticCamera());
+    this.controls.addEventListener("start", () => {
+      window.clearTimeout(this.interactionSettleTimer);
+      this.pauseAutomaticCamera();
+      this.monumentModels.setInteractionActive(true);
+      this.treeModels?.setInteractionActive(true);
+    });
+    this.controls.addEventListener("end", () => {
+      window.clearTimeout(this.interactionSettleTimer);
+      this.interactionSettleTimer = window.setTimeout(() => {
+        this.monumentModels.setInteractionActive(false);
+        this.treeModels?.setInteractionActive(false);
+      }, 400);
+    });
+    this.applyAdaptivePerformanceTier(this.adaptivePerformanceTier);
   }
 
   public mount(): void {
     this.root.appendChild(this.renderer.domElement);
+    this.diagnostics = installMapViewerDiagnostics(this.root);
+    if ("IntersectionObserver" in window) {
+      this.viewportObserver = new IntersectionObserver((entries) => {
+        this.setViewerVisible(entries.some((entry) => entry.isIntersecting));
+      }, { rootMargin: "200px" });
+      this.viewportObserver.observe(this.root);
+    }
     this.applyCameraPose(this.isoPose(false));
     if (this.tourEnabled) {
       this.startNextTour(performance.now(), true);
@@ -1602,6 +1646,9 @@ class TerrainViewer {
   public dispose(): void {
     this.disposed = true;
     window.cancelAnimationFrame(this.animationFrame);
+    window.clearTimeout(this.interactionSettleTimer);
+    this.viewportObserver?.disconnect();
+    this.diagnostics?.dispose();
     window.removeEventListener("resize", this.onResize);
     this.renderer.domElement.removeEventListener("pointerdown", this.onPointerDown, true);
     this.renderer.domElement.removeEventListener("pointerup", this.onPointerUp);
@@ -1651,6 +1698,7 @@ class TerrainViewer {
     this.monumentMode = mode;
     this.root.dataset.monumentMode = mode;
     this.monumentModels.setPolicy(resolveMonumentQuality(mode, this.runtimeEnvironmentQuality(), monumentModelThresholds()));
+    this.updateMonumentMapLodVisibility();
     this.root.closest<HTMLElement>(".server-terrain-panel")
       ?.querySelectorAll<HTMLInputElement | HTMLSelectElement>("[data-map-detailed-monuments]")
       .forEach((control) => {
@@ -1934,6 +1982,7 @@ class TerrainViewer {
       ambientEnabled,
     );
     this.airstrikeReplay.start();
+    this.airstrikeReplay.setDetailedModelsEnabled(this.runtimeEnvironmentQuality() !== "low");
     if (this.latestReplayEvents.length > 0) {
       this.airstrikeReplay.showEvents(this.latestReplayEvents, this.latestReplaySpeed, this.latestReplayOptions);
     }
@@ -1941,11 +1990,12 @@ class TerrainViewer {
 
   public showReplayEvents(events: MapReplayEvent[], playbackSpeed: number, options: ReplayDisplayOptions = {}): void {
     const previousSignature = replayDirectorSignature(this.latestReplayEvents);
-    this.latestReplayEvents = events;
+    const visibleEvents = this.runtimeEnvironmentQuality() === "low" ? events.slice(-6) : events;
+    this.latestReplayEvents = visibleEvents;
     this.latestReplaySpeed = playbackSpeed;
     this.latestReplayOptions = options;
-    this.airstrikeReplay?.showEvents(events, playbackSpeed, options);
-    if (previousSignature !== replayDirectorSignature(events) && isDirectorMode(this.cameraMode)) {
+    this.airstrikeReplay?.showEvents(visibleEvents, playbackSpeed, options);
+    if (previousSignature !== replayDirectorSignature(visibleEvents) && isDirectorMode(this.cameraMode)) {
       this.directorShot = null;
     }
   }
@@ -2728,13 +2778,14 @@ diffuseColor.a = mix(diffuseColor.a, 1.0, raidlandsWaterHorizonFade);
     this.treeModels = new TreeModelController({
       assetBase: this.root.dataset.assetBase || new URL(/* @vite-ignore */ "../../", import.meta.url).href,
       camera: this.camera,
-      quality: this.qualityProfile.resolved,
+      quality: this.runtimeEnvironmentQuality(),
       placements: vegetation.userData.placements as VegetationPlacement[],
       fallback: vegetation,
       parent: this.vegetationLayer,
       root: this.root,
       dracoDecoderUrl: DRACO_DECODER_URL,
     });
+    this.treeModels.setVisible(this.viewerVisible);
   }
 
   private addMonuments(): void {
@@ -2746,6 +2797,7 @@ diffuseColor.a = mix(diffuseColor.a, 1.0, raidlandsWaterHorizonFade);
 
     const layer = this.monumentLayer;
     layer.name = "raidlands-monument-primitives";
+    const mapLodMatrices: Matrix4[] = [];
 
     monuments.forEach((monument) => {
       if (shouldHideMonumentPrimitive(monument) && !monumentModelAssetName(monument.prefab)) {
@@ -2756,14 +2808,26 @@ diffuseColor.a = mix(diffuseColor.a, 1.0, raidlandsWaterHorizonFade);
       const monumentGroundY = Math.max(monumentPosition.y, terrainHeight);
       const groupY = monumentGroundY + 5;
       const rotationY = -MathUtils.degToRad(monument.rotationY || 0);
-      const group = createMonumentPrimitive(monument, {
-        terrain: this.terrain,
-        center: monumentPosition,
-        groupY,
-        rotationY,
-      });
+      const group = this.monumentMode === "auto" || monumentModelMetadata(monument.prefab)
+        ? createMonumentLodPlaceholder(monument)
+        : createMonumentPrimitive(monument, {
+          terrain: this.terrain,
+          center: monumentPosition,
+          groupY,
+          rotationY,
+        });
       group.position.set(monumentPosition.x, groupY, monumentPosition.z);
       group.rotation.y = rotationY;
+      if (this.monumentMode === "auto") {
+        const size = monumentPrimitiveSize(monument, monument.radius);
+        const markerY = Math.max(2, size * 0.025);
+        mapLodMatrices.push(new Matrix4().compose(
+          new Vector3(monumentPosition.x, groupY + markerY, monumentPosition.z),
+          new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), rotationY),
+          new Vector3(Math.max(5, size * 0.22), Math.max(4, size * 0.05), Math.max(5, size * 0.22)),
+        ));
+        group.visible = false;
+      }
       group.traverse((object) => {
         if (object instanceof Mesh) {
           object.castShadow = this.renderer.shadowMap.enabled;
@@ -2777,7 +2841,32 @@ diffuseColor.a = mix(diffuseColor.a, 1.0, raidlandsWaterHorizonFade);
       this.monumentModels.register(group, monument, monumentPosition.y - groupY);
     });
 
+    if (mapLodMatrices.length > 0) {
+      const batch = new InstancedMesh(
+        new CylinderGeometry(1, 1, 1, 8),
+        new MeshStandardMaterial({ color: 0x58666a, roughness: 0.92, metalness: 0.08 }),
+        mapLodMatrices.length,
+      );
+      batch.name = "monument-map-lod-batch";
+      batch.castShadow = false;
+      batch.receiveShadow = false;
+      mapLodMatrices.forEach((matrix, index) => batch.setMatrixAt(index, matrix));
+      batch.instanceMatrix.needsUpdate = true;
+      batch.computeBoundingSphere();
+      this.monumentMapLodBatch = batch;
+      layer.add(batch);
+    }
+
     this.scene.add(layer);
+    this.updateMonumentMapLodVisibility();
+  }
+
+  private updateMonumentMapLodVisibility(): void {
+    const batched = this.monumentMode === "auto" && this.runtimeEnvironmentQuality() === "low";
+    if (this.monumentMapLodBatch) this.monumentMapLodBatch.visible = batched;
+    this.monumentLayer.children.forEach((child) => {
+      if (child.userData.primitiveKind === "map-lod-placeholder") child.visible = !batched;
+    });
   }
 
   private addRoads(): void {
@@ -3117,17 +3206,24 @@ diffuseColor.a = mix(diffuseColor.a, 1.0, raidlandsWaterHorizonFade);
   private animate(): void {
     this.animationFrame = window.requestAnimationFrame(() => this.animate());
     if (document.visibilityState === "hidden") {
+      this.lastAnimationTick = performance.now();
+      this.diagnostics?.setVisible(false);
+      return;
+    }
+    if (!this.viewerVisible) {
+      this.lastAnimationTick = performance.now();
+      this.diagnostics?.setVisible(false);
       return;
     }
     const now = performance.now();
     const frameMs = Math.max(0, now - this.lastAnimationTick);
     const deltaSeconds = Math.min(0.05, frameMs / 1000);
     this.lastAnimationTick = now;
+    this.diagnostics?.setVisible(true);
+    this.diagnostics?.recordFrame(frameMs);
     this.directorFps = updateDirectorFpsState(this.directorFps, frameMs);
     this.root.dataset.cameraPerformanceTier = this.directorFps.tier;
-    if (this.directorFps.tier !== this.adaptivePerformanceTier) {
-      this.applyAdaptivePerformanceTier(this.directorFps.tier);
-    }
+    this.updateAdaptivePerformanceTier(now);
     this.updateFreeFlight(deltaSeconds);
     this.updateSelfLocationOrbit(now);
     this.updateCameraTour(now);
@@ -3145,13 +3241,77 @@ diffuseColor.a = mix(diffuseColor.a, 1.0, raidlandsWaterHorizonFade);
     this.monumentModels.tick(now);
     this.treeModels?.tick(now);
     this.updateAircraftCameraSafety();
+    this.renderer.info.reset();
     this.composer.render();
     this.root.dataset.viewerDrawCalls = String(this.renderer.info.render.calls);
     this.root.dataset.viewerTriangles = String(this.renderer.info.render.triangles);
+    this.diagnostics?.recordRenderer({
+      calls: this.renderer.info.render.calls,
+      triangles: this.renderer.info.render.triangles,
+      points: this.renderer.info.render.points,
+      lines: this.renderer.info.render.lines,
+      geometries: this.renderer.info.memory.geometries,
+      textures: this.renderer.info.memory.textures,
+    });
+    if ((now - this.lastSceneStatsAt) >= 500) {
+      this.lastSceneStatsAt = now;
+      let objects = 0;
+      let meshes = 0;
+      let instancedMeshes = 0;
+      let lines = 0;
+      let sprites = 0;
+      this.scene.traverse((object) => {
+        objects += 1;
+        if (object instanceof InstancedMesh) instancedMeshes += 1;
+        else if (object instanceof Mesh) meshes += 1;
+        else if (object instanceof LineSegments) lines += 1;
+        else if (object instanceof Sprite) sprites += 1;
+      });
+      Object.assign(this.root.dataset, {
+        viewerObjects: String(objects),
+        viewerMeshes: String(meshes),
+        viewerInstancedMeshes: String(instancedMeshes),
+        viewerLines: String(lines),
+        viewerSprites: String(sprites),
+      });
+    }
+  }
+
+  private setViewerVisible(visible: boolean): void {
+    if (visible === this.viewerVisible) return;
+    this.viewerVisible = visible;
+    this.lastAnimationTick = performance.now();
+    this.diagnostics?.setVisible(visible);
+    this.monumentModels.setVisible(visible);
+    this.treeModels?.setVisible(visible);
+    this.root.dataset.viewerVisible = String(visible);
   }
 
   private runtimeEnvironmentQuality(): EnvironmentQuality {
     return adaptiveEnvironmentQuality(this.qualityProfile.resolved, this.adaptivePerformanceTier);
+  }
+
+  private updateAdaptivePerformanceTier(now: number): void {
+    const measured = this.directorFps.tier;
+    if (measured === this.adaptivePerformanceTier) {
+      this.adaptiveRecoveryTier = null;
+      return;
+    }
+    const rank = (tier: DirectorFpsState["tier"]) => tier === "low" ? 0 : tier === "constrained" ? 1 : 2;
+    if (rank(measured) < rank(this.adaptivePerformanceTier)) {
+      this.adaptiveRecoveryTier = null;
+      this.applyAdaptivePerformanceTier(measured);
+      return;
+    }
+    if (this.adaptiveRecoveryTier !== measured) {
+      this.adaptiveRecoveryTier = measured;
+      this.adaptiveRecoveryStartedAt = now;
+      return;
+    }
+    if ((now - this.adaptiveRecoveryStartedAt) >= 15_000) {
+      this.adaptiveRecoveryTier = null;
+      this.applyAdaptivePerformanceTier(measured);
+    }
   }
 
   private applyAdaptivePerformanceTier(tier: DirectorFpsState["tier"]): void {
@@ -3160,6 +3320,9 @@ diffuseColor.a = mix(diffuseColor.a, 1.0, raidlandsWaterHorizonFade);
     const runtimeProfile = resolveEnvironmentQuality(runtimeQuality, fogCapabilities(this.renderer));
     this.root.dataset.environmentQualityRuntime = runtimeQuality;
     this.monumentModels.setPolicy(resolveMonumentQuality(this.monumentMode, runtimeQuality, monumentModelThresholds()));
+    this.updateMonumentMapLodVisibility();
+    this.treeModels?.setQuality(runtimeQuality);
+    this.airstrikeReplay?.setDetailedModelsEnabled(runtimeQuality !== "low");
 
     this.ambientOcclusionPass.enabled = runtimeQuality !== "low";
     if (this.volumetricFogPass) this.volumetricFogPass.enabled = runtimeQuality === "high" || runtimeQuality === "ultra";
@@ -4458,6 +4621,7 @@ diffuseColor.a = mix(diffuseColor.a, 1.0, raidlandsWaterHorizonFade);
       }
 
       if (object instanceof Sprite) {
+        object.visible = this.runtimeEnvironmentQuality() !== "low";
         setMaterialOpacity(object.material, labelOpacity * distanceFade);
       }
     });
@@ -4473,9 +4637,11 @@ class AirstrikeReplayPlayer {
   private readonly ambientEnabled: boolean;
   private readonly active = new Group();
   private runs: MapReplayRun[] = [];
+  private readonly runsByKey = new Map<string, MapReplayRun>();
   private nextAmbientStartAt = 0;
   private ambientSequence = 0;
   private explicitEventsVisible = false;
+  private detailedModelsEnabled = true;
 
   public constructor(
     layer: Group,
@@ -4499,6 +4665,12 @@ class AirstrikeReplayPlayer {
     this.layer.userData.tick = (time: number) => this.tick(time);
   }
 
+  public setDetailedModelsEnabled(enabled: boolean): void {
+    if (enabled === this.detailedModelsEnabled) return;
+    this.detailedModelsEnabled = enabled;
+    this.clear();
+  }
+
   public showEvents(events: MapReplayEvent[], playbackSpeed: number, options: ReplayDisplayOptions = {}): void {
     const mode = options.mode || "ambient";
     const cursorMs = Number(options.cursorMs);
@@ -4510,7 +4682,7 @@ class AirstrikeReplayPlayer {
       const key = replayEventKey(event, index);
       visibleKeys.add(key);
       const startAt = Number(this.layer.userData.lastTickTime || 0);
-      const existing = this.runs.find((run) => run.key === key);
+      const existing = this.runsByKey.get(key);
       if (existing) {
         existing.refresh?.(event, startAt);
         if (mode === "timeline" && Number.isFinite(cursorMs)) {
@@ -4520,9 +4692,9 @@ class AirstrikeReplayPlayer {
       }
 
       const run = event.eventType === "airstrike"
-        ? new AirstrikeReplayRun(key, event, this.terrain, this.profileForEvent(event), startAt, playbackSpeed, this.vehicleMetadata, this.assetBase)
+        ? new AirstrikeReplayRun(key, event, this.terrain, this.profileForEvent(event), startAt, playbackSpeed, this.vehicleMetadata, this.assetBase, this.detailedModelsEnabled)
         : event.eventType === "airdrop"
-          ? new AirdropReplayRun(key, event, this.terrain, startAt, playbackSpeed, this.vehicleMetadata, this.assetBase, replayAirdropCarrierEvent(event, eventsByKey))
+          ? new AirdropReplayRun(key, event, this.terrain, startAt, playbackSpeed, this.vehicleMetadata, this.assetBase, replayAirdropCarrierEvent(event, eventsByKey), this.detailedModelsEnabled)
           : new GenericMapEventReplayRun(
             key,
             event,
@@ -4532,11 +4704,13 @@ class AirstrikeReplayPlayer {
             this.vehicleMetadata,
             this.assetBase,
             mode !== "timeline",
+            this.detailedModelsEnabled,
           );
       if (mode === "timeline" && Number.isFinite(cursorMs)) {
         run.syncToTimeline(cursorMs, playbackSpeed, options.live === true);
       }
       this.runs.push(run);
+      this.runsByKey.set(key, run);
       this.active.add(run.group);
     });
 
@@ -4547,6 +4721,7 @@ class AirstrikeReplayPlayer {
       }
       this.active.remove(run.group);
       disposeObjectTree(run.group);
+      this.runsByKey.delete(run.key);
       return false;
     });
   }
@@ -4557,6 +4732,7 @@ class AirstrikeReplayPlayer {
       disposeObjectTree(run.group);
     });
     this.runs = [];
+    this.runsByKey.clear();
     this.explicitEventsVisible = false;
     if (this.ambientEnabled) {
       this.nextAmbientStartAt = Number(this.layer.userData.lastTickTime || 0) + 0.6;
@@ -4570,6 +4746,7 @@ class AirstrikeReplayPlayer {
       if (!alive) {
         this.active.remove(run.group);
         disposeObjectTree(run.group);
+        this.runsByKey.delete(run.key);
       }
       return alive;
     });
@@ -4598,11 +4775,13 @@ class AirstrikeReplayPlayer {
         1,
         this.vehicleMetadata,
         this.assetBase,
+        this.detailedModelsEnabled,
         "ambient",
         target,
       );
       longestDuration = Math.max(longestDuration, Number(profile.CompiledTrack?.DurationSeconds || profile.DurationSeconds || 8));
       this.runs.push(run);
+      this.runsByKey.set(key, run);
       this.active.add(run.group);
     }
     this.nextAmbientStartAt = time + longestDuration + 1.6 + Math.random() * 2.8;
@@ -4665,6 +4844,7 @@ class AirstrikeReplayRun implements MapReplayRun {
     playbackSpeed: number,
     vehicleMetadata: VehiclePreviewMetadataFile | null,
     assetBase: string,
+    detailedModelsEnabled: boolean,
     source: "ambient" | "event" = "event",
     targetOverride: Vector3 | null = null,
   ) {
@@ -4681,7 +4861,7 @@ class AirstrikeReplayRun implements MapReplayRun {
     this.target = targetOverride?.clone() ?? replayEventPosition(event, terrain);
     this.vehicle = String(profile?.Vehicle || replayVehicleForEvent(event) || "f15");
     this.group.name = `airstrike-replay-${this.vehicle}`;
-    this.aircraft = createAircraftMarker(this.vehicle, vehicleMetadata, assetBase);
+    this.aircraft = createAircraftMarker(this.vehicle, vehicleMetadata, assetBase, detailedModelsEnabled);
     this.group.add(this.aircraft);
   }
 
@@ -4896,6 +5076,7 @@ class AirdropReplayRun implements MapReplayRun {
     vehicleMetadata: VehiclePreviewMetadataFile | null,
     assetBase: string,
     carrierEvent: MapReplayEvent | null,
+    detailedModelsEnabled: boolean,
   ) {
     this.key = key;
     this.event = event;
@@ -4920,7 +5101,7 @@ class AirdropReplayRun implements MapReplayRun {
     this.dropCount = Math.max(1, Number(event.payload?.dropCount || 1));
     const visualDropCount = MathUtils.clamp(Math.ceil(this.dropCount / 3), 1, 3);
     this.group.name = "airdrop-replay";
-    this.aircraft = createAircraftMarker("cargo_plane", vehicleMetadata, assetBase);
+    this.aircraft = createAircraftMarker("cargo_plane", vehicleMetadata, assetBase, detailedModelsEnabled);
     this.aircraft.scale.multiplyScalar(1.35);
     this.packageVisuals = Array.from({ length: visualDropCount }, (_, index) => {
       const packageMesh = createAirdropPackageMarker(assetBase, index + 1);
@@ -5055,6 +5236,7 @@ class GenericMapEventReplayRun implements MapReplayRun {
     vehicleMetadata: VehiclePreviewMetadataFile | null,
     assetBase: string,
     liveMode = false,
+    detailedModelsEnabled = true,
   ) {
     this.key = key;
     this.event = event;
@@ -5086,7 +5268,7 @@ class GenericMapEventReplayRun implements MapReplayRun {
     this.ring.rotation.x = -Math.PI / 2;
     this.group.add(this.marker, this.ring, this.beacon);
     this.vehicleMarker = replayVehicleHasViewerModel(this.vehicle)
-      ? createAircraftMarker(this.vehicle, vehicleMetadata, assetBase)
+      ? createAircraftMarker(this.vehicle, vehicleMetadata, assetBase, detailedModelsEnabled)
       : null;
     if (this.vehicleMarker) {
       this.vehicleMarker.name = `map-event-vehicle-${this.vehicle}`;
@@ -5710,7 +5892,7 @@ function ambientReplayTarget(profile: RuntimeVisualProfile, terrain: TerrainPayl
   return new Vector3(targetX, sampleTerrainHeight(terrain, desiredCenterX, desiredCenterZ), targetZ);
 }
 
-function createAircraftMarker(vehicle: string, metadataFile: VehiclePreviewMetadataFile | null, assetBase: string): Group {
+function createAircraftMarker(vehicle: string, metadataFile: VehiclePreviewMetadataFile | null, assetBase: string, detailedModelsEnabled = true): Group {
   const group = new Group();
   group.name = `airstrike-preview-aircraft-${vehicle}`;
   const metadata = metadataForVehicle(metadataFile, vehicle);
@@ -5733,7 +5915,7 @@ function createAircraftMarker(vehicle: string, metadataFile: VehiclePreviewMetad
 
   // Complete world entities such as Cargo Ship must opt into a dedicated
   // exterior-only map asset; the explorable source is too expensive here.
-  if (!mapVehicleUsesDetailedModel(vehicle, metadata.mapModelUrl)) {
+  if (!detailedModelsEnabled || !mapVehicleUsesDetailedModel(vehicle, metadata.mapModelUrl)) {
     return group;
   }
 
@@ -5977,6 +6159,8 @@ class MonumentModelController {
   private focusedUntil = 0;
   private lastTick = 0;
   private policy: MonumentQualityPolicy;
+  private visible = true;
+  private interactionActive = false;
 
   public constructor(private readonly options: { assetBase: string; camera: PerspectiveCamera; policy: MonumentQualityPolicy; root: HTMLElement }) {
     this.policy = options.policy;
@@ -6004,7 +6188,39 @@ class MonumentModelController {
     // longer in this queue and finish normally; the next tick requeues only
     // assets that still fit the new policy.
     this.queue.splice(0).forEach(({ binding, tier }) => binding.loading.delete(tier));
+    if (policy.activeMidLimit === 0 && policy.activeCloseLimit === 0) {
+      this.bindings.forEach((binding) => this.setDesired(
+        binding,
+        policy.activeMapLimit === 0 ? "fallback" : binding.desired === "fallback" ? "fallback" : "map",
+      ));
+    }
     this.lastTick = 0;
+    this.syncDiagnostics();
+  }
+
+  public setVisible(visible: boolean): void {
+    this.visible = visible;
+    if (!visible) {
+      this.queue.splice(0).forEach(({ binding, tier }) => binding.loading.delete(tier));
+    } else {
+      this.lastTick = 0;
+      this.pump();
+    }
+    this.syncDiagnostics();
+  }
+
+  public setInteractionActive(active: boolean): void {
+    this.interactionActive = active;
+    if (active) {
+      const retained = this.queue.filter((task) => task.tier === "map");
+      this.queue.splice(0).forEach(({ binding, tier }) => {
+        if (tier !== "map") binding.loading.delete(tier);
+      });
+      this.queue.push(...retained);
+    } else {
+      this.lastTick = 0;
+      this.pump();
+    }
     this.syncDiagnostics();
   }
 
@@ -6015,7 +6231,7 @@ class MonumentModelController {
   }
 
   public tick(now: number): void {
-    if (this.disposed || now - this.lastTick < 250) return;
+    if (this.disposed || !this.visible || now - this.lastTick < 250) return;
     this.lastTick = now;
     const viewportHeight = Math.max(1, this.options.root.clientHeight || window.innerHeight);
     const ranked = prioritizeMonuments(this.bindings.map((binding) => ({
@@ -6104,12 +6320,12 @@ class MonumentModelController {
 
     const preloadMidAt = this.policy.mapToMidPixels * (1 - this.policy.hysteresis);
     const preloadCloseAt = this.policy.midToClosePixels * (1 - this.policy.hysteresis);
-    if (this.policy.activeMidLimit > 0) {
+    if (!this.interactionActive && this.policy.activeMidLimit > 0) {
       ranked.filter((item) => mapSet.has(item.binding) && item.projectedDiameter >= preloadMidAt)
         .slice(0, this.policy.activeMidLimit + 2)
         .forEach((item) => this.preload(item.binding, "mid"));
     }
-    if (this.policy.activeCloseLimit > 0) {
+    if (!this.interactionActive && this.policy.activeCloseLimit > 0) {
       ranked.filter((item) => mapSet.has(item.binding) && item.projectedDiameter >= preloadCloseAt)
         .slice(0, this.policy.activeCloseLimit + 1)
         .forEach((item) => this.preload(item.binding, "close"));
@@ -6142,21 +6358,21 @@ class MonumentModelController {
     if (desired === "map" || desired === "fallback") this.detach(binding, "mid");
     if (desired === "fallback") this.detach(binding, "map");
     if (desired !== "fallback") this.ensure(binding, "map");
-    if (desired === "mid" || desired === "close") this.ensure(binding, "mid");
-    if (desired === "close") this.ensure(binding, "close");
+    if (!this.interactionActive && (desired === "mid" || desired === "close")) this.ensure(binding, "mid");
+    if (!this.interactionActive && desired === "close") this.ensure(binding, "close");
     this.applyVisibility(binding);
   }
 
   private ensure(binding: MonumentBinding, tier: MonumentModelTier): void {
-    if (binding[tier] || binding.loading.has(tier) || binding.failed.has(tier) || this.disposed) return;
+    if (binding[tier] || binding.loading.has(tier) || binding.failed.has(tier) || this.disposed || !this.visible) return;
     binding.loading.add(tier);
     this.queue.push({ binding, tier, run: async () => {
       try {
         // A frame-rate downgrade can demote this monument while its decode is
         // still queued. Skip stale work before allocating CPU and GPU memory.
-        if (this.disposed || this.tierRank(binding.desired) < this.tierRank(tier)) return;
+        if (this.disposed || !this.visible || (tier !== "map" && this.interactionActive) || this.tierRank(binding.desired) < this.tierRank(tier)) return;
         const source = await this.load(binding, tier);
-        if (this.disposed || this.tierRank(binding.desired) < this.tierRank(tier)) {
+        if (this.disposed || !this.visible || (tier !== "map" && this.interactionActive) || this.tierRank(binding.desired) < this.tierRank(tier)) {
           if (this.disposed) this.disposeSource(source);
           return;
         }
@@ -6186,7 +6402,7 @@ class MonumentModelController {
   }
 
   private preload(binding: MonumentBinding, tier: MonumentModelTier): void {
-    if (binding[tier] || binding.loading.has(tier) || binding.failed.has(tier) || this.cache.has(this.key(binding, tier)) || this.disposed) return;
+    if (binding[tier] || binding.loading.has(tier) || binding.failed.has(tier) || this.cache.has(this.key(binding, tier)) || this.disposed || !this.visible || this.interactionActive) return;
     binding.loading.add(tier);
     this.queue.push({ binding, tier, run: async () => {
       try {
@@ -6227,7 +6443,7 @@ class MonumentModelController {
   }
 
   private pump(): void {
-    while (!this.disposed && this.activeLoads < this.policy.decodeConcurrency && this.queue.length) {
+    while (!this.disposed && this.visible && this.activeLoads < this.policy.decodeConcurrency && this.queue.length) {
       const task = this.queue.shift()!;
       this.activeLoads++;
       void task.run().finally(() => { this.activeLoads--; this.pump(); });
@@ -6316,6 +6532,7 @@ class MonumentModelController {
       monumentActiveBytes: String(activeBytes), monumentLoadedBytes: String(loadedBytes),
       monumentTriangleBudget: String(this.policy.triangleBudget), monumentDrawCallBudget: String(this.policy.drawCallBudget),
       monumentDecodeQueue: String(this.queue.length + this.activeLoads),
+      monumentActiveLoads: String(this.activeLoads),
       monumentActiveAssets: JSON.stringify(active.filter((entry) => entry.tier !== "fallback").map((entry) => {
         const tier = entry.tier as MonumentModelTier;
         const metadata = entry.binding.metadata.tiers[tier];
@@ -8992,6 +9209,22 @@ function environmentFogColor(environment: NormalizedEnvironment, sunFacing: numb
     .multiplyScalar(MathUtils.lerp(0.72, 1.2, atmosphereBrightness));
 }
 
+function createMonumentLodPlaceholder(monument: MonumentPayload): Group {
+  const group = new Group();
+  const size = monumentPrimitiveSize(monument, monument.radius);
+  const marker = new Mesh(
+    new CylinderGeometry(1, 1, 1, 8),
+    new MeshStandardMaterial({ color: 0x58666a, roughness: 0.92, metalness: 0.08 }),
+  );
+  marker.name = "monument-map-lod-placeholder";
+  marker.position.y = Math.max(2, size * 0.025);
+  marker.scale.set(Math.max(5, size * 0.22), Math.max(4, size * 0.05), Math.max(5, size * 0.22));
+  group.name = `monument-${monumentKey(monument)}`;
+  group.userData.primitiveKind = "map-lod-placeholder";
+  group.add(marker);
+  return group;
+}
+
 function visualFogStrengthForEnvironment(environment: NormalizedEnvironment): number {
   const sampledHaze = MathUtils.clamp(environment.fogIntensity, 0, 1) * 0.45;
   const weatherHaze = environment.cloudCoverage * 0.04
@@ -10358,14 +10591,45 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   };
 }
 
+const recordedTimestampCache = new WeakMap<object, number>();
+
+function cachedRecordedTime(value: object, rawTimestamp: unknown): number {
+  const cached = recordedTimestampCache.get(value);
+  if (cached !== undefined) return cached;
+  const timestamp = Date.parse(String(rawTimestamp || ""));
+  const resolved = Number.isFinite(timestamp) ? timestamp : Number.NaN;
+  recordedTimestampCache.set(value, resolved);
+  return resolved;
+}
+
 function recordedItemTime(value: { timestamp?: string } | null | undefined): number {
-  const timestamp = Date.parse(String(value?.timestamp || ""));
-  return Number.isFinite(timestamp) ? timestamp : Number.NaN;
+  if (!value) return Number.NaN;
+  return cachedRecordedTime(value, value.timestamp);
 }
 
 function recordedEventTime(event: MapReplayEvent): number {
-  const timestamp = Date.parse(String(event.startedAt || event.occurredAt || event.sampledAt || ""));
-  return Number.isFinite(timestamp) ? timestamp : Number.NaN;
+  return cachedRecordedTime(event, event.startedAt || event.occurredAt || event.sampledAt);
+}
+
+type RecordedReplayEventWindow = {
+  event: MapReplayEvent;
+  startedMs: number;
+  endedMs: number;
+  occurredMs: number;
+  worldVehicle: boolean;
+};
+
+function recordedReplayEventWindow(event: MapReplayEvent): RecordedReplayEventWindow {
+  const startedMs = Date.parse(String(event.startedAt || event.occurredAt || ""));
+  const endedMs = Date.parse(String(event.endedAt || ""));
+  const occurredMs = Date.parse(String(event.occurredAt || event.startedAt || ""));
+  return {
+    event,
+    startedMs,
+    endedMs,
+    occurredMs,
+    worldVehicle: String(event.payload?.kind || "").toLowerCase() === "world_vehicle",
+  };
 }
 
 function mergeRecordedItems<T extends { timestamp: string }>(current: T[], incoming: T[]): T[] {
@@ -10451,6 +10715,7 @@ function bindRecordedTimelineControls(
   let playerFrames: Array<RecordedTimelineItem<{ players: PlayerLocation[] }>> = [];
   let heatmapFrames: Array<RecordedTimelineItem<HeatmapHistoryFrame>> = [];
   let replayEvents: MapReplayEvent[] = [];
+  let replayEventWindows: RecordedReplayEventWindow[] = [];
   let lastHeatmapTimestamp = "";
   let lastPlayerFrameTimestamp = "";
   let tailChecking = false;
@@ -10466,12 +10731,16 @@ function bindRecordedTimelineControls(
   let activeReplaySignature = "#invalid";
   let residentReplaySignature = "#invalid";
   let knownWipeKey = "";
+  let knownWipeStartMs = 0;
   let timelineParseChain: Promise<void> = Promise.resolve();
   let lastControlsSignature = "";
   let lastBufferUiRevision = -1;
   let lastBufferUiAt = 0;
   let seekWasPlaying: boolean | null = null;
   let seekDebounceTimer = 0;
+  let speedReplanTimer = 0;
+  let residentSampleEvery = recordedSampleEverySeconds(1);
+  let lastTickBufferPlanAt = 0;
   const liveNextPoll = new Map<string, number>();
   const liveFailures = new Map<string, number>();
 
@@ -10483,6 +10752,12 @@ function bindRecordedTimelineControls(
   const speed = () => Number(RECORDED_PLAYBACK_SPEEDS[speedIndex] || 1);
   const selectedIncludes = () => ["environment", "events", ...(hooks.wantsHeatmap() ? ["heatmap"] : []), ...(hooks.wantsPlayers() ? ["players"] : [])];
   const rangeDurationMs = () => historyRangeSeconds(hooks.selectedRange()) * 1000;
+  const recordTiming = (key: string, startedAt: number) => {
+    root.dataset[key] = Math.max(0, performance.now() - startedAt).toFixed(2);
+  };
+  const syncReplayEventWindows = () => {
+    replayEventWindows = replayEvents.map(recordedReplayEventWindow);
+  };
 
   const parseTimelinePayload = (text: string, signal?: AbortSignal): Promise<RecordedTimelinePayload> => {
     const parse = timelineParseChain.then(async () => {
@@ -10507,6 +10782,7 @@ function bindRecordedTimelineControls(
     signal?: AbortSignal,
     maximumBytesBeforeParse = Number.POSITIVE_INFINITY,
   ): Promise<RecordedTimelineResponse> => {
+    const requestStartedAt = performance.now();
     const url = new URL(String(root.dataset.timelineUrl), window.location.href);
     url.searchParams.set("from", new Date(fromMs).toISOString());
     url.searchParams.set("to", new Date(toMs).toISOString());
@@ -10526,13 +10802,22 @@ function bindRecordedTimelineControls(
       headers: { Accept: "application/json" },
       signal,
     });
+    const downloadStartedAt = performance.now();
     const text = await response.text();
+    root.dataset.timelineDownloadMs = (performance.now() - downloadStartedAt).toFixed(2);
+    root.dataset.timelineRequestMs = (performance.now() - requestStartedAt).toFixed(2);
+    root.dataset.timelineRequestCount = String((Number(root.dataset.timelineRequestCount) || 0) + 1);
     const encodedBytes = new TextEncoder().encode(text).byteLength;
+    root.dataset.timelineLastPayloadBytes = String(encodedBytes);
     if (!response.ok) throw new Error(`Timeline request failed with HTTP ${response.status}.`);
     if (encodedBytes > maximumBytesBeforeParse) return { payload: null, encodedBytes, oversized: true };
+    const parseStartedAt = performance.now();
     const payload = await parseTimelinePayload(text, signal);
+    recordTiming("timelineParseMs", parseStartedAt);
     if (payload.ok === false) throw new Error(`Timeline request failed with HTTP ${response.status}.`);
     const payloadWipeKey = String(payload.wipeKey || "");
+    const payloadWipeStartMs = Date.parse(String(payload.wipeStartedAt || ""));
+    if (Number.isFinite(payloadWipeStartMs)) knownWipeStartMs = payloadWipeStartMs;
     if (knownWipeKey && payloadWipeKey && payloadWipeKey !== knownWipeKey) responseCache.clear();
     if (payloadWipeKey) knownWipeKey = payloadWipeKey;
     const result = { payload, encodedBytes, oversized: false };
@@ -10555,6 +10840,7 @@ function bindRecordedTimelineControls(
   };
 
   const mergePayload = (payload: RecordedTimelinePayload, trimBefore = Number.NEGATIVE_INFINITY, notifyEvents = true) => {
+    const mergeStartedAt = performance.now();
     environmentFrames = mergeRecordedItems(environmentFrames, payload.streams?.environment?.items || []).filter((item) => recordedItemTime(item) >= trimBefore);
     playerFrames = mergeRecordedItems(playerFrames, payload.streams?.players?.items || []).filter((item) => recordedItemTime(item) >= trimBefore);
     heatmapFrames = mergeRecordedItems(heatmapFrames, payload.streams?.heatmap?.items || []).filter((item) => recordedItemTime(item) >= trimBefore);
@@ -10562,6 +10848,8 @@ function bindRecordedTimelineControls(
       const ended = Date.parse(String(event.endedAt || event.occurredAt || ""));
       return !Number.isFinite(ended) || ended >= trimBefore;
     });
+    syncReplayEventWindows();
+    recordTiming("timelineMergeMs", mergeStartedAt);
     if (notifyEvents) hooks.onEvents(replayEvents);
     const delay = payload.streams?.heatmap?.delay;
     if (delay && intervalLabel) {
@@ -10577,6 +10865,7 @@ function bindRecordedTimelineControls(
     playerFrames = [];
     heatmapFrames = [];
     replayEvents = [];
+    replayEventWindows = [];
     lastHeatmapTimestamp = "";
     lastPlayerFrameTimestamp = "";
     activeReplaySignature = "#invalid";
@@ -10648,11 +10937,14 @@ function bindRecordedTimelineControls(
     const entries = buffer.readyEntriesAround(cursorMs);
     const signature = entries.map((entry) => entry.key).join("|");
     if (activeReplaySignature === signature) return;
+    const mergeStartedAt = performance.now();
     const payloads = entries.flatMap((entry) => entry.value ? [entry.value] : []);
     environmentFrames = mergeRecordedItems([], payloads.flatMap((payload) => payload.streams?.environment?.items || []));
     playerFrames = mergeRecordedItems([], payloads.flatMap((payload) => payload.streams?.players?.items || []));
     heatmapFrames = mergeRecordedItems([], payloads.flatMap((payload) => payload.streams?.heatmap?.items || []));
     replayEvents = mergeRecordedEvents([], payloads.flatMap((payload) => payload.streams?.events?.items || []));
+    syncReplayEventWindows();
+    recordTiming("timelineMergeMs", mergeStartedAt);
     lastHeatmapTimestamp = "";
     lastPlayerFrameTimestamp = "";
     if (entries.length === 0) viewer.clearReplayEvents();
@@ -10684,6 +10976,12 @@ function bindRecordedTimelineControls(
       return;
     }
     const rangeDuration = Math.max(1, clock.rangeEndMs - clock.rangeStartMs);
+    root.dataset.timelineRangeStartMs = String(clock.rangeStartMs);
+    root.dataset.timelineRangeEndMs = String(clock.rangeEndMs);
+    root.dataset.timelineCursorMs = String(clock.cursorMs);
+    root.dataset.timelineSpeed = String(speed());
+    root.dataset.timelineBufferChunks = String(buffer.entriesCount());
+    root.dataset.timelineBufferBytes = String(buffer.encodedBytes());
     if (bufferTrack && (force || revisionChanged)) {
       const segments: HTMLElement[] = [];
       (["ready", "loading", "error"] as const).forEach((state) => {
@@ -10701,27 +10999,27 @@ function bindRecordedTimelineControls(
       bufferTrack.replaceChildren(...segments);
     }
     if (bufferLabel) {
-      const readyMs = buffer.totalReadyDurationMs();
+      const readyMs = recordedCoverageDurationMs(buffer.coverage("ready"), clock.rangeStartMs, clock.rangeEndMs);
       const readyPercent = MathUtils.clamp((readyMs / rangeDuration) * 100, 0, 100);
-      const readyEnd = buffer.contiguousReadyEnd(clock.cursorMs) ?? clock.cursorMs;
+      const readyEnd = Math.min(clock.rangeEndMs, buffer.contiguousReadyEnd(clock.cursorMs) ?? clock.cursorMs);
       const aheadMs = Math.max(0, readyEnd - clock.cursorMs);
       bufferLabel.value = `Buffered ${bufferedDurationLabel(readyMs)} of ${bufferedDurationLabel(rangeDuration)} (${Math.round(readyPercent)}%) · ${bufferedDurationLabel(aheadMs)} ahead`;
       bufferLabel.textContent = bufferLabel.value;
     }
   };
 
-  const eventsAtCursor = (cursorMs: number): MapReplayEvent[] => replayEvents.filter((event) => {
-    const started = Date.parse(String(event.startedAt || event.occurredAt || ""));
-    const ended = Date.parse(String(event.endedAt || ""));
-    if (String(event.payload?.kind || "").toLowerCase() === "world_vehicle") {
-      return (!Number.isFinite(started) || started <= cursorMs + 5_000)
-        && (!Number.isFinite(ended) || ended >= cursorMs);
+  const eventsAtCursor = (cursorMs: number): MapReplayEvent[] => replayEventWindows.filter((window) => {
+    if (window.worldVehicle) {
+      return (!Number.isFinite(window.startedMs) || window.startedMs <= cursorMs + 5_000)
+        && (!Number.isFinite(window.endedMs) || window.endedMs >= cursorMs);
     }
-    const occurred = Date.parse(String(event.occurredAt || event.startedAt || ""));
-    return Number.isFinite(occurred) && occurred <= cursorMs + 10_000 && occurred >= cursorMs - 120_000;
-  });
+    return Number.isFinite(window.occurredMs)
+      && window.occurredMs <= cursorMs + 10_000
+      && window.occurredMs >= cursorMs - 120_000;
+  }).map((window) => window.event);
 
   const renderCursor = () => {
+    const renderStartedAt = performance.now();
     const cursorMs = clock.cursorMs;
     if (mode === "replay") activateReplayData(cursorMs);
     const environment = recordedTimelineFramesAround(environmentFrames, cursorMs);
@@ -10773,6 +11071,11 @@ function bindRecordedTimelineControls(
       const duration = Math.max(1, clock.rangeEndMs - clock.rangeStartMs);
       slider.value = String(MathUtils.clamp((cursorMs - clock.rangeStartMs) / duration, 0, 1) * 1000);
     }
+    root.dataset.timelineEnvironmentFrames = String(environmentFrames.length);
+    root.dataset.timelinePlayerFrames = String(playerFrames.length);
+    root.dataset.timelineHeatmapFrames = String(heatmapFrames.length);
+    root.dataset.timelineReplayEvents = String(replayEvents.length);
+    recordTiming("timelineCursorRenderMs", renderStartedAt);
   };
 
   const updateControls = (waiting = false) => {
@@ -10915,6 +11218,7 @@ function bindRecordedTimelineControls(
 
   function planBuffer(): void {
     if (mode !== "replay" || disposed) return;
+    const planStartedAt = performance.now();
     const current = buffer.ensureAt(clock.cursorMs, 0);
     const nearWrap = wrapIsNear();
     let destination: RecordedTimelineBufferEntry<RecordedTimelinePayload> | null = null;
@@ -10925,6 +11229,8 @@ function bindRecordedTimelineControls(
     syncResidentReplayEvents();
     updateBufferPresentation();
     pumpBufferQueue();
+    root.dataset.timelineActiveRequests = String(activeReplayRequests.size);
+    recordTiming("timelineBufferPlanMs", planStartedAt);
   }
 
   const completePendingWrap = (): boolean => {
@@ -10997,7 +11303,10 @@ function bindRecordedTimelineControls(
       if (wrappedPending || result.wrapped || result.stopped || buffering !== wasBuffering || (now - lastTimelineRenderAt) >= renderInterval) {
         lastTimelineRenderAt = now;
         renderCursor();
-        planBuffer();
+        if (wrappedPending || result.wrapped || buffering !== wasBuffering || (now - lastTickBufferPlanAt) >= 250) {
+          lastTickBufferPlanAt = now;
+          planBuffer();
+        }
         updateControls();
       }
     } else {
@@ -11076,7 +11385,9 @@ function bindRecordedTimelineControls(
     if (!headPayload || disposed || generation !== requestGeneration || mode !== "replay") return;
     const endMs = payloadHead(headPayload);
     const wipeStart = Date.parse(String(headPayload.wipeStartedAt || ""));
-    const startMs = Math.max(Number.isFinite(wipeStart) ? wipeStart : 0, endMs - rangeDurationMs());
+    if (Number.isFinite(wipeStart)) knownWipeStartMs = wipeStart;
+    const effectiveRange = effectiveRecordedReplayRange(endMs, rangeDurationMs(), knownWipeStartMs);
+    const startMs = effectiveRange.startMs;
     let cursorMs = initialRecordedReplayCursor(startMs, endMs);
     let playing = true;
     let replayLoop = true;
@@ -11090,6 +11401,8 @@ function bindRecordedTimelineControls(
     if (loop) loop.checked = replayLoop;
     wantsToPlay = playing;
     clock.configureReplay({ startMs, endMs, cursorMs, speed: speed(), playing, loop: replayLoop });
+    residentSampleEvery = recordedSampleEverySeconds(speed());
+    root.dataset.timelineWipeStartMs = String(knownWipeStartMs || 0);
     buffer.configure(startMs, endMs, speed());
     clearRenderedData(false);
     if (liveSeed) {
@@ -11197,7 +11510,7 @@ function bindRecordedTimelineControls(
     const oldStart = clock.rangeStartMs;
     const oldEnd = clock.rangeEndMs;
     const endMs = oldEnd;
-    const startMs = endMs - rangeDurationMs();
+    const startMs = effectiveRecordedReplayRange(endMs, rangeDurationMs(), knownWipeStartMs).startMs;
     const cursorMs = relativeTimelineCursor(clock.cursorMs, oldStart, oldEnd, startMs, endMs);
     clock.configureReplay({ startMs, endMs, cursorMs, speed: speed(), playing: wantsToPlay, loop: Boolean(loop?.checked) });
     reuseReplayBuffer();
@@ -11261,12 +11574,20 @@ function bindRecordedTimelineControls(
     planBuffer();
   });
   const changeSpeed = (direction: -1 | 1) => {
-    const previousSampleEvery = recordedSampleEverySeconds(speed());
     speedIndex = MathUtils.clamp(speedIndex + direction, 0, RECORDED_PLAYBACK_SPEEDS.length - 1);
     clock.setReplaySpeed(speed());
     lastTimelineRenderAt = 0;
-    if (recordedSampleEverySeconds(speed()) < previousSampleEvery) resetReplayBuffer();
-    else reuseReplayBuffer();
+    updateControls();
+    window.clearTimeout(speedReplanTimer);
+    speedReplanTimer = window.setTimeout(() => {
+      const nextSampleEvery = recordedSampleEverySeconds(speed());
+      if (nextSampleEvery < residentSampleEvery) {
+        residentSampleEvery = nextSampleEvery;
+        resetReplayBuffer();
+      } else {
+        reuseReplayBuffer();
+      }
+    }, 80);
   };
   bind(speedDown, "click", () => changeSpeed(-1));
   bind(speedUp, "click", () => changeSpeed(1));
@@ -11353,6 +11674,7 @@ function bindRecordedTimelineControls(
       abortLiveRequests();
       responseCache.clear();
       window.clearTimeout(seekDebounceTimer);
+      window.clearTimeout(speedReplanTimer);
       window.cancelAnimationFrame(animationFrame);
       window.clearInterval(pollTimer);
       disposers.forEach((dispose) => dispose());

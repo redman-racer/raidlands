@@ -6,10 +6,12 @@ import {
   RecordedTimelineBatchCache,
   RecordedTimelineBuffer,
   RecordedTimelineClock,
+  effectiveRecordedReplayRange,
   initialRecordedReplayCursor,
   latestRecordedAvailability,
   recordedBatchSpanSeconds,
   recordedPrefetchThresholdMs,
+  recordedCoverageDurationMs,
   recordedSampleEverySeconds,
   recordedTimelineFramesAround,
   recordedTimelineRenderIntervalMs,
@@ -75,8 +77,29 @@ describe("recorded server timeline", () => {
     expect(recordedSampleEverySeconds(512)).toBe(43);
     expect(recordedPrefetchThresholdMs(8)).toBe(240_000);
     expect(RECORDED_PLAYBACK_SPEEDS[RECORDED_PLAYBACK_SPEEDS.length - 1]).toBe(512);
-    expect(recordedTimelineRenderIntervalMs(1)).toBe(16);
+    expect(recordedTimelineRenderIntervalMs(1)).toBe(33);
+    expect(recordedTimelineRenderIntervalMs(16)).toBe(50);
     expect(recordedTimelineRenderIntervalMs(512)).toBe(67);
+  });
+
+  it("clamps every replay range to the real wipe start", () => {
+    const endMs = Date.parse("2026-07-17T06:00:00Z");
+    const wipeStartMs = Date.parse("2026-07-16T17:17:01Z");
+    expect(effectiveRecordedReplayRange(endMs, 31 * 24 * 60 * 60_000, wipeStartMs)).toEqual({
+      startMs: wipeStartMs,
+      endMs,
+    });
+    expect(effectiveRecordedReplayRange(endMs, 15 * 60_000, wipeStartMs)).toEqual({
+      startMs: endMs - 15 * 60_000,
+      endMs,
+    });
+  });
+
+  it("counts only ready coverage inside the effective range", () => {
+    expect(recordedCoverageDurationMs([
+      { startMs: 0, endMs: 20_000 },
+      { startMs: 30_000, endMs: 50_000 },
+    ], 10_000, 40_000)).toBe(20_000);
   });
 
   it("finds surrounding frames with a binary search friendly sorted timeline", () => {
@@ -169,6 +192,19 @@ describe("recorded server timeline", () => {
     buffer.setSpeed(128);
     expect(buffer.entryAt(12 * 60 * 60_000 - 1)?.value).toBe("tail");
     expect(buffer.speed).toBe(128);
+  });
+
+  it("discards resident chunks that extend outside a shrunken range", () => {
+    const buffer = new RecordedTimelineBuffer<string>();
+    buffer.configure(0, 60 * 60_000, 1);
+    const old = buffer.enqueue(0, 10 * 60_000, 2);
+    const current = buffer.enqueue(45 * 60_000, 50 * 60_000, 0);
+    [old, current].forEach((entry) => {
+      buffer.markLoading(entry.key);
+      buffer.markReady(entry.key, entry.key, 100);
+    });
+    buffer.updateRange(45 * 60_000, 60 * 60_000);
+    expect(buffer.readyEntries().map((entry) => entry.key)).toEqual([current.key]);
   });
 
   it("backs off failed required chunks and retries them after the deadline", () => {

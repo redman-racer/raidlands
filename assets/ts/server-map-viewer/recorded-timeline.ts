@@ -55,10 +55,38 @@ export function recordedPrefetchThresholdMs(speed: number): number {
 }
 
 export function recordedTimelineRenderIntervalMs(speed: number): number {
-  if (speed <= 4) return 16;
-  if (speed <= 32) return 33;
+  if (speed <= 4) return 33;
+  if (speed <= 32) return 50;
   if (speed <= 128) return 50;
   return 67;
+}
+
+export function effectiveRecordedReplayRange(
+  endMs: number,
+  durationMs: number,
+  wipeStartMs?: number | null,
+): { startMs: number; endMs: number } {
+  const safeEnd = Number.isFinite(endMs) ? endMs : 0;
+  const safeDuration = Math.max(1, Number.isFinite(durationMs) ? durationMs : 1);
+  const requestedStart = safeEnd - safeDuration;
+  const minimum = wipeStartMs !== null && wipeStartMs !== undefined && Number.isFinite(wipeStartMs)
+    ? wipeStartMs
+    : Number.NEGATIVE_INFINITY;
+  return { startMs: Math.min(safeEnd, Math.max(requestedStart, minimum)), endMs: safeEnd };
+}
+
+export function recordedCoverageDurationMs(
+  ranges: Array<Pick<RecordedTimelineCoverageRange, "startMs" | "endMs">>,
+  rangeStartMs: number,
+  rangeEndMs: number,
+): number {
+  const minimum = Math.min(rangeStartMs, rangeEndMs);
+  const maximum = Math.max(minimum, rangeEndMs);
+  return ranges.reduce((sum, range) => {
+    const startMs = Math.max(minimum, range.startMs);
+    const endMs = Math.min(maximum, range.endMs);
+    return sum + Math.max(0, endMs - startMs);
+  }, 0);
 }
 
 export function recordedTimelineFramesAround<T extends { timestamp: string }>(
@@ -209,7 +237,7 @@ export class RecordedTimelineBuffer<T> {
     this.rangeStartMs = Math.min(rangeStartMs, rangeEndMs);
     this.rangeEndMs = Math.max(this.rangeStartMs + 1, rangeEndMs);
     for (const [key, entry] of this.entries) {
-      if (entry.endMs < this.rangeStartMs || entry.startMs > this.rangeEndMs) this.entries.delete(key);
+      if (entry.startMs < this.rangeStartMs || entry.endMs > this.rangeEndMs) this.entries.delete(key);
     }
     this.revision += 1;
   }

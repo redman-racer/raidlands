@@ -20,6 +20,8 @@ $server_map_image = is_array($server_status['mapImage'] ?? null) ? $server_statu
 $server_map_url = (string) ($server_status['mapImageUrl'] ?? ($server_map_image['url'] ?? ''));
 $server_terrain_url = (string) ($server_map_image['terrainUrl'] ?? '');
 $server_texture_url = (string) ($server_map_image['textureUrl'] ?? $server_map_url);
+$server_map_asset_state = (string) ($server_map_image['assetState'] ?? 'remote');
+$server_map_asset_label = (string) ($server_map_image['assetLabel'] ?? 'Remote map assets');
 $server_skybox_url = trim((string) ($server_map_image['skyboxUrl'] ?? ''));
 if ($server_skybox_url === '') {
     $server_skybox_url = asset_url('media/skyboxes/raidlands-current-skybox.png');
@@ -282,6 +284,8 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
         data-terrain-url="<?= e($server_terrain_url) ?>"
         data-texture-url="<?= e($server_texture_url) ?>"
         data-skybox-url="<?= e($server_skybox_url) ?>"
+        data-map-asset-state="<?= e($server_map_asset_state) ?>"
+        data-map-asset-label="<?= e($server_map_asset_label) ?>"
         data-status-url="<?= e(route_url('api/server-status.php')) ?>"
         data-terrain-hash="<?= e((string) ($server_map_image['terrainHash'] ?? '')) ?>"
         data-skybox-hash="<?= e((string) ($server_map_image['skyboxHash'] ?? '')) ?>"

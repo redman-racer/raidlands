@@ -332,6 +332,84 @@ function raidlands_server_map_texture_url(string $server_id): string
     return '';
 }
 
+function raidlands_server_map_is_local_request(): bool
+{
+    $host_header = trim((string) ($_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? ''));
+    $host = parse_url('http://' . $host_header, PHP_URL_HOST);
+    $host = strtolower(trim(is_string($host) ? $host : $host_header, '[]'));
+
+    return in_array($host, ['localhost', '127.0.0.1', '::1'], true);
+}
+
+function raidlands_server_map_file_hash(string $path): string
+{
+    static $cache = [];
+
+    if (!is_file($path)) {
+        return '';
+    }
+
+    $key = $path . ':' . (string) (@filemtime($path) ?: 0) . ':' . (string) (@filesize($path) ?: 0);
+
+    if (!isset($cache[$key])) {
+        $cache[$key] = strtolower((string) (@hash_file('sha256', $path) ?: ''));
+    }
+
+    return $cache[$key];
+}
+
+function raidlands_server_map_local_asset_resolution(array $row): array
+{
+    $server_id = (string) ($row['server_id'] ?? '');
+    $terrain_relative_path = (string) ($row['terrain_relative_path'] ?? '');
+    $image_relative_path = (string) ($row['relative_path'] ?? '');
+    $skybox_relative_path = (string) ($row['skybox_relative_path'] ?? '');
+    $terrain_path = $terrain_relative_path !== '' ? dirname(__DIR__) . '/' . ltrim($terrain_relative_path, '/') : '';
+    $image_path = $image_relative_path !== '' ? dirname(__DIR__) . '/' . ltrim($image_relative_path, '/') : '';
+    $skybox_path = $skybox_relative_path !== '' ? dirname(__DIR__) . '/' . ltrim($skybox_relative_path, '/') : '';
+    $expected_terrain_hash = strtolower(trim((string) ($row['terrain_hash'] ?? '')));
+    $expected_image_hash = strtolower(trim((string) ($row['image_hash'] ?? '')));
+    $expected_skybox_hash = strtolower(trim((string) ($row['skybox_hash'] ?? '')));
+    $terrain_hash = $terrain_path !== '' ? raidlands_server_map_file_hash($terrain_path) : '';
+    $image_hash = $image_path !== '' ? raidlands_server_map_file_hash($image_path) : '';
+    $skybox_hash = $skybox_path !== '' ? raidlands_server_map_file_hash($skybox_path) : '';
+    $terrain_verified = $terrain_hash !== '' && $expected_terrain_hash !== '' && hash_equals($expected_terrain_hash, $terrain_hash);
+    $image_verified = $image_hash !== '' && ($expected_image_hash === '' || hash_equals($expected_image_hash, $image_hash));
+    $skybox_verified = $skybox_hash !== '' && ($expected_skybox_hash === '' || hash_equals($expected_skybox_hash, $skybox_hash));
+    $manifest_path = raidlands_server_map_upload_root() . '/' . raidlands_server_map_slug($server_id) . '/map-sync.json';
+    $manifest = is_file($manifest_path) ? json_decode((string) @file_get_contents($manifest_path), true) : null;
+    $representative = is_array($manifest)
+        && ($manifest['mode'] ?? '') === 'representative'
+        && (string) ($manifest['serverId'] ?? '') === $server_id
+        && strtolower((string) ($manifest['expected']['terrainHash'] ?? '')) === $expected_terrain_hash
+        && strtolower((string) ($manifest['actual']['assets']['terrain']['sha256'] ?? '')) === $terrain_hash
+        && $terrain_hash !== '';
+
+    if ($terrain_verified && $image_verified) {
+        $state = 'verified';
+        $label = 'Verified same-origin map assets';
+    } elseif ($representative) {
+        $state = 'representative';
+        $label = 'Representative map assets (performance testing only)';
+    } elseif ($terrain_hash !== '' || $image_hash !== '') {
+        $state = 'stale';
+        $label = 'Local map assets are stale; run npm run map:sync';
+    } else {
+        $state = 'missing';
+        $label = 'Local map assets are missing; run npm run map:sync';
+    }
+
+    return [
+        'state' => $state,
+        'label' => $label,
+        'useLocal' => $state === 'verified' || $state === 'representative',
+        'representative' => $state === 'representative',
+        'imageVerified' => $image_verified,
+        'terrainVerified' => $terrain_verified,
+        'skyboxVerified' => $skybox_verified,
+    ];
+}
+
 function raidlands_server_map_validate_image(string $base64): array
 {
     $image = base64_decode($base64, true);
@@ -1058,11 +1136,35 @@ function raidlands_server_map_row_public(?array $row): ?array
         $skybox_public_url = raidlands_server_map_public_url($skybox_relative_path);
     }
 
+    $texture_public_url = raidlands_server_map_texture_url((string) ($row['server_id'] ?? ''));
+    $asset_state = 'remote';
+    $asset_label = 'Remote map assets';
+    $representative_assets = false;
+
+    if (raidlands_server_map_is_local_request()) {
+        $local = raidlands_server_map_local_asset_resolution($row);
+        $asset_state = (string) $local['state'];
+        $asset_label = (string) $local['label'];
+        $representative_assets = !empty($local['representative']);
+
+        if (!empty($local['useLocal'])) {
+            if ($relative_path !== '' && is_file(dirname(__DIR__) . '/' . ltrim($relative_path, '/'))) {
+                $public_url = raidlands_server_map_public_url($relative_path);
+            }
+            if ($terrain_relative_path !== '' && is_file(dirname(__DIR__) . '/' . ltrim($terrain_relative_path, '/'))) {
+                $terrain_public_url = raidlands_server_map_public_url($terrain_relative_path);
+            }
+            if ($skybox_relative_path !== '' && is_file(dirname(__DIR__) . '/' . ltrim($skybox_relative_path, '/'))) {
+                $skybox_public_url = raidlands_server_map_public_url($skybox_relative_path);
+            }
+        }
+    }
+
     return [
         'url' => $public_url,
         'publicUrl' => $public_url,
         'relativePath' => $relative_path,
-        'textureUrl' => raidlands_server_map_texture_url((string) ($row['server_id'] ?? '')),
+        'textureUrl' => $texture_public_url,
         'terrainUrl' => $terrain_public_url,
         'terrainPublicUrl' => $terrain_public_url,
         'terrainRelativePath' => $terrain_relative_path,
@@ -1098,6 +1200,9 @@ function raidlands_server_map_row_public(?array $row): ?array
         'generatedAt' => raidlands_server_status_iso($row['generated_at'] ?? ''),
         'publishedAt' => raidlands_server_status_iso($row['published_at'] ?? ''),
         'updatedAt' => raidlands_server_status_iso($row['updated_at'] ?? ''),
+        'assetState' => $asset_state,
+        'assetLabel' => $asset_label,
+        'representativeAssets' => $representative_assets,
     ];
 }
 

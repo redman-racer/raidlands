@@ -4,6 +4,7 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
+    "map:sync": "tsx scripts/sync-map-assets.ts",
     "monuments:catalog": "tsx scripts/index-rustrelay-assets.ts",
     "monuments:catalog:check": "tsx scripts/index-rustrelay-assets.ts --check",
     "monuments:lod": "tsx scripts/generate-monument-lods.ts",

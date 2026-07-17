@@ -74,8 +74,9 @@ export function updateDirectorFpsState(
   frameMs: number,
   smoothing = 0.08,
 ): DirectorFpsState {
-  if (!(frameMs > 0) || frameMs > 250) return state;
-  const fps = clamp(1000 / frameMs, 1, 120);
+  if (!(frameMs > 0) || frameMs > 5000) return state;
+  if (frameMs >= 250) return { smoothedFps: Math.min(state.smoothedFps, 4), tier: "low" };
+  const fps = clamp(1000 / Math.min(frameMs, 1000), 1, 120);
   const smoothedFps = lerp(state.smoothedFps || fps, fps, clamp(smoothing, 0.01, 1));
   let tier = state.tier;
   if (tier === "healthy") {
