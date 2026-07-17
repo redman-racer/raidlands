@@ -95,6 +95,75 @@ try {
 }
 airstrike_agent_test($scope_denied, 'Server execution rejects a tool outside the active workspace scope');
 
+$expected_regular_tools = [
+    'compile_working_profile',
+    'delete_ordnance_items',
+    'delete_waypoints',
+    'inspect_profile',
+    'replace_ordnance_schedule',
+    'replace_route',
+    'set_profile_settings',
+    'upsert_ordnance_items',
+    'upsert_waypoints',
+    'validate_working_profile',
+];
+$wired_regular_tools = array_column(raidlands_airstrike_agent_tools('regular'), 'name');
+sort($wired_regular_tools);
+airstrike_agent_test($wired_regular_tools === $expected_regular_tools, 'Regular mode exposes the complete expected domain tool set');
+
+$read_working = $source;
+$inspection = raidlands_airstrike_agent_tool_result('inspect_profile', [], $read_working, 'regular');
+airstrike_agent_test(($inspection['profileKey'] ?? '') === 'agent_multi_pass_mixed', 'inspect_profile is wired to the active working copy');
+$tool_validation = raidlands_airstrike_agent_tool_result('validate_working_profile', [], $read_working, 'regular');
+airstrike_agent_test(!empty($tool_validation['ok']), 'validate_working_profile is wired to the authoritative validator');
+$tool_compile = raidlands_airstrike_agent_tool_result('compile_working_profile', [], $read_working, 'regular');
+airstrike_agent_test(!empty($tool_compile['ok']) && ($tool_compile['releaseMode'] ?? '') === 'mixed', 'compile_working_profile is wired to compile preview');
+
+$settings_working = $source;
+raidlands_airstrike_agent_tool_result('set_profile_settings', ['FirstPayloadDelaySeconds' => 2.9], $settings_working, 'regular', 'ordnance');
+airstrike_agent_test(abs((float) $settings_working['FirstPayloadDelaySeconds'] - 2.9) < 0.001, 'set_profile_settings dispatches scoped ordnance timing changes');
+
+$route_working = $source;
+$replacement_route = $source['Waypoints'];
+$replacement_route[1]['Y'] = 79;
+raidlands_airstrike_agent_tool_result('replace_route', ['waypoints' => $replacement_route], $route_working, 'regular', 'flight-path');
+airstrike_agent_test((float) $route_working['Waypoints'][1]['Y'] === 79.0, 'replace_route replaces the complete route');
+$new_waypoint = $source['Waypoints'][2];
+$new_waypoint['Id'] = 'wp_tool_dispatch';
+$new_waypoint['Time'] = 9;
+raidlands_airstrike_agent_tool_result('upsert_waypoints', ['waypoints' => [$new_waypoint]], $route_working, 'regular', 'flight-path');
+airstrike_agent_test(count(array_filter($route_working['Waypoints'], static fn (array $waypoint): bool => $waypoint['Id'] === 'wp_tool_dispatch')) === 1, 'upsert_waypoints dispatches stable-ID additions');
+raidlands_airstrike_agent_tool_result('delete_waypoints', ['ids' => ['wp_tool_dispatch']], $route_working, 'regular', 'flight-path');
+airstrike_agent_test(count(array_filter($route_working['Waypoints'], static fn (array $waypoint): bool => $waypoint['Id'] === 'wp_tool_dispatch')) === 0, 'delete_waypoints dispatches stable-ID deletions');
+
+$ordnance_working = $source;
+raidlands_airstrike_agent_tool_result(
+    'replace_ordnance_schedule',
+    ['releaseSourceJson' => json_encode($source['ReleaseSource'], JSON_THROW_ON_ERROR)],
+    $ordnance_working,
+    'regular',
+    'ordnance'
+);
+airstrike_agent_test(($ordnance_working['ReleaseSource']['Mode'] ?? '') === 'mixed', 'replace_ordnance_schedule dispatches complete schedule replacement');
+$updated_group = $source['ReleaseSource']['Groups'][0];
+$updated_group['Name'] = 'Updated dispatch group';
+raidlands_airstrike_agent_tool_result(
+    'upsert_ordnance_items',
+    ['itemKind' => 'group', 'itemsJson' => json_encode([$updated_group], JSON_THROW_ON_ERROR)],
+    $ordnance_working,
+    'regular',
+    'ordnance'
+);
+airstrike_agent_test(($ordnance_working['ReleaseSource']['Groups'][0]['Name'] ?? '') === 'Updated dispatch group', 'upsert_ordnance_items dispatches stable-ID group updates');
+raidlands_airstrike_agent_tool_result(
+    'delete_ordnance_items',
+    ['itemKind' => 'event', 'ids' => ['manual_smoke_marker']],
+    $ordnance_working,
+    'regular',
+    'ordnance'
+);
+airstrike_agent_test(($ordnance_working['ReleaseSource']['Events'] ?? []) === [], 'delete_ordnance_items dispatches stable-ID event deletions');
+
 foreach (raidlands_airstrike_agent_tools('regular') as $tool) {
     airstrike_agent_test(!empty($tool['strict']), $tool['name'] . ' uses strict function calling');
     airstrike_agent_test(($tool['parameters']['additionalProperties'] ?? null) === false, $tool['name'] . ' rejects unknown arguments');
@@ -104,6 +173,10 @@ $inspect_tool = array_values(array_filter(
     static fn (array $tool): bool => $tool['name'] === 'inspect_profile'
 ))[0];
 airstrike_agent_test(!array_key_exists('required', $inspect_tool['parameters']), 'no-argument tools omit an empty required keyword');
+airstrike_agent_test(
+    str_contains((string) json_encode($inspect_tool, JSON_THROW_ON_ERROR), '"properties":{}'),
+    'no-argument tool properties encode as a JSON object rather than an array'
+);
 $ordnance_settings_tool = array_values(array_filter(
     raidlands_airstrike_agent_tools('regular', 'ordnance'),
     static fn (array $tool): bool => $tool['name'] === 'set_profile_settings'

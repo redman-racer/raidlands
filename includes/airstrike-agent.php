@@ -449,7 +449,10 @@ function raidlands_airstrike_agent_object_schema(array $properties, array $requi
 {
     $schema = [
         'type' => 'object',
-        'properties' => $properties,
+        // PHP encodes an empty array as `[]`, but JSON Schema requires
+        // `properties` to always be an object. Cast the no-argument case so
+        // tools such as inspect_profile are sent as `"properties": {}`.
+        'properties' => $properties === [] ? (object) [] : $properties,
         'additionalProperties' => false,
     ];
     // Empty `required` arrays are not accepted by every JSON Schema validator
