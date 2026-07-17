@@ -1734,6 +1734,21 @@ h3,
   background: var(--orange);
 }
 
+.server-terrain-mode-controls {
+  display: inline-grid;
+  grid-template-columns: repeat(2, minmax(58px, 1fr));
+  gap: 3px;
+  padding: 3px;
+  border: 1px solid rgba(243, 238, 227, .13);
+  border-radius: 5px;
+  background: rgba(0, 0, 0, .3);
+}
+
+.server-terrain-mode-controls button {
+  min-width: 58px;
+  border-color: transparent;
+}
+
 .server-terrain-controls button:disabled {
   opacity: .42;
   cursor: not-allowed;

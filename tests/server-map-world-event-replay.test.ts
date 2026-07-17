@@ -6,6 +6,7 @@ import {
   replayTimelineFrameIntervalMs,
   replayTimelineHistoryRate,
   rustWorldQuaternionToViewerQuaternion,
+  sampleTimestampedWorldRoute,
 } from "../assets/ts/server-map-viewer/world-event-replay-policy";
 
 function displayedVehicleForward(rotation: Quaternion): Vector3 {
@@ -28,12 +29,23 @@ describe("server-map live world-event replay", () => {
     expect(forward.z).toBeCloseTo(0, 6);
   });
 
-  it("makes 0.25x on one-minute 15m frames approximately real-time", () => {
-    expect(replayTimelineFrameIntervalMs(60, 0.25)).toBe(60_000);
-    expect(replayTimelineFrameIntervalMs(60, 1)).toBe(15_000);
-    expect(replayTimelineFrameIntervalMs(300, 0.25)).toBe(60_000);
-    expect(replayTimelineHistoryRate(60, 0.25)).toBe(1);
-    expect(replayTimelineHistoryRate(60, 1)).toBe(4);
+  it("makes timeline 1x exactly real-time", () => {
+    expect(replayTimelineFrameIntervalMs(60, 0.25)).toBe(240_000);
+    expect(replayTimelineFrameIntervalMs(60, 1)).toBe(60_000);
+    expect(replayTimelineFrameIntervalMs(300, 2)).toBe(150_000);
+    expect(replayTimelineHistoryRate(60, 0.25)).toBe(0.25);
+    expect(replayTimelineHistoryRate(60, 1)).toBe(1);
+  });
+
+  it("interpolates vehicle routes by their actual timestamps and bounds live extrapolation", () => {
+    const route = [
+      { timestampMs: 1_000, position: new Vector3(0, 0, 0), rotation: new Quaternion() },
+      { timestampMs: 6_000, position: new Vector3(10, 0, 0), rotation: new Quaternion().setFromAxisAngle(new Vector3(0, 1, 0), Math.PI) },
+    ];
+    const middle = sampleTimestampedWorldRoute(route, 3_500);
+    expect(middle?.position.x).toBeCloseTo(5);
+    const extrapolated = sampleTimestampedWorldRoute(route, 20_000, new Vector3(2, 0, 0), 5_000);
+    expect(extrapolated?.position.x).toBeCloseTo(20);
   });
 
   it("keeps portable-airstrike carriers in the live world-entity feed", () => {

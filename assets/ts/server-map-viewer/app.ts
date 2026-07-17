@@ -62,9 +62,21 @@ import type { VehiclePreviewMetadataFile } from "../airstrike-animation-editor/t
 import { mapVehicleUsesDetailedModel } from "./world-event-model-policy";
 import { selectLiveReplayEvents } from "./live-replay-policy";
 import {
+  RECORDED_PLAYBACK_SPEEDS,
+  RecordedTimelineBatchCache,
+  RecordedTimelineClock,
+  latestRecordedAvailability,
+  recordedBatchSpanSeconds,
+  recordedPrefetchThresholdMs,
+  recordedSampleEverySeconds,
+  relativeTimelineCursor,
+  type RecordedTimelineMode,
+} from "./recorded-timeline";
+import {
   replayTimelineFrameIntervalMs,
   replayTimelineHistoryRate,
   rustWorldQuaternionToViewerQuaternion,
+  sampleTimestampedWorldRoute,
 } from "./world-event-replay-policy";
 import {
   fogRayMarchSamples,
@@ -315,6 +327,9 @@ type MapReplayEvent = {
   eventKey?: string;
   eventType?: "airstrike" | "airdrop" | string;
   occurredAt?: string;
+  startedAt?: string;
+  endedAt?: string;
+  sampledAt?: string;
   x: number;
   y?: number;
   z: number;
@@ -401,6 +416,34 @@ type EnvironmentPayload = {
   }>;
   frameSeconds?: number;
   windowEnd?: string;
+};
+
+type RecordedTimelineItem<T> = T & { timestamp: string };
+
+type RecordedTimelineStream<T> = {
+  cadenceSeconds?: number;
+  availableThrough?: string;
+  ready?: boolean;
+  delay?: { label?: string; delaySeconds?: number };
+  authenticated?: boolean;
+  allPlayers?: boolean;
+  clanTag?: string;
+  items?: T[];
+};
+
+type RecordedTimelinePayload = {
+  ok?: boolean;
+  serverTime?: string;
+  wipeStartedAt?: string;
+  windowStart?: string;
+  windowEnd?: string;
+  sampleEverySeconds?: number;
+  streams?: {
+    environment?: RecordedTimelineStream<RecordedTimelineItem<{ environment: EnvironmentSnapshot | null }>>;
+    players?: RecordedTimelineStream<RecordedTimelineItem<{ players: PlayerLocation[] }>>;
+    heatmap?: RecordedTimelineStream<RecordedTimelineItem<HeatmapHistoryFrame>>;
+    events?: RecordedTimelineStream<MapReplayEvent>;
+  };
 };
 
 type NormalizedEnvironment = {
@@ -615,6 +658,7 @@ type ReplayDisplayMode = "ambient" | "timeline";
 type ReplayDisplayOptions = {
   mode?: ReplayDisplayMode;
   cursorMs?: number;
+  live?: boolean;
 };
 
 type ServerStatusPayload = {
@@ -646,6 +690,22 @@ type ServerStatusMapImage = {
 
 type ViewerBinding = {
   dispose: () => void;
+};
+
+type RecordedTimelineHooks = {
+  onPlayers: (players: PlayerLocation[]) => void;
+  onEvents: (events: MapReplayEvent[]) => void;
+  wantsHeatmap: () => boolean;
+  wantsPlayers: () => boolean;
+  wantsAllPlayers: () => boolean;
+  selectedMetric: () => string;
+  selectedRange: () => string;
+};
+
+type RecordedViewerTimelineBinding = ViewerBinding & {
+  refresh: () => void;
+  reload: () => void;
+  seekEvent: (event: MapReplayEvent) => void;
 };
 
 type OverlayLayerTransition = {
@@ -1709,6 +1769,7 @@ class TerrainViewer {
       }));
       const size = isSelf ? 96 : 78;
       sprite.name = isSelf ? "raidlands-player-location-self" : "raidlands-player-location-clan";
+      sprite.userData.playerKey = String(player.steamId64 || player.displayName || "");
       sprite.position.set(playerPosition.x, y, playerPosition.z);
       sprite.scale.set(size, size, 1);
       sprite.userData.baseScale = size;
@@ -1716,6 +1777,29 @@ class TerrainViewer {
       nextLayer.add(sprite);
     });
     this.replaceOverlayLayer(this.playerLocationLayer, nextLayer, 0);
+  }
+
+  public setPlayerLocationsInterpolated(players: PlayerLocation[]): void {
+    const existing = new Map<string, Sprite>();
+    this.playerLocationLayer.children.forEach((child) => {
+      if (child instanceof Sprite && child.userData.playerKey) {
+        existing.set(String(child.userData.playerKey), child);
+      }
+    });
+    const nextKeys = players.map((player) => String(player.steamId64 || player.displayName || ""));
+    if (existing.size !== players.length || nextKeys.some((key) => !existing.has(key))) {
+      this.setPlayerLocations({ ok: true, authenticated: true, players });
+      return;
+    }
+
+    this.selfLocation = players.find((player) => player.isSelf === true) || null;
+    players.forEach((player) => {
+      const sprite = existing.get(String(player.steamId64 || player.displayName || ""));
+      if (!sprite) return;
+      const position = rustWorldToViewerPosition(Number(player.x) || 0, Number(player.y) || 0, Number(player.z) || 0);
+      const y = Math.max(position.y, sampleTerrainHeight(this.terrain, position.x, position.z)) + (player.isSelf ? 58 : 46);
+      sprite.position.set(position.x, y, position.z);
+    });
   }
 
   public hasSelfLocation(): boolean {
@@ -4360,7 +4444,7 @@ class AirstrikeReplayPlayer {
       if (existing) {
         existing.refresh?.(event, startAt);
         if (mode === "timeline" && Number.isFinite(cursorMs)) {
-          existing.syncToTimeline(cursorMs, playbackSpeed);
+          existing.syncToTimeline(cursorMs, playbackSpeed, options.live === true);
         }
         return;
       }
@@ -4380,7 +4464,7 @@ class AirstrikeReplayPlayer {
             mode !== "timeline",
           );
       if (mode === "timeline" && Number.isFinite(cursorMs)) {
-        run.syncToTimeline(cursorMs, playbackSpeed);
+        run.syncToTimeline(cursorMs, playbackSpeed, options.live === true);
       }
       this.runs.push(run);
       this.active.add(run.group);
@@ -4479,7 +4563,7 @@ type MapReplayRun = {
   persistent?: boolean;
   refresh?: (event: MapReplayEvent, now: number) => void;
   update: (now: number) => boolean;
-  syncToTimeline: (cursorMs: number, playbackSpeed: number) => void;
+  syncToTimeline: (cursorMs: number, playbackSpeed: number, live?: boolean) => void;
 };
 
 class AirstrikeReplayRun implements MapReplayRun {
@@ -4520,7 +4604,7 @@ class AirstrikeReplayRun implements MapReplayRun {
     this.terrain = terrain;
     this.event = event;
     this.startAt = startAt;
-    this.playbackSpeed = MathUtils.clamp(playbackSpeed || 1, 0.1, 12);
+    this.playbackSpeed = MathUtils.clamp(playbackSpeed || 1, 0.25, 512);
     this.frames = profile ? normalizePreviewFrames(profile) : [];
     this.duration = Math.max(2, Number(profile?.CompiledTrack?.DurationSeconds || profile?.DurationSeconds || lastFrameTime(this.frames) || 8));
     this.payloads = profile ? normalizePayloadEvents(profile) : [];
@@ -4560,7 +4644,7 @@ class AirstrikeReplayRun implements MapReplayRun {
     this.payloads.forEach((payload, index) => {
       if (!this.firedPayloads.has(index) && profileTime >= Number(payload.Time || 0)) {
         this.firedPayloads.add(index);
-        this.spawnPayloadProjectiles(payload, pose, now);
+        this.spawnPayloadProjectiles(payload, pose, now, profileTime);
       }
     });
 
@@ -4582,7 +4666,7 @@ class AirstrikeReplayRun implements MapReplayRun {
       this.timelineElapsed = null;
       return;
     }
-    this.playbackSpeed = MathUtils.clamp(playbackSpeed || 1, 0.1, 12);
+    this.playbackSpeed = MathUtils.clamp(playbackSpeed || 1, 0.25, 512);
     this.timelineElapsed = (cursorMs - occurredMs) / 1000 / this.playbackSpeed;
   }
 
@@ -4594,7 +4678,7 @@ class AirstrikeReplayRun implements MapReplayRun {
     );
   }
 
-  private spawnPayloadProjectiles(payload: RuntimePayloadEvent, pose: { position: Vector3; rotation: Quaternion }, now: number): void {
+  private spawnPayloadProjectiles(payload: RuntimePayloadEvent, pose: { position: Vector3; rotation: Quaternion }, now: number, profileTime: number): void {
     const count = MathUtils.clamp(Math.round(Number(payload.Count || 1)), 1, 6);
     const spread = MathUtils.clamp(Number(payload.SpreadRadius || payload.ImpactRadius || 0), 0, 80);
     const impactRadius = MathUtils.clamp(Number(payload.ImpactRadius || payload.SplashRadius || 18), 10, 70);
@@ -4626,7 +4710,8 @@ class AirstrikeReplayRun implements MapReplayRun {
       }
       const impact = this.toWorld(targetOffset);
       impact.y = sampleTerrainHeight(this.terrain, impact.x, impact.z) + 2;
-      const projectile = new AirstrikeProjectile(origin, impact, now, fuseSeconds / this.playbackSpeed, impactRadius, payloadName);
+      const alreadyElapsedWallSeconds = Math.max(0, profileTime - Number(payload.Time || 0)) / this.playbackSpeed;
+      const projectile = new AirstrikeProjectile(origin, impact, now - alreadyElapsedWallSeconds, fuseSeconds / this.playbackSpeed, impactRadius, payloadName);
       this.projectiles.push(projectile);
       this.group.add(projectile.group);
     }
@@ -4693,7 +4778,7 @@ class AirstrikeProjectile {
       this.smoke.position.copy(this.impact).add(new Vector3(0, Math.max(12, this.impactRadius * 0.45), 0));
     }
 
-    const age = (now - this.explodedAt) * MathUtils.clamp(playbackSpeed || 1, 0.5, 8);
+    const age = (now - this.explodedAt) * MathUtils.clamp(playbackSpeed || 1, 0.25, 512);
     const flashProgress = MathUtils.clamp(age / 0.82, 0, 1);
     const smokeProgress = MathUtils.clamp(age / 1.9, 0, 1);
     const flashScale = MathUtils.lerp(0.18, 1.15, easeOutCubic(flashProgress));
@@ -4729,6 +4814,8 @@ class AirdropReplayRun implements MapReplayRun {
   private readonly packageVisuals: Array<{ packageMesh: Group; parachute: Group; offsetX: number; offsetZ: number }>;
   private readonly carrierRoute: WorldEventRouteSample[];
   private timelineElapsed: number | null = null;
+  private timelineCursorMs: number | null = null;
+  private timelineLive = false;
 
   public constructor(
     key: string,
@@ -4745,7 +4832,7 @@ class AirdropReplayRun implements MapReplayRun {
     this.terrain = terrain;
     this.target = replayEventPosition(event, terrain);
     this.startAt = startAt;
-    this.playbackSpeed = MathUtils.clamp(playbackSpeed || 1, 0.1, 12);
+    this.playbackSpeed = MathUtils.clamp(playbackSpeed || 1, 0.25, 512);
     const worldSize = this.terrain.worldSize || 4500;
     const mapHalf = Math.max(worldSize / 2, 1200);
     const margin = MathUtils.clamp(worldSize * 0.18, 650, 1250);
@@ -4799,7 +4886,16 @@ class AirdropReplayRun implements MapReplayRun {
     const z = this.target.z;
     const ground = sampleTerrainHeight(this.terrain, this.target.x, this.target.z);
     const planeHeight = ground + MathUtils.clamp(worldSize * 0.09, 260, 520);
-    const carrierPose = this.carrierRoute.length > 1 ? sampleWorldEventRoute(this.carrierRoute, progress) : null;
+    const carrierPose = this.carrierRoute.length > 1
+      ? (this.timelineCursorMs === null
+        ? sampleWorldEventRoute(this.carrierRoute, progress)
+        : sampleWorldEventRouteAtTime(
+          this.carrierRoute,
+          this.timelineCursorMs,
+          this.timelineLive ? replayEventVelocity(this.event) : null,
+          this.timelineLive ? 5_000 : 0,
+        ))
+      : null;
     if (carrierPose) {
       this.aircraft.position.copy(carrierPose.position);
       this.aircraft.quaternion.copy(carrierPose.rotation);
@@ -4818,7 +4914,11 @@ class AirdropReplayRun implements MapReplayRun {
       const visualProgress = MathUtils.clamp((eventTime - this.releaseTime - staggerSeconds) / this.dropFallSeconds, 0, 1);
       const visualHeight = MathUtils.lerp(planeHeight - 42, ground + 6, easeInOutCubic(visualProgress));
       const releaseProgress = MathUtils.clamp((this.releaseTime + staggerSeconds) / this.duration, 0, 1);
-      const routeReleasePose = this.carrierRoute.length > 1 ? sampleWorldEventRoute(this.carrierRoute, releaseProgress) : null;
+      const routeReleasePose = this.carrierRoute.length > 1
+        ? (this.timelineCursorMs === null
+          ? sampleWorldEventRoute(this.carrierRoute, releaseProgress)
+          : sampleWorldEventRouteAtTime(this.carrierRoute, Date.parse(String(this.event.occurredAt || ""))))
+        : null;
       const releasePosition = routeReleasePose?.position ?? new Vector3(
         MathUtils.lerp(this.flightStartX, this.flightEndX, releaseProgress),
         planeHeight,
@@ -4837,14 +4937,18 @@ class AirdropReplayRun implements MapReplayRun {
     return true;
   }
 
-  public syncToTimeline(cursorMs: number, playbackSpeed: number): void {
+  public syncToTimeline(cursorMs: number, playbackSpeed: number, live = false): void {
     const occurredMs = Date.parse(String(this.event.occurredAt || ""));
     if (!Number.isFinite(occurredMs) || !Number.isFinite(cursorMs)) {
       this.timelineElapsed = null;
+      this.timelineCursorMs = null;
+      this.timelineLive = false;
       return;
     }
-    this.playbackSpeed = MathUtils.clamp(playbackSpeed || 1, 0.1, 12);
+    this.playbackSpeed = MathUtils.clamp(playbackSpeed || 1, 0.25, 512);
     this.timelineElapsed = (((cursorMs - occurredMs) / 1000) + this.releaseTime) / this.playbackSpeed;
+    this.timelineCursorMs = cursorMs;
+    this.timelineLive = live;
   }
 }
 
@@ -4865,6 +4969,8 @@ class GenericMapEventReplayRun implements MapReplayRun {
   private readonly duration: number;
   private playbackSpeed: number;
   private timelineElapsed: number | null = null;
+  private timelineCursorMs: number | null = null;
+  private timelineLive = false;
   private readonly marker: Mesh;
   private readonly ring: Mesh;
   private readonly beacon: Sprite;
@@ -4884,7 +4990,7 @@ class GenericMapEventReplayRun implements MapReplayRun {
     this.event = event;
     this.terrain = terrain;
     this.startAt = startAt;
-    this.playbackSpeed = MathUtils.clamp(playbackSpeed || 1, 0.1, 12);
+    this.playbackSpeed = MathUtils.clamp(playbackSpeed || 1, 0.25, 512);
     this.vehicle = replayVehicleForEvent(event);
     this.semanticType = replaySemanticEventType(event);
     this.airborne = replayVehicleIsAirborne(this.vehicle);
@@ -4926,7 +5032,12 @@ class GenericMapEventReplayRun implements MapReplayRun {
     }
 
     const eventTime = elapsed * this.playbackSpeed;
-    if (!this.persistent && eventTime > this.duration) {
+    const isTimelineVehicle = this.timelineCursorMs !== null && replayEventIsWorldVehicle(this.event);
+    const endedMs = Date.parse(String(this.event.endedAt || this.event.payload?.endedAt || ""));
+    if (isTimelineVehicle && Number.isFinite(endedMs) && this.timelineCursorMs! > endedMs) {
+      return false;
+    }
+    if (!this.persistent && !isTimelineVehicle && eventTime > this.duration) {
       return false;
     }
 
@@ -4945,7 +5056,16 @@ class GenericMapEventReplayRun implements MapReplayRun {
     setMaterialOpacity(this.beacon.material, this.persistent ? MathUtils.lerp(0.14, 0.3, pulse) : MathUtils.lerp(0.48, 0, progress));
 
     if (this.vehicleMarker) {
-      const routePose = !this.persistent && this.route.length > 1 ? sampleWorldEventRoute(this.route, progress) : null;
+      const routePose = !this.persistent && this.route.length > 1
+        ? (this.timelineCursorMs === null
+          ? sampleWorldEventRoute(this.route, progress)
+          : sampleWorldEventRouteAtTime(
+            this.route,
+            this.timelineCursorMs,
+            this.timelineLive ? replayEventVelocity(this.event) : null,
+            this.timelineLive ? 5_000 : 0,
+          ))
+        : null;
       const currentPose = this.persistent && this.route.length > 0 ? this.route[this.route.length - 1] : null;
       const position = routePose?.position.clone() ?? currentPose?.position.clone() ?? this.sourcePosition.clone();
       if (this.airborne && !this.persistent && !routePose && !currentPose) {
@@ -4982,14 +5102,18 @@ class GenericMapEventReplayRun implements MapReplayRun {
       : ground + 5;
   }
 
-  public syncToTimeline(cursorMs: number, playbackSpeed: number): void {
-    const occurredMs = Date.parse(String(this.event.occurredAt || ""));
-    if (!Number.isFinite(occurredMs) || !Number.isFinite(cursorMs)) {
+  public syncToTimeline(cursorMs: number, playbackSpeed: number, live = false): void {
+    const startedMs = Date.parse(String(this.event.startedAt || this.event.payload?.spawnedAt || this.event.occurredAt || ""));
+    if (!Number.isFinite(startedMs) || !Number.isFinite(cursorMs)) {
       this.timelineElapsed = null;
+      this.timelineCursorMs = null;
+      this.timelineLive = false;
       return;
     }
-    this.playbackSpeed = MathUtils.clamp(playbackSpeed || 1, 0.1, 12);
-    this.timelineElapsed = (cursorMs - occurredMs) / 1000 / this.playbackSpeed;
+    this.playbackSpeed = MathUtils.clamp(playbackSpeed || 1, 0.25, 512);
+    this.timelineElapsed = (cursorMs - startedMs) / 1000 / this.playbackSpeed;
+    this.timelineCursorMs = cursorMs;
+    this.timelineLive = live;
   }
 }
 
@@ -5250,6 +5374,26 @@ function sampleWorldEventRoute(route: WorldEventRouteSample[], progress: number)
     position: current.position.clone().lerp(next.position, fraction),
     rotation: current.rotation.clone().slerp(next.rotation, fraction),
   };
+}
+
+function sampleWorldEventRouteAtTime(
+  route: WorldEventRouteSample[],
+  cursorMs: number,
+  velocity: Vector3 | null = null,
+  maximumExtrapolationMs = 0,
+): { position: Vector3; rotation: Quaternion } | null {
+  return sampleTimestampedWorldRoute(route, cursorMs, velocity, maximumExtrapolationMs);
+}
+
+function replayEventVelocity(event: MapReplayEvent): Vector3 | null {
+  const raw = event.payload?.velocity;
+  if (!raw || typeof raw !== "object") return null;
+  const value = raw as Record<string, unknown>;
+  const x = Number(value.x);
+  const y = Number(value.y);
+  const z = Number(value.z);
+  if (![x, y, z].every(Number.isFinite)) return null;
+  return rustWorldToViewerPosition(x, y, z);
 }
 
 function replayAirdropCarrierEvent(event: MapReplayEvent, eventsByKey: Map<string, MapReplayEvent>): MapReplayEvent | null {
@@ -9054,6 +9198,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   let navigationTab = window.localStorage.getItem("raidlands:map-navigation-tab") || "monuments";
   let navigationItems: Array<{ label: string; run: () => void }> = [];
   let navigationIndex = -1;
+  let recordedNavigateToEvent: ((event: MapReplayEvent) => void) | null = null;
 
   const setNavigationOpen = (open: boolean) => {
     if (!navigation || !navigationToggle) return;
@@ -9107,6 +9252,11 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
         const label = replaySemanticEventType(event).replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
         const when = event.occurredAt ? new Date(event.occurredAt).toLocaleString() : "Recent";
         addNavigationButton(label, `${when} · X ${Math.round(event.x)} Z ${Math.round(event.z)}`, () => {
+          if (recordedNavigateToEvent) {
+            recordedNavigateToEvent(event);
+            viewer.focusWorldPoint(event.x, Number(event.y) || 0, event.z, label, 110);
+            return;
+          }
           if (heatmapPlayback) heatmapPlayback.checked = true;
           if (!wantsHeatmap() && players) players.checked = true;
           if (heatmapHistory.length === 0) {
@@ -9278,6 +9428,66 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   bind(root, "raidlands:camera-target", ((event: CustomEvent<{ label?: string }>) => {
     if (cameraTarget) cameraTarget.value = event.detail?.label || "Whole map";
   }) as EventListener);
+
+  if (root.dataset.timelineUrl) {
+    const recordedBinding = bindRecordedTimelineControls(root, viewer, {
+      onPlayers: (nextPlayers) => {
+        navigationPlayers = nextPlayers;
+        if (navigationTab === "players") renderNavigation();
+        syncMyLocationControl();
+        if (followMyLocation && !orbitMyLocation) viewer.followSelfLocation();
+      },
+      onEvents: (nextEvents) => {
+        navigationEvents = nextEvents;
+        if (navigationTab === "events") renderNavigation();
+      },
+      wantsHeatmap,
+      wantsPlayers,
+      wantsAllPlayers,
+      selectedMetric,
+      selectedRange,
+    });
+    recordedNavigateToEvent = recordedBinding.seekEvent;
+
+    bind(myLocation, "click", () => {
+      if (players && !players.checked) players.checked = true;
+      setFollowMyLocation(!followMyLocation);
+      recordedBinding.refresh();
+    });
+    bind(myLocationOrbit, "click", () => {
+      if (!followMyLocation || !viewer.hasSelfLocation()) {
+        syncMyLocationControl();
+        return;
+      }
+      setOrbitMyLocation(!orbitMyLocation);
+      if (!orbitMyLocation) viewer.followSelfLocation();
+    });
+    bind(heatmap, "change", () => recordedBinding.reload());
+    bind(players, "change", () => recordedBinding.reload());
+    bind(allPlayers, "change", () => recordedBinding.reload());
+    bind(metric, "change", () => recordedBinding.reload());
+
+    if (detailedMonuments) detailedMonuments.value = viewer.getMonumentMode();
+    if (tour) viewer.setTourEnabled(tour.checked && !followMyLocation);
+    if (cameraMode) {
+      cameraMode.value = cameraPreferences.mode;
+      if (manualStyle) {
+        manualStyle.value = cameraPreferences.manualStyle;
+        manualStyle.disabled = cameraPreferences.mode !== "manual";
+        viewer.setManualCameraStyle(cameraPreferences.manualStyle);
+      }
+      viewer.setCameraMode(cameraPreferences.mode);
+    }
+    syncMyLocationControl();
+
+    return {
+      dispose: () => {
+        recordedNavigateToEvent = null;
+        recordedBinding.dispose();
+        disposers.forEach((dispose) => dispose());
+      },
+    };
+  }
 
   const stopHeatmapPlayback = () => {
     window.cancelAnimationFrame(playbackAnimationFrame);
@@ -10065,6 +10275,578 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
       stopLiveOverlayPolling();
       stopPlaybackHistoryPolling();
       stopEnvironmentPolling();
+      disposers.forEach((dispose) => dispose());
+    },
+  };
+}
+
+function recordedItemTime(value: { timestamp?: string } | null | undefined): number {
+  const timestamp = Date.parse(String(value?.timestamp || ""));
+  return Number.isFinite(timestamp) ? timestamp : Number.NaN;
+}
+
+function recordedEventTime(event: MapReplayEvent): number {
+  const timestamp = Date.parse(String(event.startedAt || event.occurredAt || event.sampledAt || ""));
+  return Number.isFinite(timestamp) ? timestamp : Number.NaN;
+}
+
+function mergeRecordedItems<T extends { timestamp: string }>(current: T[], incoming: T[]): T[] {
+  const items = new Map<string, T>();
+  [...current, ...incoming].forEach((item) => {
+    if (Number.isFinite(recordedItemTime(item))) items.set(item.timestamp, item);
+  });
+  return [...items.values()].sort((left, right) => recordedItemTime(left) - recordedItemTime(right));
+}
+
+function mergeRecordedEvents(current: MapReplayEvent[], incoming: MapReplayEvent[]): MapReplayEvent[] {
+  const events = new Map<string, MapReplayEvent>();
+  [...current, ...incoming].forEach((event, index) => {
+    const key = String(event.eventKey || `${event.eventType || "event"}-${event.occurredAt || "unknown"}-${index}`);
+    const existing = events.get(key);
+    const existingSample = Date.parse(String(existing?.sampledAt || existing?.occurredAt || ""));
+    const nextSample = Date.parse(String(event.sampledAt || event.occurredAt || ""));
+    if (!existing || !Number.isFinite(existingSample) || nextSample >= existingSample) events.set(key, event);
+  });
+  return [...events.values()].sort((left, right) => recordedEventTime(left) - recordedEventTime(right));
+}
+
+function recordedFramesAround<T extends { timestamp: string }>(frames: T[], cursorMs: number): { lower: T | null; upper: T | null; progress: number } {
+  if (frames.length === 0) return { lower: null, upper: null, progress: 0 };
+  let lower: T | null = null;
+  let upper: T | null = null;
+  for (const frame of frames) {
+    const timestamp = recordedItemTime(frame);
+    if (timestamp <= cursorMs) lower = frame;
+    if (timestamp > cursorMs) {
+      upper = frame;
+      break;
+    }
+  }
+  if (!lower) return { lower: null, upper: frames[0] || null, progress: 0 };
+  if (!upper) return { lower, upper: lower, progress: 0 };
+  const lowerMs = recordedItemTime(lower);
+  const upperMs = recordedItemTime(upper);
+  return {
+    lower,
+    upper,
+    progress: MathUtils.clamp((cursorMs - lowerMs) / Math.max(1, upperMs - lowerMs), 0, 1),
+  };
+}
+
+function interpolateRecordedPlayers(
+  lower: RecordedTimelineItem<{ players: PlayerLocation[] }> | null,
+  upper: RecordedTimelineItem<{ players: PlayerLocation[] }> | null,
+  progress: number,
+): PlayerLocation[] {
+  if (!lower) return [];
+  const nextById = new Map((upper?.players || []).map((player) => [String(player.steamId64 || player.displayName || ""), player]));
+  return (lower.players || []).map((player) => {
+    const key = String(player.steamId64 || player.displayName || "");
+    const next = nextById.get(key);
+    if (!next || upper === lower) return { ...player };
+    return {
+      ...player,
+      x: MathUtils.lerp(Number(player.x) || 0, Number(next.x) || 0, progress),
+      y: MathUtils.lerp(Number(player.y) || 0, Number(next.y) || 0, progress),
+      z: MathUtils.lerp(Number(player.z) || 0, Number(next.z) || 0, progress),
+      sampledAt: lower.timestamp,
+    };
+  });
+}
+
+function bindRecordedTimelineControls(
+  root: HTMLElement,
+  viewer: TerrainViewer,
+  hooks: RecordedTimelineHooks,
+): RecordedViewerTimelineBinding {
+  const panel = root.closest<HTMLElement>(".server-terrain-panel");
+  const modeButtons = Array.from(panel?.querySelectorAll<HTMLButtonElement>("[data-map-viewer-timeline-mode]") || []);
+  const play = panel?.querySelector<HTMLButtonElement>("[data-map-viewer-heatmap-play]");
+  const loop = panel?.querySelector<HTMLInputElement>("[data-map-viewer-heatmap-loop]");
+  const speedDown = panel?.querySelector<HTMLButtonElement>("[data-map-viewer-heatmap-speed-down]");
+  const speedUp = panel?.querySelector<HTMLButtonElement>("[data-map-viewer-heatmap-speed-up]");
+  const speedLabel = panel?.querySelector<HTMLOutputElement>("[data-map-viewer-heatmap-speed-label]");
+  const slider = panel?.querySelector<HTMLInputElement>("[data-map-viewer-heatmap-frame]");
+  const frameLabel = panel?.querySelector<HTMLOutputElement>("[data-map-viewer-heatmap-frame-label]");
+  const intervalLabel = panel?.querySelector<HTMLOutputElement>("[data-map-viewer-heatmap-frame-interval-label]");
+  const range = panel?.querySelector<HTMLSelectElement>("[data-map-viewer-heatmap-range]");
+  const forceAirstrike = panel?.querySelector<HTMLButtonElement>("[data-map-viewer-force-airstrike]");
+  const clock = new RecordedTimelineClock();
+  const disposers: Array<() => void> = [];
+  const batches = new RecordedTimelineBatchCache<RecordedTimelinePayload>(4);
+  const loading = new Map<string, Promise<RecordedTimelinePayload | null>>();
+  let mode: RecordedTimelineMode = root.dataset.overlayMode === "replay" ? "replay" : "live";
+  let speedIndex = 2;
+  let animationFrame = 0;
+  let lastTick = performance.now();
+  let pollTimer = 0;
+  let disposed = false;
+  let requestGeneration = 0;
+  let environmentFrames: Array<RecordedTimelineItem<{ environment: EnvironmentSnapshot | null }>> = [];
+  let playerFrames: Array<RecordedTimelineItem<{ players: PlayerLocation[] }>> = [];
+  let heatmapFrames: Array<RecordedTimelineItem<HeatmapHistoryFrame>> = [];
+  let replayEvents: MapReplayEvent[] = [];
+  let lastHeatmapTimestamp = "";
+  let lastPlayerFrameTimestamp = "";
+  let prefetching = false;
+  let tailChecking = false;
+  let replayInitialized = false;
+  let savedReplay: { startMs: number; endMs: number; cursorMs: number; speed: number; playing: boolean; loop: boolean } | null = null;
+  const liveNextPoll = new Map<string, number>();
+  const liveFailures = new Map<string, number>();
+
+  const bind = <T extends EventTarget>(target: T | null | undefined, type: string, listener: EventListenerOrEventListenerObject) => {
+    if (!target) return;
+    target.addEventListener(type, listener);
+    disposers.push(() => target.removeEventListener(type, listener));
+  };
+  const speed = () => Number(RECORDED_PLAYBACK_SPEEDS[speedIndex] || 1);
+  const selectedIncludes = () => ["environment", "events", ...(hooks.wantsHeatmap() ? ["heatmap"] : []), ...(hooks.wantsPlayers() ? ["players"] : [])];
+  const rangeDurationMs = () => historyRangeSeconds(hooks.selectedRange()) * 1000;
+
+  const requestTimeline = async (
+    fromMs: number,
+    toMs: number,
+    includes = selectedIncludes(),
+    sampleEvery = recordedSampleEverySeconds(speed()),
+    headOnly = false,
+  ): Promise<RecordedTimelinePayload> => {
+    const url = new URL(String(root.dataset.timelineUrl), window.location.href);
+    url.searchParams.set("from", new Date(fromMs).toISOString());
+    url.searchParams.set("to", new Date(toMs).toISOString());
+    url.searchParams.set("include", includes.join(","));
+    url.searchParams.set("metric", hooks.selectedMetric());
+    url.searchParams.set("sampleEvery", String(sampleEvery));
+    if (hooks.wantsAllPlayers()) url.searchParams.set("all", "1");
+    if (headOnly) url.searchParams.set("head", "1");
+    const response = await fetch(url, { cache: "no-store", credentials: "same-origin", headers: { Accept: "application/json" } });
+    const payload = await response.json() as RecordedTimelinePayload;
+    if (!response.ok || payload.ok === false) throw new Error(`Timeline request failed with HTTP ${response.status}.`);
+    return payload;
+  };
+
+  const payloadHead = (payload: RecordedTimelinePayload): number => {
+    const recordedHead = latestRecordedAvailability(payload.streams);
+    if (recordedHead !== null) return recordedHead;
+    const serverMs = Date.parse(String(payload.serverTime || ""));
+    return Number.isFinite(serverMs) ? serverMs : Date.now();
+  };
+
+  const mergePayload = (payload: RecordedTimelinePayload, trimBefore = Number.NEGATIVE_INFINITY) => {
+    environmentFrames = mergeRecordedItems(environmentFrames, payload.streams?.environment?.items || []).filter((item) => recordedItemTime(item) >= trimBefore);
+    playerFrames = mergeRecordedItems(playerFrames, payload.streams?.players?.items || []).filter((item) => recordedItemTime(item) >= trimBefore);
+    heatmapFrames = mergeRecordedItems(heatmapFrames, payload.streams?.heatmap?.items || []).filter((item) => recordedItemTime(item) >= trimBefore);
+    replayEvents = mergeRecordedEvents(replayEvents, payload.streams?.events?.items || []).filter((event) => {
+      const ended = Date.parse(String(event.endedAt || event.occurredAt || ""));
+      return !Number.isFinite(ended) || ended >= trimBefore;
+    });
+    hooks.onEvents(replayEvents);
+    const delay = payload.streams?.heatmap?.delay;
+    if (delay && intervalLabel) {
+      intervalLabel.value = Number(delay.delaySeconds) > 0
+        ? `Recorded timestamps · ${delay.label || "Delayed"}`
+        : "Recorded timestamps";
+      intervalLabel.textContent = intervalLabel.value;
+    }
+  };
+
+  const rebuildReplayData = () => {
+    environmentFrames = [];
+    playerFrames = [];
+    heatmapFrames = [];
+    replayEvents = [];
+    for (const payload of batches.values()) mergePayload(payload);
+  };
+
+  const cacheBatch = (key: string, payload: RecordedTimelinePayload) => {
+    batches.set(key, payload);
+    rebuildReplayData();
+  };
+
+  const batchBoundsForCursor = (cursorMs: number): { startMs: number; endMs: number } => {
+    const spanMs = recordedBatchSpanSeconds(speed()) * 1000;
+    const offset = Math.max(0, cursorMs - clock.rangeStartMs);
+    const startMs = Math.max(clock.rangeStartMs, clock.rangeStartMs + Math.floor(offset / spanMs) * spanMs);
+    return { startMs, endMs: Math.min(clock.cycleEndMs, startMs + spanMs) };
+  };
+
+  const loadReplayBatch = async (cursorMs: number, force = false): Promise<RecordedTimelinePayload | null> => {
+    const bounds = batchBoundsForCursor(cursorMs);
+    const sampleEvery = recordedSampleEverySeconds(speed());
+    const key = `${bounds.startMs}:${bounds.endMs}:${sampleEvery}:${selectedIncludes().join(",")}:${hooks.selectedMetric()}:${Number(hooks.wantsAllPlayers())}`;
+    if (!force) {
+      const cached = batches.get(key);
+      if (cached) return cached;
+    }
+    if (loading.has(key)) return loading.get(key) || null;
+    const promise = requestTimeline(bounds.startMs, bounds.endMs, selectedIncludes(), sampleEvery)
+      .then((payload) => {
+        if (!disposed && mode === "replay") cacheBatch(key, payload);
+        return payload;
+      })
+      .catch((error) => {
+        console.info("Raidlands recorded timeline batch could not be loaded.", error);
+        return null;
+      })
+      .finally(() => loading.delete(key));
+    loading.set(key, promise);
+    return promise;
+  };
+
+  const eventsAtCursor = (cursorMs: number): MapReplayEvent[] => replayEvents.filter((event) => {
+    const started = Date.parse(String(event.startedAt || event.occurredAt || ""));
+    const ended = Date.parse(String(event.endedAt || ""));
+    if (String(event.payload?.kind || "").toLowerCase() === "world_vehicle") {
+      return (!Number.isFinite(started) || started <= cursorMs + 5_000)
+        && (!Number.isFinite(ended) || ended >= cursorMs);
+    }
+    const occurred = Date.parse(String(event.occurredAt || event.startedAt || ""));
+    return Number.isFinite(occurred) && occurred <= cursorMs + 10_000 && occurred >= cursorMs - 120_000;
+  });
+
+  const renderCursor = () => {
+    const cursorMs = clock.cursorMs;
+    const environment = recordedFramesAround(environmentFrames, cursorMs);
+    if (environment.lower || environment.upper) {
+      viewer.setTimelineEnvironment(
+        environment.lower?.environment || environment.upper?.environment || null,
+        environment.upper?.environment || environment.lower?.environment || null,
+        environment.progress,
+      );
+    }
+
+    const playerPair = recordedFramesAround(playerFrames, cursorMs);
+    const currentPlayers = interpolateRecordedPlayers(playerPair.lower, playerPair.upper, playerPair.progress);
+    if (hooks.wantsPlayers()) {
+      viewer.setPlayerLocationsInterpolated(currentPlayers);
+      viewer.setPlayerLocationsVisible(currentPlayers.length > 0);
+    } else {
+      viewer.setPlayerLocationsVisible(false);
+    }
+    const playerTimestamp = playerPair.lower?.timestamp || "";
+    if (playerTimestamp !== lastPlayerFrameTimestamp) {
+      lastPlayerFrameTimestamp = playerTimestamp;
+      hooks.onPlayers(currentPlayers);
+    }
+
+    const heatPair = recordedFramesAround(heatmapFrames, cursorMs);
+    const currentHeat = heatPair.lower;
+    if (hooks.wantsHeatmap() && currentHeat) {
+      if (currentHeat.timestamp !== lastHeatmapTimestamp) {
+        lastHeatmapTimestamp = currentHeat.timestamp;
+        viewer.setHeatmap(currentHeat);
+      }
+      viewer.setHeatmapVisible((currentHeat.buckets || []).length > 0);
+    } else {
+      viewer.setHeatmapVisible(false);
+    }
+
+    viewer.showReplayEvents(eventsAtCursor(cursorMs), mode === "live" ? 1 : speed(), {
+      mode: "timeline",
+      cursorMs,
+      live: mode === "live",
+    });
+    if (frameLabel) {
+      const text = new Date(cursorMs).toLocaleString();
+      frameLabel.value = text;
+      frameLabel.textContent = text;
+    }
+    if (slider && mode === "replay") {
+      const duration = Math.max(1, clock.rangeEndMs - clock.rangeStartMs);
+      slider.value = String(MathUtils.clamp((cursorMs - clock.rangeStartMs) / duration, 0, 1) * 1000);
+    }
+  };
+
+  const updateControls = (waiting = false) => {
+    modeButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.mapViewerTimelineMode === mode)));
+    const replay = mode === "replay";
+    if (play) {
+      play.disabled = !replay;
+      play.textContent = replay ? (clock.playing ? "Pause" : "Play") : (waiting ? "Waiting" : "Live");
+      play.setAttribute("aria-pressed", String(replay && clock.playing));
+    }
+    if (loop) loop.disabled = !replay;
+    if (speedDown) speedDown.disabled = !replay || speedIndex <= 0;
+    if (speedUp) speedUp.disabled = !replay || speedIndex >= RECORDED_PLAYBACK_SPEEDS.length - 1;
+    if (speedLabel) {
+      speedLabel.value = replay ? `${speed()}x` : "1x";
+      speedLabel.textContent = speedLabel.value;
+    }
+    if (slider) slider.disabled = !replay;
+    if (range) range.disabled = !replay;
+    root.dataset.timelineMode = mode;
+    root.dataset.timelineState = waiting ? "waiting" : clock.playing ? "playing" : "paused";
+  };
+
+  const prefetchIfNeeded = () => {
+    if (mode !== "replay" || prefetching || !clock.playing) return;
+    const bounds = batchBoundsForCursor(clock.cursorMs);
+    if ((bounds.endMs - clock.cursorMs) > recordedPrefetchThresholdMs(speed()) || bounds.endMs >= clock.cycleEndMs) return;
+    prefetching = true;
+    void loadReplayBatch(Math.min(clock.cycleEndMs, bounds.endMs + 1)).finally(() => { prefetching = false; });
+  };
+
+  const resolveTail = async () => {
+    if (tailChecking) return;
+    tailChecking = true;
+    try {
+      const head = await requestTimeline(clock.cycleEndMs, Date.now(), selectedIncludes(), recordedSampleEverySeconds(speed()), true);
+      const discoveredEnd = payloadHead(head);
+      if (discoveredEnd > clock.cycleEndMs) {
+        const previousEnd = clock.cycleEndMs;
+        clock.resolveReplayTail(discoveredEnd);
+        await loadReplayBatch(Math.min(discoveredEnd, previousEnd + 1), true);
+      } else {
+        const result = clock.resolveReplayTail(null);
+        if (result.wrapped) await loadReplayBatch(clock.cursorMs);
+      }
+    } catch (error) {
+      console.info("Raidlands timeline tail check failed; replaying the existing range.", error);
+      const result = clock.resolveReplayTail(null);
+      if (result.wrapped) await loadReplayBatch(clock.cursorMs);
+    } finally {
+      tailChecking = false;
+      updateControls();
+    }
+  };
+
+  const tick = (now: number) => {
+    if (disposed) return;
+    const delta = document.visibilityState === "hidden" ? 0 : Math.max(0, now - lastTick);
+    lastTick = now;
+    const result = clock.tick(delta);
+    renderCursor();
+    updateControls(result.waiting);
+    if (result.needsTailCheck) void resolveTail();
+    if (result.wrapped) void loadReplayBatch(clock.cursorMs);
+    prefetchIfNeeded();
+    animationFrame = window.requestAnimationFrame(tick);
+  };
+
+  const clearData = () => {
+    batches.clear();
+    environmentFrames = [];
+    playerFrames = [];
+    heatmapFrames = [];
+    replayEvents = [];
+    lastHeatmapTimestamp = "";
+    lastPlayerFrameTimestamp = "";
+    viewer.clearReplayEvents();
+  };
+
+  const enterMode = async (nextMode: RecordedTimelineMode) => {
+    const generation = ++requestGeneration;
+    if (mode === "replay" && replayInitialized) {
+      savedReplay = {
+        startMs: clock.rangeStartMs,
+        endMs: clock.rangeEndMs,
+        cursorMs: clock.cursorMs,
+        speed: speed(),
+        playing: clock.playing,
+        loop: Boolean(loop?.checked),
+      };
+    }
+    mode = nextMode;
+    clearData();
+    updateControls();
+    const now = Date.now();
+
+    if (mode === "live") {
+      const payload = await requestTimeline(now - 15 * 60_000, now, selectedIncludes(), 0);
+      if (disposed || generation !== requestGeneration || mode !== "live") return;
+      mergePayload(payload, payloadHead(payload) - 15 * 60_000);
+      const head = payloadHead(payload);
+      clock.configureLive(head, head);
+      liveNextPoll.clear();
+      liveFailures.clear();
+      renderCursor();
+      updateControls(true);
+      return;
+    }
+
+    const head = await requestTimeline(now - 60_000, now, selectedIncludes(), 0, true);
+    if (disposed || generation !== requestGeneration || mode !== "replay") return;
+    const endMs = payloadHead(head);
+    const wipeStart = Date.parse(String(head.wipeStartedAt || ""));
+    const startMs = Math.max(Number.isFinite(wipeStart) ? wipeStart : 0, endMs - rangeDurationMs());
+    let cursorMs = startMs;
+    let playing = true;
+    let replayLoop = Boolean(loop?.checked);
+    if (savedReplay) {
+      cursorMs = relativeTimelineCursor(savedReplay.cursorMs, savedReplay.startMs, savedReplay.endMs, startMs, endMs);
+      playing = savedReplay.playing;
+      replayLoop = savedReplay.loop;
+      const savedSpeedIndex = RECORDED_PLAYBACK_SPEEDS.findIndex((entry) => entry === savedReplay?.speed);
+      if (savedSpeedIndex >= 0) speedIndex = savedSpeedIndex;
+      if (loop) loop.checked = replayLoop;
+    }
+    clock.configureReplay({ startMs, endMs, cursorMs, speed: speed(), playing, loop: replayLoop });
+    replayInitialized = true;
+    await loadReplayBatch(clock.cursorMs);
+    renderCursor();
+    updateControls();
+  };
+
+  const pollLiveSource = async (source: string, cadenceSeconds: number) => {
+    const now = Date.now();
+    const failures = liveFailures.get(source) || 0;
+    liveNextPoll.set(source, now + Math.min(60_000, cadenceSeconds * 1000 * (2 ** failures)));
+    try {
+      const payload = await requestTimeline(Math.max(0, clock.headMs - cadenceSeconds * 2_000), now, [source], 0);
+      if (disposed || mode !== "live") return;
+      liveFailures.set(source, 0);
+      const recordedHead = latestRecordedAvailability(payload.streams);
+      mergePayload(payload, Math.max(0, (recordedHead ?? clock.headMs) - 15 * 60_000));
+      if (recordedHead !== null) clock.setLiveHead(recordedHead);
+      renderCursor();
+    } catch (error) {
+      liveFailures.set(source, failures + 1);
+      console.info(`Raidlands live ${source} timeline poll failed.`, error);
+    }
+  };
+
+  const pollLive = () => {
+    if (mode !== "live" || document.visibilityState === "hidden") return;
+    const now = Date.now();
+    const sources: Array<[string, number]> = [["events", 5], ["players", 15], ["environment", 30], ["heatmap", 300]];
+    sources.forEach(([source, cadence]) => {
+      if ((source === "players" && !hooks.wantsPlayers()) || (source === "heatmap" && !hooks.wantsHeatmap())) return;
+      if ((liveNextPoll.get(source) || 0) <= now) void pollLiveSource(source, cadence);
+    });
+  };
+
+  const reload = () => {
+    if (mode === "live") {
+      liveNextPoll.clear();
+      pollLive();
+      return;
+    }
+    batches.clear();
+    void loadReplayBatch(clock.cursorMs, true).then(renderCursor);
+  };
+
+  const changeRange = () => {
+    if (mode !== "replay") return;
+    const oldStart = clock.rangeStartMs;
+    const oldEnd = clock.rangeEndMs;
+    const endMs = oldEnd;
+    const startMs = endMs - rangeDurationMs();
+    const cursorMs = relativeTimelineCursor(clock.cursorMs, oldStart, oldEnd, startMs, endMs);
+    const playing = clock.playing;
+    clock.configureReplay({ startMs, endMs, cursorMs, speed: speed(), playing, loop: Boolean(loop?.checked) });
+    batches.clear();
+    void loadReplayBatch(cursorMs, true).then(renderCursor);
+  };
+
+  const seekEvent = (event: MapReplayEvent) => {
+    void (async () => {
+      if (mode !== "replay") await enterMode("replay");
+      const eventMs = Date.parse(String(event.startedAt || event.occurredAt || ""));
+      if (!Number.isFinite(eventMs)) return;
+      clock.seek(eventMs);
+      clock.playing = true;
+      await loadReplayBatch(eventMs);
+      renderCursor();
+      updateControls();
+    })();
+  };
+
+  modeButtons.forEach((button) => bind(button, "click", () => {
+    const next = button.dataset.mapViewerTimelineMode === "replay" ? "replay" : "live";
+    if (next !== mode) void enterMode(next);
+  }));
+  bind(play, "click", () => {
+    if (mode !== "replay") return;
+    clock.playing = !clock.playing;
+    lastTick = performance.now();
+    updateControls();
+  });
+  bind(loop, "change", () => clock.setReplayLoop(Boolean(loop?.checked)));
+  bind(speedDown, "click", () => {
+    const previousSampleEvery = recordedSampleEverySeconds(speed());
+    speedIndex = Math.max(0, speedIndex - 1);
+    clock.setReplaySpeed(speed());
+    updateControls();
+    if (recordedSampleEverySeconds(speed()) < previousSampleEvery) {
+      batches.clear();
+      void loadReplayBatch(clock.cursorMs, true).then(renderCursor);
+    }
+  });
+  bind(speedUp, "click", () => {
+    speedIndex = Math.min(RECORDED_PLAYBACK_SPEEDS.length - 1, speedIndex + 1);
+    clock.setReplaySpeed(speed());
+    updateControls();
+  });
+  bind(range, "change", changeRange);
+  bind(slider, "pointerdown", () => {
+    if (mode === "replay") clock.playing = false;
+  });
+  bind(slider, "input", () => {
+    if (mode !== "replay" || !slider) return;
+    clock.playing = false;
+    const progress = MathUtils.clamp((Number(slider.value) || 0) / 1000, 0, 1);
+    clock.seek(MathUtils.lerp(clock.rangeStartMs, clock.rangeEndMs, progress));
+    void loadReplayBatch(clock.cursorMs).then(renderCursor);
+    updateControls();
+  });
+  bind(forceAirstrike, "click", () => {
+    if (!forceAirstrike) return;
+    const originalLabel = forceAirstrike.textContent || "Replay latest strike";
+    forceAirstrike.disabled = true;
+    forceAirstrike.textContent = "Finding strike";
+    void (async () => {
+      let latest = [...replayEvents].reverse().find((event) => event.eventType === "airstrike");
+      if (!latest) {
+        const events = await loadForcedReplayEvents(root, hooks.selectedRange(), 72);
+        latest = [...events].reverse().find((event) => event.eventType === "airstrike");
+      }
+      if (latest) {
+        seekEvent(latest);
+        forceAirstrike.textContent = "Seeking strike";
+      } else {
+        forceAirstrike.textContent = "No recent strike";
+      }
+    })().catch((error) => {
+      console.info("Raidlands latest strike could not be loaded.", error);
+      forceAirstrike.textContent = "Replay failed";
+    }).finally(() => {
+      window.setTimeout(() => {
+        forceAirstrike.textContent = originalLabel;
+        forceAirstrike.disabled = false;
+      }, 1_800);
+    });
+  });
+  bind(document, "visibilitychange", () => {
+    lastTick = performance.now();
+    if (document.visibilityState === "visible" && mode === "live") {
+      liveNextPoll.clear();
+      pollLive();
+    }
+  });
+
+  if (slider) {
+    slider.min = "0";
+    slider.max = "1000";
+    slider.step = "any";
+  }
+  if (intervalLabel) {
+    intervalLabel.value = "Recorded timestamps";
+    intervalLabel.textContent = intervalLabel.value;
+  }
+  updateControls();
+  void enterMode(mode).catch((error) => console.info("Raidlands recorded timeline could not start.", error));
+  animationFrame = window.requestAnimationFrame(tick);
+  pollTimer = window.setInterval(pollLive, 1_000);
+
+  return {
+    refresh: renderCursor,
+    reload,
+    seekEvent,
+    dispose: () => {
+      disposed = true;
+      requestGeneration += 1;
+      window.cancelAnimationFrame(animationFrame);
+      window.clearInterval(pollTimer);
       disposers.forEach((dispose) => dispose());
     },
   };

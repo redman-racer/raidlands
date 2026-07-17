@@ -2,6 +2,7 @@
 
 require_once __DIR__ . '/database.php';
 require_once __DIR__ . '/server-map-replay-policy.php';
+require_once __DIR__ . '/server-timeline-policy.php';
 
 function raidlands_server_status_server_id(): string
 {
@@ -168,6 +169,20 @@ function raidlands_server_map_replay_events_are_ready(): bool
 
     try {
         raidlands_db_fetch_one('SELECT id FROM server_map_replay_events LIMIT 1');
+        return true;
+    } catch (Throwable $error) {
+        return false;
+    }
+}
+
+function raidlands_server_map_replay_span_columns_are_ready(): bool
+{
+    if (!raidlands_server_map_replay_events_are_ready()) {
+        return false;
+    }
+
+    try {
+        raidlands_db_fetch_one('SELECT span_started_at, span_ended_at FROM server_map_replay_events LIMIT 1');
         return true;
     } catch (Throwable $error) {
         return false;
@@ -2574,11 +2589,17 @@ function raidlands_server_map_replay_events_ingest_snapshot(array $payload, stri
         throw new InvalidArgumentException('Replay event snapshot must include 1 to 250 events.');
     }
 
+    $span_columns_ready = raidlands_server_map_replay_span_columns_are_ready();
+    $span_insert_columns = $span_columns_ready ? ', span_started_at, span_ended_at' : '';
+    $span_insert_values = $span_columns_ready ? ', :span_started_at, :span_ended_at' : '';
+    $span_update = $span_columns_ready
+        ? ",\n            span_started_at = LEAST(COALESCE(span_started_at, VALUES(span_started_at)), VALUES(span_started_at)),\n            span_ended_at = VALUES(span_ended_at)"
+        : '';
     $statement = raidlands_db_required()->prepare(
         'INSERT INTO server_map_replay_events
-            (server_id, wipe_key, event_key, event_type, occurred_at, x, y, z, profile_key, vehicle, payload_json)
+            (server_id, wipe_key, event_key, event_type, occurred_at' . $span_insert_columns . ', x, y, z, profile_key, vehicle, payload_json)
          VALUES
-            (:server_id, :wipe_key, :event_key, :event_type, :occurred_at, :x, :y, :z, :profile_key, :vehicle, :payload_json)
+            (:server_id, :wipe_key, :event_key, :event_type, :occurred_at' . $span_insert_values . ', :x, :y, :z, :profile_key, :vehicle, :payload_json)
          ON DUPLICATE KEY UPDATE
             event_type = VALUES(event_type),
             occurred_at = VALUES(occurred_at),
@@ -2587,7 +2608,7 @@ function raidlands_server_map_replay_events_ingest_snapshot(array $payload, stri
             z = VALUES(z),
             profile_key = VALUES(profile_key),
             vehicle = VALUES(vehicle),
-            payload_json = VALUES(payload_json),
+            payload_json = VALUES(payload_json)' . $span_update . ',
             updated_at = NOW()'
     );
     $accepted = 0;
@@ -2608,7 +2629,14 @@ function raidlands_server_map_replay_events_ingest_snapshot(array $payload, stri
             $event_key = hash('sha256', $type . '|' . $occurred_at . '|' . round((float) ($event['x'] ?? 0), 1) . '|' . round((float) ($event['z'] ?? 0), 1) . '|' . $index);
         }
 
-        $statement->execute([
+        $event_payload = $event['payload'] ?? $event['details'] ?? [];
+        if (!is_array($event_payload)) {
+            $event_payload = [];
+        }
+        $occurred_timestamp = strtotime($occurred_at);
+        $occurred_timestamp = $occurred_timestamp === false ? time() : $occurred_timestamp;
+        $span = raidlands_server_timeline_event_span($event_payload, $occurred_timestamp, $occurred_timestamp);
+        $params = [
             'server_id' => $server_id,
             'wipe_key' => $wipe_key,
             'event_key' => $event_key,
@@ -2620,7 +2648,12 @@ function raidlands_server_map_replay_events_ingest_snapshot(array $payload, stri
             'profile_key' => raidlands_server_status_clean_text($event['profile_key'] ?? $event['profileKey'] ?? '', 120),
             'vehicle' => raidlands_server_status_clean_text($event['vehicle'] ?? '', 40),
             'payload_json' => raidlands_server_map_replay_event_payload($event),
-        ]);
+        ];
+        if ($span_columns_ready) {
+            $params['span_started_at'] = gmdate('Y-m-d H:i:s', (int) $span['start']);
+            $params['span_ended_at'] = $span['end'] === null ? null : gmdate('Y-m-d H:i:s', (int) $span['end']);
+        }
+        $statement->execute($params);
         $accepted += 1;
     }
 
@@ -2638,11 +2671,17 @@ function raidlands_server_map_replay_event_from_row(array $row): array
         $payload = [];
     }
 
+    $started_at = raidlands_server_status_iso($row['span_started_at'] ?? $payload['spawnedAt'] ?? $row['occurred_at'] ?? '');
+    $ended_at = raidlands_server_status_iso($row['span_ended_at'] ?? $payload['endedAt'] ?? '');
+
     return [
         'id' => (int) ($row['id'] ?? 0),
         'eventKey' => (string) ($row['event_key'] ?? ''),
         'eventType' => (string) ($row['event_type'] ?? ''),
         'occurredAt' => raidlands_server_status_iso($row['occurred_at'] ?? ''),
+        'startedAt' => $started_at,
+        'endedAt' => $ended_at,
+        'sampledAt' => raidlands_server_status_iso($payload['sampledAt'] ?? $row['occurred_at'] ?? ''),
         'x' => (float) ($row['x'] ?? 0),
         'y' => (float) ($row['y'] ?? 0),
         'z' => (float) ($row['z'] ?? 0),

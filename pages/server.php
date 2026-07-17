@@ -212,11 +212,11 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
           <?php endif; ?>
         </div>
         <div class="server-terrain-control-group server-terrain-control-group-playback" aria-label="Playback controls">
-          <label class="server-terrain-toggle">
-            <input type="checkbox" checked data-map-viewer-heatmap-playback>
-            <span>Playback</span>
-          </label>
-          <button type="button" data-map-viewer-heatmap-play aria-pressed="false">Play</button>
+          <div class="server-terrain-mode-controls" role="group" aria-label="Timeline mode">
+            <button type="button" data-map-viewer-timeline-mode="live" aria-pressed="true">Live</button>
+            <button type="button" data-map-viewer-timeline-mode="replay" aria-pressed="false">Replay</button>
+          </div>
+          <button type="button" data-map-viewer-heatmap-play aria-pressed="false" disabled>Live</button>
           <div class="server-terrain-speed-controls" aria-label="Playback speed">
             <button type="button" data-map-viewer-heatmap-speed-down aria-label="Slow playback" title="Slow playback">-</button>
             <output data-map-viewer-heatmap-speed-label>1x</output>
@@ -236,7 +236,7 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
         </div>
         <div class="server-terrain-control-group server-terrain-control-group-secondary" aria-label="Location and filters">
           <div class="server-terrain-interval" aria-live="polite">
-            <span>Frame spacing</span>
+            <span>Sampling</span>
             <output data-map-viewer-heatmap-frame-interval-label>waiting</output>
           </div>
           <button type="button" data-map-viewer-my-location aria-pressed="false" disabled>Follow my location</button>
@@ -289,6 +289,8 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
         data-player-locations-url="<?= e(route_url('api/server/player-locations.php')) ?>"
         data-environment-url="<?= e(route_url('api/server/environment.php')) ?>"
         data-map-replay-events-url="<?= e(route_url('api/server/map-replay-events.php')) ?>"
+        data-timeline-url="<?= e(route_url('api/server/timeline.php')) ?>"
+        data-overlay-mode="live"
         data-airstrike-profiles-url="<?= e(route_url('api/airstrike-animation-profiles.php')) ?>"
         data-asset-base="<?= e($base_path . 'assets/') ?>"
         data-camera-tour="true"

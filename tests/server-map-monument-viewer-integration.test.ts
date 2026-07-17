@@ -29,4 +29,22 @@ describe("shared Home and Server monument viewer", () => {
     expect(source).toContain("updateDirectorFpsState(this.directorFps, frameMs)");
     expect(source).toContain('if (this.cameraMode === "orbit"');
   });
+
+  it("defaults both shared viewers to the recorded-time Live stream", () => {
+    for (const page of ["home.php", "server.php"]) {
+      const source = readFileSync(resolve("pages", page), "utf8");
+      expect(source).toContain("api/server/timeline.php");
+      expect(source).toContain('data-overlay-mode="live"');
+      expect(source).not.toContain("data-overlay-playback");
+    }
+
+    const server = readFileSync(resolve("pages/server.php"), "utf8");
+    expect(server).toContain('data-map-viewer-timeline-mode="live"');
+    expect(server).toContain('data-map-viewer-timeline-mode="replay"');
+    expect(server).not.toContain("data-map-viewer-heatmap-playback");
+
+    const viewer = readFileSync(resolve("assets/ts/server-map-viewer/app.ts"), "utf8");
+    expect(viewer).toContain("loadForcedReplayEvents(root, hooks.selectedRange(), 72)");
+    expect(viewer).toContain("seekEvent(latest)");
+  });
 });
