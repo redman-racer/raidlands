@@ -236,6 +236,18 @@ $profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_
                 ['All-Time Kills', $profile_stats['all_time']['kills'] ?? 0],
                 ['All-Time NPC Kills', $profile_stats['all_time']['npc_kills'] ?? 0],
                 ['All-Time Playtime', isset($profile_stats['all_time']) ? raidlands_stats_format_duration($profile_stats['all_time']['playtime_seconds'] ?? 0) : '0m'],
+                ['Wipe Raid Damage', $profile_stats['current']['raid_damage'] ?? 0],
+                ['Wipe Rockets Used', $profile_stats['current']['rockets_used'] ?? 0],
+                ['Wipe C4 Used', $profile_stats['current']['c4_used'] ?? 0],
+                ['Wipe Satchels Used', $profile_stats['current']['satchels_used'] ?? 0],
+                ['Wipe Explosive Ammo', $profile_stats['current']['explosive_ammo_used'] ?? 0],
+                ['Wipe TCs Broken', $profile_stats['current']['tcs_destroyed'] ?? 0],
+                ['All-Time Raid Damage', $profile_stats['all_time']['raid_damage'] ?? 0],
+                ['All-Time Rockets Used', $profile_stats['all_time']['rockets_used'] ?? 0],
+                ['All-Time C4 Used', $profile_stats['all_time']['c4_used'] ?? 0],
+                ['All-Time Satchels Used', $profile_stats['all_time']['satchels_used'] ?? 0],
+                ['All-Time Explosive Ammo', $profile_stats['all_time']['explosive_ammo_used'] ?? 0],
+                ['All-Time TCs Broken', $profile_stats['all_time']['tcs_destroyed'] ?? 0],
             ];
           ?>
           <?php foreach ($stat_cards as [$label, $value]) : ?>

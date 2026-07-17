@@ -92,6 +92,7 @@ $vip_bridge_config = [
     'hmacSkewSeconds' => raidlands_env_int('RAIDLANDS_BRIDGE_HMAC_SKEW_SECONDS', 300),
     'statsMaxPlayers' => raidlands_env_int('RAIDLANDS_STATS_MAX_PLAYERS', 5000),
     'statsMaxBots' => raidlands_env_int('RAIDLANDS_STATS_MAX_BOTS', 0),
+    'statsStaleSeconds' => raidlands_env_int('RAIDLANDS_STATS_STALE_SECONDS', 900),
     'managedGroups' => raidlands_env_csv('RAIDLANDS_BRIDGE_MANAGED_GROUPS', [
         'rank_vip',
         'rank_vip_plus',
@@ -336,7 +337,7 @@ $feature_groups = [
 ];
 
 $roadmap_cards = [
-    ['Leaderboards', 'Player rankings for kills, K/D, playtime, and RP pulled from the game server.', 'Live'],
+    ['Leaderboards', 'Player rankings for combat, raid pressure, playtime, and RP pulled from the game server.', 'Live'],
     ['Player Profiles', 'Steam-linked profiles show active access, wipe stats, RP, and account history.', 'Live'],
     ['Account Linking', 'Steam sign-in keeps stats, purchases, rewards, and perks attached to the right Rust player.', 'Live'],
     ['Store Kits', 'Kit bundles, individual kits, and standalone perks are tied to Steam and delivered in game.', 'Live'],
@@ -389,7 +390,7 @@ $page_copy = [
     ],
     'leaderboard' => [
         'title' => 'Leaderboards',
-        'lede' => 'Current-wipe and all-time rankings for kills, K/D, playtime, and Raidlands RP.',
+        'lede' => 'Current-wipe and all-time rankings for combat, raid pressure, playtime, and Raidlands RP.',
     ],
     'store' => [
         'title' => 'Store',

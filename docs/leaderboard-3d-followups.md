@@ -4,15 +4,16 @@ The first 3D podium release decorates the leaderboard metrics already supplied b
 
 ## Deferred leaderboard metrics
 
-### Raid damage
+### Raid stats (implemented)
 
-- [ ] Identify the authoritative Rust damage hook and exclude decay, self-damage, and non-player-owned damage.
-- [ ] Add raw and wipe-baseline raid-damage counters to `WebsiteVipBridge` snapshots.
-- [ ] Add database columns/migration, ingestion validation, and all-time/current-wipe ranking queries.
-- [ ] Expose the metric through the leaderboard API, table, profile stats, and podium formatter.
-- [ ] Build the scene from rockets, timed explosives, and building debris sourced from RustRelay Assets.
-- [ ] Decide whether pre-launch server data can be backfilled or whether the first snapshot seeds the baseline.
-- [ ] Verify plugin compile, targeted `oxide.reload WebsiteVipBridge`, signed snapshot ingestion, and live damage increments.
+- [x] Count non-melee player-attributed damage to enemy player-owned building and decay entities; exclude decay, owners, and native Rust teammates.
+- [x] Persist raw cumulative and wipe-baseline counters for raid damage, rockets, C4, satchels, explosive ammo, and TC final blows in `WebsiteVipBridge` snapshots.
+- [x] Add database migration, ingestion validation, current/previous/all-time queries, and generic-to-canonical wipe-key promotion.
+- [x] Expose every raid metric through the dedicated Raid Stats tab, leaderboard API, profile stats, podium formatter, and admin sync diagnostics.
+- [x] Reuse the installed rocket, ammunition, loot-crate, and reactive-target podium props.
+- [x] Start telemetry at deployment without historical backfill.
+- [x] Compile the plugin against the deployed Rust server assemblies and add database integration coverage.
+- [ ] Reload `WebsiteVipBridge`, force a signed snapshot, and verify representative live increments after deployment.
 
 ### Airstrike kills
 

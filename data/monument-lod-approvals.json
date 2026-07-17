@@ -516,11 +516,11 @@
       "status": "approved",
       "sourceSha256": "7d6003133dec03dacbc583b29312605484389e2641b77d46f679c9cdb29971e9",
       "tierSha256": {
-        "map": "91149620da019c9e6e4015865d62ae67e628c150a3257d6a1439c6d3bc83034d",
+        "map": "7cfb6613f64f62f29aa8f08195526f98795e9289f55ee18e7a9a88864770c499",
         "mid": "867c553a36eb631c509f4929dfa0f5f75d0caae9d1ca246342b7b65c23524aae",
         "close": "867c553a36eb631c509f4929dfa0f5f75d0caae9d1ca246342b7b65c23524aae"
       },
-      "reviewedAt": "2026-07-16T09:42:16.513Z"
+      "reviewedAt": "2026-07-17T04:27:41.991Z"
     },
     "power_sub_small_1": {
       "status": "approved",
@@ -586,11 +586,11 @@
       "status": "approved",
       "sourceSha256": "862ee2130dc2823eb2138dfc92bb0ea3964976dfd942f4a9704568bdd62731a7",
       "tierSha256": {
-        "map": "ed2334fcd81901145dffcccef135b026231081a943e7bfda255de44f1cd117e6",
-        "mid": "933325724e34dc7dae62757b0a8f509599fd6c235eea6fc9b88bd58c7ebb91bb",
-        "close": "9c68f0fe0104ed893bd29f168b1595616bd18d4f5414c69327b5a270deb5f8a1"
+        "map": "f43c7f12f251ca12b19226afc8f66b73a2c14e719cbf32aa5738b74d5f2856a2",
+        "mid": "6332266390a0e280a980ccf8054bcbfaaf4840c8036a01319e4871b9a768f240",
+        "close": "b391c17d5e8e98af04e889c11c2d9c2ba154fcfbf4958fe58194cab78855f51e"
       },
-      "reviewedAt": "2026-07-16T09:42:16.513Z"
+      "reviewedAt": "2026-07-17T04:27:38.506Z"
     },
     "stables_a": {
       "status": "approved",

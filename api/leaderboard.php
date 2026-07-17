@@ -5,7 +5,7 @@ require_once $site_root . '/includes/stats.php';
 require_once $site_root . '/includes/rewards.php';
 
 $board = (string) ($_GET['board'] ?? $_GET['type'] ?? 'players');
-$board = in_array($board, ['players', 'bots', 'rp-games'], true) ? $board : 'players';
+$board = in_array($board, ['players', 'raids', 'bots', 'rp-games'], true) ? $board : 'players';
 $scope = raidlands_stats_scope((string) ($_GET['scope'] ?? 'current'));
 $wipe_id = raidlands_stats_wipe_id($_GET['wipe_id'] ?? 0);
 $wipe_key = raidlands_stats_optional_wipe_key($_GET['wipe_key'] ?? '');
@@ -21,7 +21,9 @@ $metric = $board === 'rp-games'
     ? 'total-won'
     : ($board === 'bots'
         ? raidlands_stats_bot_metric((string) ($_GET['metric'] ?? 'kdr'))
-        : raidlands_stats_metric((string) ($_GET['metric'] ?? 'kills')));
+        : ($board === 'raids'
+            ? raidlands_stats_raid_metric((string) ($_GET['metric'] ?? 'raid_damage'))
+            : raidlands_stats_metric((string) ($_GET['metric'] ?? 'kills'))));
 
 header('Cache-Control: no-store');
 
@@ -45,11 +47,13 @@ try {
 
     $result = match ($board) {
         'bots' => raidlands_stats_bot_leaderboard_result($scope, $page, $per_page, $search, $metric, $wipe_id, $wipe_key),
+        'raids' => raidlands_stats_raid_leaderboard_result($metric, $scope, $page, $per_page, $search, $wipe_id, $wipe_key),
         'rp-games' => raidlands_rewards_leaderboard_result($scope, $page, $per_page, $search, $wipe_id, $wipe_key),
         default => raidlands_stats_leaderboard_result($metric, $scope, $page, $per_page, $search, $wipe_id, $wipe_key),
     };
     $leaders = match ($board) {
         'bots' => raidlands_stats_bot_leaderboard_leaders($scope, $metric, $wipe_id, $wipe_key),
+        'raids' => raidlands_stats_raid_leaderboard_leaders($metric, $scope, $wipe_id, $wipe_key),
         'rp-games' => raidlands_rewards_leaderboard_leaders($scope, $wipe_id, $wipe_key),
         default => raidlands_stats_leaderboard_leaders($metric, $scope, $wipe_id, $wipe_key),
     };

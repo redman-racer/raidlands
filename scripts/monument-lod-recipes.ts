@@ -198,6 +198,7 @@ const EXPLICIT_INCLUDES: Record<string, string[]> = {
   nuclear_missile_silo: ["nuclear_silo_bunker_hatch", "nuclear_silo_chute", "nuclear_silo_tunnel_exit", "cliff_tall_", "rock_formation_huge_", "military_hangar", "portacabin_", "radio_tower", "watchtower", "chainlink_fence", "fuel_tank"],
   oilrig_1: ["level0", "level1", "level2", "level3", "level4", "level5", "level6", "structure_", "helipad", "burner", "comms_tower", "gas_room", "moon_pool", "oilrig_crane", "dock"],
   oilrig_2: ["level0", "level1", "level2", "level3", "level4", "structure_", "helipad", "burner", "moon_pool", "oilrig_crane", "dock"],
+  sphere_tank: ["sphere_exterior", "sphere_pillars", "pipes_exterior", "evac_pipes"],
   trainyard_1: ["coaling_tower", "train_crane", "train_track", "train_wagon", "loading_platform", "warehouse", "pavemnent_trainyard", "building", "tower"],
   water_treatment_plant_1: ["sewage", "water_tower", "pump", "treatment", "warehouse", "tank", "basin", "tower", "platform", "bridge", "pipe"],
 };
@@ -229,7 +230,7 @@ const FORCE_RECIPE_MAP = new Set([
   "airfield_1", "apartments_complex_1", "arctic_research_base_a", "bandit_town", "desert_military_base_a", "desert_military_base_b", "desert_military_base_c", "desert_military_base_d",
   "excavator_1", "ferry_terminal_1", "harbor_2", "jungle_ruins_e", "jungle_ziggurat_a", "junkyard_1",
   "military_tunnel_1", "nuclear_missile_silo", "oilrig_1", "oilrig_2", "power_sub_small_1", "power_sub_small_2",
-  "power_sub_big_1", "radtown_small_3", "stables_a", "stables_b", "supermarket_1", "trainyard_1", "underwater_lab_a",
+  "power_sub_big_1", "power_sub_big_2", "radtown_small_3", "stables_a", "stables_b", "supermarket_1", "trainyard_1", "underwater_lab_a",
   "underwater_lab_b", "underwater_lab_c", "underwater_lab_d", "water_treatment_plant_1", "jungle_ruins_a",
 ]);
 

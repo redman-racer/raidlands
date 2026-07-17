@@ -799,8 +799,8 @@ async function main(): Promise<void> {
   }
   if (entries.length !== 78) throw new Error(`Expected 78 manifest entries, received ${entries.length}.`);
   const manifest = {
-    version: 9,
-    recipeVersion: 4,
+    version: 10,
+    recipeVersion: 5,
     generatedBy: "gltf-transform@4.3.0",
     sourceRepository: RUSTRELAY_SOURCE,
     thresholds: { mapToMidPixels: 48, midToClosePixels: 220, hysteresis: 0.2 },

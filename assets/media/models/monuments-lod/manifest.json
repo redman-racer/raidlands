@@ -1,6 +1,6 @@
 {
-  "version": 9,
-  "recipeVersion": 4,
+  "version": 10,
+  "recipeVersion": 5,
   "generatedBy": "gltf-transform@4.3.0",
   "sourceRepository": {
     "repository": "Facepunch/RustRelay.Assets",
@@ -50242,11 +50242,11 @@
       "review": {
         "sourceSha256": "7d6003133dec03dacbc583b29312605484389e2641b77d46f679c9cdb29971e9",
         "tierSha256": {
-          "map": "91149620da019c9e6e4015865d62ae67e628c150a3257d6a1439c6d3bc83034d",
+          "map": "7cfb6613f64f62f29aa8f08195526f98795e9289f55ee18e7a9a88864770c499",
           "mid": "867c553a36eb631c509f4929dfa0f5f75d0caae9d1ca246342b7b65c23524aae",
           "close": "867c553a36eb631c509f4929dfa0f5f75d0caae9d1ca246342b7b65c23524aae"
         },
-        "reviewedAt": "2026-07-16T09:42:16.513Z"
+        "reviewedAt": "2026-07-17T04:27:41.991Z"
       },
       "layoutSource": "bundled/prefabs/autospawn/power substations/big/power_sub_big_2.glb",
       "sizeClass": "small",
@@ -50301,67 +50301,161 @@
         "map": {
           "file": "power_sub_big_2-map.glb",
           "url": "media/models/monuments-lod/power_sub_big_2-map.glb",
-          "sha256": "91149620da019c9e6e4015865d62ae67e628c150a3257d6a1439c6d3bc83034d",
-          "bytes": 35480,
-          "triangles": 1963,
-          "drawCalls": 1,
+          "sha256": "7cfb6613f64f62f29aa8f08195526f98795e9289f55ee18e7a9a88864770c499",
+          "bytes": 145848,
+          "triangles": 15882,
+          "drawCalls": 9,
           "instanceBatches": 0,
           "instances": 0,
-          "textureBytes": 11614,
+          "textureBytes": 20402,
           "textureSize": 128,
-          "baseColorTexturedTriangles": 1963,
+          "baseColorTexturedTriangles": 15882,
           "baseColorTextureCoverage": 1,
           "materialMode": "textured",
-          "selectionKind": "authored-hlod",
+          "selectionKind": "recipe-structural",
           "sourceNodes": [
-            "power_sub_big_2_root_HLOD_mesh"
+            "chainlink_fence_3x3_gate_LOD0",
+            "substation_b_LOD0",
+            "substation_c_LOD0",
+            "substation_d_LOD0",
+            "substation_e_LOD0",
+            "substation_f_LOD0",
+            "substation_g_LOD0",
+            "wall_300_pillar_LOD0",
+            "wall_300x150_end_LOD0",
+            "wall_300x600_LOD0",
+            "wall_300x900_LOD0",
+            "wall_300x900_collapsed_LOD0",
+            "wall_300x900_end_LOD0",
+            "wall_300x900_unstable_LOD0"
           ],
           "roleNodes": {
+            "perimeter": [
+              "chainlink_fence_3x3_gate_LOD0",
+              "wall_300_pillar_LOD0",
+              "wall_300x150_end_LOD0",
+              "wall_300x600_LOD0",
+              "wall_300x900_LOD0",
+              "wall_300x900_collapsed_LOD0",
+              "wall_300x900_end_LOD0",
+              "wall_300x900_unstable_LOD0"
+            ],
             "shell": [
-              "power_sub_big_2_root_HLOD_mesh"
+              "substation_b_LOD0",
+              "substation_c_LOD0",
+              "substation_d_LOD0",
+              "substation_e_LOD0",
+              "substation_f_LOD0",
+              "substation_g_LOD0"
             ]
           },
           "roleCounts": {
-            "shell": 1
+            "perimeter": 8,
+            "shell": 6
           },
           "componentResolutions": [
             {
-              "sourceNode": "power_sub_big_2_root_HLOD_mesh",
-              "resolution": "embedded-layout",
-              "catalogPath": null
+              "sourceNode": "chainlink_fence_3x3_gate_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/Fences_walls/chainlink_fence_3x3_gate.glb"
+            },
+            {
+              "sourceNode": "substation_b_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/power_substation/substation_b.glb"
+            },
+            {
+              "sourceNode": "substation_c_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/power_substation/substation_c.glb"
+            },
+            {
+              "sourceNode": "substation_d_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/power_substation/substation_d.glb"
+            },
+            {
+              "sourceNode": "substation_e_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/power_substation/substation_e.glb"
+            },
+            {
+              "sourceNode": "substation_f_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/power_substation/substation_f.glb"
+            },
+            {
+              "sourceNode": "substation_g_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/power_substation/substation_g.glb"
+            },
+            {
+              "sourceNode": "wall_300_pillar_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/Fences_walls/wall_300_pillar.glb"
+            },
+            {
+              "sourceNode": "wall_300x150_end_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/Fences_walls/wall_300x150_end.glb"
+            },
+            {
+              "sourceNode": "wall_300x600_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/Fences_walls/wall_300x600.glb"
+            },
+            {
+              "sourceNode": "wall_300x900_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/Fences_walls/wall_300x900.glb"
+            },
+            {
+              "sourceNode": "wall_300x900_collapsed_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/Fences_walls/wall_300x900_collapsed.glb"
+            },
+            {
+              "sourceNode": "wall_300x900_end_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/Fences_walls/wall_300x900_end.glb"
+            },
+            {
+              "sourceNode": "wall_300x900_unstable_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/Fences_walls/wall_300x900_unstable.glb"
             }
           ],
           "compositeSources": [],
           "bounds": {
             "min": [
-              -9.380163192749023,
+              -9.550008420944215,
               -1.1039907932281494,
-              -8.589681625366211
+              -8.620404243469238
             ],
             "max": [
-              10.905990600585938,
-              7.634919166564941,
-              12.573593139648438
+              9.814390182495117,
+              8.274873733520508,
+              12.57368278503418
             ]
           },
           "structuralBounds": {
             "min": [
-              -9.380163192749023,
+              -9.550008420944215,
               -1.1039907932281494,
-              -8.589681625366211
+              -8.620410629695984
             ],
             "max": [
-              10.905990600585938,
-              7.634919166564941,
-              12.573593139648438
+              9.814591974020004,
+              8.281370162963867,
+              12.573685517984753
             ]
           },
           "maxBytes": 1572864,
           "maxTriangles": 250000,
           "maxDrawCalls": 120,
-          "footprintCoverage": 0.998546,
-          "normalizedCenterOffset": 0.029763,
-          "normalizedElevationOffset": 0.015251
+          "footprintCoverage": 1,
+          "normalizedCenterOffset": 0,
+          "normalizedElevationOffset": 0
         },
         "mid": {
           "file": "power_sub_big_2-mid.glb",
@@ -56318,11 +56412,11 @@
       "review": {
         "sourceSha256": "862ee2130dc2823eb2138dfc92bb0ea3964976dfd942f4a9704568bdd62731a7",
         "tierSha256": {
-          "map": "ed2334fcd81901145dffcccef135b026231081a943e7bfda255de44f1cd117e6",
-          "mid": "933325724e34dc7dae62757b0a8f509599fd6c235eea6fc9b88bd58c7ebb91bb",
-          "close": "9c68f0fe0104ed893bd29f168b1595616bd18d4f5414c69327b5a270deb5f8a1"
+          "map": "f43c7f12f251ca12b19226afc8f66b73a2c14e719cbf32aa5738b74d5f2856a2",
+          "mid": "6332266390a0e280a980ccf8054bcbfaaf4840c8036a01319e4871b9a768f240",
+          "close": "b391c17d5e8e98af04e889c11c2d9c2ba154fcfbf4958fe58194cab78855f51e"
         },
-        "reviewedAt": "2026-07-16T09:42:16.513Z"
+        "reviewedAt": "2026-07-17T04:27:38.506Z"
       },
       "layoutSource": "bundled/prefabs/autospawn/monument/small/sphere_tank.glb",
       "sizeClass": "small",
@@ -56377,24 +56471,26 @@
         "map": {
           "file": "sphere_tank-map.glb",
           "url": "media/models/monuments-lod/sphere_tank-map.glb",
-          "sha256": "ed2334fcd81901145dffcccef135b026231081a943e7bfda255de44f1cd117e6",
-          "bytes": 297740,
-          "triangles": 35632,
-          "drawCalls": 43,
-          "instanceBatches": 7,
-          "instances": 21,
-          "textureBytes": 60354,
+          "sha256": "f43c7f12f251ca12b19226afc8f66b73a2c14e719cbf32aa5738b74d5f2856a2",
+          "bytes": 511456,
+          "triangles": 58424,
+          "drawCalls": 21,
+          "instanceBatches": 0,
+          "instances": 0,
+          "textureBytes": 61542,
           "textureSize": 128,
-          "baseColorTexturedTriangles": 35632,
+          "baseColorTexturedTriangles": 58424,
           "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
+            "evac_pipes_LOD0",
             "exterior_crane_LOD0",
             "pipeline_100x300_up600_LOD0",
             "pipeline_pylon_150x600_LOD0",
             "pipeline_pylon_300x600_LOD0",
             "pipeline_pylon_300x900_LOD0",
+            "pipes_exterior_LOD0",
             "pumping_station_LOD0",
             "road_nopavement_9x15_end_LOD0",
             "road_nopavement_bend_27x27_LOD0",
@@ -56404,6 +56500,8 @@
             "sewer_drainwall_corner_1200x1200_out_LOD0",
             "sewer_wall_2400_LOD0",
             "sewer_wall_600_LOD0",
+            "sphere_exterior_LOD0",
+            "sphere_pillars_LOD0",
             "spheretank_storage_tank_LOD0",
             "spheretank_walkway_a_LOD0",
             "spheretank_walkway_b_LOD0",
@@ -56433,11 +56531,15 @@
               "walkway_panel_LOD0"
             ],
             "shell": [
+              "evac_pipes_LOD0",
               "pipeline_100x300_up600_LOD0",
               "pipeline_pylon_150x600_LOD0",
               "pipeline_pylon_300x600_LOD0",
               "pipeline_pylon_300x900_LOD0",
+              "pipes_exterior_LOD0",
               "pumping_station_LOD0",
+              "sphere_exterior_LOD0",
+              "sphere_pillars_LOD0",
               "spheretank_storage_tank_LOD0"
             ],
             "landmark-prop": [
@@ -56467,13 +56569,18 @@
           },
           "roleCounts": {
             "platform": 8,
-            "shell": 6,
+            "shell": 10,
             "landmark-prop": 1,
             "ground-pad": 2,
             "perimeter": 6,
             "stairs": 7
           },
           "componentResolutions": [
+            {
+              "sourceNode": "evac_pipes_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/Spherical Tank/evac_pipes.glb"
+            },
             {
               "sourceNode": "exterior_crane_LOD0",
               "resolution": "standalone-catalog",
@@ -56498,6 +56605,11 @@
               "sourceNode": "pipeline_pylon_300x900_LOD0",
               "resolution": "standalone-catalog",
               "catalogPath": "Content/structures/Pipelines/pipeline_pylon_300x900.glb"
+            },
+            {
+              "sourceNode": "pipes_exterior_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/Spherical Tank/pipes_exterior.glb"
             },
             {
               "sourceNode": "pumping_station_LOD0",
@@ -56543,6 +56655,16 @@
               "sourceNode": "sewer_wall_600_LOD0",
               "resolution": "standalone-catalog",
               "catalogPath": "Content/structures/Sewers/sewer_wall_600.glb"
+            },
+            {
+              "sourceNode": "sphere_exterior_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/Spherical Tank/sphere_exterior.glb"
+            },
+            {
+              "sourceNode": "sphere_pillars_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/Spherical Tank/sphere_pillars.glb"
             },
             {
               "sourceNode": "spheretank_storage_tank_LOD0",
@@ -56628,14 +56750,14 @@
           "compositeSources": [],
           "bounds": {
             "min": [
-              -43.95065628705379,
-              -2.2679111595245756,
-              -36.308570861816406
+              -71.43725080933183,
+              -40.117228275429014,
+              -66.0596572742363
             ],
             "max": [
-              49.70727303884222,
-              73.20988305555275,
-              74.51416865866537
+              71.65701634200623,
+              92.82037156860798,
+              74.51636560657643
             ]
           },
           "structuralBounds": {
@@ -56660,24 +56782,26 @@
         "mid": {
           "file": "sphere_tank-mid.glb",
           "url": "media/models/monuments-lod/sphere_tank-mid.glb",
-          "sha256": "933325724e34dc7dae62757b0a8f509599fd6c235eea6fc9b88bd58c7ebb91bb",
-          "bytes": 1186488,
-          "triangles": 41884,
-          "drawCalls": 43,
+          "sha256": "6332266390a0e280a980ccf8054bcbfaaf4840c8036a01319e4871b9a768f240",
+          "bytes": 1338884,
+          "triangles": 62650,
+          "drawCalls": 44,
           "instanceBatches": 7,
           "instances": 21,
-          "textureBytes": 921042,
+          "textureBytes": 932800,
           "textureSize": 512,
-          "baseColorTexturedTriangles": 41884,
+          "baseColorTexturedTriangles": 62650,
           "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
+            "evac_pipes_LOD0",
             "exterior_crane_LOD0",
             "pipeline_100x300_up600_LOD0",
             "pipeline_pylon_150x600_LOD0",
             "pipeline_pylon_300x600_LOD0",
             "pipeline_pylon_300x900_LOD0",
+            "pipes_exterior_LOD0",
             "pumping_station_LOD0",
             "road_nopavement_9x15_end_LOD0",
             "road_nopavement_bend_27x27_LOD0",
@@ -56687,6 +56811,8 @@
             "sewer_drainwall_corner_1200x1200_out_LOD0",
             "sewer_wall_2400_LOD0",
             "sewer_wall_600_LOD0",
+            "sphere_exterior_LOD0",
+            "sphere_pillars_LOD0",
             "spheretank_storage_tank_LOD0",
             "spheretank_walkway_a_LOD0",
             "spheretank_walkway_b_LOD0",
@@ -56716,11 +56842,15 @@
               "walkway_panel_LOD0"
             ],
             "shell": [
+              "evac_pipes_LOD0",
               "pipeline_100x300_up600_LOD0",
               "pipeline_pylon_150x600_LOD0",
               "pipeline_pylon_300x600_LOD0",
               "pipeline_pylon_300x900_LOD0",
+              "pipes_exterior_LOD0",
               "pumping_station_LOD0",
+              "sphere_exterior_LOD0",
+              "sphere_pillars_LOD0",
               "spheretank_storage_tank_LOD0"
             ],
             "landmark-prop": [
@@ -56750,13 +56880,18 @@
           },
           "roleCounts": {
             "platform": 8,
-            "shell": 6,
+            "shell": 10,
             "landmark-prop": 1,
             "ground-pad": 2,
             "perimeter": 6,
             "stairs": 7
           },
           "componentResolutions": [
+            {
+              "sourceNode": "evac_pipes_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/Spherical Tank/evac_pipes.glb"
+            },
             {
               "sourceNode": "exterior_crane_LOD0",
               "resolution": "standalone-catalog",
@@ -56781,6 +56916,11 @@
               "sourceNode": "pipeline_pylon_300x900_LOD0",
               "resolution": "standalone-catalog",
               "catalogPath": "Content/structures/Pipelines/pipeline_pylon_300x900.glb"
+            },
+            {
+              "sourceNode": "pipes_exterior_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/Spherical Tank/pipes_exterior.glb"
             },
             {
               "sourceNode": "pumping_station_LOD0",
@@ -56826,6 +56966,16 @@
               "sourceNode": "sewer_wall_600_LOD0",
               "resolution": "standalone-catalog",
               "catalogPath": "Content/structures/Sewers/sewer_wall_600.glb"
+            },
+            {
+              "sourceNode": "sphere_exterior_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/Spherical Tank/sphere_exterior.glb"
+            },
+            {
+              "sourceNode": "sphere_pillars_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/Spherical Tank/sphere_pillars.glb"
             },
             {
               "sourceNode": "spheretank_storage_tank_LOD0",
@@ -56943,24 +57093,26 @@
         "close": {
           "file": "sphere_tank-close.glb",
           "url": "media/models/monuments-lod/sphere_tank-close.glb",
-          "sha256": "9c68f0fe0104ed893bd29f168b1595616bd18d4f5414c69327b5a270deb5f8a1",
-          "bytes": 1284012,
-          "triangles": 73383,
-          "drawCalls": 43,
+          "sha256": "b391c17d5e8e98af04e889c11c2d9c2ba154fcfbf4958fe58194cab78855f51e",
+          "bytes": 1452928,
+          "triangles": 86403,
+          "drawCalls": 44,
           "instanceBatches": 7,
           "instances": 21,
-          "textureBytes": 921042,
+          "textureBytes": 932800,
           "textureSize": 512,
-          "baseColorTexturedTriangles": 73383,
+          "baseColorTexturedTriangles": 86403,
           "baseColorTextureCoverage": 1,
           "materialMode": "textured",
           "selectionKind": "recipe-structural",
           "sourceNodes": [
+            "evac_pipes_LOD0",
             "exterior_crane_LOD0",
             "pipeline_100x300_up600_LOD0",
             "pipeline_pylon_150x600_LOD0",
             "pipeline_pylon_300x600_LOD0",
             "pipeline_pylon_300x900_LOD0",
+            "pipes_exterior_LOD0",
             "pumping_station_LOD0",
             "road_nopavement_9x15_end_LOD0",
             "road_nopavement_bend_27x27_LOD0",
@@ -56970,6 +57122,8 @@
             "sewer_drainwall_corner_1200x1200_out_LOD0",
             "sewer_wall_2400_LOD0",
             "sewer_wall_600_LOD0",
+            "sphere_exterior_LOD0",
+            "sphere_pillars_LOD0",
             "spheretank_storage_tank_LOD0",
             "spheretank_walkway_a_LOD0",
             "spheretank_walkway_b_LOD0",
@@ -56999,11 +57153,15 @@
               "walkway_panel_LOD0"
             ],
             "shell": [
+              "evac_pipes_LOD0",
               "pipeline_100x300_up600_LOD0",
               "pipeline_pylon_150x600_LOD0",
               "pipeline_pylon_300x600_LOD0",
               "pipeline_pylon_300x900_LOD0",
+              "pipes_exterior_LOD0",
               "pumping_station_LOD0",
+              "sphere_exterior_LOD0",
+              "sphere_pillars_LOD0",
               "spheretank_storage_tank_LOD0"
             ],
             "landmark-prop": [
@@ -57033,13 +57191,18 @@
           },
           "roleCounts": {
             "platform": 8,
-            "shell": 6,
+            "shell": 10,
             "landmark-prop": 1,
             "ground-pad": 2,
             "perimeter": 6,
             "stairs": 7
           },
           "componentResolutions": [
+            {
+              "sourceNode": "evac_pipes_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/Spherical Tank/evac_pipes.glb"
+            },
             {
               "sourceNode": "exterior_crane_LOD0",
               "resolution": "standalone-catalog",
@@ -57064,6 +57227,11 @@
               "sourceNode": "pipeline_pylon_300x900_LOD0",
               "resolution": "standalone-catalog",
               "catalogPath": "Content/structures/Pipelines/pipeline_pylon_300x900.glb"
+            },
+            {
+              "sourceNode": "pipes_exterior_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/Spherical Tank/pipes_exterior.glb"
             },
             {
               "sourceNode": "pumping_station_LOD0",
@@ -57109,6 +57277,16 @@
               "sourceNode": "sewer_wall_600_LOD0",
               "resolution": "standalone-catalog",
               "catalogPath": "Content/structures/Sewers/sewer_wall_600.glb"
+            },
+            {
+              "sourceNode": "sphere_exterior_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/Spherical Tank/sphere_exterior.glb"
+            },
+            {
+              "sourceNode": "sphere_pillars_LOD0",
+              "resolution": "standalone-catalog",
+              "catalogPath": "Content/structures/Spherical Tank/sphere_pillars.glb"
             },
             {
               "sourceNode": "spheretank_storage_tank_LOD0",
@@ -57195,7 +57373,7 @@
           "bounds": {
             "min": [
               -43.952677109121026,
-              -2.2679053177288724,
+              -2.2679111595245756,
               -36.308570861816406
             ],
             "max": [

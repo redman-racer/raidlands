@@ -205,6 +205,7 @@ $admin_stats_summary = [
     'current_players' => 0,
     'recent_wipes' => [],
     'wipe_key_warning' => '',
+    'ingest_warning' => '',
 ];
 $admin_server_status = null;
 $admin_clan_summary = [
@@ -6148,6 +6149,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                         $latest_ingest = $admin_stats_summary['latest_ingest'];
                         $recent_wipes = (array) ($admin_stats_summary['recent_wipes'] ?? []);
                         $wipe_key_warning = (string) ($admin_stats_summary['wipe_key_warning'] ?? '');
+                        $ingest_warning = (string) ($admin_stats_summary['ingest_warning'] ?? '');
                       ?>
                       <div class="admin-grid three">
                         <div class="metal-panel">
@@ -6163,11 +6165,14 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                         <div class="metal-panel">
                           <p class="section-kicker">Last stats sync</p>
                           <h3><?= e((string) ($latest_ingest['created_at'] ?? 'Pending')) ?></h3>
-                          <p class="store-muted"><?= e((string) ($latest_ingest['players_accepted'] ?? 0)) ?> accepted / <?= e((string) ($latest_ingest['players_received'] ?? 0)) ?> received</p>
+                          <p class="store-muted"><?= e((string) ($latest_ingest['players_accepted'] ?? 0)) ?> accepted / <?= e((string) ($latest_ingest['players_received'] ?? 0)) ?> received / <?= e((string) ($latest_ingest['raid_players_received'] ?? 0)) ?> raid profiles</p>
                         </div>
                       </div>
                       <?php if ($wipe_key_warning !== '') : ?>
                         <div class="admin-alert warning"><?= e($wipe_key_warning) ?></div>
+                      <?php endif; ?>
+                      <?php if ($ingest_warning !== '') : ?>
+                        <div class="admin-alert warning"><?= e($ingest_warning) ?></div>
                       <?php endif; ?>
                       <?php if ($recent_wipes !== []) : ?>
                         <div class="store-table-wrap">

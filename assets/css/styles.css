@@ -1881,6 +1881,48 @@ h3,
   gap: 12px;
 }
 
+.server-terrain-buffer-track {
+  position: relative;
+  width: 100%;
+  height: 6px;
+  overflow: hidden;
+  border: 1px solid rgba(243, 238, 227, .12);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .48);
+}
+
+.server-terrain-buffer-segment {
+  position: absolute;
+  inset-block: 0;
+  min-width: 2px;
+  border-radius: inherit;
+}
+
+.server-terrain-buffer-segment.is-ready {
+  background: linear-gradient(90deg, var(--orange-dark), var(--orange), var(--yellow));
+  box-shadow: 0 0 8px rgba(255, 138, 40, .34);
+}
+
+.server-terrain-buffer-segment.is-loading {
+  background: repeating-linear-gradient(135deg, rgba(255, 220, 98, .85) 0 5px, rgba(255, 138, 40, .35) 5px 10px);
+  animation: server-terrain-buffer-loading .8s linear infinite;
+}
+
+.server-terrain-buffer-segment.is-error {
+  background: var(--red);
+  box-shadow: 0 0 7px rgba(214, 66, 48, .55);
+}
+
+.server-terrain-buffer-label {
+  justify-self: end;
+  color: var(--muted) !important;
+  font-size: .66rem !important;
+}
+
+@keyframes server-terrain-buffer-loading {
+  to { background-position: 14px 0; }
+}
+
 .server-terrain-controls output {
   color: var(--yellow);
   font-size: .72rem;

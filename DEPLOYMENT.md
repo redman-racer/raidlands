@@ -163,6 +163,7 @@ the host or upload it through a private channel.
    - `database/migrations/050_server_map_terrain.sql`
    - `database/migrations/051_server_map_heatmap.sql`
    - `database/migrations/063_blackjack_roulette_slots.sql`
+   - `database/migrations/066_raid_stats.sql`
    - `database/seeds/001_store_products.sql`
 
    Then configure RP costs and cash amounts in `/admin/?section=store`. After Stripe keys are present, saving the Store editor automatically creates or updates Raidlands-managed Stripe Products and Prices for active cash offers. You can still paste existing matching `price_...` IDs when they should stay external and unmanaged.

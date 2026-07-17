@@ -22,6 +22,8 @@ function raidlands_stats_is_ready(): bool
         raidlands_db_fetch_one('SELECT id FROM wipe_seasons LIMIT 1');
         raidlands_db_fetch_one('SELECT baseline_reward_points FROM player_wipe_stats LIMIT 1');
         raidlands_db_fetch_one('SELECT baseline_npc_kills FROM player_wipe_stats LIMIT 1');
+        raidlands_db_fetch_one('SELECT baseline_raid_damage FROM player_wipe_stats LIMIT 1');
+        raidlands_db_fetch_one('SELECT raid_players_received FROM stats_ingest_log LIMIT 1');
         raidlands_db_fetch_one('SELECT id FROM bot_wipe_stats LIMIT 1');
         return true;
     } catch (Throwable $error) {
@@ -63,6 +65,15 @@ function raidlands_stats_int($value): int
     }
 
     return max(0, min(2147483647, (int) round((float) $value)));
+}
+
+function raidlands_stats_bigint($value): int
+{
+    if (!is_numeric($value)) {
+        return 0;
+    }
+
+    return max(0, min(PHP_INT_MAX, (int) round((float) $value)));
 }
 
 function raidlands_stats_timestamp($value): ?string
@@ -181,6 +192,53 @@ function raidlands_stats_activate_wipe_signal(string $server_id, string $wipe_ke
     }
 }
 
+function raidlands_stats_promote_matching_active_wipe(
+    PDO $pdo,
+    string $server_id,
+    string $wipe_key,
+    ?string $started_at
+): ?array {
+    if ($started_at === null || raidlands_stats_wipe_key_is_generic($wipe_key, $server_id)) {
+        return null;
+    }
+
+    $active = raidlands_db_fetch_one(
+        'SELECT * FROM wipe_seasons
+         WHERE server_id = :server_id AND is_active = 1
+         ORDER BY started_at DESC, id DESC
+         LIMIT 1 FOR UPDATE',
+        ['server_id' => $server_id]
+    );
+
+    if (
+        $active === null
+        || !raidlands_stats_wipe_key_is_generic((string) ($active['wipe_key'] ?? ''), $server_id)
+        || empty($active['started_at'])
+        || strtotime((string) $active['started_at']) !== strtotime($started_at)
+    ) {
+        return null;
+    }
+
+    $canonical = raidlands_db_fetch_one(
+        'SELECT id FROM wipe_seasons WHERE server_id = :server_id AND wipe_key = :wipe_key LIMIT 1 FOR UPDATE',
+        ['server_id' => $server_id, 'wipe_key' => $wipe_key]
+    );
+
+    if ($canonical !== null && (int) $canonical['id'] !== (int) $active['id']) {
+        throw new RuntimeException('A canonical wipe already exists for the active generic season; manual review is required before stats ingest can continue.');
+    }
+
+    $update = $pdo->prepare(
+        'UPDATE wipe_seasons SET wipe_key = :wipe_key, updated_at = NOW() WHERE id = :id'
+    );
+    $update->execute(['wipe_key' => $wipe_key, 'id' => (int) $active['id']]);
+    $active['wipe_key'] = $wipe_key;
+    $active['is_first_season'] = false;
+    $active['promoted_generic_key'] = true;
+
+    return $active;
+}
+
 function raidlands_stats_bot_key($value): string
 {
     $bot_key = trim((string) $value);
@@ -255,7 +313,7 @@ function raidlands_stats_normalize_bot_payload(array $bots, int &$errors): array
 function raidlands_stats_ingest_snapshot(array $payload, string $server_id, string $body): array
 {
     if (!raidlands_stats_is_ready()) {
-        throw new RuntimeException('Player stats tables are not installed. Run database/migrations/002_player_stats.sql, database/migrations/016_player_stats_wipe_rp_baseline.sql, then database/migrations/022_bot_stats.sql.');
+        throw new RuntimeException('Player stats tables are not installed. Run the stats migrations through database/migrations/066_raid_stats.sql.');
     }
 
     $server_id = raidlands_stats_clean_text($server_id !== '' ? $server_id : raidlands_stats_server_id(), 120);
@@ -294,6 +352,8 @@ function raidlands_stats_ingest_snapshot(array $payload, string $server_id, stri
     $accepted = 0;
     $bots_accepted = 0;
     $errors = $preprocess_errors;
+    $raid_players_received = 0;
+    $raid_damage_received = 0;
 
     try {
         $season = raidlands_stats_get_or_create_wipe($pdo, $server_id, $wipe_key, $wipe_started_at);
@@ -315,6 +375,23 @@ function raidlands_stats_ingest_snapshot(array $payload, string $server_id, stri
 
             $display_name = raidlands_stats_clean_text($player['display_name'] ?? '', 120);
             $player_id = raidlands_stats_upsert_player($pdo, $steam_id64, $display_name);
+            $has_raid_payload = false;
+
+            foreach (['raid_damage', 'rockets_used', 'c4_used', 'satchels_used', 'explosive_ammo_used', 'tcs_destroyed'] as $raid_field) {
+                if (array_key_exists($raid_field, $player) || array_key_exists($raid_field . '_baseline', $player)) {
+                    $has_raid_payload = true;
+                    break;
+                }
+            }
+
+            if ($has_raid_payload) {
+                $raid_players_received++;
+                $raid_damage_received = min(
+                    PHP_INT_MAX,
+                    $raid_damage_received + raidlands_stats_bigint($player['raid_damage'] ?? 0)
+                );
+            }
+
             $raw = [
                 'kills' => raidlands_stats_int($player['kills'] ?? 0),
                 'deaths' => raidlands_stats_int($player['deaths'] ?? 0),
@@ -323,6 +400,18 @@ function raidlands_stats_ingest_snapshot(array $payload, string $server_id, stri
                 'reward_points' => raidlands_stats_int($player['reward_points'] ?? 0),
                 'npc_kills' => raidlands_stats_int($player['npc_kills'] ?? 0),
                 'deaths_by_npc' => raidlands_stats_int($player['deaths_by_npc'] ?? 0),
+                'raid_damage' => raidlands_stats_bigint($player['raid_damage'] ?? 0),
+                'raid_damage_baseline' => raidlands_stats_bigint($player['raid_damage_baseline'] ?? 0),
+                'rockets_used' => raidlands_stats_bigint($player['rockets_used'] ?? 0),
+                'rockets_used_baseline' => raidlands_stats_bigint($player['rockets_used_baseline'] ?? 0),
+                'c4_used' => raidlands_stats_bigint($player['c4_used'] ?? 0),
+                'c4_used_baseline' => raidlands_stats_bigint($player['c4_used_baseline'] ?? 0),
+                'satchels_used' => raidlands_stats_bigint($player['satchels_used'] ?? 0),
+                'satchels_used_baseline' => raidlands_stats_bigint($player['satchels_used_baseline'] ?? 0),
+                'explosive_ammo_used' => raidlands_stats_bigint($player['explosive_ammo_used'] ?? 0),
+                'explosive_ammo_used_baseline' => raidlands_stats_bigint($player['explosive_ammo_used_baseline'] ?? 0),
+                'tcs_destroyed' => raidlands_stats_bigint($player['tcs_destroyed'] ?? 0),
+                'tcs_destroyed_baseline' => raidlands_stats_bigint($player['tcs_destroyed_baseline'] ?? 0),
             ];
 
             raidlands_stats_upsert_player_wipe($pdo, $wipe_id, $player_id, $display_name, $raw, $is_first_season);
@@ -368,9 +457,11 @@ function raidlands_stats_ingest_snapshot(array $payload, string $server_id, stri
 
         $log = $pdo->prepare(
             'INSERT INTO stats_ingest_log
-                (server_id, wipe_id, wipe_key, generated_at, players_received, players_accepted, error_count, payload_hash)
+                (server_id, wipe_id, wipe_key, generated_at, players_received, players_accepted,
+                 raid_players_received, raid_damage_received, error_count, payload_hash)
              VALUES
-                (:server_id, :wipe_id, :wipe_key, :generated_at, :players_received, :players_accepted, :error_count, :payload_hash)'
+                (:server_id, :wipe_id, :wipe_key, :generated_at, :players_received, :players_accepted,
+                 :raid_players_received, :raid_damage_received, :error_count, :payload_hash)'
         );
         $log->execute([
             'server_id' => $server_id,
@@ -379,6 +470,8 @@ function raidlands_stats_ingest_snapshot(array $payload, string $server_id, stri
             'generated_at' => $generated_at,
             'players_received' => $players_received,
             'players_accepted' => $accepted,
+            'raid_players_received' => $raid_players_received,
+            'raid_damage_received' => $raid_damage_received,
             'error_count' => $errors,
             'payload_hash' => hash('sha256', $body),
         ]);
@@ -392,6 +485,8 @@ function raidlands_stats_ingest_snapshot(array $payload, string $server_id, stri
             'players_accepted' => $accepted,
             'bots_received' => $bots_received,
             'bots_accepted' => $bots_accepted,
+            'raid_players_received' => $raid_players_received,
+            'raid_damage_received' => $raid_damage_received,
             'error_count' => $errors,
         ];
     } catch (Throwable $error) {
@@ -402,6 +497,12 @@ function raidlands_stats_ingest_snapshot(array $payload, string $server_id, stri
 
 function raidlands_stats_get_or_create_wipe(PDO $pdo, string $server_id, string $wipe_key, ?string $started_at): array
 {
+    $promoted = raidlands_stats_promote_matching_active_wipe($pdo, $server_id, $wipe_key, $started_at);
+
+    if ($promoted !== null) {
+        return $promoted;
+    }
+
     $existing = raidlands_db_fetch_one(
         'SELECT * FROM wipe_seasons WHERE server_id = :server_id AND wipe_key = :wipe_key',
         ['server_id' => $server_id, 'wipe_key' => $wipe_key]
@@ -523,6 +624,21 @@ function raidlands_stats_upsert_player_wipe(PDO $pdo, int $wipe_id, int $player_
         $baseline['reward_points']
     );
 
+    $raid_fields = ['raid_damage', 'rockets_used', 'c4_used', 'satchels_used', 'explosive_ammo_used', 'tcs_destroyed'];
+    $raid_baseline = [];
+    $raid_values = [];
+
+    foreach ($raid_fields as $raid_field) {
+        $raid_baseline[$raid_field] = min(
+            raidlands_stats_bigint($raw[$raid_field] ?? 0),
+            raidlands_stats_bigint($raw[$raid_field . '_baseline'] ?? 0)
+        );
+        $raid_values[$raid_field] = max(
+            0,
+            raidlands_stats_bigint($raw[$raid_field] ?? 0) - $raid_baseline[$raid_field]
+        );
+    }
+
     $kills = max(0, $raw['kills'] - $baseline['kills']);
     $deaths = max(0, $raw['deaths'] - $baseline['deaths']);
     $playtime = max(0, $raw['playtime_seconds'] - $baseline['playtime_seconds']);
@@ -536,15 +652,21 @@ function raidlands_stats_upsert_player_wipe(PDO $pdo, int $wipe_id, int $player_
         'INSERT INTO player_wipe_stats
             (wipe_id, player_id, display_name, raw_kills, raw_deaths, raw_playtime_seconds, raw_afk_seconds, raw_reward_points,
              raw_npc_kills, raw_deaths_by_npc,
+             raw_raid_damage, raw_rockets_used, raw_c4_used, raw_satchels_used, raw_explosive_ammo_used, raw_tcs_destroyed,
              baseline_kills, baseline_deaths, baseline_playtime_seconds, baseline_afk_seconds, baseline_reward_points,
              baseline_npc_kills, baseline_deaths_by_npc,
-             kills, deaths, npc_kills, deaths_by_npc, playtime_seconds, afk_seconds, reward_points, kdr, last_seen_at)
+             baseline_raid_damage, baseline_rockets_used, baseline_c4_used, baseline_satchels_used, baseline_explosive_ammo_used, baseline_tcs_destroyed,
+             kills, deaths, npc_kills, deaths_by_npc, playtime_seconds, afk_seconds, reward_points, kdr,
+             raid_damage, rockets_used, c4_used, satchels_used, explosive_ammo_used, tcs_destroyed, last_seen_at)
          VALUES
             (:wipe_id, :player_id, :display_name, :raw_kills, :raw_deaths, :raw_playtime_seconds, :raw_afk_seconds, :raw_reward_points,
              :raw_npc_kills, :raw_deaths_by_npc,
+             :raw_raid_damage, :raw_rockets_used, :raw_c4_used, :raw_satchels_used, :raw_explosive_ammo_used, :raw_tcs_destroyed,
              :baseline_kills, :baseline_deaths, :baseline_playtime_seconds, :baseline_afk_seconds, :baseline_reward_points,
              :baseline_npc_kills, :baseline_deaths_by_npc,
-             :kills, :deaths, :npc_kills, :deaths_by_npc, :playtime_seconds, :afk_seconds, :reward_points, :kdr, NOW())
+             :baseline_raid_damage, :baseline_rockets_used, :baseline_c4_used, :baseline_satchels_used, :baseline_explosive_ammo_used, :baseline_tcs_destroyed,
+             :kills, :deaths, :npc_kills, :deaths_by_npc, :playtime_seconds, :afk_seconds, :reward_points, :kdr,
+             :raid_damage, :rockets_used, :c4_used, :satchels_used, :explosive_ammo_used, :tcs_destroyed, NOW())
          ON DUPLICATE KEY UPDATE
             display_name = IF(VALUES(display_name) <> "", VALUES(display_name), display_name),
             raw_kills = VALUES(raw_kills),
@@ -555,6 +677,18 @@ function raidlands_stats_upsert_player_wipe(PDO $pdo, int $wipe_id, int $player_
             baseline_reward_points = VALUES(baseline_reward_points),
             raw_npc_kills = VALUES(raw_npc_kills),
             raw_deaths_by_npc = VALUES(raw_deaths_by_npc),
+            raw_raid_damage = VALUES(raw_raid_damage),
+            raw_rockets_used = VALUES(raw_rockets_used),
+            raw_c4_used = VALUES(raw_c4_used),
+            raw_satchels_used = VALUES(raw_satchels_used),
+            raw_explosive_ammo_used = VALUES(raw_explosive_ammo_used),
+            raw_tcs_destroyed = VALUES(raw_tcs_destroyed),
+            baseline_raid_damage = VALUES(baseline_raid_damage),
+            baseline_rockets_used = VALUES(baseline_rockets_used),
+            baseline_c4_used = VALUES(baseline_c4_used),
+            baseline_satchels_used = VALUES(baseline_satchels_used),
+            baseline_explosive_ammo_used = VALUES(baseline_explosive_ammo_used),
+            baseline_tcs_destroyed = VALUES(baseline_tcs_destroyed),
             kills = VALUES(kills),
             deaths = VALUES(deaths),
             npc_kills = VALUES(npc_kills),
@@ -563,6 +697,12 @@ function raidlands_stats_upsert_player_wipe(PDO $pdo, int $wipe_id, int $player_
             afk_seconds = VALUES(afk_seconds),
             reward_points = VALUES(reward_points),
             kdr = VALUES(kdr),
+            raid_damage = VALUES(raid_damage),
+            rockets_used = VALUES(rockets_used),
+            c4_used = VALUES(c4_used),
+            satchels_used = VALUES(satchels_used),
+            explosive_ammo_used = VALUES(explosive_ammo_used),
+            tcs_destroyed = VALUES(tcs_destroyed),
             last_seen_at = NOW(),
             updated_at = NOW()'
     );
@@ -577,6 +717,12 @@ function raidlands_stats_upsert_player_wipe(PDO $pdo, int $wipe_id, int $player_
         'raw_reward_points' => $raw['reward_points'],
         'raw_npc_kills' => $raw['npc_kills'],
         'raw_deaths_by_npc' => $raw['deaths_by_npc'],
+        'raw_raid_damage' => $raw['raid_damage'],
+        'raw_rockets_used' => $raw['rockets_used'],
+        'raw_c4_used' => $raw['c4_used'],
+        'raw_satchels_used' => $raw['satchels_used'],
+        'raw_explosive_ammo_used' => $raw['explosive_ammo_used'],
+        'raw_tcs_destroyed' => $raw['tcs_destroyed'],
         'baseline_kills' => $baseline['kills'],
         'baseline_deaths' => $baseline['deaths'],
         'baseline_playtime_seconds' => $baseline['playtime_seconds'],
@@ -584,6 +730,12 @@ function raidlands_stats_upsert_player_wipe(PDO $pdo, int $wipe_id, int $player_
         'baseline_reward_points' => $baseline['reward_points'],
         'baseline_npc_kills' => $baseline['npc_kills'],
         'baseline_deaths_by_npc' => $baseline['deaths_by_npc'],
+        'baseline_raid_damage' => $raid_baseline['raid_damage'],
+        'baseline_rockets_used' => $raid_baseline['rockets_used'],
+        'baseline_c4_used' => $raid_baseline['c4_used'],
+        'baseline_satchels_used' => $raid_baseline['satchels_used'],
+        'baseline_explosive_ammo_used' => $raid_baseline['explosive_ammo_used'],
+        'baseline_tcs_destroyed' => $raid_baseline['tcs_destroyed'],
         'kills' => $kills,
         'deaths' => $deaths,
         'npc_kills' => $npc_kills,
@@ -592,6 +744,12 @@ function raidlands_stats_upsert_player_wipe(PDO $pdo, int $wipe_id, int $player_
         'afk_seconds' => $afk,
         'reward_points' => $reward_points,
         'kdr' => $kdr,
+        'raid_damage' => $raid_values['raid_damage'],
+        'rockets_used' => $raid_values['rockets_used'],
+        'c4_used' => $raid_values['c4_used'],
+        'satchels_used' => $raid_values['satchels_used'],
+        'explosive_ammo_used' => $raid_values['explosive_ammo_used'],
+        'tcs_destroyed' => $raid_values['tcs_destroyed'],
     ]);
 }
 
@@ -814,9 +972,34 @@ function raidlands_stats_latest_ingest(): ?array
     );
 }
 
+function raidlands_stats_ingest_warning(?array $latest_ingest = null): string
+{
+    global $vip_bridge_config;
+
+    if ($latest_ingest === null || empty($latest_ingest['created_at'])) {
+        return 'No game-server stats snapshot has been received yet.';
+    }
+
+    $created_at = strtotime((string) $latest_ingest['created_at']);
+    $stale_seconds = max(60, (int) ($vip_bridge_config['statsStaleSeconds'] ?? 900));
+
+    if ($created_at !== false && (time() - $created_at) > $stale_seconds) {
+        return 'Game-server stats are stale. Run websitevip.stats.status and websitevip.stats.sync on the Rust server.';
+    }
+
+    return '';
+}
+
 function raidlands_stats_metric(string $metric): string
 {
     return in_array($metric, ['kills', 'kdr', 'playtime', 'rp', 'npc_kills', 'deaths_by_npc'], true) ? $metric : 'kills';
+}
+
+function raidlands_stats_raid_metric(string $metric): string
+{
+    return in_array($metric, ['raid_damage', 'rockets_used', 'c4_used', 'satchels_used', 'explosive_ammo_used', 'tcs_destroyed'], true)
+        ? $metric
+        : 'raid_damage';
 }
 
 function raidlands_stats_bot_metric(string $metric): string
@@ -872,6 +1055,18 @@ function raidlands_stats_leaderboard_order(string $metric): string
         'npc_kills' => 'npc_kills DESC, deaths_by_npc ASC, kills DESC',
         'deaths_by_npc' => 'deaths_by_npc DESC, npc_kills DESC, kills DESC',
         default => 'kills DESC, deaths ASC, kdr DESC',
+    };
+}
+
+function raidlands_stats_raid_leaderboard_order(string $metric): string
+{
+    return match (raidlands_stats_raid_metric($metric)) {
+        'rockets_used' => 'rockets_used DESC, raid_damage DESC, tcs_destroyed DESC, display_name ASC',
+        'c4_used' => 'c4_used DESC, raid_damage DESC, tcs_destroyed DESC, display_name ASC',
+        'satchels_used' => 'satchels_used DESC, raid_damage DESC, tcs_destroyed DESC, display_name ASC',
+        'explosive_ammo_used' => 'explosive_ammo_used DESC, raid_damage DESC, tcs_destroyed DESC, display_name ASC',
+        'tcs_destroyed' => 'tcs_destroyed DESC, raid_damage DESC, rockets_used DESC, display_name ASC',
+        default => 'raid_damage DESC, tcs_destroyed DESC, rockets_used DESC, display_name ASC',
     };
 }
 
@@ -1035,6 +1230,163 @@ function raidlands_stats_leaderboard_leaders(
     string $wipe_key = ''
 ): array {
     $result = raidlands_stats_leaderboard_result($metric, $scope, 1, 5, '', $wipe_id, $wipe_key);
+
+    return array_slice((array) ($result['rows'] ?? []), 0, 3);
+}
+
+function raidlands_stats_raid_leaderboard_result(
+    string $metric = 'raid_damage',
+    string $scope = 'current',
+    int $page = 1,
+    int $per_page = 25,
+    string $search = '',
+    int $wipe_id = 0,
+    string $wipe_key = '',
+    bool $attach_steam_profiles = true
+): array {
+    if (!raidlands_stats_is_ready()) {
+        return raidlands_stats_page_result([], 0, $page, $per_page);
+    }
+
+    $metric = raidlands_stats_raid_metric($metric);
+    $scope = raidlands_stats_scope($scope);
+    $page = raidlands_stats_page_number($page);
+    $per_page = raidlands_stats_page_size($per_page);
+    $search = raidlands_stats_search($search);
+    $params = [];
+    $search_sql = '';
+    $activity_sql = '(s.raid_damage > 0 OR s.rockets_used > 0 OR s.c4_used > 0 OR s.satchels_used > 0 OR s.explosive_ammo_used > 0 OR s.tcs_destroyed > 0)';
+
+    if ($search !== '') {
+        $like = '%' . $search . '%';
+        $params['search_steam_id'] = $like;
+        $params['search_player_name'] = $like;
+        $params['search_stats_name'] = $like;
+        $search_sql = ' AND (p.steam_id64 LIKE :search_steam_id OR p.display_name LIKE :search_player_name OR s.display_name LIKE :search_stats_name)';
+    }
+
+    $order = raidlands_stats_raid_leaderboard_order($metric);
+
+    if ($scope !== 'all-time') {
+        $wipe = raidlands_stats_scope_wipe($scope, $wipe_id, $wipe_key);
+
+        if ($wipe === null) {
+            return raidlands_stats_page_result([], 0, $page, $per_page);
+        }
+
+        $params['wipe_id'] = (int) $wipe['id'];
+        $total_row = raidlands_db_fetch_one(
+            "SELECT COUNT(*) AS total
+             FROM player_wipe_stats s
+             INNER JOIN players p ON p.id = s.player_id
+             WHERE s.wipe_id = :wipe_id
+               AND $activity_sql
+               $search_sql",
+            $params
+        );
+        $total = (int) ($total_row['total'] ?? 0);
+        $pages = max(1, (int) ceil($total / $per_page));
+        $page = min($page, $pages);
+        $offset = ($page - 1) * $per_page;
+
+        $rows = raidlands_db_fetch_all(
+            "SELECT
+                p.id AS player_id,
+                p.steam_id64,
+                COALESCE(NULLIF(s.display_name, ''), NULLIF(p.display_name, ''), 'Raidlands Player') AS display_name,
+                s.raid_damage,
+                s.rockets_used,
+                s.c4_used,
+                s.satchels_used,
+                s.explosive_ammo_used,
+                s.tcs_destroyed,
+                s.last_seen_at
+             FROM player_wipe_stats s
+             INNER JOIN players p ON p.id = s.player_id
+             WHERE s.wipe_id = :wipe_id
+               AND $activity_sql
+               $search_sql
+             ORDER BY $order
+             LIMIT $per_page OFFSET $offset",
+            $params
+        );
+    } else {
+        $where_sql = $search !== ''
+            ? 'WHERE (p.steam_id64 LIKE :search_steam_id OR p.display_name LIKE :search_player_name OR s.display_name LIKE :search_stats_name)'
+            : '';
+        $total_row = raidlands_db_fetch_one(
+            "SELECT COUNT(*) AS total
+             FROM (
+                SELECT p.id
+                FROM player_wipe_stats s
+                INNER JOIN players p ON p.id = s.player_id
+                $where_sql
+                GROUP BY p.id
+                HAVING SUM(s.raid_damage) > 0
+                    OR SUM(s.rockets_used) > 0
+                    OR SUM(s.c4_used) > 0
+                    OR SUM(s.satchels_used) > 0
+                    OR SUM(s.explosive_ammo_used) > 0
+                    OR SUM(s.tcs_destroyed) > 0
+             ) counted",
+            $params
+        );
+        $total = (int) ($total_row['total'] ?? 0);
+        $pages = max(1, (int) ceil($total / $per_page));
+        $page = min($page, $pages);
+        $offset = ($page - 1) * $per_page;
+
+        $rows = raidlands_db_fetch_all(
+            "SELECT
+                p.id AS player_id,
+                p.steam_id64,
+                COALESCE(NULLIF(MAX(NULLIF(s.display_name, '')), ''), NULLIF(p.display_name, ''), 'Raidlands Player') AS display_name,
+                SUM(s.raid_damage) AS raid_damage,
+                SUM(s.rockets_used) AS rockets_used,
+                SUM(s.c4_used) AS c4_used,
+                SUM(s.satchels_used) AS satchels_used,
+                SUM(s.explosive_ammo_used) AS explosive_ammo_used,
+                SUM(s.tcs_destroyed) AS tcs_destroyed,
+                MAX(s.last_seen_at) AS last_seen_at
+             FROM player_wipe_stats s
+             INNER JOIN players p ON p.id = s.player_id
+             $where_sql
+             GROUP BY p.id, p.steam_id64, p.display_name
+             HAVING SUM(s.raid_damage) > 0
+                 OR SUM(s.rockets_used) > 0
+                 OR SUM(s.c4_used) > 0
+                 OR SUM(s.satchels_used) > 0
+                 OR SUM(s.explosive_ammo_used) > 0
+                 OR SUM(s.tcs_destroyed) > 0
+             ORDER BY $order
+             LIMIT $per_page OFFSET $offset",
+            $params
+        );
+    }
+
+    $rank = (($page - 1) * $per_page) + 1;
+    foreach ($rows as &$row) {
+        $row['rank'] = $rank++;
+        foreach (['raid_damage', 'rockets_used', 'c4_used', 'satchels_used', 'explosive_ammo_used', 'tcs_destroyed'] as $field) {
+            $row[$field] = (int) ($row[$field] ?? 0);
+        }
+    }
+    unset($row);
+
+    if ($attach_steam_profiles) {
+        $rows = raidlands_store_attach_steam_profiles($rows);
+    }
+
+    return raidlands_stats_page_result($rows, $total, $page, $per_page);
+}
+
+function raidlands_stats_raid_leaderboard_leaders(
+    string $metric = 'raid_damage',
+    string $scope = 'current',
+    int $wipe_id = 0,
+    string $wipe_key = ''
+): array {
+    $result = raidlands_stats_raid_leaderboard_result($metric, $scope, 1, 5, '', $wipe_id, $wipe_key);
 
     return array_slice((array) ($result['rows'] ?? []), 0, 3);
 }
@@ -1251,6 +1603,12 @@ function raidlands_stats_player_summary(int $player_id): array
             SUM(deaths) AS deaths,
             SUM(npc_kills) AS npc_kills,
             SUM(deaths_by_npc) AS deaths_by_npc,
+            SUM(raid_damage) AS raid_damage,
+            SUM(rockets_used) AS rockets_used,
+            SUM(c4_used) AS c4_used,
+            SUM(satchels_used) AS satchels_used,
+            SUM(explosive_ammo_used) AS explosive_ammo_used,
+            SUM(tcs_destroyed) AS tcs_destroyed,
             CASE WHEN SUM(deaths) = 0 THEN SUM(kills) ELSE ROUND(SUM(kills) / SUM(deaths), 3) END AS kdr,
             SUM(playtime_seconds) AS playtime_seconds,
             SUM(reward_points) AS reward_points,
@@ -1278,6 +1636,12 @@ function raidlands_stats_normalize_summary(?array $row): ?array
         'deaths' => (int) $row['deaths'],
         'npc_kills' => (int) ($row['npc_kills'] ?? 0),
         'deaths_by_npc' => (int) ($row['deaths_by_npc'] ?? 0),
+        'raid_damage' => (int) ($row['raid_damage'] ?? 0),
+        'rockets_used' => (int) ($row['rockets_used'] ?? 0),
+        'c4_used' => (int) ($row['c4_used'] ?? 0),
+        'satchels_used' => (int) ($row['satchels_used'] ?? 0),
+        'explosive_ammo_used' => (int) ($row['explosive_ammo_used'] ?? 0),
+        'tcs_destroyed' => (int) ($row['tcs_destroyed'] ?? 0),
         'kdr' => (float) $row['kdr'],
         'playtime_seconds' => (int) $row['playtime_seconds'],
         'reward_points' => (int) $row['reward_points'],
@@ -1295,6 +1659,7 @@ function raidlands_stats_admin_summary(): array
             'current_players' => 0,
             'recent_wipes' => [],
             'wipe_key_warning' => '',
+            'ingest_warning' => '',
         ];
     }
 
@@ -1317,6 +1682,7 @@ function raidlands_stats_admin_summary(): array
         'current_players' => $current_players,
         'recent_wipes' => raidlands_stats_recent_wipes(8),
         'wipe_key_warning' => raidlands_stats_generic_wipe_key_warning($latest_ingest, $wipe),
+        'ingest_warning' => raidlands_stats_ingest_warning($latest_ingest),
     ];
 }
 

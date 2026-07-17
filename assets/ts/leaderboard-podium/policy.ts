@@ -47,6 +47,11 @@ export const LEADERBOARD_PODIUM_THEMES: Record<string, string[]> = {
   deaths: ["skull.glb", "sleeping-bag.glb"],
   "total-won": ["scrap.glb", "trophy.glb"],
   raid_damage: ["rocket-launcher.glb", "ammo.glb"],
+  rockets_used: ["rocket-launcher.glb", "ammo.glb"],
+  c4_used: ["rocket-launcher.glb", "loot-crate.glb"],
+  satchels_used: ["rocket-launcher.glb", "loot-crate.glb"],
+  explosive_ammo_used: ["ammo.glb", "reactive-target.glb"],
+  tcs_destroyed: ["rocket-launcher.glb", "reactive-target.glb"],
   airstrike_kills: ["rocket-launcher.glb", "ammo.glb"],
   vehicle_kills: ["rocket-launcher.glb", "reactive-target.glb"],
 };
@@ -84,5 +89,11 @@ export function leaderboardPodiumMetricValue(row: Leader, board: string, metric:
   if (metric === "npc_kills") return [number(row.npc_kills), "NPC kills"];
   if (metric === "deaths_by_npc") return [number(row.deaths_by_npc), "NPC deaths"];
   if (metric === "deaths") return [number(row.deaths), "deaths"];
+  if (metric === "raid_damage") return [number(row.raid_damage), "damage"];
+  if (metric === "rockets_used") return [number(row.rockets_used), "rockets"];
+  if (metric === "c4_used") return [number(row.c4_used), "C4"];
+  if (metric === "satchels_used") return [number(row.satchels_used), "satchels"];
+  if (metric === "explosive_ammo_used") return [number(row.explosive_ammo_used), "explosive rounds"];
+  if (metric === "tcs_destroyed") return [number(row.tcs_destroyed), "TCs broken"];
   return [number(row.kills), "kills"];
 }

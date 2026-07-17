@@ -1749,12 +1749,12 @@
   }
 
   function leaderboardPanel(root, board) {
-    const normalized = ["players", "bots", "rp-games"].includes(board) ? board : "players";
+    const normalized = ["players", "raids", "bots", "rp-games"].includes(board) ? board : "players";
     return root.querySelector(`[data-leaderboard-panel][data-board="${normalized}"]`);
   }
 
   function activateLeaderboardBoard(root, board, updateUrl) {
-    const activeBoard = ["players", "bots", "rp-games"].includes(board) ? board : "players";
+    const activeBoard = ["players", "raids", "bots", "rp-games"].includes(board) ? board : "players";
 
     root.dataset.activeBoard = activeBoard;
     root.querySelectorAll("[data-leaderboard-tab]").forEach(tab => {
@@ -1940,6 +1940,7 @@
       body.innerHTML = rows.map(row => {
         if (panel.dataset.board === "bots") return renderBotLeaderboardRow(row);
         if (panel.dataset.board === "rp-games") return renderRpGamesLeaderboardRow(row);
+        if (panel.dataset.board === "raids") return renderRaidLeaderboardRow(row);
         return renderPlayerLeaderboardRow(row);
       }).join("");
     }
@@ -1979,6 +1980,26 @@
       <td>${formatLeaderboardKdr(row.kdr)}</td>
       <td>${formatLeaderboardDuration(row.playtime_seconds)}</td>
       <td>${formatLeaderboardNumber(row.reward_points)}</td>
+    </tr>`;
+  }
+
+  function renderRaidLeaderboardRow(row) {
+    const name = String(row.display_name || row.steam_display_name || "Raidlands Player");
+    const steamId = String(row.steam_id64 || "");
+    const profileUrl = String(row.steam_profile_url || "").trim();
+    const steamMeta = profileUrl
+      ? `<a class="leaderboard-steam" href="${escapeAttr(profileUrl)}" target="_blank" rel="noopener noreferrer">${escapeHtml(steamId)}</a>`
+      : `<span class="leaderboard-steam">${escapeHtml(steamId)}</span>`;
+
+    return `<tr>
+      <td><span class="leaderboard-rank">#${escapeHtml(row.rank || "0")}</span></td>
+      <td><div class="leaderboard-player">${renderLeaderboardAvatar(row, name)}<span class="leaderboard-player-copy"><strong>${escapeHtml(name)}</strong>${steamMeta}</span></div></td>
+      <td><strong>${formatLeaderboardNumber(row.raid_damage)}</strong></td>
+      <td>${formatLeaderboardNumber(row.rockets_used)}</td>
+      <td>${formatLeaderboardNumber(row.c4_used)}</td>
+      <td>${formatLeaderboardNumber(row.satchels_used)}</td>
+      <td>${formatLeaderboardNumber(row.explosive_ammo_used)}</td>
+      <td>${formatLeaderboardNumber(row.tcs_destroyed)}</td>
     </tr>`;
   }
 
@@ -2124,7 +2145,7 @@
 
     root.querySelectorAll("[data-leaderboard-tab]").forEach(tab => {
       const requestedBoard = tab.getAttribute("data-leaderboard-tab") || "players";
-      const board = ["players", "bots", "rp-games"].includes(requestedBoard) ? requestedBoard : "players";
+      const board = ["players", "raids", "bots", "rp-games"].includes(requestedBoard) ? requestedBoard : "players";
       const panel = leaderboardPanel(root, board);
       const selected = root.dataset.activeBoard === board;
 
@@ -2209,6 +2230,12 @@
 
     if (board === "rp-games") {
       return "total-won";
+    }
+
+    if (board === "raids") {
+      return ["raid_damage", "rockets_used", "c4_used", "satchels_used", "explosive_ammo_used", "tcs_destroyed"].includes(value)
+        ? value
+        : "raid_damage";
     }
 
     return ["kills", "kdr", "playtime", "rp", "npc_kills", "deaths_by_npc"].includes(value) ? value : "kills";

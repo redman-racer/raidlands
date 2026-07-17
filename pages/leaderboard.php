@@ -5,7 +5,7 @@ require_once $site_root . '/includes/rewards.php';
 
 $leaderboard_ready = raidlands_stats_is_ready();
 $leaderboard_board = (string) ($_GET['board'] ?? 'players');
-$leaderboard_board = in_array($leaderboard_board, ['players', 'bots', 'rp-games'], true) ? $leaderboard_board : 'players';
+$leaderboard_board = in_array($leaderboard_board, ['players', 'raids', 'bots', 'rp-games'], true) ? $leaderboard_board : 'players';
 $leaderboard_scope = raidlands_stats_scope((string) ($_GET['scope'] ?? 'current'));
 $leaderboard_wipe_id = raidlands_stats_wipe_id($_GET['wipe_id'] ?? 0);
 $leaderboard_wipe_key = raidlands_stats_optional_wipe_key($_GET['wipe_key'] ?? '');
@@ -24,11 +24,25 @@ $leaderboard_player_metric = $leaderboard_board === 'players'
 $leaderboard_bot_metric = $leaderboard_board === 'bots'
     ? raidlands_stats_bot_metric($leaderboard_metric_query)
     : 'kdr';
+$leaderboard_raid_metric = $leaderboard_board === 'raids'
+    ? raidlands_stats_raid_metric($leaderboard_metric_query)
+    : 'raid_damage';
 $leaderboard_player_result = $leaderboard_ready
     ? raidlands_stats_leaderboard_result(
         $leaderboard_player_metric,
         $leaderboard_scope,
         $leaderboard_board === 'players' ? $leaderboard_page : 1,
+        $leaderboard_per_page,
+        $leaderboard_search,
+        $leaderboard_wipe_id,
+        $leaderboard_wipe_key
+    )
+    : raidlands_stats_page_result([], 0, 1, $leaderboard_per_page);
+$leaderboard_raid_result = $leaderboard_ready
+    ? raidlands_stats_raid_leaderboard_result(
+        $leaderboard_raid_metric,
+        $leaderboard_scope,
+        $leaderboard_board === 'raids' ? $leaderboard_page : 1,
         $leaderboard_per_page,
         $leaderboard_search,
         $leaderboard_wipe_id,
@@ -58,6 +72,9 @@ $leaderboard_rp_result = $leaderboard_ready
     : raidlands_stats_page_result([], 0, 1, $leaderboard_per_page);
 $leaderboard_player_leaders = $leaderboard_ready
     ? raidlands_stats_leaderboard_leaders($leaderboard_player_metric, $leaderboard_scope, $leaderboard_wipe_id, $leaderboard_wipe_key)
+    : [];
+$leaderboard_raid_leaders = $leaderboard_ready
+    ? raidlands_stats_raid_leaderboard_leaders($leaderboard_raid_metric, $leaderboard_scope, $leaderboard_wipe_id, $leaderboard_wipe_key)
     : [];
 $leaderboard_bot_leaders = $leaderboard_ready
     ? raidlands_stats_bot_leaderboard_leaders($leaderboard_scope, $leaderboard_bot_metric, $leaderboard_wipe_id, $leaderboard_wipe_key)
@@ -90,6 +107,14 @@ $leaderboard_bot_metrics = [
     'kills' => 'Kills',
     'deaths' => 'Deaths',
 ];
+$leaderboard_raid_metrics = [
+    'raid_damage' => 'Damage',
+    'rockets_used' => 'Rockets',
+    'c4_used' => 'C4',
+    'satchels_used' => 'Satchels',
+    'explosive_ammo_used' => 'Explosive Ammo',
+    'tcs_destroyed' => 'TCs Broken',
+];
 $leaderboard_page_sizes = [10, 25, 50, 100];
 $leaderboard_api_url = $base_path . 'api/leaderboard.php';
 
@@ -105,9 +130,13 @@ function leaderboard_url(
 ): string {
     $scope = raidlands_stats_scope($scope);
     $query = [
-        'board' => in_array($board, ['players', 'bots', 'rp-games'], true) ? $board : 'players',
+        'board' => in_array($board, ['players', 'raids', 'bots', 'rp-games'], true) ? $board : 'players',
         'scope' => $scope,
-        'metric' => $board === 'rp-games' ? 'total-won' : ($board === 'bots' ? raidlands_stats_bot_metric($metric) : raidlands_stats_metric($metric)),
+        'metric' => $board === 'rp-games'
+            ? 'total-won'
+            : ($board === 'bots'
+                ? raidlands_stats_bot_metric($metric)
+                : ($board === 'raids' ? raidlands_stats_raid_metric($metric) : raidlands_stats_metric($metric))),
         'page' => max(1, $page),
         'per_page' => raidlands_stats_page_size($per_page),
     ];
@@ -199,6 +228,12 @@ function leaderboard_podium_value(array $row, string $board, string $metric): st
         'npc_kills' => 'npc_kills',
         'deaths_by_npc' => 'deaths_by_npc',
         'deaths' => 'deaths',
+        'raid_damage' => 'raid_damage',
+        'rockets_used' => 'rockets_used',
+        'c4_used' => 'c4_used',
+        'satchels_used' => 'satchels_used',
+        'explosive_ammo_used' => 'explosive_ammo_used',
+        'tcs_destroyed' => 'tcs_destroyed',
         default => 'kills',
     };
 
@@ -211,6 +246,8 @@ function leaderboard_podium_markup(array $leaders, string $board, string $metric
     $metric_labels = [
         'kills' => 'kills', 'kdr' => 'K/D', 'playtime' => 'played', 'rp' => 'RP',
         'npc_kills' => 'NPC kills', 'deaths_by_npc' => 'NPC deaths', 'deaths' => 'deaths',
+        'raid_damage' => 'damage', 'rockets_used' => 'rockets', 'c4_used' => 'C4',
+        'satchels_used' => 'satchels', 'explosive_ammo_used' => 'explosive rounds', 'tcs_destroyed' => 'TCs broken',
         'total-won' => 'RP won',
     ];
     $cards = '';
@@ -289,6 +326,13 @@ function leaderboard_podium_markup(array $leaders, string $board, string $metric
             aria-selected="<?= $leaderboard_board === 'players' ? 'true' : 'false' ?>"
             aria-controls="leaderboard-players"
             data-leaderboard-tab="players">Player Stats</a>
+          <a
+            class="<?= $leaderboard_board === 'raids' ? 'is-active' : '' ?>"
+            href="<?= e(leaderboard_url('raids', $leaderboard_scope, $leaderboard_raid_metric, 1, $leaderboard_per_page, $leaderboard_search, $leaderboard_selected_wipe_id, $leaderboard_selected_wipe_key)) ?>"
+            role="tab"
+            aria-selected="<?= $leaderboard_board === 'raids' ? 'true' : 'false' ?>"
+            aria-controls="leaderboard-raids"
+            data-leaderboard-tab="raids">Raid Stats</a>
           <a
             class="<?= $leaderboard_board === 'bots' ? 'is-active' : '' ?>"
             href="<?= e(leaderboard_url('bots', $leaderboard_scope, $leaderboard_bot_metric, 1, $leaderboard_per_page, $leaderboard_search, $leaderboard_selected_wipe_id, $leaderboard_selected_wipe_key)) ?>"
@@ -430,6 +474,126 @@ function leaderboard_podium_markup(array $leaders, string $board, string $metric
             <a class="<?= (int) $leaderboard_player_result['page'] <= 1 ? 'is-disabled' : '' ?>" href="<?= e(leaderboard_url('players', $leaderboard_scope, $leaderboard_player_metric, max(1, (int) $leaderboard_player_result['page'] - 1), $leaderboard_per_page, $leaderboard_search, $leaderboard_selected_wipe_id, $leaderboard_selected_wipe_key)) ?>" data-leaderboard-page-link="prev">Previous</a>
             <span data-leaderboard-page-summary>Page <?= e((string) $leaderboard_player_result['page']) ?> of <?= e((string) $leaderboard_player_result['pages']) ?></span>
             <a class="<?= (int) $leaderboard_player_result['page'] >= (int) $leaderboard_player_result['pages'] ? 'is-disabled' : '' ?>" href="<?= e(leaderboard_url('players', $leaderboard_scope, $leaderboard_player_metric, min((int) $leaderboard_player_result['pages'], (int) $leaderboard_player_result['page'] + 1), $leaderboard_per_page, $leaderboard_search, $leaderboard_selected_wipe_id, $leaderboard_selected_wipe_key)) ?>" data-leaderboard-page-link="next">Next</a>
+          </nav>
+        </section>
+
+        <section
+          id="leaderboard-raids"
+          class="<?= e(leaderboard_panel_classes('raids', $leaderboard_board)) ?>"
+          role="tabpanel"
+          data-leaderboard-panel
+          data-board="raids"
+          data-scope="<?= e($leaderboard_scope) ?>"
+          data-wipe-id="<?= e($leaderboard_scope === 'wipe' ? (string) $leaderboard_selected_wipe_id : '') ?>"
+          data-wipe-key="<?= e($leaderboard_scope === 'wipe' ? $leaderboard_selected_wipe_key : '') ?>"
+          data-metric="<?= e($leaderboard_raid_metric) ?>"
+          data-page="<?= e((string) ($leaderboard_raid_result['page'] ?? 1)) ?>"
+          data-per-page="<?= e((string) ($leaderboard_raid_result['per_page'] ?? $leaderboard_per_page)) ?>"
+          data-total="<?= e((string) ($leaderboard_raid_result['total'] ?? 0)) ?>"
+          data-pages="<?= e((string) ($leaderboard_raid_result['pages'] ?? 1)) ?>"
+          data-search="<?= e($leaderboard_search) ?>"
+          <?= $leaderboard_board === 'raids' ? '' : 'hidden' ?>>
+          <div class="leaderboard-panel-head">
+            <div>
+              <p class="section-kicker">Base pressure</p>
+              <h3>Raid Stats</h3>
+              <p class="section-lede">Enemy base damage, raiding explosives, and tool cupboards broken—direct from the game server.</p>
+            </div>
+            <span class="status-pill" data-leaderboard-count><?= e(leaderboard_page_summary($leaderboard_raid_result)) ?></span>
+          </div>
+
+          <div class="leaderboard-toolbar">
+            <div class="leaderboard-tabs" aria-label="Raid leaderboard scope">
+              <a class="<?= $leaderboard_scope === 'current' ? 'is-active' : '' ?>" href="<?= e(leaderboard_url('raids', 'current', $leaderboard_raid_metric, 1, $leaderboard_per_page, $leaderboard_search)) ?>" data-leaderboard-scope="current">Current Wipe</a>
+              <a class="<?= $leaderboard_scope === 'all-time' ? 'is-active' : '' ?>" href="<?= e(leaderboard_url('raids', 'all-time', $leaderboard_raid_metric, 1, $leaderboard_per_page, $leaderboard_search)) ?>" data-leaderboard-scope="all-time">All Time</a>
+            </div>
+            <div class="leaderboard-tabs" aria-label="Raid leaderboard metric">
+              <?php foreach ($leaderboard_raid_metrics as $metric_key => $metric_label) : ?>
+                <a class="<?= $leaderboard_raid_metric === $metric_key ? 'is-active' : '' ?>" href="<?= e(leaderboard_url('raids', $leaderboard_scope, $metric_key, 1, $leaderboard_per_page, $leaderboard_search, $leaderboard_selected_wipe_id, $leaderboard_selected_wipe_key)) ?>" data-leaderboard-metric="<?= e($metric_key) ?>"><?= e($metric_label) ?></a>
+              <?php endforeach; ?>
+            </div>
+          </div>
+
+          <?= leaderboard_podium_markup($leaderboard_raid_leaders, 'raids', $leaderboard_raid_metric) ?>
+
+          <form class="leaderboard-filterbar" method="get" action="<?= e(route_url('leaderboard')) ?>" data-leaderboard-form>
+            <input type="hidden" name="board" value="raids">
+            <input type="hidden" name="scope" value="<?= e($leaderboard_scope) ?>" data-leaderboard-field="scope">
+            <input type="hidden" name="metric" value="<?= e($leaderboard_raid_metric) ?>" data-leaderboard-field="metric">
+            <input type="hidden" name="wipe_key" value="<?= e($leaderboard_scope === 'wipe' ? $leaderboard_selected_wipe_key : '') ?>" data-leaderboard-field="wipe_key">
+            <label>
+              <span>Previous Wipe</span>
+              <select name="wipe_id" data-leaderboard-wipe-select>
+                <?= leaderboard_wipe_options($leaderboard_wipes, $leaderboard_scope === 'wipe' ? $leaderboard_selected_wipe_id : 0) ?>
+              </select>
+            </label>
+            <label>
+              <span>Search</span>
+              <input type="search" name="q" maxlength="80" placeholder="Player name or Steam ID" value="<?= e($leaderboard_search) ?>" data-leaderboard-search>
+            </label>
+            <label>
+              <span>Rows</span>
+              <select name="per_page" data-leaderboard-page-size>
+                <?php foreach ($leaderboard_page_sizes as $page_size) : ?>
+                  <option value="<?= e((string) $page_size) ?>"<?= $leaderboard_per_page === $page_size ? ' selected' : '' ?>><?= e((string) $page_size) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </label>
+            <button class="btn btn-secondary copy-small" type="submit">Search</button>
+          </form>
+
+          <div class="store-table-wrap leaderboard-table-wrap" data-leaderboard-table-wrap<?= $leaderboard_raid_result['rows'] === [] ? ' hidden' : '' ?>>
+            <table class="store-table leaderboard-table">
+              <thead>
+                <tr>
+                  <th>Rank</th>
+                  <th>Player</th>
+                  <th>Damage</th>
+                  <th>Rockets</th>
+                  <th>C4</th>
+                  <th>Satchels</th>
+                  <th>Explosive Ammo</th>
+                  <th>TCs Broken</th>
+                </tr>
+              </thead>
+              <tbody data-leaderboard-rows>
+                <?php foreach ($leaderboard_raid_result['rows'] as $row) : ?>
+                  <?php
+                    $leaderboard_name = (string) ($row['display_name'] ?: ($row['steam_display_name'] ?? 'Raidlands Player'));
+                    $leaderboard_profile_url = trim((string) ($row['steam_profile_url'] ?? ''));
+                  ?>
+                  <tr>
+                    <td><span class="leaderboard-rank">#<?= e((string) $row['rank']) ?></span></td>
+                    <td>
+                      <div class="leaderboard-player">
+                        <?= render_steam_avatar((string) ($row['steam_avatar_url'] ?? ''), $leaderboard_profile_url, $leaderboard_name, 'steam-avatar-sm') ?>
+                        <span class="leaderboard-player-copy">
+                          <strong><?= e($leaderboard_name) ?></strong>
+                          <?php if ($leaderboard_profile_url !== '') : ?>
+                            <a class="leaderboard-steam" href="<?= e($leaderboard_profile_url) ?>" target="_blank" rel="noopener noreferrer"><?= e((string) $row['steam_id64']) ?></a>
+                          <?php else : ?>
+                            <span class="leaderboard-steam"><?= e((string) $row['steam_id64']) ?></span>
+                          <?php endif; ?>
+                        </span>
+                      </div>
+                    </td>
+                    <td><strong><?= e(raidlands_stats_format_number($row['raid_damage'])) ?></strong></td>
+                    <td><?= e(raidlands_stats_format_number($row['rockets_used'])) ?></td>
+                    <td><?= e(raidlands_stats_format_number($row['c4_used'])) ?></td>
+                    <td><?= e(raidlands_stats_format_number($row['satchels_used'])) ?></td>
+                    <td><?= e(raidlands_stats_format_number($row['explosive_ammo_used'])) ?></td>
+                    <td><?= e(raidlands_stats_format_number($row['tcs_destroyed'])) ?></td>
+                  </tr>
+                <?php endforeach; ?>
+              </tbody>
+            </table>
+          </div>
+          <div class="form-status warning" data-leaderboard-empty<?= $leaderboard_raid_result['rows'] === [] ? '' : ' hidden' ?>>No raid activity matches this view yet.</div>
+
+          <nav class="leaderboard-pagination" aria-label="Raid leaderboard pages" data-leaderboard-pagination>
+            <a class="<?= (int) $leaderboard_raid_result['page'] <= 1 ? 'is-disabled' : '' ?>" href="<?= e(leaderboard_url('raids', $leaderboard_scope, $leaderboard_raid_metric, max(1, (int) $leaderboard_raid_result['page'] - 1), $leaderboard_per_page, $leaderboard_search, $leaderboard_selected_wipe_id, $leaderboard_selected_wipe_key)) ?>" data-leaderboard-page-link="prev">Previous</a>
+            <span data-leaderboard-page-summary>Page <?= e((string) $leaderboard_raid_result['page']) ?> of <?= e((string) $leaderboard_raid_result['pages']) ?></span>
+            <a class="<?= (int) $leaderboard_raid_result['page'] >= (int) $leaderboard_raid_result['pages'] ? 'is-disabled' : '' ?>" href="<?= e(leaderboard_url('raids', $leaderboard_scope, $leaderboard_raid_metric, min((int) $leaderboard_raid_result['pages'], (int) $leaderboard_raid_result['page'] + 1), $leaderboard_per_page, $leaderboard_search, $leaderboard_selected_wipe_id, $leaderboard_selected_wipe_key)) ?>" data-leaderboard-page-link="next">Next</a>
           </nav>
         </section>
 

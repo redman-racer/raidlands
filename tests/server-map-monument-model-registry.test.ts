@@ -143,6 +143,26 @@ describe("RustRelay monument model registry", () => {
     expect(missile.tiers.close.sourceNodes.some((name) => /nuclear_silo_room_|nuclear_silo_tunnel_300|nuclear_silo_tunnel_tube|nuclear_silo_missile|hlod/i.test(name))).toBe(false);
   });
 
+  it("keeps Dome's exterior shell, support pillars, and exterior pipes in every tier", () => {
+    const dome = monumentModelMetadata("sphere_tank")!;
+    for (const tierName of tiers) {
+      const names = dome.tiers[tierName].sourceNodes;
+      expect(names.some((name) => /sphere_exterior/i.test(name)), tierName).toBe(true);
+      expect(names.some((name) => /sphere_pillars/i.test(name)), tierName).toBe(true);
+      expect(names.some((name) => /pipes_exterior/i.test(name)), tierName).toBe(true);
+      expect(names.some((name) => /evac_pipes/i.test(name)), tierName).toBe(true);
+      expect(names.some((name) => /sphere_interior/i.test(name)), tierName).toBe(false);
+    }
+  });
+
+  it("builds every Substation Map tier from real structural components", () => {
+    for (const id of ["power_sub_big_1", "power_sub_big_2", "power_sub_small_1", "power_sub_small_2"]) {
+      const substation = monumentModelMetadata(id)!;
+      expect(substation.tiers.map.selectionKind, id).toBe("recipe-structural");
+      expect(substation.tiers.map.sourceNodes.some((name) => /substation_[a-g]/i.test(name)), id).toBe(true);
+    }
+  });
+
   it("publishes the recipe-owned Abandoned Military Base assembly", () => {
     const military = monumentModelMetadata("desert_military_base_a")!;
     expect(military.standaloneOverrides.map((component) => component.id)).toEqual([

@@ -1,8 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   RECORDED_PLAYBACK_SPEEDS,
+  RECORDED_BUFFER_MAX_BYTES,
+  RECORDED_BUFFER_SPLIT_BYTES,
   RecordedTimelineBatchCache,
+  RecordedTimelineBuffer,
   RecordedTimelineClock,
+  initialRecordedReplayCursor,
   latestRecordedAvailability,
   recordedBatchSpanSeconds,
   recordedPrefetchThresholdMs,
@@ -57,9 +61,14 @@ describe("recorded server timeline", () => {
     expect(relativeTimelineCursor(25, 0, 100, 1_000, 3_000)).toBe(1_500);
   });
 
+  it("starts first replay two minutes behind the recorded head without preceding the range", () => {
+    expect(initialRecordedReplayCursor(0, 10 * 60_000)).toBe(8 * 60_000);
+    expect(initialRecordedReplayCursor(0, 60_000)).toBe(0);
+  });
+
   it("uses bounded batches and recorded-frame decimation only at high speeds", () => {
-    expect(recordedBatchSpanSeconds(1)).toBe(900);
-    expect(recordedBatchSpanSeconds(512)).toBe(21_600);
+    expect(recordedBatchSpanSeconds(1)).toBe(300);
+    expect(recordedBatchSpanSeconds(512)).toBe(3_600);
     expect(recordedSampleEverySeconds(12)).toBe(0);
     expect(recordedSampleEverySeconds(512)).toBe(43);
     expect(recordedPrefetchThresholdMs(8)).toBe(240_000);
@@ -73,5 +82,116 @@ describe("recorded server timeline", () => {
     cache.set("e", 4);
     expect(cache.keys()).toEqual(["c", "d", "a", "e"]);
     expect(cache.get("b")).toBeUndefined();
+  });
+
+  it("queues cursor coverage first and merges adjacent ready coverage", () => {
+    const buffer = new RecordedTimelineBuffer<string>();
+    buffer.configure(0, 30 * 60_000, 1);
+    const later = buffer.ensureAt(12 * 60_000, 2);
+    const current = buffer.ensureAt(2 * 60_000, 0);
+    expect(buffer.nextQueued()?.key).toBe(current.key);
+    buffer.markLoading(current.key);
+    buffer.markReady(current.key, "current", 100);
+    const adjacent = buffer.ensureAt(6 * 60_000, 1);
+    buffer.markLoading(adjacent.key);
+    buffer.markReady(adjacent.key, "adjacent", 100);
+    expect(buffer.contiguousReadyEnd(2 * 60_000)).toBe(10 * 60_000);
+    expect(later.state).toBe("queued");
+  });
+
+  it("splits oversized chunks without going below the minimum split span", () => {
+    const buffer = new RecordedTimelineBuffer<string>();
+    buffer.configure(0, 10 * 60_000, 1);
+    const chunk = buffer.ensureAt(0, 0);
+    const halves = buffer.split(chunk.key);
+    expect(halves).toHaveLength(2);
+    expect(halves[0]!.endMs).toBe(halves[1]!.startMs);
+    const tiny = buffer.enqueue(0, 30_000, 0);
+    expect(buffer.split(tiny.key)).toEqual([]);
+    expect(RECORDED_BUFFER_SPLIT_BYTES).toBe(2 * 1024 * 1024);
+  });
+
+  it("evicts unprotected ready chunks by count and encoded byte budget", () => {
+    const buffer = new RecordedTimelineBuffer<string>(2, 1_000);
+    buffer.configure(0, 20 * 60_000, 1);
+    const first = buffer.enqueue(0, 60_000, 0);
+    const second = buffer.enqueue(60_000, 120_000, 1);
+    const third = buffer.enqueue(120_000, 180_000, 2);
+    [first, second, third].forEach((entry) => {
+      buffer.markLoading(entry.key);
+      buffer.markReady(entry.key, entry.key, 600);
+    });
+    const evicted = buffer.enforceLimits(new Set([third.key]));
+    expect(evicted).toEqual([first.key, second.key]);
+    expect(buffer.readyEntries().map((entry) => entry.key)).toEqual([third.key]);
+    expect(RECORDED_BUFFER_MAX_BYTES).toBe(12 * 1024 * 1024);
+  });
+
+  it("reports disjoint resident coverage and discards only pending work", () => {
+    const buffer = new RecordedTimelineBuffer<string>();
+    buffer.configure(0, 20 * 60_000, 1);
+    const ready = buffer.enqueue(0, 60_000, 0);
+    const pending = buffer.enqueue(5 * 60_000, 6 * 60_000, 2);
+    buffer.markLoading(ready.key);
+    buffer.markReady(ready.key, "ready", 100);
+    buffer.markLoading(pending.key);
+    expect(buffer.coverage("ready")).toEqual([{ startMs: 0, endMs: 60_000, state: "ready" }]);
+    buffer.discardPending();
+    expect(buffer.readyEntries()).toHaveLength(1);
+    expect(buffer.entriesCount()).toBe(1);
+  });
+
+  it("backs off failed required chunks and retries them after the deadline", () => {
+    const buffer = new RecordedTimelineBuffer<string>();
+    buffer.configure(0, 10 * 60_000, 1);
+    const entry = buffer.ensureAt(0, 0);
+    buffer.markLoading(entry.key);
+    const failed = buffer.markError(entry.key, 10_000)!;
+    expect(failed.retryAtMs).toBe(11_000);
+    expect(buffer.nextQueued(10_999)).toBeNull();
+    expect(buffer.nextQueued(11_000)?.key).toBe(entry.key);
+  });
+
+  it("evicts the farthest unprotected resident chunk when forward buffering needs room", () => {
+    const buffer = new RecordedTimelineBuffer<string>(3, Number.POSITIVE_INFINITY);
+    buffer.configure(0, 20 * 60_000, 1);
+    const entries = [0, 5, 10].map((minutes) => buffer.enqueue(minutes * 60_000, (minutes + 1) * 60_000, 2));
+    entries.forEach((entry) => {
+      buffer.markLoading(entry.key);
+      buffer.markReady(entry.key, entry.key, 1);
+    });
+    expect(buffer.evictFarthestFrom(30_000, new Set([entries[0]!.key]))).toBe(entries[2]!.key);
+  });
+
+  it("protects contiguous range-start preload coverage from eviction churn", () => {
+    const buffer = new RecordedTimelineBuffer<string>(4, Number.POSITIVE_INFINITY);
+    buffer.configure(0, 60 * 60_000, 1);
+    const startEntries = [0, 5, 10].map((minutes) => buffer.enqueue(minutes * 60_000, (minutes + 5) * 60_000, 1));
+    const tail = buffer.enqueue(55 * 60_000, 60 * 60_000, 0);
+    [...startEntries, tail].forEach((entry) => {
+      buffer.markLoading(entry.key);
+      buffer.markReady(entry.key, entry.key, 1);
+    });
+    const protectedKeys = buffer.contiguousKeysAt(0);
+    protectedKeys.add(tail.key);
+    expect([...protectedKeys]).toEqual([...startEntries.map((entry) => entry.key), tail.key]);
+    expect(buffer.evictFarthestFrom(0, protectedKeys)).toBeNull();
+  });
+
+  it("holds replay at an unloaded boundary without clearing playing intent", () => {
+    const clock = new RecordedTimelineClock();
+    clock.configureReplay({ startMs: 0, endMs: 60_000, speed: 1, playing: true });
+    expect(clock.tick(10_000, 5_000)).toMatchObject({ cursorMs: 5_000, waiting: true, buffering: true });
+    expect(clock.playing).toBe(true);
+    expect(clock.tick(1_000, 20_000)).toMatchObject({ cursorMs: 6_000, buffering: false });
+  });
+
+  it("does not wrap a checked replay tail until the destination is ready", () => {
+    const clock = new RecordedTimelineClock();
+    clock.configureReplay({ startMs: 0, endMs: 10_000, cursorMs: 10_000, loop: true });
+    expect(clock.tick(1).needsTailCheck).toBe(true);
+    clock.resolveReplayTail(12_000);
+    expect(clock.tick(2_000, Number.POSITIVE_INFINITY, false)).toMatchObject({ cursorMs: 12_000, buffering: true, wrapped: false });
+    expect(clock.tick(1, Number.POSITIVE_INFINITY, true)).toMatchObject({ cursorMs: 2_000, wrapped: true });
   });
 });

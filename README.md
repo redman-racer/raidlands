@@ -112,7 +112,7 @@ The store uses MySQL as the source of truth, Stripe Checkout for cash purchases,
 29. Run `database/migrations/027_ai_feedback_triage.sql`.
 30. Run `database/migrations/028_ai_feedback_split_suggestions.sql`.
 31. Run `database/migrations/029_admin_todo_snapshots.sql`.
-32. Run every later numbered migration in order through `database/migrations/061_discord_identity_integration.sql`.
+32. Run every later numbered migration in order through `database/migrations/066_raid_stats.sql`.
 33. Run `database/seeds/001_store_products.sql`.
 34. Copy `.env.example` to `.env`.
 35. Fill in MySQL, Stripe, Steam API, OpenAI AI triage key if enabled, bridge secret, clan API limit values, and chat settings.
@@ -141,7 +141,9 @@ Game-server flow:
 - Leave `WipeKey` blank for automatic leaderboard seasons. WebsiteVipBridge will derive a stable key from `ServerId` and the Rust save creation time after each wipe. Set `WipeKey` only for a deliberate manual override; a static value like `raidlands-main` will keep every wipe in one leaderboard season.
 - The plugin calls `/api/server/vip-player.php` and `/api/server/vip-changes.php`, then adds/removes managed Oxide groups.
 - The plugin posts `/api/server/status-heartbeat.php` for the public status panel and `/server/` page.
-- The plugin posts `/api/server/stats-snapshot.php` with KDRScoreboard kills/deaths, PlaytimeTracker playtime, and ServerRewards RP for `/leaderboard/` and `/profile/`.
+- The plugin posts `/api/server/stats-snapshot.php` with KDRScoreboard kills/deaths, PlaytimeTracker playtime, ServerRewards RP, and persistent raid counters for `/leaderboard/` and `/profile/`.
+- Raid counters start when WebsiteVipBridge 1.8.0 is installed (no historical backfill). They count non-melee damage to enemy player-owned building/decay entities, raid explosives that hit those targets, and the player who lands the final blow on an enemy tool cupboard. Owners and native Rust teammates are excluded.
+- Use `websitevip.stats.status` to inspect the active wipe, tracked raid profiles, last successful sync, and last error; use `websitevip.stats.sync` to request an immediate signed snapshot.
 - WebsiteClanBridge posts `/api/server/clan-snapshot.php`, polls `/api/server/clan-actions.php`, and reports `/api/server/clan-action-result.php`.
 
 ## Admin Panel
