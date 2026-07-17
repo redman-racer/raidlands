@@ -260,8 +260,14 @@ function raidlands_airstrike_agent_add_item(
             'latency_ms' => isset($meta['latencyMs']) ? max(0, (int) $meta['latencyMs']) : null,
         ]
     );
+    // Capture the AUTO_INCREMENT value immediately. A subsequent statement on
+    // the same MySQL connection can reset PDO::lastInsertId() to "0".
+    $item_id = (int) raidlands_db_required()->lastInsertId();
+    if ($item_id <= 0) {
+        throw new RuntimeException('The agent item was inserted but its database ID could not be captured.');
+    }
     raidlands_db_execute('UPDATE airstrike_agent_threads SET updated_at = NOW() WHERE id = :id', ['id' => $thread_id]);
-    return (int) raidlands_db_required()->lastInsertId();
+    return $item_id;
 }
 
 function raidlands_airstrike_agent_items(int $thread_id, int $limit = 200): array
@@ -693,6 +699,13 @@ function raidlands_airstrike_agent_create_proposal(int $thread_id, int $assistan
     );
     $compile = raidlands_airstrike_agent_compile_summary($after);
     $diff = raidlands_airstrike_agent_semantic_diff($before, $after);
+    $assistant_item = $assistant_item_id > 0
+        ? raidlands_db_fetch_one(
+            'SELECT id FROM airstrike_agent_items WHERE id = :id AND thread_id = :thread_id LIMIT 1',
+            ['id' => $assistant_item_id, 'thread_id' => $thread_id]
+        )
+        : null;
+    $proposal_assistant_item_id = $assistant_item === null ? null : (int) $assistant_item['id'];
     raidlands_db_execute(
         'INSERT INTO airstrike_agent_proposals
             (thread_id, assistant_item_id, base_source_sha256, candidate_source_sha256, candidate_source_json,
@@ -701,7 +714,7 @@ function raidlands_airstrike_agent_create_proposal(int $thread_id, int $assistan
                  :diff_json, :validation_json, :compile_json)',
         [
             'thread_id' => $thread_id,
-            'assistant_item_id' => $assistant_item_id,
+            'assistant_item_id' => $proposal_assistant_item_id,
             'base_hash' => raidlands_airstrike_agent_source_hash($before),
             'candidate_hash' => raidlands_airstrike_agent_source_hash($after),
             'candidate_json' => raidlands_airstrike_agent_source_json($after),

@@ -234,4 +234,17 @@ airstrike_agent_test(
 $run_function = new ReflectionFunction('raidlands_airstrike_agent_run');
 airstrike_agent_test($run_function->getNumberOfParameters() === 6, 'agent runner accepts an injectable fake Responses transport');
 
+$agent_php = file_get_contents(dirname(__DIR__) . '/includes/airstrike-agent.php');
+$item_insert_position = strpos((string) $agent_php, "'INSERT INTO airstrike_agent_items");
+$item_id_position = strpos((string) $agent_php, '$item_id = (int) raidlands_db_required()->lastInsertId()', (int) $item_insert_position);
+$thread_touch_position = strpos((string) $agent_php, "'UPDATE airstrike_agent_threads SET updated_at = NOW()", (int) $item_insert_position);
+airstrike_agent_test(
+    $item_insert_position !== false
+        && $item_id_position !== false
+        && $thread_touch_position !== false
+        && $item_insert_position < $item_id_position
+        && $item_id_position < $thread_touch_position,
+    'agent item IDs are captured before any subsequent SQL statement can reset lastInsertId'
+);
+
 echo 'Airstrike animation agent tests passed (' . $tests . " assertions).\n";
