@@ -18,6 +18,7 @@
   "include": [
     "assets/ts/airstrike-animation-editor/**/*.ts",
     "assets/ts/server-map-viewer/**/*.ts",
+    "assets/ts/leaderboard-podium/**/*.ts",
     "tests/**/*.test.ts",
     "vite.config.ts"
   ]

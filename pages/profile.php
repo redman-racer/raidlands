@@ -138,7 +138,7 @@ $profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_
         <div class="form-status warning">Run database migration 064 to enable saved podium appearances. The leaderboard will use stable vanilla player presets until then.</div>
       <?php else : ?>
         <div class="podium-profile-grid" data-podium-profile>
-          <section class="leaderboard-podium podium-profile-preview" data-leaderboard-podium data-board="players" data-metric="kills"
+          <section class="leaderboard-podium podium-profile-preview" data-leaderboard-podium data-podium-layout="single" data-board="players" data-metric="kills"
             data-model-base="<?= e(asset_url('media/models/leaderboard/')) ?>" data-decoder-path="<?= e(asset_url('media/models/draco/')) ?>" aria-label="Your podium preview">
             <div class="leaderboard-podium-stage" data-podium-stage aria-hidden="true"></div>
             <div class="leaderboard-podium-cards" data-podium-cards></div>

@@ -5,10 +5,13 @@ import {
   LEADERBOARD_PODIUM_ASSETS, LEADERBOARD_PODIUM_PRESETS, LEADERBOARD_PODIUM_THEMES,
   leaderboardPodiumMetricValue, podiumWearables, podiumWeapon,
 } from "../assets/ts/leaderboard-podium/policy";
-import { Group, Object3D, Vector3 } from "three";
+import { Box3, Group, Object3D, Vector3 } from "three";
 import {
   MANNEQUIN_ANCHORS, normalizeWearableOrigin, podiumCharacterYaw, podiumWeaponLayout,
 } from "../assets/ts/leaderboard-podium/layout";
+import {
+  buildIndustrialPedestal, pedestalConfigForRank, pedestalRanksForLayout,
+} from "../assets/ts/leaderboard-podium/pedestal";
 
 function anchoredRoot(anchors: Record<string, [number, number, number]>): Group {
   const root = new Group();
@@ -78,5 +81,39 @@ describe("leaderboard podium policy", () => {
     expect(leaderboardPodiumMetricValue({ tcs_destroyed: 12 }, "raids", "tcs_destroyed")).toEqual(["12", "TCs broken"]);
     expect(leaderboardPodiumMetricValue({ deaths: 1200 }, "bots", "deaths")).toEqual(["1,200", "deaths"]);
     expect(leaderboardPodiumMetricValue({ total_rp_won: 3200 }, "rp-games", "total-won")).toEqual(["3,200", "RP won"]);
+  });
+
+  it("builds the specified industrial pedestal hierarchy and bounds", () => {
+    const result = buildIndustrialPedestal(pedestalConfigForRank(1, 48));
+    result.root.updateMatrixWorld(true);
+    const bounds = new Box3().setFromObject(result.root); const size = bounds.getSize(new Vector3());
+    expect(result.root.name).toBe("PedestalRootRank1");
+    expect(size.x).toBeCloseTo(2.46, 1);
+    expect(result.standingHeight).toBeCloseTo(0.63, 3);
+    expect(result.root.getObjectByName("BottomFootplate")).toBeTruthy();
+    expect(result.root.getObjectByName("MainDrum")).toBeTruthy();
+    expect(result.root.getObjectByName("UpperRim")).toBeTruthy();
+    expect(result.root.getObjectByName("TopDeck")).toBeTruthy();
+    expect(result.root.getObjectByName("CharacterAnchor")?.position.y).toBeCloseTo(0.63, 3);
+  });
+
+  it("places a readable rank plate on positive Z and applies rank variants", () => {
+    ([1, 2, 3] as const).forEach((rank) => {
+      const config = pedestalConfigForRank(rank, 8);
+      const result = buildIndustrialPedestal(config);
+      expect(config.segments).toBe(32);
+      expect(result.root.getObjectByName("RankPlate")?.position.z).toBeGreaterThan(1);
+      expect(result.root.getObjectByName(`RankNumeral${rank}`)).toBeTruthy();
+      expect(result.standingHeight).toBeCloseTo(0.63 * config.verticalScale, 4);
+    });
+    expect(pedestalConfigForRank(1).horizontalScale).toBe(1);
+    expect(pedestalConfigForRank(2).horizontalScale).toBeCloseTo(0.84);
+    expect(pedestalConfigForRank(3).verticalScale).toBeCloseTo(0.69);
+  });
+
+  it("selects one profile pedestal or the full leaderboard trio", () => {
+    expect(pedestalRanksForLayout("single")).toEqual([1]);
+    expect(pedestalRanksForLayout("trio")).toEqual([1, 2, 3]);
+    expect(pedestalRanksForLayout("unexpected")).toEqual([1, 2, 3]);
   });
 });

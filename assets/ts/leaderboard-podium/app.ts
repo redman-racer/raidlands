@@ -1,8 +1,8 @@
 import {
   ACESFilmicToneMapping, AdditiveBlending, AmbientLight, Box3, BufferAttribute, BufferGeometry, Color,
   CylinderGeometry, DirectionalLight, FogExp2, Float32BufferAttribute, Group, Mesh, MeshStandardMaterial, PlaneGeometry, SphereGeometry,
-  Object3D, PerspectiveCamera, PointLight, Points, PointsMaterial, Scene, SkinnedMesh, SRGBColorSpace,
-  TorusGeometry, Vector3, WebGLRenderer,
+  Object3D, PCFSoftShadowMap, PerspectiveCamera, PointLight, Points, PointsMaterial, Scene, SkinnedMesh, SRGBColorSpace,
+  Vector3, WebGLRenderer,
 } from "three";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
@@ -12,12 +12,9 @@ import {
   leaderboardPodiumMetricValue, podiumWearables, podiumWeapon,
 } from "./policy";
 import { normalizeWearableOrigin, podiumCharacterYaw, podiumWeaponLayout } from "./layout";
+import { buildIndustrialPedestal, pedestalConfigForRank, pedestalRanksForLayout } from "./pedestal";
 
 type Payload = { leaders?: Leader[]; metric?: string; board?: string };
-
-const RANK_X = [0, -3.15, 3.15];
-const RANK_HEIGHTS = [1.7, 1.1, 0.84];
-const RANK_COLORS = [0xe2b854, 0xa8b3b0, 0xb77b52];
 
 function supportsWebGL2(): boolean {
   try { return Boolean(document.createElement("canvas").getContext("webgl2")); } catch { return false; }
@@ -73,7 +70,7 @@ function poseWearable(root: Object3D, rank: number) {
     if (name === "head") node.rotation.y += [0, 0.08, -0.08][rank] || 0;
     if ((node as Mesh).isMesh) {
       const mesh = node as Mesh;
-      mesh.castShadow = false; mesh.receiveShadow = true;
+      mesh.castShadow = true; mesh.receiveShadow = true;
       // Several exported Rust wearable skins omit non-rendering helper joints.
       // Static bounds are fitted above, so skip Three's per-frame skinned culling pass.
       mesh.frustumCulled = false;
@@ -136,14 +133,18 @@ class PodiumScene {
   private disposed = false;
   private generation = 0;
   private reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  private singleLayout: boolean;
+  private rankX = [0, -2.55, 2.55];
+  private standingHeights = [0.63, 0.4725, 0.4347];
 
   constructor(private host: HTMLElement) {
     const stage = host.querySelector<HTMLElement>("[data-podium-stage]"); if (!stage) throw new Error("missing-stage");
     this.renderer = new WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
     this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.7)); this.renderer.outputColorSpace = SRGBColorSpace;
     this.renderer.toneMapping = ACESFilmicToneMapping; this.renderer.toneMappingExposure = 1.08;
-    this.renderer.shadowMap.enabled = false; stage.replaceChildren(this.renderer.domElement);
-    this.camera.position.set(0, 4.05, 10.8); this.camera.lookAt(0, 1.75, 0);
+    this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = PCFSoftShadowMap; stage.replaceChildren(this.renderer.domElement);
+    this.singleLayout = host.dataset.podiumLayout === "single";
+    this.camera.position.set(0, 2.65, this.singleLayout ? 6.4 : 8.4); this.camera.lookAt(0, 1.22, 0);
     const draco = new DRACOLoader(); draco.setDecoderPath(host.dataset.decoderPath || "");
     this.loader = new GLTFLoader(); this.loader.setDRACOLoader(draco); this.loader.setMeshoptDecoder(MeshoptDecoder);
     this.buildStage(); this.observer = new ResizeObserver(() => this.resize()); this.observer.observe(stage); this.resize();
@@ -154,7 +155,9 @@ class PodiumScene {
   private buildStage() {
     this.scene.background = new Color(0x100f0d); this.scene.fog = new FogExp2(0x17130f, .045);
     this.scene.add(new AmbientLight(0x8d8171, 1.15));
-    const key = new DirectionalLight(0xffc184, 4.8); key.position.set(4, 9, 6); this.scene.add(key);
+    const key = new DirectionalLight(0xffc184, 4.8); key.position.set(4, 9, 6); key.castShadow = true;
+    key.shadow.mapSize.set(1024, 1024); key.shadow.camera.near = 1; key.shadow.camera.far = 24;
+    key.shadow.camera.left = -7; key.shadow.camera.right = 7; key.shadow.camera.top = 7; key.shadow.camera.bottom = -2; key.shadow.bias = -0.0006; this.scene.add(key);
     const rim = new DirectionalLight(0xd45a22, 2.4); rim.position.set(-6, 5, -4); this.scene.add(rim);
     const ground = new Mesh(new PlaneGeometry(24, 11), new MeshStandardMaterial({ color: 0x161512, metalness: .12, roughness: .97 }));
     ground.rotation.x = -Math.PI / 2; ground.position.set(0, -.23, -1.8); ground.receiveShadow = true; this.scene.add(ground);
@@ -186,15 +189,13 @@ class PodiumScene {
       const ember = new Mesh(new SphereGeometry(.13, 10, 8), new MeshStandardMaterial({ color: 0xff8a28, emissive: 0xff4a14, emissiveIntensity: 4 }));
       ember.position.copy(fire.position); this.effectsRoot.add(ember);
     });
-    RANK_X.forEach((x, rank) => {
-      const height = RANK_HEIGHTS[rank];
-      const pedestal = new Mesh(new CylinderGeometry(1.4, 1.72, height, 8), new MeshStandardMaterial({ color: [0x59441f, 0x414541, 0x4d3327][rank], metalness: 0.72, roughness: 0.5 }));
-      pedestal.position.set(x, height / 2, 0); pedestal.receiveShadow = true; this.scene.add(pedestal);
-      const lip = new Mesh(new CylinderGeometry(1.46, 1.46, 0.1, 8), new MeshStandardMaterial({ color: RANK_COLORS[rank], emissive: RANK_COLORS[rank], emissiveIntensity: 0.07, metalness: 0.9, roughness: 0.24 }));
-      lip.position.set(x, height + .02, 0); this.scene.add(lip);
-      const ring = new Mesh(new TorusGeometry(1.23, .025, 8, 48), new MeshStandardMaterial({ color: RANK_COLORS[rank], emissive: RANK_COLORS[rank], emissiveIntensity: 1.2 }));
-      ring.rotation.x = Math.PI / 2; ring.position.set(x, height + .085, 0); this.effectsRoot.add(ring);
-      const light = new PointLight(RANK_COLORS[rank], rank === 0 ? 11 : 6, 5.5, 2); light.position.set(x, height + 2.25, -1.1); this.scene.add(light);
+    const pedestalRanks = pedestalRanksForLayout(this.singleLayout ? "single" : "trio");
+    const segments = window.matchMedia("(max-width: 700px)").matches ? 32 : 48;
+    pedestalRanks.forEach((pedestalRank) => {
+      const rank = pedestalRank - 1;
+      const pedestal = buildIndustrialPedestal(pedestalConfigForRank(pedestalRank, segments));
+      pedestal.root.position.x = this.rankX[rank]; this.standingHeights[rank] = pedestal.standingHeight;
+      this.scene.add(pedestal.root);
     });
     const particles = new BufferGeometry(); const positions: number[] = [];
     for (let index = 0; index < 54; index++) positions.push((Math.random() - .5) * 12, .35 + Math.random() * 4.5, -1.8 + Math.random() * 2.5);
@@ -227,10 +228,10 @@ class PodiumScene {
     }
     if (generation !== this.generation || this.disposed || !roots.length) return;
     const visual = new Group(); roots.forEach((root) => visual.add(root));
-    const box = staticBounds(visual); const size = box.getSize(new Vector3()); visual.scale.setScalar(2.65 / Math.max(size.y, .01));
+    const box = staticBounds(visual); const size = box.getSize(new Vector3()); visual.scale.setScalar(1.8 / Math.max(size.y, .01));
     const fitted = staticBounds(visual); const center = fitted.getCenter(new Vector3());
     visual.position.x -= center.x; visual.position.y -= fitted.min.y; visual.position.z -= center.z;
-    const wrapper = new Group(); wrapper.add(visual); wrapper.position.set(RANK_X[rank], RANK_HEIGHTS[rank] + .08, 0);
+    const wrapper = new Group(); wrapper.add(visual); wrapper.position.set(this.rankX[rank], this.standingHeights[rank] + .01, 0);
     wrapper.rotation.y = podiumCharacterYaw(rank); wrapper.userData.baseY = wrapper.position.y; wrapper.userData.phase = rank * 1.7;
     const weaponKey = podiumWeapon(leader);
     if (weaponKey) {
@@ -292,7 +293,9 @@ class PodiumScene {
     const stage = this.host.querySelector<HTMLElement>("[data-podium-stage]"); if (!stage) return;
     const width = Math.max(1, stage.clientWidth); const height = Math.max(1, stage.clientHeight);
     this.camera.aspect = width / height;
-    this.camera.position.z = this.camera.aspect < .9 ? 15.8 : this.camera.aspect < 1.35 ? 12.6 : 10.8;
+    this.camera.position.z = this.singleLayout
+      ? (this.camera.aspect < .9 ? 9.4 : this.camera.aspect < 1.35 ? 7.8 : 6.4)
+      : (this.camera.aspect < .9 ? 13.2 : this.camera.aspect < 1.35 ? 10.4 : 8.4);
     this.camera.updateProjectionMatrix(); this.renderer.setSize(width, height, false);
   }
 
@@ -308,7 +311,18 @@ class PodiumScene {
 
   private status(message: string) { const node = this.host.querySelector<HTMLElement>("[data-podium-status]"); if (node) node.textContent = message; }
   private fail(message: string) { this.host.dataset.podiumState = "fallback"; this.status(message); this.dispose(); }
-  dispose() { this.disposed = true; cancelAnimationFrame(this.frame); this.observer.disconnect(); this.renderer.dispose(); }
+  dispose() {
+    if (this.disposed) return;
+    this.disposed = true; cancelAnimationFrame(this.frame); this.observer.disconnect();
+    const geometries = new Set<BufferGeometry>(); const materials = new Set<MeshStandardMaterial | PointsMaterial>();
+    this.scene.traverse((node) => {
+      const mesh = node as Mesh;
+      if (mesh.isMesh && mesh.geometry) geometries.add(mesh.geometry);
+      if (mesh.isMesh) (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).forEach((material) => materials.add(material as MeshStandardMaterial));
+      if ((node as Points).isPoints) { const points = node as Points; geometries.add(points.geometry); materials.add(points.material as PointsMaterial); }
+    });
+    geometries.forEach((geometry) => geometry.dispose()); materials.forEach((material) => material.dispose()); this.renderer.dispose();
+  }
 }
 
 const instances = new Map<HTMLElement, PodiumScene>();
