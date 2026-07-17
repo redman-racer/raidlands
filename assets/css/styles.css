@@ -1985,6 +1985,19 @@ h3,
   overflow-x: auto;
 }
 
+.server-terrain-viewer.is-browser-fill > .server-terrain-controls {
+  position: absolute;
+  z-index: 40;
+  top: max(64px, calc(env(safe-area-inset-top) + 64px));
+  right: max(10px, env(safe-area-inset-right));
+  left: max(10px, env(safe-area-inset-left));
+  max-height: min(42dvh, 360px);
+  overflow: auto;
+  background: rgb(7 8 8 / 92%);
+  box-shadow: 0 14px 36px rgb(0 0 0 / 42%);
+  backdrop-filter: blur(12px);
+}
+
 .server-terrain-viewer canvas {
   position: relative;
   z-index: 1;

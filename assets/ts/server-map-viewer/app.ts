@@ -1351,6 +1351,9 @@ class TerrainViewer {
   private mobileRise = 0;
   private browserFillParent: ParentNode | null = null;
   private browserFillNextSibling: ChildNode | null = null;
+  private browserFillControls: HTMLElement | null = null;
+  private browserFillControlsParent: ParentNode | null = null;
+  private browserFillControlsNextSibling: ChildNode | null = null;
   private readonly tourStyle: CameraTourStyle;
   private readonly actionHighlights = new Map<ActionHighlightSource, ActionHighlightFocus>();
   private actionTourStartedAt = performance.now();
@@ -3466,9 +3469,17 @@ diffuseColor.a = mix(diffuseColor.a, 1.0, raidlandsWaterHorizonFade);
 
   private setBrowserFill(enabled: boolean): void {
     if (enabled && !this.root.classList.contains("is-browser-fill")) {
+      const controls = this.root.closest<HTMLElement>(".server-terrain-panel")
+        ?.querySelector<HTMLElement>("[data-map-viewer-controls]") || null;
+      if (controls) {
+        this.browserFillControls = controls;
+        this.browserFillControlsParent = controls.parentNode;
+        this.browserFillControlsNextSibling = controls.nextSibling;
+      }
       this.browserFillParent = this.root.parentNode;
       this.browserFillNextSibling = this.root.nextSibling;
       document.body.appendChild(this.root);
+      if (controls) this.root.appendChild(controls);
     }
     this.root.classList.toggle("is-browser-fill", enabled);
     if (!enabled && this.browserFillParent) {
@@ -3479,6 +3490,16 @@ diffuseColor.a = mix(diffuseColor.a, 1.0, raidlandsWaterHorizonFade);
       }
       this.browserFillParent = null;
       this.browserFillNextSibling = null;
+      if (this.browserFillControls && this.browserFillControlsParent) {
+        if (this.browserFillControlsNextSibling?.parentNode === this.browserFillControlsParent) {
+          this.browserFillControlsParent.insertBefore(this.browserFillControls, this.browserFillControlsNextSibling);
+        } else {
+          this.browserFillControlsParent.appendChild(this.browserFillControls);
+        }
+      }
+      this.browserFillControls = null;
+      this.browserFillControlsParent = null;
+      this.browserFillControlsNextSibling = null;
     }
     this.floatingControls?.querySelector<HTMLButtonElement>("[data-map-browser-fill]")
       ?.setAttribute("aria-pressed", String(enabled));

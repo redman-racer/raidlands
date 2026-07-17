@@ -46,6 +46,8 @@ describe("server map environment quality", () => {
     expect(low.fogAltitudeDensityFloor).toBeLessThan(medium.fogAltitudeDensityFloor);
     expect(medium.fogAltitudeDensityFloor).toBeLessThan(high.fogAltitudeDensityFloor);
     expect(high.fogAltitudeDensityFloor).toBeLessThan(ultra.fogAltitudeDensityFloor);
+    expect(low.pixelRatioCap).toBe(1);
+    expect(low.composerPixelRatioCap).toBe(0.75);
   });
 
   it("degrades effects while preserving the requested quality", () => {
