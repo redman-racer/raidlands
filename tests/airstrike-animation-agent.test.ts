@@ -42,11 +42,17 @@ describe("airstrike agent editor integration contract", () => {
     ]);
 
     expect(markup).toContain('data-editor-right-tab="agent"');
+    expect(markup).toContain('data-editor-tool-card="ordnance"');
+    expect(markup).toContain('data-editor-tool-dialog="flight-path"');
+    expect(markup).toContain('data-editor-tool-ai="ordnance"');
+    expect(markup).toContain('data-agent-context-rail data-agent-scope="ordnance"');
     expect(markup).toContain("data-agent-apply");
     expect(markup).toContain("data-agent-discard");
     expect(markup).toContain("data-agent-undo");
     expect(markup).toContain("data-agent-rerun");
     expect(app).toContain("agentProposalId: this.agent.proposalIdForSave()");
+    expect(app).toContain("commitWorkspaceProposal");
+    expect(app).toContain("canonicalJson(this.toolSession.profile)");
     expect(viewport).toContain('route.name = "agent-proposal-route"');
     expect(viewport).toContain("getReleasePreviewEvents(profile, this.options.metadata)");
   });

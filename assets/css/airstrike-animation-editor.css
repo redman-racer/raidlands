@@ -14,7 +14,7 @@
 .airstrike-editor {
   --editor-toolbar-height: 84px;
   --editor-left-width: 292px;
-  --editor-right-width: 420px;
+  --editor-right-width: 340px;
   --editor-bottom-height: 166px;
   --editor-dock-gap: 16px;
   --editor-panel-edge: 16px;
@@ -1209,6 +1209,157 @@
   min-height: 28px;
 }
 
+.airstrike-editor-toolbox {
+  min-height: 0;
+  display: grid;
+  align-content: start;
+  gap: 10px;
+  overflow: auto;
+  padding: 10px;
+}
+
+.airstrike-editor-feedback-strip {
+  padding: 9px 10px;
+  border: 1px solid rgba(129, 167, 174, .2);
+  border-radius: 6px;
+  background: rgba(10, 17, 19, .82);
+  color: #aebfc3;
+  font-size: 11px;
+  line-height: 1.4;
+  white-space: pre-wrap;
+}
+
+.airstrike-editor-feedback-strip.is-error { border-color: rgba(219, 75, 75, .5); color: #ffc5c5; }
+.airstrike-editor-feedback-strip.is-success { border-color: rgba(72, 190, 128, .5); color: #b9f5d4; }
+
+.airstrike-editor-tool-card {
+  display: grid;
+  gap: 8px;
+  padding: 11px;
+  border: 1px solid rgba(129, 167, 174, .22);
+  border-radius: 8px;
+  background: linear-gradient(145deg, rgba(20, 28, 31, .96), rgba(9, 14, 16, .96));
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, .03);
+}
+
+.airstrike-editor-tool-card header,
+.airstrike-editor-tool-card > div,
+.airstrike-editor-tool-card nav {
+  display: flex;
+  align-items: center;
+  gap: 7px;
+}
+
+.airstrike-editor-tool-card header { justify-content: space-between; }
+.airstrike-editor-tool-card header span { font-size: 12px; font-weight: 900; text-transform: uppercase; }
+.airstrike-editor-tool-card header small { color: #7f9499; font-size: 9px; font-weight: 800; text-transform: uppercase; }
+.airstrike-editor-tool-card > strong { color: #e9f4f6; font-size: 13px; }
+.airstrike-editor-tool-card > p { min-height: 30px; margin: 0; color: #91a4a8; font-size: 11px; line-height: 1.4; }
+.airstrike-editor-tool-card nav { margin-top: -3px; }
+.airstrike-editor-tool-card > div { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, .8fr); }
+.airstrike-editor-tool-card[data-editor-tool-card="view-validation"] > div { grid-template-columns: 1fr; }
+.airstrike-editor-tool-card button,
+.airstrike-workspace-collection button,
+.airstrike-ordnance-editor-actions button,
+.airstrike-ordnance-tabs button,
+.airstrike-tool-footer button,
+.airstrike-tool-head > button,
+.airstrike-context-agent button {
+  appearance: none;
+  min-height: 30px;
+  padding: 6px 9px;
+  border: 1px solid rgba(129, 167, 174, .25);
+  border-radius: 5px;
+  background: rgba(13, 23, 26, .94);
+  color: #d8edf1;
+  font: 700 10px/1.2 var(--font-body, Arial, sans-serif);
+  cursor: pointer;
+}
+.airstrike-editor-tool-card button:hover,
+.airstrike-tool-footer button:hover,
+.airstrike-context-agent button:hover { border-color: rgba(54, 197, 230, .65); background: rgba(19, 56, 64, .9); }
+.airstrike-editor-tool-card nav button { width: 30px; min-height: 24px; padding: 2px; }
+
+.airstrike-tool-dialog {
+  width: min(860px, calc(100vw - 48px));
+  max-width: none;
+  max-height: calc(100vh - 48px);
+  padding: 0;
+  border: 1px solid rgba(129, 167, 174, .36);
+  border-radius: 10px;
+  overflow: hidden;
+  background: #0a0f11;
+  color: #edf3f4;
+  box-shadow: 0 28px 90px rgba(0, 0, 0, .72);
+}
+.airstrike-tool-dialog-wide { width: min(1180px, calc(100vw - 48px)); }
+.airstrike-tool-dialog::backdrop { background: rgba(1, 4, 5, .58); backdrop-filter: blur(2px); }
+.airstrike-tool-shell { max-height: calc(100vh - 50px); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
+.airstrike-tool-head,
+.airstrike-tool-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; background: rgba(1, 5, 6, .55); }
+.airstrike-tool-head { border-bottom: 1px solid rgba(129, 167, 174, .18); }
+.airstrike-tool-footer { border-top: 1px solid rgba(129, 167, 174, .18); justify-content: flex-end; }
+.airstrike-tool-footer > span { margin-right: auto; color: #91a4a8; font-size: 11px; }
+.airstrike-tool-footer [data-editor-tool-apply] { border-color: rgba(54, 197, 230, .55); background: rgba(19, 83, 96, .72); }
+.airstrike-tool-head h2,
+.airstrike-tool-head p { margin: 0; }
+.airstrike-tool-head h2 { margin-top: 2px; font-size: 18px; }
+.airstrike-tool-head > button { width: 34px; padding: 0; font-size: 20px; }
+.airstrike-tool-layout { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 330px; overflow: hidden; }
+.airstrike-tool-content { min-width: 0; min-height: 0; display: grid; align-content: start; gap: 12px; padding: 14px; overflow: auto; }
+.airstrike-tool-content input,
+.airstrike-tool-content select,
+.airstrike-tool-content textarea { width: 100%; box-sizing: border-box; }
+.airstrike-tool-content textarea { resize: vertical; }
+.airstrike-workspace-section { display: grid; align-content: start; gap: 10px; padding: 12px; border: 1px solid rgba(129, 167, 174, .17); border-radius: 7px; background: rgba(7, 12, 14, .72); }
+.airstrike-workspace-section h3 { margin: 0; font-size: 13px; }
+
+.airstrike-flight-workspace { grid-template-columns: 270px minmax(0, 1fr); align-content: stretch; }
+.airstrike-workspace-collection { min-width: 0; display: grid; align-content: start; gap: 9px; padding: 10px; border: 1px solid rgba(129, 167, 174, .18); border-radius: 7px; background: rgba(3, 8, 9, .68); overflow: auto; }
+.airstrike-workspace-collection header { display: grid; gap: 7px; }
+.airstrike-workspace-collection header > div { display: flex; flex-wrap: wrap; gap: 5px; }
+.airstrike-workspace-editor { min-width: 0; display: grid; align-content: start; gap: 10px; overflow: auto; }
+.airstrike-flight-workspace > .airstrike-workspace-editor { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+
+.airstrike-ordnance-workspace { grid-template-rows: auto auto minmax(0, 1fr); overflow: hidden; }
+.airstrike-ordnance-overview { display: grid; grid-template-columns: minmax(220px, 320px) minmax(0, 1fr); align-items: end; gap: 12px; }
+.airstrike-ordnance-overview > strong { padding: 9px 10px; border: 1px solid rgba(249, 115, 22, .25); border-radius: 6px; color: #ffd7b5; background: rgba(48, 28, 14, .52); font-size: 11px; }
+.airstrike-ordnance-grid { min-height: 0; display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 12px; overflow: hidden; }
+.airstrike-ordnance-collections { align-content: start; }
+.airstrike-ordnance-collections section { display: grid; gap: 7px; }
+.airstrike-ordnance-collections section + section { padding-top: 10px; border-top: 1px solid rgba(129, 167, 174, .15); }
+.airstrike-ordnance-collections section > header { display: flex; align-items: center; justify-content: space-between; }
+.airstrike-ordnance-editor-actions,
+.airstrike-ordnance-tabs { display: flex; gap: 7px; }
+.airstrike-ordnance-tabs { padding: 3px; border: 1px solid rgba(129, 167, 174, .18); border-radius: 7px; background: rgba(1, 5, 6, .48); }
+.airstrike-ordnance-tabs button { flex: 1 1 0; }
+.airstrike-ordnance-tabs button.is-active { border-color: rgba(249, 115, 22, .72); background: rgba(95, 48, 15, .78); color: #fff1df; }
+.airstrike-ordnance-field-section[hidden],
+[data-editor-manual-collection][hidden],
+[data-editor-repeated-collection][hidden] { display: none !important; }
+
+.airstrike-context-agent { min-width: 0; min-height: 0; display: grid; grid-template-rows: auto auto auto minmax(80px, 1fr) auto auto; gap: 8px; padding: 12px; border-left: 1px solid rgba(167, 139, 250, .25); background: linear-gradient(180deg, rgba(38, 25, 62, .42), rgba(10, 12, 18, .94)); overflow: hidden; }
+.airstrike-context-agent.is-collapsed { grid-template-rows: auto; align-self: start; }
+.airstrike-context-agent.is-collapsed > :not(.airstrike-context-agent-head) { display: none; }
+.airstrike-context-agent-head,
+.airstrike-context-agent-mode,
+.airstrike-context-agent-actions,
+.airstrike-context-agent-form > div { display: flex; align-items: center; gap: 6px; }
+.airstrike-context-agent-head { justify-content: space-between; }
+.airstrike-context-agent-head strong { color: #eee9ff; font-size: 12px; }
+.airstrike-context-agent-mode button.is-active { border-color: rgba(167, 139, 250, .72); background: rgba(82, 52, 130, .62); }
+.airstrike-context-agent-status { color: #b7a9d8; font-size: 10px; line-height: 1.35; }
+.airstrike-context-agent-output { min-height: 0; overflow: auto; padding: 8px; border: 1px solid rgba(167, 139, 250, .18); border-radius: 6px; color: #ddd6fe; background: rgba(5, 6, 11, .52); font-size: 11px; line-height: 1.45; white-space: pre-wrap; }
+.airstrike-context-agent-proposal { max-height: 180px; overflow: auto; font-size: 10px; }
+.airstrike-context-agent-proposal ul { margin: 5px 0; padding-left: 17px; }
+.airstrike-context-agent-form { display: grid; gap: 6px; }
+.airstrike-context-agent-form textarea { width: 100%; min-height: 70px; box-sizing: border-box; resize: vertical; border: 1px solid rgba(167, 139, 250, .28); border-radius: 6px; padding: 8px; background: rgba(2, 4, 8, .72); color: #f1eeff; }
+.airstrike-context-agent-form [data-agent-context-send] { margin-left: auto; }
+.airstrike-context-agent-suggestions { display: flex; flex-wrap: wrap; gap: 5px; }
+.airstrike-context-agent-suggestions button { flex: 0 1 auto; min-height: 26px; color: #c4b5fd; }
+.airstrike-review-compile { display: grid; gap: 7px; }
+.airstrike-review-compile pre { max-height: 220px; overflow: auto; white-space: pre-wrap; font-size: 10px; }
+
 .airstrike-editor-checkbox {
   display: inline-flex;
   align-items: center;
@@ -1825,8 +1976,12 @@
 @media (max-width: 1320px) {
   .airstrike-editor {
     --editor-left-width: 260px;
-    --editor-right-width: 360px;
+    --editor-right-width: 300px;
   }
+
+  .airstrike-tool-layout { grid-template-columns: minmax(0, 1fr); overflow: auto; }
+  .airstrike-context-agent { border-top: 1px solid rgba(167, 139, 250, .25); border-left: 0; min-height: 300px; }
+  .airstrike-flight-workspace > .airstrike-workspace-editor { grid-template-columns: minmax(0, 1fr); }
 
   .airstrike-editor-toolbar .btn {
     padding-inline: 10px;

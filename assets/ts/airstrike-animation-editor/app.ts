@@ -55,7 +55,8 @@ import {
 } from "./editor/waypoint-source";
 import type { EditorSourceProfile, PayloadEventFields, SourcePayloadEvent, VehiclePreviewMetadataFile } from "./types";
 import { payloadCatalogEntry } from "./payload-catalog";
-import { AirstrikeAgentController, type AgentEditorContext } from "./editor/agent";
+import { canonicalJson } from "./canonical-json";
+import { AirstrikeAgentController, type AgentEditorContext, type AgentWorkspaceScope } from "./editor/agent";
 
 interface EditorConfig {
   profileKey?: string;
@@ -91,9 +92,13 @@ interface EditorElements {
   key: HTMLInputElement;
   name: HTMLInputElement;
   vehicle: HTMLSelectElement;
+  notes: HTMLTextAreaElement;
   feedback: HTMLElement;
+  feedbackSummary: HTMLElement;
   output: HTMLElement;
+  outputReview: HTMLElement;
   compileSummary: HTMLElement;
+  compileSummaryReview: HTMLElement;
   list: HTMLElement;
   search: HTMLInputElement;
   profileFilter: HTMLSelectElement;
@@ -116,9 +121,12 @@ interface EditorElements {
   rotationMode: HTMLSelectElement;
   releaseMode: HTMLSelectElement;
   manualReleaseList: HTMLElement;
+  repeatedReleaseList: HTMLElement;
   manualReleaseEditor: HTMLElement;
   repeatedReleaseEditor: HTMLElement;
   releaseTimeline: HTMLElement;
+  workspaceReleaseTimeline: HTMLElement;
+  ordnanceScheduleSummary: HTMLElement;
   vehicleMeta: HTMLElement;
   normalizeTimes: HTMLButtonElement;
   inferSpeeds: HTMLButtonElement;
@@ -150,12 +158,32 @@ interface EditorState {
   selectedWaypointId: string;
   selectedReleaseId: string;
   selectedRepeatedGroupId: string;
+  selectedOrdnanceKind: "event" | "group";
   scrubTime: number;
   playing: boolean;
   vehicleFilter: string;
 }
 
 type PanelName = "left" | "right" | "bottom";
+type ToolId = Exclude<AgentWorkspaceScope, "full">;
+
+interface ToolSession {
+  tool: ToolId;
+  profile: EditorSourceProfile;
+  dirty: boolean;
+  selectedWaypointId: string;
+  selectedReleaseId: string;
+  selectedRepeatedGroupId: string;
+  selectedOrdnanceKind: "event" | "group";
+  scrubTime: number;
+  opener: HTMLElement | null;
+}
+
+interface ValidationState {
+  status: "not-run" | "running" | "passed" | "failed";
+  errors: number;
+  warnings: number;
+}
 
 interface RecoveryDraft {
   savedAt: string;
@@ -313,18 +341,25 @@ class AirstrikeEditorApp {
     selectedWaypointId: "",
     selectedReleaseId: "",
     selectedRepeatedGroupId: "",
+    selectedOrdnanceKind: "event",
     scrubTime: 0,
     playing: false,
     vehicleFilter: "all",
   };
   private readonly viewport: AirstrikeViewport;
   private readonly agent: AirstrikeAgentController;
+  private toolSession: ToolSession | null = null;
+  private activeTool: ToolId | null = null;
+  private activeToolOpener: HTMLElement | null = null;
+  private validationState: ValidationState = { status: "not-run", errors: 0, warnings: 0 };
+  private ordnanceTab: "basic" | "targeting" | "advanced" = "basic";
   private metadata: VehiclePreviewMetadataFile | null = null;
   private playbackFrame = 0;
   private playbackStartedAt = 0;
   private playbackStartedTime = 0;
   private playbackRunId = 0;
   private suppressNextPlayClick = false;
+  // Legacy palette helpers remain inert for compatibility with stored layouts.
   private paletteDragId = "";
 
   public constructor(config: EditorConfig, elements: EditorElements) {
@@ -354,12 +389,15 @@ class AirstrikeEditorApp {
       getContext: () => this.agentEditorContext(),
       applySource: (source) => this.applyProfile(source, true),
       previewSource: (source) => this.viewport.updateProposalProfile(source),
+      workspaceScope: () => this.activeTool ?? "full",
+      navigateDiff: (area, id) => this.navigateAgentDiff(area, id),
+      openFullAgent: () => void this.openFullAgentFromWorkspace(),
     });
     this.bindEvents();
     this.bindMenus();
     this.restorePanelState();
-    this.initializePaletteDock();
     this.enhanceNumericControls();
+    this.initializeToolWorkspaces();
   }
 
   public async initialize(): Promise<void> {
@@ -395,6 +433,8 @@ class AirstrikeEditorApp {
       selectedWaypointId: this.state.selectedWaypointId,
       selectedReleaseId: this.state.selectedReleaseId,
       selectedRepeatedGroupId: this.state.selectedRepeatedGroupId,
+      activeWorkspace: this.activeTool ?? "full",
+      allowedMutationAreas: this.allowedMutationAreas(this.activeTool ?? "full"),
       viewport: {
         sceneExtras: this.elements.sceneExtras.checked,
         terrainReference: this.elements.terrainReference.checked,
@@ -411,6 +451,7 @@ class AirstrikeEditorApp {
     this.elements.key.addEventListener("change", () => this.syncIdentityIntoSource());
     this.elements.name.addEventListener("change", () => this.syncIdentityIntoSource());
     this.elements.vehicle.addEventListener("change", () => this.syncIdentityIntoSource());
+    this.elements.notes.addEventListener("change", () => this.syncIdentityIntoSource());
     this.elements.rotationMode.addEventListener("change", () => this.handleRotationModeChange());
     this.elements.search.addEventListener("input", () => this.renderProfiles());
     this.elements.profileFilter.addEventListener("change", () => this.renderProfiles());
@@ -448,12 +489,15 @@ class AirstrikeEditorApp {
     });
     this.elements.sceneExtras.addEventListener("change", () => {
       this.viewport.setSceneExtrasEnabled(this.elements.sceneExtras.checked);
+      this.renderInspectorSummaries();
     });
     this.elements.terrainReference.addEventListener("change", () => {
       this.viewport.setTerrainReferenceEnabled(this.elements.terrainReference.checked);
+      this.renderInspectorSummaries();
     });
     this.elements.groundGrid.addEventListener("change", () => {
       this.viewport.setGroundGridEnabled(this.elements.groundGrid.checked);
+      this.renderInspectorSummaries();
     });
     this.elements.releaseVisibility.addEventListener("change", () => this.handleReleaseVisibilityChange());
     this.elements.globalSpeed.addEventListener("input", () => this.handleGlobalSpeedInput());
@@ -462,6 +506,8 @@ class AirstrikeEditorApp {
     this.elements.addRelease.addEventListener("click", () => this.handleAddRelease());
     this.elements.duplicateRelease.addEventListener("click", () => this.handleDuplicateRelease());
     this.elements.deleteRelease.addEventListener("click", () => this.handleDeleteRelease());
+    this.elements.root.querySelectorAll<HTMLButtonElement>("[data-editor-add-manual-release]").forEach((button) => button.addEventListener("click", () => this.handleAddManualRelease()));
+    this.elements.root.querySelectorAll<HTMLButtonElement>("[data-editor-add-repeated-group]").forEach((button) => button.addEventListener("click", () => this.handleAddRepeatedGroup()));
     this.elements.frameRoute.addEventListener("click", () => this.viewport.frameRoute());
     this.elements.frameVehicle.addEventListener("click", () => this.viewport.frameVehicle());
     this.elements.frameTarget.addEventListener("click", () => this.viewport.frameTarget());
@@ -489,22 +535,23 @@ class AirstrikeEditorApp {
     this.elements.root.querySelectorAll<HTMLButtonElement>("[data-editor-publish]").forEach((button) => {
       button.addEventListener("click", () => void this.publish(button.dataset.editorPublish === "sync"));
     });
-    this.elements.root.querySelectorAll<HTMLButtonElement>("[data-editor-focus-palette]").forEach((button) => {
-      button.addEventListener("click", () => this.focusPalette(String(button.dataset.editorFocusPalette || "")));
-    });
+    this.elements.root.querySelectorAll<HTMLButtonElement>("[data-editor-step-selection]").forEach((button) => button.addEventListener("click", () => this.stepInspectorSelection(String(button.dataset.editorStepSelection || ""))));
     this.elements.root.querySelectorAll<HTMLInputElement>("[data-editor-waypoint-field]").forEach((input) => {
       input.addEventListener("input", () => this.handleWaypointFieldInput(input));
     });
     document.addEventListener("keydown", (event) => {
       if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === "s") {
         event.preventDefault();
-        void this.saveDraft();
+        void (async () => {
+          if (this.toolSession) await this.applyActiveTool();
+          await this.saveDraft();
+        })();
       }
     });
   }
 
   private enhanceNumericControls(root: ParentNode = this.elements.root): void {
-    root.querySelectorAll<HTMLInputElement>(".airstrike-editor-right input[type='number']").forEach((input) => {
+    root.querySelectorAll<HTMLInputElement>(".airstrike-tool-dialog input[type='number']").forEach((input) => {
       if (input.dataset.editorSliderEnhanced === "1") {
         this.syncNumericControl(input);
         return;
@@ -752,6 +799,9 @@ class AirstrikeEditorApp {
     this.elements.feedback.textContent = message;
     this.elements.feedback.classList.toggle("is-error", type === "error");
     this.elements.feedback.classList.toggle("is-success", type === "success");
+    this.elements.feedbackSummary.textContent = message;
+    this.elements.feedbackSummary.classList.toggle("is-error", type === "error");
+    this.elements.feedbackSummary.classList.toggle("is-success", type === "success");
   }
 
   private recoveryKey(): string {
@@ -811,9 +861,17 @@ class AirstrikeEditorApp {
     if (this.state.loading) {
       return;
     }
+    this.validationState = { status: "not-run", errors: 0, warnings: 0 };
+    if (this.toolSession) {
+      this.setStatus("Previewing workspace changes");
+      this.updateToolSessionStatus();
+      this.renderInspectorSummaries();
+      return;
+    }
     this.setDirty(true);
     this.setStatus("Draft has local changes");
     this.persistRecoveryDraft(this.elements.source.value);
+    this.renderInspectorSummaries();
   }
 
   private writeSource(profile: EditorSourceProfile): void {
@@ -822,6 +880,7 @@ class AirstrikeEditorApp {
 
   private loadSource(source: EditorSourceProfile, profileKey: string, version: number): void {
     source = normalizeProfilePayloadTargeting(source);
+    this.validationState = { status: "not-run", errors: 0, warnings: 0 };
     this.state.loading = true;
     this.state.profile = source;
     this.state.profileKey = profileKey || "";
@@ -836,11 +895,14 @@ class AirstrikeEditorApp {
     this.renderSpeedControls();
     this.renderReleaseControls();
     this.renderTimeControls();
+    this.renderInspectorSummaries();
     this.viewport.updateProfile(source, this.state.selectedWaypointId, this.state.scrubTime);
     this.handleReleaseVisibilityChange();
     this.viewport.updateSelectedRelease(this.state.selectedReleaseId);
     this.elements.output.textContent = "";
+    this.elements.outputReview.textContent = "";
     this.elements.compileSummary.textContent = "No compiled track yet";
+    this.elements.compileSummaryReview.textContent = "No compiled track yet";
     this.showFeedback("Load or edit waypoints, then validate before publishing.", "");
     this.setDirty(false);
     this.setStatus(this.state.baseVersion > 0 ? `Draft v${this.state.baseVersion} loaded` : "New unsaved profile");
@@ -859,6 +921,7 @@ class AirstrikeEditorApp {
     this.renderSpeedControls();
     this.renderReleaseControls();
     this.renderTimeControls();
+    this.renderInspectorSummaries();
     if (refreshViewport) {
       this.viewport.updateProfile(source, this.state.selectedWaypointId, this.state.scrubTime);
       this.viewport.updateSelectedRelease(this.state.selectedReleaseId);
@@ -872,6 +935,7 @@ class AirstrikeEditorApp {
     this.elements.key.value = String(source.ProfileKey || "");
     this.elements.name.value = String(source.DisplayName || "");
     this.elements.vehicle.value = String(source.Vehicle || "f15");
+    this.elements.notes.value = String(source.EditorMetadata?.Notes || "");
     this.elements.rotationMode.value = source.RotationMode || "follow_path_plus_offset";
     this.elements.key.disabled = this.state.baseVersion > 0;
     this.elements.title.textContent = String(source.DisplayName || source.ProfileKey || "New profile");
@@ -894,6 +958,8 @@ class AirstrikeEditorApp {
     source.ProfileKey = String(this.elements.key.value || source.ProfileKey || "").trim().toLowerCase();
     source.DisplayName = String(this.elements.name.value || source.DisplayName || "").trim();
     source.Vehicle = String(this.elements.vehicle.value || source.Vehicle || "f15");
+    source.EditorMetadata = source.EditorMetadata || { Notes: "", Tags: [], VehiclePreviewOverrides: {} };
+    source.EditorMetadata.Notes = String(this.elements.notes.value || "").trim();
     this.state.profile = source;
     this.writeSource(source);
     return source;
@@ -1102,6 +1168,7 @@ class AirstrikeEditorApp {
     const profile = this.state.profile;
     this.elements.releaseMode.value = profile?.ReleaseSource.Mode ?? "manual";
     this.elements.manualReleaseList.textContent = "";
+    this.elements.repeatedReleaseList.textContent = "";
     this.elements.manualReleaseEditor.textContent = "";
     this.elements.repeatedReleaseEditor.textContent = "";
     if (!profile) {
@@ -1111,6 +1178,7 @@ class AirstrikeEditorApp {
       return;
     }
     if (profile.ReleaseSource.Mode === "manual") {
+      this.state.selectedOrdnanceKind = "event";
       this.elements.addRelease.textContent = "Add event";
       this.elements.duplicateRelease.textContent = "Duplicate event";
       this.elements.deleteRelease.textContent = "Delete event";
@@ -1120,6 +1188,7 @@ class AirstrikeEditorApp {
       this.renderManualReleaseList(profile);
       this.renderManualReleaseEditor(profile);
     } else if (profile.ReleaseSource.Mode === "repeated") {
+      this.state.selectedOrdnanceKind = "group";
       this.ensureSelectedRepeatedGroup(profile);
       const groups = getRepeatedReleaseGroups(profile);
       const selected = groups.some((group) => group.Id === this.state.selectedRepeatedGroupId);
@@ -1133,17 +1202,25 @@ class AirstrikeEditorApp {
       this.renderRepeatedReleaseEditor(profile);
     } else {
       this.ensureSelectedRepeatedGroup(profile);
-      this.elements.addRelease.textContent = "Add event";
-      this.elements.duplicateRelease.textContent = "Duplicate event";
-      this.elements.deleteRelease.textContent = "Delete event";
+      const selectedGroup = getRepeatedReleaseGroups(profile).some((group) => group.Id === this.state.selectedRepeatedGroupId);
+      const editingGroup = this.state.selectedOrdnanceKind === "group";
+      this.elements.addRelease.textContent = editingGroup ? "Add group" : "Add event";
+      this.elements.duplicateRelease.textContent = editingGroup ? "Duplicate group" : "Duplicate event";
+      this.elements.deleteRelease.textContent = editingGroup ? "Delete group" : "Delete event";
       this.elements.addRelease.disabled = false;
-      this.elements.duplicateRelease.disabled = !this.selectedManualRelease();
-      this.elements.deleteRelease.disabled = !this.selectedManualRelease();
+      this.elements.duplicateRelease.disabled = editingGroup ? !selectedGroup : !this.selectedManualRelease();
+      this.elements.deleteRelease.disabled = editingGroup ? !selectedGroup : !this.selectedManualRelease();
       this.renderManualReleaseList(profile);
       this.renderRepeatedReleaseList(profile);
-      this.renderManualReleaseEditor(profile);
-      this.renderRepeatedReleaseEditor(profile);
+      if (editingGroup) this.renderRepeatedReleaseEditor(profile);
+      else this.renderManualReleaseEditor(profile);
     }
+    const manualCollection = this.elements.root.querySelector<HTMLElement>("[data-editor-manual-collection]");
+    const repeatedCollection = this.elements.root.querySelector<HTMLElement>("[data-editor-repeated-collection]");
+    if (manualCollection) manualCollection.hidden = profile.ReleaseSource.Mode === "repeated";
+    if (repeatedCollection) repeatedCollection.hidden = profile.ReleaseSource.Mode === "manual";
+    this.renderOrdnanceTab();
+    this.renderOrdnanceScheduleSummary();
     this.enhanceNumericControls(this.elements.root);
   }
 
@@ -1161,7 +1238,7 @@ class AirstrikeEditorApp {
     for (const event of profile.ReleaseSource.Events) {
       const button = document.createElement("button");
       button.type = "button";
-      button.className = `airstrike-release-row${event.Id === this.state.selectedReleaseId ? " is-active" : ""}`;
+      button.className = `airstrike-release-row${this.state.selectedOrdnanceKind === "event" && event.Id === this.state.selectedReleaseId ? " is-active" : ""}`;
       button.textContent = `${event.Id}  ${event.Time.toFixed(2)}s  ${event.Payload || "payload"} x${event.Count}`;
       button.addEventListener("click", () => this.selectRelease(event.Id));
       this.elements.manualReleaseList.appendChild(button);
@@ -1176,6 +1253,13 @@ class AirstrikeEditorApp {
     const title = document.createElement("h3");
     title.textContent = event.Id;
     this.elements.manualReleaseEditor.appendChild(title);
+    const basic = document.createElement("section");
+    basic.className = "airstrike-ordnance-field-section";
+    basic.dataset.ordnanceSection = "basic";
+    const targeting = document.createElement("section");
+    targeting.className = "airstrike-ordnance-field-section";
+    targeting.dataset.ordnanceSection = "targeting";
+    this.elements.manualReleaseEditor.append(basic, targeting);
 
     const timeInput = this.createNumberInput(event.Time, 0.01, (value, mode) => {
       const next = updateManualReleaseTime(this.state.profile ?? profile, event.Id, value);
@@ -1186,7 +1270,7 @@ class AirstrikeEditorApp {
         this.selectRelease(event.Id);
       }
     });
-    this.elements.manualReleaseEditor.appendChild(this.fieldWrapper("Time", timeInput));
+    basic.appendChild(this.fieldWrapper("Time", timeInput));
 
     const hardpointSelect = document.createElement("select");
     hardpointSelect.appendChild(new Option("Raw carrier offset", ""));
@@ -1199,9 +1283,9 @@ class AirstrikeEditorApp {
       this.applyProfile(next, true);
       this.selectRelease(event.Id);
     });
-    this.elements.manualReleaseEditor.appendChild(this.fieldWrapper("Hardpoint", hardpointSelect));
+    basic.appendChild(this.fieldWrapper("Hardpoint", hardpointSelect));
 
-    this.renderPayloadFieldGroup(this.elements.manualReleaseEditor, event, PAYLOAD_COMMON_FIELDS, (field, value, mode) => {
+    this.renderPayloadFieldGroup(basic, event, PAYLOAD_COMMON_FIELDS, (field, value, mode) => {
       const next = updateManualPayloadField(this.state.profile ?? profile, event.Id, field, value);
       if (mode === "deferred") {
         this.previewProfileUpdate(next, true);
@@ -1211,7 +1295,7 @@ class AirstrikeEditorApp {
       }
     });
 
-    this.renderTargetingControls(this.elements.manualReleaseEditor, event, (field, value, mode) => {
+    this.renderTargetingControls(targeting, event, (field, value, mode) => {
       const next = updateManualPayloadField(this.state.profile ?? profile, event.Id, field, value);
       if (mode === "deferred") {
         this.previewProfileUpdate(next, true);
@@ -1222,7 +1306,9 @@ class AirstrikeEditorApp {
     });
 
     const advanced = document.createElement("details");
-    advanced.className = "airstrike-editor-advanced";
+    advanced.className = "airstrike-editor-advanced airstrike-ordnance-field-section";
+    advanced.dataset.ordnanceSection = "advanced";
+    advanced.open = true;
     const summary = document.createElement("summary");
     summary.textContent = "Advanced payload fields";
     advanced.appendChild(summary);
@@ -1236,6 +1322,11 @@ class AirstrikeEditorApp {
       }
     });
     this.elements.manualReleaseEditor.appendChild(advanced);
+
+    const summaryLine = document.createElement("p");
+    summaryLine.className = "airstrike-editor-muted";
+    summaryLine.textContent = `${Math.max(1, event.Count)} total units | 1 burst | ends ${event.Time.toFixed(3)}s`;
+    basic.appendChild(summaryLine);
   }
 
   private renderRepeatedReleaseEditor(profile: EditorSourceProfile): void {
@@ -1249,6 +1340,13 @@ class AirstrikeEditorApp {
     const title = document.createElement("h3");
     title.textContent = group.Name;
     this.elements.repeatedReleaseEditor.appendChild(title);
+    const basic = document.createElement("section");
+    basic.className = "airstrike-ordnance-field-section";
+    basic.dataset.ordnanceSection = "basic";
+    const targeting = document.createElement("section");
+    targeting.className = "airstrike-ordnance-field-section";
+    targeting.dataset.ordnanceSection = "targeting";
+    this.elements.repeatedReleaseEditor.append(basic, targeting);
 
     const name = document.createElement("input");
     name.type = "text";
@@ -1257,7 +1355,7 @@ class AirstrikeEditorApp {
     name.addEventListener("change", () => {
       this.applyProfile(updateRepeatedGroupName(this.state.profile ?? profile, group.Id, name.value), true);
     });
-    this.elements.repeatedReleaseEditor.appendChild(this.fieldWrapper("Group name", name));
+    basic.appendChild(this.fieldWrapper("Group name", name));
 
     for (const [field, step] of [
       ["StartTime", 0.01],
@@ -1275,19 +1373,7 @@ class AirstrikeEditorApp {
         }
       });
       const label = field === "UnitIntervalSeconds" ? "Round spacing" : field;
-      this.elements.repeatedReleaseEditor.appendChild(this.fieldWrapper(label, input));
-    }
-
-    if (profile.ReleaseSource.Mode === "mixed") {
-      const addGroup = document.createElement("button");
-      addGroup.type = "button";
-      addGroup.textContent = "Add automatic group";
-      addGroup.addEventListener("click", () => {
-        const result = addRepeatedReleaseGroup(this.state.profile ?? profile, group.Id);
-        this.state.selectedRepeatedGroupId = result.groupId;
-        this.applyProfile(result.profile, true);
-      });
-      this.elements.repeatedReleaseEditor.appendChild(addGroup);
+      basic.appendChild(this.fieldWrapper(label, input));
     }
 
     const sequence = document.createElement("input");
@@ -1304,9 +1390,9 @@ class AirstrikeEditorApp {
         true,
       );
     });
-    this.elements.repeatedReleaseEditor.appendChild(this.fieldWrapper("Hardpoint sequence", sequence));
+    basic.appendChild(this.fieldWrapper("Hardpoint sequence", sequence));
 
-    this.renderPayloadFieldGroup(this.elements.repeatedReleaseEditor, group.Template, PAYLOAD_COMMON_FIELDS.filter((field) => field !== "Count"), (field, value, mode) => {
+    this.renderPayloadFieldGroup(basic, group.Template, PAYLOAD_COMMON_FIELDS.filter((field) => field !== "Count"), (field, value, mode) => {
       const next = updateRepeatedGroupTemplateField(this.state.profile ?? profile, group.Id, field, value);
       if (mode === "deferred") {
         this.previewProfileUpdate(next, true);
@@ -1315,7 +1401,7 @@ class AirstrikeEditorApp {
       }
     });
 
-    this.renderTargetingControls(this.elements.repeatedReleaseEditor, group.Template, (field, value, mode) => {
+    this.renderTargetingControls(targeting, group.Template, (field, value, mode) => {
       const next = updateRepeatedGroupTemplateField(this.state.profile ?? profile, group.Id, field, value);
       if (mode === "deferred") {
         this.previewProfileUpdate(next, true);
@@ -1331,10 +1417,12 @@ class AirstrikeEditorApp {
     const summaryLine = document.createElement("p");
     summaryLine.className = "airstrike-editor-muted";
     summaryLine.textContent = `${group.MaximumUnits} total units | ${bursts} bursts | ends ${endTime.toFixed(3)}s`;
-    this.elements.repeatedReleaseEditor.appendChild(summaryLine);
+    basic.appendChild(summaryLine);
 
     const advanced = document.createElement("details");
-    advanced.className = "airstrike-editor-advanced";
+    advanced.className = "airstrike-editor-advanced airstrike-ordnance-field-section";
+    advanced.dataset.ordnanceSection = "advanced";
+    advanced.open = true;
     const summary = document.createElement("summary");
     summary.textContent = "Advanced payload fields";
     advanced.appendChild(summary);
@@ -1498,10 +1586,10 @@ class AirstrikeEditorApp {
     for (const group of getRepeatedReleaseGroups(profile)) {
       const button = document.createElement("button");
       button.type = "button";
-      button.className = `airstrike-release-row${group.Id === this.state.selectedRepeatedGroupId ? " is-active" : ""}`;
+      button.className = `airstrike-release-row${this.state.selectedOrdnanceKind === "group" && group.Id === this.state.selectedRepeatedGroupId ? " is-active" : ""}`;
       button.textContent = `${group.Name}  ${group.StartTime.toFixed(2)}s  ${group.Template.Payload || "payload"} x${group.MaximumUnits}`;
       button.addEventListener("click", () => this.selectRepeatedGroup(group.Id));
-      this.elements.manualReleaseList.appendChild(button);
+      this.elements.repeatedReleaseList.appendChild(button);
     }
   }
 
@@ -1557,6 +1645,7 @@ class AirstrikeEditorApp {
       track.appendChild(marker);
     }
     this.elements.releaseTimeline.appendChild(track);
+    this.elements.workspaceReleaseTimeline.replaceChildren(track.cloneNode(true));
   }
 
   private renderTimeControls(): void {
@@ -1587,18 +1676,23 @@ class AirstrikeEditorApp {
     this.renderWaypointInspector();
     this.renderSpeedControls();
     this.viewport.updateSelectedWaypoint(waypointId);
+    this.renderInspectorSummaries();
   }
 
   private selectRelease(releaseId: string): void {
     this.state.selectedReleaseId = releaseId;
+    this.state.selectedOrdnanceKind = "event";
     this.renderReleaseControls();
     this.renderReleaseTimeline();
     this.viewport.updateSelectedRelease(releaseId);
+    this.renderInspectorSummaries();
   }
 
   private selectRepeatedGroup(groupId: string): void {
     this.state.selectedRepeatedGroupId = groupId;
+    this.state.selectedOrdnanceKind = "group";
     this.renderReleaseControls();
+    this.renderInspectorSummaries();
   }
 
   private handleWaypointMoved(waypointId: string, position: Vector3): EditorSourceProfile | null {
@@ -1853,6 +1947,8 @@ class AirstrikeEditorApp {
     if (mode === "repeated" || mode === "mixed") {
       this.state.selectedRepeatedGroupId = getRepeatedReleaseGroups(next)[0]?.Id ?? "";
     }
+    const mixedHasEvents = next.ReleaseSource.Mode === "mixed" && next.ReleaseSource.Events.length > 0;
+    this.state.selectedOrdnanceKind = mode === "repeated" || (mode === "mixed" && !mixedHasEvents) ? "group" : "event";
     this.applyProfile(next, true);
   }
 
@@ -1871,11 +1967,28 @@ class AirstrikeEditorApp {
     this.selectRelease(result.releaseId);
   }
 
+  private handleAddManualRelease(): void {
+    if (!this.state.profile || this.state.profile.ReleaseSource.Mode === "repeated") return;
+    const result = addManualRelease(this.state.profile, this.state.scrubTime);
+    this.state.selectedOrdnanceKind = "event";
+    this.applyProfile(result.profile, true);
+    this.selectRelease(result.releaseId);
+  }
+
+  private handleAddRepeatedGroup(): void {
+    if (!this.state.profile || this.state.profile.ReleaseSource.Mode === "manual") return;
+    const result = addRepeatedReleaseGroup(this.state.profile, this.state.selectedRepeatedGroupId);
+    this.state.selectedRepeatedGroupId = result.groupId;
+    this.state.selectedOrdnanceKind = "group";
+    this.applyProfile(result.profile, true);
+    this.selectRepeatedGroup(result.groupId);
+  }
+
   private handleDuplicateRelease(): void {
     if (!this.state.profile) {
       return;
     }
-    if (this.state.profile.ReleaseSource.Mode === "repeated") {
+    if (this.state.profile.ReleaseSource.Mode === "repeated" || (this.state.profile.ReleaseSource.Mode === "mixed" && this.state.selectedOrdnanceKind === "group")) {
       if (!this.state.selectedRepeatedGroupId) {
         return;
       }
@@ -1896,7 +2009,7 @@ class AirstrikeEditorApp {
     if (!this.state.profile) {
       return;
     }
-    if (this.state.profile.ReleaseSource.Mode === "repeated") {
+    if (this.state.profile.ReleaseSource.Mode === "repeated" || (this.state.profile.ReleaseSource.Mode === "mixed" && this.state.selectedOrdnanceKind === "group")) {
       if (!this.state.selectedRepeatedGroupId) {
         return;
       }
@@ -1909,6 +2022,211 @@ class AirstrikeEditorApp {
       return;
     }
     this.applyProfile(deleteManualRelease(this.state.profile, this.state.selectedReleaseId), true);
+  }
+
+  private initializeToolWorkspaces(): void {
+    this.elements.root.querySelectorAll<HTMLButtonElement>("[data-editor-tool-open]").forEach((button) => {
+      button.addEventListener("click", () => this.openTool(String(button.dataset.editorToolOpen || ""), false, button));
+    });
+    this.elements.root.querySelectorAll<HTMLButtonElement>("[data-editor-tool-ai]").forEach((button) => {
+      button.addEventListener("click", () => this.openTool(String(button.dataset.editorToolAi || ""), true, button));
+    });
+    this.elements.root.querySelectorAll<HTMLDialogElement>("[data-editor-tool-dialog]").forEach((dialog) => {
+      dialog.addEventListener("cancel", (event) => {
+        event.preventDefault();
+        void this.requestToolClose();
+      });
+      dialog.querySelectorAll<HTMLButtonElement>("[data-editor-tool-close]").forEach((button) => button.addEventListener("click", () => void this.requestToolClose()));
+      dialog.querySelector<HTMLButtonElement>("[data-editor-tool-cancel]")?.addEventListener("click", () => void this.cancelActiveTool());
+      dialog.querySelector<HTMLButtonElement>("[data-editor-tool-apply]")?.addEventListener("click", () => void this.applyActiveTool());
+    });
+    this.elements.root.querySelectorAll<HTMLButtonElement>("[data-editor-ordnance-tab]").forEach((button) => {
+      button.addEventListener("click", () => {
+        const tab = String(button.dataset.editorOrdnanceTab || "basic");
+        this.ordnanceTab = tab === "targeting" || tab === "advanced" ? tab : "basic";
+        this.renderOrdnanceTab();
+      });
+    });
+  }
+
+  private isToolId(value: string): value is ToolId {
+    return value === "profile" || value === "flight-path" || value === "ordnance" || value === "view-validation";
+  }
+
+  private openTool(value: string, aiExpanded: boolean, opener: HTMLElement | null = null): void {
+    if (!this.isToolId(value) || this.activeTool) return;
+    const dialog = this.elements.root.querySelector<HTMLDialogElement>(`[data-editor-tool-dialog="${value}"]`);
+    if (!dialog || !this.state.profile) return;
+    this.activeTool = value;
+    this.activeToolOpener = opener;
+    if (value !== "view-validation") {
+      this.toolSession = {
+        tool: value,
+        profile: JSON.parse(JSON.stringify(this.state.profile)) as EditorSourceProfile,
+        dirty: this.state.dirty,
+        selectedWaypointId: this.state.selectedWaypointId,
+        selectedReleaseId: this.state.selectedReleaseId,
+        selectedRepeatedGroupId: this.state.selectedRepeatedGroupId,
+        selectedOrdnanceKind: this.state.selectedOrdnanceKind,
+        scrubTime: this.state.scrubTime,
+        opener,
+      };
+    }
+    const rail = dialog.querySelector<HTMLElement>("[data-agent-context-rail]");
+    rail?.classList.toggle("is-collapsed", !aiExpanded);
+    this.agent.workspaceChanged(value);
+    this.updateToolSessionStatus();
+    this.renderInspectorSummaries();
+    dialog.showModal();
+  }
+
+  private activeDialog(): HTMLDialogElement | null {
+    return this.activeTool ? this.elements.root.querySelector<HTMLDialogElement>(`[data-editor-tool-dialog="${this.activeTool}"]`) : null;
+  }
+
+  private toolProfileChanged(): boolean {
+    return Boolean(this.toolSession && this.state.profile && canonicalJson(this.toolSession.profile) !== canonicalJson(this.state.profile));
+  }
+
+  private updateToolSessionStatus(): void {
+    const dialog = this.activeDialog();
+    const status = dialog?.querySelector<HTMLElement>("[data-editor-tool-session-status]");
+    if (status) status.textContent = this.toolProfileChanged() ? "Preview changes are not applied" : "No unapplied changes";
+  }
+
+  private async requestToolClose(): Promise<void> {
+    if (!this.activeTool) return;
+    if (this.toolSession && this.toolProfileChanged() && !window.confirm("Discard the preview changes in this workspace?")) return;
+    if (this.toolSession) await this.cancelActiveTool();
+    else this.closeActiveTool();
+  }
+
+  private async applyActiveTool(): Promise<void> {
+    const session = this.toolSession;
+    if (!session || !this.state.profile) return;
+    const changed = this.toolProfileChanged();
+    await this.agent.commitWorkspaceProposal(this.state.profile);
+    this.toolSession = null;
+    if (changed) this.markEdited();
+    this.closeActiveTool(session.opener);
+  }
+
+  private async cancelActiveTool(): Promise<void> {
+    const session = this.toolSession;
+    if (!session) {
+      this.closeActiveTool();
+      return;
+    }
+    this.state.selectedWaypointId = session.selectedWaypointId;
+    this.state.selectedReleaseId = session.selectedReleaseId;
+    this.state.selectedRepeatedGroupId = session.selectedRepeatedGroupId;
+    this.state.selectedOrdnanceKind = session.selectedOrdnanceKind;
+    this.state.scrubTime = session.scrubTime;
+    this.applyProfile(JSON.parse(JSON.stringify(session.profile)) as EditorSourceProfile, false);
+    this.setDirty(session.dirty);
+    await this.agent.cancelWorkspaceProposal();
+    this.toolSession = null;
+    this.setStatus(session.dirty ? "Draft has local changes" : "Workspace changes discarded");
+    this.closeActiveTool(session.opener);
+  }
+
+  private closeActiveTool(opener: HTMLElement | null = null): void {
+    const dialog = this.activeDialog();
+    if (dialog?.open) dialog.close();
+    this.activeTool = null;
+    this.agent.workspaceChanged("full");
+    this.renderInspectorSummaries();
+    (opener ?? this.activeToolOpener)?.focus();
+    this.activeToolOpener = null;
+  }
+
+  private allowedMutationAreas(scope: AgentWorkspaceScope): string[] {
+    if (scope === "profile") return ["profile"];
+    if (scope === "flight-path") return ["route", "waypoint"];
+    if (scope === "ordnance") return ["ordnance"];
+    if (scope === "view-validation") return [];
+    return ["profile", "route", "waypoint", "ordnance"];
+  }
+
+  private renderInspectorSummaries(): void {
+    const profile = this.state.profile;
+    if (!profile) return;
+    const set = (selector: string, value: string): void => {
+      const element = this.elements.root.querySelector<HTMLElement>(selector);
+      if (element) element.textContent = value;
+    };
+    set("[data-editor-summary-profile]", profile.DisplayName || profile.ProfileKey || "New profile");
+    set("[data-editor-summary-profile-detail]", `${profile.ProfileKey || "unsaved"} · ${profile.Vehicle}`);
+    set("[data-editor-summary-flight]", `${profile.Waypoints.length} waypoints · ${profile.DurationSeconds.toFixed(2)}s`);
+    const waypoint = findWaypoint(profile, this.state.selectedWaypointId);
+    set("[data-editor-summary-flight-detail]", waypoint ? `${waypoint.Id} at ${waypoint.Time.toFixed(2)}s · Y ${waypoint.Y}` : "No waypoint selected.");
+    const events = profile.ReleaseSource.Mode === "repeated" ? [] : profile.ReleaseSource.Events;
+    const groups = getRepeatedReleaseGroups(profile);
+    const manualUnits = events.reduce((sum, event) => sum + Math.max(1, Number(event.Count || 1)), 0);
+    const generatedUnits = groups.reduce((sum, group) => sum + Math.max(0, Number(group.MaximumUnits || 0)), 0);
+    set("[data-editor-summary-ordnance]", `${events.length} events · ${groups.length} groups · ${manualUnits + generatedUnits} units`);
+    const selected = this.state.selectedOrdnanceKind === "group"
+      ? groups.find((group) => group.Id === this.state.selectedRepeatedGroupId)?.Name
+      : events.find((event) => event.Id === this.state.selectedReleaseId)?.Id;
+    set("[data-editor-summary-ordnance-detail]", `${profile.ReleaseSource.Mode} mode${selected ? ` · ${selected}` : ""}`);
+    const validation = this.validationState.status === "passed" ? `Valid${this.validationState.warnings ? ` · ${this.validationState.warnings} warnings` : ""}` : this.validationState.status === "failed" ? `${this.validationState.errors} validation errors` : this.validationState.status === "running" ? "Validating…" : "Not validated";
+    set("[data-editor-summary-validation]", validation);
+    const visibleLayers = [this.elements.terrainReference.checked, this.elements.groundGrid.checked, this.elements.sceneExtras.checked].filter(Boolean).length;
+    set("[data-editor-summary-validation-detail]", `${visibleLayers} of 3 reference layers visible.`);
+  }
+
+  private renderOrdnanceScheduleSummary(): void {
+    const profile = this.state.profile;
+    if (!profile) return;
+    const releases = getReleasePreviewEvents(profile, this.metadata);
+    const last = releases.reduce((maximum, release) => Math.max(maximum, release.time), 0);
+    this.elements.ordnanceScheduleSummary.textContent = `${releases.length} preview releases · final release ${last.toFixed(3)}s · flight ${profile.DurationSeconds.toFixed(2)}s`;
+  }
+
+  private renderOrdnanceTab(): void {
+    this.elements.root.querySelectorAll<HTMLButtonElement>("[data-editor-ordnance-tab]").forEach((button) => button.classList.toggle("is-active", button.dataset.editorOrdnanceTab === this.ordnanceTab));
+    this.elements.root.querySelectorAll<HTMLElement>("[data-ordnance-section]").forEach((section) => {
+      section.hidden = section.dataset.ordnanceSection !== this.ordnanceTab;
+    });
+  }
+
+  private stepInspectorSelection(specification: string): void {
+    if (!this.state.profile) return;
+    const [kind, directionText] = specification.split(":");
+    const direction = Number(directionText) < 0 ? -1 : 1;
+    if (kind === "waypoint") {
+      const ids = this.state.profile.Waypoints.map((waypoint) => waypoint.Id);
+      if (!ids.length) return;
+      const index = Math.max(0, ids.indexOf(this.state.selectedWaypointId));
+      this.selectWaypoint(ids[(index + direction + ids.length) % ids.length]!);
+      this.renderInspectorSummaries();
+      return;
+    }
+    const events = this.state.profile.ReleaseSource.Mode === "repeated" ? [] : this.state.profile.ReleaseSource.Events.map((event) => ({ kind: "event" as const, id: event.Id }));
+    const groups = getRepeatedReleaseGroups(this.state.profile).map((group) => ({ kind: "group" as const, id: group.Id }));
+    const items = [...events, ...groups];
+    if (!items.length) return;
+    const current = items.findIndex((item) => item.kind === this.state.selectedOrdnanceKind && item.id === (item.kind === "event" ? this.state.selectedReleaseId : this.state.selectedRepeatedGroupId));
+    const item = items[((current < 0 ? 0 : current) + direction + items.length) % items.length]!;
+    if (item.kind === "event") this.selectRelease(item.id);
+    else this.selectRepeatedGroup(item.id);
+    this.renderInspectorSummaries();
+  }
+
+  private navigateAgentDiff(area: string, id: string): void {
+    if (!this.state.profile) return;
+    if (area === "waypoint" && id) this.selectWaypoint(id);
+    if ((area === "ordnance" || area === "ordnance event" || area === "ordnance group") && id && id !== "mode") {
+      const isGroup = area === "ordnance group" || getRepeatedReleaseGroups(this.state.profile).some((entry) => entry.Id === id);
+      if (isGroup) this.selectRepeatedGroup(id);
+      else this.selectRelease(id);
+    }
+    this.renderInspectorSummaries();
+  }
+
+  private async openFullAgentFromWorkspace(): Promise<void> {
+    if (this.activeTool) await this.requestToolClose();
+    if (!this.activeTool) this.agent.showAgentTab();
   }
 
   private togglePanel(panel: string): void {
@@ -2522,6 +2840,8 @@ class AirstrikeEditorApp {
       return;
     }
     this.setStatus("Validating...");
+    this.validationState = { status: "running", errors: 0, warnings: 0 };
+    this.renderInspectorSummaries();
     try {
       const payload = await this.request("validate.php", {
         method: "POST",
@@ -2531,15 +2851,21 @@ class AirstrikeEditorApp {
       const errors = Array.isArray(validation.errors) ? validation.errors : [];
       const warnings = Array.isArray(validation.warnings) ? validation.warnings : [];
       if (!validation.ok) {
+        this.validationState = { status: "failed", errors: errors.length, warnings: warnings.length };
         this.showFeedback(errors.map(formatValidationEntry).join("\n"), "error");
         this.setStatus(`${errors.length} validation error(s)`);
+        this.renderInspectorSummaries();
         return;
       }
+      this.validationState = { status: "passed", errors: 0, warnings: warnings.length };
       this.showFeedback(`Profile is valid.${warnings.length ? `\n${warnings.map(String).join("\n")}` : ""}`, "success");
       this.setStatus("Validation passed");
+      this.renderInspectorSummaries();
     } catch (error) {
+      this.validationState = { status: "failed", errors: 1, warnings: 0 };
       this.showFeedback(error instanceof Error ? error.message : String(error), "error");
       this.setStatus("Validation failed");
+      this.renderInspectorSummaries();
     }
   }
 
@@ -2564,6 +2890,8 @@ class AirstrikeEditorApp {
       const generatedUnits = Array.isArray(runtime.GeneratedReleaseGroups) ? runtime.GeneratedReleaseGroups.reduce((sum, group) => sum + Number(group.MaximumUnits || 0), 0) : 0;
       this.elements.compileSummary.textContent = `${frames.length} frames | ${manualUnits} manual + ${generatedUnits} generated payload units`;
       this.elements.output.textContent = JSON.stringify(compiled, null, 2);
+      this.elements.compileSummaryReview.textContent = this.elements.compileSummary.textContent;
+      this.elements.outputReview.textContent = this.elements.output.textContent;
       this.showFeedback("Compiled preview matches server-side publication logic.", "success");
       this.setStatus("Compile preview ready");
     } catch (error) {
@@ -2609,9 +2937,13 @@ function collectElements(root: HTMLElement): EditorElements {
     key: query(root, "[data-editor-key]"),
     name: query(root, "[data-editor-name]"),
     vehicle: query(root, "[data-editor-vehicle]"),
+    notes: query(root, "[data-editor-notes]"),
     feedback: query(root, "[data-editor-feedback]"),
+    feedbackSummary: query(root, "[data-editor-feedback-summary]"),
     output: query(root, "[data-editor-output]"),
+    outputReview: query(root, "[data-editor-output-review]"),
     compileSummary: query(root, "[data-editor-compile-summary]"),
+    compileSummaryReview: query(root, "[data-editor-compile-summary-review]"),
     list: query(root, "[data-editor-profile-list]"),
     search: query(root, "[data-editor-search]"),
     profileFilter: query(root, "[data-editor-profile-filter]"),
@@ -2634,9 +2966,12 @@ function collectElements(root: HTMLElement): EditorElements {
     rotationMode: query(root, "[data-editor-rotation-mode]"),
     releaseMode: query(root, "[data-editor-release-mode]"),
     manualReleaseList: query(root, "[data-editor-manual-releases]"),
+    repeatedReleaseList: query(root, "[data-editor-repeated-releases]"),
     manualReleaseEditor: query(root, "[data-editor-manual-editor]"),
     repeatedReleaseEditor: query(root, "[data-editor-repeated-editor]"),
     releaseTimeline: query(root, "[data-editor-release-timeline]"),
+    workspaceReleaseTimeline: query(root, "[data-editor-workspace-release-timeline]"),
+    ordnanceScheduleSummary: query(root, "[data-editor-ordnance-schedule-summary]"),
     vehicleMeta: query(root, "[data-editor-vehicle-meta]"),
     normalizeTimes: query(root, "[data-editor-normalize-times]"),
     inferSpeeds: query(root, "[data-editor-infer-speeds]"),

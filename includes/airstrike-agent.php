@@ -394,6 +394,7 @@ function raidlands_airstrike_agent_context(array $editor_context): array
         $decoded = json_decode((string) file_get_contents($catalog_path), true);
         $catalog = is_array($decoded) ? $decoded : [];
     }
+    $workspace_scope = raidlands_airstrike_agent_workspace_scope((string) ($editor_context['activeWorkspace'] ?? 'full'));
     return [
         'source' => $source,
         'sourceHash' => raidlands_airstrike_agent_source_hash($source),
@@ -406,6 +407,8 @@ function raidlands_airstrike_agent_context(array $editor_context): array
             'groupId' => (string) ($editor_context['selectedRepeatedGroupId'] ?? ''),
         ],
         'viewport' => is_array($editor_context['viewport'] ?? null) ? $editor_context['viewport'] : [],
+        'activeWorkspace' => $workspace_scope,
+        'allowedMutationAreas' => raidlands_airstrike_agent_allowed_mutation_areas($workspace_scope),
         'domain' => [
             'coordinates' => 'Unity/Rust target-relative local space: +X right, +Y up, -Z inbound, +Z outbound. Stored values are authoritative.',
             'positionInterpolation' => 'time_hermite; StopAtWaypoints zeroes segment endpoint tangents.',
@@ -416,11 +419,28 @@ function raidlands_airstrike_agent_context(array $editor_context): array
             'limits' => raidlands_airstrike_animation_compiler_limits(),
         ],
         'activeVehicleMetadata' => $metadata['vehicles'][$vehicle] ?? null,
+        'vehicleMetadata' => $metadata,
         'availableVehicles' => array_keys((array) ($metadata['vehicles'] ?? [])),
         'payloadCatalog' => $catalog,
         'validation' => raidlands_airstrike_animation_validate_profile($source, $path, $metadata),
         'compileSummary' => raidlands_airstrike_agent_compile_summary($source),
     ];
+}
+
+function raidlands_airstrike_agent_workspace_scope(string $scope): string
+{
+    return in_array($scope, ['profile', 'flight-path', 'ordnance', 'view-validation'], true) ? $scope : 'full';
+}
+
+function raidlands_airstrike_agent_allowed_mutation_areas(string $scope): array
+{
+    return match (raidlands_airstrike_agent_workspace_scope($scope)) {
+        'profile' => ['profile'],
+        'flight-path' => ['route', 'waypoint'],
+        'ordnance' => ['ordnance'],
+        'view-validation' => [],
+        default => ['profile', 'route', 'waypoint', 'ordnance'],
+    };
 }
 
 function raidlands_airstrike_agent_object_schema(array $properties, array $required): array
@@ -443,21 +463,22 @@ function raidlands_airstrike_agent_waypoint_schema(): array
     ], ['Id', 'Time', 'X', 'Y', 'Z', 'RotationX', 'RotationY', 'RotationZ', 'TargetSpeedMetersPerSecond']);
 }
 
-function raidlands_airstrike_agent_tools(string $mode): array
+function raidlands_airstrike_agent_tools(string $mode, string $scope = 'full'): array
 {
+    $scope = raidlands_airstrike_agent_workspace_scope($scope);
     $empty = raidlands_airstrike_agent_object_schema([], []);
     $tools = [
         ['type' => 'function', 'name' => 'inspect_profile', 'description' => 'Return a compact summary of the current working profile.', 'strict' => true, 'parameters' => $empty],
         ['type' => 'function', 'name' => 'validate_working_profile', 'description' => 'Run the authoritative source validator on the working profile.', 'strict' => true, 'parameters' => $empty],
         ['type' => 'function', 'name' => 'compile_working_profile', 'description' => 'Validate and compile a compact runtime summary without returning dense frames.', 'strict' => true, 'parameters' => $empty],
     ];
-    if ($mode !== 'regular') {
+    if ($mode !== 'regular' || $scope === 'view-validation') {
         return $tools;
     }
     $nullable_number = ['type' => ['number', 'null']];
     $nullable_boolean = ['type' => ['boolean', 'null']];
     $nullable_string = ['type' => ['string', 'null']];
-    $tools[] = ['type' => 'function', 'name' => 'set_profile_settings', 'description' => 'Update top-level route/profile settings. Null leaves a field unchanged.', 'strict' => true, 'parameters' => raidlands_airstrike_agent_object_schema([
+    $setting_properties = [
         'DisplayName' => $nullable_string,
         'Vehicle' => $nullable_string,
         'DurationSeconds' => $nullable_number,
@@ -468,7 +489,18 @@ function raidlands_airstrike_agent_tools(string $mode): array
         'RotationMode' => ['type' => ['string', 'null'], 'enum' => ['follow_path_plus_offset', 'authored_orientation', null]],
         'GlobalTargetSpeedMetersPerSecond' => $nullable_number,
         'Notes' => $nullable_string,
-    ], ['DisplayName', 'Vehicle', 'DurationSeconds', 'FirstPayloadDelaySeconds', 'RotationSmoothTimeSeconds', 'StopAtWaypoints', 'MinimumTerrainClearance', 'RotationMode', 'GlobalTargetSpeedMetersPerSecond', 'Notes'])];
+    ];
+    $setting_keys = array_keys($setting_properties);
+    if ($scope === 'profile') $setting_keys = ['DisplayName', 'Vehicle', 'Notes'];
+    if ($scope === 'flight-path') $setting_keys = ['DurationSeconds', 'RotationSmoothTimeSeconds', 'StopAtWaypoints', 'MinimumTerrainClearance', 'RotationMode', 'GlobalTargetSpeedMetersPerSecond'];
+    if ($scope === 'ordnance') $setting_keys = ['FirstPayloadDelaySeconds'];
+    $scoped_settings = array_intersect_key($setting_properties, array_flip($setting_keys));
+    if ($scoped_settings !== []) {
+        $tools[] = ['type' => 'function', 'name' => 'set_profile_settings', 'description' => 'Update settings permitted by the active workspace. Null leaves a field unchanged.', 'strict' => true, 'parameters' => raidlands_airstrike_agent_object_schema($scoped_settings, array_keys($scoped_settings))];
+    }
+    if ($scope === 'profile' || $scope === 'ordnance') {
+        // These workspaces do not expose route mutation tools.
+    } else {
     $tools[] = ['type' => 'function', 'name' => 'replace_route', 'description' => 'Replace the entire waypoint route with stable-ID waypoints.', 'strict' => true, 'parameters' => raidlands_airstrike_agent_object_schema([
         'waypoints' => ['type' => 'array', 'items' => raidlands_airstrike_agent_waypoint_schema()],
     ], ['waypoints'])];
@@ -478,6 +510,8 @@ function raidlands_airstrike_agent_tools(string $mode): array
     $tools[] = ['type' => 'function', 'name' => 'delete_waypoints', 'description' => 'Delete waypoints by stable Id; at least two must remain.', 'strict' => true, 'parameters' => raidlands_airstrike_agent_object_schema([
         'ids' => ['type' => 'array', 'items' => ['type' => 'string']],
     ], ['ids'])];
+    }
+    if ($scope === 'profile' || $scope === 'flight-path') return $tools;
     $tools[] = ['type' => 'function', 'name' => 'replace_ordnance_schedule', 'description' => 'Replace ReleaseSource. releaseSourceJson must be a JSON object using manual, repeated, or mixed source schema.', 'strict' => true, 'parameters' => raidlands_airstrike_agent_object_schema([
         'releaseSourceJson' => ['type' => 'string'],
     ], ['releaseSourceJson'])];
@@ -505,11 +539,15 @@ function raidlands_airstrike_agent_decode_tool_json(string $json, string $label)
     return $decoded;
 }
 
-function raidlands_airstrike_agent_tool_result(string $name, array $arguments, array &$working_source, string $mode): array
+function raidlands_airstrike_agent_tool_result(string $name, array $arguments, array &$working_source, string $mode, string $scope = 'full'): array
 {
     $mutating = !in_array($name, ['inspect_profile', 'validate_working_profile', 'compile_working_profile'], true);
     if ($mutating && $mode !== 'regular') {
         throw new DomainException('Plan mode cannot use mutating tools.');
+    }
+    $allowed_tools = array_column(raidlands_airstrike_agent_tools($mode, $scope), 'name');
+    if (!in_array($name, $allowed_tools, true)) {
+        throw new DomainException("Tool '" . $name . "' is not permitted in the " . raidlands_airstrike_agent_workspace_scope($scope) . ' workspace.');
     }
     if ($name === 'inspect_profile') {
         return [
@@ -608,6 +646,13 @@ function raidlands_airstrike_agent_semantic_diff(array $before, array $after): a
     foreach (['DisplayName', 'Vehicle', 'DurationSeconds', 'FirstPayloadDelaySeconds', 'RotationSmoothTimeSeconds', 'StopAtWaypoints', 'MinimumTerrainClearance', 'RotationMode'] as $key) {
         if (($before[$key] ?? null) !== ($after[$key] ?? null)) {
             $changes[] = ['area' => 'profile', 'id' => $key, 'action' => 'updated', 'before' => $before[$key] ?? null, 'after' => $after[$key] ?? null];
+        }
+    }
+    foreach (['Notes', 'GlobalTargetSpeedMetersPerSecond'] as $key) {
+        $left = $before['EditorMetadata'][$key] ?? null;
+        $right = $after['EditorMetadata'][$key] ?? null;
+        if ($left !== $right) {
+            $changes[] = ['area' => 'profile', 'id' => $key, 'action' => 'updated', 'before' => $left, 'after' => $right];
         }
     }
     foreach ([['Waypoints', 'waypoint'], ['ReleaseSource.Events', 'ordnance event'], ['ReleaseSource.Groups', 'ordnance group']] as [$path, $area]) {
@@ -736,8 +781,9 @@ function raidlands_airstrike_agent_candidate_matches_source(string $candidate_ha
         && hash_equals($candidate_hash, raidlands_airstrike_agent_source_hash($source));
 }
 
-function raidlands_airstrike_agent_developer_prompt(string $mode, string $pinned_plan): string
+function raidlands_airstrike_agent_developer_prompt(string $mode, string $pinned_plan, string $scope = 'full'): string
 {
+    $scope = raidlands_airstrike_agent_workspace_scope($scope);
     $mode_rule = $mode === 'plan'
         ? 'PLAN MODE: inspect, validate, and reason only. Never call a mutating tool. Return Goal, Assumptions, Ordered edits, Affected stable IDs, and Verification.'
         : 'REGULAR MODE: use only the supplied domain tools for requested changes. Mutations affect an ephemeral working copy and require validation before completion.';
@@ -749,6 +795,7 @@ function raidlands_airstrike_agent_developer_prompt(string $mode, string $pinned
         'Keep stable IDs when editing existing entities. Use valid authorable payload IDs and available hardpoints from context.',
         'For complex multiple strafes, model independent repeated Groups (or mixed manual plus Groups), ensure all releases fit inside DurationSeconds, and align FirstPayloadDelaySeconds to the earliest release.',
         'After mutations, call validate_working_profile and compile_working_profile. Repair validation errors when the user intent is clear; otherwise explain the missing decision.',
+        $scope === 'full' ? 'WORKSPACE SCOPE: full profile.' : 'WORKSPACE SCOPE: ' . $scope . '. Mutate only fields exposed by the supplied scoped tools; explain when another workspace is required.',
         $mode_rule,
         $pinned_plan !== '' ? "PINNED USER-ACCEPTED PLAN:\n" . $pinned_plan : 'No plan is pinned.',
     ]);
@@ -833,6 +880,7 @@ function raidlands_airstrike_agent_run(
     $message = trim($message);
     if ($message === '' || strlen($message) > RAIDLANDS_AIRSTRIKE_AGENT_MAX_MESSAGE_BYTES) throw new InvalidArgumentException('Message must be between 1 and 12,000 bytes.');
     $context = raidlands_airstrike_agent_context($editor_context);
+    $workspace_scope = raidlands_airstrike_agent_workspace_scope((string) ($context['activeWorkspace'] ?? 'full'));
     $base_source = (array) $context['source'];
     $working_source = json_decode((string) json_encode($base_source), true) ?: [];
     raidlands_airstrike_agent_update_thread($thread_id, ['mode' => $mode]);
@@ -842,7 +890,7 @@ function raidlands_airstrike_agent_run(
     }
     $input = [[
         'role' => 'developer',
-        'content' => [['type' => 'input_text', 'text' => raidlands_airstrike_agent_developer_prompt($mode, (string) ($thread['pinned_plan'] ?? ''))]],
+        'content' => [['type' => 'input_text', 'text' => raidlands_airstrike_agent_developer_prompt($mode, (string) ($thread['pinned_plan'] ?? ''), $workspace_scope)]],
     ]];
     $history = raidlands_airstrike_agent_history_input($thread_id);
     if ($history !== []) array_pop($history); // The current user message is appended explicitly below.
@@ -866,7 +914,7 @@ function raidlands_airstrike_agent_run(
             'parallel_tool_calls' => false,
             'max_output_tokens' => 8000,
             'input' => $input,
-            'tools' => raidlands_airstrike_agent_tools($mode),
+            'tools' => raidlands_airstrike_agent_tools($mode, $workspace_scope),
             'text' => ['verbosity' => 'medium'],
             'include' => ['reasoning.encrypted_content'],
         ];
@@ -886,7 +934,7 @@ function raidlands_airstrike_agent_run(
             if (!is_array($arguments)) $arguments = [];
             $emit('tool_started', ['name' => $name, 'round' => $round]);
             try {
-                $result = raidlands_airstrike_agent_tool_result($name, $arguments, $working_source, $mode);
+                $result = raidlands_airstrike_agent_tool_result($name, $arguments, $working_source, $mode, $workspace_scope);
                 if (!empty($result['mutated'])) $mutated = true;
                 $tool_output = ['ok' => true, 'result' => $result];
             } catch (Throwable $error) {

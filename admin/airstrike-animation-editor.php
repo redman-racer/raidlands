@@ -84,16 +84,16 @@ $editor_config = [
           <details class="airstrike-editor-menu">
             <summary>Edit</summary>
             <div class="airstrike-editor-menu-list">
-              <button type="button" data-editor-focus-palette="identity">Profile Identity</button>
-              <button type="button" data-editor-focus-palette="waypoint">Selected Waypoint</button>
-              <button type="button" data-editor-focus-palette="route-timing">Route Timing</button>
-              <button type="button" data-editor-focus-palette="ordnance">Ordnance</button>
               <button type="button" data-editor-validate>Validate</button>
             </div>
           </details>
           <details class="airstrike-editor-menu">
             <summary>View</summary>
             <div class="airstrike-editor-menu-list">
+              <button type="button" data-editor-tool-open="profile">Open Profile Setup</button>
+              <button type="button" data-editor-tool-open="flight-path">Open Flight Path</button>
+              <button type="button" data-editor-tool-open="ordnance">Open Ordnance</button>
+              <button type="button" data-editor-tool-open="view-validation">Open View &amp; Validation</button>
               <button type="button" data-editor-frame-route>Frame Route</button>
               <button type="button" data-editor-frame-vehicle>Frame Vehicle</button>
               <button type="button" data-editor-frame-target>Frame Target</button>
@@ -207,190 +207,34 @@ $editor_config = [
           </div>
           <button class="airstrike-editor-panel-collapse airstrike-editor-panel-collapse-right" type="button" data-editor-toggle-panel="right" aria-label="Minimize inspector" title="Minimize inspector"></button>
         </div>
-        <div class="airstrike-editor-palette-groups" data-editor-inspector-panel>
-          <section class="airstrike-editor-palette-group" aria-label="Edit palettes">
-            <div class="airstrike-editor-palette-group-head">
-              <span>Edit</span>
-              <small>Authoring</small>
-            </div>
-            <div class="airstrike-editor-palette-zone" data-editor-palette-zone="edit">
-              <details class="airstrike-editor-palette" data-editor-palette="identity" open>
-                <summary class="airstrike-editor-palette-summary">
-                  <span class="airstrike-editor-palette-grip" data-editor-palette-drag title="Move panel">||</span>
-                  <span class="airstrike-editor-palette-title"><small>Profile</small><strong>Identity</strong></span>
-                  <button class="airstrike-editor-palette-collapse" type="button" data-editor-palette-collapse aria-label="Minimize profile identity" title="Minimize profile identity"></button>
-                </summary>
-                <div class="airstrike-editor-palette-body">
-                  <p class="airstrike-editor-muted">Draft ID and preview vehicle.</p>
-                  <label class="admin-field">
-                    <span>Profile key</span>
-                    <input type="text" maxlength="100" data-editor-key pattern="[a-z0-9][a-z0-9._-]{0,99}">
-                  </label>
-                  <label class="admin-field">
-                    <span>Display name</span>
-                    <input type="text" maxlength="160" data-editor-name>
-                  </label>
-                  <label class="admin-field">
-                    <span>Vehicle</span>
-                    <select data-editor-vehicle>
-                      <option value="drone">Drone</option>
-                      <option value="cargo_plane">Cargo plane</option>
-                      <option value="f15">F-15</option>
-                      <option value="a10">A-10</option>
-                      <option value="attack_heli">Attack helicopter</option>
-                    </select>
-                  </label>
-                </div>
-              </details>
-
-              <details class="airstrike-editor-palette" data-editor-palette="waypoint" open>
-                <summary class="airstrike-editor-palette-summary">
-                  <span class="airstrike-editor-palette-grip" data-editor-palette-drag title="Move panel">||</span>
-                  <span class="airstrike-editor-palette-title"><small>Route</small><strong data-editor-waypoint-title>No waypoint selected</strong></span>
-                  <button class="airstrike-editor-palette-collapse" type="button" data-editor-palette-collapse aria-label="Minimize waypoint" title="Minimize waypoint"></button>
-                </summary>
-                <div class="airstrike-editor-palette-body">
-                  <div class="airstrike-editor-inline-actions">
-                    <button class="airstrike-editor-action-button" type="button" data-editor-waypoint-add>Add At Time</button>
-                    <button class="airstrike-editor-action-button" type="button" data-editor-waypoint-duplicate>Duplicate</button>
-                    <button class="airstrike-editor-action-button" type="button" data-editor-waypoint-delete>Delete</button>
-                  </div>
-                  <div class="airstrike-waypoint-inspector">
-                    <label><span>Time</span><input type="number" step="0.01" data-editor-waypoint-field="Time"></label>
-                    <p>Position</p>
-                    <label><span>X</span><input type="number" step="0.1" data-editor-waypoint-field="X"></label>
-                    <label><span>Y</span><input type="number" step="0.1" data-editor-waypoint-field="Y"></label>
-                    <label><span>Z</span><input type="number" step="0.1" data-editor-waypoint-field="Z"></label>
-                    <p>Rotation offset</p>
-                    <label><span>Rot X</span><input type="number" step="0.1" data-editor-waypoint-field="RotationX"></label>
-                    <label><span>Rot Y</span><input type="number" step="0.1" data-editor-waypoint-field="RotationY"></label>
-                    <label><span>Rot Z</span><input type="number" step="0.1" data-editor-waypoint-field="RotationZ"></label>
-                  </div>
-                  <label class="admin-field">
-                    <span>Target speed (m/s)</span>
-                    <input type="number" min="0.1" max="500" step="0.1" data-editor-waypoint-speed>
-                  </label>
-                  <p class="airstrike-editor-muted" data-editor-waypoint-speed-mph></p>
-                </div>
-              </details>
-
-              <details class="airstrike-editor-palette" data-editor-palette="route-timing" open>
-                <summary class="airstrike-editor-palette-summary">
-                  <span class="airstrike-editor-palette-grip" data-editor-palette-drag title="Move panel">||</span>
-                  <span class="airstrike-editor-palette-title"><small>Route</small><strong>Timing</strong></span>
-                  <button class="airstrike-editor-palette-collapse" type="button" data-editor-palette-collapse aria-label="Minimize route timing" title="Minimize route timing"></button>
-                </summary>
-                <div class="airstrike-editor-palette-body">
-                  <label class="admin-field">
-                    <span>Vehicle orientation</span>
-                    <select data-editor-rotation-mode>
-                      <option value="follow_path_plus_offset">Follow path + rotation offset</option>
-                      <option value="authored_orientation">Full manual rotation</option>
-                    </select>
-                  </label>
-                  <p class="airstrike-editor-muted">Full manual rotation disables automatic path-facing and keeps Rot X/Y/Z entirely under your control.</p>
-                  <label class="admin-field">
-                    <span>Global target speed (m/s)</span>
-                    <input type="number" min="0.1" max="500" step="0.1" data-editor-global-speed>
-                  </label>
-                  <p class="airstrike-editor-muted" data-editor-global-speed-mph></p>
-                  <div class="airstrike-editor-inline-actions">
-                    <button class="airstrike-editor-action-button" type="button" data-editor-normalize-times>Normalize Times</button>
-                    <button class="airstrike-editor-action-button" type="button" data-editor-infer-speeds>Infer From Current Times</button>
-                  </div>
-                </div>
-              </details>
-
-              <details class="airstrike-editor-palette" data-editor-palette="ordnance" open>
-                <summary class="airstrike-editor-palette-summary">
-                  <span class="airstrike-editor-palette-grip" data-editor-palette-drag title="Move panel">||</span>
-                  <span class="airstrike-editor-palette-title"><small>Payload</small><strong>Ordnance</strong></span>
-                  <button class="airstrike-editor-palette-collapse" type="button" data-editor-palette-collapse aria-label="Minimize ordnance" title="Minimize ordnance"></button>
-                </summary>
-                <div class="airstrike-editor-palette-body">
-                  <label class="admin-field">
-                    <span>Release source</span>
-                    <select data-editor-release-mode>
-                      <option value="manual">Manual events</option>
-                      <option value="repeated">Automatic groups</option>
-                      <option value="mixed">Mixed events + groups</option>
-                    </select>
-                  </label>
-                  <p class="airstrike-editor-muted">Automatic groups can schedule several independent bursts or strafe runs on the same flight path.</p>
-                  <div class="airstrike-editor-inline-actions">
-                    <button class="airstrike-editor-action-button" type="button" data-editor-release-add>Add</button>
-                    <button class="airstrike-editor-action-button" type="button" data-editor-release-duplicate>Duplicate</button>
-                    <button class="airstrike-editor-action-button" type="button" data-editor-release-delete>Delete</button>
-                  </div>
-                  <div class="airstrike-release-list" data-editor-manual-releases></div>
-                  <div class="airstrike-release-editor" data-editor-manual-editor></div>
-                  <div class="airstrike-release-editor" data-editor-repeated-editor></div>
-                </div>
-              </details>
-            </div>
-          </section>
-
-          <section class="airstrike-editor-palette-group" aria-label="Viewport reference palettes">
-            <div class="airstrike-editor-palette-group-head">
-              <span>Viewport Reference</span>
-              <small>Layers</small>
-            </div>
-            <div class="airstrike-editor-palette-zone" data-editor-palette-zone="ground">
-              <details class="airstrike-editor-palette" data-editor-palette="ground-reference" open>
-                <summary class="airstrike-editor-palette-summary">
-                  <span class="airstrike-editor-palette-grip" data-editor-palette-drag title="Move panel">||</span>
-                  <span class="airstrike-editor-palette-title"><small>Viewport</small><strong>Reference Layers</strong></span>
-                  <button class="airstrike-editor-palette-collapse" type="button" data-editor-palette-collapse aria-label="Minimize reference layers" title="Minimize reference layers"></button>
-                </summary>
-                <div class="airstrike-editor-palette-body airstrike-editor-reference-toggles">
-                  <label class="airstrike-editor-checkbox" title="Show the current Rust map heightmap in the viewport">
-                    <input type="checkbox" data-editor-terrain-reference checked>
-                    <span><strong>Map heightmap</strong><small>Rust terrain surface</small></span>
-                  </label>
-                  <label class="airstrike-editor-checkbox" title="Show the meter grid on the ground plane">
-                    <input type="checkbox" data-editor-ground-grid checked>
-                    <span><strong>Meter grid</strong><small>Flat scale grid</small></span>
-                  </label>
-                  <label class="airstrike-editor-checkbox" title="Show terrain dressing, scale references, and placeholder scene objects">
-                    <input type="checkbox" data-editor-scene-extras checked>
-                    <span><strong>Scene extras</strong><small>Players, crates, and scale props</small></span>
-                  </label>
-                </div>
-              </details>
-            </div>
-          </section>
-
-          <section class="airstrike-editor-palette-group" aria-label="Reference palettes">
-            <div class="airstrike-editor-palette-group-head">
-              <span>Reference</span>
-              <small>Lists</small>
-            </div>
-            <div class="airstrike-editor-palette-zone" data-editor-palette-zone="reference">
-              <details class="airstrike-editor-palette" data-editor-palette="route-waypoints" open>
-                <summary class="airstrike-editor-palette-summary">
-                  <span class="airstrike-editor-palette-grip" data-editor-palette-drag title="Move panel">||</span>
-                  <span class="airstrike-editor-palette-title"><small>Route</small><strong>Waypoints</strong></span>
-                  <button class="airstrike-editor-palette-collapse" type="button" data-editor-palette-collapse aria-label="Minimize route waypoints" title="Minimize route waypoints"></button>
-                </summary>
-                <div class="airstrike-editor-palette-body">
-                  <div class="airstrike-waypoint-list" data-editor-waypoints></div>
-                </div>
-              </details>
-
-              <details class="airstrike-editor-palette" data-editor-palette="validation" open>
-                <summary class="airstrike-editor-palette-summary">
-                  <span class="airstrike-editor-palette-grip" data-editor-palette-drag title="Move panel">||</span>
-                  <span class="airstrike-editor-palette-title"><small>Output</small><strong>Validation</strong></span>
-                  <button class="airstrike-editor-palette-collapse" type="button" data-editor-palette-collapse aria-label="Minimize validation" title="Minimize validation"></button>
-                </summary>
-                <div class="airstrike-editor-palette-body">
-                  <div class="airstrike-editor-validation" data-editor-feedback>
-                    Load or create a profile, then validate before publishing.
-                  </div>
-                </div>
-              </details>
-            </div>
-          </section>
+        <div class="airstrike-editor-toolbox" data-editor-inspector-panel>
+          <div class="airstrike-editor-feedback-strip" data-editor-feedback-summary>Ready for profile edits.</div>
+          <article class="airstrike-editor-tool-card" data-editor-tool-card="profile">
+            <header><span>Profile Setup</span><small>Identity</small></header>
+            <strong data-editor-summary-profile>New profile</strong>
+            <p data-editor-summary-profile-detail>Choose a vehicle and identify this draft.</p>
+            <div><button type="button" data-editor-tool-open="profile">Edit manually</button><button type="button" data-editor-tool-ai="profile">Ask AI</button></div>
+          </article>
+          <article class="airstrike-editor-tool-card" data-editor-tool-card="flight-path">
+            <header><span>Flight Path</span><small>Route</small></header>
+            <strong data-editor-summary-flight>0 waypoints</strong>
+            <p data-editor-summary-flight-detail>No waypoint selected.</p>
+            <nav aria-label="Selected waypoint"><button type="button" data-editor-step-selection="waypoint:-1" aria-label="Previous waypoint">&larr;</button><button type="button" data-editor-step-selection="waypoint:1" aria-label="Next waypoint">&rarr;</button></nav>
+            <div><button type="button" data-editor-tool-open="flight-path">Edit manually</button><button type="button" data-editor-tool-ai="flight-path">Ask AI</button></div>
+          </article>
+          <article class="airstrike-editor-tool-card" data-editor-tool-card="ordnance">
+            <header><span>Ordnance</span><small>Payload</small></header>
+            <strong data-editor-summary-ordnance>No releases</strong>
+            <p data-editor-summary-ordnance-detail>Manual release mode.</p>
+            <nav aria-label="Selected ordnance"><button type="button" data-editor-step-selection="ordnance:-1" aria-label="Previous ordnance item">&larr;</button><button type="button" data-editor-step-selection="ordnance:1" aria-label="Next ordnance item">&rarr;</button></nav>
+            <div><button type="button" data-editor-tool-open="ordnance">Edit manually</button><button type="button" data-editor-tool-ai="ordnance">Ask AI</button></div>
+          </article>
+          <article class="airstrike-editor-tool-card" data-editor-tool-card="view-validation">
+            <header><span>View &amp; Validation</span><small>Review</small></header>
+            <strong data-editor-summary-validation>Not validated</strong>
+            <p data-editor-summary-validation-detail>3 of 3 reference layers visible.</p>
+            <div><button type="button" data-editor-tool-open="view-validation">Open review tools</button></div>
+          </article>
         </div>
         <section class="airstrike-agent-panel" data-editor-agent-panel hidden aria-label="Airstrike AI agent">
           <div class="airstrike-agent-threadbar">
@@ -425,6 +269,76 @@ $editor_config = [
           </form>
         </section>
       </aside>
+
+      <dialog class="airstrike-tool-dialog airstrike-tool-dialog-profile" data-editor-tool-dialog="profile" aria-labelledby="airstrike-tool-profile-title">
+        <div class="airstrike-tool-shell">
+          <header class="airstrike-tool-head"><div><p class="section-kicker">Profile</p><h2 id="airstrike-tool-profile-title">Profile Setup</h2></div><button type="button" data-editor-tool-close aria-label="Close profile setup">&times;</button></header>
+          <div class="airstrike-tool-layout">
+            <section class="airstrike-tool-content">
+              <p class="airstrike-editor-muted">Set the stable draft identity, preview vehicle, and notes shared with the AI helper.</p>
+              <label class="admin-field"><span>Profile key</span><input type="text" maxlength="100" data-editor-key pattern="[a-z0-9][a-z0-9._-]{0,99}"></label>
+              <label class="admin-field"><span>Display name</span><input type="text" maxlength="160" data-editor-name></label>
+              <label class="admin-field"><span>Vehicle</span><select data-editor-vehicle><option value="drone">Drone</option><option value="cargo_plane">Cargo plane</option><option value="f15">F-15</option><option value="a10">A-10</option><option value="attack_heli">Attack helicopter</option></select></label>
+              <label class="admin-field"><span>Profile notes</span><textarea rows="6" maxlength="5000" data-editor-notes placeholder="Intent, constraints, or reminders for this profile"></textarea></label>
+            </section>
+            <aside class="airstrike-context-agent" data-agent-context-rail data-agent-scope="profile"></aside>
+          </div>
+          <footer class="airstrike-tool-footer"><span data-editor-tool-session-status>No unapplied changes</span><button type="button" data-editor-tool-cancel>Cancel</button><button type="button" data-editor-tool-apply>Apply</button></footer>
+        </div>
+      </dialog>
+
+      <dialog class="airstrike-tool-dialog airstrike-tool-dialog-wide" data-editor-tool-dialog="flight-path" aria-labelledby="airstrike-tool-flight-title">
+        <div class="airstrike-tool-shell">
+          <header class="airstrike-tool-head"><div><p class="section-kicker">Route</p><h2 id="airstrike-tool-flight-title">Flight Path</h2></div><button type="button" data-editor-tool-close aria-label="Close flight path">&times;</button></header>
+          <div class="airstrike-tool-layout">
+            <section class="airstrike-tool-content airstrike-flight-workspace">
+              <aside class="airstrike-workspace-collection"><header><strong>Waypoints</strong><div><button type="button" data-editor-waypoint-add>Add</button><button type="button" data-editor-waypoint-duplicate>Duplicate</button><button type="button" data-editor-waypoint-delete>Delete</button></div></header><div class="airstrike-waypoint-list" data-editor-waypoints></div></aside>
+              <div class="airstrike-workspace-editor">
+                <section class="airstrike-workspace-section"><h3 data-editor-waypoint-title>No waypoint selected</h3><div class="airstrike-waypoint-inspector"><label><span>Time</span><input type="number" step="0.01" data-editor-waypoint-field="Time"></label><p>Position</p><label><span>X</span><input type="number" step="0.1" data-editor-waypoint-field="X"></label><label><span>Y</span><input type="number" step="0.1" data-editor-waypoint-field="Y"></label><label><span>Z</span><input type="number" step="0.1" data-editor-waypoint-field="Z"></label><p>Rotation offset</p><label><span>Rot X</span><input type="number" step="0.1" data-editor-waypoint-field="RotationX"></label><label><span>Rot Y</span><input type="number" step="0.1" data-editor-waypoint-field="RotationY"></label><label><span>Rot Z</span><input type="number" step="0.1" data-editor-waypoint-field="RotationZ"></label></div><label class="admin-field"><span>Target speed (m/s)</span><input type="number" min="0.1" max="500" step="0.1" data-editor-waypoint-speed></label><p class="airstrike-editor-muted" data-editor-waypoint-speed-mph></p></section>
+                <section class="airstrike-workspace-section"><h3>Global route behavior</h3><label class="admin-field"><span>Vehicle orientation</span><select data-editor-rotation-mode><option value="follow_path_plus_offset">Follow path + rotation offset</option><option value="authored_orientation">Full manual rotation</option></select></label><p class="airstrike-editor-muted">Full manual rotation keeps Rot X/Y/Z entirely under your control.</p><label class="admin-field"><span>Global target speed (m/s)</span><input type="number" min="0.1" max="500" step="0.1" data-editor-global-speed></label><p class="airstrike-editor-muted" data-editor-global-speed-mph></p><div class="airstrike-editor-inline-actions"><button class="airstrike-editor-action-button" type="button" data-editor-normalize-times>Normalize Times</button><button class="airstrike-editor-action-button" type="button" data-editor-infer-speeds>Infer From Current Times</button></div></section>
+              </div>
+            </section>
+            <aside class="airstrike-context-agent" data-agent-context-rail data-agent-scope="flight-path"></aside>
+          </div>
+          <footer class="airstrike-tool-footer"><span data-editor-tool-session-status>No unapplied changes</span><button type="button" data-editor-tool-cancel>Cancel</button><button type="button" data-editor-tool-apply>Apply</button></footer>
+        </div>
+      </dialog>
+
+      <dialog class="airstrike-tool-dialog airstrike-tool-dialog-wide" data-editor-tool-dialog="ordnance" aria-labelledby="airstrike-tool-ordnance-title">
+        <div class="airstrike-tool-shell">
+          <header class="airstrike-tool-head"><div><p class="section-kicker">Payload</p><h2 id="airstrike-tool-ordnance-title">Ordnance Editor</h2></div><button type="button" data-editor-tool-close aria-label="Close ordnance editor">&times;</button></header>
+          <div class="airstrike-tool-layout">
+            <section class="airstrike-tool-content airstrike-ordnance-workspace">
+              <div class="airstrike-ordnance-overview"><label class="admin-field"><span>Release source</span><select data-editor-release-mode><option value="manual">Manual events</option><option value="repeated">Automatic groups</option><option value="mixed">Mixed events + groups</option></select></label><strong data-editor-ordnance-schedule-summary>No scheduled payloads</strong></div>
+              <div class="airstrike-release-timeline" data-editor-workspace-release-timeline></div>
+              <div class="airstrike-ordnance-grid">
+                <aside class="airstrike-workspace-collection airstrike-ordnance-collections">
+                  <section data-editor-manual-collection><header><strong>Manual events</strong><button type="button" data-editor-add-manual-release>Add event</button></header><div class="airstrike-release-list" data-editor-manual-releases></div></section>
+                  <section data-editor-repeated-collection><header><strong>Automatic groups</strong><button type="button" data-editor-add-repeated-group>Add group</button></header><div class="airstrike-release-list" data-editor-repeated-releases></div></section>
+                </aside>
+                <div class="airstrike-workspace-editor">
+                  <div class="airstrike-ordnance-editor-actions"><button type="button" data-editor-release-add hidden>Add selected kind</button><button type="button" data-editor-release-duplicate>Duplicate selected</button><button type="button" data-editor-release-delete>Delete selected</button></div>
+                  <nav class="airstrike-ordnance-tabs" role="tablist" aria-label="Ordnance fields"><button class="is-active" type="button" data-editor-ordnance-tab="basic">Basic</button><button type="button" data-editor-ordnance-tab="targeting">Targeting</button><button type="button" data-editor-ordnance-tab="advanced">Advanced</button></nav>
+                  <div class="airstrike-release-editor" data-editor-manual-editor></div><div class="airstrike-release-editor" data-editor-repeated-editor></div>
+                </div>
+              </div>
+            </section>
+            <aside class="airstrike-context-agent" data-agent-context-rail data-agent-scope="ordnance"></aside>
+          </div>
+          <footer class="airstrike-tool-footer"><span data-editor-tool-session-status>No unapplied changes</span><button type="button" data-editor-tool-cancel>Cancel</button><button type="button" data-editor-tool-apply>Apply</button></footer>
+        </div>
+      </dialog>
+
+      <dialog class="airstrike-tool-dialog" data-editor-tool-dialog="view-validation" aria-labelledby="airstrike-tool-view-title">
+        <div class="airstrike-tool-shell">
+          <header class="airstrike-tool-head"><div><p class="section-kicker">Review</p><h2 id="airstrike-tool-view-title">View &amp; Validation</h2></div><button type="button" data-editor-tool-close aria-label="Close review tools">&times;</button></header>
+          <div class="airstrike-tool-layout">
+            <section class="airstrike-tool-content"><div class="airstrike-editor-reference-toggles"><label class="airstrike-editor-checkbox"><input type="checkbox" data-editor-terrain-reference checked><span><strong>Map heightmap</strong><small>Rust terrain surface</small></span></label><label class="airstrike-editor-checkbox"><input type="checkbox" data-editor-ground-grid checked><span><strong>Meter grid</strong><small>Flat scale grid</small></span></label><label class="airstrike-editor-checkbox"><input type="checkbox" data-editor-scene-extras checked><span><strong>Scene extras</strong><small>Players, crates, and scale props</small></span></label></div><div class="airstrike-editor-inline-actions"><button class="airstrike-editor-action-button" type="button" data-editor-validate>Validate profile</button><button class="airstrike-editor-action-button" type="button" data-editor-compile>Compile preview</button></div><div class="airstrike-editor-validation" data-editor-feedback>Load or create a profile, then validate before publishing.</div><article class="airstrike-review-compile"><strong data-editor-compile-summary-review>No compiled track yet</strong><pre data-editor-output-review></pre></article></section>
+            <aside class="airstrike-context-agent" data-agent-context-rail data-agent-scope="view-validation"></aside>
+          </div>
+          <footer class="airstrike-tool-footer"><span>View controls apply immediately.</span><button type="button" data-editor-tool-close>Close</button></footer>
+        </div>
+      </dialog>
 
       <section class="airstrike-editor-bottom">
         <div class="airstrike-editor-bottom-head">
