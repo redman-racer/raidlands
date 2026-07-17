@@ -87,6 +87,12 @@ function validatePayloadFields(
   validateFinite(value.TargetOffsetY, `${path}.TargetOffsetY`, issues, -500, 500);
   validateFinite(value.TargetOffsetZ, `${path}.TargetOffsetZ`, issues, -500, 500);
   validateFinite(value.SpreadRadius, `${path}.SpreadRadius`, issues, -1, 250);
+  if (value.TargetingMode !== undefined && value.TargetingMode !== "simple" && value.TargetingMode !== "advanced") {
+    addIssue(issues, `${path}.TargetingMode`, "targeting_mode", "Must be simple or advanced.");
+  }
+  if (value.AccuracyPercent !== undefined) {
+    validateFinite(value.AccuracyPercent, `${path}.AccuracyPercent`, issues);
+  }
   validateFinite(value.LaunchSpeed, `${path}.LaunchSpeed`, issues, -1, 350);
   validateFinite(value.FuseSeconds, `${path}.FuseSeconds`, issues, -1, 120);
   validateFinite(value.DamageScale, `${path}.DamageScale`, issues, 0, 10);
@@ -464,6 +470,10 @@ export function clonePayloadFields(fields: PayloadEventFields): PayloadEventFiel
     TargetOffsetY: fields.TargetOffsetY,
     TargetOffsetZ: fields.TargetOffsetZ,
     SpreadRadius: fields.SpreadRadius,
+    TargetingMode: fields.TargetingMode === "advanced" ? "advanced" : "simple",
+    AccuracyPercent: Number.isFinite(fields.AccuracyPercent)
+      ? Math.min(100, Math.max(0, fields.AccuracyPercent))
+      : 75,
     LaunchSpeed: fields.LaunchSpeed,
     FuseSeconds: fields.FuseSeconds,
     DamageScale: fields.DamageScale,

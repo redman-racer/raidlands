@@ -1,9 +1,9 @@
 {
   "compilerVersion": "raidlands-airanim-1",
   "publishedRevision": 1,
-  "canonicalSha256": "eca2c0b7cbff5690d9e9bc2505517fb74ee908b930c426a7fd734998723f383a",
-  "canonicalBytes": 10253,
+  "canonicalSha256": "9ad258488c8dadb1a9aaa33ff9315aeab8600c74c77f2338286f07e8d788a2e4",
+  "canonicalBytes": 10345,
   "sourceHashes": {
-    "alternating_hardpoints": "85f7e3905c0038b513a6bd2029913f4223b43d0b1842fed57a606ff4907c5d3c"
+    "alternating_hardpoints": "2b9e2d9d827849555deae362b55a0bb0bde5f18cbb6cdb55a825b57259f48182"
   }
 }

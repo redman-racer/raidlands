@@ -69,6 +69,8 @@ export interface PayloadEventFields {
   TargetOffsetY: number;
   TargetOffsetZ: number;
   SpreadRadius: number;
+  TargetingMode: "simple" | "advanced";
+  AccuracyPercent: number;
   LaunchSpeed: number;
   FuseSeconds: number;
   DamageScale: number;
@@ -336,6 +338,8 @@ export const DEFAULT_PAYLOAD_EVENT: PayloadEventFields = {
   TargetOffsetY: 0,
   TargetOffsetZ: 0,
   SpreadRadius: -1,
+  TargetingMode: "simple",
+  AccuracyPercent: 75,
   LaunchSpeed: -1,
   FuseSeconds: -1,
   DamageScale: 1,

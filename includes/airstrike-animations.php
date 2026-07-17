@@ -1173,6 +1173,8 @@ function raidlands_airstrike_animations_runtime_profile_to_source(string $profil
         }
 
         $payload_events[] = array_merge($event, [
+            'TargetingMode' => raidlands_airstrike_animation_targeting_mode($event['TargetingMode'] ?? null),
+            'AccuracyPercent' => max(0.0, min(100.0, raidlands_airstrike_animation_number($event['AccuracyPercent'] ?? 75.0, 75.0))),
             'Id' => 'release_' . str_pad((string) ($index + 1), 3, '0', STR_PAD_LEFT),
         ]);
     }
@@ -1181,6 +1183,11 @@ function raidlands_airstrike_animations_runtime_profile_to_source(string $profil
     $release_template = is_array($runtime['ReleaseTemplate'] ?? null)
         ? (array) $runtime['ReleaseTemplate']
         : [];
+    $release_template['TargetingMode'] = raidlands_airstrike_animation_targeting_mode($release_template['TargetingMode'] ?? null);
+    $release_template['AccuracyPercent'] = max(
+        0.0,
+        min(100.0, raidlands_airstrike_animation_number($release_template['AccuracyPercent'] ?? 75.0, 75.0))
+    );
     $first_payload = (float) ($runtime['FirstPayloadDelaySeconds'] ?? 0.0);
 
     if ($release_mode === 'generated') {

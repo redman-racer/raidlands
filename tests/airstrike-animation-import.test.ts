@@ -17,6 +17,8 @@ const legacyTemplate = {
   TargetOffsetY: 0,
   TargetOffsetZ: 0,
   SpreadRadius: -1,
+  TargetingMode: "simple" as const,
+  AccuracyPercent: 75,
   LaunchSpeed: -1,
   FuseSeconds: -1,
   DamageScale: 1,
@@ -67,6 +69,7 @@ describe("schema-1 VisualProfiles import", () => {
     expect("CompiledReleaseEvents" in runtime).toBe(false);
     expect(runtime.PayloadReleaseMode).toBe("manual");
     expect(runtime.MaxPayloadCount).toBe(0);
+    expect(runtime.ReleaseTemplate).toMatchObject({ TargetingMode: "simple", AccuracyPercent: 75 });
   });
 
   it("generates deterministic stable IDs and profile ordering", () => {
@@ -99,7 +102,7 @@ describe("schema-1 VisualProfiles import", () => {
     expect(first.Profiles.z_profile!.Waypoints.map((waypoint) => waypoint.Id)).toEqual(["waypoint_001", "waypoint_002"]);
     expect(first.Profiles.z_profile!.ReleaseSource).toMatchObject({
       Mode: "manual",
-      Events: [{ Id: "event_001", Time: 1, Payload: "smoke" }],
+      Events: [{ Id: "event_001", Time: 1, Payload: "smoke", TargetingMode: "simple", AccuracyPercent: 75 }],
     });
   });
 

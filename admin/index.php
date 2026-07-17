@@ -5631,6 +5631,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                         $airstrike_summary = (array) ($admin_airstrike_animation_state['summary'] ?? []);
                         $airstrike_active_profile_count = 0;
                         $airstrike_valid_profile_count = 0;
+                        $airstrike_profile_vehicles = [];
                         foreach ($airstrike_profiles as $profile_count_row) {
                             $profile_count_validation = (array) ($profile_count_row['validation'] ?? []);
                             if (empty($profile_count_row['archived'])) {
@@ -5639,7 +5640,10 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             if (!empty($profile_count_validation['ok'])) {
                                 $airstrike_valid_profile_count++;
                             }
+                            $profile_count_vehicle = (string) ($profile_count_row['vehicle'] ?? 'other');
+                            $airstrike_profile_vehicles[$profile_count_vehicle] = ($airstrike_profile_vehicles[$profile_count_vehicle] ?? 0) + 1;
                         }
+                        ksort($airstrike_profile_vehicles, SORT_NATURAL | SORT_FLAG_CASE);
                       ?>
                       <section class="admin-section airstrike-file-browser">
                         <div class="airstrike-file-browser-top">
@@ -5692,7 +5696,40 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                             <?php if ($airstrike_profiles === []) : ?>
                               <div class="admin-alert warning">No profile drafts exist yet. The first bridge bootstrap can import the current Rust file automatically, or you can create one in the browser editor.</div>
                             <?php else : ?>
-                              <div class="airstrike-profile-file-grid">
+                              <div class="airstrike-profile-browser-controls" data-airstrike-profile-controls>
+                                <label class="airstrike-profile-search">
+                                  <span>Search profiles</span>
+                                  <input type="search" placeholder="Name, key, or vehicle" data-airstrike-profile-search>
+                                </label>
+                                <label>
+                                  <span>Filter</span>
+                                  <select data-airstrike-profile-filter>
+                                    <option value="all">All profiles</option>
+                                    <option value="active">Active</option>
+                                    <option value="archived">Archived</option>
+                                    <option value="valid">Valid</option>
+                                    <option value="invalid">Needs attention</option>
+                                    <option value="unpublished">Unpublished</option>
+                                  </select>
+                                </label>
+                                <label>
+                                  <span>Sort</span>
+                                  <select data-airstrike-profile-sort>
+                                    <option value="name-asc">Name A–Z</option>
+                                    <option value="name-desc">Name Z–A</option>
+                                    <option value="updated-desc">Recently modified</option>
+                                    <option value="draft-desc">Highest draft</option>
+                                  </select>
+                                </label>
+                              </div>
+                              <div class="airstrike-profile-tabs" role="tablist" aria-label="Vehicle type" data-airstrike-profile-tabs>
+                                <button type="button" class="is-active" role="tab" aria-selected="true" data-vehicle="all">All <span><?= e((string) count($airstrike_profiles)) ?></span></button>
+                                <?php foreach ($airstrike_profile_vehicles as $vehicle_name => $vehicle_count) : ?>
+                                  <button type="button" role="tab" aria-selected="false" data-vehicle="<?= e($vehicle_name) ?>"><?= e(ucwords(str_replace(['_', '-'], ' ', $vehicle_name))) ?> <span><?= e((string) $vehicle_count) ?></span></button>
+                                <?php endforeach; ?>
+                              </div>
+                              <p class="airstrike-profile-results" data-airstrike-profile-results aria-live="polite"></p>
+                              <div class="airstrike-profile-file-grid" data-airstrike-profile-grid>
                                 <?php foreach ($airstrike_profiles as $profile) : ?>
                                   <?php
                                     $profile_validation = (array) ($profile['validation'] ?? []);
@@ -5700,7 +5737,17 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                     $profile_key_value = (string) ($profile['profileKey'] ?? '');
                                     $profile_is_archived = !empty($profile['archived']);
                                   ?>
-                                  <article class="airstrike-profile-file-card<?= $profile_is_archived ? ' is-archived' : '' ?>">
+                                  <article
+                                    class="airstrike-profile-file-card<?= $profile_is_archived ? ' is-archived' : '' ?>"
+                                    data-profile-name="<?= e(strtolower((string) ($profile['displayName'] ?? $profile_key_value))) ?>"
+                                    data-profile-key="<?= e(strtolower($profile_key_value)) ?>"
+                                    data-profile-vehicle="<?= e($profile_vehicle ?: 'other') ?>"
+                                    data-profile-archived="<?= $profile_is_archived ? '1' : '0' ?>"
+                                    data-profile-valid="<?= !empty($profile_validation['ok']) ? '1' : '0' ?>"
+                                    data-profile-published="<?= !empty($profile['lastPublishedProfileRevision']) ? '1' : '0' ?>"
+                                    data-profile-draft="<?= e((string) ($profile['draftVersion'] ?? 0)) ?>"
+                                    data-profile-updated="<?= e((string) ($profile['updatedAt'] ?? '')) ?>"
+                                  >
                                     <div class="airstrike-profile-file-thumb">
                                       <span><?= e(strtoupper(substr($profile_vehicle ?: 'AIR', 0, 3))) ?></span>
                                     </div>
@@ -5726,6 +5773,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                   </article>
                                 <?php endforeach; ?>
                               </div>
+                              <div class="admin-alert warning airstrike-profile-empty" data-airstrike-profile-empty hidden>No profiles match these filters.</div>
                             <?php endif; ?>
                           </div>
                         </div>

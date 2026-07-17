@@ -15557,6 +15557,90 @@ button.monument-room {
   pointer-events: auto;
 }
 
+.airstrike-profile-browser-controls {
+  display: grid;
+  grid-template-columns: minmax(220px, 1fr) repeat(2, minmax(150px, 190px));
+  gap: 10px;
+  align-items: end;
+}
+
+.airstrike-profile-browser-controls label {
+  display: grid;
+  gap: 5px;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: .72rem;
+  font-weight: 850;
+  text-transform: uppercase;
+}
+
+.airstrike-profile-browser-controls input,
+.airstrike-profile-browser-controls select {
+  width: 100%;
+  min-width: 0;
+  min-height: 40px;
+  padding: 8px 10px;
+  border: 1px solid rgba(181, 170, 160, .24);
+  border-radius: 6px;
+  background: rgba(4, 7, 8, .76);
+  color: var(--white);
+  font: 750 .82rem/1.2 var(--font-body);
+}
+
+.airstrike-profile-tabs {
+  display: flex;
+  gap: 7px;
+  padding: 2px 0;
+  overflow-x: auto;
+}
+
+.airstrike-profile-tabs button {
+  flex: 0 0 auto;
+  padding: 7px 11px;
+  border: 1px solid rgba(181, 170, 160, .22);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .24);
+  color: var(--muted);
+  font: 850 .74rem/1 var(--font-body);
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.airstrike-profile-tabs button span {
+  margin-left: 4px;
+  color: var(--yellow);
+}
+
+.airstrike-profile-tabs button:hover,
+.airstrike-profile-tabs button:focus-visible,
+.airstrike-profile-tabs button.is-active {
+  border-color: rgba(255, 138, 40, .60);
+  color: var(--white);
+  background: rgba(255, 138, 40, .12);
+}
+
+.airstrike-profile-results {
+  margin: -2px 0 0;
+  color: var(--muted);
+  font-family: var(--font-body);
+  font-size: .78rem;
+  font-weight: 750;
+}
+
+.airstrike-profile-file-card[hidden] {
+  display: none;
+}
+
+.airstrike-profile-empty {
+  margin: 0;
+}
+
+@media (max-width: 840px) {
+  .airstrike-profile-browser-controls {
+    grid-template-columns: 1fr;
+  }
+}
+
 .server-map-debug-hud__actions {
   display: flex;
   flex-wrap: wrap;

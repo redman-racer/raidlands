@@ -31,6 +31,8 @@ function payloadFields(value: Partial<RuntimePayloadEvent> | undefined): Payload
     TargetOffsetY: finiteOr(source.TargetOffsetY, DEFAULT_PAYLOAD_EVENT.TargetOffsetY),
     TargetOffsetZ: finiteOr(source.TargetOffsetZ, DEFAULT_PAYLOAD_EVENT.TargetOffsetZ),
     SpreadRadius: finiteOr(source.SpreadRadius, DEFAULT_PAYLOAD_EVENT.SpreadRadius),
+    TargetingMode: source.TargetingMode === "advanced" ? "advanced" : "simple",
+    AccuracyPercent: Math.min(100, Math.max(0, finiteOr(source.AccuracyPercent, DEFAULT_PAYLOAD_EVENT.AccuracyPercent))),
     LaunchSpeed: finiteOr(source.LaunchSpeed, DEFAULT_PAYLOAD_EVENT.LaunchSpeed),
     FuseSeconds: finiteOr(source.FuseSeconds, DEFAULT_PAYLOAD_EVENT.FuseSeconds),
     DamageScale: finiteOr(source.DamageScale, DEFAULT_PAYLOAD_EVENT.DamageScale),

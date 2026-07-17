@@ -60,6 +60,68 @@
     }
   }
 
+  const profileControls = root.querySelector('[data-airstrike-profile-controls]');
+  const profileGrid = root.querySelector('[data-airstrike-profile-grid]');
+
+  if (profileControls && profileGrid) {
+    const search = profileControls.querySelector('[data-airstrike-profile-search]');
+    const filter = profileControls.querySelector('[data-airstrike-profile-filter]');
+    const sort = profileControls.querySelector('[data-airstrike-profile-sort]');
+    const tabs = root.querySelector('[data-airstrike-profile-tabs]');
+    const results = root.querySelector('[data-airstrike-profile-results]');
+    const empty = root.querySelector('[data-airstrike-profile-empty]');
+    const cards = Array.from(profileGrid.querySelectorAll('.airstrike-profile-file-card'));
+    let vehicle = 'all';
+
+    function renderProfiles() {
+      const term = String(search.value || '').trim().toLowerCase();
+      const status = String(filter.value || 'all');
+      const order = String(sort.value || 'name-asc');
+      const visible = cards.filter(function (card) {
+        const matchesSearch = !term || [card.dataset.profileName, card.dataset.profileKey, card.dataset.profileVehicle]
+          .some(function (value) { return String(value || '').includes(term); });
+        const matchesVehicle = vehicle === 'all' || card.dataset.profileVehicle === vehicle;
+        const matchesStatus = status === 'all'
+          || (status === 'active' && card.dataset.profileArchived !== '1')
+          || (status === 'archived' && card.dataset.profileArchived === '1')
+          || (status === 'valid' && card.dataset.profileValid === '1')
+          || (status === 'invalid' && card.dataset.profileValid !== '1')
+          || (status === 'unpublished' && card.dataset.profilePublished !== '1');
+        return matchesSearch && matchesVehicle && matchesStatus;
+      });
+
+      cards.sort(function (a, b) {
+        if (order === 'name-desc') return String(b.dataset.profileName).localeCompare(String(a.dataset.profileName));
+        if (order === 'updated-desc') return String(b.dataset.profileUpdated).localeCompare(String(a.dataset.profileUpdated));
+        if (order === 'draft-desc') return Number(b.dataset.profileDraft) - Number(a.dataset.profileDraft)
+          || String(a.dataset.profileName).localeCompare(String(b.dataset.profileName));
+        return String(a.dataset.profileName).localeCompare(String(b.dataset.profileName));
+      }).forEach(function (card) {
+        card.hidden = !visible.includes(card);
+        profileGrid.appendChild(card);
+      });
+
+      results.textContent = visible.length + ' of ' + cards.length + ' profiles';
+      empty.hidden = visible.length !== 0;
+    }
+
+    search.addEventListener('input', renderProfiles);
+    filter.addEventListener('change', renderProfiles);
+    sort.addEventListener('change', renderProfiles);
+    tabs.addEventListener('click', function (event) {
+      const button = event.target.closest('[data-vehicle]');
+      if (!button) return;
+      vehicle = String(button.dataset.vehicle || 'all');
+      tabs.querySelectorAll('[data-vehicle]').forEach(function (tab) {
+        const active = tab === button;
+        tab.classList.toggle('is-active', active);
+        tab.setAttribute('aria-selected', String(active));
+      });
+      renderProfiles();
+    });
+    renderProfiles();
+  }
+
   root.querySelectorAll('[data-airstrike-publish]').forEach(function (button) {
     button.addEventListener('click', async function () {
       const sync = button.dataset.airstrikePublish === 'sync';

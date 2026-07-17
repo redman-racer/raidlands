@@ -16,7 +16,7 @@ import {
   type RuntimeVisualProfile,
   type RuntimeVisualProfileFile,
 } from "./types";
-import { assertValidSourceBundle } from "./validation";
+import { assertValidSourceBundle, clonePayloadFields } from "./validation";
 import { firstRepeatedReleaseTime, hasGroupedRepeatedReleases } from "./repeated-release";
 
 const MAX_COMPILED_FRAMES = 6000;
@@ -27,6 +27,10 @@ function sourceHashProjection(
   resolvedHardpointOffsets: Record<string, { X: number; Y: number; Z: number }>,
 ): unknown {
   const release = profile.ReleaseSource;
+  const payloadProjection = <T extends { Id?: string; Name?: string }>(value: T): Omit<T, "Id" | "Name"> => {
+    const { Id: _id, Name: _name, ...rest } = value;
+    return { ...rest, ...clonePayloadFields(value as unknown as import("./types").PayloadEventFields) } as Omit<T, "Id" | "Name">;
+  };
   const releaseProjection =
     release.Mode === "manual"
       ? {
@@ -34,8 +38,8 @@ function sourceHashProjection(
           LegacyDynamic: release.LegacyDynamic === true,
           MaximumUnits: release.MaximumUnits ?? null,
           FallbackIntervalSeconds: release.FallbackIntervalSeconds ?? null,
-          Template: release.Template ?? null,
-          Events: release.Events.map(({ Id: _id, ...event }) => event),
+          Template: release.Template ? clonePayloadFields(release.Template) : null,
+          Events: release.Events.map(payloadProjection),
           ...(Object.keys(resolvedHardpointOffsets).length > 0
             ? { ResolvedHardpointOffsets: resolvedHardpointOffsets }
             : {}),
@@ -43,15 +47,21 @@ function sourceHashProjection(
       : release.Mode === "mixed"
         ? {
             Mode: release.Mode,
-            Events: release.Events.map(({ Id: _id, ...event }) => event),
-            Groups: release.Groups.map(({ Id: _id, Name: _name, ...group }) => group),
+            Events: release.Events.map(payloadProjection),
+            Groups: release.Groups.map(({ Id: _id, Name: _name, Template, ...group }) => ({
+              ...group,
+              Template: clonePayloadFields(Template),
+            })),
             ResolvedHardpointOffsets: resolvedHardpointOffsets,
           }
       : hasGroupedRepeatedReleases(release)
         ? {
             Mode: release.Mode,
             LegacyDynamic: false,
-            Groups: release.Groups!.map(({ Id: _id, Name: _name, ...group }) => group),
+            Groups: release.Groups!.map(({ Id: _id, Name: _name, Template, ...group }) => ({
+              ...group,
+              Template: clonePayloadFields(Template),
+            })),
             ResolvedHardpointOffsets: resolvedHardpointOffsets,
           }
         : {
@@ -61,7 +71,7 @@ function sourceHashProjection(
             IntervalSeconds: release.IntervalSeconds,
             UnitsPerRelease: release.UnitsPerRelease,
             MaximumUnits: release.MaximumUnits,
-            Template: release.Template,
+            Template: release.Template ? clonePayloadFields(release.Template) : release.Template,
             HardpointSequence: release.HardpointSequence,
             ResolvedHardpointOffsets: resolvedHardpointOffsets,
           };

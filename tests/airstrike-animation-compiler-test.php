@@ -64,6 +64,8 @@ function airstrike_compiler_payload(array $overrides = []): array
         'TargetOffsetY' => 0.0,
         'TargetOffsetZ' => 0.0,
         'SpreadRadius' => -1.0,
+        'TargetingMode' => 'simple',
+        'AccuracyPercent' => 75.0,
         'LaunchSpeed' => -1.0,
         'FuseSeconds' => -1.0,
         'DamageScale' => 1.0,
@@ -168,6 +170,41 @@ airstrike_compiler_close((float) $straight_frames[30]['Z'], 10.0, 0.000001, 'str
 airstrike_compiler_close((float) $straight_frames[15]['Qw'], 1.0, 0.000001, 'forward +Z route has identity local rotation');
 airstrike_compiler_test(!array_key_exists('CompiledReleaseEvents', $straight), 'legacy dynamic manual profile omits compiled release field');
 airstrike_compiler_close((float) $straight['FirstPayloadDelaySeconds'], 0.25, 0.000001, 'FirstPayloadDelaySeconds is preserved');
+
+$legacy_targeting_source = airstrike_compiler_source();
+unset(
+    $legacy_targeting_source['ReleaseSource']['Template']['TargetingMode'],
+    $legacy_targeting_source['ReleaseSource']['Template']['AccuracyPercent']
+);
+$legacy_targeting = raidlands_airstrike_animation_compile_profile($legacy_targeting_source);
+airstrike_compiler_test($legacy_targeting['ReleaseTemplate']['TargetingMode'] === 'simple', 'legacy targeting mode defaults to simple');
+airstrike_compiler_close((float) $legacy_targeting['ReleaseTemplate']['AccuracyPercent'], 75.0, 0.000001, 'legacy accuracy defaults to 75 percent');
+
+$advanced_targeting_source = airstrike_compiler_source([
+    'ReleaseSource' => [
+        'Mode' => 'manual',
+        'LegacyDynamic' => false,
+        'Events' => [array_merge(airstrike_compiler_payload([
+            'TargetingMode' => 'advanced',
+            'AccuracyPercent' => 140.0,
+            'TargetOffsetX' => 12.0,
+            'SpreadRadius' => 20.0,
+        ]), ['Id' => 'advanced', 'Time' => 0.25])],
+    ],
+]);
+$advanced_targeting = raidlands_airstrike_animation_compile_profile($advanced_targeting_source);
+airstrike_compiler_test($advanced_targeting['PayloadEvents'][0]['TargetingMode'] === 'advanced', 'advanced targeting mode survives compilation');
+airstrike_compiler_close((float) $advanced_targeting['PayloadEvents'][0]['AccuracyPercent'], 100.0, 0.000001, 'accuracy is clamped to 100 percent');
+airstrike_compiler_close((float) $advanced_targeting['PayloadEvents'][0]['TargetOffsetX'], 12.0, 0.000001, 'advanced target offset survives compilation');
+
+$invalid_targeting_source = $advanced_targeting_source;
+$invalid_targeting_source['ReleaseSource']['Events'][0]['TargetingMode'] = 'automatic';
+$invalid_targeting_validation = raidlands_airstrike_animation_validate_profile($invalid_targeting_source, 'Profiles.invalid_targeting');
+airstrike_compiler_test(!$invalid_targeting_validation['ok'], 'unsupported targeting mode is rejected');
+airstrike_compiler_test(
+    in_array('Profiles.invalid_targeting.ReleaseSource.Events[0].TargetingMode', array_column($invalid_targeting_validation['errors'], 'path'), true),
+    'targeting validation reports the exact event path'
+);
 
 $manual_rotation_source = airstrike_compiler_source([
     'ProfileKey' => 'manual_reverse_pass',

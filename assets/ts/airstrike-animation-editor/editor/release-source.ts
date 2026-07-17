@@ -22,13 +22,21 @@ export const PAYLOAD_COMMON_FIELDS = [
   "CarrierOffsetX",
   "CarrierOffsetY",
   "CarrierOffsetZ",
+] as const satisfies readonly (keyof PayloadEventFields)[];
+
+export const PAYLOAD_SIMPLE_TARGET_FIELDS = [
+  "AccuracyPercent",
+  "SpreadRadius",
+] as const satisfies readonly (keyof PayloadEventFields)[];
+
+export const PAYLOAD_ADVANCED_TARGET_FIELDS = [
   "TargetOffsetX",
   "TargetOffsetY",
   "TargetOffsetZ",
+  "SpreadRadius",
 ] as const satisfies readonly (keyof PayloadEventFields)[];
 
 export const PAYLOAD_ADVANCED_FIELDS = [
-  "SpreadRadius",
   "LaunchSpeed",
   "FuseSeconds",
   "DamageScale",
@@ -40,7 +48,12 @@ export const PAYLOAD_ADVANCED_FIELDS = [
   "DamageScales",
 ] as const satisfies readonly (keyof PayloadEventFields)[];
 
-export type PayloadField = (typeof PAYLOAD_COMMON_FIELDS)[number] | (typeof PAYLOAD_ADVANCED_FIELDS)[number];
+export type PayloadField =
+  | (typeof PAYLOAD_COMMON_FIELDS)[number]
+  | (typeof PAYLOAD_SIMPLE_TARGET_FIELDS)[number]
+  | (typeof PAYLOAD_ADVANCED_TARGET_FIELDS)[number]
+  | (typeof PAYLOAD_ADVANCED_FIELDS)[number]
+  | "TargetingMode";
 
 export interface ReleasePreviewEvent {
   id: string;
@@ -51,6 +64,16 @@ export interface ReleasePreviewEvent {
   fields: PayloadEventFields;
   sourceId?: string;
   hardpointId?: string;
+}
+
+export function effectiveAccuracyRadius(fields: Pick<PayloadEventFields, "SpreadRadius" | "AccuracyPercent">): number | null {
+  if (!Number.isFinite(fields.SpreadRadius) || fields.SpreadRadius < 0) {
+    return null;
+  }
+  const accuracy = Number.isFinite(fields.AccuracyPercent)
+    ? Math.min(100, Math.max(0, fields.AccuracyPercent))
+    : 75;
+  return Math.max(0, fields.SpreadRadius) * (1 - accuracy / 100);
 }
 
 function cloneProfile(profile: EditorSourceProfile): EditorSourceProfile {
@@ -68,6 +91,10 @@ function clonePayloadFields(fields: PayloadEventFields): PayloadEventFields {
     TargetOffsetY: fields.TargetOffsetY,
     TargetOffsetZ: fields.TargetOffsetZ,
     SpreadRadius: fields.SpreadRadius,
+    TargetingMode: fields.TargetingMode === "advanced" ? "advanced" : "simple",
+    AccuracyPercent: Number.isFinite(fields.AccuracyPercent)
+      ? Math.min(100, Math.max(0, fields.AccuracyPercent))
+      : 75,
     LaunchSpeed: fields.LaunchSpeed,
     FuseSeconds: fields.FuseSeconds,
     DamageScale: fields.DamageScale,
@@ -78,6 +105,40 @@ function clonePayloadFields(fields: PayloadEventFields): PayloadEventFields {
     MaxTrackingDistance: fields.MaxTrackingDistance,
     DamageScales: { ...fields.DamageScales },
   };
+}
+
+function normalizePayloadTargeting(fields: PayloadEventFields): void {
+  const raw = fields as PayloadEventFields & { TargetingMode?: unknown; AccuracyPercent?: unknown };
+  const mode = typeof raw.TargetingMode === "string" ? raw.TargetingMode.trim().toLowerCase() : "";
+  if (mode === "simple" || mode === "advanced") {
+    fields.TargetingMode = mode;
+  } else if (raw.TargetingMode === undefined || raw.TargetingMode === null || mode === "") {
+    fields.TargetingMode = "simple";
+  }
+  if (raw.AccuracyPercent === undefined || raw.AccuracyPercent === null) {
+    fields.AccuracyPercent = 75;
+  } else if (typeof raw.AccuracyPercent === "number" && Number.isFinite(raw.AccuracyPercent)) {
+    fields.AccuracyPercent = roundEditorNumber(Math.min(100, Math.max(0, raw.AccuracyPercent)), 3);
+  }
+}
+
+export function normalizeProfilePayloadTargeting(profile: EditorSourceProfile): EditorSourceProfile {
+  const next = cloneProfile(profile);
+  const release = next.ReleaseSource;
+  if (release.Mode === "manual" || release.Mode === "mixed") {
+    release.Events.forEach(normalizePayloadTargeting);
+  }
+  if (release.Mode === "manual" && release.Template) {
+    normalizePayloadTargeting(release.Template);
+  }
+  if (release.Mode === "repeated") {
+    if (release.Template) normalizePayloadTargeting(release.Template);
+    release.Groups?.forEach((group) => normalizePayloadTargeting(group.Template));
+  }
+  if (release.Mode === "mixed") {
+    release.Groups.forEach((group) => normalizePayloadTargeting(group.Template));
+  }
+  return next;
 }
 
 function cloneEvent(event: SourcePayloadEvent): SourcePayloadEvent {
@@ -573,8 +634,16 @@ function assignPayloadField(
     target.DamageScales = typeof value === "object" && value !== null && !Array.isArray(value) ? { ...value } : {};
     return;
   }
+  if (field === "TargetingMode") {
+    target.TargetingMode = String(value).toLowerCase() === "advanced" ? "advanced" : "simple";
+    return;
+  }
   const numberValue = typeof value === "number" ? value : Number(value);
   if (Number.isFinite(numberValue)) {
-    target[field] = field === "Count" ? Math.max(1, Math.round(numberValue)) : roundEditorNumber(numberValue, 3);
+    target[field] = field === "Count"
+      ? Math.max(1, Math.round(numberValue))
+      : field === "AccuracyPercent"
+        ? roundEditorNumber(Math.min(100, Math.max(0, numberValue)), 3)
+        : roundEditorNumber(numberValue, 3);
   }
 }

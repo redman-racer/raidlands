@@ -1,8 +1,8 @@
 {
   "compilerVersion": "raidlands-airanim-1",
   "publishedRevision": 1,
-  "canonicalSha256": "4a7be8cdbe7a6d906735b3412090c48c515cc7ec5031aa4b9b68f2b056e03a9c",
-  "canonicalBytes": 19559,
+  "canonicalSha256": "bb14831fb2c23b98fec3c279c492a8c9c92ee96288696fec30e04132c357f26a",
+  "canonicalBytes": 19605,
   "sourceHashes": {
     "barrel_roll_540": "5265cfd7080ddbf3db1e652ab71c32b82eccb78665bc24ebd5c734a5c5227ddd"
   }

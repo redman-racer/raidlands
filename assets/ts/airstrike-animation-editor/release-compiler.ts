@@ -33,6 +33,10 @@ function runtimeEvent(fields: PayloadEventFields, time: number, index: number): 
     TargetOffsetY: quantizeCanonicalNumber(fields.TargetOffsetY),
     TargetOffsetZ: quantizeCanonicalNumber(fields.TargetOffsetZ),
     SpreadRadius: quantizeCanonicalNumber(fields.SpreadRadius),
+    TargetingMode: fields.TargetingMode === "advanced" ? "advanced" : "simple",
+    AccuracyPercent: quantizeCanonicalNumber(
+      Number.isFinite(fields.AccuracyPercent) ? Math.min(100, Math.max(0, fields.AccuracyPercent)) : 75,
+    ),
     LaunchSpeed: quantizeCanonicalNumber(fields.LaunchSpeed),
     FuseSeconds: quantizeCanonicalNumber(fields.FuseSeconds),
     DamageScale: quantizeCanonicalNumber(fields.DamageScale),

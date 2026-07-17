@@ -132,7 +132,32 @@ $editor_config = [
             <button class="airstrike-editor-panel-collapse airstrike-editor-panel-collapse-left" type="button" data-editor-toggle-panel="left" aria-label="Minimize profiles" title="Minimize profiles"></button>
           </div>
         </div>
-        <input type="search" placeholder="Search profiles" data-editor-search aria-label="Search profiles">
+        <div class="airstrike-editor-profile-tools">
+          <input type="search" placeholder="Search profiles" data-editor-search aria-label="Search profiles">
+          <div class="airstrike-editor-profile-options">
+            <label>
+              <span>Status</span>
+              <select data-editor-profile-filter aria-label="Filter profiles by status">
+                <option value="all">All profiles</option>
+                <option value="valid">Valid</option>
+                <option value="invalid">Needs attention</option>
+                <option value="published">Published</option>
+                <option value="unpublished">Unpublished</option>
+              </select>
+            </label>
+            <label>
+              <span>Sort</span>
+              <select data-editor-profile-sort aria-label="Sort profiles">
+                <option value="name-asc">Name A–Z</option>
+                <option value="name-desc">Name Z–A</option>
+                <option value="updated-desc">Recently modified</option>
+                <option value="draft-desc">Highest draft</option>
+              </select>
+            </label>
+          </div>
+          <div class="airstrike-editor-profile-tabs" data-editor-profile-tabs role="tablist" aria-label="Vehicle type"></div>
+          <p class="airstrike-editor-profile-count" data-editor-profile-count aria-live="polite"></p>
+        </div>
         <div class="airstrike-editor-profile-list" data-editor-profile-list></div>
       </aside>
 

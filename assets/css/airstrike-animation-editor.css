@@ -288,6 +288,76 @@
   padding: 6px 10px;
 }
 
+.airstrike-editor-profile-tools {
+  display: grid;
+  gap: 8px;
+  min-width: 0;
+}
+
+.airstrike-editor-profile-options {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 8px;
+}
+
+.airstrike-editor-profile-options label {
+  display: grid;
+  gap: 4px;
+  color: #91a4a8;
+  font-size: 10px;
+  font-weight: 800;
+  text-transform: uppercase;
+}
+
+.airstrike-editor-profile-options select {
+  width: 100%;
+  min-width: 0;
+  padding: 7px 8px;
+  border: 1px solid rgba(129, 167, 174, .24);
+  border-radius: 5px;
+  background: #0b1012;
+  color: #d9e8eb;
+  font: 700 11px/1.2 var(--font-body, Arial, sans-serif);
+}
+
+.airstrike-editor-profile-tabs {
+  display: flex;
+  gap: 5px;
+  padding-bottom: 2px;
+  overflow-x: auto;
+}
+
+.airstrike-editor-profile-tab {
+  flex: 0 0 auto;
+  padding: 6px 8px;
+  border: 1px solid rgba(129, 167, 174, .20);
+  border-radius: 999px;
+  background: rgba(0, 0, 0, .22);
+  color: #91a4a8;
+  font: 800 10px/1 var(--font-body, Arial, sans-serif);
+  cursor: pointer;
+}
+
+.airstrike-editor-profile-tab:hover,
+.airstrike-editor-profile-tab:focus-visible,
+.airstrike-editor-profile-tab.is-active {
+  border-color: rgba(54, 197, 230, .62);
+  color: #ecfbff;
+  background: rgba(20, 54, 62, .76);
+}
+
+.airstrike-editor-profile-count,
+.airstrike-editor-profile-empty {
+  margin: 0;
+  color: #91a4a8;
+  font-size: 11px;
+}
+
+.airstrike-editor-profile-empty {
+  padding: 12px 4px;
+  text-align: center;
+}
+
 .airstrike-editor-dock-head > div,
 .airstrike-editor-bottom-head > div {
   min-width: 0;
@@ -1494,6 +1564,63 @@
   align-content: center;
   grid-template-rows: auto auto;
   gap: 7px;
+}
+
+.airstrike-targeting-panel {
+  display: grid;
+  gap: 8px;
+  padding: 10px;
+  border: 1px solid rgba(249, 115, 22, .34);
+  border-radius: 7px;
+  background: linear-gradient(145deg, rgba(45, 28, 16, .82), rgba(10, 15, 17, .88));
+}
+
+.airstrike-targeting-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  color: #fff1df;
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: .08em;
+}
+
+.airstrike-targeting-switch {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  min-width: 164px;
+  padding: 2px;
+  border: 1px solid rgba(129, 167, 174, .25);
+  border-radius: 6px;
+  background: rgba(3, 7, 8, .72);
+}
+
+.airstrike-targeting-switch button {
+  min-height: 28px;
+  border: 0;
+  border-radius: 4px;
+  background: transparent;
+  color: #91a5aa;
+  font: 700 10px/1 "Cascadia Code", "SFMono-Regular", Consolas, monospace;
+  text-transform: uppercase;
+  cursor: pointer;
+}
+
+.airstrike-targeting-switch button.is-active {
+  background: rgba(249, 115, 22, .84);
+  color: #fff9f1;
+  box-shadow: 0 0 14px rgba(249, 115, 22, .2);
+}
+
+.airstrike-targeting-help,
+.airstrike-targeting-result {
+  margin: 0;
+}
+
+.airstrike-targeting-result {
+  color: #ffd166;
+  font: 700 11px/1.35 "Cascadia Code", "SFMono-Regular", Consolas, monospace;
 }
 
 .airstrike-payload-detail {

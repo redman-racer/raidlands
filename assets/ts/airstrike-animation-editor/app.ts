@@ -15,11 +15,15 @@ import {
   deleteRepeatedReleaseGroup,
   duplicateManualRelease,
   duplicateRepeatedReleaseGroup,
+  effectiveAccuracyRadius,
   getReleasePreviewEvents,
   getRepeatedReleaseGroups,
   payloadOptions,
+  PAYLOAD_ADVANCED_TARGET_FIELDS,
   PAYLOAD_ADVANCED_FIELDS,
   PAYLOAD_COMMON_FIELDS,
+  PAYLOAD_SIMPLE_TARGET_FIELDS,
+  normalizeProfilePayloadTargeting,
   updateManualPayloadField,
   updateManualReleaseHardpoint,
   updateManualReleaseTime,
@@ -66,6 +70,9 @@ interface ProfileSummary {
   displayName: string;
   vehicle: string;
   draftVersion: number;
+  updatedAt?: string | null;
+  lastPublishedProfileRevision?: number | null;
+  validation?: { ok?: boolean };
 }
 
 interface EditorElements {
@@ -82,6 +89,10 @@ interface EditorElements {
   compileSummary: HTMLElement;
   list: HTMLElement;
   search: HTMLInputElement;
+  profileFilter: HTMLSelectElement;
+  profileSort: HTMLSelectElement;
+  profileTabs: HTMLElement;
+  profileCount: HTMLElement;
   viewport: HTMLElement;
   timeRange: HTMLInputElement;
   timeNumber: HTMLInputElement;
@@ -134,6 +145,7 @@ interface EditorState {
   selectedRepeatedGroupId: string;
   scrubTime: number;
   playing: boolean;
+  vehicleFilter: string;
 }
 
 type PanelName = "left" | "right" | "bottom";
@@ -218,6 +230,8 @@ function starterSource(): EditorSourceProfile {
         TargetOffsetY: 0,
         TargetOffsetZ: 0,
         SpreadRadius: -1,
+        TargetingMode: "simple",
+        AccuracyPercent: 75,
         LaunchSpeed: -1,
         FuseSeconds: -1,
         DamageScale: 1,
@@ -263,7 +277,7 @@ function parseProfileSource(value: string): EditorSourceProfile {
   if (!parsed || Array.isArray(parsed) || typeof parsed !== "object") {
     throw new Error("Source JSON must be an object.");
   }
-  return parsed as EditorSourceProfile;
+  return normalizeProfilePayloadTargeting(parsed as EditorSourceProfile);
 }
 
 function formatValidationEntry(entry: unknown): string {
@@ -294,6 +308,7 @@ class AirstrikeEditorApp {
     selectedRepeatedGroupId: "",
     scrubTime: 0,
     playing: false,
+    vehicleFilter: "all",
   };
   private readonly viewport: AirstrikeViewport;
   private metadata: VehiclePreviewMetadataFile | null = null;
@@ -356,6 +371,8 @@ class AirstrikeEditorApp {
     this.elements.vehicle.addEventListener("change", () => this.syncIdentityIntoSource());
     this.elements.rotationMode.addEventListener("change", () => this.handleRotationModeChange());
     this.elements.search.addEventListener("input", () => this.renderProfiles());
+    this.elements.profileFilter.addEventListener("change", () => this.renderProfiles());
+    this.elements.profileSort.addEventListener("change", () => this.renderProfiles());
     this.elements.timeRange.addEventListener("input", () => this.setScrubTime(Number(this.elements.timeRange.value)));
     this.elements.timeNumber.addEventListener("input", () => this.setScrubTime(Number(this.elements.timeNumber.value)));
     this.elements.addWaypoint.addEventListener("click", () => this.handleAddWaypoint());
@@ -578,6 +595,8 @@ class AirstrikeEditorApp {
       TargetOffsetY: { minimum: -500, maximum: 500 },
       TargetOffsetZ: { minimum: -500, maximum: 500 },
       SpreadRadius: { minimum: -1, maximum: 250 },
+      "Spread radius": { minimum: -1, maximum: 250 },
+      "Accuracy %": { minimum: 0, maximum: 100 },
       LaunchSpeed: { minimum: -1, maximum: 350 },
       FuseSeconds: { minimum: -1, maximum: 120 },
       DamageScale: { minimum: 0, maximum: 10 },
@@ -760,6 +779,7 @@ class AirstrikeEditorApp {
   }
 
   private loadSource(source: EditorSourceProfile, profileKey: string, version: number): void {
+    source = normalizeProfilePayloadTargeting(source);
     this.state.loading = true;
     this.state.profile = source;
     this.state.profileKey = profileKey || "";
@@ -873,17 +893,72 @@ class AirstrikeEditorApp {
   }
 
   private renderProfiles(): void {
-    const filter = String(this.elements.search.value || "").trim().toLowerCase();
+    const search = String(this.elements.search.value || "").trim().toLowerCase();
+    const status = this.elements.profileFilter.value;
+    const sort = this.elements.profileSort.value;
+    const vehicles = Array.from(new Set(this.state.profiles.map((profile) => profile.vehicle || "other"))).sort((a, b) =>
+      a.localeCompare(b),
+    );
+
+    if (this.state.vehicleFilter !== "all" && !vehicles.includes(this.state.vehicleFilter)) {
+      this.state.vehicleFilter = "all";
+    }
+
+    this.elements.profileTabs.textContent = "";
+    for (const vehicle of ["all", ...vehicles]) {
+      const button = document.createElement("button");
+      const count = vehicle === "all"
+        ? this.state.profiles.length
+        : this.state.profiles.filter((profile) => (profile.vehicle || "other") === vehicle).length;
+      button.type = "button";
+      button.role = "tab";
+      button.className = `airstrike-editor-profile-tab${vehicle === this.state.vehicleFilter ? " is-active" : ""}`;
+      button.setAttribute("aria-selected", String(vehicle === this.state.vehicleFilter));
+      button.textContent = `${vehicle === "all" ? "All" : this.formatVehicle(vehicle)} ${count}`;
+      button.addEventListener("click", () => {
+        this.state.vehicleFilter = vehicle;
+        this.renderProfiles();
+      });
+      this.elements.profileTabs.appendChild(button);
+    }
+
     this.elements.list.textContent = "";
-    this.state.profiles
+    const profiles = this.state.profiles
       .filter((profile) => {
+        const matchesSearch =
+          !search ||
+          String(profile.profileKey || "").toLowerCase().includes(search) ||
+          String(profile.displayName || "").toLowerCase().includes(search) ||
+          String(profile.vehicle || "").toLowerCase().includes(search);
+        const isValid = profile.validation?.ok !== false;
+        const isPublished = Boolean(profile.lastPublishedProfileRevision);
         return (
-          !filter ||
-          String(profile.profileKey || "").toLowerCase().includes(filter) ||
-          String(profile.displayName || "").toLowerCase().includes(filter)
+          matchesSearch &&
+          (this.state.vehicleFilter === "all" || (profile.vehicle || "other") === this.state.vehicleFilter) &&
+          (status === "all" ||
+            (status === "valid" && isValid) ||
+            (status === "invalid" && !isValid) ||
+            (status === "published" && isPublished) ||
+            (status === "unpublished" && !isPublished))
         );
       })
-      .forEach((profile) => {
+      .sort((a, b) => {
+        if (sort === "name-desc") return this.profileName(b).localeCompare(this.profileName(a));
+        if (sort === "updated-desc") return String(b.updatedAt || "").localeCompare(String(a.updatedAt || ""));
+        if (sort === "draft-desc") return b.draftVersion - a.draftVersion || this.profileName(a).localeCompare(this.profileName(b));
+        return this.profileName(a).localeCompare(this.profileName(b));
+      });
+
+    this.elements.profileCount.textContent = `${profiles.length} of ${this.state.profiles.length} profiles`;
+    if (profiles.length === 0) {
+      const empty = document.createElement("p");
+      empty.className = "airstrike-editor-profile-empty";
+      empty.textContent = "No profiles match these filters.";
+      this.elements.list.appendChild(empty);
+      return;
+    }
+
+    profiles.forEach((profile) => {
         const button = document.createElement("button");
         const label = document.createElement("strong");
         const detail = document.createElement("small");
@@ -900,6 +975,14 @@ class AirstrikeEditorApp {
         });
         this.elements.list.appendChild(button);
       });
+  }
+
+  private profileName(profile: ProfileSummary): string {
+    return String(profile.displayName || profile.profileKey || "");
+  }
+
+  private formatVehicle(vehicle: string): string {
+    return vehicle.replace(/[_-]+/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
   }
 
   private renderWaypoints(): void {
@@ -1086,6 +1169,16 @@ class AirstrikeEditorApp {
       }
     });
 
+    this.renderTargetingControls(this.elements.manualReleaseEditor, event, (field, value, mode) => {
+      const next = updateManualPayloadField(this.state.profile ?? profile, event.Id, field, value);
+      if (mode === "deferred") {
+        this.previewProfileUpdate(next, true);
+      } else {
+        this.applyProfile(next, true);
+        this.selectRelease(event.Id);
+      }
+    });
+
     const advanced = document.createElement("details");
     advanced.className = "airstrike-editor-advanced";
     const summary = document.createElement("summary");
@@ -1180,6 +1273,15 @@ class AirstrikeEditorApp {
       }
     });
 
+    this.renderTargetingControls(this.elements.repeatedReleaseEditor, group.Template, (field, value, mode) => {
+      const next = updateRepeatedGroupTemplateField(this.state.profile ?? profile, group.Id, field, value);
+      if (mode === "deferred") {
+        this.previewProfileUpdate(next, true);
+      } else {
+        this.applyProfile(next, true);
+      }
+    });
+
     const bursts = Math.ceil(group.MaximumUnits / Math.max(1, group.UnitsPerRelease));
     const lastBurstUnits = group.MaximumUnits - Math.max(0, bursts - 1) * group.UnitsPerRelease;
     const endTime = group.StartTime + Math.max(0, bursts - 1) * group.IntervalSeconds
@@ -1203,6 +1305,61 @@ class AirstrikeEditorApp {
       }
     });
     this.elements.repeatedReleaseEditor.appendChild(advanced);
+  }
+
+  private renderTargetingControls(
+    parent: HTMLElement,
+    fields: PayloadEventFields,
+    onChange: (field: PayloadField, value: string | number | Record<string, number>, mode: NumberInputCommitMode) => void,
+  ): void {
+    const mode = fields.TargetingMode === "advanced" ? "advanced" : "simple";
+    const section = document.createElement("section");
+    section.className = `airstrike-targeting-panel is-${mode}`;
+
+    const heading = document.createElement("div");
+    heading.className = "airstrike-targeting-heading";
+    const title = document.createElement("strong");
+    title.textContent = "Targeting";
+    const switcher = document.createElement("div");
+    switcher.className = "airstrike-targeting-switch";
+    switcher.setAttribute("role", "group");
+    switcher.setAttribute("aria-label", "Payload targeting mode");
+    for (const targetMode of ["simple", "advanced"] as const) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = targetMode === "simple" ? "Simple" : "Advanced";
+      button.className = targetMode === mode ? "is-active" : "";
+      button.setAttribute("aria-pressed", targetMode === mode ? "true" : "false");
+      button.addEventListener("click", () => onChange("TargetingMode", targetMode, "live"));
+      switcher.appendChild(button);
+    }
+    heading.append(title, switcher);
+    section.appendChild(heading);
+
+    const help = document.createElement("p");
+    help.className = "airstrike-editor-muted airstrike-targeting-help";
+    help.textContent = mode === "simple"
+      ? "Accuracy scales the miss radius. Stored target offsets are preserved but ignored."
+      : "Authored target offsets define the aim center and the full spread remains active.";
+    section.appendChild(help);
+
+    this.renderPayloadFieldGroup(
+      section,
+      fields,
+      mode === "simple" ? PAYLOAD_SIMPLE_TARGET_FIELDS : PAYLOAD_ADVANCED_TARGET_FIELDS,
+      onChange,
+    );
+
+    if (mode === "simple") {
+      const result = document.createElement("p");
+      result.className = "airstrike-targeting-result";
+      const maximumMiss = effectiveAccuracyRadius(fields);
+      result.textContent = maximumMiss === null
+        ? "Maximum miss: inherits strike spread"
+        : `Maximum miss: ${maximumMiss.toFixed(2)} m`;
+      section.appendChild(result);
+    }
+    parent.appendChild(section);
   }
 
   private renderPayloadFieldGroup(
@@ -1267,7 +1424,8 @@ class AirstrikeEditorApp {
         const input = this.createNumberInput(Number(fields[field]), field === "Count" ? 1 : 0.1, (value, mode) => {
           onChange(field, value, mode);
         });
-        grid.appendChild(this.fieldWrapper(field, input));
+        const label = field === "AccuracyPercent" ? "Accuracy %" : field === "SpreadRadius" ? "Spread radius" : field;
+        grid.appendChild(this.fieldWrapper(label, input));
       }
     }
     parent.appendChild(grid);
@@ -2410,6 +2568,10 @@ function collectElements(root: HTMLElement): EditorElements {
     compileSummary: query(root, "[data-editor-compile-summary]"),
     list: query(root, "[data-editor-profile-list]"),
     search: query(root, "[data-editor-search]"),
+    profileFilter: query(root, "[data-editor-profile-filter]"),
+    profileSort: query(root, "[data-editor-profile-sort]"),
+    profileTabs: query(root, "[data-editor-profile-tabs]"),
+    profileCount: query(root, "[data-editor-profile-count]"),
     viewport: query(root, "[data-editor-viewport]"),
     timeRange: query(root, "[data-editor-time-range]"),
     timeNumber: query(root, "[data-editor-time-number]"),

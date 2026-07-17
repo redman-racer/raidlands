@@ -9,9 +9,14 @@ import {
 } from "../assets/ts/airstrike-animation-editor/index";
 import {
   addRepeatedReleaseGroup,
+  duplicateManualRelease,
+  effectiveAccuracyRadius,
   getReleasePreviewEvents,
   getRepeatedReleaseGroups,
+  normalizeProfilePayloadTargeting,
+  updateManualPayloadField,
   updateManualReleaseTime,
+  updateReleaseMode,
   updateRepeatedGroupField,
 } from "../assets/ts/airstrike-animation-editor/editor/release-source";
 import {
@@ -41,6 +46,8 @@ const payload = (overrides: Partial<PayloadEventFields> = {}): PayloadEventField
   MaxTrackingDistance: -1,
   DamageScales: {},
   ...overrides,
+  TargetingMode: overrides.TargetingMode ?? "simple",
+  AccuracyPercent: overrides.AccuracyPercent ?? 75,
 });
 
 const metadata = (leftX = -3.1): VehiclePreviewMetadataFile => ({
@@ -135,6 +142,77 @@ describe("airstrike authoring speed normalization", () => {
 });
 
 describe("airstrike authoring release sources", () => {
+  it("calculates simple targeting miss-radius boundaries", () => {
+    expect(effectiveAccuracyRadius({ SpreadRadius: 20, AccuracyPercent: 0 })).toBe(20);
+    expect(effectiveAccuracyRadius({ SpreadRadius: 20, AccuracyPercent: 75 })).toBe(5);
+    expect(effectiveAccuracyRadius({ SpreadRadius: 20, AccuracyPercent: 100 })).toBe(0);
+    expect(effectiveAccuracyRadius({ SpreadRadius: -1, AccuracyPercent: 75 })).toBeNull();
+  });
+
+  it("normalizes legacy targeting defaults and clamps accuracy", () => {
+    const legacy = profileFixture();
+    const event = payload({ TargetOffsetX: 18, SpreadRadius: 20 }) as PayloadEventFields & {
+      TargetingMode?: unknown;
+      AccuracyPercent?: unknown;
+    };
+    Reflect.deleteProperty(event, "TargetingMode");
+    Reflect.deleteProperty(event, "AccuracyPercent");
+    if (legacy.ReleaseSource.Mode === "manual") {
+      legacy.ReleaseSource.Events = [{ ...event, Id: "legacy", Time: 1 }] as never;
+    }
+
+    const normalized = normalizeProfilePayloadTargeting(legacy);
+    const normalizedEvent = normalized.ReleaseSource.Mode === "manual" ? normalized.ReleaseSource.Events[0]! : undefined;
+    expect(normalizedEvent).toMatchObject({ TargetingMode: "simple", AccuracyPercent: 75, TargetOffsetX: 18, SpreadRadius: 20 });
+
+    const clamped = updateManualPayloadField(normalized, "legacy", "AccuracyPercent", 140);
+    expect(clamped.ReleaseSource.Mode === "manual" ? clamped.ReleaseSource.Events[0]!.AccuracyPercent : -1).toBe(100);
+    const runtime = compileSourceBundle(bundle(clamped), { publishedRevision: 1 }).bundle.Profiles.authoring_test!;
+    expect(runtime.PayloadEvents[0]).toMatchObject({ TargetingMode: "simple", AccuracyPercent: 100, TargetOffsetX: 18, SpreadRadius: 20 });
+  });
+
+  it("preserves dormant targeting values through mode switches, duplication, and release conversion", () => {
+    const initial = profileFixture({
+      ReleaseSource: {
+        Mode: "manual",
+        Events: [{
+          ...payload({ TargetingMode: "advanced", AccuracyPercent: 42, TargetOffsetX: 9, TargetOffsetY: 3, TargetOffsetZ: -4, SpreadRadius: 16 }),
+          Id: "aimed",
+          Time: 1,
+        }],
+        LegacyDynamic: false,
+      },
+    });
+    const simple = updateManualPayloadField(initial, "aimed", "TargetingMode", "simple");
+    const duplicated = duplicateManualRelease(simple, "aimed").profile;
+    const repeated = updateReleaseMode(duplicated, "repeated");
+    const template = getRepeatedReleaseGroups(repeated)[0]!.Template;
+    expect(template).toMatchObject({
+      TargetingMode: "simple",
+      AccuracyPercent: 42,
+      TargetOffsetX: 9,
+      TargetOffsetY: 3,
+      TargetOffsetZ: -4,
+      SpreadRadius: 16,
+    });
+  });
+
+  it("includes targeting changes in the semantic source hash", () => {
+    const baseline = profileFixture({
+      FirstPayloadDelaySeconds: 1,
+      ReleaseSource: {
+        Mode: "manual",
+        Events: [{ ...payload(), Id: "aimed", Time: 1 }],
+        LegacyDynamic: false,
+      },
+    });
+    const accuracy = updateManualPayloadField(baseline, "aimed", "AccuracyPercent", 60);
+    const advanced = updateManualPayloadField(baseline, "aimed", "TargetingMode", "advanced");
+    const originalHash = compileSourceBundle(bundle(baseline), { publishedRevision: 1 }).sourceHashes.authoring_test;
+    expect(compileSourceBundle(bundle(accuracy), { publishedRevision: 1 }).sourceHashes.authoring_test).not.toBe(originalHash);
+    expect(compileSourceBundle(bundle(advanced), { publishedRevision: 1 }).sourceHashes.authoring_test).not.toBe(originalHash);
+  });
+
   it("compiles mixed manual and intra-burst schedules without expanding them", () => {
     const source = profileFixture({
       EditorSourceSchemaVersion: 2,

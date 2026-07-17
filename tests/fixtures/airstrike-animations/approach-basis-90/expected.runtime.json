@@ -23,6 +23,8 @@
         "TargetOffsetY": 0,
         "TargetOffsetZ": 0,
         "SpreadRadius": -1,
+        "TargetingMode": "simple",
+        "AccuracyPercent": 75,
         "LaunchSpeed": -1,
         "FuseSeconds": -1,
         "DamageScale": 1,

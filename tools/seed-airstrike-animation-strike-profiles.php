@@ -50,6 +50,8 @@ function seed_airstrike_event(
         'TargetOffsetY' => 0.0,
         'TargetOffsetZ' => $target_z,
         'SpreadRadius' => $spread,
+        'TargetingMode' => 'simple',
+        'AccuracyPercent' => 75.0,
         'LaunchSpeed' => $launch_speed,
         'FuseSeconds' => $fuse_seconds,
         'DamageScale' => $damage_scale,

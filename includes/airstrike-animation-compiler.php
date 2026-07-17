@@ -432,6 +432,21 @@ function raidlands_airstrike_animation_validate_event(
         );
     }
 
+    if (array_key_exists('TargetingMode', $event)) {
+        $targeting_mode = strtolower(trim((string) $event['TargetingMode']));
+        if ($targeting_mode !== 'simple' && $targeting_mode !== 'advanced') {
+            raidlands_airstrike_animation_validation_error(
+                $errors,
+                $path . '.TargetingMode',
+                'targeting_mode',
+                'TargetingMode must be simple or advanced.'
+            );
+        }
+    }
+    if (array_key_exists('AccuracyPercent', $event)) {
+        raidlands_airstrike_animation_validate_number($errors, $event['AccuracyPercent'], $path . '.AccuracyPercent');
+    }
+
     $damage_scales = $event['DamageScales'] ?? [];
 
     if ($damage_scales !== null && !is_array($damage_scales)) {
@@ -1535,6 +1550,10 @@ function raidlands_airstrike_animation_runtime_event(array $event, float $time, 
         'TargetOffsetY' => raidlands_airstrike_animation_quantize(raidlands_airstrike_animation_number($event['TargetOffsetY'] ?? 0.0)),
         'TargetOffsetZ' => raidlands_airstrike_animation_quantize(raidlands_airstrike_animation_number($event['TargetOffsetZ'] ?? 0.0)),
         'SpreadRadius' => raidlands_airstrike_animation_quantize(raidlands_airstrike_animation_number($event['SpreadRadius'] ?? -1.0, -1.0)),
+        'TargetingMode' => raidlands_airstrike_animation_targeting_mode($event['TargetingMode'] ?? null),
+        'AccuracyPercent' => raidlands_airstrike_animation_quantize(
+            max(0.0, min(100.0, raidlands_airstrike_animation_number($event['AccuracyPercent'] ?? 75.0, 75.0)))
+        ),
         'LaunchSpeed' => raidlands_airstrike_animation_quantize(raidlands_airstrike_animation_number($event['LaunchSpeed'] ?? -1.0, -1.0)),
         'FuseSeconds' => raidlands_airstrike_animation_quantize(raidlands_airstrike_animation_number($event['FuseSeconds'] ?? -1.0, -1.0)),
         'DamageScale' => raidlands_airstrike_animation_quantize(raidlands_airstrike_animation_number($event['DamageScale'] ?? 1.0, 1.0)),
@@ -1549,8 +1568,17 @@ function raidlands_airstrike_animation_runtime_event(array $event, float $time, 
     ];
 }
 
+function raidlands_airstrike_animation_targeting_mode($value): string
+{
+    return strtolower(trim((string) $value)) === 'advanced' ? 'advanced' : 'simple';
+}
+
 function raidlands_airstrike_animation_payload_object_shape(array $fields): array
 {
+    $fields['TargetingMode'] = raidlands_airstrike_animation_targeting_mode($fields['TargetingMode'] ?? null);
+    $fields['AccuracyPercent'] = raidlands_airstrike_animation_quantize(
+        max(0.0, min(100.0, raidlands_airstrike_animation_number($fields['AccuracyPercent'] ?? 75.0, 75.0)))
+    );
     if (array_key_exists('DamageScales', $fields)
         && is_array($fields['DamageScales'])
         && $fields['DamageScales'] === []) {
