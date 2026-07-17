@@ -447,12 +447,18 @@ function raidlands_airstrike_agent_allowed_mutation_areas(string $scope): array
 
 function raidlands_airstrike_agent_object_schema(array $properties, array $required): array
 {
-    return [
+    $schema = [
         'type' => 'object',
         'properties' => $properties,
-        'required' => $required,
         'additionalProperties' => false,
     ];
+    // Empty `required` arrays are not accepted by every JSON Schema validator
+    // used by the Responses API. No-argument tools have no required fields, so
+    // omit the keyword entirely for those schemas.
+    if ($required !== []) {
+        $schema['required'] = array_values($required);
+    }
+    return $schema;
 }
 
 function raidlands_airstrike_agent_waypoint_schema(): array
@@ -803,22 +809,63 @@ function raidlands_airstrike_agent_developer_prompt(string $mode, string $pinned
     ]);
 }
 
+function raidlands_airstrike_agent_openai_error_message(string $raw_response, int $status): string
+{
+    $messages = [];
+    $record_message = static function ($payload) use (&$messages): void {
+        if (!is_array($payload)) return;
+        $message = $payload['error']['message']
+            ?? $payload['response']['error']['message']
+            ?? null;
+        if (is_string($message) && trim($message) !== '') {
+            $messages[] = trim($message);
+        }
+    };
+
+    $trimmed = trim($raw_response);
+    if ($trimmed !== '') {
+        $record_message(json_decode($trimmed, true));
+        foreach (preg_split('/\r?\n/', $trimmed) ?: [] as $line) {
+            if (!str_starts_with($line, 'data:')) continue;
+            $data = trim(substr($line, 5));
+            if ($data === '' || $data === '[DONE]') continue;
+            $record_message(json_decode($data, true));
+        }
+    }
+
+    $message = (string) ($messages[0] ?? '');
+    $message = trim((string) preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]+/', ' ', $message));
+    if ($message !== '') {
+        return 'OpenAI request failed with HTTP ' . $status . ': ' . mb_substr($message, 0, 1000);
+    }
+    return 'OpenAI request failed with HTTP ' . $status . '.';
+}
+
 function raidlands_airstrike_agent_openai_stream(array $body, array $config, callable $emit): array
 {
     if (!function_exists('curl_init')) throw new RuntimeException('PHP cURL is required for the airstrike agent.');
     $body['stream'] = true;
+    try {
+        $encoded_body = json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE | JSON_THROW_ON_ERROR);
+    } catch (JsonException $error) {
+        throw new RuntimeException('Could not encode the OpenAI request: ' . $error->getMessage(), 0, $error);
+    }
     $handle = curl_init('https://api.openai.com/v1/responses');
     if ($handle === false) throw new RuntimeException('Could not initialize the OpenAI request.');
     $buffer = '';
+    $raw_response = '';
     $completed = null;
     $api_error = null;
     curl_setopt_array($handle, [
         CURLOPT_POST => true,
         CURLOPT_HTTPHEADER => ['Authorization: Bearer ' . (string) $config['apiKey'], 'Content-Type: application/json', 'Accept: text/event-stream'],
-        CURLOPT_POSTFIELDS => json_encode($body, JSON_UNESCAPED_SLASHES | JSON_UNESCAPED_UNICODE),
+        CURLOPT_POSTFIELDS => $encoded_body,
         CURLOPT_CONNECTTIMEOUT => min(15, (int) $config['timeoutSeconds']),
         CURLOPT_TIMEOUT => (int) $config['timeoutSeconds'],
-        CURLOPT_WRITEFUNCTION => static function ($curl, string $chunk) use (&$buffer, &$completed, &$api_error, $emit): int {
+        CURLOPT_WRITEFUNCTION => static function ($curl, string $chunk) use (&$buffer, &$raw_response, &$completed, &$api_error, $emit): int {
+            if (strlen($raw_response) < 65536) {
+                $raw_response .= substr($chunk, 0, 65536 - strlen($raw_response));
+            }
             $buffer = str_replace("\r\n", "\n", $buffer . $chunk);
             while (($position = strpos($buffer, "\n\n")) !== false) {
                 $block = substr($buffer, 0, $position);
@@ -849,7 +896,7 @@ function raidlands_airstrike_agent_openai_stream(array $body, array $config, cal
     curl_close($handle);
     if ($result === false) throw new RuntimeException($curl_error !== '' ? $curl_error : 'OpenAI streaming request failed.');
     if ($api_error !== null) throw new RuntimeException($api_error);
-    if ($status < 200 || $status >= 300) throw new RuntimeException('OpenAI request failed with HTTP ' . $status . '.');
+    if ($status < 200 || $status >= 300) throw new RuntimeException(raidlands_airstrike_agent_openai_error_message($raw_response, $status));
     if (!is_array($completed)) throw new RuntimeException('OpenAI stream ended without a completed response.');
     return $completed;
 }

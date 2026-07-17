@@ -99,6 +99,30 @@ foreach (raidlands_airstrike_agent_tools('regular') as $tool) {
     airstrike_agent_test(!empty($tool['strict']), $tool['name'] . ' uses strict function calling');
     airstrike_agent_test(($tool['parameters']['additionalProperties'] ?? null) === false, $tool['name'] . ' rejects unknown arguments');
 }
+$inspect_tool = array_values(array_filter(
+    raidlands_airstrike_agent_tools('regular', 'ordnance'),
+    static fn (array $tool): bool => $tool['name'] === 'inspect_profile'
+))[0];
+airstrike_agent_test(!array_key_exists('required', $inspect_tool['parameters']), 'no-argument tools omit an empty required keyword');
+$ordnance_settings_tool = array_values(array_filter(
+    raidlands_airstrike_agent_tools('regular', 'ordnance'),
+    static fn (array $tool): bool => $tool['name'] === 'set_profile_settings'
+))[0];
+airstrike_agent_test(
+    ($ordnance_settings_tool['parameters']['required'] ?? []) === ['FirstPayloadDelaySeconds'],
+    'scoped argument tools retain all strict required fields'
+);
+
+$openai_error_json = json_encode(['error' => ['message' => "Invalid schema for function 'inspect_profile'."]]);
+airstrike_agent_test(
+    raidlands_airstrike_agent_openai_error_message((string) $openai_error_json, 400) === "OpenAI request failed with HTTP 400: Invalid schema for function 'inspect_profile'.",
+    'OpenAI JSON errors retain the actionable API message'
+);
+$openai_error_sse = "event: error\ndata: {\"type\":\"error\",\"error\":{\"message\":\"Scoped tool rejected.\"}}\n\n";
+airstrike_agent_test(
+    raidlands_airstrike_agent_openai_error_message($openai_error_sse, 400) === 'OpenAI request failed with HTTP 400: Scoped tool rejected.',
+    'OpenAI SSE errors retain the actionable API message'
+);
 
 $source_hash = raidlands_airstrike_agent_source_hash($source);
 airstrike_agent_test(raidlands_airstrike_agent_candidate_matches_source($source_hash, $source), 'candidate hash matches the exact proposal source');
