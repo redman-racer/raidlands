@@ -56,7 +56,10 @@ try {
             'tcs_destroyed' => 2,
             'tcs_destroyed_baseline' => 1,
         ]],
-        'bots' => [],
+        'bots' => [
+            ['bot_key' => 'stable_bot', 'display_name' => 'Stable Bot', 'kills' => 3, 'deaths' => 1],
+            ['bot_key' => 'stale_bot', 'display_name' => 'Stale Bot', 'kills' => 1, 'deaths' => 1],
+        ],
     ];
     $body = json_encode($payload, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
     $result = raidlands_stats_ingest_snapshot($payload, $server_id, $body);
@@ -90,6 +93,28 @@ try {
     );
     stats_raid_ingest_assert((int) ($log['raid_players_received'] ?? 0) === 1, 'ingest diagnostics store raid profile count');
     stats_raid_ingest_assert((int) ($log['raid_damage_received'] ?? 0) === 900, 'ingest diagnostics store raw raid damage');
+
+    $authoritative_payload = $payload;
+    $authoritative_payload['generated_at'] = gmdate(DATE_ATOM);
+    $authoritative_payload['bots_authoritative'] = true;
+    $authoritative_payload['bots'] = [[
+        'bot_key' => 'stable_bot',
+        'display_name' => 'Stable Bot',
+        'kills' => 4,
+        'deaths' => 1,
+    ]];
+    $authoritative_body = json_encode($authoritative_payload, JSON_UNESCAPED_SLASHES | JSON_THROW_ON_ERROR);
+    $authoritative_result = raidlands_stats_ingest_snapshot($authoritative_payload, $server_id, $authoritative_body);
+    stats_raid_ingest_assert((int) ($authoritative_result['bots_deleted'] ?? 0) === 1, 'authoritative bot snapshot removes one stale identity');
+
+    $stored_bots = raidlands_db_fetch_all(
+        'SELECT bot_key FROM bot_wipe_stats WHERE wipe_id = :wipe_id ORDER BY bot_key',
+        ['wipe_id' => $wipe_id]
+    );
+    stats_raid_ingest_assert(
+        array_column($stored_bots, 'bot_key') === ['stable_bot'],
+        'authoritative bot snapshot retains only the supplied stable roster'
+    );
 } catch (Throwable $error) {
     $test_error = $error;
 } finally {

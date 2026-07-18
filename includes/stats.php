@@ -322,6 +322,7 @@ function raidlands_stats_ingest_snapshot(array $payload, string $server_id, stri
     $generated_at = raidlands_stats_timestamp($payload['generated_at'] ?? null) ?? gmdate('Y-m-d H:i:s');
     $players = $payload['players'] ?? [];
     $bots = $payload['bots'] ?? [];
+    $bots_authoritative = !empty($payload['bots_authoritative']);
     $preprocess_errors = 0;
     $players_received = is_array($players) ? count($players) : 0;
     $bots_received = is_array($bots) ? count($bots) : 0;
@@ -351,6 +352,7 @@ function raidlands_stats_ingest_snapshot(array $payload, string $server_id, stri
 
     $accepted = 0;
     $bots_accepted = 0;
+    $bots_deleted = 0;
     $errors = $preprocess_errors;
     $raid_players_received = 0;
     $raid_damage_received = 0;
@@ -426,6 +428,7 @@ function raidlands_stats_ingest_snapshot(array $payload, string $server_id, stri
             $accepted++;
         }
 
+        $authoritative_bot_keys = [];
         foreach ($bots as $bot) {
             if (!is_array($bot)) {
                 $errors++;
@@ -440,7 +443,27 @@ function raidlands_stats_ingest_snapshot(array $payload, string $server_id, stri
             }
 
             raidlands_stats_upsert_bot_wipe($pdo, $wipe_id, $bot_key, $bot, $is_first_season);
+            $authoritative_bot_keys[$bot_key] = true;
             $bots_accepted++;
+        }
+
+        if ($bots_authoritative && $preprocess_errors === 0 && $authoritative_bot_keys !== []) {
+            $delete_params = ['wipe_id' => $wipe_id];
+            $placeholders = [];
+
+            foreach (array_keys($authoritative_bot_keys) as $index => $bot_key) {
+                $parameter = 'bot_key_' . $index;
+                $placeholders[] = ':' . $parameter;
+                $delete_params[$parameter] = $bot_key;
+            }
+
+            $delete = $pdo->prepare(
+                'DELETE FROM bot_wipe_stats
+                 WHERE wipe_id = :wipe_id
+                   AND bot_key NOT IN (' . implode(', ', $placeholders) . ')'
+            );
+            $delete->execute($delete_params);
+            $bots_deleted = $delete->rowCount();
         }
 
         $update = $pdo->prepare(
@@ -485,6 +508,7 @@ function raidlands_stats_ingest_snapshot(array $payload, string $server_id, stri
             'players_accepted' => $accepted,
             'bots_received' => $bots_received,
             'bots_accepted' => $bots_accepted,
+            'bots_deleted' => $bots_deleted,
             'raid_players_received' => $raid_players_received,
             'raid_damage_received' => $raid_damage_received,
             'error_count' => $errors,
