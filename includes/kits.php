@@ -452,8 +452,13 @@ function raidlands_kits_clean_image_path($value): string
 
     if (filter_var($path, FILTER_VALIDATE_URL) !== false) {
         $scheme = strtolower((string) parse_url($path, PHP_URL_SCHEME));
+        $host = strtolower((string) parse_url($path, PHP_URL_HOST));
+        $allow_local_http = function_exists('raidlands_env_bool')
+            && raidlands_env_bool('RAIDLANDS_ALLOW_INSECURE_LOCAL_ASSETS', false)
+            && $scheme === 'http'
+            && in_array($host, ['127.0.0.1', 'localhost', '::1'], true);
 
-        if ($scheme !== 'https') {
+        if ($scheme !== 'https' && !$allow_local_http) {
             throw new InvalidArgumentException('Kit image URLs must use HTTPS.');
         }
 

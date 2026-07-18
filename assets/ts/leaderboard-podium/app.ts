@@ -3,7 +3,7 @@ import {
   CanvasTexture, ClampToEdgeWrapping, Color, ConeGeometry, CylinderGeometry, DirectionalLight, FogExp2,
   Float32BufferAttribute, Group, HemisphereLight, LinearFilter, MathUtils, Mesh, MeshBasicMaterial,
   MeshStandardMaterial, Object3D, PCFSoftShadowMap, PerspectiveCamera, PlaneGeometry, PointLight,
-  Points, PointsMaterial, RectAreaLight, Scene, ShadowMaterial, SkinnedMesh, SpotLight, Sprite,
+  Points, PointsMaterial, RectAreaLight, Scene, SkinnedMesh, SpotLight, Sprite,
   SpriteMaterial, SRGBColorSpace, TextureLoader, Vector2, Vector3, WebGLRenderer,
 } from "three";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
@@ -23,7 +23,7 @@ import { normalizeWearableOrigin, podiumCharacterYaw, podiumWeaponLayout } from 
 import { buildIndustrialPedestal, pedestalConfigForRank, pedestalRanksForLayout } from "./pedestal";
 import {
   anchorPoint, ArenaManifest, ArenaPlacement, clampArenaRotation, generatedThemePlacements,
-  normalizationScale, podiumCategoryTitle, podiumThemeFor,
+  podiumCategoryTitle, podiumThemeFor,
 } from "./scene-policy";
 
 type Payload = { leaders?: Leader[]; metric?: string; board?: string };
@@ -31,9 +31,9 @@ type CameraRecord = Record<string, unknown>;
 
 const APPROVED_SCENE_REVISION = "494242bdeae941e3389b34a819c514aae2cf39f8";
 const ARENA_CAMERA = {
-  fov: 35,
-  position: new Vector3(0, 3.05, 9.7),
-  target: new Vector3(0, 1.35, -0.25),
+  fov: 37,
+  position: new Vector3(0, 3.25, 11.7),
+  target: new Vector3(0, 1.42, -0.35),
 };
 const SCENE_MODEL_FALLBACKS: Record<string, string> = {
   "prefabs/Weapons/lr300/lr300.worldmodel.glb": "prefabs/Weapons/ak47u/ak47u.worldmodel.glb",
@@ -216,10 +216,10 @@ class PodiumScene {
     this.singleLayout = host.dataset.podiumLayout === "single";
     const draco = new DRACOLoader(); draco.setDecoderPath(host.dataset.decoderPath || "");
     this.loader = new GLTFLoader(); this.loader.setDRACOLoader(draco); this.loader.setMeshoptDecoder(MeshoptDecoder);
-    this.backdropRoot.name = "GENERATED_BACKDROP_PANELS"; this.backdropRoot.position.z = -42;
-    this.camera.add(this.backdropRoot); this.scene.add(this.camera);
+    this.backdropRoot.name = "GENERATED_BACKDROP_PANELS"; this.backdropRoot.position.set(0, 2.8, -6.15);
+    this.scene.add(this.camera);
     this.displayRoot.name = "ORBIT_PIVOT"; this.worldRoot.name = "SCENE_ROOT";
-    this.worldRoot.add(this.baseRoot, this.pedestalRoot, this.characterRoot, this.themeRoot, this.effectsRoot);
+    this.worldRoot.add(this.backdropRoot, this.baseRoot, this.pedestalRoot, this.characterRoot, this.themeRoot, this.effectsRoot);
     this.displayRoot.add(this.worldRoot); this.scene.add(this.displayRoot);
     if (this.singleLayout) { this.buildSingleStage(); this.arenaReady = Promise.resolve(); }
     else this.arenaReady = this.buildArenaStage();
@@ -264,12 +264,10 @@ class PodiumScene {
     this.renderer.toneMappingExposure = Math.pow(2, numeric(camera, "Exposure_EV", -.45) - .55);
     this.scene.background = new Color(0x0b0d0e); this.scene.fog = new FogExp2(0x171a1b, .042);
     await this.buildBackdropPanels();
-    this.buildArenaPodiums(manifest); this.buildShadowCatcher(); this.buildArenaLights(manifest); this.buildAtmosphere();
+    this.buildArenaPodiums(manifest); this.buildArenaLights(manifest); this.buildAtmosphere();
     this.setupComposer();
     this.resize();
-    const placements = manifest.basePlacements
-      .filter((placement) => this.useForegroundPlacement(placement))
-      .sort((left, right) => this.placementPriority(left) - this.placementPriority(right));
+    const placements = [...manifest.basePlacements].sort((left, right) => this.placementPriority(left) - this.placementPriority(right));
     const loaded = await this.loadPlacementBatch(placements, this.baseRoot, 6);
     this.host.dataset.scenePlacements = String(loaded);
     const loadedIds = new Set(this.baseRoot.children.map((child) => child.name));
@@ -287,23 +285,19 @@ class PodiumScene {
       panelTexture.repeat.set(1 / 3, 1); panelTexture.offset.set(index / 3, 0); panelTexture.needsUpdate = true;
       const panel = new Mesh(
         new PlaneGeometry(1, 1),
-        new MeshBasicMaterial({ map: panelTexture, fog: false, toneMapped: false, depthTest: false, depthWrite: false }),
+        new MeshBasicMaterial({ map: panelTexture, fog: false, toneMapped: false, depthWrite: false }),
       );
       panel.name = `GENERATED_BACKDROP_PANEL_${index + 1}`; panel.renderOrder = -100;
-      panel.userData.panelIndex = index; panel.userData.panelTexture = panelTexture; this.backdropRoot.add(panel);
+      panel.position.set((index - 1) * 12, 0, 0); panel.scale.set(12.06, 20.25, 1);
+      panel.userData.panelIndex = index; this.backdropRoot.add(panel);
     }
   }
 
-  private buildShadowCatcher() {
-    const catcher = new Mesh(new PlaneGeometry(17, 9), new ShadowMaterial({ color: 0x050505, opacity: .14 }));
-    catcher.name = "ARENA_SHADOW_CATCHER"; catcher.rotation.x = -Math.PI / 2;
-    catcher.position.set(0, -.015, -.35); catcher.receiveShadow = true; this.baseRoot.add(catcher);
-  }
-
-  private useForegroundPlacement(placement: ArenaPlacement): boolean {
-    if (placement.id.startsWith("ENV_") || placement.lodClass === "Background" || placement.lodClass === "Structure") return false;
-    if (/^FIX_(?:SEARCH|CEILING|LIGHTPOST)/.test(placement.id)) return false;
-    return placement.position[2] > -3.35 || placement.lodClass === "Hero";
+  private placementRenderScale(placement: ArenaPlacement): [number, number, number] {
+    // The RustRelay GLBs share Unity's meter scale. Only the generic tiled cubes
+    // are intentionally stretched to construct the arena shell.
+    if (/^ENV_(?:FLOOR|BACKWALL|SIDEWALL)/.test(placement.id)) return placement.scale;
+    return [1, 1, 1];
   }
 
   private buildArenaPodiums(manifest: ArenaManifest) {
@@ -420,8 +414,8 @@ class PodiumScene {
       visual = await this.loadInstance(joinedUrl(base, fallback));
       visual.userData.sceneFallbackFor = placement.localPath;
     }
-    const initialBounds = staticBounds(visual); visual.scale.setScalar(normalizationScale(initialBounds, placement)); visual.updateMatrixWorld(true);
-    const normalizedBounds = staticBounds(visual); visual.position.sub(anchorPoint(normalizedBounds, placement.anchor));
+    visual.scale.setScalar(1); visual.updateMatrixWorld(true);
+    const nativeBounds = staticBounds(visual); visual.position.sub(anchorPoint(nativeBounds, placement.anchor));
     visual.traverse((node) => {
       const mesh = node as Mesh; if (!mesh.isMesh) return;
       const primary = placement.lodClass === "Hero" || placement.lodClass === "Primary";
@@ -437,7 +431,9 @@ class PodiumScene {
       mesh.frustumCulled = true;
     });
     const wrapper = new Group(); wrapper.name = placement.id; wrapper.add(visual);
-    wrapper.position.set(...placement.position); wrapper.rotation.set(...placement.rotation.map(MathUtils.degToRad) as [number, number, number]); wrapper.scale.set(...placement.scale);
+    const renderScale = this.placementRenderScale(placement);
+    wrapper.position.set(...placement.position); wrapper.rotation.set(...placement.rotation.map(MathUtils.degToRad) as [number, number, number]);
+    wrapper.scale.set(...renderScale);
     return wrapper;
   }
 
@@ -544,19 +540,6 @@ class PodiumScene {
     } else {
       const framing = this.camera.aspect < 16 / 9 ? (16 / 9) / Math.max(.7, this.camera.aspect) : 1;
       this.camera.position.copy(this.cameraBase); this.camera.position.z *= framing; this.camera.lookAt(this.cameraTarget);
-    }
-    if (this.backdropRoot.children.length) {
-      const distance = Math.abs(this.backdropRoot.position.z); const height = 2 * distance * Math.tan(MathUtils.degToRad(this.camera.fov * .5)) * 1.025;
-      const width = height * this.camera.aspect * 1.025; const panelWidth = width / 3;
-      const sourceAspect = 16 / 9; const wide = this.camera.aspect >= sourceAspect;
-      const visibleX = wide ? 1 : this.camera.aspect / sourceAspect;
-      const visibleY = wide ? sourceAspect / this.camera.aspect : 1;
-      const offsetX = (1 - visibleX) * .5; const offsetY = (1 - visibleY) * .5;
-      this.backdropRoot.children.forEach((panel, index) => {
-        panel.position.set((index - 1) * panelWidth, 0, 0); panel.scale.set(panelWidth * 1.006, height, 1);
-        const texture = panel.userData.panelTexture as CanvasTexture | undefined;
-        if (texture) { texture.repeat.set(visibleX / 3, visibleY); texture.offset.set(offsetX + index * visibleX / 3, offsetY); }
-      });
     }
     this.camera.updateProjectionMatrix(); this.renderer.setSize(width, height, false); this.composer?.setSize(width, height);
   }
