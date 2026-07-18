@@ -14,8 +14,8 @@ import {
   buildIndustrialPedestal, pedestalConfigForRank, pedestalRanksForLayout,
 } from "../assets/ts/leaderboard-podium/pedestal";
 import {
-  anchorPoint, ArenaManifest, clampArenaRotation, generatedThemePlacements, normalizationScale,
-  podiumCategoryTitle, podiumThemeFor,
+  anchorPoint, arenaPlacementTransform, ArenaManifest, clampArenaRotation, generatedThemePlacements,
+  normalizationScale, orbitCameraPosition, podiumCategoryTitle, podiumThemeFor, showcaseThemeSockets,
 } from "../assets/ts/leaderboard-podium/scene-policy";
 
 function anchoredRoot(anchors: Record<string, [number, number, number]>): Group {
@@ -131,14 +131,38 @@ describe("leaderboard podium policy", () => {
     expect(podiumCategoryTitle("raids", "tcs_destroyed")).toBe("MOST TCS DESTROYED");
   });
 
-  it("normalizes placement bounds, anchors ground contact, and clamps drag rotation", () => {
+  it("normalizes placement bounds, anchors ground contact, and clamps responsive drag rotation", () => {
     const bounds = new Box3(new Vector3(-1, 0, -.5), new Vector3(1, 2, .5));
     expect(normalizationScale(bounds, { normalizeMode: "AABB bottom-center", targetExtent: 4 })).toBeCloseTo(2);
     expect(normalizationScale(bounds, { normalizeMode: "Native-meters preferred", targetExtent: 4 })).toBe(1);
     expect(anchorPoint(bounds, "Bottom-center").toArray()).toEqual([0, 0, 0]);
     const clamped = clampArenaRotation(Math.PI, -Math.PI);
-    expect(clamped.yaw).toBeCloseTo(18 * Math.PI / 180);
+    const mobile = clampArenaRotation(-Math.PI, Math.PI, 60);
+    expect(clamped.yaw).toBeCloseTo(75 * Math.PI / 180);
     expect(clamped.pitch).toBeCloseTo(-3 * Math.PI / 180);
+    expect(mobile.yaw).toBeCloseTo(-60 * Math.PI / 180);
+    expect(mobile.pitch).toBeCloseTo(10 * Math.PI / 180);
+  });
+
+  it("orbits the camera around a stable target without changing its radius", () => {
+    const base = new Vector3(0, 3.25, 11.7); const target = new Vector3(0, 1.42, -.35);
+    const right = orbitCameraPosition(base, target, Math.PI / 3, 0);
+    const left = orbitCameraPosition(base, target, -Math.PI / 3, 0);
+    expect(right.x).toBeGreaterThan(9);
+    expect(left.x).toBeLessThan(-9);
+    expect(right.distanceTo(target)).toBeCloseTo(base.distanceTo(target), 5);
+    expect(left.distanceTo(target)).toBeCloseTo(base.distanceTo(target), 5);
+  });
+
+  it("authors a U-shaped arena with protected foreground edges", () => {
+    const manifest = JSON.parse(readFileSync(resolve(__dirname, "../assets/data/leaderboard-scene-manifest.json"), "utf8")) as ArenaManifest;
+    const transformed = manifest.basePlacements.map(arenaPlacementTransform);
+    expect(transformed.filter((placement) => placement.zone === "rear").length).toBeGreaterThan(10);
+    expect(transformed.filter((placement) => placement.zone === "left-wing").length).toBeGreaterThan(8);
+    expect(transformed.filter((placement) => placement.zone === "right-wing").length).toBeGreaterThan(8);
+    const foreground = transformed.filter((placement) => placement.zone === "foreground");
+    expect(foreground.length).toBeGreaterThanOrEqual(4);
+    foreground.forEach((placement) => expect(Math.abs(placement.position[0])).toBeGreaterThanOrEqual(5.8));
   });
 
   it("vendors the complete pinned scene with valid hashes and deterministic theme sockets", () => {
@@ -160,8 +184,16 @@ describe("leaderboard podium policy", () => {
       expect(createHash("sha256").update(bytes).digest("hex")).toBe(asset.sha256);
     }
     const rp = generatedThemePlacements("most-rp", manifest.themes["most-rp"]);
+    const sockets = showcaseThemeSockets();
+    expect(sockets).toHaveLength(15);
+    expect(sockets.filter((socket) => socket.zone === "podium")).toHaveLength(6);
+    expect(sockets.filter((socket) => /wing$/.test(socket.zone))).toHaveLength(6);
+    expect(sockets.filter((socket) => socket.zone === "foreground")).toHaveLength(3);
+    sockets.filter((socket) => socket.zone === "foreground").forEach((socket) => expect(Math.abs(socket.position[0])).toBeGreaterThanOrEqual(5.8));
     expect(rp.length).toBeGreaterThan(8);
     expect(rp.length).toBeLessThanOrEqual(15);
+    rp.filter((placement) => /weapon|rifle|launcher|gun/i.test(`${placement.role} ${placement.localPath}`))
+      .forEach((placement) => expect(placement.position[1]).toBeLessThanOrEqual(.04));
     expect(generatedThemePlacements("most-rp", manifest.themes["most-rp"])).toEqual(rp);
   });
 

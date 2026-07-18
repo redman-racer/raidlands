@@ -22,8 +22,8 @@ import {
 import { normalizeWearableOrigin, podiumCharacterYaw, podiumWeaponLayout } from "./layout";
 import { buildIndustrialPedestal, pedestalConfigForRank, pedestalRanksForLayout } from "./pedestal";
 import {
-  anchorPoint, ArenaManifest, ArenaPlacement, clampArenaRotation, generatedThemePlacements,
-  podiumCategoryTitle, podiumThemeFor,
+  anchorPoint, arenaPlacementTransform, ArenaManifest, ArenaPlacement, clampArenaRotation,
+  generatedThemePlacements, orbitCameraPosition, podiumCategoryTitle, podiumThemeFor,
 } from "./scene-policy";
 
 type Payload = { leaders?: Leader[]; metric?: string; board?: string };
@@ -159,9 +159,16 @@ function seededRandom(seed: number): () => number {
 
 function hazeTexture(): CanvasTexture {
   const canvas = document.createElement("canvas"); canvas.width = 128; canvas.height = 128;
-  const context = canvas.getContext("2d")!; const gradient = context.createRadialGradient(64, 64, 0, 64, 64, 64);
-  gradient.addColorStop(0, "rgba(185,196,204,.38)"); gradient.addColorStop(.4, "rgba(119,130,138,.14)"); gradient.addColorStop(1, "rgba(45,51,55,0)");
-  context.fillStyle = gradient; context.fillRect(0, 0, 128, 128);
+  const context = canvas.getContext("2d")!; const random = seededRandom(0x51a9e);
+  context.clearRect(0, 0, 128, 128); context.globalCompositeOperation = "lighter";
+  for (let cloud = 0; cloud < 11; cloud += 1) {
+    const x = 20 + random() * 88; const y = 25 + random() * 78; const radius = 22 + random() * 34;
+    const gradient = context.createRadialGradient(x, y, 0, x, y, radius);
+    gradient.addColorStop(0, `rgba(188,198,202,${.055 + random() * .075})`);
+    gradient.addColorStop(.5, `rgba(112,123,128,${.025 + random() * .04})`);
+    gradient.addColorStop(1, "rgba(45,51,55,0)"); context.fillStyle = gradient;
+    context.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+  }
   const texture = new CanvasTexture(canvas); texture.minFilter = LinearFilter; texture.magFilter = LinearFilter; return texture;
 }
 
@@ -171,7 +178,6 @@ class PodiumScene {
   private renderer: WebGLRenderer;
   private composer?: EffectComposer;
   private backdropRoot = new Group();
-  private displayRoot = new Group();
   private worldRoot = new Group();
   private baseRoot = new Group();
   private pedestalRoot = new Group();
@@ -192,11 +198,13 @@ class PodiumScene {
   private rankX = [0, -2.55, 2.55];
   private standingHeights = [0.63, 0.4725, 0.4347];
   private cameraBase = ARENA_CAMERA.position.clone();
+  private cameraOrbitBase = ARENA_CAMERA.position.clone();
   private cameraTarget = ARENA_CAMERA.target.clone();
   private targetYaw = 0;
   private targetPitch = 0;
   private currentYaw = 0;
   private currentPitch = 0;
+  private orbitFov = ARENA_CAMERA.fov;
   private dragPointer = -1;
   private dragX = 0;
   private dragY = 0;
@@ -216,11 +224,11 @@ class PodiumScene {
     this.singleLayout = host.dataset.podiumLayout === "single";
     const draco = new DRACOLoader(); draco.setDecoderPath(host.dataset.decoderPath || "");
     this.loader = new GLTFLoader(); this.loader.setDRACOLoader(draco); this.loader.setMeshoptDecoder(MeshoptDecoder);
-    this.backdropRoot.name = "GENERATED_BACKDROP_PANELS"; this.backdropRoot.position.set(0, 2.8, -6.15);
+    this.backdropRoot.name = "GENERATED_BACKDROP_PANELS"; this.backdropRoot.position.set(0, 2.8, -12.5);
     this.scene.add(this.camera);
-    this.displayRoot.name = "ORBIT_PIVOT"; this.worldRoot.name = "SCENE_ROOT";
+    this.worldRoot.name = "SCENE_ROOT";
     this.worldRoot.add(this.backdropRoot, this.baseRoot, this.pedestalRoot, this.characterRoot, this.themeRoot, this.effectsRoot);
-    this.displayRoot.add(this.worldRoot); this.scene.add(this.displayRoot);
+    this.scene.add(this.worldRoot);
     if (this.singleLayout) { this.buildSingleStage(); this.arenaReady = Promise.resolve(); }
     else this.arenaReady = this.buildArenaStage();
     this.observer = new ResizeObserver(() => this.resize()); this.observer.observe(stage); this.resize();
@@ -259,15 +267,15 @@ class PodiumScene {
     const camera = manifest.camera;
     this.camera.fov = ARENA_CAMERA.fov; this.camera.near = numeric(camera, "Near_m", .05); this.camera.far = numeric(camera, "Far_m", 60);
     this.cameraBase.copy(ARENA_CAMERA.position); this.cameraTarget.copy(ARENA_CAMERA.target);
-    const pivot = new Vector3(numeric(camera, "Orbit_Pivot_X_m"), numeric(camera, "Orbit_Pivot_Y_m"), numeric(camera, "Orbit_Pivot_Z_m"));
-    this.displayRoot.position.copy(pivot); this.worldRoot.position.copy(pivot).multiplyScalar(-1);
     this.renderer.toneMappingExposure = Math.pow(2, numeric(camera, "Exposure_EV", -.45) - .55);
     this.scene.background = new Color(0x0b0d0e); this.scene.fog = new FogExp2(0x171a1b, .042);
     await this.buildBackdropPanels();
-    this.buildArenaPodiums(manifest); this.buildArenaLights(manifest); this.buildAtmosphere();
+    this.buildArenaPodiums(manifest); this.buildSolidFloor(); this.buildArenaLights(manifest); this.buildAtmosphere();
     this.setupComposer();
     this.resize();
-    const placements = [...manifest.basePlacements].sort((left, right) => this.placementPriority(left) - this.placementPriority(right));
+    const placements = manifest.basePlacements
+      .filter((placement) => this.useNativePlacement(placement))
+      .sort((left, right) => this.placementPriority(left) - this.placementPriority(right));
     const loaded = await this.loadPlacementBatch(placements, this.baseRoot, 6);
     this.host.dataset.scenePlacements = String(loaded);
     const loadedIds = new Set(this.baseRoot.children.map((child) => child.name));
@@ -279,18 +287,25 @@ class PodiumScene {
     const source = this.host.dataset.backdropSrc || ""; if (!source) return;
     const texture = await new TextureLoader().loadAsync(source); texture.colorSpace = SRGBColorSpace;
     texture.wrapS = ClampToEdgeWrapping; texture.wrapT = ClampToEdgeWrapping;
-    for (let index = 0; index < 3; index += 1) {
+    const panels = [
+      { textureIndex: 0, position: [-9.15, 0, 5.1] as [number, number, number], yaw: 43, width: 12.5, shade: 0x817a70 },
+      { textureIndex: 1, position: [0, 0, 0] as [number, number, number], yaw: 0, width: 12.5, shade: 0x817a70 },
+      { textureIndex: 2, position: [9.15, 0, 5.1] as [number, number, number], yaw: -43, width: 12.5, shade: 0x817a70 },
+      { textureIndex: 0, position: [-14, 0, 11.2] as [number, number, number], yaw: 90, width: 20, shade: 0x5f5a52 },
+      { textureIndex: 2, position: [14, 0, 11.2] as [number, number, number], yaw: -90, width: 20, shade: 0x5f5a52 },
+    ];
+    panels.forEach((spec, index) => {
       const panelTexture = texture.clone(); panelTexture.colorSpace = SRGBColorSpace;
       panelTexture.wrapS = ClampToEdgeWrapping; panelTexture.wrapT = ClampToEdgeWrapping;
-      panelTexture.repeat.set(1 / 3, 1); panelTexture.offset.set(index / 3, 0); panelTexture.needsUpdate = true;
+      panelTexture.repeat.set(1 / 3, 1); panelTexture.offset.set(spec.textureIndex / 3, 0); panelTexture.needsUpdate = true;
       const panel = new Mesh(
         new PlaneGeometry(1, 1),
-        new MeshBasicMaterial({ map: panelTexture, fog: false, toneMapped: false, depthWrite: false }),
+        new MeshBasicMaterial({ map: panelTexture, color: spec.shade, fog: true, toneMapped: true, depthWrite: false }),
       );
       panel.name = `GENERATED_BACKDROP_PANEL_${index + 1}`; panel.renderOrder = -100;
-      panel.position.set((index - 1) * 12, 0, 0); panel.scale.set(12.06, 20.25, 1);
+      panel.position.set(...spec.position); panel.rotation.y = MathUtils.degToRad(spec.yaw); panel.scale.set(spec.width, 20.25, 1);
       panel.userData.panelIndex = index; this.backdropRoot.add(panel);
-    }
+    });
   }
 
   private placementRenderScale(placement: ArenaPlacement): [number, number, number] {
@@ -298,6 +313,11 @@ class PodiumScene {
     // are intentionally stretched to construct the arena shell.
     if (/^ENV_(?:FLOOR|BACKWALL|SIDEWALL)/.test(placement.id)) return placement.scale;
     return [1, 1, 1];
+  }
+
+  private useNativePlacement(placement: ArenaPlacement): boolean {
+    if (placement.id === "ENV_TARP_BACK" || placement.id.startsWith("ENV_FLOOR_") || placement.id.startsWith("ENV_SIDEWALL_")) return false;
+    return !/(?:RUBBLE|GRAVEL)/.test(placement.id);
   }
 
   private buildArenaPodiums(manifest: ArenaManifest) {
@@ -309,6 +329,13 @@ class PodiumScene {
       this.rankX[rank] = pedestal.root.position.x; this.standingHeights[rank] = pedestal.root.position.y + pedestal.standingHeight;
       this.pedestalRoot.add(pedestal.root);
     });
+  }
+
+  private buildSolidFloor() {
+    const material = new MeshStandardMaterial({ color: 0x171512, metalness: .46, roughness: .82 });
+    const floor = new Mesh(new PlaneGeometry(24, 22), material); floor.name = "ARENA_SOLID_FLOOR";
+    floor.rotation.x = -Math.PI / 2; floor.position.set(0, -.12, -1.5); floor.receiveShadow = true;
+    this.baseRoot.add(floor);
   }
 
   private buildArenaLights(manifest: ArenaManifest) {
@@ -338,6 +365,10 @@ class PodiumScene {
       const divisor = String(row.Entity_ID || "").includes("PODIUM") ? 62 : 48;
       const light = new PointLight(color, intensity / divisor, Number(row.Range_m) || 5, 2); light.position.copy(position); this.scene.add(light);
     }
+    const leftWing = new PointLight(0xff7b32, 4.2, 10, 2); leftWing.position.set(-7.4, 2.15, 1.2);
+    const rightWing = new PointLight(0xffad62, 3.8, 10, 2); rightWing.position.set(7.4, 2.15, 1.2);
+    const rearFill = new PointLight(0x7e99a2, 2.1, 13, 2); rearFill.position.set(0, 3.6, -7.4);
+    this.scene.add(leftWing, rightWing, rearFill);
   }
 
   private addLightShaft(start: Vector3, end: Vector3, color: string, weight: number) {
@@ -348,29 +379,42 @@ class PodiumScene {
   }
 
   private buildAtmosphere() {
-    const texture = hazeTexture(); const centers: Array<[number, number, number, number]> = [[-4.3, 1.45, -1.8, 1.2], [0, 1.65, -2.15, 1.05], [4.3, 1.45, -1.8, 1.2]];
+    const texture = hazeTexture(); const centers: Array<[number, number, number, number]> = [
+      [-7, 1.35, .9, .82], [-4.3, 1.45, -1.8, 1.2], [0, 1.65, -2.15, 1.05],
+      [4.3, 1.45, -1.8, 1.2], [7, 1.35, .9, .82],
+    ];
     centers.forEach(([x, y, z, density], group) => {
       for (let index = 0; index < (this.mobile ? 1 : 3); index += 1) {
         const haze = new Sprite(new SpriteMaterial({ map: texture, color: 0x727d80, transparent: true, opacity: .105 * density, depthWrite: false }));
         haze.position.set(x + (index - 1) * .78, y + index * .34, z - index * .3); haze.scale.set(4.4, 3.2, 1); haze.renderOrder = 17;
-        haze.userData.phase = group * 1.9 + index; this.effectsRoot.add(haze);
+        haze.userData = {
+          smoke: true, phase: group * 1.9 + index, speed: .09 + index * .018,
+          drift: .28 + index * .08, opacity: .105 * density,
+          basePosition: haze.position.clone(), baseScale: haze.scale.clone(),
+        };
+        this.effectsRoot.add(haze);
       }
     });
     const floorSmoke: Array<[number, number, number, number, number]> = [
-      [-4.8, .25, .55, 4.8, 1.1], [-2.4, .18, .85, 3.8, .8], [0, .12, .65, 4.6, .72],
-      [2.5, .18, .88, 3.8, .82], [4.9, .25, .58, 4.8, 1.1],
+      [-7, .25, 2.45, 4.2, .72], [-4.8, .25, .55, 4.8, 1.1], [-2.4, .18, .85, 3.8, .8],
+      [0, .12, .65, 4.6, .72], [2.5, .18, .88, 3.8, .82], [4.9, .25, .58, 4.8, 1.1], [7, .25, 2.45, 4.2, .72],
     ];
     floorSmoke.forEach(([x, y, z, width, density], index) => {
       const smoke = new Sprite(new SpriteMaterial({ map: texture, color: 0x4f5657, transparent: true, opacity: .09 * density, depthWrite: false }));
       smoke.position.set(x, y, z); smoke.scale.set(width, 1.35, 1); smoke.renderOrder = 19;
-      smoke.userData.phase = 8 + index * 1.3; this.effectsRoot.add(smoke);
+      smoke.userData = {
+        smoke: true, phase: 8 + index * 1.3, speed: .07 + index * .012,
+        drift: .34 + index * .045, opacity: .09 * density,
+        basePosition: smoke.position.clone(), baseScale: smoke.scale.clone(),
+      };
+      this.effectsRoot.add(smoke);
     });
     this.addEmbers(this.mobile ? 28 : 64, 0x5eed1234);
   }
 
   private addEmbers(count: number, seed: number) {
     const random = seededRandom(seed); const geometry = new BufferGeometry(); const positions: number[] = [];
-    for (let index = 0; index < count; index += 1) positions.push((random() - .5) * 15, .25 + random() * 6.4, -4.8 + random() * 7.2);
+    for (let index = 0; index < count; index += 1) positions.push((random() - .5) * 18, .25 + random() * 6.4, -5.8 + random() * 11);
     geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
     const embers = new Points(geometry, new PointsMaterial({ color: 0xffa03b, size: this.mobile ? .04 : .055, transparent: true, opacity: .58, depthWrite: false, blending: AdditiveBlending }));
     embers.name = "ArenaEmbers"; embers.userData.particles = true; this.effectsRoot.add(embers);
@@ -432,7 +476,16 @@ class PodiumScene {
     });
     const wrapper = new Group(); wrapper.name = placement.id; wrapper.add(visual);
     const renderScale = this.placementRenderScale(placement);
-    wrapper.position.set(...placement.position); wrapper.rotation.set(...placement.rotation.map(MathUtils.degToRad) as [number, number, number]);
+    const transform = arenaPlacementTransform(placement);
+    wrapper.position.set(...transform.position); wrapper.rotation.set(...transform.rotation.map(MathUtils.degToRad) as [number, number, number]);
+    const decorativeWeapon = /weapon|rifle|launcher|(?:^|[^a-z])gun(?:[^a-z]|$)/i.test(`${placement.role} ${placement.localPath}`);
+    if (decorativeWeapon) {
+      wrapper.updateMatrixWorld(true);
+      const rotatedBounds = new Box3().setFromObject(wrapper);
+      wrapper.position.y += .025 - rotatedBounds.min.y;
+      wrapper.userData.grounded = true;
+    }
+    wrapper.userData.showcaseZone = transform.zone;
     wrapper.scale.set(...renderScale);
     return wrapper;
   }
@@ -539,7 +592,9 @@ class PodiumScene {
       this.camera.position.set(0, 2.65, this.camera.aspect < .9 ? 9.4 : this.camera.aspect < 1.35 ? 7.8 : 6.4); this.camera.lookAt(0, 1.22, 0);
     } else {
       const framing = this.camera.aspect < 16 / 9 ? (16 / 9) / Math.max(.7, this.camera.aspect) : 1;
-      this.camera.position.copy(this.cameraBase); this.camera.position.z *= framing; this.camera.lookAt(this.cameraTarget);
+      this.cameraOrbitBase.copy(this.cameraBase);
+      this.cameraOrbitBase.z = this.cameraTarget.z + (this.cameraBase.z - this.cameraTarget.z) * framing;
+      this.updateArenaCamera();
     }
     this.camera.updateProjectionMatrix(); this.renderer.setSize(width, height, false); this.composer?.setSize(width, height);
   }
@@ -552,7 +607,7 @@ class PodiumScene {
   private onPointerMove = (event: PointerEvent) => {
     if (event.pointerId !== this.dragPointer) return;
     const deltaX = event.clientX - this.dragX; const deltaY = event.clientY - this.dragY; this.dragX = event.clientX; this.dragY = event.clientY;
-    const clamped = clampArenaRotation(this.targetYaw + deltaX * .004, this.targetPitch + deltaY * .003);
+    const clamped = clampArenaRotation(this.targetYaw + deltaX * .004, this.targetPitch + deltaY * .003, this.mobile ? 60 : 75);
     this.targetYaw = clamped.yaw; this.targetPitch = clamped.pitch;
   };
 
@@ -561,14 +616,38 @@ class PodiumScene {
     if (this.renderer.domElement.hasPointerCapture(event.pointerId)) this.renderer.domElement.releasePointerCapture(event.pointerId);
   };
 
+  private updateArenaCamera() {
+    const yawLimit = MathUtils.degToRad(this.mobile ? 60 : 75);
+    const edge = MathUtils.clamp(Math.abs(this.currentYaw) / yawLimit, 0, 1);
+    const orbit = orbitCameraPosition(this.cameraOrbitBase, this.cameraTarget, this.currentYaw, this.currentPitch);
+    orbit.sub(this.cameraTarget).multiplyScalar(1 + edge * (this.mobile ? .08 : .12)).add(this.cameraTarget);
+    this.camera.position.copy(orbit);
+    const nextFov = ARENA_CAMERA.fov + edge * (this.mobile ? 1.5 : 2.5);
+    if (Math.abs(nextFov - this.orbitFov) > .01) { this.orbitFov = nextFov; this.camera.fov = nextFov; this.camera.updateProjectionMatrix(); }
+    this.camera.lookAt(this.cameraTarget);
+  }
+
   private animate = () => {
     if (this.disposed) return; const time = performance.now() * .001;
     this.currentYaw += (this.targetYaw - this.currentYaw) * .1; this.currentPitch += (this.targetPitch - this.currentPitch) * .1;
-    this.displayRoot.rotation.set(this.currentPitch, this.currentYaw, 0);
+    if (!this.singleLayout) this.updateArenaCamera();
     if (!this.reduceMotion) {
       this.characterRoot.children.forEach((character) => { character.position.y = character.userData.baseY + Math.sin(time * .72 + character.userData.phase) * .012; });
       const embers = this.effectsRoot.getObjectByName("ArenaEmbers"); if (embers) embers.position.y = Math.sin(time * .28) * .14;
-      this.effectsRoot.children.forEach((effect) => { if (effect instanceof Sprite) effect.material.rotation = Math.sin(time * .08 + Number(effect.userData.phase || 0)) * .04; });
+      this.effectsRoot.children.forEach((effect) => {
+        if (!(effect instanceof Sprite) || !effect.userData.smoke) return;
+        const phase = Number(effect.userData.phase || 0); const speed = Number(effect.userData.speed || .08);
+        const drift = Number(effect.userData.drift || .25); const basePosition = effect.userData.basePosition as Vector3;
+        const baseScale = effect.userData.baseScale as Vector3; const breath = 1 + Math.sin(time * speed * 1.7 + phase) * .075;
+        effect.position.set(
+          basePosition.x + Math.sin(time * speed + phase) * drift,
+          basePosition.y + Math.sin(time * speed * 1.35 + phase * .7) * .12,
+          basePosition.z + Math.cos(time * speed * .72 + phase) * drift * .32,
+        );
+        effect.scale.set(baseScale.x * breath, baseScale.y * (2 - breath), 1);
+        effect.material.opacity = Number(effect.userData.opacity || .08) * (.72 + (Math.sin(time * speed * 2.1 + phase) + 1) * .14);
+        effect.material.rotation = Math.sin(time * speed * .65 + phase) * .12;
+      });
     }
     if (this.composer) this.composer.render(); else this.renderer.render(this.scene, this.camera);
     this.frame = requestAnimationFrame(this.animate);
