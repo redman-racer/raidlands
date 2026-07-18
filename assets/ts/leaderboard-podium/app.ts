@@ -1,10 +1,10 @@
 import {
   ACESFilmicToneMapping, AdditiveBlending, AmbientLight, Box3, BufferAttribute, BufferGeometry,
-  CanvasTexture, Color, ConeGeometry, CylinderGeometry, DirectionalLight, FogExp2,
+  CanvasTexture, ClampToEdgeWrapping, Color, ConeGeometry, CylinderGeometry, DirectionalLight, FogExp2,
   Float32BufferAttribute, Group, HemisphereLight, LinearFilter, MathUtils, Mesh, MeshBasicMaterial,
   MeshStandardMaterial, Object3D, PCFSoftShadowMap, PerspectiveCamera, PlaneGeometry, PointLight,
-  Points, PointsMaterial, RectAreaLight, Scene, SkinnedMesh, SpotLight, Sprite, SpriteMaterial,
-  SRGBColorSpace, Vector2, Vector3, WebGLRenderer,
+  Points, PointsMaterial, RectAreaLight, Scene, ShadowMaterial, SkinnedMesh, SpotLight, Sprite,
+  SpriteMaterial, SRGBColorSpace, TextureLoader, Vector2, Vector3, WebGLRenderer,
 } from "three";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
@@ -30,6 +30,11 @@ type Payload = { leaders?: Leader[]; metric?: string; board?: string };
 type CameraRecord = Record<string, unknown>;
 
 const APPROVED_SCENE_REVISION = "494242bdeae941e3389b34a819c514aae2cf39f8";
+const ARENA_CAMERA = {
+  fov: 35,
+  position: new Vector3(0, 3.05, 9.7),
+  target: new Vector3(0, 1.35, -0.25),
+};
 const SCENE_MODEL_FALLBACKS: Record<string, string> = {
   "prefabs/Weapons/lr300/lr300.worldmodel.glb": "prefabs/Weapons/ak47u/ak47u.worldmodel.glb",
   "prefabs/Weapons/mp5/mp5.worldmodel.glb": "prefabs/Weapons/ak47u/ak47u.worldmodel.glb",
@@ -165,6 +170,7 @@ class PodiumScene {
   private camera = new PerspectiveCamera(41, 1, 0.05, 60);
   private renderer: WebGLRenderer;
   private composer?: EffectComposer;
+  private backdropRoot = new Group();
   private displayRoot = new Group();
   private worldRoot = new Group();
   private baseRoot = new Group();
@@ -185,8 +191,8 @@ class PodiumScene {
   private arenaReady: Promise<void>;
   private rankX = [0, -2.55, 2.55];
   private standingHeights = [0.63, 0.4725, 0.4347];
-  private cameraBase = new Vector3(0, 4.35, 13.2);
-  private cameraTarget = new Vector3(0, 1.72, -0.55);
+  private cameraBase = ARENA_CAMERA.position.clone();
+  private cameraTarget = ARENA_CAMERA.target.clone();
   private targetYaw = 0;
   private targetPitch = 0;
   private currentYaw = 0;
@@ -210,6 +216,8 @@ class PodiumScene {
     this.singleLayout = host.dataset.podiumLayout === "single";
     const draco = new DRACOLoader(); draco.setDecoderPath(host.dataset.decoderPath || "");
     this.loader = new GLTFLoader(); this.loader.setDRACOLoader(draco); this.loader.setMeshoptDecoder(MeshoptDecoder);
+    this.backdropRoot.name = "GENERATED_BACKDROP_PANELS"; this.backdropRoot.position.z = -42;
+    this.camera.add(this.backdropRoot); this.scene.add(this.camera);
     this.displayRoot.name = "ORBIT_PIVOT"; this.worldRoot.name = "SCENE_ROOT";
     this.worldRoot.add(this.baseRoot, this.pedestalRoot, this.characterRoot, this.themeRoot, this.effectsRoot);
     this.displayRoot.add(this.worldRoot); this.scene.add(this.displayRoot);
@@ -249,22 +257,53 @@ class PodiumScene {
     if (manifest.revision !== APPROVED_SCENE_REVISION || manifest.assets.length !== 76) throw new Error("unapproved scene manifest");
     this.manifest = manifest; this.host.dataset.sceneRevision = manifest.revision;
     const camera = manifest.camera;
-    this.camera.fov = numeric(camera, "Vertical_FOV_deg", 41); this.camera.near = numeric(camera, "Near_m", .05); this.camera.far = numeric(camera, "Far_m", 60);
-    this.cameraBase.set(numeric(camera, "Pos_X_m"), numeric(camera, "Pos_Y_m"), numeric(camera, "Pos_Z_m"));
-    this.cameraTarget.set(numeric(camera, "Target_X_m"), numeric(camera, "Target_Y_m"), numeric(camera, "Target_Z_m"));
+    this.camera.fov = ARENA_CAMERA.fov; this.camera.near = numeric(camera, "Near_m", .05); this.camera.far = numeric(camera, "Far_m", 60);
+    this.cameraBase.copy(ARENA_CAMERA.position); this.cameraTarget.copy(ARENA_CAMERA.target);
     const pivot = new Vector3(numeric(camera, "Orbit_Pivot_X_m"), numeric(camera, "Orbit_Pivot_Y_m"), numeric(camera, "Orbit_Pivot_Z_m"));
     this.displayRoot.position.copy(pivot); this.worldRoot.position.copy(pivot).multiplyScalar(-1);
-    this.renderer.toneMappingExposure = Math.pow(2, numeric(camera, "Exposure_EV", -.45));
-    this.scene.background = new Color(0x15191c); this.scene.fog = new FogExp2(0x15191c, .027);
-    this.buildArenaPodiums(manifest); this.buildArenaLights(manifest); this.buildAtmosphere();
+    this.renderer.toneMappingExposure = Math.pow(2, numeric(camera, "Exposure_EV", -.45) - .55);
+    this.scene.background = new Color(0x0b0d0e); this.scene.fog = new FogExp2(0x171a1b, .042);
+    await this.buildBackdropPanels();
+    this.buildArenaPodiums(manifest); this.buildShadowCatcher(); this.buildArenaLights(manifest); this.buildAtmosphere();
     this.setupComposer();
     this.resize();
-    const placements = [...manifest.basePlacements].sort((left, right) => this.placementPriority(left) - this.placementPriority(right));
+    const placements = manifest.basePlacements
+      .filter((placement) => this.useForegroundPlacement(placement))
+      .sort((left, right) => this.placementPriority(left) - this.placementPriority(right));
     const loaded = await this.loadPlacementBatch(placements, this.baseRoot, 6);
     this.host.dataset.scenePlacements = String(loaded);
     const loadedIds = new Set(this.baseRoot.children.map((child) => child.name));
     const missingCritical = placements.filter((placement) => placement.lodClass === "Hero" && !loadedIds.has(placement.id));
     if (loaded < 1 || missingCritical.length) throw new Error("critical arena models unavailable");
+  }
+
+  private async buildBackdropPanels() {
+    const source = this.host.dataset.backdropSrc || ""; if (!source) return;
+    const texture = await new TextureLoader().loadAsync(source); texture.colorSpace = SRGBColorSpace;
+    texture.wrapS = ClampToEdgeWrapping; texture.wrapT = ClampToEdgeWrapping;
+    for (let index = 0; index < 3; index += 1) {
+      const panelTexture = texture.clone(); panelTexture.colorSpace = SRGBColorSpace;
+      panelTexture.wrapS = ClampToEdgeWrapping; panelTexture.wrapT = ClampToEdgeWrapping;
+      panelTexture.repeat.set(1 / 3, 1); panelTexture.offset.set(index / 3, 0); panelTexture.needsUpdate = true;
+      const panel = new Mesh(
+        new PlaneGeometry(1, 1),
+        new MeshBasicMaterial({ map: panelTexture, fog: false, toneMapped: false, depthTest: false, depthWrite: false }),
+      );
+      panel.name = `GENERATED_BACKDROP_PANEL_${index + 1}`; panel.renderOrder = -100;
+      panel.userData.panelIndex = index; panel.userData.panelTexture = panelTexture; this.backdropRoot.add(panel);
+    }
+  }
+
+  private buildShadowCatcher() {
+    const catcher = new Mesh(new PlaneGeometry(17, 9), new ShadowMaterial({ color: 0x050505, opacity: .14 }));
+    catcher.name = "ARENA_SHADOW_CATCHER"; catcher.rotation.x = -Math.PI / 2;
+    catcher.position.set(0, -.015, -.35); catcher.receiveShadow = true; this.baseRoot.add(catcher);
+  }
+
+  private useForegroundPlacement(placement: ArenaPlacement): boolean {
+    if (placement.id.startsWith("ENV_") || placement.lodClass === "Background" || placement.lodClass === "Structure") return false;
+    if (/^FIX_(?:SEARCH|CEILING|LIGHTPOST)/.test(placement.id)) return false;
+    return placement.position[2] > -3.35 || placement.lodClass === "Hero";
   }
 
   private buildArenaPodiums(manifest: ArenaManifest) {
@@ -286,41 +325,51 @@ class PodiumScene {
       const position = new Vector3(Number(row.Pos_X_m) || 0, Number(row.Pos_Y_m) || 0, Number(row.Pos_Z_m) || 0);
       const target = new Vector3(Number(row.Target_X_m) || 0, Number(row.Target_Y_m) || 0, Number(row.Target_Z_m) || 0);
       if (type.includes("hemisphere")) {
-        const light = new HemisphereLight(color, 0x21150e, intensity * 3.5); light.position.copy(position); this.scene.add(light); continue;
+        const light = new HemisphereLight(color, 0x17100b, intensity * 2.2); light.position.copy(position); this.scene.add(light); continue;
       }
       if (type.includes("rect")) {
         const area = Math.max(.1, (Number(row.Area_Width_m) || 1) * (Number(row.Area_Height_m) || 1));
-        const light = new RectAreaLight(color, intensity / (30 * Math.PI * area), Number(row.Area_Width_m) || 1, Number(row.Area_Height_m) || 1);
+        const light = new RectAreaLight(color, intensity / (56 * Math.PI * area), Number(row.Area_Width_m) || 1, Number(row.Area_Height_m) || 1);
         light.position.copy(position); light.lookAt(target); this.scene.add(light); continue;
       }
       if (type.includes("spot")) {
         const outer = MathUtils.degToRad(Number(row.Outer_Cone_deg) || 30);
-        const light = new SpotLight(color, intensity / 30, Number(row.Range_m) || 18, outer, Number(row.Penumbra) || .5, 2);
+        const light = new SpotLight(color, intensity / 58, Number(row.Range_m) || 18, outer, Number(row.Penumbra) || .5, 2);
         light.position.copy(position); light.target.position.copy(target); light.castShadow = row.Cast_Shadow === true;
         if (light.castShadow) { const mapSize = this.mobile ? 1024 : 2048; light.shadow.mapSize.set(mapSize, mapSize); light.shadow.bias = Number(row.Shadow_Bias) || -.0005; }
         this.scene.add(light, light.target);
         if (Number(row.Volumetric_Weight) > .4) this.addLightShaft(position, target, color, Number(row.Volumetric_Weight));
         continue;
       }
-      const light = new PointLight(color, intensity / 20, Number(row.Range_m) || 5, 2); light.position.copy(position); this.scene.add(light);
+      const divisor = String(row.Entity_ID || "").includes("PODIUM") ? 62 : 48;
+      const light = new PointLight(color, intensity / divisor, Number(row.Range_m) || 5, 2); light.position.copy(position); this.scene.add(light);
     }
   }
 
   private addLightShaft(start: Vector3, end: Vector3, color: string, weight: number) {
     const direction = end.clone().sub(start); const length = direction.length();
-    const shaft = new Mesh(new ConeGeometry(.72, length, 18, 1, true), new MeshBasicMaterial({ color, transparent: true, opacity: .035 * weight, depthWrite: false, blending: AdditiveBlending }));
+    const shaft = new Mesh(new ConeGeometry(.72, length, 18, 1, true), new MeshBasicMaterial({ color, transparent: true, opacity: .014 * weight, depthWrite: false, blending: AdditiveBlending }));
     shaft.position.copy(start).add(end).multiplyScalar(.5); shaft.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), direction.normalize());
     shaft.renderOrder = 18; this.effectsRoot.add(shaft);
   }
 
   private buildAtmosphere() {
-    const texture = hazeTexture(); const centers: Array<[number, number, number, number]> = [[-4.5, 1.7, -2.8, 1.25], [0, 2, -3.2, 1.1], [4.5, 1.7, -2.8, 1.3]];
+    const texture = hazeTexture(); const centers: Array<[number, number, number, number]> = [[-4.3, 1.45, -1.8, 1.2], [0, 1.65, -2.15, 1.05], [4.3, 1.45, -1.8, 1.2]];
     centers.forEach(([x, y, z, density], group) => {
       for (let index = 0; index < (this.mobile ? 1 : 3); index += 1) {
-        const haze = new Sprite(new SpriteMaterial({ map: texture, color: 0x81909a, transparent: true, opacity: .08 * density, depthWrite: false }));
-        haze.position.set(x + (index - 1) * .85, y + index * .38, z - index * .3); haze.scale.set(4.2, 3.4, 1); haze.renderOrder = 17;
+        const haze = new Sprite(new SpriteMaterial({ map: texture, color: 0x727d80, transparent: true, opacity: .105 * density, depthWrite: false }));
+        haze.position.set(x + (index - 1) * .78, y + index * .34, z - index * .3); haze.scale.set(4.4, 3.2, 1); haze.renderOrder = 17;
         haze.userData.phase = group * 1.9 + index; this.effectsRoot.add(haze);
       }
+    });
+    const floorSmoke: Array<[number, number, number, number, number]> = [
+      [-4.8, .25, .55, 4.8, 1.1], [-2.4, .18, .85, 3.8, .8], [0, .12, .65, 4.6, .72],
+      [2.5, .18, .88, 3.8, .82], [4.9, .25, .58, 4.8, 1.1],
+    ];
+    floorSmoke.forEach(([x, y, z, width, density], index) => {
+      const smoke = new Sprite(new SpriteMaterial({ map: texture, color: 0x4f5657, transparent: true, opacity: .09 * density, depthWrite: false }));
+      smoke.position.set(x, y, z); smoke.scale.set(width, 1.35, 1); smoke.renderOrder = 19;
+      smoke.userData.phase = 8 + index * 1.3; this.effectsRoot.add(smoke);
     });
     this.addEmbers(this.mobile ? 28 : 64, 0x5eed1234);
   }
@@ -339,7 +388,7 @@ class PodiumScene {
     if (!this.mobile) {
       const ssao = new SSAOPass(this.scene, this.camera, width, height); ssao.kernelRadius = 5; ssao.minDistance = .0005; ssao.maxDistance = .045; composer.addPass(ssao);
     }
-    composer.addPass(new UnrealBloomPass(new Vector2(width, height), .3, .55, 1.1));
+    composer.addPass(new UnrealBloomPass(new Vector2(width, height), .16, .65, 1.15));
     this.composer = composer;
   }
 
@@ -495,6 +544,19 @@ class PodiumScene {
     } else {
       const framing = this.camera.aspect < 16 / 9 ? (16 / 9) / Math.max(.7, this.camera.aspect) : 1;
       this.camera.position.copy(this.cameraBase); this.camera.position.z *= framing; this.camera.lookAt(this.cameraTarget);
+    }
+    if (this.backdropRoot.children.length) {
+      const distance = Math.abs(this.backdropRoot.position.z); const height = 2 * distance * Math.tan(MathUtils.degToRad(this.camera.fov * .5)) * 1.025;
+      const width = height * this.camera.aspect * 1.025; const panelWidth = width / 3;
+      const sourceAspect = 16 / 9; const wide = this.camera.aspect >= sourceAspect;
+      const visibleX = wide ? 1 : this.camera.aspect / sourceAspect;
+      const visibleY = wide ? sourceAspect / this.camera.aspect : 1;
+      const offsetX = (1 - visibleX) * .5; const offsetY = (1 - visibleY) * .5;
+      this.backdropRoot.children.forEach((panel, index) => {
+        panel.position.set((index - 1) * panelWidth, 0, 0); panel.scale.set(panelWidth * 1.006, height, 1);
+        const texture = panel.userData.panelTexture as CanvasTexture | undefined;
+        if (texture) { texture.repeat.set(visibleX / 3, visibleY); texture.offset.set(offsetX + index * visibleX / 3, offsetY); }
+      });
     }
     this.camera.updateProjectionMatrix(); this.renderer.setSize(width, height, false); this.composer?.setSize(width, height);
   }

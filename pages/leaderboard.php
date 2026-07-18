@@ -289,6 +289,7 @@ function leaderboard_podium_markup(array $leaders, string $board, string $metric
         . ' data-model-base="' . e(asset_url('media/models/leaderboard/')) . '"'
         . ' data-scene-manifest="' . e(asset_url('data/leaderboard-scene-manifest.json')) . '"'
         . ' data-scene-model-base="' . e(asset_url('media/models/leaderboard-scene/')) . '"'
+        . ' data-backdrop-src="' . e(asset_url('media/leaderboard-arena-backdrop-v1.webp')) . '"'
         . ' data-poster-src="' . e(asset_url('media/leaderboard-podium-poster.webp')) . '"'
         . ' data-decoder-path="' . e(asset_url('media/models/draco/')) . '" aria-label="Top three podium">'
         . '<div class="leaderboard-podium-heading"><span>Current category</span><strong data-podium-category>' . e($theme) . '</strong></div>'
