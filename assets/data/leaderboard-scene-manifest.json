@@ -1,0 +1,4490 @@
+{
+  "version": 1,
+  "schemaVersion": "1.0.0",
+  "repository": "Facepunch/RustRelay.Assets",
+  "revision": "494242bdeae941e3389b34a819c514aae2cf39f8",
+  "generatedFrom": "docs/raidlands_3d_leaderboard_scene_map.json",
+  "modelBase": "media/models/leaderboard-scene/",
+  "camera": {
+    "Camera_ID": "CAM_MAIN",
+    "Type": "Perspective",
+    "Pos_X_m": 0,
+    "Pos_Y_m": 4.35,
+    "Pos_Z_m": 13.2,
+    "Target_X_m": 0,
+    "Target_Y_m": 1.72,
+    "Target_Z_m": -0.55,
+    "Vertical_FOV_deg": 41,
+    "Focal_Length_35mm_Equivalent_mm": 48,
+    "Near_m": 0.05,
+    "Far_m": 60,
+    "Aspect": "16:9",
+    "Orbit_Pivot_X_m": 0,
+    "Orbit_Pivot_Y_m": 1.55,
+    "Orbit_Pivot_Z_m": -0.35,
+    "Yaw_Min_deg": -18,
+    "Yaw_Max_deg": 18,
+    "Pitch_Min_deg": -3,
+    "Pitch_Max_deg": 10,
+    "Damping": 0.1,
+    "Exposure_EV": -0.45,
+    "Notes": "Frame all three podiums with ~0.55 m breathing room above the center character. Use target/lookAt as authoritative."
+  },
+  "sceneNodes": [
+    {
+      "node_id": "SCENE_ROOT",
+      "parent_id": null,
+      "node_type": "Root",
+      "position_m": [
+        0,
+        0,
+        0
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "inherits_transform": true,
+      "notes": "Global origin; all authored coordinates are world-space in meters."
+    },
+    {
+      "node_id": "ENVIRONMENT",
+      "parent_id": "SCENE_ROOT",
+      "node_type": "Logical group",
+      "position_m": [
+        0,
+        0,
+        0
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "inherits_transform": false,
+      "notes": "Environment shell and background props."
+    },
+    {
+      "node_id": "CHARACTERS",
+      "parent_id": "SCENE_ROOT",
+      "node_type": "Logical group",
+      "position_m": [
+        0,
+        0,
+        0
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "inherits_transform": false,
+      "notes": "Three mannequin/player stand-ins."
+    },
+    {
+      "node_id": "LEFT_CLUSTER",
+      "parent_id": "SCENE_ROOT",
+      "node_type": "Logical group",
+      "position_m": [
+        0,
+        0,
+        0
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "inherits_transform": false,
+      "notes": "Rank 2 weapon/crate/junk vignette."
+    },
+    {
+      "node_id": "CENTER_CLUSTER",
+      "parent_id": "SCENE_ROOT",
+      "node_type": "Logical group",
+      "position_m": [
+        0,
+        0,
+        0
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "inherits_transform": false,
+      "notes": "Rank 1 hero weapon/backdrop vignette."
+    },
+    {
+      "node_id": "RIGHT_CLUSTER",
+      "parent_id": "SCENE_ROOT",
+      "node_type": "Logical group",
+      "position_m": [
+        0,
+        0,
+        0
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "inherits_transform": false,
+      "notes": "Rank 3 rocket/wreck vignette."
+    },
+    {
+      "node_id": "FOREGROUND",
+      "parent_id": "SCENE_ROOT",
+      "node_type": "Logical group",
+      "position_m": [
+        0,
+        0,
+        0
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "inherits_transform": false,
+      "notes": "Low rubble and wheel transitions."
+    },
+    {
+      "node_id": "LIGHTING_FIXTURES",
+      "parent_id": "SCENE_ROOT",
+      "node_type": "Logical group",
+      "position_m": [
+        0,
+        0,
+        0
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "inherits_transform": false,
+      "notes": "Visible light fixture models."
+    },
+    {
+      "node_id": "FX",
+      "parent_id": "SCENE_ROOT",
+      "node_type": "Logical group",
+      "position_m": [
+        0,
+        0,
+        0
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "inherits_transform": false,
+      "notes": "Fog fixtures and runtime particles/volumes."
+    },
+    {
+      "node_id": "PODIUM_ROOT",
+      "parent_id": "SCENE_ROOT",
+      "node_type": "Custom completed geometry group",
+      "position_m": [
+        0,
+        0,
+        0
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "inherits_transform": true,
+      "notes": "Non-repository geometry supplied by RaidLands."
+    },
+    {
+      "node_id": "PODIUM_RANK_1",
+      "parent_id": "PODIUM_ROOT",
+      "node_type": "Custom completed pedestal",
+      "position_m": [
+        0,
+        0,
+        0
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "inherits_transform": true,
+      "notes": "Suggested radius 1.85 m; top Y = 0.58–0.61 m."
+    },
+    {
+      "node_id": "PODIUM_RANK_2",
+      "parent_id": "PODIUM_ROOT",
+      "node_type": "Custom completed pedestal",
+      "position_m": [
+        -4.2,
+        0,
+        0.22
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.86,
+        0.86,
+        0.86
+      ],
+      "inherits_transform": true,
+      "notes": "Suggested radius 1.55 m; top Y = 0.40–0.43 m."
+    },
+    {
+      "node_id": "PODIUM_RANK_3",
+      "parent_id": "PODIUM_ROOT",
+      "node_type": "Custom completed pedestal",
+      "position_m": [
+        4.2,
+        0,
+        0.22
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        0.86,
+        0.86,
+        0.86
+      ],
+      "inherits_transform": true,
+      "notes": "Suggested radius 1.55 m; top Y = 0.40–0.43 m."
+    },
+    {
+      "node_id": "ORBIT_PIVOT",
+      "parent_id": "SCENE_ROOT",
+      "node_type": "Interaction pivot",
+      "position_m": [
+        0,
+        1.55,
+        -0.35
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "inherits_transform": false,
+      "notes": "Drag-to-rotate pivot; rotate display root, not the UI."
+    }
+  ],
+  "characterAnchors": [
+    {
+      "id": "CHAR_RANK_2",
+      "enabled": true,
+      "zone": "Characters",
+      "parent": "CHARACTERS",
+      "role": "Second-place armored mannequin",
+      "sourcePath": "assets/Content/Props/Mannequin/Models/Merged/mannequin_fashionpose_wood.glb",
+      "localPath": "Content/Props/Mannequin/Models/Merged/mannequin_fashionpose_wood.glb",
+      "position": [
+        -4.2,
+        0.43,
+        0.12
+      ],
+      "rotation": [
+        0,
+        2,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 1.82,
+      "anchor": "Feet / bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Hero",
+      "occlusionPriority": "Critical",
+      "renderOrder": 10
+    },
+    {
+      "id": "CHAR_RANK_1",
+      "enabled": true,
+      "zone": "Characters",
+      "parent": "CHARACTERS",
+      "role": "First-place road-sign armored mannequin",
+      "sourcePath": "assets/Content/Props/Mannequin/Models/Merged/mannequin_roadsign.glb",
+      "localPath": "Content/Props/Mannequin/Models/Merged/mannequin_roadsign.glb",
+      "position": [
+        0,
+        0.61,
+        -0.03
+      ],
+      "rotation": [
+        0,
+        -1,
+        0
+      ],
+      "scale": [
+        1.04,
+        1.04,
+        1.04
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 1.92,
+      "anchor": "Feet / bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Hero",
+      "occlusionPriority": "Critical",
+      "renderOrder": 11
+    },
+    {
+      "id": "CHAR_RANK_3",
+      "enabled": true,
+      "zone": "Characters",
+      "parent": "CHARACTERS",
+      "role": "Third-place hide-armored mannequin",
+      "sourcePath": "assets/Content/Props/Mannequin/Models/Merged/mannequin_front_hide.glb",
+      "localPath": "Content/Props/Mannequin/Models/Merged/mannequin_front_hide.glb",
+      "position": [
+        4.2,
+        0.43,
+        0.12
+      ],
+      "rotation": [
+        0,
+        -3,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 1.82,
+      "anchor": "Feet / bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Hero",
+      "occlusionPriority": "Critical",
+      "renderOrder": 10
+    }
+  ],
+  "basePlacements": [
+    {
+      "id": "ENV_FLOOR_01",
+      "enabled": true,
+      "zone": "Environment",
+      "parent": "ENVIRONMENT",
+      "role": "Metal floor tile",
+      "sourcePath": "assets/bundled/prefabs/modding/Cubes/Tiled/cube_tiled_metal_11_alt2.glb",
+      "localPath": "bundled/prefabs/modding/Cubes/Tiled/cube_tiled_metal_11_alt2.glb",
+      "position": [
+        -4.8,
+        -0.11,
+        1.6
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        2.45,
+        0.08,
+        2.05
+      ],
+      "normalizeMode": "Native-meters preferred; flatten Y only",
+      "targetExtent": 4.8,
+      "anchor": "Center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Structure",
+      "occlusionPriority": "Medium",
+      "renderOrder": 0
+    },
+    {
+      "id": "ENV_FLOOR_02",
+      "enabled": true,
+      "zone": "Environment",
+      "parent": "ENVIRONMENT",
+      "role": "Metal floor tile",
+      "sourcePath": "assets/bundled/prefabs/modding/Cubes/Tiled/cube_tiled_metal_11_alt2.glb",
+      "localPath": "bundled/prefabs/modding/Cubes/Tiled/cube_tiled_metal_11_alt2.glb",
+      "position": [
+        0,
+        -0.11,
+        1.6
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        2.45,
+        0.08,
+        2.05
+      ],
+      "normalizeMode": "Native-meters preferred; flatten Y only",
+      "targetExtent": 4.8,
+      "anchor": "Center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Structure",
+      "occlusionPriority": "Medium",
+      "renderOrder": 0
+    },
+    {
+      "id": "ENV_FLOOR_03",
+      "enabled": true,
+      "zone": "Environment",
+      "parent": "ENVIRONMENT",
+      "role": "Metal floor tile",
+      "sourcePath": "assets/bundled/prefabs/modding/Cubes/Tiled/cube_tiled_metal_11_alt2.glb",
+      "localPath": "bundled/prefabs/modding/Cubes/Tiled/cube_tiled_metal_11_alt2.glb",
+      "position": [
+        4.8,
+        -0.11,
+        1.6
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        2.45,
+        0.08,
+        2.05
+      ],
+      "normalizeMode": "Native-meters preferred; flatten Y only",
+      "targetExtent": 4.8,
+      "anchor": "Center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Structure",
+      "occlusionPriority": "Medium",
+      "renderOrder": 0
+    },
+    {
+      "id": "ENV_FLOOR_04",
+      "enabled": true,
+      "zone": "Environment",
+      "parent": "ENVIRONMENT",
+      "role": "Metal floor tile",
+      "sourcePath": "assets/bundled/prefabs/modding/Cubes/Tiled/cube_tiled_metal_11_alt2.glb",
+      "localPath": "bundled/prefabs/modding/Cubes/Tiled/cube_tiled_metal_11_alt2.glb",
+      "position": [
+        -4.8,
+        -0.11,
+        -2.4
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        2.45,
+        0.08,
+        2.05
+      ],
+      "normalizeMode": "Native-meters preferred; flatten Y only",
+      "targetExtent": 4.8,
+      "anchor": "Center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Structure",
+      "occlusionPriority": "Medium",
+      "renderOrder": 0
+    },
+    {
+      "id": "ENV_FLOOR_05",
+      "enabled": true,
+      "zone": "Environment",
+      "parent": "ENVIRONMENT",
+      "role": "Metal floor tile",
+      "sourcePath": "assets/bundled/prefabs/modding/Cubes/Tiled/cube_tiled_metal_11_alt2.glb",
+      "localPath": "bundled/prefabs/modding/Cubes/Tiled/cube_tiled_metal_11_alt2.glb",
+      "position": [
+        0,
+        -0.11,
+        -2.4
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        2.45,
+        0.08,
+        2.05
+      ],
+      "normalizeMode": "Native-meters preferred; flatten Y only",
+      "targetExtent": 4.8,
+      "anchor": "Center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Structure",
+      "occlusionPriority": "Medium",
+      "renderOrder": 0
+    },
+    {
+      "id": "ENV_FLOOR_06",
+      "enabled": true,
+      "zone": "Environment",
+      "parent": "ENVIRONMENT",
+      "role": "Metal floor tile",
+      "sourcePath": "assets/bundled/prefabs/modding/Cubes/Tiled/cube_tiled_metal_11_alt2.glb",
+      "localPath": "bundled/prefabs/modding/Cubes/Tiled/cube_tiled_metal_11_alt2.glb",
+      "position": [
+        4.8,
+        -0.11,
+        -2.4
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        2.45,
+        0.08,
+        2.05
+      ],
+      "normalizeMode": "Native-meters preferred; flatten Y only",
+      "targetExtent": 4.8,
+      "anchor": "Center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Structure",
+      "occlusionPriority": "Medium",
+      "renderOrder": 0
+    },
+    {
+      "id": "ENV_BACKWALL_01",
+      "enabled": true,
+      "zone": "Environment",
+      "parent": "ENVIRONMENT",
+      "role": "Rear industrial wall panel",
+      "sourcePath": "assets/bundled/prefabs/modding/Cubes/Tiled/cube_tiled_metal_03_alt.glb",
+      "localPath": "bundled/prefabs/modding/Cubes/Tiled/cube_tiled_metal_03_alt.glb",
+      "position": [
+        -4.8,
+        2.65,
+        -5.35
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        2.45,
+        2.75,
+        0.1
+      ],
+      "normalizeMode": "Native-meters preferred; non-uniform wall scale",
+      "targetExtent": 5,
+      "anchor": "Center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Structure",
+      "occlusionPriority": "Medium",
+      "renderOrder": 0
+    },
+    {
+      "id": "ENV_BACKWALL_02",
+      "enabled": true,
+      "zone": "Environment",
+      "parent": "ENVIRONMENT",
+      "role": "Rear industrial wall panel",
+      "sourcePath": "assets/bundled/prefabs/modding/Cubes/Tiled/cube_tiled_charcoal_02.glb",
+      "localPath": "bundled/prefabs/modding/Cubes/Tiled/cube_tiled_charcoal_02.glb",
+      "position": [
+        0,
+        2.65,
+        -5.35
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        2.45,
+        2.75,
+        0.1
+      ],
+      "normalizeMode": "Native-meters preferred; non-uniform wall scale",
+      "targetExtent": 5,
+      "anchor": "Center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Structure",
+      "occlusionPriority": "Medium",
+      "renderOrder": 0
+    },
+    {
+      "id": "ENV_BACKWALL_03",
+      "enabled": true,
+      "zone": "Environment",
+      "parent": "ENVIRONMENT",
+      "role": "Rear industrial wall panel",
+      "sourcePath": "assets/bundled/prefabs/modding/Cubes/Tiled/cube_tiled_metal_03_alt.glb",
+      "localPath": "bundled/prefabs/modding/Cubes/Tiled/cube_tiled_metal_03_alt.glb",
+      "position": [
+        4.8,
+        2.65,
+        -5.35
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        2.45,
+        2.75,
+        0.1
+      ],
+      "normalizeMode": "Native-meters preferred; non-uniform wall scale",
+      "targetExtent": 5,
+      "anchor": "Center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Structure",
+      "occlusionPriority": "Medium",
+      "renderOrder": 0
+    },
+    {
+      "id": "ENV_SIDEWALL_L",
+      "enabled": true,
+      "zone": "Environment",
+      "parent": "ENVIRONMENT",
+      "role": "Left return wall",
+      "sourcePath": "assets/bundled/prefabs/modding/Cubes/Tiled/cube_tiled_metal_03_alt.glb",
+      "localPath": "bundled/prefabs/modding/Cubes/Tiled/cube_tiled_metal_03_alt.glb",
+      "position": [
+        -7.25,
+        2.45,
+        -2.3
+      ],
+      "rotation": [
+        0,
+        90,
+        0
+      ],
+      "scale": [
+        1.55,
+        2.55,
+        0.1
+      ],
+      "normalizeMode": "Native-meters preferred; non-uniform wall scale",
+      "targetExtent": 4.7,
+      "anchor": "Center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Structure",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "ENV_SIDEWALL_R",
+      "enabled": true,
+      "zone": "Environment",
+      "parent": "ENVIRONMENT",
+      "role": "Right return wall",
+      "sourcePath": "assets/bundled/prefabs/modding/Cubes/Tiled/cube_tiled_metal_03_alt.glb",
+      "localPath": "bundled/prefabs/modding/Cubes/Tiled/cube_tiled_metal_03_alt.glb",
+      "position": [
+        7.25,
+        2.45,
+        -2.3
+      ],
+      "rotation": [
+        0,
+        -90,
+        0
+      ],
+      "scale": [
+        1.55,
+        2.55,
+        0.1
+      ],
+      "normalizeMode": "Native-meters preferred; non-uniform wall scale",
+      "targetExtent": 4.7,
+      "anchor": "Center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Structure",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "ENV_TARP_BACK",
+      "enabled": true,
+      "zone": "Environment",
+      "parent": "ENVIRONMENT",
+      "role": "Dark rear tarpaulin",
+      "sourcePath": "assets/Content/Props/Helipad_tarpaulin/helipad_tarpaulin.glb",
+      "localPath": "Content/Props/Helipad_tarpaulin/helipad_tarpaulin.glb",
+      "position": [
+        0,
+        2.4,
+        -5.05
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        2.65,
+        2.15,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 5.2,
+      "anchor": "Center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Structure",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "ENV_TRUSS_L",
+      "enabled": true,
+      "zone": "Environment",
+      "parent": "ENVIRONMENT",
+      "role": "Left overhead improvised truss",
+      "sourcePath": "assets/Content/Props/Ladder_set/ladder_industrial_600.glb",
+      "localPath": "Content/Props/Ladder_set/ladder_industrial_600.glb",
+      "position": [
+        -3.65,
+        5.1,
+        -3.75
+      ],
+      "rotation": [
+        0,
+        0,
+        90
+      ],
+      "scale": [
+        0.82,
+        0.82,
+        0.82
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 5,
+      "anchor": "Center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Structure",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "ENV_TRUSS_R",
+      "enabled": true,
+      "zone": "Environment",
+      "parent": "ENVIRONMENT",
+      "role": "Right overhead improvised truss",
+      "sourcePath": "assets/Content/Props/Ladder_set/ladder_industrial_600.glb",
+      "localPath": "Content/Props/Ladder_set/ladder_industrial_600.glb",
+      "position": [
+        3.65,
+        5.1,
+        -3.75
+      ],
+      "rotation": [
+        0,
+        0,
+        90
+      ],
+      "scale": [
+        0.82,
+        0.82,
+        0.82
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 5,
+      "anchor": "Center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Structure",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "L_SHELF_01",
+      "enabled": true,
+      "zone": "Left Cluster",
+      "parent": "LEFT_CLUSTER",
+      "role": "Weapon display shelf",
+      "sourcePath": "assets/Content/Props/Old Shelves/shelf1v2.glb",
+      "localPath": "Content/Props/Old Shelves/shelf1v2.glb",
+      "position": [
+        -5.6,
+        0,
+        -2.75
+      ],
+      "rotation": [
+        0,
+        8,
+        0
+      ],
+      "scale": [
+        1.05,
+        1.05,
+        1.05
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 2.15,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Primary",
+      "occlusionPriority": "High",
+      "renderOrder": 0
+    },
+    {
+      "id": "L_WORKBENCH_01",
+      "enabled": true,
+      "zone": "Left Cluster",
+      "parent": "LEFT_CLUSTER",
+      "role": "Low weapon workbench",
+      "sourcePath": "assets/Content/Props/Misc_dressing_props/workbench.glb",
+      "localPath": "Content/Props/Misc_dressing_props/workbench.glb",
+      "position": [
+        -3.35,
+        0,
+        -2.85
+      ],
+      "rotation": [
+        0,
+        -12,
+        0
+      ],
+      "scale": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 1.75,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Primary",
+      "occlusionPriority": "Medium",
+      "renderOrder": 0
+    },
+    {
+      "id": "L_WEAPON_THOMPSON",
+      "enabled": true,
+      "zone": "Left Cluster",
+      "parent": "LEFT_CLUSTER",
+      "role": "Leaning/displayed weapon",
+      "sourcePath": "assets/prefabs/Weapons/Thompson/thompson.worldmodel.glb",
+      "localPath": "prefabs/Weapons/Thompson/thompson.worldmodel.glb",
+      "position": [
+        -3.1,
+        1.3,
+        -2.38
+      ],
+      "rotation": [
+        0,
+        8,
+        -73
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 0.82,
+      "anchor": "Object center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Hero",
+      "occlusionPriority": "Critical",
+      "renderOrder": 0
+    },
+    {
+      "id": "L_TURRET_50CAL",
+      "enabled": true,
+      "zone": "Left Cluster",
+      "parent": "LEFT_CLUSTER",
+      "role": "Heavy weapon silhouette",
+      "sourcePath": "assets/Content/Vehicles/Boats/PTboat/Turrets/50cal/Prefabs/50_cal_rear_single.glb",
+      "localPath": "Content/Vehicles/Boats/PTboat/Turrets/50cal/Prefabs/50_cal_rear_single.glb",
+      "position": [
+        -6.15,
+        0.52,
+        -2.62
+      ],
+      "rotation": [
+        0,
+        25,
+        0
+      ],
+      "scale": [
+        0.8,
+        0.8,
+        0.8
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 1.75,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Primary",
+      "occlusionPriority": "High",
+      "renderOrder": 0
+    },
+    {
+      "id": "L_CRATE_A",
+      "enabled": true,
+      "zone": "Left Cluster",
+      "parent": "LEFT_CLUSTER",
+      "role": "Lower crate stack",
+      "sourcePath": "assets/Content/Props/Fishing_nets/fishing_net_crate_a.glb",
+      "localPath": "Content/Props/Fishing_nets/fishing_net_crate_a.glb",
+      "position": [
+        -6.18,
+        0,
+        -1.55
+      ],
+      "rotation": [
+        0,
+        7,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 0.95,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Primary",
+      "occlusionPriority": "Medium",
+      "renderOrder": 0
+    },
+    {
+      "id": "L_CRATE_B",
+      "enabled": true,
+      "zone": "Left Cluster",
+      "parent": "LEFT_CLUSTER",
+      "role": "Upper crate stack",
+      "sourcePath": "assets/Content/Props/Fishing_nets/fishing_net_crate_b.glb",
+      "localPath": "Content/Props/Fishing_nets/fishing_net_crate_b.glb",
+      "position": [
+        -5.63,
+        0.54,
+        -1.76
+      ],
+      "rotation": [
+        0,
+        -9,
+        2
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 0.82,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Primary",
+      "occlusionPriority": "Medium",
+      "renderOrder": 0
+    },
+    {
+      "id": "L_CRATE_C",
+      "enabled": true,
+      "zone": "Left Cluster",
+      "parent": "LEFT_CLUSTER",
+      "role": "Bench-side supply crate",
+      "sourcePath": "assets/Content/Props/Food Containers/applecrate_a.glb",
+      "localPath": "Content/Props/Food Containers/applecrate_a.glb",
+      "position": [
+        -3.05,
+        0,
+        -1.75
+      ],
+      "rotation": [
+        0,
+        -13,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 0.82,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Secondary",
+      "occlusionPriority": "Medium",
+      "renderOrder": 0
+    },
+    {
+      "id": "L_BARREL_RAD",
+      "enabled": true,
+      "zone": "Left Cluster",
+      "parent": "LEFT_CLUSTER",
+      "role": "Colored barrel accent",
+      "sourcePath": "assets/Content/Props/Barrels/radbarrel.glb",
+      "localPath": "Content/Props/Barrels/radbarrel.glb",
+      "position": [
+        -4.75,
+        0,
+        -1.48
+      ],
+      "rotation": [
+        0,
+        15,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 0.92,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Primary",
+      "occlusionPriority": "High",
+      "renderOrder": 0
+    },
+    {
+      "id": "L_BARREL_DENTED",
+      "enabled": true,
+      "zone": "Left Cluster",
+      "parent": "LEFT_CLUSTER",
+      "role": "Dented foreground barrel",
+      "sourcePath": "assets/Content/Props/Barrels/dented_barrel.glb",
+      "localPath": "Content/Props/Barrels/dented_barrel.glb",
+      "position": [
+        -6.58,
+        0,
+        -1.18
+      ],
+      "rotation": [
+        0,
+        -12,
+        4
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 0.88,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Secondary",
+      "occlusionPriority": "Medium",
+      "renderOrder": 0
+    },
+    {
+      "id": "L_JUNK_A",
+      "enabled": true,
+      "zone": "Left Cluster",
+      "parent": "LEFT_CLUSTER",
+      "role": "Left rear junk silhouette",
+      "sourcePath": "assets/Content/Props/Junkyard_stacks/junkyard_stack_a.glb",
+      "localPath": "Content/Props/Junkyard_stacks/junkyard_stack_a.glb",
+      "position": [
+        -6.38,
+        0,
+        -4.1
+      ],
+      "rotation": [
+        0,
+        17,
+        0
+      ],
+      "scale": [
+        1.15,
+        1.15,
+        1.15
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 2.65,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Background",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "L_JUNK_B",
+      "enabled": true,
+      "zone": "Left Cluster",
+      "parent": "LEFT_CLUSTER",
+      "role": "Left-center rear junk silhouette",
+      "sourcePath": "assets/Content/Props/Junkyard_stacks/junkyard_stack_b.glb",
+      "localPath": "Content/Props/Junkyard_stacks/junkyard_stack_b.glb",
+      "position": [
+        -3.7,
+        0,
+        -4.3
+      ],
+      "rotation": [
+        0,
+        -14,
+        0
+      ],
+      "scale": [
+        1.05,
+        1.05,
+        1.05
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 2.45,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Background",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "L_BARRICADE_WOOD",
+      "enabled": true,
+      "zone": "Left Cluster",
+      "parent": "LEFT_CLUSTER",
+      "role": "Broken weapon-rack backdrop",
+      "sourcePath": "assets/Content/Props/Barricades_static/barricade_cover_wood_static.glb",
+      "localPath": "Content/Props/Barricades_static/barricade_cover_wood_static.glb",
+      "position": [
+        -2.62,
+        0.02,
+        -3.72
+      ],
+      "rotation": [
+        0,
+        -8,
+        -5
+      ],
+      "scale": [
+        1.15,
+        1.15,
+        1.15
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 2.2,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Primary",
+      "occlusionPriority": "Medium",
+      "renderOrder": 0
+    },
+    {
+      "id": "L_BARBEDWIRE",
+      "enabled": true,
+      "zone": "Left Cluster",
+      "parent": "LEFT_CLUSTER",
+      "role": "Rear barbed wire line",
+      "sourcePath": "assets/Content/Props/Barbedwire_set/barbedwire_set_straight300.glb",
+      "localPath": "Content/Props/Barbedwire_set/barbedwire_set_straight300.glb",
+      "position": [
+        -4.75,
+        1.05,
+        -4.65
+      ],
+      "rotation": [
+        0,
+        4,
+        0
+      ],
+      "scale": [
+        1.1,
+        1.1,
+        1.1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 3.25,
+      "anchor": "Center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Background",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "C_COVER_PANEL",
+      "enabled": true,
+      "zone": "Center Cluster",
+      "parent": "CENTER_CLUSTER",
+      "role": "Distressed hero backdrop panel",
+      "sourcePath": "assets/Content/Props/Covers/cover_c.glb",
+      "localPath": "Content/Props/Covers/cover_c.glb",
+      "position": [
+        -0.2,
+        0.18,
+        -3.45
+      ],
+      "rotation": [
+        0,
+        -6,
+        -8
+      ],
+      "scale": [
+        1.55,
+        1.55,
+        1.55
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 3.25,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Primary",
+      "occlusionPriority": "Critical",
+      "renderOrder": 0
+    },
+    {
+      "id": "C_JUNK_C",
+      "enabled": true,
+      "zone": "Center Cluster",
+      "parent": "CENTER_CLUSTER",
+      "role": "Center-right junk skyline",
+      "sourcePath": "assets/Content/Props/Junkyard_stacks/junkyard_stack_c.glb",
+      "localPath": "Content/Props/Junkyard_stacks/junkyard_stack_c.glb",
+      "position": [
+        1.85,
+        0,
+        -4.15
+      ],
+      "rotation": [
+        0,
+        -19,
+        0
+      ],
+      "scale": [
+        1.18,
+        1.18,
+        1.18
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 2.8,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Background",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "C_JUNK_D",
+      "enabled": true,
+      "zone": "Center Cluster",
+      "parent": "CENTER_CLUSTER",
+      "role": "Center-left junk skyline",
+      "sourcePath": "assets/Content/Props/Junkyard_stacks/junkyard_stack_d.glb",
+      "localPath": "Content/Props/Junkyard_stacks/junkyard_stack_d.glb",
+      "position": [
+        -1.95,
+        0,
+        -4.22
+      ],
+      "rotation": [
+        0,
+        16,
+        0
+      ],
+      "scale": [
+        1.1,
+        1.1,
+        1.1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 2.6,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Background",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "C_SKIP",
+      "enabled": true,
+      "zone": "Center Cluster",
+      "parent": "CENTER_CLUSTER",
+      "role": "Deep background rubbish skip",
+      "sourcePath": "assets/Content/Props/Large_Rubbish_Skip/large_rubbish_skip.glb",
+      "localPath": "Content/Props/Large_Rubbish_Skip/large_rubbish_skip.glb",
+      "position": [
+        0.2,
+        -0.08,
+        -4.72
+      ],
+      "rotation": [
+        0,
+        1,
+        0
+      ],
+      "scale": [
+        0.86,
+        0.86,
+        0.86
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 3.2,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Background",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "C_WEAPON_L96",
+      "enabled": true,
+      "zone": "Center Cluster",
+      "parent": "CENTER_CLUSTER",
+      "role": "Hero weapon fan",
+      "sourcePath": "assets/prefabs/Weapons/L96/l96.worldmodel.glb",
+      "localPath": "prefabs/Weapons/L96/l96.worldmodel.glb",
+      "position": [
+        -1.47,
+        1.52,
+        -2.32
+      ],
+      "rotation": [
+        1,
+        -13,
+        -63
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 1.28,
+      "anchor": "Object center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Hero",
+      "occlusionPriority": "Critical",
+      "renderOrder": 0
+    },
+    {
+      "id": "C_WEAPON_M39",
+      "enabled": true,
+      "zone": "Center Cluster",
+      "parent": "CENTER_CLUSTER",
+      "role": "Hero weapon fan",
+      "sourcePath": "assets/prefabs/Weapons/M39 EMR/m39.worldmodel.glb",
+      "localPath": "prefabs/Weapons/M39 EMR/m39.worldmodel.glb",
+      "position": [
+        -0.88,
+        1.05,
+        -1.93
+      ],
+      "rotation": [
+        0,
+        6,
+        -55
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 1.08,
+      "anchor": "Object center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Hero",
+      "occlusionPriority": "Critical",
+      "renderOrder": 0
+    },
+    {
+      "id": "C_MINIGUN",
+      "enabled": true,
+      "zone": "Center Cluster",
+      "parent": "CENTER_CLUSTER",
+      "role": "Heavy weapon floor prop",
+      "sourcePath": "assets/prefabs/Weapons/Minigun/minigun.worldmodel.glb",
+      "localPath": "prefabs/Weapons/Minigun/minigun.worldmodel.glb",
+      "position": [
+        1.82,
+        0.45,
+        -2.55
+      ],
+      "rotation": [
+        2,
+        -22,
+        17
+      ],
+      "scale": [
+        0.78,
+        0.78,
+        0.78
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 1.55,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Primary",
+      "occlusionPriority": "High",
+      "renderOrder": 0
+    },
+    {
+      "id": "C_CRATE_L",
+      "enabled": true,
+      "zone": "Center Cluster",
+      "parent": "CENTER_CLUSTER",
+      "role": "Left central crate",
+      "sourcePath": "assets/Content/Props/Food Containers/potatocrate_a.glb",
+      "localPath": "Content/Props/Food Containers/potatocrate_a.glb",
+      "position": [
+        -1.9,
+        0,
+        -1.8
+      ],
+      "rotation": [
+        0,
+        10,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 0.84,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Primary",
+      "occlusionPriority": "Medium",
+      "renderOrder": 0
+    },
+    {
+      "id": "C_CRATE_R",
+      "enabled": true,
+      "zone": "Center Cluster",
+      "parent": "CENTER_CLUSTER",
+      "role": "Right central crate",
+      "sourcePath": "assets/Content/Props/Food Containers/orangecrate_a.glb",
+      "localPath": "Content/Props/Food Containers/orangecrate_a.glb",
+      "position": [
+        1.95,
+        0,
+        -1.83
+      ],
+      "rotation": [
+        0,
+        -8,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 0.88,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Primary",
+      "occlusionPriority": "Medium",
+      "renderOrder": 0
+    },
+    {
+      "id": "C_TOOLBOX",
+      "enabled": true,
+      "zone": "Center Cluster",
+      "parent": "CENTER_CLUSTER",
+      "role": "Toolbox dressing",
+      "sourcePath": "assets/Content/Props/Misc_dressing_props/toolbox.glb",
+      "localPath": "Content/Props/Misc_dressing_props/toolbox.glb",
+      "position": [
+        -0.95,
+        0.08,
+        -1.65
+      ],
+      "rotation": [
+        0,
+        -16,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 0.58,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Secondary",
+      "occlusionPriority": "Medium",
+      "renderOrder": 0
+    },
+    {
+      "id": "C_CARGOPACK",
+      "enabled": true,
+      "zone": "Center Cluster",
+      "parent": "CENTER_CLUSTER",
+      "role": "Cargo pack dressing",
+      "sourcePath": "assets/Content/Props/Misc_dressing_props/cargo_pack.glb",
+      "localPath": "Content/Props/Misc_dressing_props/cargo_pack.glb",
+      "position": [
+        0.95,
+        0.1,
+        -1.7
+      ],
+      "rotation": [
+        0,
+        21,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 0.62,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Secondary",
+      "occlusionPriority": "Medium",
+      "renderOrder": 0
+    },
+    {
+      "id": "C_RUBBLE_L",
+      "enabled": true,
+      "zone": "Center Cluster",
+      "parent": "CENTER_CLUSTER",
+      "role": "Broken concrete pile",
+      "sourcePath": "assets/Content/Props/Rubble_piles/conc_pile_3x6.glb",
+      "localPath": "Content/Props/Rubble_piles/conc_pile_3x6.glb",
+      "position": [
+        -2.2,
+        -0.03,
+        -2.95
+      ],
+      "rotation": [
+        0,
+        15,
+        0
+      ],
+      "scale": [
+        0.92,
+        0.92,
+        0.92
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 1.85,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Secondary",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "C_RUBBLE_R",
+      "enabled": true,
+      "zone": "Center Cluster",
+      "parent": "CENTER_CLUSTER",
+      "role": "Broken brick pile",
+      "sourcePath": "assets/Content/Props/Rubble_piles/brick_pile_3x6.glb",
+      "localPath": "Content/Props/Rubble_piles/brick_pile_3x6.glb",
+      "position": [
+        2.25,
+        -0.03,
+        -3.05
+      ],
+      "rotation": [
+        0,
+        -18,
+        0
+      ],
+      "scale": [
+        0.95,
+        0.95,
+        0.95
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 1.9,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Secondary",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "C_BARBED_TOP",
+      "enabled": true,
+      "zone": "Center Cluster",
+      "parent": "CENTER_CLUSTER",
+      "role": "High rear wire silhouette",
+      "sourcePath": "assets/Content/Props/Barbedwire_set/barbedwire_set_straight300.glb",
+      "localPath": "Content/Props/Barbedwire_set/barbedwire_set_straight300.glb",
+      "position": [
+        0,
+        2.55,
+        -4.62
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1.25,
+        1.25,
+        1.25
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 3.75,
+      "anchor": "Center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Background",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "R_SHELF_01",
+      "enabled": true,
+      "zone": "Right Cluster",
+      "parent": "RIGHT_CLUSTER",
+      "role": "Rocket / weapons display shelf",
+      "sourcePath": "assets/Content/Props/Old Shelves/shelf3v2.glb",
+      "localPath": "Content/Props/Old Shelves/shelf3v2.glb",
+      "position": [
+        5.8,
+        0,
+        -2.88
+      ],
+      "rotation": [
+        0,
+        -9,
+        0
+      ],
+      "scale": [
+        1.05,
+        1.05,
+        1.05
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 2.2,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Primary",
+      "occlusionPriority": "High",
+      "renderOrder": 0
+    },
+    {
+      "id": "R_MLRS_ROCKET_01",
+      "enabled": true,
+      "zone": "Right Cluster",
+      "parent": "RIGHT_CLUSTER",
+      "role": "Upright rocket cluster",
+      "sourcePath": "assets/Content/Vehicles/MLRS/rocket_mlrs.worldmodel.glb",
+      "localPath": "Content/Vehicles/MLRS/rocket_mlrs.worldmodel.glb",
+      "position": [
+        3.28,
+        0.08,
+        -1.95
+      ],
+      "rotation": [
+        90,
+        -5,
+        -4
+      ],
+      "scale": [
+        0.92,
+        0.92,
+        0.92
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 2.05,
+      "anchor": "Tail / bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Hero",
+      "occlusionPriority": "Critical",
+      "renderOrder": 0
+    },
+    {
+      "id": "R_MLRS_ROCKET_02",
+      "enabled": true,
+      "zone": "Right Cluster",
+      "parent": "RIGHT_CLUSTER",
+      "role": "Upright rocket cluster",
+      "sourcePath": "assets/Content/Vehicles/MLRS/rocket_mlrs.worldmodel.glb",
+      "localPath": "Content/Vehicles/MLRS/rocket_mlrs.worldmodel.glb",
+      "position": [
+        3.72,
+        0.13,
+        -2.12
+      ],
+      "rotation": [
+        90,
+        4,
+        2
+      ],
+      "scale": [
+        0.92,
+        0.92,
+        0.92
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 2.13,
+      "anchor": "Tail / bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Hero",
+      "occlusionPriority": "Critical",
+      "renderOrder": 0
+    },
+    {
+      "id": "R_MLRS_ROCKET_03",
+      "enabled": true,
+      "zone": "Right Cluster",
+      "parent": "RIGHT_CLUSTER",
+      "role": "Upright rocket cluster",
+      "sourcePath": "assets/Content/Vehicles/MLRS/rocket_mlrs.worldmodel.glb",
+      "localPath": "Content/Vehicles/MLRS/rocket_mlrs.worldmodel.glb",
+      "position": [
+        4.14,
+        0.1,
+        -1.9
+      ],
+      "rotation": [
+        90,
+        -2,
+        -1
+      ],
+      "scale": [
+        0.92,
+        0.92,
+        0.92
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 2.05,
+      "anchor": "Tail / bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Hero",
+      "occlusionPriority": "Critical",
+      "renderOrder": 0
+    },
+    {
+      "id": "R_MLRS_ROCKET_04",
+      "enabled": true,
+      "zone": "Right Cluster",
+      "parent": "RIGHT_CLUSTER",
+      "role": "Upright rocket cluster",
+      "sourcePath": "assets/Content/Vehicles/MLRS/rocket_mlrs.worldmodel.glb",
+      "localPath": "Content/Vehicles/MLRS/rocket_mlrs.worldmodel.glb",
+      "position": [
+        4.58,
+        0.06,
+        -2.18
+      ],
+      "rotation": [
+        90,
+        5,
+        4
+      ],
+      "scale": [
+        0.92,
+        0.92,
+        0.92
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 2.05,
+      "anchor": "Tail / bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Hero",
+      "occlusionPriority": "Critical",
+      "renderOrder": 0
+    },
+    {
+      "id": "R_MLRS_ROCKET_05",
+      "enabled": true,
+      "zone": "Right Cluster",
+      "parent": "RIGHT_CLUSTER",
+      "role": "Upright rocket cluster",
+      "sourcePath": "assets/Content/Vehicles/MLRS/rocket_mlrs.worldmodel.glb",
+      "localPath": "Content/Vehicles/MLRS/rocket_mlrs.worldmodel.glb",
+      "position": [
+        5.02,
+        0.11,
+        -1.93
+      ],
+      "rotation": [
+        90,
+        -4,
+        -3
+      ],
+      "scale": [
+        0.92,
+        0.92,
+        0.92
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 2.13,
+      "anchor": "Tail / bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Primary",
+      "occlusionPriority": "Critical",
+      "renderOrder": 0
+    },
+    {
+      "id": "R_MLRS_ROCKET_06",
+      "enabled": true,
+      "zone": "Right Cluster",
+      "parent": "RIGHT_CLUSTER",
+      "role": "Upright rocket cluster",
+      "sourcePath": "assets/Content/Vehicles/MLRS/rocket_mlrs.worldmodel.glb",
+      "localPath": "Content/Vehicles/MLRS/rocket_mlrs.worldmodel.glb",
+      "position": [
+        5.43,
+        0.08,
+        -2.16
+      ],
+      "rotation": [
+        90,
+        3,
+        3
+      ],
+      "scale": [
+        0.92,
+        0.92,
+        0.92
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 2.05,
+      "anchor": "Tail / bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Primary",
+      "occlusionPriority": "Critical",
+      "renderOrder": 0
+    },
+    {
+      "id": "R_ROCKET_LAUNCHER",
+      "enabled": true,
+      "zone": "Right Cluster",
+      "parent": "RIGHT_CLUSTER",
+      "role": "Leaning rocket launcher",
+      "sourcePath": "assets/prefabs/Weapons/RocketLauncher/rocketlauncher.worldmodel.glb",
+      "localPath": "prefabs/Weapons/RocketLauncher/rocketlauncher.worldmodel.glb",
+      "position": [
+        5.62,
+        1.32,
+        -1.68
+      ],
+      "rotation": [
+        0,
+        -20,
+        69
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 1.18,
+      "anchor": "Object center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Hero",
+      "occlusionPriority": "Critical",
+      "renderOrder": 0
+    },
+    {
+      "id": "R_MISSILE_POD",
+      "enabled": true,
+      "zone": "Right Cluster",
+      "parent": "RIGHT_CLUSTER",
+      "role": "Aircraft missile pod",
+      "sourcePath": "assets/Content/Vehicles/AttackHelicopter/ahmissilepod.glb",
+      "localPath": "Content/Vehicles/AttackHelicopter/ahmissilepod.glb",
+      "position": [
+        5.85,
+        0.8,
+        -2.7
+      ],
+      "rotation": [
+        0,
+        -25,
+        6
+      ],
+      "scale": [
+        0.85,
+        0.85,
+        0.85
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 1.35,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Primary",
+      "occlusionPriority": "High",
+      "renderOrder": 0
+    },
+    {
+      "id": "R_ATTACKHELI_TURRET",
+      "enabled": true,
+      "zone": "Right Cluster",
+      "parent": "RIGHT_CLUSTER",
+      "role": "Anti-vehicle turret silhouette",
+      "sourcePath": "assets/Content/Vehicles/AttackHelicopter/SubEnts/turret_attackheli.glb",
+      "localPath": "Content/Vehicles/AttackHelicopter/SubEnts/turret_attackheli.glb",
+      "position": [
+        6.25,
+        0.63,
+        -1.72
+      ],
+      "rotation": [
+        0,
+        -34,
+        0
+      ],
+      "scale": [
+        0.84,
+        0.84,
+        0.84
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 1.45,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Primary",
+      "occlusionPriority": "High",
+      "renderOrder": 0
+    },
+    {
+      "id": "R_HELI_GUN",
+      "enabled": true,
+      "zone": "Right Cluster",
+      "parent": "RIGHT_CLUSTER",
+      "role": "Detached helicopter gun",
+      "sourcePath": "assets/Content/Props/Helicopter_parts/heli_gun.glb",
+      "localPath": "Content/Props/Helicopter_parts/heli_gun.glb",
+      "position": [
+        6.6,
+        0.55,
+        -2.15
+      ],
+      "rotation": [
+        8,
+        -48,
+        18
+      ],
+      "scale": [
+        0.72,
+        0.72,
+        0.72
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 1.2,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Secondary",
+      "occlusionPriority": "Medium",
+      "renderOrder": 0
+    },
+    {
+      "id": "R_HELI_COCKPIT",
+      "enabled": true,
+      "zone": "Right Cluster",
+      "parent": "RIGHT_CLUSTER",
+      "role": "Far-right helicopter wreck cockpit",
+      "sourcePath": "assets/Content/Props/Helicopter_parts/heli_cockpit.glb",
+      "localPath": "Content/Props/Helicopter_parts/heli_cockpit.glb",
+      "position": [
+        6.72,
+        -0.05,
+        -3.72
+      ],
+      "rotation": [
+        0,
+        -28,
+        -5
+      ],
+      "scale": [
+        0.86,
+        0.86,
+        0.86
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 2.35,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Background",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "R_HELI_TAIL",
+      "enabled": true,
+      "zone": "Right Cluster",
+      "parent": "RIGHT_CLUSTER",
+      "role": "Rear helicopter tail wreck",
+      "sourcePath": "assets/Content/Props/Helicopter_parts/heli_tail.glb",
+      "localPath": "Content/Props/Helicopter_parts/heli_tail.glb",
+      "position": [
+        5.58,
+        0.1,
+        -4.28
+      ],
+      "rotation": [
+        5,
+        31,
+        -12
+      ],
+      "scale": [
+        0.88,
+        0.88,
+        0.88
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 2.45,
+      "anchor": "Center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Background",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "R_HELI_DOOR",
+      "enabled": true,
+      "zone": "Right Cluster",
+      "parent": "RIGHT_CLUSTER",
+      "role": "Leaning helicopter door",
+      "sourcePath": "assets/Content/Props/Helicopter_parts/heli_door_a.glb",
+      "localPath": "Content/Props/Helicopter_parts/heli_door_a.glb",
+      "position": [
+        6.82,
+        0.18,
+        -2.82
+      ],
+      "rotation": [
+        0,
+        -25,
+        77
+      ],
+      "scale": [
+        0.94,
+        0.94,
+        0.94
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 1.2,
+      "anchor": "Bottom edge",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Secondary",
+      "occlusionPriority": "Medium",
+      "renderOrder": 0
+    },
+    {
+      "id": "R_RUSTY_CAR",
+      "enabled": true,
+      "zone": "Right Cluster",
+      "parent": "RIGHT_CLUSTER",
+      "role": "Partial vehicle wreck silhouette",
+      "sourcePath": "assets/Content/Vehicles/Compact/compact_car_a_rusty.glb",
+      "localPath": "Content/Vehicles/Compact/compact_car_a_rusty.glb",
+      "position": [
+        7.35,
+        -0.12,
+        -4.42
+      ],
+      "rotation": [
+        0,
+        -31,
+        0
+      ],
+      "scale": [
+        0.72,
+        0.72,
+        0.72
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 3,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Background",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "R_JUNK_E",
+      "enabled": true,
+      "zone": "Right Cluster",
+      "parent": "RIGHT_CLUSTER",
+      "role": "Right rear junk skyline",
+      "sourcePath": "assets/Content/Props/Junkyard_stacks/junkyard_stack_e.glb",
+      "localPath": "Content/Props/Junkyard_stacks/junkyard_stack_e.glb",
+      "position": [
+        6.1,
+        0,
+        -4.05
+      ],
+      "rotation": [
+        0,
+        -16,
+        0
+      ],
+      "scale": [
+        1.12,
+        1.12,
+        1.12
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 2.7,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Background",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "R_JUNK_F",
+      "enabled": true,
+      "zone": "Right Cluster",
+      "parent": "RIGHT_CLUSTER",
+      "role": "Right-center junk skyline",
+      "sourcePath": "assets/Content/Props/Junkyard_stacks/junkyard_stack_f.glb",
+      "localPath": "Content/Props/Junkyard_stacks/junkyard_stack_f.glb",
+      "position": [
+        3.35,
+        0,
+        -4.25
+      ],
+      "rotation": [
+        0,
+        19,
+        0
+      ],
+      "scale": [
+        1.08,
+        1.08,
+        1.08
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 2.55,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Background",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "R_CRATE_A",
+      "enabled": true,
+      "zone": "Right Cluster",
+      "parent": "RIGHT_CLUSTER",
+      "role": "Red-side supply crate",
+      "sourcePath": "assets/Content/Props/Food Containers/orangecrate_a.glb",
+      "localPath": "Content/Props/Food Containers/orangecrate_a.glb",
+      "position": [
+        5.72,
+        0,
+        -1.18
+      ],
+      "rotation": [
+        0,
+        -12,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 0.88,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Primary",
+      "occlusionPriority": "High",
+      "renderOrder": 0
+    },
+    {
+      "id": "R_CRATE_B",
+      "enabled": true,
+      "zone": "Right Cluster",
+      "parent": "RIGHT_CLUSTER",
+      "role": "Upper supply crate",
+      "sourcePath": "assets/Content/Props/Fishing_nets/fishing_net_crate_b.glb",
+      "localPath": "Content/Props/Fishing_nets/fishing_net_crate_b.glb",
+      "position": [
+        6.15,
+        0.52,
+        -1.42
+      ],
+      "rotation": [
+        0,
+        11,
+        1
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 0.78,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Primary",
+      "occlusionPriority": "Medium",
+      "renderOrder": 0
+    },
+    {
+      "id": "R_BARREL_RED",
+      "enabled": true,
+      "zone": "Right Cluster",
+      "parent": "RIGHT_CLUSTER",
+      "role": "Red fuel barrel accent",
+      "sourcePath": "assets/Content/Props/Barrels/fuel_barrel_red.glb",
+      "localPath": "Content/Props/Barrels/fuel_barrel_red.glb",
+      "position": [
+        3.06,
+        0,
+        -1.42
+      ],
+      "rotation": [
+        0,
+        -8,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 0.9,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Primary",
+      "occlusionPriority": "High",
+      "renderOrder": 0
+    },
+    {
+      "id": "R_BARREL_YELLOW",
+      "enabled": true,
+      "zone": "Right Cluster",
+      "parent": "RIGHT_CLUSTER",
+      "role": "Warm secondary barrel",
+      "sourcePath": "assets/Content/Props/Barrels/fuel_barrel_yellow.glb",
+      "localPath": "Content/Props/Barrels/fuel_barrel_yellow.glb",
+      "position": [
+        6.45,
+        0,
+        -1
+      ],
+      "rotation": [
+        0,
+        12,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 0.88,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Secondary",
+      "occlusionPriority": "Medium",
+      "renderOrder": 0
+    },
+    {
+      "id": "R_JERRYCAN_BLACK",
+      "enabled": true,
+      "zone": "Right Cluster",
+      "parent": "RIGHT_CLUSTER",
+      "role": "Black fuel can",
+      "sourcePath": "assets/Content/Props/JerryCan/jerrycan_black.glb",
+      "localPath": "Content/Props/JerryCan/jerrycan_black.glb",
+      "position": [
+        5.1,
+        0.02,
+        -1.1
+      ],
+      "rotation": [
+        0,
+        -23,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 0.46,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Secondary",
+      "occlusionPriority": "Medium",
+      "renderOrder": 0
+    },
+    {
+      "id": "R_JERRYCAN_YELLOW",
+      "enabled": true,
+      "zone": "Right Cluster",
+      "parent": "RIGHT_CLUSTER",
+      "role": "Yellow fuel can",
+      "sourcePath": "assets/Content/Props/JerryCan/jerrycan_yellow.glb",
+      "localPath": "Content/Props/JerryCan/jerrycan_yellow.glb",
+      "position": [
+        5.38,
+        0.02,
+        -1.02
+      ],
+      "rotation": [
+        0,
+        18,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 0.46,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Secondary",
+      "occlusionPriority": "Medium",
+      "renderOrder": 0
+    },
+    {
+      "id": "R_BARBED_BEND",
+      "enabled": true,
+      "zone": "Right Cluster",
+      "parent": "RIGHT_CLUSTER",
+      "role": "Right rear barbed-wire curl",
+      "sourcePath": "assets/Content/Props/Barbedwire_set/barbedwire_set_bend90.glb",
+      "localPath": "Content/Props/Barbedwire_set/barbedwire_set_bend90.glb",
+      "position": [
+        6.2,
+        1.05,
+        -4.55
+      ],
+      "rotation": [
+        0,
+        -16,
+        0
+      ],
+      "scale": [
+        1.05,
+        1.05,
+        1.05
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 2.3,
+      "anchor": "Center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Background",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "R_RUBBLE",
+      "enabled": true,
+      "zone": "Right Cluster",
+      "parent": "RIGHT_CLUSTER",
+      "role": "Vehicle-wreck rubble pile",
+      "sourcePath": "assets/Content/Props/Rubble_piles/conc_pile_6x6.glb",
+      "localPath": "Content/Props/Rubble_piles/conc_pile_6x6.glb",
+      "position": [
+        5.85,
+        -0.04,
+        -3.18
+      ],
+      "rotation": [
+        0,
+        -10,
+        0
+      ],
+      "scale": [
+        0.88,
+        0.88,
+        0.88
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 2.1,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Secondary",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "FG_WHEEL_L",
+      "enabled": true,
+      "zone": "Foreground",
+      "parent": "FOREGROUND",
+      "role": "Left foreground wheel",
+      "sourcePath": "assets/Content/Props/Metal Wheel/metalwheel.glb",
+      "localPath": "Content/Props/Metal Wheel/metalwheel.glb",
+      "position": [
+        -6.2,
+        0.16,
+        0.65
+      ],
+      "rotation": [
+        90,
+        0,
+        18
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 0.82,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Secondary",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "FG_WHEEL_R",
+      "enabled": true,
+      "zone": "Foreground",
+      "parent": "FOREGROUND",
+      "role": "Right foreground wheel",
+      "sourcePath": "assets/Content/Props/Metal Wheel/metalwheel.glb",
+      "localPath": "Content/Props/Metal Wheel/metalwheel.glb",
+      "position": [
+        6.05,
+        0.15,
+        0.7
+      ],
+      "rotation": [
+        90,
+        0,
+        -22
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 0.78,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Secondary",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "FG_RUBBLE_L",
+      "enabled": true,
+      "zone": "Foreground",
+      "parent": "FOREGROUND",
+      "role": "Left podium transition rubble",
+      "sourcePath": "assets/Content/Props/Rubble_piles/brick_pile_6x6.glb",
+      "localPath": "Content/Props/Rubble_piles/brick_pile_6x6.glb",
+      "position": [
+        -2.65,
+        -0.05,
+        0.95
+      ],
+      "rotation": [
+        0,
+        18,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 1.4,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Secondary",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "FG_RUBBLE_C",
+      "enabled": true,
+      "zone": "Foreground",
+      "parent": "FOREGROUND",
+      "role": "Center podium transition rubble",
+      "sourcePath": "assets/Content/Props/Rubble_piles/breeze_block_pile_a.glb",
+      "localPath": "Content/Props/Rubble_piles/breeze_block_pile_a.glb",
+      "position": [
+        0.15,
+        -0.05,
+        1.2
+      ],
+      "rotation": [
+        0,
+        -7,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 1.2,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Secondary",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "FG_RUBBLE_R",
+      "enabled": true,
+      "zone": "Foreground",
+      "parent": "FOREGROUND",
+      "role": "Right podium transition rubble",
+      "sourcePath": "assets/Content/Props/Rubble_piles/conc_pile_3x6.glb",
+      "localPath": "Content/Props/Rubble_piles/conc_pile_3x6.glb",
+      "position": [
+        2.8,
+        -0.05,
+        0.92
+      ],
+      "rotation": [
+        0,
+        -16,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 1.45,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Secondary",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "FG_GRAVEL",
+      "enabled": true,
+      "zone": "Foreground",
+      "parent": "FOREGROUND",
+      "role": "Ground breakup behind center podium",
+      "sourcePath": "assets/Content/Props/Rubble_piles/coal_pile_gravel_6x6.glb",
+      "localPath": "Content/Props/Rubble_piles/coal_pile_gravel_6x6.glb",
+      "position": [
+        0,
+        -0.09,
+        -0.65
+      ],
+      "rotation": [
+        0,
+        4,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 2,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Secondary",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "FIX_SEARCH_L",
+      "enabled": true,
+      "zone": "Lighting Fixtures",
+      "parent": "LIGHTING_FIXTURES",
+      "role": "Left high searchlight fixture",
+      "sourcePath": "assets/Content/Props/Lights_Prefabs/searchlight_static_mt.glb",
+      "localPath": "Content/Props/Lights_Prefabs/searchlight_static_mt.glb",
+      "position": [
+        -5.85,
+        4.65,
+        -3.25
+      ],
+      "rotation": [
+        12,
+        31,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 1.05,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Primary",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "FIX_SEARCH_R",
+      "enabled": true,
+      "zone": "Lighting Fixtures",
+      "parent": "LIGHTING_FIXTURES",
+      "role": "Right high searchlight fixture",
+      "sourcePath": "assets/Content/Props/Lights_Prefabs/searchlight_static_mt.glb",
+      "localPath": "Content/Props/Lights_Prefabs/searchlight_static_mt.glb",
+      "position": [
+        5.72,
+        4.72,
+        -3.18
+      ],
+      "rotation": [
+        13,
+        -32,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 1.05,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Primary",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "FIX_CEILING_L",
+      "enabled": true,
+      "zone": "Lighting Fixtures",
+      "parent": "LIGHTING_FIXTURES",
+      "role": "Left ceiling practical",
+      "sourcePath": "assets/Content/Props/Misc_dressing_props/Minors/scrap_ceilinglight.glb",
+      "localPath": "Content/Props/Misc_dressing_props/Minors/scrap_ceilinglight.glb",
+      "position": [
+        -1.72,
+        5,
+        -2.85
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 0.8,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Secondary",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "FIX_CEILING_R",
+      "enabled": true,
+      "zone": "Lighting Fixtures",
+      "parent": "LIGHTING_FIXTURES",
+      "role": "Right ceiling practical",
+      "sourcePath": "assets/Content/Props/Misc_dressing_props/Minors/scrap_ceilinglight_flickering.glb",
+      "localPath": "Content/Props/Misc_dressing_props/Minors/scrap_ceilinglight_flickering.glb",
+      "position": [
+        1.78,
+        5.02,
+        -2.82
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 0.8,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Secondary",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "FIX_BARREL_LIGHT",
+      "enabled": true,
+      "zone": "Lighting Fixtures",
+      "parent": "LIGHTING_FIXTURES",
+      "role": "Low warm practical",
+      "sourcePath": "assets/Content/Props/Misc_dressing_props/Minors/light_barrel_station.glb",
+      "localPath": "Content/Props/Misc_dressing_props/Minors/light_barrel_station.glb",
+      "position": [
+        -6.55,
+        0,
+        -3.15
+      ],
+      "rotation": [
+        0,
+        14,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 1,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Secondary",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "FIX_LIGHTPOST_R",
+      "enabled": true,
+      "zone": "Lighting Fixtures",
+      "parent": "LIGHTING_FIXTURES",
+      "role": "Far-right silhouette practical",
+      "sourcePath": "assets/Content/Props/Lightpost/lightpost_a.glb",
+      "localPath": "Content/Props/Lightpost/lightpost_a.glb",
+      "position": [
+        6.85,
+        0,
+        -4.55
+      ],
+      "rotation": [
+        0,
+        -18,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 2.8,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Secondary",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "FIX_FOG_L",
+      "enabled": true,
+      "zone": "FX Fixtures",
+      "parent": "FX",
+      "role": "Left haze source fixture",
+      "sourcePath": "assets/Content/Props/Fog Machine/fogmachine.glb",
+      "localPath": "Content/Props/Fog Machine/fogmachine.glb",
+      "position": [
+        -5.95,
+        0.02,
+        -2.95
+      ],
+      "rotation": [
+        0,
+        22,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 0.58,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Secondary",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "FIX_FOG_C",
+      "enabled": true,
+      "zone": "FX Fixtures",
+      "parent": "FX",
+      "role": "Center haze source fixture",
+      "sourcePath": "assets/Content/Props/Fog Machine/fogmachine.glb",
+      "localPath": "Content/Props/Fog Machine/fogmachine.glb",
+      "position": [
+        0,
+        0.02,
+        -4.2
+      ],
+      "rotation": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 0.58,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Secondary",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "FIX_FOG_R",
+      "enabled": true,
+      "zone": "FX Fixtures",
+      "parent": "FX",
+      "role": "Right haze source fixture",
+      "sourcePath": "assets/Content/Props/Fog Machine/fogmachine.glb",
+      "localPath": "Content/Props/Fog Machine/fogmachine.glb",
+      "position": [
+        5.95,
+        0.02,
+        -2.95
+      ],
+      "rotation": [
+        0,
+        -22,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 0.58,
+      "anchor": "Bottom-center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Secondary",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    }
+  ],
+  "lights": [
+    {
+      "Entity_ID": "LIGHT_HEMISPHERE",
+      "Type": "Hemisphere / ambient",
+      "Parent": "SCENE_ROOT",
+      "Fixture_Instance_ID": "",
+      "Pos_X_m": 0,
+      "Pos_Y_m": 5,
+      "Pos_Z_m": 0,
+      "Target_X_m": null,
+      "Target_Y_m": null,
+      "Target_Z_m": null,
+      "Yaw_From_-Z_deg": 0,
+      "Pitch_deg": 0,
+      "Roll_deg": 0,
+      "Target_Distance_m": 0,
+      "Intensity": 0.22,
+      "Intensity_Units": "relative",
+      "Color_Temperature_K": 7000,
+      "Color_Hex": "#9FB4C9",
+      "Range_m": 0,
+      "Inner_Cone_deg": 0,
+      "Outer_Cone_deg": 0,
+      "Penumbra": 0,
+      "Area_Width_m": 0,
+      "Area_Height_m": 0,
+      "Cast_Shadow": false,
+      "Shadow_Map": "",
+      "Shadow_Bias": 0,
+      "Volumetric_Weight": 0.15,
+      "Enabled": true,
+      "Notes": "Cool sky contribution with warm/dark ground color #21150E; no direct shadows."
+    },
+    {
+      "Entity_ID": "LIGHT_KEY_LEFT",
+      "Type": "Spot",
+      "Parent": "SCENE_ROOT",
+      "Fixture_Instance_ID": "FIX_SEARCH_L",
+      "Pos_X_m": -5.85,
+      "Pos_Y_m": 4.65,
+      "Pos_Z_m": 1.2,
+      "Target_X_m": -1.2,
+      "Target_Y_m": 1.35,
+      "Target_Z_m": -0.5,
+      "Yaw_From_-Z_deg": -69.92,
+      "Pitch_deg": -33.68,
+      "Roll_deg": 0,
+      "Target_Distance_m": 5.95,
+      "Intensity": 42000,
+      "Intensity_Units": "candela",
+      "Color_Temperature_K": 4300,
+      "Color_Hex": "#FFD3AF",
+      "Range_m": 18,
+      "Inner_Cone_deg": 18,
+      "Outer_Cone_deg": 32,
+      "Penumbra": 0.48,
+      "Area_Width_m": 0,
+      "Area_Height_m": 0,
+      "Cast_Shadow": true,
+      "Shadow_Map": "2048x2048",
+      "Shadow_Bias": -0.0006,
+      "Volumetric_Weight": 0.55,
+      "Enabled": true,
+      "Notes": "Primary warm left key; allows left mannequin and weapon fan to read."
+    },
+    {
+      "Entity_ID": "LIGHT_KEY_RIGHT",
+      "Type": "Spot",
+      "Parent": "SCENE_ROOT",
+      "Fixture_Instance_ID": "FIX_SEARCH_R",
+      "Pos_X_m": 5.72,
+      "Pos_Y_m": 4.72,
+      "Pos_Z_m": 1.35,
+      "Target_X_m": 1.25,
+      "Target_Y_m": 1.38,
+      "Target_Z_m": -0.55,
+      "Yaw_From_-Z_deg": 66.97,
+      "Pitch_deg": -34.51,
+      "Roll_deg": 0,
+      "Target_Distance_m": 5.89,
+      "Intensity": 46000,
+      "Intensity_Units": "candela",
+      "Color_Temperature_K": 4650,
+      "Color_Hex": "#FFE0C0",
+      "Range_m": 18,
+      "Inner_Cone_deg": 17,
+      "Outer_Cone_deg": 31,
+      "Penumbra": 0.5,
+      "Area_Width_m": 0,
+      "Area_Height_m": 0,
+      "Cast_Shadow": true,
+      "Shadow_Map": "2048x2048",
+      "Shadow_Bias": -0.0006,
+      "Volumetric_Weight": 0.58,
+      "Enabled": true,
+      "Notes": "Slightly brighter right key to reveal rockets and third-place armor."
+    },
+    {
+      "Entity_ID": "LIGHT_RIM_CENTER",
+      "Type": "Spot",
+      "Parent": "SCENE_ROOT",
+      "Fixture_Instance_ID": "FIX_CEILING_R",
+      "Pos_X_m": 0.1,
+      "Pos_Y_m": 5.3,
+      "Pos_Z_m": -2.7,
+      "Target_X_m": 0,
+      "Target_Y_m": 1.25,
+      "Target_Z_m": 0.1,
+      "Yaw_From_-Z_deg": 177.95,
+      "Pitch_deg": -55.32,
+      "Roll_deg": 0,
+      "Target_Distance_m": 4.92,
+      "Intensity": 36000,
+      "Intensity_Units": "candela",
+      "Color_Temperature_K": 6500,
+      "Color_Hex": "#D7E7FF",
+      "Range_m": 14,
+      "Inner_Cone_deg": 14,
+      "Outer_Cone_deg": 25,
+      "Penumbra": 0.42,
+      "Area_Width_m": 0,
+      "Area_Height_m": 0,
+      "Cast_Shadow": true,
+      "Shadow_Map": "2048x2048",
+      "Shadow_Bias": -0.0004,
+      "Volumetric_Weight": 0.65,
+      "Enabled": true,
+      "Notes": "Cool top/back rim for first-place silhouette and metallic separation."
+    },
+    {
+      "Entity_ID": "LIGHT_FILL_FRONT",
+      "Type": "Rect area",
+      "Parent": "SCENE_ROOT",
+      "Fixture_Instance_ID": "",
+      "Pos_X_m": 0,
+      "Pos_Y_m": 3,
+      "Pos_Z_m": 7.2,
+      "Target_X_m": 0,
+      "Target_Y_m": 1.45,
+      "Target_Z_m": -0.25,
+      "Yaw_From_-Z_deg": 0,
+      "Pitch_deg": -11.75,
+      "Roll_deg": 0,
+      "Target_Distance_m": 7.61,
+      "Intensity": 5200,
+      "Intensity_Units": "lumens",
+      "Color_Temperature_K": 3200,
+      "Color_Hex": "#FFD1A1",
+      "Range_m": 20,
+      "Inner_Cone_deg": 0,
+      "Outer_Cone_deg": 0,
+      "Penumbra": 0,
+      "Area_Width_m": 6,
+      "Area_Height_m": 2,
+      "Cast_Shadow": false,
+      "Shadow_Map": "",
+      "Shadow_Bias": 0,
+      "Volumetric_Weight": 0.08,
+      "Enabled": true,
+      "Notes": "Broad low-contrast fill to keep armor details visible without flattening the scene."
+    },
+    {
+      "Entity_ID": "LIGHT_BG_LEFT",
+      "Type": "Spot",
+      "Parent": "SCENE_ROOT",
+      "Fixture_Instance_ID": "FIX_CEILING_L",
+      "Pos_X_m": -2.8,
+      "Pos_Y_m": 4.6,
+      "Pos_Z_m": -4.65,
+      "Target_X_m": -4.2,
+      "Target_Y_m": 1.3,
+      "Target_Z_m": -2.3,
+      "Yaw_From_-Z_deg": 149.22,
+      "Pitch_deg": -50.34,
+      "Roll_deg": 0,
+      "Target_Distance_m": 4.29,
+      "Intensity": 15000,
+      "Intensity_Units": "candela",
+      "Color_Temperature_K": 5600,
+      "Color_Hex": "#E7EEFF",
+      "Range_m": 10,
+      "Inner_Cone_deg": 13,
+      "Outer_Cone_deg": 24,
+      "Penumbra": 0.55,
+      "Area_Width_m": 0,
+      "Area_Height_m": 0,
+      "Cast_Shadow": false,
+      "Shadow_Map": "",
+      "Shadow_Bias": 0,
+      "Volumetric_Weight": 0.45,
+      "Enabled": true,
+      "Notes": "Creates upper-left smoke shaft and junk silhouette."
+    },
+    {
+      "Entity_ID": "LIGHT_BG_RIGHT",
+      "Type": "Spot",
+      "Parent": "SCENE_ROOT",
+      "Fixture_Instance_ID": "FIX_CEILING_R",
+      "Pos_X_m": 2.9,
+      "Pos_Y_m": 4.7,
+      "Pos_Z_m": -4.6,
+      "Target_X_m": 4.2,
+      "Target_Y_m": 1.25,
+      "Target_Z_m": -2.2,
+      "Yaw_From_-Z_deg": -151.56,
+      "Pitch_deg": -51.65,
+      "Roll_deg": 0,
+      "Target_Distance_m": 4.4,
+      "Intensity": 16000,
+      "Intensity_Units": "candela",
+      "Color_Temperature_K": 5600,
+      "Color_Hex": "#E7EEFF",
+      "Range_m": 10,
+      "Inner_Cone_deg": 13,
+      "Outer_Cone_deg": 24,
+      "Penumbra": 0.55,
+      "Area_Width_m": 0,
+      "Area_Height_m": 0,
+      "Cast_Shadow": false,
+      "Shadow_Map": "",
+      "Shadow_Bias": 0,
+      "Volumetric_Weight": 0.48,
+      "Enabled": true,
+      "Notes": "Creates upper-right smoke shaft and rocket silhouette."
+    },
+    {
+      "Entity_ID": "LIGHT_PODIUM_1",
+      "Type": "Point",
+      "Parent": "SCENE_ROOT",
+      "Fixture_Instance_ID": "",
+      "Pos_X_m": 0,
+      "Pos_Y_m": 0.62,
+      "Pos_Z_m": 0.65,
+      "Target_X_m": null,
+      "Target_Y_m": null,
+      "Target_Z_m": null,
+      "Yaw_From_-Z_deg": 0,
+      "Pitch_deg": 0,
+      "Roll_deg": 0,
+      "Target_Distance_m": 0,
+      "Intensity": 1150,
+      "Intensity_Units": "candela",
+      "Color_Temperature_K": 1850,
+      "Color_Hex": "#FF5A16",
+      "Range_m": 4,
+      "Inner_Cone_deg": 0,
+      "Outer_Cone_deg": 0,
+      "Penumbra": 0,
+      "Area_Width_m": 0,
+      "Area_Height_m": 0,
+      "Cast_Shadow": false,
+      "Shadow_Map": "",
+      "Shadow_Bias": 0,
+      "Volumetric_Weight": 0.18,
+      "Enabled": true,
+      "Notes": "Supports completed pedestal orange emissive strips; disable if pedestal bloom is sufficient."
+    },
+    {
+      "Entity_ID": "LIGHT_PODIUM_2",
+      "Type": "Point",
+      "Parent": "SCENE_ROOT",
+      "Fixture_Instance_ID": "",
+      "Pos_X_m": -4.2,
+      "Pos_Y_m": 0.44,
+      "Pos_Z_m": 0.58,
+      "Target_X_m": null,
+      "Target_Y_m": null,
+      "Target_Z_m": null,
+      "Yaw_From_-Z_deg": 0,
+      "Pitch_deg": 0,
+      "Roll_deg": 0,
+      "Target_Distance_m": 0,
+      "Intensity": 650,
+      "Intensity_Units": "candela",
+      "Color_Temperature_K": 1850,
+      "Color_Hex": "#FF5A16",
+      "Range_m": 3.2,
+      "Inner_Cone_deg": 0,
+      "Outer_Cone_deg": 0,
+      "Penumbra": 0,
+      "Area_Width_m": 0,
+      "Area_Height_m": 0,
+      "Cast_Shadow": false,
+      "Shadow_Map": "",
+      "Shadow_Bias": 0,
+      "Volumetric_Weight": 0.12,
+      "Enabled": true,
+      "Notes": "Subtle orange accent under rank 2."
+    },
+    {
+      "Entity_ID": "LIGHT_PODIUM_3",
+      "Type": "Point",
+      "Parent": "SCENE_ROOT",
+      "Fixture_Instance_ID": "",
+      "Pos_X_m": 4.2,
+      "Pos_Y_m": 0.44,
+      "Pos_Z_m": 0.58,
+      "Target_X_m": null,
+      "Target_Y_m": null,
+      "Target_Z_m": null,
+      "Yaw_From_-Z_deg": 0,
+      "Pitch_deg": 0,
+      "Roll_deg": 0,
+      "Target_Distance_m": 0,
+      "Intensity": 650,
+      "Intensity_Units": "candela",
+      "Color_Temperature_K": 1850,
+      "Color_Hex": "#FF5A16",
+      "Range_m": 3.2,
+      "Inner_Cone_deg": 0,
+      "Outer_Cone_deg": 0,
+      "Penumbra": 0,
+      "Area_Width_m": 0,
+      "Area_Height_m": 0,
+      "Cast_Shadow": false,
+      "Shadow_Map": "",
+      "Shadow_Bias": 0,
+      "Volumetric_Weight": 0.12,
+      "Enabled": true,
+      "Notes": "Subtle orange accent under rank 3."
+    },
+    {
+      "Entity_ID": "LIGHT_PRACTICAL_LEFT",
+      "Type": "Point",
+      "Parent": "SCENE_ROOT",
+      "Fixture_Instance_ID": "FIX_BARREL_LIGHT",
+      "Pos_X_m": -6.45,
+      "Pos_Y_m": 0.95,
+      "Pos_Z_m": -3.1,
+      "Target_X_m": null,
+      "Target_Y_m": null,
+      "Target_Z_m": null,
+      "Yaw_From_-Z_deg": 0,
+      "Pitch_deg": 0,
+      "Roll_deg": 0,
+      "Target_Distance_m": 0,
+      "Intensity": 820,
+      "Intensity_Units": "candela",
+      "Color_Temperature_K": 2100,
+      "Color_Hex": "#FF7A2A",
+      "Range_m": 4,
+      "Inner_Cone_deg": 0,
+      "Outer_Cone_deg": 0,
+      "Penumbra": 0,
+      "Area_Width_m": 0,
+      "Area_Height_m": 0,
+      "Cast_Shadow": false,
+      "Shadow_Map": "",
+      "Shadow_Bias": 0,
+      "Volumetric_Weight": 0.28,
+      "Enabled": true,
+      "Notes": "Warm practical in left junk cluster."
+    },
+    {
+      "Entity_ID": "LIGHT_PRACTICAL_RIGHT",
+      "Type": "Point",
+      "Parent": "SCENE_ROOT",
+      "Fixture_Instance_ID": "FIX_LIGHTPOST_R",
+      "Pos_X_m": 6.7,
+      "Pos_Y_m": 3.5,
+      "Pos_Z_m": -4.45,
+      "Target_X_m": null,
+      "Target_Y_m": null,
+      "Target_Z_m": null,
+      "Yaw_From_-Z_deg": 0,
+      "Pitch_deg": 0,
+      "Roll_deg": 0,
+      "Target_Distance_m": 0,
+      "Intensity": 900,
+      "Intensity_Units": "candela",
+      "Color_Temperature_K": 3000,
+      "Color_Hex": "#FFD09A",
+      "Range_m": 6,
+      "Inner_Cone_deg": 0,
+      "Outer_Cone_deg": 0,
+      "Penumbra": 0,
+      "Area_Width_m": 0,
+      "Area_Height_m": 0,
+      "Cast_Shadow": false,
+      "Shadow_Map": "",
+      "Shadow_Bias": 0,
+      "Volumetric_Weight": 0.25,
+      "Enabled": true,
+      "Notes": "Faint far-right practical; should not compete with hero keys."
+    }
+  ],
+  "atmosphereAndPost": [
+    {
+      "name": "Global fog",
+      "type": "Exponential height fog",
+      "parameter": "Density",
+      "value": 0.027,
+      "units": "1/m",
+      "notes": "Color #15191C; height falloff 0.42; start distance 2.5 m."
+    },
+    {
+      "name": "Local haze left",
+      "type": "Box volume",
+      "parameter": "Density multiplier",
+      "value": 1.25,
+      "units": "relative",
+      "notes": "Bounds center (-4.5,1.7,-2.8), size (4.0,3.4,4.0), noise scale 1.6 m."
+    },
+    {
+      "name": "Local haze center",
+      "type": "Box volume",
+      "parameter": "Density multiplier",
+      "value": 1.1,
+      "units": "relative",
+      "notes": "Bounds center (0,2.0,-3.2), size (5.0,4.0,3.5), noise scale 2.0 m."
+    },
+    {
+      "name": "Local haze right",
+      "type": "Box volume",
+      "parameter": "Density multiplier",
+      "value": 1.3,
+      "units": "relative",
+      "notes": "Bounds center (4.5,1.7,-2.8), size (4.0,3.4,4.0), noise scale 1.5 m."
+    },
+    {
+      "name": "Embers",
+      "type": "GPU particle emitter",
+      "parameter": "Rate",
+      "value": 14,
+      "units": "particles/s",
+      "notes": "World bounds 15x7x8 m; upward drift 0.25 m/s; lifetime 2.4–5.0 s; orange emissive; no collisions."
+    },
+    {
+      "name": "Bloom",
+      "type": "Post process",
+      "parameter": "Intensity",
+      "value": 0.3,
+      "units": "relative",
+      "notes": "Threshold 1.1; knee 0.55; limit bloom to practicals and podium emissives."
+    },
+    {
+      "name": "Color grade",
+      "type": "ACES / filmic",
+      "parameter": "Exposure",
+      "value": -0.45,
+      "units": "EV",
+      "notes": "Contrast +0.12; saturation -0.08; warm highlights, cool shadows."
+    },
+    {
+      "name": "SSAO",
+      "type": "Post process",
+      "parameter": "Radius",
+      "value": 0.65,
+      "units": "m",
+      "notes": "Strength 0.85; bias 0.025; half-resolution acceptable on mobile."
+    },
+    {
+      "name": "Depth of field",
+      "type": "Post process",
+      "parameter": "Aperture",
+      "value": 5.6,
+      "units": "f-stop",
+      "notes": "Focus distance ~13.1 m; subtle only—leaderboard assets must remain readable."
+    }
+  ],
+  "themes": {
+    "most-kills": {
+      "label": "Most Kills",
+      "activeInSourceScene": true,
+      "placements": [
+        {
+          "id": "L_WEAPON_AK",
+          "enabled": true,
+          "zone": "Left Cluster",
+          "parent": "LEFT_CLUSTER",
+          "role": "Leaning/displayed weapon",
+          "sourcePath": "assets/prefabs/Weapons/ak47u/ak47u.worldmodel.glb",
+          "localPath": "prefabs/Weapons/ak47u/ak47u.worldmodel.glb",
+          "position": [
+            -5.7,
+            1.35,
+            -2.18
+          ],
+          "rotation": [
+            2,
+            12,
+            -67
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "normalizeMode": "AABB bottom-center; preserve aspect",
+          "targetExtent": 1.05,
+          "anchor": "Object center",
+          "castShadow": true,
+          "receiveShadow": true,
+          "lodClass": "Hero",
+          "occlusionPriority": "Critical",
+          "renderOrder": 0
+        },
+        {
+          "id": "L_WEAPON_LR300",
+          "enabled": true,
+          "zone": "Left Cluster",
+          "parent": "LEFT_CLUSTER",
+          "role": "Leaning/displayed weapon",
+          "sourcePath": "assets/prefabs/Weapons/lr300/lr300.worldmodel.glb",
+          "localPath": "prefabs/Weapons/lr300/lr300.worldmodel.glb",
+          "position": [
+            -5.13,
+            1.72,
+            -2.28
+          ],
+          "rotation": [
+            -2,
+            -4,
+            -55
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "normalizeMode": "AABB bottom-center; preserve aspect",
+          "targetExtent": 1.15,
+          "anchor": "Object center",
+          "castShadow": true,
+          "receiveShadow": true,
+          "lodClass": "Hero",
+          "occlusionPriority": "Critical",
+          "renderOrder": 0
+        },
+        {
+          "id": "L_WEAPON_MP5",
+          "enabled": true,
+          "zone": "Left Cluster",
+          "parent": "LEFT_CLUSTER",
+          "role": "Leaning/displayed weapon",
+          "sourcePath": "assets/prefabs/Weapons/mp5/mp5.worldmodel.glb",
+          "localPath": "prefabs/Weapons/mp5/mp5.worldmodel.glb",
+          "position": [
+            -4.47,
+            1.42,
+            -2.38
+          ],
+          "rotation": [
+            0,
+            10,
+            -78
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "normalizeMode": "AABB bottom-center; preserve aspect",
+          "targetExtent": 0.78,
+          "anchor": "Object center",
+          "castShadow": true,
+          "receiveShadow": true,
+          "lodClass": "Hero",
+          "occlusionPriority": "Critical",
+          "renderOrder": 0
+        },
+        {
+          "id": "L_WEAPON_SPAS",
+          "enabled": true,
+          "zone": "Left Cluster",
+          "parent": "LEFT_CLUSTER",
+          "role": "Leaning/displayed weapon",
+          "sourcePath": "assets/prefabs/Weapons/spas12/spas12.worldmodel.glb",
+          "localPath": "prefabs/Weapons/spas12/spas12.worldmodel.glb",
+          "position": [
+            -3.75,
+            1.78,
+            -2.52
+          ],
+          "rotation": [
+            1,
+            -15,
+            -51
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "normalizeMode": "AABB bottom-center; preserve aspect",
+          "targetExtent": 1.12,
+          "anchor": "Object center",
+          "castShadow": true,
+          "receiveShadow": true,
+          "lodClass": "Hero",
+          "occlusionPriority": "Critical",
+          "renderOrder": 0
+        },
+        {
+          "id": "C_WEAPON_AK",
+          "enabled": true,
+          "zone": "Center Cluster",
+          "parent": "CENTER_CLUSTER",
+          "role": "Hero weapon fan",
+          "sourcePath": "assets/prefabs/Weapons/ak47u/ak47u.worldmodel.glb",
+          "localPath": "prefabs/Weapons/ak47u/ak47u.worldmodel.glb",
+          "position": [
+            0.72,
+            1.48,
+            -2.02
+          ],
+          "rotation": [
+            0,
+            -9,
+            61
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "normalizeMode": "AABB bottom-center; preserve aspect",
+          "targetExtent": 1.04,
+          "anchor": "Object center",
+          "castShadow": true,
+          "receiveShadow": true,
+          "lodClass": "Hero",
+          "occlusionPriority": "Critical",
+          "renderOrder": 0
+        },
+        {
+          "id": "C_WEAPON_HMLMG",
+          "enabled": true,
+          "zone": "Center Cluster",
+          "parent": "CENTER_CLUSTER",
+          "role": "Hero weapon fan",
+          "sourcePath": "assets/prefabs/Weapons/HMLMG/hmlmg.worldmodel.glb",
+          "localPath": "prefabs/Weapons/HMLMG/hmlmg.worldmodel.glb",
+          "position": [
+            1.2,
+            0.98,
+            -2.25
+          ],
+          "rotation": [
+            2,
+            -16,
+            58
+          ],
+          "scale": [
+            1,
+            1,
+            1
+          ],
+          "normalizeMode": "AABB bottom-center; preserve aspect",
+          "targetExtent": 1.22,
+          "anchor": "Object center",
+          "castShadow": true,
+          "receiveShadow": true,
+          "lodClass": "Hero",
+          "occlusionPriority": "Critical",
+          "renderOrder": 0
+        }
+      ],
+      "assets": [
+        {
+          "kitId": "MK-01",
+          "slot": "Rifle fan",
+          "name": "Ak47U Worldmodel",
+          "sourcePath": "assets/prefabs/Weapons/ak47u/ak47u.worldmodel.glb",
+          "localPath": "prefabs/Weapons/ak47u/ak47u.worldmodel.glb",
+          "quantity": 3,
+          "suggestedZone": "All podiums",
+          "placementRule": "Lean 45–80° behind character; vary yaw ±20°"
+        },
+        {
+          "kitId": "MK-02",
+          "slot": "Assault rifles",
+          "name": "Lr300 Worldmodel",
+          "sourcePath": "assets/prefabs/Weapons/lr300/lr300.worldmodel.glb",
+          "localPath": "prefabs/Weapons/lr300/lr300.worldmodel.glb",
+          "quantity": 2,
+          "suggestedZone": "Left/center",
+          "placementRule": "Cross with AKs, tips above shoulder line"
+        },
+        {
+          "kitId": "MK-03",
+          "slot": "SMGs",
+          "name": "Mp5 Worldmodel",
+          "sourcePath": "assets/prefabs/Weapons/mp5/mp5.worldmodel.glb",
+          "localPath": "prefabs/Weapons/mp5/mp5.worldmodel.glb",
+          "quantity": 2,
+          "suggestedZone": "Left/right",
+          "placementRule": "Use lower in composition around crates"
+        },
+        {
+          "kitId": "MK-04",
+          "slot": "Shotgun",
+          "name": "Spas12 Worldmodel",
+          "sourcePath": "assets/prefabs/Weapons/spas12/spas12.worldmodel.glb",
+          "localPath": "prefabs/Weapons/spas12/spas12.worldmodel.glb",
+          "quantity": 1,
+          "suggestedZone": "Left",
+          "placementRule": "Place diagonally on shelf"
+        },
+        {
+          "kitId": "MK-05",
+          "slot": "Heavy weapon",
+          "name": "Hmlmg Worldmodel",
+          "sourcePath": "assets/prefabs/Weapons/HMLMG/hmlmg.worldmodel.glb",
+          "localPath": "prefabs/Weapons/HMLMG/hmlmg.worldmodel.glb",
+          "quantity": 1,
+          "suggestedZone": "Center",
+          "placementRule": "Keep below first-place head silhouette"
+        }
+      ]
+    },
+    "most-rp": {
+      "label": "Most RP",
+      "activeInSourceScene": false,
+      "placements": [],
+      "assets": [
+        {
+          "kitId": "RP-01",
+          "slot": "Scrap stacks",
+          "name": "Junkyard Stack J",
+          "sourcePath": "assets/Content/Props/Junkyard_stacks/junkyard_stack_j.glb",
+          "localPath": "Content/Props/Junkyard_stacks/junkyard_stack_j.glb",
+          "quantity": 3,
+          "suggestedZone": "All podiums",
+          "placementRule": "Cluster by rank; center receives largest mass"
+        },
+        {
+          "kitId": "RP-02",
+          "slot": "Loot barrel",
+          "name": "Lootbarrel Junk",
+          "sourcePath": "assets/Content/Props/Barrels/lootbarrel_junk.glb",
+          "localPath": "Content/Props/Barrels/lootbarrel_junk.glb",
+          "quantity": 3,
+          "suggestedZone": "All podiums",
+          "placementRule": "One barrel per podium, center plus extra crate"
+        },
+        {
+          "kitId": "RP-03",
+          "slot": "Toolbox",
+          "name": "Toolbox",
+          "sourcePath": "assets/Content/Props/Misc_dressing_props/toolbox.glb",
+          "localPath": "Content/Props/Misc_dressing_props/toolbox.glb",
+          "quantity": 2,
+          "suggestedZone": "Center/left",
+          "placementRule": "Stack on crates"
+        },
+        {
+          "kitId": "RP-04",
+          "slot": "Metal wheel",
+          "name": "Metalwheel",
+          "sourcePath": "assets/Content/Props/Metal Wheel/metalwheel.glb",
+          "localPath": "Content/Props/Metal Wheel/metalwheel.glb",
+          "quantity": 4,
+          "suggestedZone": "Foreground",
+          "placementRule": "Scatter as secondary scrap"
+        },
+        {
+          "kitId": "RP-05",
+          "slot": "Cargo pack",
+          "name": "Cargo Pack",
+          "sourcePath": "assets/Content/Props/Misc_dressing_props/cargo_pack.glb",
+          "localPath": "Content/Props/Misc_dressing_props/cargo_pack.glb",
+          "quantity": 3,
+          "suggestedZone": "All podiums",
+          "placementRule": "Place close to character feet"
+        }
+      ]
+    },
+    "npc-hunter": {
+      "label": "NPC Hunter",
+      "activeInSourceScene": false,
+      "placements": [],
+      "assets": [
+        {
+          "kitId": "NPC-01",
+          "slot": "Scientist cover A",
+          "name": "Scientist Cover A",
+          "sourcePath": "assets/Content/Props/Covers/scientist_cover_a.glb",
+          "localPath": "Content/Props/Covers/scientist_cover_a.glb",
+          "quantity": 1,
+          "suggestedZone": "Center rear",
+          "placementRule": "Broad face toward camera, tilted 5–10°"
+        },
+        {
+          "kitId": "NPC-02",
+          "slot": "Scientist cover B",
+          "name": "Scientist Cover B",
+          "sourcePath": "assets/Content/Props/Covers/scientist_cover_b.glb",
+          "localPath": "Content/Props/Covers/scientist_cover_b.glb",
+          "quantity": 1,
+          "suggestedZone": "Left rear",
+          "placementRule": "Layer behind captured weapons"
+        },
+        {
+          "kitId": "NPC-03",
+          "slot": "Scientist cover C",
+          "name": "Scientist Cover C",
+          "sourcePath": "assets/Content/Props/Covers/scientist_cover_c.glb",
+          "localPath": "Content/Props/Covers/scientist_cover_c.glb",
+          "quantity": 1,
+          "suggestedZone": "Right rear",
+          "placementRule": "Layer behind captured weapons"
+        },
+        {
+          "kitId": "NPC-04",
+          "slot": "Captured LR-300",
+          "name": "Lr300 Worldmodel",
+          "sourcePath": "assets/prefabs/Weapons/lr300/lr300.worldmodel.glb",
+          "localPath": "prefabs/Weapons/lr300/lr300.worldmodel.glb",
+          "quantity": 4,
+          "suggestedZone": "All podiums",
+          "placementRule": "Crossed weapon trophies"
+        },
+        {
+          "kitId": "NPC-05",
+          "slot": "Road-sign mannequin",
+          "name": "Mannequin Roadsign",
+          "sourcePath": "assets/Content/Props/Mannequin/Models/Merged/mannequin_roadsign.glb",
+          "localPath": "Content/Props/Mannequin/Models/Merged/mannequin_roadsign.glb",
+          "quantity": 1,
+          "suggestedZone": "Center",
+          "placementRule": "Use as hunter/player stand-in"
+        }
+      ]
+    },
+    "raid-damage": {
+      "label": "Raid Damage",
+      "activeInSourceScene": false,
+      "placements": [],
+      "assets": [
+        {
+          "kitId": "RD-01",
+          "slot": "Rocket launcher",
+          "name": "Rocketlauncher Worldmodel",
+          "sourcePath": "assets/prefabs/Weapons/RocketLauncher/rocketlauncher.worldmodel.glb",
+          "localPath": "prefabs/Weapons/RocketLauncher/rocketlauncher.worldmodel.glb",
+          "quantity": 3,
+          "suggestedZone": "All podiums",
+          "placementRule": "One launcher per podium; rank 1 gets raised hero angle"
+        },
+        {
+          "kitId": "RD-02",
+          "slot": "MLRS rockets",
+          "name": "Rocket Mlrs Worldmodel",
+          "sourcePath": "assets/Content/Vehicles/MLRS/rocket_mlrs.worldmodel.glb",
+          "localPath": "Content/Vehicles/MLRS/rocket_mlrs.worldmodel.glb",
+          "quantity": 8,
+          "suggestedZone": "Center/right",
+          "placementRule": "Vertical cluster plus loose horizontal rounds"
+        },
+        {
+          "kitId": "RD-03",
+          "slot": "Concrete barricade",
+          "name": "Barricade Concrete",
+          "sourcePath": "assets/Content/Props/Barricades_static/barricade_concrete.glb",
+          "localPath": "Content/Props/Barricades_static/barricade_concrete.glb",
+          "quantity": 2,
+          "suggestedZone": "Rear",
+          "placementRule": "Use as destroyed wall remnants"
+        },
+        {
+          "kitId": "RD-04",
+          "slot": "Concrete rubble",
+          "name": "Conc Pile 6X6",
+          "sourcePath": "assets/Content/Props/Rubble_piles/conc_pile_6x6.glb",
+          "localPath": "Content/Props/Rubble_piles/conc_pile_6x6.glb",
+          "quantity": 4,
+          "suggestedZone": "Foreground/rear",
+          "placementRule": "Pile by rank; avoid rank-number plaque"
+        },
+        {
+          "kitId": "RD-05",
+          "slot": "Red fuel barrel",
+          "name": "Fuel Barrel Red",
+          "sourcePath": "assets/Content/Props/Barrels/fuel_barrel_red.glb",
+          "localPath": "Content/Props/Barrels/fuel_barrel_red.glb",
+          "quantity": 3,
+          "suggestedZone": "All podiums",
+          "placementRule": "Keep away from mannequin feet by 0.25 m"
+        }
+      ]
+    },
+    "airstrike-kills": {
+      "label": "Airstrike Kills",
+      "activeInSourceScene": false,
+      "placements": [],
+      "assets": [
+        {
+          "kitId": "AS-01",
+          "slot": "Attack helicopter",
+          "name": "Attackhelicopter Entity",
+          "sourcePath": "assets/Content/Vehicles/AttackHelicopter/attackhelicopter.entity.glb",
+          "localPath": "Content/Vehicles/AttackHelicopter/attackhelicopter.entity.glb",
+          "quantity": 1,
+          "suggestedZone": "Deep background",
+          "placementRule": "Scale to 4.5–5.0 m and suspend at y=3.8 m"
+        },
+        {
+          "kitId": "AS-02",
+          "slot": "Missile pod",
+          "name": "Ahmissilepod",
+          "sourcePath": "assets/Content/Vehicles/AttackHelicopter/ahmissilepod.glb",
+          "localPath": "Content/Vehicles/AttackHelicopter/ahmissilepod.glb",
+          "quantity": 3,
+          "suggestedZone": "All podiums",
+          "placementRule": "Place on crates or stands"
+        },
+        {
+          "kitId": "AS-03",
+          "slot": "Helicopter cockpit",
+          "name": "Heli Cockpit",
+          "sourcePath": "assets/Content/Props/Helicopter_parts/heli_cockpit.glb",
+          "localPath": "Content/Props/Helicopter_parts/heli_cockpit.glb",
+          "quantity": 1,
+          "suggestedZone": "Right rear",
+          "placementRule": "Partial wreck crop"
+        },
+        {
+          "kitId": "AS-04",
+          "slot": "Helicopter tail",
+          "name": "Heli Tail",
+          "sourcePath": "assets/Content/Props/Helicopter_parts/heli_tail.glb",
+          "localPath": "Content/Props/Helicopter_parts/heli_tail.glb",
+          "quantity": 1,
+          "suggestedZone": "Left/rear",
+          "placementRule": "Diagonal silhouette"
+        },
+        {
+          "kitId": "AS-05",
+          "slot": "MLRS rocket",
+          "name": "Rocket Mlrs Worldmodel",
+          "sourcePath": "assets/Content/Vehicles/MLRS/rocket_mlrs.worldmodel.glb",
+          "localPath": "Content/Vehicles/MLRS/rocket_mlrs.worldmodel.glb",
+          "quantity": 6,
+          "suggestedZone": "Foreground/rear",
+          "placementRule": "Use as payload stand-ins"
+        }
+      ]
+    },
+    "vehicle-kills": {
+      "label": "Vehicle Kills",
+      "activeInSourceScene": false,
+      "placements": [],
+      "assets": [
+        {
+          "kitId": "VK-01",
+          "slot": "Rusty compact car",
+          "name": "Compact Car A Rusty",
+          "sourcePath": "assets/Content/Vehicles/Compact/compact_car_a_rusty.glb",
+          "localPath": "Content/Vehicles/Compact/compact_car_a_rusty.glb",
+          "quantity": 2,
+          "suggestedZone": "Left/right rear",
+          "placementRule": "Partially crop each vehicle; use different yaw"
+        },
+        {
+          "kitId": "VK-02",
+          "slot": "Shreddable pickup",
+          "name": "Shreddable Pickuptruck",
+          "sourcePath": "assets/Content/Vehicles/Crane_Magnet/shreddable_pickuptruck.glb",
+          "localPath": "Content/Vehicles/Crane_Magnet/shreddable_pickuptruck.glb",
+          "quantity": 1,
+          "suggestedZone": "Center rear",
+          "placementRule": "Scale to 3.2 m and rotate 15°"
+        },
+        {
+          "kitId": "VK-03",
+          "slot": "Detached metal wheels",
+          "name": "Metalwheel",
+          "sourcePath": "assets/Content/Props/Metal Wheel/metalwheel.glb",
+          "localPath": "Content/Props/Metal Wheel/metalwheel.glb",
+          "quantity": 6,
+          "suggestedZone": "Foreground",
+          "placementRule": "Scatter around podium bases"
+        },
+        {
+          "kitId": "VK-04",
+          "slot": "Attack-heli turret",
+          "name": "Turret Attackheli",
+          "sourcePath": "assets/Content/Vehicles/AttackHelicopter/SubEnts/turret_attackheli.glb",
+          "localPath": "Content/Vehicles/AttackHelicopter/SubEnts/turret_attackheli.glb",
+          "quantity": 2,
+          "suggestedZone": "Left/right",
+          "placementRule": "Aim outward from center"
+        },
+        {
+          "kitId": "VK-05",
+          "slot": "Junkyard stack",
+          "name": "Junkyard Stack H",
+          "sourcePath": "assets/Content/Props/Junkyard_stacks/junkyard_stack_h.glb",
+          "localPath": "Content/Props/Junkyard_stacks/junkyard_stack_h.glb",
+          "quantity": 3,
+          "suggestedZone": "All podiums",
+          "placementRule": "Rank-scaled clutter masses"
+        }
+      ]
+    }
+  },
+  "assets": [
+    {
+      "sourcePath": "assets/bundled/prefabs/modding/Cubes/Tiled/cube_tiled_charcoal_02.glb",
+      "localPath": "bundled/prefabs/modding/Cubes/Tiled/cube_tiled_charcoal_02.glb",
+      "bytes": 36844,
+      "sha256": "8dd61f83d94e8b50d1e7e529605ac594dd08e0eaf2ee96eb9bce102294baca68"
+    },
+    {
+      "sourcePath": "assets/bundled/prefabs/modding/Cubes/Tiled/cube_tiled_metal_03_alt.glb",
+      "localPath": "bundled/prefabs/modding/Cubes/Tiled/cube_tiled_metal_03_alt.glb",
+      "bytes": 65948,
+      "sha256": "c0d63973e28244924e332eef1c724fe2cd4e0481033fe891a0ac80c7f0bc7196"
+    },
+    {
+      "sourcePath": "assets/bundled/prefabs/modding/Cubes/Tiled/cube_tiled_metal_11_alt2.glb",
+      "localPath": "bundled/prefabs/modding/Cubes/Tiled/cube_tiled_metal_11_alt2.glb",
+      "bytes": 18760,
+      "sha256": "b4ac3a129739d3885206e9a50ef1eee3454617197a8e921cdf672778acce9610"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Barbedwire_set/barbedwire_set_bend90.glb",
+      "localPath": "Content/Props/Barbedwire_set/barbedwire_set_bend90.glb",
+      "bytes": 49328,
+      "sha256": "d7932635e46efefd3bd532d4d42069b107dced64c596fa0b06c4f33764c7bf40"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Barbedwire_set/barbedwire_set_straight300.glb",
+      "localPath": "Content/Props/Barbedwire_set/barbedwire_set_straight300.glb",
+      "bytes": 40680,
+      "sha256": "25d03b2e69d71666d36aa3e31b42d61228f752a7c3d39ef46cadbe38a441ac83"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Barrels/dented_barrel.glb",
+      "localPath": "Content/Props/Barrels/dented_barrel.glb",
+      "bytes": 31240,
+      "sha256": "9cc980c30bd8b65f038ae47da01f9244297fa51e81eca1d1901ac0461b117bef"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Barrels/fuel_barrel_red.glb",
+      "localPath": "Content/Props/Barrels/fuel_barrel_red.glb",
+      "bytes": 29564,
+      "sha256": "28d0aa69132772c2c467a98d52274d4a663812719ef8ec0ed129d4245ed1a24c"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Barrels/fuel_barrel_yellow.glb",
+      "localPath": "Content/Props/Barrels/fuel_barrel_yellow.glb",
+      "bytes": 29576,
+      "sha256": "c25ec266ffcc9f18f215d686be58d1d38cfab5b4cc938e16e035c485f993b832"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Barrels/lootbarrel_junk.glb",
+      "localPath": "Content/Props/Barrels/lootbarrel_junk.glb",
+      "bytes": 40900,
+      "sha256": "116b6b12552323573ca762ee30a073ee13799e9adf6040bcae8926abffa7bcf4"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Barrels/radbarrel.glb",
+      "localPath": "Content/Props/Barrels/radbarrel.glb",
+      "bytes": 29552,
+      "sha256": "78c7673b8f7f92a1c132d44aa899a35c1fdb8988056213cdc55a6a1df4df1c3f"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Barricades_static/barricade_concrete.glb",
+      "localPath": "Content/Props/Barricades_static/barricade_concrete.glb",
+      "bytes": 40048,
+      "sha256": "f8ac0c48d3dea118a4a4790428790cdf3af7233e16a8f3474b188211504dcd42"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Barricades_static/barricade_cover_wood_static.glb",
+      "localPath": "Content/Props/Barricades_static/barricade_cover_wood_static.glb",
+      "bytes": 67760,
+      "sha256": "9e27a00294876f61d46de2b5276a6d3edd9703a078b67434e2ffa0cf33457b5f"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Covers/cover_c.glb",
+      "localPath": "Content/Props/Covers/cover_c.glb",
+      "bytes": 53484,
+      "sha256": "715c2075a0e6907124fe7f72da77e1ceac52e5dc4465fd81d9ef3e3274af7f3e"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Covers/scientist_cover_a.glb",
+      "localPath": "Content/Props/Covers/scientist_cover_a.glb",
+      "bytes": 62920,
+      "sha256": "93fad37c0a0c62c40587b231688ff0359e7f4b684838baeb558344c39f93ddd0"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Covers/scientist_cover_b.glb",
+      "localPath": "Content/Props/Covers/scientist_cover_b.glb",
+      "bytes": 58700,
+      "sha256": "dd8eac51cb2a86ed3a2e1f5672cb1f176611dec0d589f39f444bbb104117939c"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Covers/scientist_cover_c.glb",
+      "localPath": "Content/Props/Covers/scientist_cover_c.glb",
+      "bytes": 58740,
+      "sha256": "5b08fcda8ce2ed1009adc7485b9d6cda79bbf7887d27282f6610378f8c390e4b"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Fishing_nets/fishing_net_crate_a.glb",
+      "localPath": "Content/Props/Fishing_nets/fishing_net_crate_a.glb",
+      "bytes": 238444,
+      "sha256": "82b3a9f2e306346e0b74ae34a3c54bc7f39056c6d1846d74c3ca804fa7ac00d0"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Fishing_nets/fishing_net_crate_b.glb",
+      "localPath": "Content/Props/Fishing_nets/fishing_net_crate_b.glb",
+      "bytes": 238392,
+      "sha256": "8ef69a7cc1f534677b3424e3d28726410cd5da37354f59d7f69a8f62a452e00d"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Fog Machine/fogmachine.glb",
+      "localPath": "Content/Props/Fog Machine/fogmachine.glb",
+      "bytes": 20972,
+      "sha256": "fbc73df23748b9f3eb9545a03af5b3e887f6e8be6c65fe34e01bd0bd065ff993"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Food Containers/applecrate_a.glb",
+      "localPath": "Content/Props/Food Containers/applecrate_a.glb",
+      "bytes": 104976,
+      "sha256": "d8951163cbe097c9fbc464280c796fe43dc717c839c8cd76556927fe5cbe6cc4"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Food Containers/orangecrate_a.glb",
+      "localPath": "Content/Props/Food Containers/orangecrate_a.glb",
+      "bytes": 105340,
+      "sha256": "6c834de74bed7b5076c4cf67fe78bdd11ebe03469b8bb4709c024d099572ec6a"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Food Containers/potatocrate_a.glb",
+      "localPath": "Content/Props/Food Containers/potatocrate_a.glb",
+      "bytes": 102120,
+      "sha256": "b7bac95a11676e460ebaf9f608f17529c44757cfb2534c90a9c2557a56529bb8"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Helicopter_parts/heli_cockpit.glb",
+      "localPath": "Content/Props/Helicopter_parts/heli_cockpit.glb",
+      "bytes": 98316,
+      "sha256": "8d7e2e7773ae78336aa7c743cef9ae48d4f3bda819137145d84f06d032092dbd"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Helicopter_parts/heli_door_a.glb",
+      "localPath": "Content/Props/Helicopter_parts/heli_door_a.glb",
+      "bytes": 33152,
+      "sha256": "6e61051d94f225a92e38da9c0d8fab60525a6a6c7e8fcf60dd7b7553d94731d4"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Helicopter_parts/heli_gun.glb",
+      "localPath": "Content/Props/Helicopter_parts/heli_gun.glb",
+      "bytes": 39972,
+      "sha256": "5dcf9691383b33195d7b070730826040f028a214ff388c3d13720cd2de46997f"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Helicopter_parts/heli_tail.glb",
+      "localPath": "Content/Props/Helicopter_parts/heli_tail.glb",
+      "bytes": 34936,
+      "sha256": "6bc7196a6483deda6da2896ef3244b48f73a7ae66ff0ea4baed9bd24fa60b3b9"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Helipad_tarpaulin/helipad_tarpaulin.glb",
+      "localPath": "Content/Props/Helipad_tarpaulin/helipad_tarpaulin.glb",
+      "bytes": 310776,
+      "sha256": "141337f65c3484b45624504af51673c3be43fe2596ef87abfeaa1897e5cdfb41"
+    },
+    {
+      "sourcePath": "assets/Content/Props/JerryCan/jerrycan_black.glb",
+      "localPath": "Content/Props/JerryCan/jerrycan_black.glb",
+      "bytes": 22948,
+      "sha256": "8998b1c16ac4b3f8276dca93a68213b803e5c2061d96360faa9b916cfdc100aa"
+    },
+    {
+      "sourcePath": "assets/Content/Props/JerryCan/jerrycan_yellow.glb",
+      "localPath": "Content/Props/JerryCan/jerrycan_yellow.glb",
+      "bytes": 38664,
+      "sha256": "55c0400f8001d9083271c6c1d9271acff22ed3f8e65f16ee5f391601759dfa4d"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Junkyard_stacks/junkyard_stack_a.glb",
+      "localPath": "Content/Props/Junkyard_stacks/junkyard_stack_a.glb",
+      "bytes": 249436,
+      "sha256": "45006063d5b2bc75bb66a94486b021c7b6d18477500020cb86976815c7ceaebc"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Junkyard_stacks/junkyard_stack_b.glb",
+      "localPath": "Content/Props/Junkyard_stacks/junkyard_stack_b.glb",
+      "bytes": 249648,
+      "sha256": "94ae2af54fc8d13e0746bc2066b8fdf0af7a228a7d0153d61d68916056a8576e"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Junkyard_stacks/junkyard_stack_c.glb",
+      "localPath": "Content/Props/Junkyard_stacks/junkyard_stack_c.glb",
+      "bytes": 239664,
+      "sha256": "cc32dd5ae6cd83ad8879a498e8d58ee684d095f17bee77b1c8023fc56f5de469"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Junkyard_stacks/junkyard_stack_d.glb",
+      "localPath": "Content/Props/Junkyard_stacks/junkyard_stack_d.glb",
+      "bytes": 502240,
+      "sha256": "49864c2b22a24cbcb56507de2b9cca641ea044a110179a858ec08fc58f4daa1e"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Junkyard_stacks/junkyard_stack_e.glb",
+      "localPath": "Content/Props/Junkyard_stacks/junkyard_stack_e.glb",
+      "bytes": 252056,
+      "sha256": "18370db4643d0e31979702d331f7d3689bb1e4f8f7da4a2f8502f036007e390c"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Junkyard_stacks/junkyard_stack_f.glb",
+      "localPath": "Content/Props/Junkyard_stacks/junkyard_stack_f.glb",
+      "bytes": 248060,
+      "sha256": "f949832d549ca44b69f5187170e8296b8c0156ccce871df61ff55d3973e8fd1b"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Junkyard_stacks/junkyard_stack_h.glb",
+      "localPath": "Content/Props/Junkyard_stacks/junkyard_stack_h.glb",
+      "bytes": 505728,
+      "sha256": "bf5ca3f51e1e2ed3b2b2378adb88156ecd79df1313d0cb22ba46329ee6551f4d"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Junkyard_stacks/junkyard_stack_j.glb",
+      "localPath": "Content/Props/Junkyard_stacks/junkyard_stack_j.glb",
+      "bytes": 148252,
+      "sha256": "815f28c04f488f5404a19e2ea9bf571401f4bcce0a488ef5b23ba9fa0043db1f"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Ladder_set/ladder_industrial_600.glb",
+      "localPath": "Content/Props/Ladder_set/ladder_industrial_600.glb",
+      "bytes": 47832,
+      "sha256": "cef982b79dd232866bd0aa903a3b83b02480f6342c79547fde0bbe3d3d8fd3e1"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Large_Rubbish_Skip/large_rubbish_skip.glb",
+      "localPath": "Content/Props/Large_Rubbish_Skip/large_rubbish_skip.glb",
+      "bytes": 26140,
+      "sha256": "3ff086197f3674bc2426805a4fabf920ef2826da68a9c03929776aae0d0bff44"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Lightpost/lightpost_a.glb",
+      "localPath": "Content/Props/Lightpost/lightpost_a.glb",
+      "bytes": 257016,
+      "sha256": "e4b8a79cc2683a1bb9a169a431d484946ed285c671ee8c5b88a08517d06182ce"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Lights_Prefabs/searchlight_static_mt.glb",
+      "localPath": "Content/Props/Lights_Prefabs/searchlight_static_mt.glb",
+      "bytes": 110024,
+      "sha256": "58bdadab9f9ae17f8eb52725acdc022a55a3bed9b23281340e98ad72f7725c06"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Mannequin/Models/Merged/mannequin_fashionpose_wood.glb",
+      "localPath": "Content/Props/Mannequin/Models/Merged/mannequin_fashionpose_wood.glb",
+      "bytes": 273192,
+      "sha256": "ebddd579e07dc78a5e6b2473195f99cef97d43c2fb0fdb637cd6ba8327c2f335"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Mannequin/Models/Merged/mannequin_front_hide.glb",
+      "localPath": "Content/Props/Mannequin/Models/Merged/mannequin_front_hide.glb",
+      "bytes": 158004,
+      "sha256": "3bf2f2e2f61020c2d9b215333822576ffb6e4e6e15c1d79fabbd364937891d30"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Mannequin/Models/Merged/mannequin_roadsign.glb",
+      "localPath": "Content/Props/Mannequin/Models/Merged/mannequin_roadsign.glb",
+      "bytes": 208172,
+      "sha256": "f518ed84c665a11254ce51837eeb82a0741b5357903d398aa286ae8bbf2fa0d7"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Metal Wheel/metalwheel.glb",
+      "localPath": "Content/Props/Metal Wheel/metalwheel.glb",
+      "bytes": 22676,
+      "sha256": "265f003140f27705e923c9778e3e2f2bdbca00bc6061b1372c01fcfa09a697cf"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Misc_dressing_props/cargo_pack.glb",
+      "localPath": "Content/Props/Misc_dressing_props/cargo_pack.glb",
+      "bytes": 15248,
+      "sha256": "34ef7c851ce1efa67ba739d5612a13eadddccf9812b7730830b4b609a79d7a52"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Misc_dressing_props/Minors/light_barrel_station.glb",
+      "localPath": "Content/Props/Misc_dressing_props/Minors/light_barrel_station.glb",
+      "bytes": 215900,
+      "sha256": "212f13921b1f9468b4c8b0810d9da4f8c74be9d3f539b19df91938fb74bea126"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Misc_dressing_props/Minors/scrap_ceilinglight_flickering.glb",
+      "localPath": "Content/Props/Misc_dressing_props/Minors/scrap_ceilinglight_flickering.glb",
+      "bytes": 39136,
+      "sha256": "6f5a796542e65f378bc688f1c165144aeaf5398f56f7dc8463a01f6d1af9cce1"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Misc_dressing_props/Minors/scrap_ceilinglight.glb",
+      "localPath": "Content/Props/Misc_dressing_props/Minors/scrap_ceilinglight.glb",
+      "bytes": 39112,
+      "sha256": "c80ed67f9f16a2d12ef8ff4b18f5e46d78953dda032814fe0de73b697a936f2a"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Misc_dressing_props/toolbox.glb",
+      "localPath": "Content/Props/Misc_dressing_props/toolbox.glb",
+      "bytes": 31488,
+      "sha256": "35162f630859ac5749d426363084482cb60fa0eb4a4517ba0a1d28d94ddb3098"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Misc_dressing_props/workbench.glb",
+      "localPath": "Content/Props/Misc_dressing_props/workbench.glb",
+      "bytes": 33472,
+      "sha256": "a324caf1cd72c8bc67518905d19b662cb724a892a6f9396912921245b225079a"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Old Shelves/shelf1v2.glb",
+      "localPath": "Content/Props/Old Shelves/shelf1v2.glb",
+      "bytes": 43320,
+      "sha256": "2b559d465c49d1237aa3667a4535f25dc42d0a5dc18c797c81f56deedbaca48b"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Old Shelves/shelf3v2.glb",
+      "localPath": "Content/Props/Old Shelves/shelf3v2.glb",
+      "bytes": 42268,
+      "sha256": "ee90fee852ac43eb349e7338994b69568ecc498798795783337ed731285ced50"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Rubble_piles/breeze_block_pile_a.glb",
+      "localPath": "Content/Props/Rubble_piles/breeze_block_pile_a.glb",
+      "bytes": 56512,
+      "sha256": "b8b7df3f3fa4eb1f4e1d9bcd0c859abefe994eda863101a22b146e9f5512266c"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Rubble_piles/brick_pile_3x6.glb",
+      "localPath": "Content/Props/Rubble_piles/brick_pile_3x6.glb",
+      "bytes": 37912,
+      "sha256": "6f454aba8b21b839e35d37555199b5a41731d7d97930f78a67596ea26cbdc575"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Rubble_piles/brick_pile_6x6.glb",
+      "localPath": "Content/Props/Rubble_piles/brick_pile_6x6.glb",
+      "bytes": 40360,
+      "sha256": "9ef22fc82d5d977343ad1f8c14f2bdd23b56a65c360c89b483459de188362c73"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Rubble_piles/coal_pile_gravel_6x6.glb",
+      "localPath": "Content/Props/Rubble_piles/coal_pile_gravel_6x6.glb",
+      "bytes": 120340,
+      "sha256": "f6be2dbf5371dfc4bf4c17bd536d2e3fc2aa93697cddeecca7bafb94bfc0b339"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Rubble_piles/conc_pile_3x6.glb",
+      "localPath": "Content/Props/Rubble_piles/conc_pile_3x6.glb",
+      "bytes": 59612,
+      "sha256": "be07716902d05366078ec9748ec3d582dbe7f75a2bf4ede774039d8d1d13073c"
+    },
+    {
+      "sourcePath": "assets/Content/Props/Rubble_piles/conc_pile_6x6.glb",
+      "localPath": "Content/Props/Rubble_piles/conc_pile_6x6.glb",
+      "bytes": 64088,
+      "sha256": "a9b8ff6f0d66bd4dc356c386a71b04e9698dc0a6f2b1bf87f3c73f4d3a06d876"
+    },
+    {
+      "sourcePath": "assets/Content/Vehicles/AttackHelicopter/ahmissilepod.glb",
+      "localPath": "Content/Vehicles/AttackHelicopter/ahmissilepod.glb",
+      "bytes": 18144,
+      "sha256": "4f86cd9900e927e25c5e73552420fb261fa736292279d2978654b80017f39a98"
+    },
+    {
+      "sourcePath": "assets/Content/Vehicles/AttackHelicopter/attackhelicopter.entity.glb",
+      "localPath": "Content/Vehicles/AttackHelicopter/attackhelicopter.entity.glb",
+      "bytes": 279320,
+      "sha256": "0f4cbd1bffdee7297ca1eb425d7cb35cd3a5200de75e44113d61fe93aba63f13"
+    },
+    {
+      "sourcePath": "assets/Content/Vehicles/AttackHelicopter/SubEnts/turret_attackheli.glb",
+      "localPath": "Content/Vehicles/AttackHelicopter/SubEnts/turret_attackheli.glb",
+      "bytes": 57020,
+      "sha256": "4f69212558a1c31b488b2d570bd832c058b3461e06fa91d3c2c1f70e3af63e8b"
+    },
+    {
+      "sourcePath": "assets/Content/Vehicles/Boats/PTboat/Turrets/50cal/Prefabs/50_cal_rear_single.glb",
+      "localPath": "Content/Vehicles/Boats/PTboat/Turrets/50cal/Prefabs/50_cal_rear_single.glb",
+      "bytes": 160024,
+      "sha256": "8d641c3a81c47c3852479e6d0a119a93562c96034fca6a5d15ebd7abd2dafd1d"
+    },
+    {
+      "sourcePath": "assets/Content/Vehicles/Compact/compact_car_a_rusty.glb",
+      "localPath": "Content/Vehicles/Compact/compact_car_a_rusty.glb",
+      "bytes": 234440,
+      "sha256": "616f0acca8338df6c471783397bdc34921e06194c6428006749e59698596e612"
+    },
+    {
+      "sourcePath": "assets/Content/Vehicles/Crane_Magnet/shreddable_pickuptruck.glb",
+      "localPath": "Content/Vehicles/Crane_Magnet/shreddable_pickuptruck.glb",
+      "bytes": 150988,
+      "sha256": "ed86cec0cc0929288cdef0fe541a1fae9ac6a879e33d8dd67e8c7e5de8765315"
+    },
+    {
+      "sourcePath": "assets/Content/Vehicles/MLRS/rocket_mlrs.worldmodel.glb",
+      "localPath": "Content/Vehicles/MLRS/rocket_mlrs.worldmodel.glb",
+      "bytes": 25048,
+      "sha256": "1483fbcd4af32e7eabd1b2b684491315e75f5e767920b5e683fba468b7216687"
+    },
+    {
+      "sourcePath": "assets/prefabs/Weapons/ak47u/ak47u.worldmodel.glb",
+      "localPath": "prefabs/Weapons/ak47u/ak47u.worldmodel.glb",
+      "bytes": 84944,
+      "sha256": "a2ee0e448ceed0382496d55982310a994903ad917b22ff6c11a0c6f4714a61da"
+    },
+    {
+      "sourcePath": "assets/prefabs/Weapons/HMLMG/hmlmg.worldmodel.glb",
+      "localPath": "prefabs/Weapons/HMLMG/hmlmg.worldmodel.glb",
+      "bytes": 164000,
+      "sha256": "bc86e5d02f6626a8e356dd5923914d40c5b38cb334ef2f18abb99d559daabad8"
+    },
+    {
+      "sourcePath": "assets/prefabs/Weapons/L96/l96.worldmodel.glb",
+      "localPath": "prefabs/Weapons/L96/l96.worldmodel.glb",
+      "bytes": 41816,
+      "sha256": "dab0277180a17d0bbf218a0c7048214551f0bb658080904e682cd07645c877e8"
+    },
+    {
+      "sourcePath": "assets/prefabs/Weapons/lr300/lr300.worldmodel.glb",
+      "localPath": "prefabs/Weapons/lr300/lr300.worldmodel.glb",
+      "bytes": 122584,
+      "sha256": "eeb61fd51ea76f704b38453510b70d87e447417460dbc038ef4200a5fe0201d7"
+    },
+    {
+      "sourcePath": "assets/prefabs/Weapons/M39 EMR/m39.worldmodel.glb",
+      "localPath": "prefabs/Weapons/M39 EMR/m39.worldmodel.glb",
+      "bytes": 41852,
+      "sha256": "e23e9faa023d622fe2fa54727e58151f2965333f28e42f1d5a43995f0a4bec30"
+    },
+    {
+      "sourcePath": "assets/prefabs/Weapons/Minigun/minigun.worldmodel.glb",
+      "localPath": "prefabs/Weapons/Minigun/minigun.worldmodel.glb",
+      "bytes": 74508,
+      "sha256": "552eab91dc1329825e4f7d6761a9b8365f117f3c0404971f699bd30ed5acc0ef"
+    },
+    {
+      "sourcePath": "assets/prefabs/Weapons/mp5/mp5.worldmodel.glb",
+      "localPath": "prefabs/Weapons/mp5/mp5.worldmodel.glb",
+      "bytes": 68080,
+      "sha256": "de2f2077f931b7bcfd1eaf42514969d350cf5a3e85a75988f44b2fa7d17805e6"
+    },
+    {
+      "sourcePath": "assets/prefabs/Weapons/RocketLauncher/rocketlauncher.worldmodel.glb",
+      "localPath": "prefabs/Weapons/RocketLauncher/rocketlauncher.worldmodel.glb",
+      "bytes": 25592,
+      "sha256": "2097642c2494dd52e9585d03906a27b18ab27bfd220b04840edfce440e717c77"
+    },
+    {
+      "sourcePath": "assets/prefabs/Weapons/spas12/spas12.worldmodel.glb",
+      "localPath": "prefabs/Weapons/spas12/spas12.worldmodel.glb",
+      "bytes": 51208,
+      "sha256": "aa164c54ab068cf3b95029020b26674b8ed70c7a28f7fc7395abb92a8956eeec"
+    },
+    {
+      "sourcePath": "assets/prefabs/Weapons/Thompson/thompson.worldmodel.glb",
+      "localPath": "prefabs/Weapons/Thompson/thompson.worldmodel.glb",
+      "bytes": 40688,
+      "sha256": "3ed0daaa2d9212d418fe5154e0923691f36a9fce833269fdef18899de4d26b49"
+    }
+  ]
+}

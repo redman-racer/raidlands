@@ -1,4 +1,5 @@
-import { existsSync } from "node:fs";
+import { createHash } from "node:crypto";
+import { existsSync, readFileSync } from "node:fs";
 import { resolve } from "node:path";
 import { describe, expect, it } from "vitest";
 import {
@@ -12,6 +13,10 @@ import {
 import {
   buildIndustrialPedestal, pedestalConfigForRank, pedestalRanksForLayout,
 } from "../assets/ts/leaderboard-podium/pedestal";
+import {
+  anchorPoint, ArenaManifest, clampArenaRotation, generatedThemePlacements, normalizationScale,
+  podiumCategoryTitle, podiumThemeFor,
+} from "../assets/ts/leaderboard-podium/scene-policy";
 
 function anchoredRoot(anchors: Record<string, [number, number, number]>): Group {
   const root = new Group();
@@ -115,5 +120,55 @@ describe("leaderboard podium policy", () => {
     expect(pedestalRanksForLayout("single")).toEqual([1]);
     expect(pedestalRanksForLayout("trio")).toEqual([1, 2, 3]);
     expect(pedestalRanksForLayout("unexpected")).toEqual([1, 2, 3]);
+  });
+
+  it("maps live leaderboard views to the approved arena themes and titles", () => {
+    expect(podiumThemeFor("players", "kills")).toBe("most-kills");
+    expect(podiumThemeFor("players", "rp")).toBe("most-rp");
+    expect(podiumThemeFor("players", "npc_kills")).toBe("npc-hunter");
+    expect(podiumThemeFor("raids", "c4_used")).toBe("raid-damage");
+    expect(podiumThemeFor("players", "playtime")).toBe("neutral");
+    expect(podiumCategoryTitle("raids", "tcs_destroyed")).toBe("MOST TCS DESTROYED");
+  });
+
+  it("normalizes placement bounds, anchors ground contact, and clamps drag rotation", () => {
+    const bounds = new Box3(new Vector3(-1, 0, -.5), new Vector3(1, 2, .5));
+    expect(normalizationScale(bounds, { normalizeMode: "AABB bottom-center", targetExtent: 4 })).toBeCloseTo(2);
+    expect(normalizationScale(bounds, { normalizeMode: "Native-meters preferred", targetExtent: 4 })).toBe(1);
+    expect(anchorPoint(bounds, "Bottom-center").toArray()).toEqual([0, 0, 0]);
+    const clamped = clampArenaRotation(Math.PI, -Math.PI);
+    expect(clamped.yaw).toBeCloseTo(18 * Math.PI / 180);
+    expect(clamped.pitch).toBeCloseTo(-3 * Math.PI / 180);
+  });
+
+  it("vendors the complete pinned scene with valid hashes and deterministic theme sockets", () => {
+    const manifestPath = resolve(__dirname, "../assets/data/leaderboard-scene-manifest.json");
+    const manifestText = readFileSync(manifestPath, "utf8");
+    const manifest = JSON.parse(manifestText) as ArenaManifest;
+    expect(manifestText).not.toMatch(/https?:\/\//i);
+    expect(manifest.revision).toBe("494242bdeae941e3389b34a819c514aae2cf39f8");
+    expect(manifest.assets).toHaveLength(76);
+    expect(manifest.basePlacements).toHaveLength(81);
+    expect(manifest.characterAnchors).toHaveLength(3);
+    expect(Object.keys(manifest.themes)).toHaveLength(6);
+    for (const asset of manifest.assets) {
+      expect(asset.sourcePath.startsWith("assets/")).toBe(true);
+      expect(asset.localPath.includes("../")).toBe(false);
+      const local = resolve(__dirname, "../assets/media/models/leaderboard-scene", asset.localPath);
+      const bytes = readFileSync(local);
+      expect(bytes.byteLength).toBe(asset.bytes);
+      expect(createHash("sha256").update(bytes).digest("hex")).toBe(asset.sha256);
+    }
+    const rp = generatedThemePlacements("most-rp", manifest.themes["most-rp"]);
+    expect(rp.length).toBeGreaterThan(8);
+    expect(rp.length).toBeLessThanOrEqual(15);
+    expect(generatedThemePlacements("most-rp", manifest.themes["most-rp"])).toEqual(rp);
+  });
+
+  it("ships a generated local WebP fallback poster", () => {
+    const poster = readFileSync(resolve(__dirname, "../assets/media/leaderboard-podium-poster.webp"));
+    expect(poster.byteLength).toBeGreaterThan(20_000);
+    expect(poster.subarray(0, 4).toString("ascii")).toBe("RIFF");
+    expect(poster.subarray(8, 12).toString("ascii")).toBe("WEBP");
   });
 });

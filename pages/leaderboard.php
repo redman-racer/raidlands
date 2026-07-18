@@ -274,10 +274,28 @@ function leaderboard_podium_markup(array $leaders, string $board, string $metric
     $empty = $cards === '' ? '<p class="leaderboard-podium-empty">The podium is waiting for contenders.</p>' : '';
     $payload = json_encode(['leaders' => array_values(array_slice($leaders, 0, 3)), 'board' => $board, 'metric' => $metric], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 
+    $theme = match (true) {
+        $board === 'raids', in_array($metric, ['raid_damage', 'rockets_used', 'c4_used', 'satchels_used', 'explosive_ammo_used', 'tcs_destroyed'], true) => 'RAID DAMAGE',
+        $board === 'rp-games', in_array($metric, ['rp', 'total-won'], true) => 'MOST RP',
+        $metric === 'npc_kills' => 'NPC HUNTER',
+        $metric === 'deaths_by_npc' => 'FALLEN TO NPCS',
+        $metric === 'playtime' => 'MOST PLAYTIME',
+        $metric === 'deaths' => 'MOST DEATHS',
+        $metric === 'kdr' => 'BEST K/D',
+        default => 'MOST KILLS',
+    };
+
     return '<section class="leaderboard-podium" data-leaderboard-podium data-board="' . e($board) . '" data-metric="' . e($metric) . '"'
         . ' data-model-base="' . e(asset_url('media/models/leaderboard/')) . '"'
+        . ' data-scene-manifest="' . e(asset_url('data/leaderboard-scene-manifest.json')) . '"'
+        . ' data-scene-model-base="' . e(asset_url('media/models/leaderboard-scene/')) . '"'
+        . ' data-poster-src="' . e(asset_url('media/leaderboard-podium-poster.webp')) . '"'
         . ' data-decoder-path="' . e(asset_url('media/models/draco/')) . '" aria-label="Top three podium">'
-        . '<div class="leaderboard-podium-stage" data-podium-stage aria-hidden="true"></div>'
+        . '<div class="leaderboard-podium-heading"><span>Current category</span><strong data-podium-category>' . e($theme) . '</strong></div>'
+        . '<div class="leaderboard-podium-drag" aria-hidden="true"><span>◌</span> Drag to rotate</div>'
+        . '<div class="leaderboard-podium-stage" data-podium-stage aria-hidden="true">'
+        . '<img class="leaderboard-podium-poster" src="' . e(asset_url('media/leaderboard-podium-poster.webp')) . '" alt="" decoding="async">'
+        . '</div>'
         . '<div class="leaderboard-podium-cards" data-podium-cards>' . $cards . $empty . '</div>'
         . '<p class="leaderboard-podium-status" data-podium-status aria-live="polite">Loading 3D podium scene.</p>'
         . '<script type="application/json" data-podium-payload>' . ($payload ?: '{"leaders":[]}') . '</script>'

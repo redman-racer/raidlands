@@ -1,20 +1,39 @@
 import {
-  ACESFilmicToneMapping, AdditiveBlending, AmbientLight, Box3, BufferAttribute, BufferGeometry, Color,
-  CylinderGeometry, DirectionalLight, FogExp2, Float32BufferAttribute, Group, Mesh, MeshStandardMaterial, PlaneGeometry, SphereGeometry,
-  Object3D, PCFSoftShadowMap, PerspectiveCamera, PointLight, Points, PointsMaterial, Scene, SkinnedMesh, SRGBColorSpace,
-  Vector3, WebGLRenderer,
+  ACESFilmicToneMapping, AdditiveBlending, AmbientLight, Box3, BufferAttribute, BufferGeometry,
+  CanvasTexture, Color, ConeGeometry, CylinderGeometry, DirectionalLight, FogExp2,
+  Float32BufferAttribute, Group, HemisphereLight, LinearFilter, MathUtils, Mesh, MeshBasicMaterial,
+  MeshStandardMaterial, Object3D, PCFSoftShadowMap, PerspectiveCamera, PlaneGeometry, PointLight,
+  Points, PointsMaterial, RectAreaLight, Scene, SkinnedMesh, SpotLight, Sprite, SpriteMaterial,
+  SRGBColorSpace, Vector2, Vector3, WebGLRenderer,
 } from "three";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
+import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
+import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { SSAOPass } from "three/addons/postprocessing/SSAOPass.js";
+import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
+import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
+import { clone as cloneSkinnedScene } from "three/addons/utils/SkeletonUtils.js";
 import {
-  Leader, LEADERBOARD_PODIUM_ASSETS, LEADERBOARD_PODIUM_PRESETS, LEADERBOARD_PODIUM_THEMES,
+  Leader, LEADERBOARD_PODIUM_ASSETS, LEADERBOARD_PODIUM_PRESETS,
   leaderboardPodiumMetricValue, podiumWearables, podiumWeapon,
 } from "./policy";
 import { normalizeWearableOrigin, podiumCharacterYaw, podiumWeaponLayout } from "./layout";
 import { buildIndustrialPedestal, pedestalConfigForRank, pedestalRanksForLayout } from "./pedestal";
+import {
+  anchorPoint, ArenaManifest, ArenaPlacement, clampArenaRotation, generatedThemePlacements,
+  normalizationScale, podiumCategoryTitle, podiumThemeFor,
+} from "./scene-policy";
 
 type Payload = { leaders?: Leader[]; metric?: string; board?: string };
+type CameraRecord = Record<string, unknown>;
+
+const APPROVED_SCENE_REVISION = "494242bdeae941e3389b34a819c514aae2cf39f8";
+const SCENE_MODEL_FALLBACKS: Record<string, string> = {
+  "prefabs/Weapons/lr300/lr300.worldmodel.glb": "prefabs/Weapons/ak47u/ak47u.worldmodel.glb",
+  "prefabs/Weapons/mp5/mp5.worldmodel.glb": "prefabs/Weapons/ak47u/ak47u.worldmodel.glb",
+};
 
 function supportsWebGL2(): boolean {
   try { return Boolean(document.createElement("canvas").getContext("webgl2")); } catch { return false; }
@@ -59,26 +78,23 @@ function renderCards(host: HTMLElement, leaders: Leader[], board: string, metric
 }
 
 function poseWearable(root: Object3D, rank: number) {
-  const lean = [0, -0.035, 0.035][rank] || 0;
+  const lean = [0, -0.025, 0.025][rank] || 0;
   root.traverse((node) => {
     const name = node.name.toLowerCase();
     if (name === "spine2") node.rotation.z += lean;
-    if (name === "l_upperarm") { node.rotation.z -= 0.9; node.rotation.x += 0.18; }
-    if (name === "r_upperarm") { node.rotation.z += 0.9; node.rotation.x -= 0.18; }
-    if (name === "l_forearm") { node.rotation.y -= 0.58; node.rotation.z -= 0.18; }
-    if (name === "r_forearm") { node.rotation.y += 0.58; node.rotation.z += 0.18; }
-    if (name === "head") node.rotation.y += [0, 0.08, -0.08][rank] || 0;
+    if (name === "l_upperarm") { node.rotation.z += 1.16; node.rotation.x += 0.08; node.rotation.y -= 0.08; }
+    if (name === "r_upperarm") { node.rotation.z -= 1.16; node.rotation.x -= 0.08; node.rotation.y += 0.08; }
+    if (name === "l_forearm") { node.rotation.y -= 0.3; node.rotation.z += 0.12; }
+    if (name === "r_forearm") { node.rotation.y += 0.3; node.rotation.z -= 0.12; }
+    if (name === "head") node.rotation.y += [0, 0.06, -0.06][rank] || 0;
     if ((node as Mesh).isMesh) {
       const mesh = node as Mesh;
-      mesh.castShadow = true; mesh.receiveShadow = true;
-      // Several exported Rust wearable skins omit non-rendering helper joints.
-      // Static bounds are fitted above, so skip Three's per-frame skinned culling pass.
-      mesh.frustumCulled = false;
+      mesh.castShadow = true; mesh.receiveShadow = true; mesh.frustumCulled = false;
     }
   });
 }
 
-function staticBounds(root: Object3D): Box3 {
+export function staticBounds(root: Object3D): Box3 {
   const bounds = new Box3(); bounds.makeEmpty(); root.updateMatrixWorld(true);
   root.traverse((node) => {
     const mesh = node as Mesh;
@@ -106,9 +122,7 @@ function expandSkinAttributes(mesh: SkinnedMesh): boolean {
   const weights = mesh.geometry.getAttribute("skinWeight");
   if (!position || !indices || !weights || indices.count !== position.count || weights.count !== position.count) return false;
   if (indices.itemSize === 4 && weights.itemSize === 4) return true;
-
-  const expandedIndices = new Uint16Array(position.count * 4);
-  const expandedWeights = new Float32Array(position.count * 4);
+  const expandedIndices = new Uint16Array(position.count * 4); const expandedWeights = new Float32Array(position.count * 4);
   for (let vertex = 0; vertex < position.count; vertex += 1) {
     for (let item = 0; item < 4; item += 1) {
       if (item < indices.itemSize) expandedIndices[vertex * 4 + item] = component(indices, vertex, item);
@@ -120,208 +134,416 @@ function expandSkinAttributes(mesh: SkinnedMesh): boolean {
   return true;
 }
 
+function numeric(record: CameraRecord, key: string, fallback = 0): number {
+  const value = Number(record[key]); return Number.isFinite(value) ? value : fallback;
+}
+
+function encodedPath(pathname: string): string {
+  return pathname.split("/").map((segment) => encodeURIComponent(segment)).join("/");
+}
+
+function joinedUrl(base: string, relative: string): string {
+  const normalizedBase = base.endsWith("/") ? base : `${base}/`;
+  return new URL(encodedPath(relative), new URL(normalizedBase, document.baseURI)).href;
+}
+
+function seededRandom(seed: number): () => number {
+  let state = seed >>> 0;
+  return () => { state = (state * 1664525 + 1013904223) >>> 0; return state / 0x100000000; };
+}
+
+function hazeTexture(): CanvasTexture {
+  const canvas = document.createElement("canvas"); canvas.width = 128; canvas.height = 128;
+  const context = canvas.getContext("2d")!; const gradient = context.createRadialGradient(64, 64, 0, 64, 64, 64);
+  gradient.addColorStop(0, "rgba(185,196,204,.38)"); gradient.addColorStop(.4, "rgba(119,130,138,.14)"); gradient.addColorStop(1, "rgba(45,51,55,0)");
+  context.fillStyle = gradient; context.fillRect(0, 0, 128, 128);
+  const texture = new CanvasTexture(canvas); texture.minFilter = LinearFilter; texture.magFilter = LinearFilter; return texture;
+}
+
 class PodiumScene {
   private scene = new Scene();
-  private camera = new PerspectiveCamera(38, 1, 0.1, 100);
+  private camera = new PerspectiveCamera(41, 1, 0.05, 60);
   private renderer: WebGLRenderer;
+  private composer?: EffectComposer;
+  private displayRoot = new Group();
+  private worldRoot = new Group();
+  private baseRoot = new Group();
+  private pedestalRoot = new Group();
   private characterRoot = new Group();
-  private propRoot = new Group();
+  private themeRoot = new Group();
   private effectsRoot = new Group();
   private loader: GLTFLoader;
+  private modelCache = new Map<string, Promise<Object3D>>();
   private observer: ResizeObserver;
   private frame = 0;
   private disposed = false;
   private generation = 0;
   private reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  private mobile = window.matchMedia("(max-width: 700px)").matches;
   private singleLayout: boolean;
+  private manifest?: ArenaManifest;
+  private arenaReady: Promise<void>;
   private rankX = [0, -2.55, 2.55];
   private standingHeights = [0.63, 0.4725, 0.4347];
+  private cameraBase = new Vector3(0, 4.35, 13.2);
+  private cameraTarget = new Vector3(0, 1.72, -0.55);
+  private targetYaw = 0;
+  private targetPitch = 0;
+  private currentYaw = 0;
+  private currentPitch = 0;
+  private dragPointer = -1;
+  private dragX = 0;
+  private dragY = 0;
 
   constructor(private host: HTMLElement) {
     const stage = host.querySelector<HTMLElement>("[data-podium-stage]"); if (!stage) throw new Error("missing-stage");
-    this.renderer = new WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance" });
-    this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, 1.7)); this.renderer.outputColorSpace = SRGBColorSpace;
-    this.renderer.toneMapping = ACESFilmicToneMapping; this.renderer.toneMappingExposure = 1.08;
-    this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = PCFSoftShadowMap; stage.replaceChildren(this.renderer.domElement);
+    const capture = new URLSearchParams(location.search).has("podium-capture");
+    if (capture) {
+      host.dataset.podiumCapture = "true";
+      document.documentElement.dataset.podiumCapture = "true";
+    }
+    this.renderer = new WebGLRenderer({ antialias: true, alpha: true, powerPreference: "high-performance", preserveDrawingBuffer: capture });
+    this.renderer.setPixelRatio(Math.min(devicePixelRatio || 1, this.mobile ? 1.25 : 1.7));
+    this.renderer.outputColorSpace = SRGBColorSpace; this.renderer.toneMapping = ACESFilmicToneMapping;
+    this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = PCFSoftShadowMap;
+    this.renderer.domElement.dataset.podiumCanvas = ""; this.renderer.domElement.style.touchAction = "none"; stage.append(this.renderer.domElement);
     this.singleLayout = host.dataset.podiumLayout === "single";
-    this.camera.position.set(0, 2.65, this.singleLayout ? 6.4 : 8.4); this.camera.lookAt(0, 1.22, 0);
     const draco = new DRACOLoader(); draco.setDecoderPath(host.dataset.decoderPath || "");
     this.loader = new GLTFLoader(); this.loader.setDRACOLoader(draco); this.loader.setMeshoptDecoder(MeshoptDecoder);
-    this.buildStage(); this.observer = new ResizeObserver(() => this.resize()); this.observer.observe(stage); this.resize();
-    this.renderer.domElement.addEventListener("webglcontextlost", (event) => { event.preventDefault(); this.fail("3D unavailable. Showing leaderboard cards."); });
+    this.displayRoot.name = "ORBIT_PIVOT"; this.worldRoot.name = "SCENE_ROOT";
+    this.worldRoot.add(this.baseRoot, this.pedestalRoot, this.characterRoot, this.themeRoot, this.effectsRoot);
+    this.displayRoot.add(this.worldRoot); this.scene.add(this.displayRoot);
+    if (this.singleLayout) { this.buildSingleStage(); this.arenaReady = Promise.resolve(); }
+    else this.arenaReady = this.buildArenaStage();
+    this.observer = new ResizeObserver(() => this.resize()); this.observer.observe(stage); this.resize();
+    this.renderer.domElement.addEventListener("pointerdown", this.onPointerDown);
+    this.renderer.domElement.addEventListener("pointermove", this.onPointerMove);
+    this.renderer.domElement.addEventListener("pointerup", this.onPointerUp);
+    this.renderer.domElement.addEventListener("pointercancel", this.onPointerUp);
+    this.renderer.domElement.addEventListener("webglcontextlost", (event) => { event.preventDefault(); this.fail("3D unavailable. Showing the arena poster and leaderboard cards."); });
     this.animate();
   }
 
-  private buildStage() {
+  private buildSingleStage() {
     this.scene.background = new Color(0x100f0d); this.scene.fog = new FogExp2(0x17130f, .045);
+    this.renderer.toneMappingExposure = 1.08;
     this.scene.add(new AmbientLight(0x8d8171, 1.15));
     const key = new DirectionalLight(0xffc184, 4.8); key.position.set(4, 9, 6); key.castShadow = true;
     key.shadow.mapSize.set(1024, 1024); key.shadow.camera.near = 1; key.shadow.camera.far = 24;
-    key.shadow.camera.left = -7; key.shadow.camera.right = 7; key.shadow.camera.top = 7; key.shadow.camera.bottom = -2; key.shadow.bias = -0.0006; this.scene.add(key);
+    key.shadow.camera.left = -4; key.shadow.camera.right = 4; key.shadow.camera.top = 5; key.shadow.camera.bottom = -2; key.shadow.bias = -0.0006; this.scene.add(key);
     const rim = new DirectionalLight(0xd45a22, 2.4); rim.position.set(-6, 5, -4); this.scene.add(rim);
-    const ground = new Mesh(new PlaneGeometry(24, 11), new MeshStandardMaterial({ color: 0x161512, metalness: .12, roughness: .97 }));
-    ground.rotation.x = -Math.PI / 2; ground.position.set(0, -.23, -1.8); ground.receiveShadow = true; this.scene.add(ground);
-    const floor = new Mesh(new CylinderGeometry(7.5, 8.2, 0.34, 12), new MeshStandardMaterial({ color: 0x211e19, metalness: 0.52, roughness: 0.68 }));
-    floor.position.y = -0.25; floor.receiveShadow = true; this.scene.add(floor);
-
-    // Industrial silhouettes and scattered rubble give the podium the depth of a Rust monument
-    // without inventing leaderboard state or requiring a separate environment payload.
-    const ruinMaterial = new MeshStandardMaterial({ color: 0x201d19, metalness: .58, roughness: .72 });
-    [-8.2, -6.9, -5.7, 5.8, 7.1, 8.35].forEach((x, index) => {
-      const height = [4.9, 3.1, 5.8, 3.8, 6.4, 4.5][index];
-      const tower = new Group();
-      const shaft = new Mesh(new CylinderGeometry(.075, .11, height, 6), ruinMaterial); shaft.position.y = height / 2;
-      const cap = new Mesh(new CylinderGeometry(.58, .72, .16, 8), ruinMaterial); cap.position.y = height * .72;
-      tower.add(shaft, cap);
-      for (let level = .5; level < height; level += .65) {
-        const brace = new Mesh(new CylinderGeometry(.025, .025, 1.05, 5), ruinMaterial);
-        brace.position.y = level; brace.rotation.z = Math.PI / 3; tower.add(brace);
-      }
-      tower.position.set(x, -.1, -4.6 - (index % 2) * .8); tower.rotation.z = (index % 3 - 1) * .035; this.scene.add(tower);
-    });
-    for (let index = 0; index < 28; index++) {
-      const rubble = new Mesh(new CylinderGeometry(.12 + Math.random() * .22, .18 + Math.random() * .3, .16 + Math.random() * .35, 5), ruinMaterial);
-      const side = index % 2 ? 1 : -1; rubble.position.set(side * (4.1 + Math.random() * 3.5), -.02, -2.7 + Math.random() * 3.2);
-      rubble.rotation.set(Math.random(), Math.random(), Math.random()); this.scene.add(rubble);
-    }
-    [[-6.1, -3.7], [5.35, -4.2], [1.8, -5.2]].forEach(([x, z], index) => {
-      const fire = new PointLight(0xff6b21, index === 2 ? 9 : 13, 6.5, 2.1); fire.position.set(x, .35, z); this.scene.add(fire);
-      const ember = new Mesh(new SphereGeometry(.13, 10, 8), new MeshStandardMaterial({ color: 0xff8a28, emissive: 0xff4a14, emissiveIntensity: 4 }));
-      ember.position.copy(fire.position); this.effectsRoot.add(ember);
-    });
-    const pedestalRanks = pedestalRanksForLayout(this.singleLayout ? "single" : "trio");
-    const segments = window.matchMedia("(max-width: 700px)").matches ? 32 : 48;
-    pedestalRanks.forEach((pedestalRank) => {
-      const rank = pedestalRank - 1;
-      const pedestal = buildIndustrialPedestal(pedestalConfigForRank(pedestalRank, segments));
-      pedestal.root.position.x = this.rankX[rank]; this.standingHeights[rank] = pedestal.standingHeight;
-      this.scene.add(pedestal.root);
-    });
-    const particles = new BufferGeometry(); const positions: number[] = [];
-    for (let index = 0; index < 54; index++) positions.push((Math.random() - .5) * 12, .35 + Math.random() * 4.5, -1.8 + Math.random() * 2.5);
-    particles.setAttribute("position", new Float32BufferAttribute(positions, 3));
-    const dust = new Points(particles, new PointsMaterial({ color: 0xd9a84c, size: .035, transparent: true, opacity: .42, depthWrite: false, blending: AdditiveBlending }));
-    dust.userData.particles = true; this.effectsRoot.add(dust);
-    this.scene.add(this.characterRoot, this.propRoot, this.effectsRoot);
+    const ground = new Mesh(new PlaneGeometry(16, 9), new MeshStandardMaterial({ color: 0x161512, metalness: .12, roughness: .97 }));
+    ground.rotation.x = -Math.PI / 2; ground.position.set(0, -.23, -1.8); ground.receiveShadow = true; this.baseRoot.add(ground);
+    const floor = new Mesh(new CylinderGeometry(5.5, 6.2, 0.34, 12), new MeshStandardMaterial({ color: 0x211e19, metalness: .52, roughness: .68 }));
+    floor.position.y = -0.25; floor.receiveShadow = true; this.baseRoot.add(floor);
+    const pedestal = buildIndustrialPedestal(pedestalConfigForRank(1, this.mobile ? 32 : 48));
+    this.standingHeights[0] = pedestal.standingHeight; this.pedestalRoot.add(pedestal.root);
+    this.camera.position.set(0, 2.65, 6.4); this.camera.lookAt(0, 1.22, 0);
+    this.addEmbers(28, 0x91f0a2);
   }
 
-  async setPresentation(metric: string, leaders: Leader[]) {
-    const generation = ++this.generation; this.characterRoot.clear(); this.propRoot.clear();
+  private async buildArenaStage() {
+    const response = await fetch(this.host.dataset.sceneManifest || "", { cache: "force-cache", headers: { Accept: "application/json" } });
+    if (!response.ok) throw new Error(`scene manifest returned ${response.status}`);
+    const manifest = await response.json() as ArenaManifest;
+    if (manifest.revision !== APPROVED_SCENE_REVISION || manifest.assets.length !== 76) throw new Error("unapproved scene manifest");
+    this.manifest = manifest; this.host.dataset.sceneRevision = manifest.revision;
+    const camera = manifest.camera;
+    this.camera.fov = numeric(camera, "Vertical_FOV_deg", 41); this.camera.near = numeric(camera, "Near_m", .05); this.camera.far = numeric(camera, "Far_m", 60);
+    this.cameraBase.set(numeric(camera, "Pos_X_m"), numeric(camera, "Pos_Y_m"), numeric(camera, "Pos_Z_m"));
+    this.cameraTarget.set(numeric(camera, "Target_X_m"), numeric(camera, "Target_Y_m"), numeric(camera, "Target_Z_m"));
+    const pivot = new Vector3(numeric(camera, "Orbit_Pivot_X_m"), numeric(camera, "Orbit_Pivot_Y_m"), numeric(camera, "Orbit_Pivot_Z_m"));
+    this.displayRoot.position.copy(pivot); this.worldRoot.position.copy(pivot).multiplyScalar(-1);
+    this.renderer.toneMappingExposure = Math.pow(2, numeric(camera, "Exposure_EV", -.45));
+    this.scene.background = new Color(0x15191c); this.scene.fog = new FogExp2(0x15191c, .027);
+    this.buildArenaPodiums(manifest); this.buildArenaLights(manifest); this.buildAtmosphere();
+    this.setupComposer();
+    this.resize();
+    const placements = [...manifest.basePlacements].sort((left, right) => this.placementPriority(left) - this.placementPriority(right));
+    const loaded = await this.loadPlacementBatch(placements, this.baseRoot, 6);
+    this.host.dataset.scenePlacements = String(loaded);
+    const loadedIds = new Set(this.baseRoot.children.map((child) => child.name));
+    const missingCritical = placements.filter((placement) => placement.lodClass === "Hero" && !loadedIds.has(placement.id));
+    if (loaded < 1 || missingCritical.length) throw new Error("critical arena models unavailable");
+  }
+
+  private buildArenaPodiums(manifest: ArenaManifest) {
+    ([1, 2, 3] as const).forEach((podiumRank) => {
+      const rank = podiumRank - 1; const node = manifest.sceneNodes.find((item) => String(item.node_id) === `PODIUM_RANK_${podiumRank}`);
+      const position = Array.isArray(node?.position_m) ? node.position_m.map(Number) : [this.rankX[rank], 0, 0];
+      const pedestal = buildIndustrialPedestal(pedestalConfigForRank(podiumRank, this.mobile ? 32 : 48));
+      pedestal.root.position.set(position[0] || 0, position[1] || 0, position[2] || 0);
+      this.rankX[rank] = pedestal.root.position.x; this.standingHeights[rank] = pedestal.root.position.y + pedestal.standingHeight;
+      this.pedestalRoot.add(pedestal.root);
+    });
+  }
+
+  private buildArenaLights(manifest: ArenaManifest) {
+    RectAreaLightUniformsLib.init();
+    for (const row of manifest.lights) {
+      if (!(row.Enabled === true || String(row.Enabled).toLowerCase() === "true")) continue;
+      const type = String(row.Type || "").toLowerCase(); const color = String(row.Color_Hex || "#ffffff"); const intensity = Number(row.Intensity) || 0;
+      const position = new Vector3(Number(row.Pos_X_m) || 0, Number(row.Pos_Y_m) || 0, Number(row.Pos_Z_m) || 0);
+      const target = new Vector3(Number(row.Target_X_m) || 0, Number(row.Target_Y_m) || 0, Number(row.Target_Z_m) || 0);
+      if (type.includes("hemisphere")) {
+        const light = new HemisphereLight(color, 0x21150e, intensity * 3.5); light.position.copy(position); this.scene.add(light); continue;
+      }
+      if (type.includes("rect")) {
+        const area = Math.max(.1, (Number(row.Area_Width_m) || 1) * (Number(row.Area_Height_m) || 1));
+        const light = new RectAreaLight(color, intensity / (30 * Math.PI * area), Number(row.Area_Width_m) || 1, Number(row.Area_Height_m) || 1);
+        light.position.copy(position); light.lookAt(target); this.scene.add(light); continue;
+      }
+      if (type.includes("spot")) {
+        const outer = MathUtils.degToRad(Number(row.Outer_Cone_deg) || 30);
+        const light = new SpotLight(color, intensity / 30, Number(row.Range_m) || 18, outer, Number(row.Penumbra) || .5, 2);
+        light.position.copy(position); light.target.position.copy(target); light.castShadow = row.Cast_Shadow === true;
+        if (light.castShadow) { const mapSize = this.mobile ? 1024 : 2048; light.shadow.mapSize.set(mapSize, mapSize); light.shadow.bias = Number(row.Shadow_Bias) || -.0005; }
+        this.scene.add(light, light.target);
+        if (Number(row.Volumetric_Weight) > .4) this.addLightShaft(position, target, color, Number(row.Volumetric_Weight));
+        continue;
+      }
+      const light = new PointLight(color, intensity / 20, Number(row.Range_m) || 5, 2); light.position.copy(position); this.scene.add(light);
+    }
+  }
+
+  private addLightShaft(start: Vector3, end: Vector3, color: string, weight: number) {
+    const direction = end.clone().sub(start); const length = direction.length();
+    const shaft = new Mesh(new ConeGeometry(.72, length, 18, 1, true), new MeshBasicMaterial({ color, transparent: true, opacity: .035 * weight, depthWrite: false, blending: AdditiveBlending }));
+    shaft.position.copy(start).add(end).multiplyScalar(.5); shaft.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), direction.normalize());
+    shaft.renderOrder = 18; this.effectsRoot.add(shaft);
+  }
+
+  private buildAtmosphere() {
+    const texture = hazeTexture(); const centers: Array<[number, number, number, number]> = [[-4.5, 1.7, -2.8, 1.25], [0, 2, -3.2, 1.1], [4.5, 1.7, -2.8, 1.3]];
+    centers.forEach(([x, y, z, density], group) => {
+      for (let index = 0; index < (this.mobile ? 1 : 3); index += 1) {
+        const haze = new Sprite(new SpriteMaterial({ map: texture, color: 0x81909a, transparent: true, opacity: .08 * density, depthWrite: false }));
+        haze.position.set(x + (index - 1) * .85, y + index * .38, z - index * .3); haze.scale.set(4.2, 3.4, 1); haze.renderOrder = 17;
+        haze.userData.phase = group * 1.9 + index; this.effectsRoot.add(haze);
+      }
+    });
+    this.addEmbers(this.mobile ? 28 : 64, 0x5eed1234);
+  }
+
+  private addEmbers(count: number, seed: number) {
+    const random = seededRandom(seed); const geometry = new BufferGeometry(); const positions: number[] = [];
+    for (let index = 0; index < count; index += 1) positions.push((random() - .5) * 15, .25 + random() * 6.4, -4.8 + random() * 7.2);
+    geometry.setAttribute("position", new Float32BufferAttribute(positions, 3));
+    const embers = new Points(geometry, new PointsMaterial({ color: 0xffa03b, size: this.mobile ? .04 : .055, transparent: true, opacity: .58, depthWrite: false, blending: AdditiveBlending }));
+    embers.name = "ArenaEmbers"; embers.userData.particles = true; this.effectsRoot.add(embers);
+  }
+
+  private setupComposer() {
+    const stage = this.host.querySelector<HTMLElement>("[data-podium-stage]")!; const width = Math.max(1, stage.clientWidth); const height = Math.max(1, stage.clientHeight);
+    const composer = new EffectComposer(this.renderer); composer.addPass(new RenderPass(this.scene, this.camera));
+    if (!this.mobile) {
+      const ssao = new SSAOPass(this.scene, this.camera, width, height); ssao.kernelRadius = 5; ssao.minDistance = .0005; ssao.maxDistance = .045; composer.addPass(ssao);
+    }
+    composer.addPass(new UnrealBloomPass(new Vector2(width, height), .3, .55, 1.1));
+    this.composer = composer;
+  }
+
+  private placementPriority(placement: ArenaPlacement): number {
+    const classes: Record<string, number> = { Hero: 0, Primary: 1, Structure: 2, Secondary: 3, Detail: 4 };
+    return classes[placement.lodClass] ?? 3;
+  }
+
+  private async loadPlacementBatch(placements: ArenaPlacement[], parent: Group, concurrency: number): Promise<number> {
+    let cursor = 0; let loaded = 0;
+    const worker = async () => {
+      while (cursor < placements.length && !this.disposed) {
+        const placement = placements[cursor++];
+        try { const instance = await this.createPlacement(placement); parent.add(instance); loaded += 1; }
+        catch { /* Individual dressing assets degrade without removing the podium. */ }
+      }
+    };
+    await Promise.all(Array.from({ length: Math.min(concurrency, placements.length) }, () => worker())); return loaded;
+  }
+
+  private async createPlacement(placement: ArenaPlacement): Promise<Group> {
+    if (!this.manifest) throw new Error("manifest unavailable");
+    const base = this.host.dataset.sceneModelBase || "";
+    let visual: Object3D;
+    try { visual = await this.loadInstance(joinedUrl(base, placement.localPath)); }
+    catch (error) {
+      const fallback = SCENE_MODEL_FALLBACKS[placement.localPath];
+      if (!fallback) throw error;
+      visual = await this.loadInstance(joinedUrl(base, fallback));
+      visual.userData.sceneFallbackFor = placement.localPath;
+    }
+    const initialBounds = staticBounds(visual); visual.scale.setScalar(normalizationScale(initialBounds, placement)); visual.updateMatrixWorld(true);
+    const normalizedBounds = staticBounds(visual); visual.position.sub(anchorPoint(normalizedBounds, placement.anchor));
+    visual.traverse((node) => {
+      const mesh = node as Mesh; if (!mesh.isMesh) return;
+      const primary = placement.lodClass === "Hero" || placement.lodClass === "Primary";
+      if (/^ENV_(?:FLOOR|BACKWALL|SIDEWALL)/.test(placement.id)) {
+        const materials = (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).map((source) => {
+          const material = source.clone() as MeshStandardMaterial;
+          if (material.color) material.color.multiplyScalar(placement.id.startsWith("ENV_FLOOR") ? .18 : .28);
+          material.roughness = Math.max(material.roughness, .68); return material;
+        });
+        mesh.material = Array.isArray(mesh.material) ? materials : materials[0];
+      }
+      mesh.castShadow = placement.castShadow && primary && !this.mobile; mesh.receiveShadow = placement.receiveShadow; mesh.renderOrder = placement.renderOrder;
+      mesh.frustumCulled = true;
+    });
+    const wrapper = new Group(); wrapper.name = placement.id; wrapper.add(visual);
+    wrapper.position.set(...placement.position); wrapper.rotation.set(...placement.rotation.map(MathUtils.degToRad) as [number, number, number]); wrapper.scale.set(...placement.scale);
+    return wrapper;
+  }
+
+  async setPresentation(board: string, metric: string, leaders: Leader[]) {
+    const generation = ++this.generation; this.characterRoot.clear(); this.themeRoot.clear();
+    this.targetYaw = 0; this.targetPitch = 0;
+    try { await this.arenaReady; }
+    catch { this.fail("Arena assets unavailable. Showing the poster and leaderboard cards."); return; }
+    if (generation !== this.generation || this.disposed) return;
+    const sceneLeaders = leaders.length ? leaders.slice(0, 3) : [{}, {}, {}];
     await Promise.all([
-      ...leaders.slice(0, 3).map((leader, rank) => this.addCharacter(leader, rank, generation)),
-      ...((LEADERBOARD_PODIUM_THEMES[metric] || LEADERBOARD_PODIUM_THEMES.kills).slice(0, 2).map((file, index) => this.addBackdropProp(file, index, generation))),
+      ...sceneLeaders.map((leader, rank) => this.addCharacter(leader, rank, generation)),
+      this.singleLayout ? Promise.resolve() : this.addTheme(board, metric, generation),
     ]);
-    if (generation === this.generation) this.status(leaders.length ? "Player podium ready." : "3D podium ready.");
+    if (generation === this.generation && !this.disposed) {
+      this.host.dataset.sceneCharacters = String(this.characterRoot.children.length);
+      this.host.dataset.sceneThemeProps = String(this.themeRoot.children.reduce((total, group) => total + group.children.length, 0));
+      this.host.dataset.podiumState = "ready";
+      this.status(leaders.length ? "Player arena ready." : "3D arena ready.");
+    }
+  }
+
+  private characterAnchor(rank: number): ArenaPlacement | undefined {
+    const id = `CHAR_RANK_${rank + 1}`; return this.manifest?.characterAnchors.find((placement) => placement.id === id);
   }
 
   private async addCharacter(leader: Leader, rank: number, generation: number) {
     const keys = podiumWearables(leader, rank); const roots: Object3D[] = [];
     await Promise.all(keys.map(async (key) => {
       const file = LEADERBOARD_PODIUM_ASSETS[key]; if (!file) return;
-      try { const model = await this.loadInstance(file); normalizeWearableOrigin(model); poseWearable(model, rank); roots.push(model); } catch { /* A missing layer falls back to the remaining mannequin. */ }
+      try { const model = await this.loadInstance(joinedUrl(this.host.dataset.modelBase || "", file)); normalizeWearableOrigin(model); poseWearable(model, rank); roots.push(model); }
+      catch { /* Resolve through the fallback chain below. */ }
     }));
     if (!roots.length) {
-      const fallbackKeys = LEADERBOARD_PODIUM_PRESETS.survivor;
-      await Promise.all(fallbackKeys.map(async (key) => {
-        try { const model = await this.loadInstance(LEADERBOARD_PODIUM_ASSETS[key]); normalizeWearableOrigin(model); poseWearable(model, rank); roots.push(model); } catch { /* The card remains if the base mannequin cannot load. */ }
+      await Promise.all(LEADERBOARD_PODIUM_PRESETS.survivor.map(async (key) => {
+        try { const model = await this.loadInstance(joinedUrl(this.host.dataset.modelBase || "", LEADERBOARD_PODIUM_ASSETS[key])); normalizeWearableOrigin(model); poseWearable(model, rank); roots.push(model); }
+        catch { /* The merged mannequin is the final scene fallback. */ }
       }));
+    }
+    if (!roots.length && !this.singleLayout) {
+      const anchor = this.characterAnchor(rank);
+      if (anchor) try { roots.push(await this.loadInstance(joinedUrl(this.host.dataset.sceneModelBase || "", anchor.localPath))); } catch { /* Cards remain authoritative. */ }
     }
     if (generation !== this.generation || this.disposed || !roots.length) return;
     const visual = new Group(); roots.forEach((root) => visual.add(root));
-    const box = staticBounds(visual); const size = box.getSize(new Vector3()); visual.scale.setScalar(1.8 / Math.max(size.y, .01));
-    const fitted = staticBounds(visual); const center = fitted.getCenter(new Vector3());
+    const targetHeight = this.characterAnchor(rank)?.targetExtent || 1.8; const box = staticBounds(visual); const size = box.getSize(new Vector3());
+    visual.scale.setScalar(targetHeight / Math.max(size.y, .01)); const fitted = staticBounds(visual); const center = fitted.getCenter(new Vector3());
     visual.position.x -= center.x; visual.position.y -= fitted.min.y; visual.position.z -= center.z;
-    const wrapper = new Group(); wrapper.add(visual); wrapper.position.set(this.rankX[rank], this.standingHeights[rank] + .01, 0);
+    const wrapper = new Group(); wrapper.add(visual);
+    const anchor = this.characterAnchor(rank);
+    wrapper.position.set(anchor?.position[0] ?? this.rankX[rank], anchor?.position[1] ?? (this.standingHeights[rank] + .01), anchor?.position[2] ?? 0);
     wrapper.rotation.y = podiumCharacterYaw(rank); wrapper.userData.baseY = wrapper.position.y; wrapper.userData.phase = rank * 1.7;
     const weaponKey = podiumWeapon(leader);
     if (weaponKey) {
       try {
-        const weapon = await this.loadInstance(LEADERBOARD_PODIUM_ASSETS[weaponKey]);
+        const weapon = await this.loadInstance(joinedUrl(this.host.dataset.modelBase || "", LEADERBOARD_PODIUM_ASSETS[weaponKey]));
         if (generation !== this.generation) return;
         weapon.traverse((node) => { if ((node as Mesh).isMesh) (node as Mesh).castShadow = false; });
-        const weaponBox = staticBounds(weapon); const weaponSize = weaponBox.getSize(new Vector3());
-        const layout = podiumWeaponLayout(weaponKey, rank);
+        const weaponSize = staticBounds(weapon).getSize(new Vector3()); const layout = podiumWeaponLayout(weaponKey, rank);
         weapon.scale.setScalar(layout.size / Math.max(weaponSize.x, weaponSize.y, weaponSize.z, .01));
-        const scaled = staticBounds(weapon); const weaponCenter = scaled.getCenter(new Vector3()); weapon.position.sub(weaponCenter);
-        const mount = new Group(); mount.name = "weapon-mount"; mount.add(weapon);
-        mount.position.set(...layout.position); mount.rotation.set(...layout.rotation);
-        wrapper.add(mount);
-      } catch { /* The character remains the representative if a weapon fails. */ }
+        const weaponCenter = staticBounds(weapon).getCenter(new Vector3()); weapon.position.sub(weaponCenter);
+        const mount = new Group(); mount.name = "weapon-mount"; mount.add(weapon); mount.position.set(...layout.position); mount.rotation.set(...layout.rotation); wrapper.add(mount);
+      } catch { /* The selected outfit remains visible if its weapon fails. */ }
     }
     this.characterRoot.add(wrapper);
   }
 
-  private async addBackdropProp(file: string, index: number, generation: number) {
-    try {
-      const visual = await this.loadInstance(file); if (generation !== this.generation || this.disposed) return;
-      const box = staticBounds(visual); const size = box.getSize(new Vector3()); visual.scale.setScalar(1.15 / Math.max(size.x, size.y, size.z, .01));
-      const fitted = staticBounds(visual); const center = fitted.getCenter(new Vector3()); visual.position.x -= center.x; visual.position.y -= fitted.min.y; visual.position.z -= center.z;
-      const wrapper = new Group(); wrapper.add(visual); wrapper.position.set(index === 0 ? -4.65 : 4.65, .04, -1.15); wrapper.rotation.y = index === 0 ? .35 : -.35;
-      wrapper.userData.baseY = wrapper.position.y; wrapper.userData.phase = index * 2.2; this.propRoot.add(wrapper);
-    } catch { /* Set dressing is optional. */ }
+  private async addTheme(board: string, metric: string, generation: number) {
+    if (!this.manifest) return; const key = podiumThemeFor(board, metric); if (key === "neutral") return;
+    const theme = this.manifest.themes[key]; if (!theme) return;
+    const placements = generatedThemePlacements(key, theme); const staging = new Group(); staging.name = `Theme_${key}`;
+    await this.loadPlacementBatch(placements, staging, 4);
+    if (generation === this.generation && !this.disposed) this.themeRoot.add(staging);
   }
 
-  private async loadInstance(file: string): Promise<Object3D> {
-    const gltf = await this.loader.loadAsync(`${this.host.dataset.modelBase || ""}${file}`);
-    const rigidReplacements: Array<{ source: SkinnedMesh; replacement: Mesh }> = [];
-    gltf.scene.traverse((node) => {
-      if ((node as Mesh).isMesh) (node as Mesh).frustumCulled = false;
-      if ((node as SkinnedMesh).isSkinnedMesh) {
-        const skinned = node as SkinnedMesh;
-        // Keep valid wearable skins live so their mannequin bones establish the
-        // attachment frame and the shared pose can affect every clothing layer.
-        if (expandSkinAttributes(skinned)) return;
-        // A few decorative props carry an unusable skin with no weight stream.
-        // Those props are genuinely rigid and remain safe to flatten.
-        const rigidGeometry = skinned.geometry.clone();
-        rigidGeometry.applyMatrix4(skinned.bindMatrix);
-        const replacement = new Mesh(rigidGeometry, skinned.material);
-        replacement.name = skinned.name; replacement.position.copy(skinned.position);
-        replacement.quaternion.copy(skinned.quaternion); replacement.scale.copy(skinned.scale);
-        replacement.renderOrder = skinned.renderOrder; replacement.frustumCulled = false;
-        rigidReplacements.push({ source: skinned, replacement });
-      }
-    });
-    rigidReplacements.forEach(({ source, replacement }) => {
-      if (!source.parent) return;
-      source.parent.add(replacement); source.parent.remove(source);
-    });
-    return gltf.scene;
+  private async loadInstance(url: string): Promise<Object3D> {
+    let promise = this.modelCache.get(url);
+    if (!promise) {
+      promise = this.loader.loadAsync(url).then((gltf) => {
+        const root = gltf.scene; const rigidReplacements: Array<{ source: SkinnedMesh; replacement: Mesh }> = [];
+        root.traverse((node) => {
+          if ((node as Mesh).isMesh) (node as Mesh).frustumCulled = false;
+          if ((node as SkinnedMesh).isSkinnedMesh) {
+            const skinned = node as SkinnedMesh; if (expandSkinAttributes(skinned)) return;
+            const rigidGeometry = skinned.geometry.clone(); rigidGeometry.applyMatrix4(skinned.bindMatrix);
+            const replacement = new Mesh(rigidGeometry, skinned.material); replacement.name = skinned.name; replacement.position.copy(skinned.position);
+            replacement.quaternion.copy(skinned.quaternion); replacement.scale.copy(skinned.scale); replacement.renderOrder = skinned.renderOrder; replacement.frustumCulled = false;
+            rigidReplacements.push({ source: skinned, replacement });
+          }
+        });
+        rigidReplacements.forEach(({ source, replacement }) => { if (source.parent) { source.parent.add(replacement); source.parent.remove(source); } });
+        return root;
+      });
+      this.modelCache.set(url, promise);
+    }
+    return cloneSkinnedScene(await promise);
   }
 
   private resize() {
     const stage = this.host.querySelector<HTMLElement>("[data-podium-stage]"); if (!stage) return;
-    const width = Math.max(1, stage.clientWidth); const height = Math.max(1, stage.clientHeight);
-    this.camera.aspect = width / height;
-    this.camera.position.z = this.singleLayout
-      ? (this.camera.aspect < .9 ? 9.4 : this.camera.aspect < 1.35 ? 7.8 : 6.4)
-      : (this.camera.aspect < .9 ? 13.2 : this.camera.aspect < 1.35 ? 10.4 : 8.4);
-    this.camera.updateProjectionMatrix(); this.renderer.setSize(width, height, false);
+    const width = Math.max(1, stage.clientWidth); const height = Math.max(1, stage.clientHeight); this.camera.aspect = width / height;
+    if (this.singleLayout) {
+      this.camera.position.set(0, 2.65, this.camera.aspect < .9 ? 9.4 : this.camera.aspect < 1.35 ? 7.8 : 6.4); this.camera.lookAt(0, 1.22, 0);
+    } else {
+      const framing = this.camera.aspect < 16 / 9 ? (16 / 9) / Math.max(.7, this.camera.aspect) : 1;
+      this.camera.position.copy(this.cameraBase); this.camera.position.z *= framing; this.camera.lookAt(this.cameraTarget);
+    }
+    this.camera.updateProjectionMatrix(); this.renderer.setSize(width, height, false); this.composer?.setSize(width, height);
   }
+
+  private onPointerDown = (event: PointerEvent) => {
+    if (this.singleLayout || this.disposed) return; this.dragPointer = event.pointerId; this.dragX = event.clientX; this.dragY = event.clientY;
+    this.renderer.domElement.setPointerCapture(event.pointerId); this.host.dataset.podiumDragging = "true";
+  };
+
+  private onPointerMove = (event: PointerEvent) => {
+    if (event.pointerId !== this.dragPointer) return;
+    const deltaX = event.clientX - this.dragX; const deltaY = event.clientY - this.dragY; this.dragX = event.clientX; this.dragY = event.clientY;
+    const clamped = clampArenaRotation(this.targetYaw + deltaX * .004, this.targetPitch + deltaY * .003);
+    this.targetYaw = clamped.yaw; this.targetPitch = clamped.pitch;
+  };
+
+  private onPointerUp = (event: PointerEvent) => {
+    if (event.pointerId !== this.dragPointer) return; this.dragPointer = -1; this.host.dataset.podiumDragging = "false";
+    if (this.renderer.domElement.hasPointerCapture(event.pointerId)) this.renderer.domElement.releasePointerCapture(event.pointerId);
+  };
 
   private animate = () => {
     if (this.disposed) return; const time = performance.now() * .001;
+    this.currentYaw += (this.targetYaw - this.currentYaw) * .1; this.currentPitch += (this.targetPitch - this.currentPitch) * .1;
+    this.displayRoot.rotation.set(this.currentPitch, this.currentYaw, 0);
     if (!this.reduceMotion) {
-      this.characterRoot.children.forEach((character) => { character.position.y = character.userData.baseY + Math.sin(time * .75 + character.userData.phase) * .018; });
-      this.propRoot.children.forEach((prop) => { prop.position.y = prop.userData.baseY + Math.sin(time * .55 + prop.userData.phase) * .025; });
-      this.effectsRoot.rotation.y = Math.sin(time * .1) * .012;
+      this.characterRoot.children.forEach((character) => { character.position.y = character.userData.baseY + Math.sin(time * .72 + character.userData.phase) * .012; });
+      const embers = this.effectsRoot.getObjectByName("ArenaEmbers"); if (embers) embers.position.y = Math.sin(time * .28) * .14;
+      this.effectsRoot.children.forEach((effect) => { if (effect instanceof Sprite) effect.material.rotation = Math.sin(time * .08 + Number(effect.userData.phase || 0)) * .04; });
     }
-    this.renderer.render(this.scene, this.camera); this.frame = requestAnimationFrame(this.animate);
+    if (this.composer) this.composer.render(); else this.renderer.render(this.scene, this.camera);
+    this.frame = requestAnimationFrame(this.animate);
   };
 
   private status(message: string) { const node = this.host.querySelector<HTMLElement>("[data-podium-status]"); if (node) node.textContent = message; }
   private fail(message: string) { this.host.dataset.podiumState = "fallback"; this.status(message); this.dispose(); }
+
   dispose() {
-    if (this.disposed) return;
-    this.disposed = true; cancelAnimationFrame(this.frame); this.observer.disconnect();
-    const geometries = new Set<BufferGeometry>(); const materials = new Set<MeshStandardMaterial | PointsMaterial>();
+    if (this.disposed) return; this.disposed = true; cancelAnimationFrame(this.frame); this.observer.disconnect();
+    this.renderer.domElement.removeEventListener("pointerdown", this.onPointerDown); this.renderer.domElement.removeEventListener("pointermove", this.onPointerMove);
+    this.renderer.domElement.removeEventListener("pointerup", this.onPointerUp); this.renderer.domElement.removeEventListener("pointercancel", this.onPointerUp);
+    const geometries = new Set<BufferGeometry>(); const materials = new Set<MeshStandardMaterial | MeshBasicMaterial | PointsMaterial | SpriteMaterial>();
     this.scene.traverse((node) => {
-      const mesh = node as Mesh;
-      if (mesh.isMesh && mesh.geometry) geometries.add(mesh.geometry);
+      const mesh = node as Mesh; if (mesh.isMesh && mesh.geometry) geometries.add(mesh.geometry);
       if (mesh.isMesh) (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).forEach((material) => materials.add(material as MeshStandardMaterial));
       if ((node as Points).isPoints) { const points = node as Points; geometries.add(points.geometry); materials.add(points.material as PointsMaterial); }
+      if (node instanceof Sprite) materials.add(node.material);
     });
-    geometries.forEach((geometry) => geometry.dispose()); materials.forEach((material) => material.dispose()); this.renderer.dispose();
+    geometries.forEach((geometry) => geometry.dispose()); materials.forEach((material) => material.dispose()); this.composer?.dispose(); this.renderer.dispose();
   }
 }
 
@@ -335,12 +557,12 @@ function present(host: HTMLElement, payload: Payload) {
   const board = String(payload.board || host.dataset.board || "players"); const metric = String(payload.metric || host.dataset.metric || "kills");
   const leaders = Array.isArray(payload.leaders) ? payload.leaders : [];
   host.dataset.board = board; host.dataset.metric = metric; renderCards(host, leaders, board, metric);
-  void activateHost(host)?.setPresentation(metric, leaders);
+  const category = host.querySelector<HTMLElement>("[data-podium-category]"); if (category) category.textContent = podiumCategoryTitle(board, metric);
+  void activateHost(host)?.setPresentation(board, metric, leaders);
 }
 
 document.querySelectorAll<HTMLElement>("[data-leaderboard-podium]").forEach((host) => {
-  const payload = parsePayload(host);
-  if (!host.closest<HTMLElement>("[data-leaderboard-panel]")?.hidden) present(host, payload);
+  const payload = parsePayload(host); if (!host.closest<HTMLElement>("[data-leaderboard-panel]")?.hidden) present(host, payload);
 });
 
 document.addEventListener("raidlands:leaderboard-payload", (event) => {

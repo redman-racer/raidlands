@@ -4,6 +4,8 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
+    "leaderboard:assets": "tsx scripts/sync-leaderboard-scene-assets.ts",
+    "leaderboard:assets:check": "tsx scripts/sync-leaderboard-scene-assets.ts --check",
     "map:sync": "tsx scripts/sync-map-assets.ts",
     "monuments:catalog": "tsx scripts/index-rustrelay-assets.ts",
     "monuments:catalog:check": "tsx scripts/index-rustrelay-assets.ts --check",
