@@ -1,5 +1,12 @@
 export type RecordedTimelineMode = "live" | "replay";
 
+export type RecordedTimelinePlaybackState =
+  | "following-head"
+  | "historical-playing"
+  | "paused"
+  | "buffering"
+  | "performance-limited";
+
 export const RECORDED_PLAYBACK_SPEEDS = [0.25, 0.5, 1, 2, 4, 8, 16, 32, 64, 128, 256, 512] as const;
 
 export type RecordedTimelineTick = {
@@ -37,13 +44,31 @@ export const RECORDED_BUFFER_MAX_BYTES = 12 * 1024 * 1024;
 export const RECORDED_BUFFER_SPLIT_BYTES = 2 * 1024 * 1024;
 export const RECORDED_BUFFER_MIN_SPLIT_MS = 30_000;
 export const RECORDED_REPLAY_LEAD_IN_MS = 2 * 60_000;
+export const RECORDED_REPLAY_MAX_EVENT_STEP_MS = 60_000;
+
+export function recordedTimelineNeedsDetailPressure(input: {
+  mode: RecordedTimelineMode;
+  modeSwitchLoading: boolean;
+  buffering: boolean;
+  tailChecking: boolean;
+  pendingWrap: boolean;
+  activeRequestPriorities: number[];
+}): boolean {
+  if (input.mode !== "replay") return false;
+  return input.modeSwitchLoading
+    || input.buffering
+    || input.tailChecking
+    || input.pendingWrap
+    || input.activeRequestPriorities.length > 1;
+}
 
 function clamp(value: number, minimum: number, maximum: number): number {
   return Math.min(maximum, Math.max(minimum, value));
 }
 
 export function recordedBatchSpanSeconds(speed: number): number {
-  return clamp(Math.round(Math.max(0.25, speed) * 120), 5 * 60, 60 * 60);
+  void speed;
+  return 5 * 60;
 }
 
 export function recordedSampleEverySeconds(speed: number): number {
@@ -139,7 +164,35 @@ export function relativeTimelineCursor(
 export function initialRecordedReplayCursor(rangeStartMs: number, rangeEndMs: number): number {
   const startMs = Math.min(rangeStartMs, rangeEndMs);
   const endMs = Math.max(startMs, rangeEndMs);
-  return Math.max(startMs, endMs - RECORDED_REPLAY_LEAD_IN_MS);
+  return endMs;
+}
+
+export function recordedRangeChangeForegroundBounds(
+  cursorMs: number,
+  rangeStartMs: number,
+  rangeEndMs: number,
+  beforeMs = 30_000,
+  afterMs = 30_000,
+): { startMs: number; endMs: number } {
+  const minimum = Math.min(rangeStartMs, rangeEndMs);
+  const maximum = Math.max(minimum + 1, rangeEndMs);
+  const cursor = clamp(cursorMs, minimum, maximum);
+  const startMs = Math.max(minimum, cursor - Math.max(0, beforeMs));
+  const endMs = Math.min(maximum, Math.max(startMs + 1, cursor + Math.max(0, afterMs)));
+  return { startMs, endMs };
+}
+
+export function recordedReplayWrapPrefetchDue(
+  cursorMs: number,
+  cycleEndMs: number,
+  effectiveSpeed: number,
+  followingHead: boolean,
+  wallLeadSeconds = 10,
+): boolean {
+  if (followingHead) return false;
+  const remainingMs = Math.max(0, cycleEndMs - cursorMs);
+  const wallRemainingMs = remainingMs / clamp(effectiveSpeed, 0.25, 512);
+  return wallRemainingMs <= Math.max(1, wallLeadSeconds) * 1000;
 }
 
 export class RecordedTimelineBatchCache<T> {
@@ -477,8 +530,10 @@ export class RecordedTimelineClock {
   public rangeEndMs = 0;
   public cycleEndMs = 0;
   public speed = 1;
+  public effectiveSpeed = 1;
   public playing = true;
   public loop = false;
+  public followingHead = false;
   private tailChecked = false;
 
   public configureLive(cursorMs: number, headMs: number): void {
@@ -486,8 +541,10 @@ export class RecordedTimelineClock {
     this.cursorMs = Number.isFinite(cursorMs) ? cursorMs : headMs;
     this.headMs = Math.max(this.cursorMs, headMs);
     this.speed = 1;
+    this.effectiveSpeed = 1;
     this.playing = true;
     this.loop = false;
+    this.followingHead = false;
     this.tailChecked = false;
   }
 
@@ -500,8 +557,10 @@ export class RecordedTimelineClock {
     endMs: number;
     cursorMs?: number;
     speed?: number;
+    effectiveSpeed?: number;
     playing?: boolean;
     loop?: boolean;
+    followingHead?: boolean;
   }): void {
     const startMs = Math.min(options.startMs, options.endMs);
     const endMs = Math.max(startMs + 1, options.endMs);
@@ -510,24 +569,71 @@ export class RecordedTimelineClock {
     this.rangeEndMs = endMs;
     this.cycleEndMs = endMs;
     this.cursorMs = clamp(options.cursorMs ?? startMs, startMs, endMs);
+    this.headMs = endMs;
     this.speed = clamp(options.speed ?? 1, 0.25, 512);
+    this.effectiveSpeed = clamp(options.effectiveSpeed ?? this.speed, 0.25, this.speed);
     this.playing = options.playing ?? true;
     this.loop = options.loop ?? false;
+    this.followingHead = options.followingHead ?? false;
+    if (this.followingHead) this.cursorMs = endMs;
     this.tailChecked = false;
   }
 
   public setReplaySpeed(speed: number): void {
+    const unrestricted = this.effectiveSpeed === this.speed;
     this.speed = clamp(speed, 0.25, 512);
+    this.effectiveSpeed = unrestricted ? this.speed : Math.min(this.effectiveSpeed, this.speed);
+  }
+
+  public setEffectiveReplaySpeed(speed: number): void {
+    this.effectiveSpeed = clamp(speed, 0.25, this.speed);
   }
 
   public setReplayLoop(loop: boolean): void {
     this.loop = loop;
   }
 
+  public followReplayHead(): void {
+    if (this.mode !== "replay") return;
+    this.followingHead = true;
+    this.playing = true;
+    this.cursorMs = this.headMs;
+    this.cycleEndMs = this.headMs;
+    this.tailChecked = false;
+  }
+
+  public leaveReplayHead(): void {
+    this.followingHead = false;
+    this.tailChecked = false;
+  }
+
+  public setReplayHead(headMs: number): void {
+    if (this.mode !== "replay" || !Number.isFinite(headMs) || headMs <= this.headMs) return;
+    const duration = Math.max(1, this.rangeEndMs - this.rangeStartMs);
+    this.headMs = headMs;
+    this.rangeEndMs = headMs;
+    this.rangeStartMs = Math.max(0, headMs - duration);
+    this.cycleEndMs = headMs;
+    this.tailChecked = false;
+  }
+
+  public nearReplayHead(toleranceMs = 1_000): boolean {
+    return this.mode === "replay" && this.cursorMs >= this.headMs - Math.max(0, toleranceMs);
+  }
+
+  public playbackState(buffering = false, performanceLimited = false): RecordedTimelinePlaybackState {
+    if (buffering) return "buffering";
+    if (!this.playing) return "paused";
+    if (this.followingHead && this.cursorMs >= this.headMs) return "following-head";
+    if (performanceLimited) return "performance-limited";
+    return this.followingHead ? "following-head" : "historical-playing";
+  }
+
   public seek(cursorMs: number): void {
     const maximum = this.mode === "live" ? this.headMs : this.cycleEndMs;
     const minimum = this.mode === "live" ? Math.min(this.cursorMs, maximum) : this.rangeStartMs;
     this.cursorMs = clamp(cursorMs, minimum, maximum);
+    if (this.mode === "replay" && !this.nearReplayHead()) this.leaveReplayHead();
   }
 
   public tick(
@@ -550,7 +656,9 @@ export class RecordedTimelineClock {
     const playableEnd = Number.isFinite(playableThroughMs)
       ? clamp(playableThroughMs, this.cursorMs, this.cycleEndMs)
       : this.cycleEndMs;
-    this.cursorMs = Math.min(playableEnd, this.cursorMs + wallDeltaMs * this.speed);
+    const requestedAdvanceMs = wallDeltaMs * this.effectiveSpeed;
+    const eventSafeAdvanceMs = Math.min(requestedAdvanceMs, RECORDED_REPLAY_MAX_EVENT_STEP_MS);
+    this.cursorMs = Math.min(playableEnd, this.cursorMs + eventSafeAdvanceMs);
     result.cursorMs = this.cursorMs;
     if (this.cursorMs >= playableEnd && playableEnd < this.cycleEndMs) {
       result.waiting = true;
@@ -558,6 +666,10 @@ export class RecordedTimelineClock {
       return result;
     }
     if (this.cursorMs < this.cycleEndMs) return result;
+    if (this.followingHead) {
+      result.waiting = true;
+      return result;
+    }
     if (!this.loop) {
       this.playing = false;
       result.stopped = true;
@@ -599,5 +711,6 @@ export class RecordedTimelineClock {
     this.cycleEndMs = this.rangeEndMs;
     this.tailChecked = false;
     this.playing = true;
+    this.followingHead = false;
   }
 }

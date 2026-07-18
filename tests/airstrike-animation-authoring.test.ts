@@ -375,6 +375,36 @@ describe("airstrike authoring release sources", () => {
     expect(preview.map((event) => event.time)).toEqual(compactTimes);
   });
 
+  it("previews every unit in a valid large multi-group gun schedule", () => {
+    const groups = [12, 34, 54].map((startTime, index) => ({
+      Id: `gun_${index + 1}`,
+      Name: `Gun run ${index + 1}`,
+      StartTime: startTime,
+      IntervalSeconds: 0.23,
+      UnitIntervalSeconds: 0.007,
+      UnitsPerRelease: 30,
+      MaximumUnits: 600,
+      Template: payload({ Payload: "bradley_coax_gun" }),
+      HardpointSequence: [],
+    }));
+    const source = profileFixture({
+      EditorSourceSchemaVersion: 2,
+      DurationSeconds: 80,
+      FirstPayloadDelaySeconds: 12,
+      Waypoints: [
+        { Id: "wp_001", Time: 0, X: 0, Y: 50, Z: -100, RotationX: 0, RotationY: 0, RotationZ: 0 },
+        { Id: "wp_002", Time: 80, X: 0, Y: 50, Z: 100, RotationX: 0, RotationY: 0, RotationZ: 0 },
+      ],
+      ReleaseSource: { Mode: "repeated", Groups: groups },
+    });
+
+    const preview = getReleasePreviewEvents(source, metadata());
+
+    expect(validateSourceBundle(bundle(source), metadata())).toEqual([]);
+    expect(preview).toHaveLength(1_800);
+    expect(preview.some((event) => event.id === "gun_3_600")).toBe(true);
+  });
+
   it("adds independently editable automatic groups without overwriting earlier group edits", () => {
     const source = profileFixture({
       FirstPayloadDelaySeconds: 1,

@@ -274,7 +274,10 @@ export function getReleasePreviewEvents(
   }
 
   const generated: ReleasePreviewEvent[] = [];
-  const previewLimit = 400;
+  // Validation and both runtime compilers support up to 2,000 logical release
+  // units per profile. Keep the authoring preview at the same ceiling so later
+  // automatic groups do not disappear after an earlier group reaches 400.
+  const previewLimit = 2_000;
   for (const group of repeatedReleaseGroups(release)) {
     for (let unit = 0; unit < group.MaximumUnits && generated.length < previewLimit; unit += 1) {
       const burst = Math.floor(unit / group.UnitsPerRelease);

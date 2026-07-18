@@ -1818,7 +1818,10 @@ class AirstrikeEditorApp {
     input.addEventListener("input", () => {
       commit("deferred");
     });
-    input.addEventListener("change", () => commit("deferred"));
+    // While typing, avoid rebuilding the control that currently owns focus.
+    // Once the edit is committed, rebuild the workspace so collection rows and
+    // schedule totals immediately reflect the accepted numeric value.
+    input.addEventListener("change", () => commit("live"));
     return input;
   }
 

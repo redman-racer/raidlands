@@ -11,6 +11,7 @@ export type MonumentQualityPolicy = {
   activeMapLimit: number;
   closeCacheLimit: number;
   midCacheLimit: number;
+  mapActivationPixels: number;
   mapToMidPixels: number;
   midToClosePixels: number;
   hysteresis: number;
@@ -39,7 +40,7 @@ export function resolveMonumentQuality(
 ): MonumentQualityPolicy {
   const closeLimits: Record<EnvironmentQuality, number> = { low: 1, medium: 1, high: 2, ultra: 3 };
   const midLimits: Record<EnvironmentQuality, number> = { low: 4, medium: 9, high: 16, ultra: 24 };
-  const mapLimits: Record<EnvironmentQuality, number> = { low: 12, medium: 48, high: 72, ultra: 96 };
+  const mapLimits: Record<EnvironmentQuality, number> = { low: 8, medium: 12, high: 20, ultra: 28 };
   const triangleBudgets: Record<EnvironmentQuality, number> = { low: 3_000_000, medium: 4_000_000, high: 5_000_000, ultra: 6_000_000 };
   const drawCallBudgets: Record<EnvironmentQuality, number> = { low: 2_500, medium: 3_000, high: 3_500, ultra: 4_000 };
   const mapOnlyAutomatic = mode === "auto" && quality === "low";
@@ -55,14 +56,23 @@ export function resolveMonumentQuality(
     activeMapLimit: mapOnlyAutomatic ? 0 : mapLimits[quality],
     closeCacheLimit: Math.max(0, activeCloseLimit + 1),
     midCacheLimit: Math.max(0, activeMidLimit + 2),
+    mapActivationPixels: 16,
     mapToMidPixels: thresholds.mapToMidPixels,
     midToClosePixels: thresholds.midToClosePixels,
     hysteresis: thresholds.hysteresis,
     triangleBudget: triangleBudgets[quality],
     drawCallBudget: drawCallBudgets[quality],
-    decodeConcurrency: quality === "ultra" ? 2 : 1,
+    decodeConcurrency: 1,
     shadows: quality === "high" || quality === "ultra",
   };
+}
+
+export function monumentMapTierEligible(
+  projectedDiameter: number,
+  focused: boolean,
+  policy: Pick<MonumentQualityPolicy, "mapActivationPixels">,
+): boolean {
+  return focused || projectedDiameter >= policy.mapActivationPixels;
 }
 
 export function projectedMonumentDiameter(radius: number, distance: number, verticalFovDegrees: number, viewportHeight: number): number {

@@ -1,10 +1,11 @@
 import {
-  ACESFilmicToneMapping, AdditiveBlending, AmbientLight, Box3, BufferAttribute, BufferGeometry,
-  CanvasTexture, ClampToEdgeWrapping, Color, ConeGeometry, CylinderGeometry, DirectionalLight, FogExp2,
-  EquirectangularReflectionMapping, Float32BufferAttribute, Group, HemisphereLight, LinearFilter, MathUtils, Mesh, MeshBasicMaterial,
-  MeshStandardMaterial, Object3D, PCFSoftShadowMap, PerspectiveCamera, PlaneGeometry, PointLight,
-  PMREMGenerator, Points, PointsMaterial, RectAreaLight, Scene, SkinnedMesh, SpotLight, Sprite,
-  SpriteMaterial, SRGBColorSpace, Texture, TextureLoader, Vector2, Vector3, WebGLRenderer, WebGLRenderTarget,
+  ACESFilmicToneMapping, AdditiveBlending, AmbientLight, Box3, BoxGeometry, BufferAttribute, BufferGeometry,
+  CanvasTexture, ClampToEdgeWrapping, Color, ConeGeometry, CylinderGeometry, DepthTexture, DirectionalLight, DoubleSide, FogExp2,
+  EquirectangularReflectionMapping, Float32BufferAttribute, Group, HemisphereLight, IcosahedronGeometry, InstancedMesh,
+  LinearFilter, MathUtils, Mesh, MeshBasicMaterial, MeshStandardMaterial, MirroredRepeatWrapping, Object3D,
+  PCFSoftShadowMap, PerspectiveCamera, PlaneGeometry, PointLight,
+  PMREMGenerator, Points, PointsMaterial, RectAreaLight, Scene, SkinnedMesh, SpotLight,
+  SRGBColorSpace, Texture, TextureLoader, UnsignedIntType, Vector2, Vector3, WebGLRenderer, WebGLRenderTarget,
 } from "three";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
@@ -12,6 +13,7 @@ import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
+import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
 import { SSAOPass } from "three/addons/postprocessing/SSAOPass.js";
 import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
@@ -24,12 +26,27 @@ import { normalizeWearableOrigin, podiumCharacterYaw, podiumWeaponLayout } from 
 import { buildIndustrialPedestal, pedestalConfigForRank, pedestalRanksForLayout } from "./pedestal";
 import {
   anchorPoint, arenaPlacementTransform, ArenaManifest, ArenaPlacement, clampArenaRotation,
-  FORWARD_MOUND_VISIBILITY, generatedThemePlacements, idleArenaYawTarget, orbitCameraPosition,
-  podiumCategoryTitle, podiumThemeFor, shouldLiftForwardMoundVisibility, shouldRenderArenaPlacement,
+  FORWARD_MOUND_VISIBILITY, generatedThemePlacements, idleArenaYawTarget, isBarbedWirePlacement, JUNKYARD_ATMOSPHERE, JUNKYARD_GROUND,
+  junkyardFallbackFogLayers, junkyardGroundedPlacementY, junkyardGroundHeight, junkyardGroundScatter,
+  junkyardGroundSurfaceShade, JUNKYARD_GANTRY_LAYOUT, JUNKYARD_PODIUM_CENTERS_X,
+  JUNKYARD_SEARCHLIGHTS, junkyardSearchlightTarget, PROFILE_PODIUM_GROUND, profilePodiumGroundHeight,
+  JunkyardFogQualityState, nextJunkyardFogQuality,
+  orbitCameraPosition, podiumCategoryTitle, podiumGroundMaterialState, podiumThemeFor,
+  shouldLiftForwardMoundVisibility, shouldRenderArenaPlacement,
 } from "./scene-policy";
 
 type Payload = { leaders?: Leader[]; metric?: string; board?: string };
 type CameraRecord = Record<string, unknown>;
+type GroundConfig = {
+  readonly width: number;
+  readonly depth: number;
+  readonly centerZ: number;
+  readonly baseY: number;
+  readonly widthSegments: number;
+  readonly depthSegments: number;
+  readonly repeatX: number;
+  readonly repeatY: number;
+};
 
 const APPROVED_SCENE_REVISION = "494242bdeae941e3389b34a819c514aae2cf39f8";
 const APPROVED_SCENE_ASSET_COUNT = 79;
@@ -161,19 +178,119 @@ function seededRandom(seed: number): () => number {
 }
 
 function hazeTexture(): CanvasTexture {
-  const canvas = document.createElement("canvas"); canvas.width = 128; canvas.height = 128;
+  const size = 256; const canvas = document.createElement("canvas"); canvas.width = size; canvas.height = size;
   const context = canvas.getContext("2d")!; const random = seededRandom(0x51a9e);
-  context.clearRect(0, 0, 128, 128); context.globalCompositeOperation = "lighter";
-  for (let cloud = 0; cloud < 11; cloud += 1) {
-    const x = 20 + random() * 88; const y = 25 + random() * 78; const radius = 22 + random() * 34;
-    const gradient = context.createRadialGradient(x, y, 0, x, y, radius);
-    gradient.addColorStop(0, `rgba(188,198,202,${.055 + random() * .075})`);
-    gradient.addColorStop(.5, `rgba(112,123,128,${.025 + random() * .04})`);
-    gradient.addColorStop(1, "rgba(45,51,55,0)"); context.fillStyle = gradient;
-    context.fillRect(x - radius, y - radius, radius * 2, radius * 2);
+  const clouds = Array.from({ length: 12 }, () => ({
+    x: size * (.2 + random() * .6), y: size * (.24 + random() * .52),
+    radiusX: size * (.12 + random() * .2), radiusY: size * (.09 + random() * .17),
+    weight: .36 + random() * .34,
+  }));
+  const pixels = context.createImageData(size, size);
+  for (let y = 0; y < size; y += 1) {
+    for (let x = 0; x < size; x += 1) {
+      let density = 0;
+      clouds.forEach((cloud) => {
+        const dx = (x - cloud.x) / cloud.radiusX; const dy = (y - cloud.y) / cloud.radiusY;
+        density += Math.exp(-(dx * dx + dy * dy) * 2.15) * cloud.weight;
+      });
+      const border = Math.min(x, y, size - 1 - x, size - 1 - y);
+      const edgeFade = MathUtils.smoothstep(border, 0, 72);
+      const alpha = Math.min(.78, density * .68) * edgeFade * edgeFade;
+      const offset = (y * size + x) * 4;
+      pixels.data[offset] = 224; pixels.data[offset + 1] = 231; pixels.data[offset + 2] = 232;
+      pixels.data[offset + 3] = Math.round(alpha * 255);
+    }
   }
+  context.putImageData(pixels, 0, 0);
   const texture = new CanvasTexture(canvas); texture.minFilter = LinearFilter; texture.magFilter = LinearFilter; return texture;
 }
+
+const VOLUMETRIC_FOG_SHADER = {
+  uniforms: {
+    tDiffuse: { value: null }, tDepth: { value: null },
+    cameraNear: { value: .05 }, cameraFar: { value: 60 },
+    cameraProjectionMatrixInverse: { value: null }, cameraWorldMatrix: { value: null },
+    fogTime: { value: 0 }, fogDensity: { value: JUNKYARD_ATMOSPHERE.volumetricDensity },
+  },
+  vertexShader: `
+    varying vec2 vUv;
+    void main() {
+      vUv = uv;
+      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
+    }
+  `,
+  fragmentShader: `
+    uniform sampler2D tDiffuse;
+    uniform sampler2D tDepth;
+    uniform mat4 cameraProjectionMatrixInverse;
+    uniform mat4 cameraWorldMatrix;
+    uniform float fogTime;
+    uniform float fogDensity;
+    varying vec2 vUv;
+
+    float flowingNoise(vec3 point) {
+      vec3 p = point * vec3(.48, .82, .48);
+      float a = sin(p.x * 1.63 + sin(p.z * 1.17 + fogTime * .09) + p.y * 2.11);
+      float b = sin(p.z * 2.03 - p.x * .57 - fogTime * .065) * .52;
+      float c = sin(dot(p, vec3(.71, 2.37, 1.13)) + fogTime * .075) * .28;
+      float d = sin(p.x * 3.21 + p.z * 2.73 - fogTime * .12) * .16;
+      return .5 + .5 * (a + b + c + d) / 1.96;
+    }
+
+    float podiumFogInfluence(vec3 point) {
+      float distanceToPodium = min(
+        length(point.xz - vec2(${JUNKYARD_PODIUM_CENTERS_X[0]}, 0.0)),
+        min(
+          length(point.xz - vec2(${JUNKYARD_PODIUM_CENTERS_X[1].toFixed(1)}, 0.0)),
+          length(point.xz - vec2(${JUNKYARD_PODIUM_CENTERS_X[2]}, 0.0))
+        )
+      );
+      return 1.0 - smoothstep(${JUNKYARD_ATMOSPHERE.podiumInnerRadius.toFixed(1)}, ${JUNKYARD_ATMOSPHERE.podiumOuterRadius.toFixed(1)}, distanceToPodium);
+    }
+
+    vec3 worldPositionFromDepth(float depth) {
+      vec4 clip = vec4(vUv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+      vec4 view = cameraProjectionMatrixInverse * clip;
+      view /= max(view.w, .00001);
+      return (cameraWorldMatrix * view).xyz;
+    }
+
+    void main() {
+      vec4 sceneColor = texture2D(tDiffuse, vUv);
+      float depth = texture2D(tDepth, vUv).x;
+      if (depth <= .00001) {
+        gl_FragColor = sceneColor;
+        return;
+      }
+      vec3 cameraPosition = cameraWorldMatrix[3].xyz;
+      vec3 surfacePosition = worldPositionFromDepth(depth);
+      vec3 ray = surfacePosition - cameraPosition;
+      float rayLength = min(length(ray), 36.0);
+      vec3 rayDirection = normalize(ray);
+      float jitter = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
+      float integratedDensity = 0.0;
+      const int STEPS = 14;
+      for (int index = 0; index < STEPS; index++) {
+        float distanceAlongRay = (float(index) + jitter) / float(STEPS) * rayLength;
+        vec3 point = cameraPosition + rayDirection * distanceAlongRay;
+        float horizontal = (1.0 - smoothstep(14.0, 17.0, abs(point.x)))
+          * smoothstep(-17.0, -14.0, point.z) * (1.0 - smoothstep(4.3, 6.0, point.z));
+        float groundEntry = smoothstep(-.12, .08, point.y);
+        float mainBank = 1.0 - smoothstep(${JUNKYARD_ATMOSPHERE.fullBankHeight.toFixed(2)}, ${JUNKYARD_ATMOSPHERE.bankFadeHeight.toFixed(2)}, point.y);
+        float highWisps = (1.0 - smoothstep(${JUNKYARD_ATMOSPHERE.wispStartHeight.toFixed(2)}, ${JUNKYARD_ATMOSPHERE.wispFadeHeight.toFixed(1)}, point.y))
+          * ${JUNKYARD_ATMOSPHERE.wispStrength.toFixed(2)};
+        float vertical = groundEntry * max(mainBank, highWisps);
+        float noiseValue = smoothstep(.27, .82, flowingNoise(point));
+        float podiumBoost = podiumFogInfluence(point);
+        integratedDensity += horizontal * vertical * (.12 + noiseValue * .88) * (.62 + podiumBoost * 1.25);
+      }
+      float stepLength = rayLength / float(STEPS);
+      float fogAmount = min(${JUNKYARD_ATMOSPHERE.volumetricOpacityCeiling.toFixed(2)}, 1.0 - exp(-integratedDensity * stepLength * .075 * fogDensity));
+      vec3 fogColor = vec3(.30, .335, .325);
+      gl_FragColor = vec4(mix(sceneColor.rgb, fogColor, fogAmount), sceneColor.a);
+    }
+  `,
+};
 
 class PodiumScene {
   private scene = new Scene();
@@ -190,6 +307,15 @@ class PodiumScene {
   private loader: GLTFLoader;
   private environmentTexture?: Texture;
   private environmentTarget?: WebGLRenderTarget;
+  private ownedTextures = new Set<Texture>();
+  private searchlights: Array<{ light: SpotLight; shaft: Mesh; side: -1 | 1; phase: number }> = [];
+  private groundFogLayers: Array<{ mesh: Mesh; texture: Texture; speed: Vector2; offset: Vector2 }> = [];
+  private volumetricFogPass?: ShaderPass;
+  private volumetricFogCapable = false;
+  private fogQuality: JunkyardFogQualityState = { mode: "fallback", lowSamples: 0, highSamples: 0 };
+  private fogSampleStartedAt = performance.now();
+  private fogSampleFrames = 0;
+  private fogReadyAt = 0;
   private modelCache = new Map<string, Promise<Object3D>>();
   private observer: ResizeObserver;
   private frame = 0;
@@ -197,6 +323,7 @@ class PodiumScene {
   private generation = 0;
   private reduceMotion = window.matchMedia("(prefers-reduced-motion: reduce)").matches;
   private mobile = window.matchMedia("(max-width: 700px)").matches;
+  private capture = false;
   private singleLayout: boolean;
   private manifest?: ArenaManifest;
   private arenaReady: Promise<void>;
@@ -218,7 +345,7 @@ class PodiumScene {
 
   constructor(private host: HTMLElement) {
     const stage = host.querySelector<HTMLElement>("[data-podium-stage]"); if (!stage) throw new Error("missing-stage");
-    const capture = new URLSearchParams(location.search).has("podium-capture");
+    const capture = new URLSearchParams(location.search).has("podium-capture"); this.capture = capture;
     if (capture) {
       host.dataset.podiumCapture = "true";
       document.documentElement.dataset.podiumCapture = "true";
@@ -236,7 +363,7 @@ class PodiumScene {
     this.worldRoot.name = "SCENE_ROOT";
     this.worldRoot.add(this.backdropRoot, this.baseRoot, this.pedestalRoot, this.characterRoot, this.themeRoot, this.effectsRoot);
     this.scene.add(this.worldRoot);
-    if (this.singleLayout) { this.buildSingleStage(); this.arenaReady = Promise.resolve(); }
+    if (this.singleLayout) this.arenaReady = this.buildSingleStage();
     else this.arenaReady = this.buildArenaStage();
     this.observer = new ResizeObserver(() => this.resize()); this.observer.observe(stage); this.resize();
     this.renderer.domElement.addEventListener("pointerdown", this.onPointerDown);
@@ -247,7 +374,7 @@ class PodiumScene {
     this.animate();
   }
 
-  private buildSingleStage() {
+  private async buildSingleStage() {
     this.scene.background = new Color(0x100f0d); this.scene.fog = new FogExp2(0x17130f, .045);
     this.renderer.toneMappingExposure = 1.08;
     this.scene.add(new AmbientLight(0x8d8171, 1.15));
@@ -255,8 +382,8 @@ class PodiumScene {
     key.shadow.mapSize.set(1024, 1024); key.shadow.camera.near = 1; key.shadow.camera.far = 24;
     key.shadow.camera.left = -4; key.shadow.camera.right = 4; key.shadow.camera.top = 5; key.shadow.camera.bottom = -2; key.shadow.bias = -0.0006; this.scene.add(key);
     const rim = new DirectionalLight(0xd45a22, 2.4); rim.position.set(-6, 5, -4); this.scene.add(rim);
-    const ground = new Mesh(new PlaneGeometry(16, 9), new MeshStandardMaterial({ color: 0x161512, metalness: .12, roughness: .97 }));
-    ground.rotation.x = -Math.PI / 2; ground.position.set(0, -.23, -1.8); ground.receiveShadow = true; this.baseRoot.add(ground);
+    const ground = await this.buildTexturedGround(PROFILE_PODIUM_GROUND, profilePodiumGroundHeight, "PROFILE_PODIUM_GROUND");
+    this.baseRoot.add(ground);
     const floor = new Mesh(new CylinderGeometry(5.5, 6.2, 0.34, 12), new MeshStandardMaterial({ color: 0x211e19, metalness: .52, roughness: .68 }));
     floor.position.y = -0.25; floor.receiveShadow = true; this.baseRoot.add(floor);
     const pedestal = buildIndustrialPedestal(pedestalConfigForRank(1, this.mobile ? 32 : 48));
@@ -275,11 +402,11 @@ class PodiumScene {
     this.camera.fov = ARENA_CAMERA.fov; this.camera.near = numeric(camera, "Near_m", .05); this.camera.far = numeric(camera, "Far_m", 60);
     this.cameraBase.copy(ARENA_CAMERA.position); this.cameraTarget.copy(ARENA_CAMERA.target);
     this.renderer.toneMappingExposure = Math.pow(2, numeric(camera, "Exposure_EV", -.45) - .55);
-    this.scene.background = new Color(0x0b0d0e); this.scene.fog = new FogExp2(0x171a1b, .042);
+    this.scene.background = new Color(0x0b0d0e); this.scene.fog = new FogExp2(0x171a1b, JUNKYARD_ATMOSPHERE.sceneFogDensity);
     const fallbackOnly = new URLSearchParams(location.search).has("podium-fallback");
     const hasEnvironment = fallbackOnly ? false : await this.buildArenaEnvironment().catch(() => false);
     if (!hasEnvironment) { await this.buildBackdropPanels(); this.host.dataset.sceneEnvironment = "panels"; }
-    this.buildArenaPodiums(manifest); this.buildSolidFloor(); this.buildArenaLights(manifest); this.buildAtmosphere();
+    this.buildArenaPodiums(manifest); await this.buildSolidFloor(); this.buildArenaGantrySupports(); this.buildArenaLights(manifest); this.buildAtmosphere();
     this.setupComposer();
     this.resize();
     const placements = manifest.basePlacements
@@ -366,11 +493,132 @@ class PodiumScene {
     });
   }
 
-  private buildSolidFloor() {
-    const material = new MeshStandardMaterial({ color: 0x171512, metalness: .46, roughness: .82 });
-    const floor = new Mesh(new PlaneGeometry(24, 22), material); floor.name = "ARENA_SOLID_FLOOR";
-    floor.rotation.x = -Math.PI / 2; floor.position.set(0, -.12, -1.5); floor.receiveShadow = true;
-    this.baseRoot.add(floor);
+  private async loadGroundTexture(source: string): Promise<Texture | undefined> {
+    if (!source) return undefined;
+    try {
+      const texture = await new TextureLoader().loadAsync(source);
+      if (this.disposed) { texture.dispose(); return undefined; }
+      this.ownedTextures.add(texture); return texture;
+    } catch { return undefined; }
+  }
+
+  private buildGroundGeometry(
+    config: GroundConfig,
+    heightAt: (x: number, z: number) => number,
+    surfaceShadeAt: (x: number, z: number) => number = () => 1,
+  ): PlaneGeometry {
+    const geometry = new PlaneGeometry(
+      config.width, config.depth, config.widthSegments, config.depthSegments,
+    );
+    const positions = geometry.getAttribute("position"); const colors: number[] = [];
+    for (let index = 0; index < positions.count; index += 1) {
+      const x = positions.getX(index); const worldZ = config.centerZ - positions.getY(index);
+      const heightOffset = heightAt(x, worldZ) - config.baseY;
+      const heightShade = 1 + heightOffset * .72;
+      const shade = MathUtils.clamp(heightShade * surfaceShadeAt(x, worldZ), .7, 1.26);
+      positions.setZ(index, heightOffset);
+      colors.push(shade, shade * .98, shade * .94);
+    }
+    positions.needsUpdate = true; geometry.setAttribute("color", new Float32BufferAttribute(colors, 3)); geometry.computeVertexNormals();
+    return geometry;
+  }
+
+  private async buildGroundMaterial(config: GroundConfig): Promise<{ material: MeshStandardMaterial; state: string }> {
+    const [preferredAlbedo, normal, arm] = await Promise.all([
+      this.loadGroundTexture(this.host.dataset.groundAlbedoSrc || ""),
+      this.loadGroundTexture(this.host.dataset.groundNormalSrc || ""),
+      this.loadGroundTexture(this.host.dataset.groundArmSrc || ""),
+    ]);
+    const albedo = preferredAlbedo || await this.loadGroundTexture(this.host.dataset.groundFallbackSrc || "");
+    const anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
+    [albedo, normal, arm].forEach((texture) => {
+      if (!texture) return;
+      texture.wrapS = MirroredRepeatWrapping; texture.wrapT = MirroredRepeatWrapping;
+      texture.repeat.set(config.repeatX, config.repeatY); texture.anisotropy = anisotropy;
+    });
+    if (albedo) albedo.colorSpace = SRGBColorSpace;
+    const material = new MeshStandardMaterial({
+      color: albedo ? 0x9a8877 : 0x2a2119,
+      map: albedo,
+      normalMap: normal,
+      normalScale: new Vector2(.92, .92),
+      aoMap: arm,
+      aoMapIntensity: .9,
+      roughnessMap: arm,
+      roughness: .9,
+      metalness: 0,
+      vertexColors: true,
+    });
+    return { material, state: podiumGroundMaterialState(Boolean(preferredAlbedo), Boolean(albedo)) };
+  }
+
+  private async buildTexturedGround(
+    config: GroundConfig,
+    heightAt: (x: number, z: number) => number,
+    name: string,
+    surfaceShadeAt: (x: number, z: number) => number = () => 1,
+  ): Promise<Mesh> {
+    const geometry = this.buildGroundGeometry(config, heightAt, surfaceShadeAt);
+    const { material, state } = await this.buildGroundMaterial(config);
+    const ground = new Mesh(geometry, material); ground.name = name;
+    ground.rotation.x = -Math.PI / 2; ground.position.set(0, config.baseY, config.centerZ); ground.receiveShadow = true;
+    this.host.dataset.sceneGround = state;
+    return ground;
+  }
+
+  private async buildSolidFloor() {
+    const floor = await this.buildTexturedGround(
+      JUNKYARD_GROUND, junkyardGroundHeight, "ARENA_JUNKYARD_GROUND", junkyardGroundSurfaceShade,
+    );
+    this.baseRoot.add(floor); this.buildGroundScatter();
+  }
+
+  private buildGroundScatter() {
+    const placements = junkyardGroundScatter(this.mobile); const dummy = new Object3D();
+    const specs = [
+      { kind: "pebble" as const, geometry: new IcosahedronGeometry(1, 1), material: new MeshStandardMaterial({ color: 0x514a42, roughness: .94, metalness: 0 }) },
+      { kind: "metal" as const, geometry: new BoxGeometry(1, 1, 1), material: new MeshStandardMaterial({ color: 0x563324, roughness: .7, metalness: .66 }) },
+    ];
+    specs.forEach((spec) => {
+      const instances = placements.filter((placement) => placement.kind === spec.kind);
+      const mesh = new InstancedMesh(spec.geometry, spec.material, instances.length); mesh.name = `ARENA_GROUND_${spec.kind.toUpperCase()}`;
+      instances.forEach((placement, index) => {
+        dummy.position.set(...placement.position); dummy.rotation.set(...placement.rotation); dummy.scale.set(...placement.scale); dummy.updateMatrix();
+        mesh.setMatrixAt(index, dummy.matrix);
+      });
+      mesh.instanceMatrix.needsUpdate = true; mesh.computeBoundingSphere(); mesh.receiveShadow = true; this.baseRoot.add(mesh);
+    });
+  }
+
+  private buildArenaGantrySupports() {
+    const layout = JUNKYARD_GANTRY_LAYOUT;
+    const root = new Group(); root.name = "GENERATED_GANTRY_SUPPORTS";
+    const material = new MeshStandardMaterial({ color: 0x342b25, roughness: .72, metalness: .68 });
+    const addBeam = (name: string, start: Vector3, end: Vector3, thicknessX: number, thicknessZ: number) => {
+      const direction = end.clone().sub(start); const length = direction.length();
+      const beam = new Mesh(new BoxGeometry(thicknessX, length, thicknessZ), material);
+      beam.name = name; beam.position.copy(start).add(end).multiplyScalar(.5);
+      beam.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), direction.normalize());
+      beam.castShadow = !this.mobile; beam.receiveShadow = true; root.add(beam);
+    };
+    layout.supportXs.forEach((x, index) => {
+      const side = x < 0 ? -1 : 1;
+      addBeam(
+        `GANTRY_COLUMN_${index === 0 ? "L" : "R"}`,
+        new Vector3(x, junkyardGroundHeight(x, layout.trussCenterZ), layout.trussCenterZ),
+        new Vector3(x, layout.supportTopY, layout.trussCenterZ),
+        layout.supportWidth,
+        layout.supportDepth,
+      );
+      addBeam(
+        `GANTRY_BRACE_${index === 0 ? "L" : "R"}`,
+        new Vector3(x, layout.braceBottomY, layout.trussCenterZ),
+        new Vector3(x - side * layout.braceInset, layout.braceTopY, layout.trussCenterZ),
+        layout.braceThickness,
+        layout.braceThickness,
+      );
+    });
+    this.baseRoot.add(root);
   }
 
   private buildArenaLights(manifest: ArenaManifest) {
@@ -405,7 +653,9 @@ class PodiumScene {
     const leftForwardFill = new PointLight(0xff7430, 8, 14, 2); leftForwardFill.position.set(-16.5, 3.1, 5);
     const rightForwardFill = new PointLight(0xff8e45, 7.5, 14, 2); rightForwardFill.position.set(16.5, 3.1, 5);
     const rearFill = new PointLight(0x7e99a2, 2.1, 13, 2); rearFill.position.set(0, 3.6, -7.4);
-    this.scene.add(leftWing, rightWing, leftForwardFill, rightForwardFill, rearFill);
+    const terrainRake = new DirectionalLight(0xd98549, .9); terrainRake.name = "ARENA_TERRAIN_RAKE";
+    terrainRake.position.set(-13, 1.9, 8); terrainRake.target.position.set(7, -.1, -18);
+    this.scene.add(leftWing, rightWing, leftForwardFill, rightForwardFill, rearFill, terrainRake, terrainRake.target);
   }
 
   private addLightShaft(start: Vector3, end: Vector3, color: string, weight: number) {
@@ -415,67 +665,64 @@ class PodiumScene {
     shaft.renderOrder = 18; this.effectsRoot.add(shaft);
   }
 
-  private addBackdropSweep(start: Vector3, end: Vector3, phase: number) {
-    const direction = end.clone().sub(start); const length = direction.length();
-    const material = new MeshBasicMaterial({ color: 0xffa45e, transparent: true, opacity: .018, depthWrite: false, blending: AdditiveBlending });
-    const shaft = new Mesh(new ConeGeometry(.92, length, 18, 1, true), material);
-    shaft.position.copy(start).add(end).multiplyScalar(.5);
-    shaft.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), direction.normalize());
-    shaft.renderOrder = 18;
-    shaft.userData = { backdropSweep: true, start, end, phase, amplitude: 3.2, opacity: material.opacity };
-    this.effectsRoot.add(shaft);
+  private alignSearchlightShaft(shaft: Mesh, origin: Vector3, target: Vector3) {
+    const direction = target.clone().sub(origin); const length = direction.length();
+    shaft.position.copy(origin).add(target).multiplyScalar(.5);
+    // ConeGeometry's tip is at local +Y, so point +Y back toward the fixture.
+    // The broad end then lands at the moving target instead of at the lamp.
+    shaft.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), direction.normalize().negate());
+    const targetRadius = Math.tan(MathUtils.degToRad(18)) * length;
+    shaft.scale.set(targetRadius, length, targetRadius);
+  }
 
-    const practical = new PointLight(0xff8c42, 1.45, 10, 2);
-    practical.position.copy(start); practical.userData = { backdropFlicker: true, baseIntensity: practical.intensity, phase };
-    this.effectsRoot.add(practical);
+  private addScanningSearchlights() {
+    JUNKYARD_SEARCHLIGHTS.forEach((config) => {
+      const origin = new Vector3(...config.origin); const targetPosition = new Vector3(...junkyardSearchlightTarget(config.side, 0, this.reduceMotion, config.phase));
+      const light = new SpotLight(0xffa45e, this.mobile ? 280 : 430, 38, MathUtils.degToRad(23), .68, 1.65);
+      light.name = config.side < 0 ? "ARENA_SEARCHLIGHT_LEFT" : "ARENA_SEARCHLIGHT_RIGHT";
+      light.position.copy(origin); light.target.position.copy(targetPosition); light.castShadow = false;
+      this.scene.add(light, light.target);
+      const shaft = new Mesh(
+        new ConeGeometry(1, 1, 24, 1, true),
+        new MeshBasicMaterial({
+          color: 0xffad68, transparent: true, opacity: this.mobile ? .045 : .065,
+          depthWrite: false, blending: AdditiveBlending, side: DoubleSide, toneMapped: false,
+        }),
+      );
+      const core = new Mesh(
+        new ConeGeometry(1, 1, 24, 1, true),
+        new MeshBasicMaterial({
+          color: 0xffc184, transparent: true, opacity: this.mobile ? .075 : .115,
+          depthWrite: false, blending: AdditiveBlending, side: DoubleSide, toneMapped: false,
+        }),
+      );
+      core.name = `${light.name}_BEAM_CORE`; core.scale.set(.52, 1, .52); core.renderOrder = 19; shaft.add(core);
+      shaft.name = `${light.name}_BEAM`; shaft.renderOrder = 18; this.alignSearchlightShaft(shaft, origin, targetPosition); this.effectsRoot.add(shaft);
+      this.searchlights.push({ light, shaft, side: config.side, phase: config.phase });
+    });
   }
 
   private buildAtmosphere() {
-    const texture = hazeTexture(); const centers: Array<[number, number, number, number]> = [
-      [-7, 1.35, .9, .82], [-4.3, 1.45, -1.8, 1.2], [0, 1.65, -2.15, 1.05],
-      [4.3, 1.45, -1.8, 1.2], [7, 1.35, .9, .82],
-    ];
-    centers.forEach(([x, y, z, density], group) => {
-      for (let index = 0; index < (this.mobile ? 1 : 3); index += 1) {
-        const haze = new Sprite(new SpriteMaterial({ map: texture, color: 0x727d80, transparent: true, opacity: .105 * density, depthWrite: false }));
-        haze.position.set(x + (index - 1) * .78, y + index * .34, z - index * .3); haze.scale.set(4.4, 3.2, 1); haze.renderOrder = 17;
-        haze.userData = {
-          smoke: true, phase: group * 1.9 + index, speed: .09 + index * .018,
-          drift: .28 + index * .08, opacity: .105 * density,
-          basePosition: haze.position.clone(), baseScale: haze.scale.clone(),
-        };
-        this.effectsRoot.add(haze);
-      }
-    });
-    const floorSmoke: Array<[number, number, number, number, number]> = [
-      [-7, .25, 2.45, 4.2, .72], [-4.8, .25, .55, 4.8, 1.1], [-2.4, .18, .85, 3.8, .8],
-      [0, .12, .65, 4.6, .72], [2.5, .18, .88, 3.8, .82], [4.9, .25, .58, 4.8, 1.1], [7, .25, 2.45, 4.2, .72],
-    ];
-    floorSmoke.forEach(([x, y, z, width, density], index) => {
-      const smoke = new Sprite(new SpriteMaterial({ map: texture, color: 0x4f5657, transparent: true, opacity: .09 * density, depthWrite: false }));
-      smoke.position.set(x, y, z); smoke.scale.set(width, 1.35, 1); smoke.renderOrder = 19;
-      smoke.userData = {
-        smoke: true, phase: 8 + index * 1.3, speed: .07 + index * .012,
-        drift: .34 + index * .045, opacity: .09 * density,
-        basePosition: smoke.position.clone(), baseScale: smoke.scale.clone(),
-      };
-      this.effectsRoot.add(smoke);
-    });
-    const backdropHaze: Array<[number, number, number, number]> = this.mobile
-      ? [[-12, 1.8, -14.5, 8.5], [0, 2.1, -15.5, 10], [12, 1.8, -14.5, 8.5]]
-      : [[-16, 1.8, -9, 8], [-10, 2, -15, 9], [0, 2.25, -16, 11], [10, 2, -15, 9], [16, 1.8, -9, 8]];
-    backdropHaze.forEach(([x, y, z, width], index) => {
-      const haze = new Sprite(new SpriteMaterial({ map: texture, color: 0x6d7374, transparent: true, opacity: .075, depthWrite: false }));
-      haze.position.set(x, y, z); haze.scale.set(width, 3.2, 1); haze.renderOrder = 16;
-      haze.userData = {
-        smoke: true, phase: 20 + index * 1.45, speed: .045 + index * .006,
-        drift: .48, opacity: .075, basePosition: haze.position.clone(), baseScale: haze.scale.clone(),
-      };
-      this.effectsRoot.add(haze);
-    });
-    this.addBackdropSweep(new Vector3(-16.6, 5.4, -8.2), new Vector3(-5.5, 1.2, -16.5), 0.4);
-    this.addBackdropSweep(new Vector3(16.6, 5.5, -8.2), new Vector3(5.5, 1.2, -16.5), 2.7);
+    const texture = hazeTexture(); this.ownedTextures.add(texture);
+    this.buildGroundFog(texture);
+    this.addScanningSearchlights();
     this.addEmbers(this.mobile ? 28 : 64, 0x5eed1234);
+  }
+
+  private buildGroundFog(source: Texture) {
+    const specs = junkyardFallbackFogLayers(this.mobile);
+    specs.forEach((spec, index) => {
+      const map = source.clone(); map.wrapS = MirroredRepeatWrapping; map.wrapT = MirroredRepeatWrapping;
+      map.repeat.set(spec.repeat[0], spec.repeat[1]); map.offset.set(spec.offset[0], spec.offset[1]); map.needsUpdate = true;
+      this.ownedTextures.add(map);
+      const material = new MeshBasicMaterial({
+        map, color: index === 0 ? 0xaab4b0 : 0x87928f, transparent: true, opacity: spec.opacity,
+        depthWrite: false, blending: AdditiveBlending, side: DoubleSide, toneMapped: false, fog: true,
+      });
+      const fog = new Mesh(new PlaneGeometry(44, 30), material); fog.name = `ARENA_GROUND_FOG_${index + 1}`;
+      fog.rotation.x = -Math.PI / 2; fog.position.set(0, spec.y, -3.5); fog.renderOrder = 15 + index; this.effectsRoot.add(fog);
+      this.groundFogLayers.push({ mesh: fog, texture: map, speed: new Vector2(spec.speed[0], spec.speed[1]), offset: new Vector2(spec.offset[0], spec.offset[1]) });
+    });
   }
 
   private addEmbers(count: number, seed: number) {
@@ -488,12 +735,55 @@ class PodiumScene {
 
   private setupComposer() {
     const stage = this.host.querySelector<HTMLElement>("[data-podium-stage]")!; const width = Math.max(1, stage.clientWidth); const height = Math.max(1, stage.clientHeight);
-    const composer = new EffectComposer(this.renderer); composer.addPass(new RenderPass(this.scene, this.camera));
+    const renderTarget = new WebGLRenderTarget(width, height, { depthBuffer: true });
+    const composer = new EffectComposer(this.renderer, renderTarget);
+    composer.renderTarget1.depthTexture = new DepthTexture(width, height, UnsignedIntType);
+    composer.renderTarget2.depthTexture = new DepthTexture(width, height, UnsignedIntType);
+    composer.addPass(new RenderPass(this.scene, this.camera));
+    this.volumetricFogCapable = this.canUseVolumetricFog();
+    if (this.volumetricFogCapable) {
+      const fogPass = new ShaderPass(VOLUMETRIC_FOG_SHADER);
+      fogPass.uniforms.cameraNear.value = this.camera.near; fogPass.uniforms.cameraFar.value = this.camera.far;
+      fogPass.uniforms.cameraProjectionMatrixInverse.value = this.camera.projectionMatrixInverse;
+      fogPass.uniforms.cameraWorldMatrix.value = this.camera.matrixWorld;
+      composer.addPass(fogPass); this.volumetricFogPass = fogPass;
+      this.setFogQuality("volumetric");
+    } else this.setFogQuality("fallback");
     if (!this.mobile) {
       const ssao = new SSAOPass(this.scene, this.camera, width, height); ssao.kernelRadius = 5; ssao.minDistance = .0005; ssao.maxDistance = .045; composer.addPass(ssao);
     }
     composer.addPass(new UnrealBloomPass(new Vector2(width, height), .16, .65, 1.15));
     this.composer = composer;
+  }
+
+  private canUseVolumetricFog(): boolean {
+    const memory = Number((navigator as Navigator & { deviceMemory?: number }).deviceMemory || 8);
+    return !this.mobile && !this.reduceMotion && this.renderer.capabilities.isWebGL2
+      && (this.capture || (memory >= 4 && (navigator.hardwareConcurrency || 8) >= 6));
+  }
+
+  private setFogQuality(mode: "volumetric" | "fallback") {
+    const volumetric = mode === "volumetric" && Boolean(this.volumetricFogPass);
+    if (this.volumetricFogPass) this.volumetricFogPass.enabled = volumetric;
+    this.groundFogLayers.forEach(({ mesh }) => { mesh.visible = !volumetric; });
+    this.fogQuality = { mode: volumetric ? "volumetric" : "fallback", lowSamples: 0, highSamples: 0 };
+    this.host.dataset.sceneFog = this.fogQuality.mode;
+  }
+
+  private updateFogPerformance(now: number) {
+    if (!this.volumetricFogCapable || this.capture) return;
+    if (this.host.dataset.podiumState !== "ready") {
+      this.fogReadyAt = 0; this.fogSampleStartedAt = now; this.fogSampleFrames = 0; return;
+    }
+    if (!this.fogReadyAt) { this.fogReadyAt = now; this.fogSampleStartedAt = now; this.fogSampleFrames = 0; return; }
+    if (now - this.fogReadyAt < 5000) { this.fogSampleStartedAt = now; this.fogSampleFrames = 0; return; }
+    this.fogSampleFrames += 1; const elapsed = now - this.fogSampleStartedAt;
+    if (elapsed < 1000) return;
+    const framesPerSecond = this.fogSampleFrames * 1000 / elapsed;
+    const next = nextJunkyardFogQuality(this.fogQuality, framesPerSecond, true);
+    if (next.mode !== this.fogQuality.mode) this.setFogQuality(next.mode); else this.fogQuality = next;
+    this.host.dataset.sceneFogFps = framesPerSecond.toFixed(1);
+    this.fogSampleStartedAt = now; this.fogSampleFrames = 0;
   }
 
   private placementPriority(placement: ArenaPlacement): number {
@@ -529,6 +819,19 @@ class PodiumScene {
     visual.traverse((node) => {
       const mesh = node as Mesh; if (!mesh.isMesh) return;
       const primary = placement.lodClass === "Hero" || placement.lodClass === "Primary";
+      if (isBarbedWirePlacement(placement.id)) {
+        const materials = (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).map((source) => {
+          const material = source.clone() as MeshStandardMaterial;
+          // The embedded texture contains alpha, but the source GLB marks this material OPAQUE.
+          material.alphaTest = .35;
+          material.transparent = false;
+          material.depthWrite = true;
+          material.side = DoubleSide;
+          material.needsUpdate = true;
+          return material;
+        });
+        mesh.material = Array.isArray(mesh.material) ? materials : materials[0];
+      }
       if (/^ENV_(?:FLOOR|BACKWALL|SIDEWALL)/.test(placement.id)) {
         const materials = (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).map((source) => {
           const material = source.clone() as MeshStandardMaterial;
@@ -557,11 +860,18 @@ class PodiumScene {
     const renderScale = this.placementRenderScale(placement);
     const transform = arenaPlacementTransform(placement);
     wrapper.position.set(...transform.position); wrapper.rotation.set(...transform.rotation.map(MathUtils.degToRad) as [number, number, number]);
+    const followsTerrain = transform.position[1] <= .08;
+    const sampledGroundY = junkyardGroundHeight(transform.position[0], transform.position[2]);
+    if (followsTerrain) {
+      wrapper.position.y = junkyardGroundedPlacementY(transform.position[1], transform.position[0], transform.position[2]);
+      wrapper.userData.terrainGrounded = true;
+      wrapper.userData.terrainGroundY = sampledGroundY;
+    }
     const decorativeWeapon = /weapon|rifle|launcher|(?:^|[^a-z])gun(?:[^a-z]|$)/i.test(`${placement.role} ${placement.localPath}`);
-    if (decorativeWeapon && transform.position[1] <= .08) {
+    if (decorativeWeapon && followsTerrain) {
       wrapper.updateMatrixWorld(true);
       const rotatedBounds = new Box3().setFromObject(wrapper);
-      wrapper.position.y += .025 - rotatedBounds.min.y;
+      wrapper.position.y += sampledGroundY + .025 - rotatedBounds.min.y;
       wrapper.userData.grounded = true;
     }
     wrapper.userData.showcaseZone = transform.zone;
@@ -720,40 +1030,25 @@ class PodiumScene {
     const idleTarget = this.singleLayout ? 0 : idleArenaYawTarget(now, this.lastCameraInteractionAt, this.reduceMotion);
     this.currentIdleYaw += (idleTarget - this.currentIdleYaw) * .055;
     if (!this.singleLayout) this.updateArenaCamera();
+    this.searchlights.forEach(({ light, shaft, side, phase }) => {
+      light.target.position.set(...junkyardSearchlightTarget(side, time, this.reduceMotion, phase));
+      this.alignSearchlightShaft(shaft, light.position, light.target.position);
+    });
+    this.groundFogLayers.forEach(({ texture, speed, offset }) => {
+      const motionTime = this.reduceMotion ? 0 : time;
+      texture.offset.set(offset.x + motionTime * speed.x, offset.y + motionTime * speed.y);
+    });
     if (!this.reduceMotion) {
       this.characterRoot.children.forEach((character) => { character.position.y = character.userData.baseY + Math.sin(time * .72 + character.userData.phase) * .012; });
       const embers = this.effectsRoot.getObjectByName("ArenaEmbers"); if (embers) embers.position.y = Math.sin(time * .28) * .14;
-      this.effectsRoot.children.forEach((effect) => {
-        if (effect instanceof PointLight && effect.userData.backdropFlicker) {
-          const phase = Number(effect.userData.phase || 0); const baseIntensity = Number(effect.userData.baseIntensity || 1);
-          effect.intensity = baseIntensity * (.94 + Math.sin(time * 2.1 + phase) * .045 + Math.sin(time * 5.3 + phase * 2) * .015);
-          return;
-        }
-        if (effect instanceof Mesh && effect.userData.backdropSweep) {
-          const start = effect.userData.start as Vector3; const baseEnd = effect.userData.end as Vector3;
-          const phase = Number(effect.userData.phase || 0); const end = baseEnd.clone();
-          end.x += Math.sin(time * .24 + phase) * Number(effect.userData.amplitude || 3);
-          const direction = end.clone().sub(start);
-          effect.position.copy(start).add(end).multiplyScalar(.5);
-          effect.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), direction.normalize());
-          (effect.material as MeshBasicMaterial).opacity = Number(effect.userData.opacity || .018) * (.88 + Math.sin(time * 1.8 + phase) * .12);
-          return;
-        }
-        if (!(effect instanceof Sprite) || !effect.userData.smoke) return;
-        const phase = Number(effect.userData.phase || 0); const speed = Number(effect.userData.speed || .08);
-        const drift = Number(effect.userData.drift || .25); const basePosition = effect.userData.basePosition as Vector3;
-        const baseScale = effect.userData.baseScale as Vector3; const breath = 1 + Math.sin(time * speed * 1.7 + phase) * .075;
-        effect.position.set(
-          basePosition.x + Math.sin(time * speed + phase) * drift,
-          basePosition.y + Math.sin(time * speed * 1.35 + phase * .7) * .12,
-          basePosition.z + Math.cos(time * speed * .72 + phase) * drift * .32,
-        );
-        effect.scale.set(baseScale.x * breath, baseScale.y * (2 - breath), 1);
-        effect.material.opacity = Number(effect.userData.opacity || .08) * (.72 + (Math.sin(time * speed * 2.1 + phase) + 1) * .14);
-        effect.material.rotation = Math.sin(time * speed * .65 + phase) * .12;
-      });
     }
-    if (this.composer) this.composer.render(); else this.renderer.render(this.scene, this.camera);
+    if (this.composer) {
+      if (this.volumetricFogPass) {
+        this.volumetricFogPass.uniforms.tDepth.value = this.composer.readBuffer.depthTexture;
+        this.volumetricFogPass.uniforms.fogTime.value = this.reduceMotion ? 0 : time;
+      }
+      this.composer.render(); this.updateFogPerformance(now);
+    } else this.renderer.render(this.scene, this.camera);
     this.frame = requestAnimationFrame(this.animate);
   };
 
@@ -764,14 +1059,13 @@ class PodiumScene {
     if (this.disposed) return; this.disposed = true; cancelAnimationFrame(this.frame); this.observer.disconnect();
     this.renderer.domElement.removeEventListener("pointerdown", this.onPointerDown); this.renderer.domElement.removeEventListener("pointermove", this.onPointerMove);
     this.renderer.domElement.removeEventListener("pointerup", this.onPointerUp); this.renderer.domElement.removeEventListener("pointercancel", this.onPointerUp);
-    const geometries = new Set<BufferGeometry>(); const materials = new Set<MeshStandardMaterial | MeshBasicMaterial | PointsMaterial | SpriteMaterial>();
+    const geometries = new Set<BufferGeometry>(); const materials = new Set<MeshStandardMaterial | MeshBasicMaterial | PointsMaterial>();
     this.scene.traverse((node) => {
       const mesh = node as Mesh; if (mesh.isMesh && mesh.geometry) geometries.add(mesh.geometry);
       if (mesh.isMesh) (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).forEach((material) => materials.add(material as MeshStandardMaterial));
       if ((node as Points).isPoints) { const points = node as Points; geometries.add(points.geometry); materials.add(points.material as PointsMaterial); }
-      if (node instanceof Sprite) materials.add(node.material);
     });
-    geometries.forEach((geometry) => geometry.dispose()); materials.forEach((material) => material.dispose());
+    geometries.forEach((geometry) => geometry.dispose()); materials.forEach((material) => material.dispose()); this.ownedTextures.forEach((texture) => texture.dispose());
     this.environmentTexture?.dispose(); this.environmentTarget?.dispose(); this.composer?.dispose(); this.renderer.dispose();
   }
 }

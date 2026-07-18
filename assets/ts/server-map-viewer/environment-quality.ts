@@ -28,6 +28,7 @@ export type EnvironmentQualityProfile = {
 };
 
 const QUALITY_ORDER: EnvironmentQuality[] = ["low", "medium", "high", "ultra"];
+const PERFORMANCE_ORDER: ViewerPerformanceTier[] = ["low", "constrained", "healthy"];
 
 export function parseEnvironmentQuality(value: unknown, fallback: EnvironmentQuality = "ultra"): EnvironmentQuality {
   const normalized = String(value ?? "").trim().toLowerCase();
@@ -54,21 +55,45 @@ export function preferredEnvironmentQuality(
 
 /**
  * Caps a user's requested detail only while measured frame rate is struggling.
- * Ultra is an explicit visual-fidelity lock: the bounded loaders and caches
- * still protect the page, but adaptive FPS handling must not silently replace
- * authored trees, monuments, or weather with a lower detail tier.
+ * The requested value remains the ceiling; runtime adaptation never changes the
+ * saved preference and can therefore recover when the device has headroom.
  */
 export function adaptiveEnvironmentQuality(
   quality: EnvironmentQuality,
   performanceTier: ViewerPerformanceTier,
 ): EnvironmentQuality {
-  if (quality === "ultra") return "ultra";
   const cap: EnvironmentQuality = performanceTier === "healthy"
     ? "ultra"
     : performanceTier === "constrained"
       ? "medium"
       : "low";
   return QUALITY_ORDER[Math.min(QUALITY_ORDER.indexOf(quality), QUALITY_ORDER.indexOf(cap))] || "low";
+}
+
+/**
+ * Moves one tier at a time in either direction so the runtime never shuffles
+ * directly between the cheapest and most expensive scene configurations.
+ */
+export function stepAdaptivePerformanceTier(
+  current: ViewerPerformanceTier,
+  measured: ViewerPerformanceTier,
+): ViewerPerformanceTier {
+  const currentRank = PERFORMANCE_ORDER.indexOf(current);
+  const measuredRank = PERFORMANCE_ORDER.indexOf(measured);
+  if (measuredRank === currentRank) return current;
+  const direction = measuredRank > currentRank ? 1 : -1;
+  return PERFORMANCE_ORDER[Math.max(0, Math.min(PERFORMANCE_ORDER.length - 1, currentRank + direction))] || measured;
+}
+
+export function adaptivePerformanceTiming(
+  current: ViewerPerformanceTier,
+  measured: ViewerPerformanceTier,
+  smoothedFps: number,
+): { stableForMs: number; minimumDwellMs: number } {
+  const lowering = PERFORMANCE_ORDER.indexOf(measured) < PERFORMANCE_ORDER.indexOf(current);
+  return lowering
+    ? { stableForMs: smoothedFps < 11 ? 1_500 : 10_000, minimumDwellMs: smoothedFps < 11 ? 1_500 : 10_000 }
+    : { stableForMs: 12_000, minimumDwellMs: 14_000 };
 }
 
 export function resolveEnvironmentQuality(

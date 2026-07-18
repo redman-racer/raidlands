@@ -1027,9 +1027,9 @@
       "Asset_Name": "Ladder Industrial 600",
       "Full_Path": "assets/Content/Props/Ladder_set/ladder_industrial_600.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": -3.65,
-      "Pos_Y_m": 5.1,
-      "Pos_Z_m": -3.75,
+      "Pos_X_m": -6,
+      "Pos_Y_m": 5.35,
+      "Pos_Z_m": -7.25,
       "Rot_X_deg": 0,
       "Rot_Y_deg": 0,
       "Rot_Z_deg": 90,
@@ -1054,9 +1054,9 @@
       "filename": "ladder_industrial_600.glb",
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
-        -3.65,
-        5.1,
-        -3.75
+        -6,
+        5.35,
+        -7.25
       ],
       "rotation_deg_xyz": [
         0,
@@ -1068,7 +1068,59 @@
         0.82,
         0.82
       ],
-      "Distance_From_Origin_m": 7.307
+      "Distance_From_Origin_m": 10.825
+    },
+    {
+      "Instance_ID": "ENV_TRUSS_C",
+      "Enabled": true,
+      "Zone": "Environment",
+      "Parent_Node": "ENVIRONMENT",
+      "Role": "Center overhead improvised truss",
+      "Asset_Name": "Ladder Industrial 600",
+      "Full_Path": "assets/Content/Props/Ladder_set/ladder_industrial_600.glb",
+      "Path_Verification": "Verified exact path",
+      "Pos_X_m": 0,
+      "Pos_Y_m": 5.35,
+      "Pos_Z_m": -7.25,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 0,
+      "Rot_Z_deg": 90,
+      "Scale_X": 0.82,
+      "Scale_Y": 0.82,
+      "Scale_Z": 0.82,
+      "Normalize_Mode": "AABB bottom-center; preserve aspect",
+      "Target_Extent_m": 5,
+      "Anchor": "Center",
+      "Axis_Alignment": "Long axis along X",
+      "Cast_Shadow": true,
+      "Receive_Shadow": true,
+      "LOD_Class": "Structure",
+      "Collision_Mode": "None",
+      "Occlusion_Priority": "Low",
+      "Render_Order": 0,
+      "Placement_Confidence": "High",
+      "Notes": "Bridges the side trusses into one centered continuous gantry.",
+      "Source_URL": "https://github.com/Facepunch/RustRelay.Assets/blob/494242bdeae941e3389b34a819c514aae2cf39f8/assets/Content/Props/Ladder_set/ladder_industrial_600.glb",
+      "CDN_URL": "https://cdn.jsdelivr.net/gh/Facepunch/RustRelay.Assets@494242bdeae941e3389b34a819c514aae2cf39f8/assets/Content/Props/Ladder_set/ladder_industrial_600.glb",
+      "repo_directory": "assets/Content/Props/Ladder_set",
+      "filename": "ladder_industrial_600.glb",
+      "file_type": "Binary glTF 2.0 (.glb)",
+      "position_m": [
+        0,
+        5.35,
+        -7.25
+      ],
+      "rotation_deg_xyz": [
+        0,
+        0,
+        90
+      ],
+      "scale_xyz": [
+        0.82,
+        0.82,
+        0.82
+      ],
+      "Distance_From_Origin_m": 9.01
     },
     {
       "Instance_ID": "ENV_TRUSS_R",
@@ -1079,9 +1131,9 @@
       "Asset_Name": "Ladder Industrial 600",
       "Full_Path": "assets/Content/Props/Ladder_set/ladder_industrial_600.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": 3.65,
-      "Pos_Y_m": 5.1,
-      "Pos_Z_m": -3.75,
+      "Pos_X_m": 6,
+      "Pos_Y_m": 5.35,
+      "Pos_Z_m": -7.25,
       "Rot_X_deg": 0,
       "Rot_Y_deg": 0,
       "Rot_Z_deg": 90,
@@ -1106,9 +1158,9 @@
       "filename": "ladder_industrial_600.glb",
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
-        3.65,
-        5.1,
-        -3.75
+        6,
+        5.35,
+        -7.25
       ],
       "rotation_deg_xyz": [
         0,
@@ -1120,7 +1172,7 @@
         0.82,
         0.82
       ],
-      "Distance_From_Origin_m": 7.307
+      "Distance_From_Origin_m": 10.825
     },
     {
       "Instance_ID": "CHAR_RANK_2",

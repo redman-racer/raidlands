@@ -67,7 +67,6 @@ import {
   RECORDED_BUFFER_MIN_SPLIT_MS,
   RECORDED_BUFFER_SPLIT_BYTES,
   RECORDED_PLAYBACK_SPEEDS,
-  RECORDED_REPLAY_LEAD_IN_MS,
   RecordedTimelineBatchCache,
   RecordedTimelineBuffer,
   RecordedTimelineClock,
@@ -75,9 +74,12 @@ import {
   initialRecordedReplayCursor,
   latestRecordedAvailability,
   recordedCoverageDurationMs,
+  recordedRangeChangeForegroundBounds,
   recordedSampleEverySeconds,
   recordedTimelineFramesAround,
+  recordedTimelineNeedsDetailPressure,
   recordedTimelineRenderIntervalMs,
+  recordedReplayWrapPrefetchDue,
   relativeTimelineCursor,
   type RecordedTimelineBufferEntry,
   type RecordedTimelineMode,
@@ -117,9 +119,11 @@ import {
 } from "../shared/three-sun-motion";
 import {
   adaptiveEnvironmentQuality,
+  adaptivePerformanceTiming,
   parseEnvironmentQuality,
   preferredEnvironmentQuality,
   resolveEnvironmentQuality,
+  stepAdaptivePerformanceTier,
   type EnvironmentQuality,
   type EnvironmentQualityProfile,
 } from "./environment-quality";
@@ -139,6 +143,7 @@ import {
   cameraYForTerrainSightline,
   selectDirectorShot,
   updateDirectorFpsState,
+  VIEWER_TARGET_FPS,
   type DirectorActionSubject,
   type DirectorFpsState,
   type DirectorLandscapeFeature,
@@ -165,6 +170,7 @@ import { installMapViewerDiagnostics, type MapViewerDiagnostics } from "./viewer
 import {
   desiredMonumentTier,
   monumentCacheEvictionKeys,
+  monumentMapTierEligible,
   monumentTierFitsBudget,
   parseMonumentMode,
   prioritizeMonuments,
@@ -440,6 +446,8 @@ type RecordedTimelineStream<T> = {
   authenticated?: boolean;
   allPlayers?: boolean;
   clanTag?: string;
+  complete?: boolean;
+  nextCursor?: string | null;
   items?: T[];
 };
 
@@ -930,7 +938,7 @@ function bindLiveTerrainUpdates(root: HTMLElement, initial: TerrainViewerInstanc
 
   if (!statusUrl) return;
 
-  const schedule = (delay = liveTerrainPollDelayMs()) => {
+  const schedule = (delay = liveTerrainPollDelayMs(root)) => {
     window.clearTimeout(pollTimer);
     pollTimer = window.setTimeout(() => {
       void poll();
@@ -993,7 +1001,7 @@ function bindLiveTerrainUpdates(root: HTMLElement, initial: TerrainViewerInstanc
     }
   });
 
-  schedule(liveTerrainPollDelayMs() + 1200);
+  schedule(liveTerrainPollDelayMs(root) + 1200);
 }
 
 async function loadLatestTerrainMetadata(root: HTMLElement, statusUrl: string): Promise<ServerStatusMapImage & { terrainUrl: string; textureUrl: string; worldSize: number; fingerprint: string } | null> {
@@ -1070,8 +1078,12 @@ function terrainIdentityFingerprint(metadata: Partial<ServerStatusMapImage> & { 
   ].join("|");
 }
 
-function liveTerrainPollDelayMs(): number {
-  return 30000;
+function liveTelemetryCadenceSeconds(root: HTMLElement): number {
+  return Math.max(30, Math.min(300, Number(root.dataset.liveRefreshSeconds) || 30));
+}
+
+function liveTerrainPollDelayMs(root: HTMLElement): number {
+  return liveTelemetryCadenceSeconds(root) * 1000;
 }
 
 function normalizeTerrain(value: unknown, root: HTMLElement): TerrainPayload {
@@ -1364,8 +1376,9 @@ class TerrainViewer {
   private readonly directorFeatures: DirectorLandscapeFeature[];
   private directorFps: DirectorFpsState = { smoothedFps: 60, tier: "healthy" };
   private adaptivePerformanceTier: DirectorFpsState["tier"] = "low";
-  private adaptiveRecoveryTier: DirectorFpsState["tier"] | null = null;
-  private adaptiveRecoveryStartedAt = 0;
+  private adaptiveCandidateTier: DirectorFpsState["tier"] | null = null;
+  private adaptiveCandidateStartedAt = 0;
+  private adaptiveTierChangedAt = performance.now();
   private readonly lockCameraInput: boolean;
   private monumentMode: MonumentMode = "auto";
   private readonly monumentModels: MonumentModelController;
@@ -1375,6 +1388,9 @@ class TerrainViewer {
   private viewerVisible = true;
   private lastSceneStatsAt = 0;
   private interactionSettleTimer = 0;
+  private playbackDetailPressure = false;
+  private playbackDetailActivationTimer = 0;
+  private playbackDetailRecoveryTimer = 0;
   private transitionFrom: CameraPose | null = null;
   private transitionTo: CameraPose | null = null;
   private transitionFinal: CameraPose | null = null;
@@ -1421,6 +1437,8 @@ class TerrainViewer {
     this.root.dataset.environmentQualityRequested = this.qualityProfile.requested;
     this.root.dataset.environmentQualityResolved = this.qualityProfile.resolved;
     this.root.dataset.environmentQualityRuntime = this.qualityProfile.resolved;
+    this.root.dataset.playbackDetailPressure = "false";
+    this.root.dataset.adaptiveFpsTarget = String(VIEWER_TARGET_FPS);
     this.root.dataset.environmentCapabilities = [
       capabilities.webgl2 ? "webgl2" : "webgl1",
       capabilities.depthTexture ? "depth" : "no-depth",
@@ -1650,6 +1668,8 @@ class TerrainViewer {
     this.disposed = true;
     window.cancelAnimationFrame(this.animationFrame);
     window.clearTimeout(this.interactionSettleTimer);
+    window.clearTimeout(this.playbackDetailActivationTimer);
+    window.clearTimeout(this.playbackDetailRecoveryTimer);
     this.viewportObserver?.disconnect();
     this.diagnostics?.dispose();
     window.removeEventListener("resize", this.onResize);
@@ -2865,6 +2885,42 @@ diffuseColor.a = mix(diffuseColor.a, 1.0, raidlandsWaterHorizonFade);
     this.updateMonumentMapLodVisibility();
   }
 
+  /**
+   * Timeline parsing and chunk decoding compete with GLB decoding. During the
+   * busy portion of a live-to-replay switch, shed only distance-managed object
+   * detail; keep the terrain, lighting, and weather presentation intact. The
+   * short recovery delay prevents LOD churn between adjacent buffer chunks.
+   */
+  public setPlaybackLoadPressure(active: boolean): void {
+    if (active) {
+      window.clearTimeout(this.playbackDetailRecoveryTimer);
+      this.playbackDetailRecoveryTimer = 0;
+      if (this.playbackDetailPressure || this.playbackDetailActivationTimer) return;
+      this.root.dataset.playbackDetailPressure = "pending";
+      this.playbackDetailActivationTimer = window.setTimeout(() => {
+        this.playbackDetailActivationTimer = 0;
+        if (this.disposed) return;
+        this.playbackDetailPressure = true;
+        this.root.dataset.playbackDetailPressure = "true";
+        this.applyLocalDetailBudget();
+      }, 1_500);
+      return;
+    }
+    if (this.playbackDetailActivationTimer) {
+      window.clearTimeout(this.playbackDetailActivationTimer);
+      this.playbackDetailActivationTimer = 0;
+      this.root.dataset.playbackDetailPressure = "false";
+    }
+    if (!this.playbackDetailPressure || this.playbackDetailRecoveryTimer) return;
+    this.playbackDetailRecoveryTimer = window.setTimeout(() => {
+      this.playbackDetailRecoveryTimer = 0;
+      if (this.disposed) return;
+      this.playbackDetailPressure = false;
+      this.root.dataset.playbackDetailPressure = "false";
+      this.applyLocalDetailBudget();
+    }, 6_000);
+  }
+
   private updateMonumentMapLodVisibility(): void {
     const batched = this.monumentMode === "auto" && this.runtimeEnvironmentQuality() === "low";
     if (this.monumentMapLodBatch) this.monumentMapLodBatch.visible = batched;
@@ -3292,44 +3348,58 @@ diffuseColor.a = mix(diffuseColor.a, 1.0, raidlandsWaterHorizonFade);
   }
 
   private runtimeEnvironmentQuality(): EnvironmentQuality {
+    const adaptive = adaptiveEnvironmentQuality(this.qualityProfile.resolved, this.adaptivePerformanceTier);
+    return this.playbackDetailPressure ? "low" : adaptive;
+  }
+
+  private runtimeRenderQuality(): EnvironmentQuality {
     return adaptiveEnvironmentQuality(this.qualityProfile.resolved, this.adaptivePerformanceTier);
   }
 
-  private updateAdaptivePerformanceTier(now: number): void {
-    const measured = this.directorFps.tier;
-    if (measured === this.adaptivePerformanceTier) {
-      this.adaptiveRecoveryTier = null;
-      return;
-    }
-    const rank = (tier: DirectorFpsState["tier"]) => tier === "low" ? 0 : tier === "constrained" ? 1 : 2;
-    if (rank(measured) < rank(this.adaptivePerformanceTier)) {
-      this.adaptiveRecoveryTier = null;
-      this.applyAdaptivePerformanceTier(measured);
-      return;
-    }
-    if (this.adaptiveRecoveryTier !== measured) {
-      this.adaptiveRecoveryTier = measured;
-      this.adaptiveRecoveryStartedAt = now;
-      return;
-    }
-    if ((now - this.adaptiveRecoveryStartedAt) >= 15_000) {
-      this.adaptiveRecoveryTier = null;
-      this.applyAdaptivePerformanceTier(measured);
-    }
-  }
-
-  private applyAdaptivePerformanceTier(tier: DirectorFpsState["tier"]): void {
-    this.adaptivePerformanceTier = tier;
+  private applyLocalDetailBudget(): void {
     const runtimeQuality = this.runtimeEnvironmentQuality();
-    const runtimeProfile = resolveEnvironmentQuality(runtimeQuality, fogCapabilities(this.renderer));
-    this.root.dataset.environmentQualityRuntime = runtimeQuality;
+    this.root.dataset.environmentQualityLocal = runtimeQuality;
     this.monumentModels.setPolicy(resolveMonumentQuality(this.monumentMode, runtimeQuality, monumentModelThresholds()));
     this.updateMonumentMapLodVisibility();
     this.treeModels?.setQuality(runtimeQuality);
     this.airstrikeReplay?.setDetailedModelsEnabled(runtimeQuality !== "low");
+  }
 
-    this.ambientOcclusionPass.enabled = runtimeQuality !== "low";
-    if (this.volumetricFogPass) this.volumetricFogPass.enabled = runtimeQuality === "high" || runtimeQuality === "ultra";
+  private updateAdaptivePerformanceTier(now: number): void {
+    if (this.playbackDetailPressure) {
+      this.adaptiveCandidateTier = null;
+      return;
+    }
+    const measured = this.directorFps.tier;
+    if (measured === this.adaptivePerformanceTier) {
+      this.adaptiveCandidateTier = null;
+      return;
+    }
+    if (this.adaptiveCandidateTier !== measured) {
+      this.adaptiveCandidateTier = measured;
+      this.adaptiveCandidateStartedAt = now;
+      return;
+    }
+    const { stableForMs, minimumDwellMs } = adaptivePerformanceTiming(
+      this.adaptivePerformanceTier,
+      measured,
+      this.directorFps.smoothedFps,
+    );
+    if ((now - this.adaptiveCandidateStartedAt) < stableForMs || (now - this.adaptiveTierChangedAt) < minimumDwellMs) return;
+    this.adaptiveCandidateTier = null;
+    this.applyAdaptivePerformanceTier(stepAdaptivePerformanceTier(this.adaptivePerformanceTier, measured));
+  }
+
+  private applyAdaptivePerformanceTier(tier: DirectorFpsState["tier"]): void {
+    this.adaptivePerformanceTier = tier;
+    this.adaptiveTierChangedAt = performance.now();
+    const renderQuality = this.runtimeRenderQuality();
+    const runtimeProfile = resolveEnvironmentQuality(renderQuality, fogCapabilities(this.renderer));
+    this.root.dataset.environmentQualityRuntime = renderQuality;
+    this.applyLocalDetailBudget();
+
+    this.ambientOcclusionPass.enabled = renderQuality !== "low";
+    if (this.volumetricFogPass) this.volumetricFogPass.enabled = renderQuality === "high" || renderQuality === "ultra";
     if (this.bloomPass) this.bloomPass.enabled = runtimeProfile.bloom;
     if (this.antialiasPass) this.antialiasPass.enabled = runtimeProfile.stableAntialiasing;
 
@@ -3562,7 +3632,6 @@ diffuseColor.a = mix(diffuseColor.a, 1.0, raidlandsWaterHorizonFade);
     this.targetEnvironment = current;
     this.environmentBlendStartedAt = performance.now();
     this.environmentBlendDuration = 0;
-    this.applyEnvironment(current);
   }
 
   private currentEnvironment(now: number): NormalizedEnvironment | null {
@@ -6275,7 +6344,9 @@ class MonumentModelController {
     let activeTriangles = 0;
     let activeDrawCalls = 0;
 
-    for (const item of ranked.slice(0, this.policy.activeMapLimit)) {
+    for (const item of ranked) {
+      if (mapSet.size >= this.policy.activeMapLimit) break;
+      if (!monumentMapTierEligible(item.projectedDiameter, item.focused, this.policy)) continue;
       const tier = item.binding.metadata.tiers.map;
       if (!monumentTierFitsBudget(
         { triangles: activeTriangles, drawCalls: activeDrawCalls },
@@ -6336,21 +6407,16 @@ class MonumentModelController {
       activeDrawCalls += drawCallDelta;
     }
 
+    const desiredByBinding = new Map<MonumentBinding, MonumentLodTier>();
     for (const { binding } of ranked) {
-      this.setDesired(binding, closeSet.has(binding) ? "close" : midSet.has(binding) ? "mid" : mapSet.has(binding) ? "map" : "fallback");
+      desiredByBinding.set(binding, closeSet.has(binding) ? "close" : midSet.has(binding) ? "mid" : mapSet.has(binding) ? "map" : "fallback");
     }
-
-    const preloadMidAt = this.policy.mapToMidPixels * (1 - this.policy.hysteresis);
-    const preloadCloseAt = this.policy.midToClosePixels * (1 - this.policy.hysteresis);
-    if (!this.interactionActive && this.policy.activeMidLimit > 0) {
-      ranked.filter((item) => mapSet.has(item.binding) && item.projectedDiameter >= preloadMidAt)
-        .slice(0, this.policy.activeMidLimit + 2)
-        .forEach((item) => this.preload(item.binding, "mid"));
-    }
-    if (!this.interactionActive && this.policy.activeCloseLimit > 0) {
-      ranked.filter((item) => mapSet.has(item.binding) && item.projectedDiameter >= preloadCloseAt)
-        .slice(0, this.policy.activeCloseLimit + 1)
-        .forEach((item) => this.preload(item.binding, "close"));
+    const loadBindings = new Set(ranked
+      .filter(({ binding }) => this.bindingNeedsLoad(binding, desiredByBinding.get(binding) || "fallback"))
+      .slice(0, Math.max(1, this.policy.decodeConcurrency))
+      .map(({ binding }) => binding));
+    for (const { binding } of ranked) {
+      this.setDesired(binding, desiredByBinding.get(binding) || "fallback", loadBindings.has(binding));
     }
 
     this.evict("close", this.policy.closeCacheLimit);
@@ -6374,15 +6440,24 @@ class MonumentModelController {
     this.syncDiagnostics();
   }
 
-  private setDesired(binding: MonumentBinding, desired: MonumentBinding["desired"]): void {
+  private setDesired(binding: MonumentBinding, desired: MonumentBinding["desired"], allowLoad = false): void {
     binding.desired = desired;
     if (desired !== "close") this.detach(binding, "close");
     if (desired === "map" || desired === "fallback") this.detach(binding, "mid");
     if (desired === "fallback") this.detach(binding, "map");
-    if (desired !== "fallback") this.ensure(binding, "map");
-    if (!this.interactionActive && (desired === "mid" || desired === "close")) this.ensure(binding, "mid");
-    if (!this.interactionActive && desired === "close") this.ensure(binding, "close");
+    if (allowLoad && desired !== "fallback") {
+      if (!binding.map) this.ensure(binding, "map");
+      else if (!this.interactionActive && (desired === "mid" || desired === "close") && !binding.mid) this.ensure(binding, "mid");
+      else if (!this.interactionActive && desired === "close" && !binding.close) this.ensure(binding, "close");
+    }
     this.applyVisibility(binding);
+  }
+
+  private bindingNeedsLoad(binding: MonumentBinding, desired: MonumentLodTier): boolean {
+    if (desired === "fallback") return false;
+    if (!binding.map) return true;
+    if ((desired === "mid" || desired === "close") && !binding.mid) return true;
+    return desired === "close" && !binding.close;
   }
 
   private ensure(binding: MonumentBinding, tier: MonumentModelTier): void {
@@ -6418,22 +6493,6 @@ class MonumentModelController {
       } finally {
         binding.loading.delete(tier);
         this.applyVisibility(binding);
-      }
-    } });
-    this.pump();
-  }
-
-  private preload(binding: MonumentBinding, tier: MonumentModelTier): void {
-    if (binding[tier] || binding.loading.has(tier) || binding.failed.has(tier) || this.cache.has(this.key(binding, tier)) || this.disposed || !this.visible || this.interactionActive) return;
-    binding.loading.add(tier);
-    this.queue.push({ binding, tier, run: async () => {
-      try {
-        await this.load(binding, tier);
-      } catch (error) {
-        binding.failed.add(tier);
-        console.warn(`Raidlands map viewer could not preload ${binding.metadata.id} ${tier} LOD; retaining the current tier.`, error);
-      } finally {
-        binding.loading.delete(tier);
       }
     } });
     this.pump();
@@ -9473,7 +9532,7 @@ function bindExternalControls(root: HTMLElement, viewer: TerrainViewer): ViewerB
   let playbackHistoryPollTimer = 0;
   let playbackRequestId = 0;
   const playbackSpeeds = [0.25, 0.5, 1, 2, 4, 8];
-  const playerLocationRefreshMs = 15_000;
+  const playerLocationRefreshMs = liveTelemetryCadenceSeconds(root) * 1000;
   const disposers: Array<() => void> = [];
   const cameraFingerprint = root.dataset.terrainHash || root.dataset.seed || "";
   const cameraPreferences = parseCameraPreferences(window.localStorage.getItem(CAMERA_PREFERENCES_STORAGE_KEY));
@@ -10724,6 +10783,7 @@ function bindRecordedTimelineControls(
   }>(4);
   const activeReplayRequests = new Map<string, { controller: AbortController; priority: number }>();
   const liveRequestControllers = new Set<AbortController>();
+  const liveTelemetrySeconds = liveTelemetryCadenceSeconds(root);
   let mode: RecordedTimelineMode = root.dataset.overlayMode === "replay" ? "replay" : "live";
   let speedIndex = 2;
   let animationFrame = 0;
@@ -10743,9 +10803,10 @@ function bindRecordedTimelineControls(
   let tailChecking = false;
   let pendingWrap = false;
   let buffering = false;
+  let modeSwitchLoading = false;
   let wantsToPlay = true;
   let replayInitialized = false;
-  let savedReplay: { startMs: number; endMs: number; cursorMs: number; speed: number; playing: boolean; loop: boolean } | null = null;
+  let savedReplay: { startMs: number; endMs: number; cursorMs: number; speed: number; playing: boolean; loop: boolean; followingHead: boolean } | null = null;
   let liveTemplate: RecordedTimelinePayload | null = null;
   let liveWindowStartMs = 0;
   let liveWindowEndMs = 0;
@@ -10761,6 +10822,8 @@ function bindRecordedTimelineControls(
   let seekWasPlaying: boolean | null = null;
   let seekDebounceTimer = 0;
   let speedReplanTimer = 0;
+  let rangeSwitchReleaseTimer = 0;
+  let rangeSwitchLoading = false;
   let residentSampleEvery = recordedSampleEverySeconds(1);
   let lastTickBufferPlanAt = 0;
   const liveNextPoll = new Map<string, number>();
@@ -10772,6 +10835,22 @@ function bindRecordedTimelineControls(
     disposers.push(() => target.removeEventListener(type, listener));
   };
   const speed = () => Number(RECORDED_PLAYBACK_SPEEDS[speedIndex] || 1);
+  const effectiveSpeed = () => {
+    const target = speed();
+    const tier = String(root.dataset.cameraPerformanceTier || "healthy");
+    if (tier === "low") return Math.min(target, 1);
+    if (tier === "constrained") return Math.min(target, 4);
+    return target;
+  };
+  const syncEffectiveSpeed = () => {
+    const effective = effectiveSpeed();
+    clock.setEffectiveReplaySpeed(effective);
+    root.dataset.timelineTargetSpeed = String(speed());
+    root.dataset.timelineEffectiveSpeed = String(effective);
+    root.dataset.timelineSchedulerTier = String(root.dataset.cameraPerformanceTier || "healthy");
+    root.dataset.timelinePausedReason = rangeSwitchLoading ? "range-change" : effective < speed() ? "performance" : "";
+    return effective;
+  };
   const selectedIncludes = () => ["environment", "events", ...(hooks.wantsHeatmap() ? ["heatmap"] : []), ...(hooks.wantsPlayers() ? ["players"] : [])];
   const rangeDurationMs = () => historyRangeSeconds(hooks.selectedRange()) * 1000;
   const recordTiming = (key: string, startedAt: number) => {
@@ -10784,12 +10863,17 @@ function bindRecordedTimelineControls(
   const parseTimelinePayload = (text: string, signal?: AbortSignal): Promise<RecordedTimelinePayload> => {
     const parse = timelineParseChain.then(async () => {
       if (signal?.aborted) throw new DOMException("Timeline request was aborted.", "AbortError");
+      const queueStartedAt = performance.now();
       await new Promise<void>((resolve) => {
         if (document.visibilityState === "hidden") window.setTimeout(resolve, 0);
         else window.requestAnimationFrame(() => resolve());
       });
+      root.dataset.timelineParseQueueMs = (performance.now() - queueStartedAt).toFixed(2);
       if (signal?.aborted) throw new DOMException("Timeline request was aborted.", "AbortError");
-      return JSON.parse(text) as RecordedTimelinePayload;
+      const parseStartedAt = performance.now();
+      const payload = JSON.parse(text) as RecordedTimelinePayload;
+      root.dataset.timelineParseMs = (performance.now() - parseStartedAt).toFixed(2);
+      return payload;
     });
     timelineParseChain = parse.then(() => undefined, () => undefined);
     return parse;
@@ -10803,6 +10887,8 @@ function bindRecordedTimelineControls(
     headOnly = false,
     signal?: AbortSignal,
     maximumBytesBeforeParse = Number.POSITIVE_INFINITY,
+    eventCursor = "",
+    eventLimit = 0,
   ): Promise<RecordedTimelineResponse> => {
     const requestStartedAt = performance.now();
     const url = new URL(String(root.dataset.timelineUrl), window.location.href);
@@ -10813,6 +10899,8 @@ function bindRecordedTimelineControls(
     url.searchParams.set("sampleEvery", String(sampleEvery));
     if (hooks.wantsAllPlayers()) url.searchParams.set("all", "1");
     if (headOnly) url.searchParams.set("head", "1");
+    if (eventCursor) url.searchParams.set("eventCursor", eventCursor);
+    if (eventLimit > 0) url.searchParams.set("eventLimit", String(eventLimit));
     const cacheKey = url.toString();
     const cached = headOnly ? undefined : responseCache.get(cacheKey);
     if (cached && cached.expiresAt >= Date.now() && (!knownWipeKey || !cached.wipeKey || cached.wipeKey === knownWipeKey)) {
@@ -10833,9 +10921,7 @@ function bindRecordedTimelineControls(
     root.dataset.timelineLastPayloadBytes = String(encodedBytes);
     if (!response.ok) throw new Error(`Timeline request failed with HTTP ${response.status}.`);
     if (encodedBytes > maximumBytesBeforeParse) return { payload: null, encodedBytes, oversized: true };
-    const parseStartedAt = performance.now();
     const payload = await parseTimelinePayload(text, signal);
-    recordTiming("timelineParseMs", parseStartedAt);
     if (payload.ok === false) throw new Error(`Timeline request failed with HTTP ${response.status}.`);
     const payloadWipeKey = String(payload.wipeKey || "");
     const payloadWipeStartMs = Date.parse(String(payload.wipeStartedAt || ""));
@@ -10852,6 +10938,67 @@ function bindRecordedTimelineControls(
       });
     }
     return result;
+  };
+
+  const requestCompleteTimelineChunk = async (
+    fromMs: number,
+    toMs: number,
+    signal: AbortSignal,
+    maximumBytesBeforeParse: number,
+    includes = selectedIncludes(),
+    sampleEvery = recordedSampleEverySeconds(speed()),
+  ): Promise<RecordedTimelineResponse> => {
+    const first = await requestTimeline(
+      fromMs,
+      toMs,
+      includes,
+      sampleEvery,
+      false,
+      signal,
+      maximumBytesBeforeParse,
+      "",
+      100,
+    );
+    if (!first.payload || first.oversized) return first;
+    const eventStream = first.payload.streams?.events;
+    let nextCursor = String(eventStream?.nextCursor || "");
+    let complete = eventStream?.complete !== false;
+    let encodedBytes = first.encodedBytes;
+    let pageCount = 1;
+    root.dataset.timelineEventPages = String(pageCount);
+    root.dataset.timelineEventsComplete = String(complete);
+
+    while (!complete && nextCursor && pageCount < 50) {
+      const page = await requestTimeline(
+        fromMs,
+        toMs,
+        ["events"],
+        0,
+        false,
+        signal,
+        maximumBytesBeforeParse,
+        nextCursor,
+        100,
+      );
+      if (!page.payload || page.oversized) return { payload: null, encodedBytes: encodedBytes + page.encodedBytes, oversized: page.oversized };
+      const pageStream = page.payload.streams?.events;
+      if (!first.payload.streams) first.payload.streams = {};
+      if (!first.payload.streams.events) first.payload.streams.events = { items: [] };
+      first.payload.streams.events.items = mergeRecordedEvents(
+        first.payload.streams.events.items || [],
+        pageStream?.items || [],
+      );
+      nextCursor = String(pageStream?.nextCursor || "");
+      complete = pageStream?.complete !== false;
+      first.payload.streams.events.complete = complete;
+      first.payload.streams.events.nextCursor = nextCursor || null;
+      encodedBytes += page.encodedBytes;
+      pageCount += 1;
+      root.dataset.timelineEventPages = String(pageCount);
+      root.dataset.timelineEventsComplete = String(complete);
+    }
+    if (!complete) throw new Error("Timeline event pagination did not reach complete coverage.");
+    return { payload: first.payload, encodedBytes, oversized: false };
   };
 
   const payloadHead = (payload: RecordedTimelinePayload): number => {
@@ -10940,6 +11087,20 @@ function bindRecordedTimelineControls(
     };
   };
 
+  const restoreRecordedHeadData = () => {
+    const streams = liveTemplate?.streams;
+    if (!streams) return;
+    environmentFrames = mergeRecordedItems([], streams.environment?.items || []);
+    playerFrames = mergeRecordedItems([], streams.players?.items || []);
+    heatmapFrames = mergeRecordedItems([], streams.heatmap?.items || []);
+    replayEvents = mergeRecordedEvents([], streams.events?.items || []);
+    syncReplayEventWindows();
+    activeReplaySignature = "#invalid";
+    lastHeatmapTimestamp = "";
+    lastPlayerFrameTimestamp = "";
+    hooks.onEvents(replayEvents);
+  };
+
   const residentReplayEvents = (): MapReplayEvent[] => {
     return mergeRecordedEvents([], buffer.readyEntries().flatMap((entry) => entry.value?.streams?.events?.items || []));
   };
@@ -10955,7 +11116,7 @@ function bindRecordedTimelineControls(
   };
 
   const activateReplayData = (cursorMs: number) => {
-    if (mode !== "replay") return;
+    if (mode !== "replay" || clock.followingHead) return;
     const entries = buffer.readyEntriesAround(cursorMs);
     const signature = entries.map((entry) => entry.key).join("|");
     if (activeReplaySignature === signature) return;
@@ -11002,6 +11163,9 @@ function bindRecordedTimelineControls(
     root.dataset.timelineRangeEndMs = String(clock.rangeEndMs);
     root.dataset.timelineCursorMs = String(clock.cursorMs);
     root.dataset.timelineSpeed = String(speed());
+    root.dataset.timelineTargetSpeed = String(speed());
+    root.dataset.timelineEffectiveSpeed = String(clock.effectiveSpeed);
+    root.dataset.timelineFollowingHead = String(clock.followingHead);
     root.dataset.timelineBufferChunks = String(buffer.entriesCount());
     root.dataset.timelineBufferBytes = String(buffer.encodedBytes());
     if (bufferTrack && (force || revisionChanged)) {
@@ -11021,6 +11185,11 @@ function bindRecordedTimelineControls(
       bufferTrack.replaceChildren(...segments);
     }
     if (bufferLabel) {
+      if (clock.followingHead) {
+        bufferLabel.value = clock.cursorMs < clock.headMs ? "Catching up to latest recording" : "Following latest recording";
+        bufferLabel.textContent = bufferLabel.value;
+        return;
+      }
       const readyMs = recordedCoverageDurationMs(buffer.coverage("ready"), clock.rangeStartMs, clock.rangeEndMs);
       const readyPercent = MathUtils.clamp((readyMs / rangeDuration) * 100, 0, 100);
       const readyEnd = Math.min(clock.rangeEndMs, buffer.contiguousReadyEnd(clock.cursorMs) ?? clock.cursorMs);
@@ -11079,7 +11248,8 @@ function bindRecordedTimelineControls(
       viewer.setHeatmapVisible(false);
     }
 
-    viewer.showReplayEvents(eventsAtCursor(cursorMs), mode === "live" ? 1 : speed(), {
+    const visibleReplayEvents = eventsAtCursor(cursorMs);
+    viewer.showReplayEvents(visibleReplayEvents, mode === "live" ? 1 : clock.effectiveSpeed, {
       mode: "timeline",
       cursorMs,
       live: mode === "live",
@@ -11097,33 +11267,56 @@ function bindRecordedTimelineControls(
     root.dataset.timelinePlayerFrames = String(playerFrames.length);
     root.dataset.timelineHeatmapFrames = String(heatmapFrames.length);
     root.dataset.timelineReplayEvents = String(replayEvents.length);
+    root.dataset.timelineEventBacklog = String(visibleReplayEvents.length);
     recordTiming("timelineCursorRenderMs", renderStartedAt);
   };
 
+  const syncPlaybackDetailPressure = () => {
+    viewer.setPlaybackLoadPressure(recordedTimelineNeedsDetailPressure({
+      mode,
+      modeSwitchLoading: modeSwitchLoading || rangeSwitchLoading,
+      buffering,
+      tailChecking,
+      pendingWrap,
+      activeRequestPriorities: [...activeReplayRequests.values()].map((request) => request.priority),
+    }));
+  };
+
   const updateControls = (waiting = false) => {
+    syncPlaybackDetailPressure();
     const replay = mode === "replay";
-    const busy = replay && wantsToPlay && (buffering || tailChecking || pendingWrap);
-    const state = busy ? "buffering" : waiting ? "waiting" : wantsToPlay ? "playing" : "paused";
-    const signature = `${mode}|${state}|${speedIndex}|${loop?.checked ? 1 : 0}`;
+    const limited = replay && syncEffectiveSpeed() < speed();
+    const busy = replay && !clock.followingHead && wantsToPlay && (buffering || tailChecking || pendingWrap);
+    const state = replay
+      ? clock.playbackState(busy, limited)
+      : waiting ? "waiting" : wantsToPlay ? "playing" : "paused";
+    const signature = `${mode}|${state}|${speedIndex}|${clock.effectiveSpeed}|${clock.followingHead ? 1 : 0}|${loop?.checked ? 1 : 0}`;
     if (signature !== lastControlsSignature) {
       lastControlsSignature = signature;
       modeButtons.forEach((button) => button.setAttribute("aria-pressed", String(button.dataset.mapViewerTimelineMode === mode)));
       if (play) {
         play.disabled = !replay;
-        play.textContent = replay ? (busy ? "Buffering" : wantsToPlay ? "Pause" : "Play") : (waiting ? "Waiting" : "Live");
+        play.textContent = replay
+          ? clock.followingHead
+            ? (clock.cursorMs < clock.headMs ? "Catching up" : "Following latest")
+            : busy ? "Buffering" : limited ? "Performance limited" : wantsToPlay ? "Pause" : "Play"
+          : (waiting ? "Waiting" : "Live");
         play.setAttribute("aria-pressed", String(replay && wantsToPlay));
       }
       if (loop) loop.disabled = !replay;
       if (speedDown) speedDown.disabled = !replay || speedIndex <= 0;
       if (speedUp) speedUp.disabled = !replay || speedIndex >= RECORDED_PLAYBACK_SPEEDS.length - 1;
       if (speedLabel) {
-        speedLabel.value = replay ? `${speed()}x` : "1x";
+        speedLabel.value = replay
+          ? limited ? `${speed()}x target · ${clock.effectiveSpeed}x effective` : `${speed()}x`
+          : "1x";
         speedLabel.textContent = speedLabel.value;
       }
       if (slider) slider.disabled = !replay;
       if (range) range.disabled = !replay;
       root.dataset.timelineMode = mode;
       root.dataset.timelineState = state;
+      root.dataset.timelineFollowingHead = String(replay && clock.followingHead);
     }
     updateBufferPresentation();
   };
@@ -11142,6 +11335,19 @@ function bindRecordedTimelineControls(
     if (discardPending) buffer.discardPending();
   };
 
+  const scheduleRangeSwitchRelease = () => {
+    window.clearTimeout(rangeSwitchReleaseTimer);
+    rangeSwitchReleaseTimer = window.setTimeout(() => {
+      rangeSwitchReleaseTimer = 0;
+      if (disposed || mode !== "replay" || !rangeSwitchLoading) return;
+      rangeSwitchLoading = false;
+      root.dataset.timelineRangeSwitchLoading = "false";
+      syncPlaybackDetailPressure();
+      planBuffer();
+      updateControls();
+    }, 1_200);
+  };
+
   const wrapDestinationMs = (): number => {
     const duration = Math.max(1, clock.rangeEndMs - clock.rangeStartMs);
     return MathUtils.clamp(clock.cycleEndMs - duration, buffer.rangeStartMs, buffer.rangeEndMs);
@@ -11149,8 +11355,12 @@ function bindRecordedTimelineControls(
 
   const wrapIsNear = (): boolean => {
     if (!clock.loop) return false;
-    const bounds = buffer.chunkBounds(clock.cursorMs);
-    return (clock.cycleEndMs - clock.cursorMs) <= Math.max(RECORDED_REPLAY_LEAD_IN_MS, bounds.endMs - bounds.startMs);
+    return recordedReplayWrapPrefetchDue(
+      clock.cursorMs,
+      clock.cycleEndMs,
+      clock.effectiveSpeed,
+      clock.followingHead,
+    );
   };
 
   const protectedBufferKeys = (): Set<string> => {
@@ -11174,12 +11384,9 @@ function bindRecordedTimelineControls(
     const parseLimit = logicalSpan > RECORDED_BUFFER_MIN_SPLIT_MS
       ? RECORDED_BUFFER_SPLIT_BYTES
       : Number.POSITIVE_INFINITY;
-    void requestTimeline(
+    void requestCompleteTimelineChunk(
       Math.max(0, entry.startMs - 120_000),
       entry.endMs + 30_000,
-      selectedIncludes(),
-      recordedSampleEverySeconds(speed()),
-      false,
       controller.signal,
       parseLimit,
     ).then((response) => {
@@ -11194,6 +11401,9 @@ function bindRecordedTimelineControls(
       syncResidentReplayEvents();
       activateReplayData(clock.cursorMs);
       buffering = wantsToPlay && buffer.entryAt(clock.cursorMs) === null;
+      if (rangeSwitchLoading && entry.startMs <= clock.cursorMs && entry.endMs >= clock.cursorMs) {
+        scheduleRangeSwitchRelease();
+      }
     }).catch((error) => {
       if (isAbortError(error) || generation !== bufferGeneration || mode !== "replay") return;
       buffer.markError(entry.key);
@@ -11210,9 +11420,12 @@ function bindRecordedTimelineControls(
 
   const pumpBufferQueue = () => {
     if (mode !== "replay" || disposed) return;
-    while (activeReplayRequests.size < 2) {
+    const tier = String(root.dataset.cameraPerformanceTier || "healthy");
+    const foregroundOnly = modeSwitchLoading || rangeSwitchLoading;
+    const requestLimit = foregroundOnly || tier !== "healthy" ? 1 : 2;
+    while (activeReplayRequests.size < requestLimit) {
       const speculativeActive = [...activeReplayRequests.values()].some((request) => request.priority >= 2);
-      const allowSpeculative = document.visibilityState !== "hidden" && !speculativeActive;
+      const allowSpeculative = document.visibilityState !== "hidden" && !speculativeActive && tier === "healthy" && !foregroundOnly;
       const candidate = buffer.nextQueued(Date.now(), allowSpeculative);
       if (!candidate) break;
       startBufferRequest(candidate);
@@ -11241,12 +11454,26 @@ function bindRecordedTimelineControls(
   function planBuffer(): void {
     if (mode !== "replay" || disposed) return;
     const planStartedAt = performance.now();
-    const current = buffer.ensureAt(clock.cursorMs, 0);
-    const nearWrap = wrapIsNear();
+    if (clock.followingHead) {
+      buffer.enforceLimits(protectedBufferKeys());
+      updateBufferPresentation();
+      root.dataset.timelineActiveRequests = String(activeReplayRequests.size);
+      recordTiming("timelineBufferPlanMs", planStartedAt);
+      return;
+    }
+    let current = buffer.entryAt(clock.cursorMs, false);
+    if (!current && rangeSwitchLoading) {
+      const foreground = recordedRangeChangeForegroundBounds(clock.cursorMs, clock.rangeStartMs, clock.cycleEndMs);
+      current = buffer.enqueue(foreground.startMs, foreground.endMs, 0);
+    }
+    current = current || buffer.ensureAt(clock.cursorMs, 0);
     let destination: RecordedTimelineBufferEntry<RecordedTimelinePayload> | null = null;
-    if (nearWrap) destination = buffer.ensureAt(wrapDestinationMs(), 1);
-    enqueueForward(current.endMs + 1, clock.cursorMs);
-    if (destination) enqueueForward(destination.endMs + 1, destination.startMs);
+    if (!rangeSwitchLoading) {
+      const nearWrap = wrapIsNear();
+      if (nearWrap) destination = buffer.ensureAt(wrapDestinationMs(), 1);
+      enqueueForward(current.endMs + 1, clock.cursorMs);
+      if (destination) enqueueForward(destination.endMs + 1, destination.startMs);
+    }
     buffer.enforceLimits(protectedBufferKeys());
     syncResidentReplayEvents();
     updateBufferPresentation();
@@ -11308,11 +11535,14 @@ function bindRecordedTimelineControls(
     const delta = document.visibilityState === "hidden" ? 0 : Math.max(0, now - lastTick);
     lastTick = now;
     if (mode === "replay") {
+      syncEffectiveSpeed();
       const wrappedPending = completePendingWrap();
       const wasBuffering = buffering;
       if (!tailChecking && !pendingWrap) clock.playing = wantsToPlay;
-      const playableThrough = buffer.contiguousReadyEnd(clock.cursorMs) ?? clock.cursorMs;
-      const destinationReady = buffer.entryAt(wrapDestinationMs()) !== null;
+      const playableThrough = clock.followingHead
+        ? clock.headMs
+        : buffer.contiguousReadyEnd(clock.cursorMs) ?? clock.cursorMs;
+      const destinationReady = clock.followingHead || buffer.entryAt(wrapDestinationMs()) !== null;
       const result = clock.tick(delta, playableThrough, destinationReady);
       if (result.wrapped) {
         buffer.updateRange(clock.rangeStartMs, clock.rangeEndMs);
@@ -11320,14 +11550,15 @@ function bindRecordedTimelineControls(
       }
       if (result.stopped) wantsToPlay = false;
       if (result.needsTailCheck) void resolveTail();
-      buffering = wantsToPlay && (result.buffering || tailChecking || pendingWrap || buffer.entryAt(clock.cursorMs) === null);
+      buffering = !clock.followingHead && wantsToPlay
+        && (result.buffering || tailChecking || pendingWrap || buffer.entryAt(clock.cursorMs) === null);
       const renderInterval = wantsToPlay ? recordedTimelineRenderIntervalMs(speed()) : 250;
       if (wrappedPending || result.wrapped || result.stopped || buffering !== wasBuffering || (now - lastTimelineRenderAt) >= renderInterval) {
         lastTimelineRenderAt = now;
         renderCursor();
         if (wrappedPending || result.wrapped || buffering !== wasBuffering || (now - lastTickBufferPlanAt) >= 250) {
           lastTickBufferPlanAt = now;
-          planBuffer();
+          if (!clock.followingHead) planBuffer();
         }
         updateControls();
       }
@@ -11345,26 +11576,34 @@ function bindRecordedTimelineControls(
 
   const enterMode = async (nextMode: RecordedTimelineMode) => {
     const generation = ++requestGeneration;
-    const previousMode = mode;
-    const liveSeed = previousMode === "live" ? buildLiveSeed() : null;
-    if (previousMode === "replay" && replayInitialized) {
-      savedReplay = {
-        startMs: clock.rangeStartMs,
-        endMs: clock.rangeEndMs,
-        cursorMs: clock.cursorMs,
-        speed: speed(),
-        playing: wantsToPlay,
-        loop: Boolean(loop?.checked),
-      };
-    }
-    abortReplayRequests();
-    abortLiveRequests();
-    mode = nextMode;
-    pendingWrap = false;
-    tailChecking = false;
-    buffering = false;
-    updateControls();
-    const now = Date.now();
+    modeSwitchLoading = nextMode === "replay";
+    if (modeSwitchLoading) viewer.setPlaybackLoadPressure(true);
+    try {
+      const previousMode = mode;
+      const liveSeed = previousMode === "live" ? buildLiveSeed() : null;
+      if (previousMode === "replay" && replayInitialized) {
+        savedReplay = {
+          startMs: clock.rangeStartMs,
+          endMs: clock.rangeEndMs,
+          cursorMs: clock.cursorMs,
+          speed: speed(),
+          playing: wantsToPlay,
+          loop: Boolean(loop?.checked),
+          followingHead: clock.followingHead,
+        };
+      }
+      abortReplayRequests();
+      abortLiveRequests();
+      window.clearTimeout(rangeSwitchReleaseTimer);
+      rangeSwitchReleaseTimer = 0;
+      rangeSwitchLoading = false;
+      root.dataset.timelineRangeSwitchLoading = "false";
+      mode = nextMode;
+      pendingWrap = false;
+      tailChecking = false;
+      buffering = false;
+      updateControls();
+      const now = Date.now();
 
     if (mode === "live") {
       buffer.clear();
@@ -11393,7 +11632,7 @@ function bindRecordedTimelineControls(
       return;
     }
 
-    let headPayload = liveSeed?.payload || null;
+      let headPayload = liveSeed?.payload || null;
     if (!headPayload) {
       const controller = new AbortController();
       liveRequestControllers.add(controller);
@@ -11410,23 +11649,20 @@ function bindRecordedTimelineControls(
     if (Number.isFinite(wipeStart)) knownWipeStartMs = wipeStart;
     const effectiveRange = effectiveRecordedReplayRange(endMs, rangeDurationMs(), knownWipeStartMs);
     const startMs = effectiveRange.startMs;
-    let cursorMs = initialRecordedReplayCursor(startMs, endMs);
-    let playing = true;
+    const cursorMs = initialRecordedReplayCursor(startMs, endMs);
+    const playing = true;
     let replayLoop = true;
     if (savedReplay) {
-      cursorMs = relativeTimelineCursor(savedReplay.cursorMs, savedReplay.startMs, savedReplay.endMs, startMs, endMs);
-      playing = savedReplay.playing;
       replayLoop = savedReplay.loop;
       const savedSpeedIndex = RECORDED_PLAYBACK_SPEEDS.findIndex((entry) => entry === savedReplay?.speed);
       if (savedSpeedIndex >= 0) speedIndex = savedSpeedIndex;
     }
     if (loop) loop.checked = replayLoop;
     wantsToPlay = playing;
-    clock.configureReplay({ startMs, endMs, cursorMs, speed: speed(), playing, loop: replayLoop });
+    clock.configureReplay({ startMs, endMs, cursorMs, speed: speed(), effectiveSpeed: effectiveSpeed(), playing, loop: replayLoop, followingHead: true });
     residentSampleEvery = recordedSampleEverySeconds(speed());
     root.dataset.timelineWipeStartMs = String(knownWipeStartMs || 0);
     buffer.configure(startMs, endMs, speed());
-    clearRenderedData(false);
     if (liveSeed) {
       const seedStart = Math.max(startMs, liveSeed.startMs);
       const seedEnd = Math.min(endMs, liveSeed.endMs);
@@ -11438,11 +11674,18 @@ function bindRecordedTimelineControls(
     }
     replayInitialized = true;
     activeReplaySignature = "#invalid";
-    buffering = wantsToPlay && buffer.entryAt(clock.cursorMs) === null;
+    buffering = false;
+    liveNextPoll.clear();
     planBuffer();
     renderCursor();
     updateBufferPresentation(true);
     updateControls();
+    } finally {
+      if (generation === requestGeneration) {
+        modeSwitchLoading = false;
+        syncPlaybackDetailPressure();
+      }
+    }
   };
 
   const pollLiveSource = async (source: string, cadenceSeconds: number) => {
@@ -11452,23 +11695,29 @@ function bindRecordedTimelineControls(
     const controller = new AbortController();
     liveRequestControllers.add(controller);
     try {
-      const response = await requestTimeline(
-        Math.max(0, clock.headMs - cadenceSeconds * 2_000),
-        now,
-        [source],
-        0,
-        false,
-        controller.signal,
-      );
-      if (!response.payload || disposed || mode !== "live") return;
+      const fromMs = Math.max(0, clock.headMs - cadenceSeconds * 2_000);
+      const response = source === "events"
+        ? await requestCompleteTimelineChunk(fromMs, now, controller.signal, Number.POSITIVE_INFINITY, [source], 0)
+        : await requestTimeline(fromMs, now, [source], 0, false, controller.signal);
+      const followingReplay = mode === "replay" && clock.followingHead;
+      if (!response.payload || disposed || (mode !== "live" && !followingReplay)) return;
       liveFailures.set(source, 0);
       const recordedHead = latestRecordedAvailability(response.payload.streams);
-      mergePayload(response.payload, Math.max(0, (recordedHead ?? clock.headMs) - 15 * 60_000));
+      const trimBefore = followingReplay
+        ? clock.rangeStartMs
+        : Math.max(0, (recordedHead ?? clock.headMs) - 15 * 60_000);
+      mergePayload(response.payload, trimBefore);
       if (recordedHead !== null) {
-        clock.setLiveHead(recordedHead);
+        if (followingReplay) {
+          clock.setReplayHead(recordedHead);
+          buffer.updateRange(clock.rangeStartMs, clock.rangeEndMs);
+        } else {
+          clock.setLiveHead(recordedHead);
+        }
         rememberLivePayload(response.payload, response.encodedBytes, recordedHead);
       }
       renderCursor();
+      updateControls(clock.followingHead && clock.cursorMs >= clock.headMs);
     } catch (error) {
       if (isAbortError(error)) return;
       liveFailures.set(source, failures + 1);
@@ -11479,9 +11728,14 @@ function bindRecordedTimelineControls(
   };
 
   const pollLive = () => {
-    if (mode !== "live" || document.visibilityState === "hidden") return;
+    if ((mode !== "live" && !(mode === "replay" && clock.followingHead)) || document.visibilityState === "hidden") return;
     const now = Date.now();
-    const sources: Array<[string, number]> = [["events", 5], ["players", 15], ["environment", 30], ["heatmap", 300]];
+    const sources: Array<[string, number]> = [
+      ["events", liveTelemetrySeconds],
+      ["players", liveTelemetrySeconds],
+      ["environment", liveTelemetrySeconds],
+      ["heatmap", 300],
+    ];
     sources.forEach(([source, cadence]) => {
       if ((source === "players" && !hooks.wantsPlayers()) || (source === "heatmap" && !hooks.wantsHeatmap())) return;
       if ((liveNextPoll.get(source) || 0) <= now) void pollLiveSource(source, cadence);
@@ -11490,6 +11744,10 @@ function bindRecordedTimelineControls(
 
   const resetReplayBuffer = () => {
     if (mode !== "replay") return;
+    if (clock.followingHead) {
+      reuseReplayBuffer();
+      return;
+    }
     abortReplayRequests();
     buffer.configure(clock.rangeStartMs, clock.cycleEndMs, speed());
     pendingWrap = false;
@@ -11510,8 +11768,8 @@ function bindRecordedTimelineControls(
     pendingWrap = false;
     tailChecking = false;
     activeReplaySignature = "#invalid";
-    syncResidentReplayEvents();
-    buffering = wantsToPlay && buffer.entryAt(clock.cursorMs) === null;
+    if (!clock.followingHead) syncResidentReplayEvents();
+    buffering = !clock.followingHead && wantsToPlay && buffer.entryAt(clock.cursorMs) === null;
     planBuffer();
     renderCursor();
     updateBufferPresentation(true);
@@ -11519,7 +11777,7 @@ function bindRecordedTimelineControls(
   };
 
   const reload = () => {
-    if (mode === "live") {
+    if (mode === "live" || (mode === "replay" && clock.followingHead)) {
       liveNextPoll.clear();
       pollLive();
       return;
@@ -11533,16 +11791,46 @@ function bindRecordedTimelineControls(
     const oldEnd = clock.rangeEndMs;
     const endMs = oldEnd;
     const startMs = effectiveRecordedReplayRange(endMs, rangeDurationMs(), knownWipeStartMs).startMs;
-    const cursorMs = relativeTimelineCursor(clock.cursorMs, oldStart, oldEnd, startMs, endMs);
-    clock.configureReplay({ startMs, endMs, cursorMs, speed: speed(), playing: wantsToPlay, loop: Boolean(loop?.checked) });
-    reuseReplayBuffer();
+    const cursorMs = clock.followingHead
+      ? endMs
+      : relativeTimelineCursor(clock.cursorMs, oldStart, oldEnd, startMs, endMs);
+    const followingHead = clock.followingHead;
+    clock.configureReplay({ startMs, endMs, cursorMs, speed: speed(), effectiveSpeed: effectiveSpeed(), playing: wantsToPlay, loop: Boolean(loop?.checked), followingHead });
+    window.clearTimeout(rangeSwitchReleaseTimer);
+    rangeSwitchReleaseTimer = 0;
+    rangeSwitchLoading = !followingHead;
+    root.dataset.timelineRangeSwitchLoading = String(rangeSwitchLoading);
+    if (followingHead) {
+      rangeSwitchLoading = false;
+      root.dataset.timelineRangeSwitchLoading = "false";
+      reuseReplayBuffer();
+      return;
+    }
+
+    abortReplayRequests();
+    buffer.updateRange(clock.rangeStartMs, clock.cycleEndMs);
+    buffer.setSpeed(speed());
+    if (!buffer.entryAt(clock.cursorMs, false)) {
+      const foreground = recordedRangeChangeForegroundBounds(clock.cursorMs, clock.rangeStartMs, clock.cycleEndMs);
+      buffer.enqueue(foreground.startMs, foreground.endMs, 0);
+    }
+    pendingWrap = false;
+    tailChecking = false;
+    activeReplaySignature = "#invalid";
+    syncResidentReplayEvents();
+    buffering = wantsToPlay && buffer.entryAt(clock.cursorMs) === null;
+    planBuffer();
+    renderCursor();
+    updateBufferPresentation(true);
+    updateControls();
+    if (!buffering) scheduleRangeSwitchRelease();
   };
 
   const reprioritizeSeek = () => {
-    if (mode !== "replay") return;
+    if (mode !== "replay" || clock.followingHead) return;
     abortReplayRequests();
     activeReplaySignature = "#invalid";
-    buffering = wantsToPlay && buffer.entryAt(clock.cursorMs) === null;
+    buffering = !clock.followingHead && wantsToPlay && buffer.entryAt(clock.cursorMs) === null;
     planBuffer();
     renderCursor();
     updateControls();
@@ -11556,10 +11844,26 @@ function bindRecordedTimelineControls(
   const finishSeek = () => {
     if (mode !== "replay" || seekWasPlaying === null) return;
     window.clearTimeout(seekDebounceTimer);
-    reprioritizeSeek();
     wantsToPlay = seekWasPlaying;
-    clock.playing = wantsToPlay;
     seekWasPlaying = null;
+    if (clock.nearReplayHead()) {
+      abortReplayRequests();
+      window.clearTimeout(rangeSwitchReleaseTimer);
+      rangeSwitchReleaseTimer = 0;
+      rangeSwitchLoading = false;
+      root.dataset.timelineRangeSwitchLoading = "false";
+      clock.followReplayHead();
+      restoreRecordedHeadData();
+      wantsToPlay = true;
+      buffering = false;
+      liveNextPoll.clear();
+      pollLive();
+      renderCursor();
+      updateControls(true);
+      return;
+    }
+    reprioritizeSeek();
+    clock.playing = wantsToPlay;
     buffering = wantsToPlay && buffer.entryAt(clock.cursorMs) === null;
     planBuffer();
     updateControls();
@@ -11570,6 +11874,7 @@ function bindRecordedTimelineControls(
       if (mode !== "replay") await enterMode("replay");
       const eventMs = Date.parse(String(event.startedAt || event.occurredAt || ""));
       if (!Number.isFinite(eventMs)) return;
+      clock.leaveReplayHead();
       clock.seek(eventMs);
       wantsToPlay = true;
       clock.playing = true;
@@ -11585,8 +11890,20 @@ function bindRecordedTimelineControls(
   bind(play, "click", () => {
     if (mode !== "replay") return;
     wantsToPlay = !wantsToPlay;
+    if (wantsToPlay && clock.nearReplayHead()) {
+      abortReplayRequests();
+      window.clearTimeout(rangeSwitchReleaseTimer);
+      rangeSwitchReleaseTimer = 0;
+      rangeSwitchLoading = false;
+      root.dataset.timelineRangeSwitchLoading = "false";
+      clock.followReplayHead();
+      restoreRecordedHeadData();
+      buffering = false;
+      liveNextPoll.clear();
+      pollLive();
+    }
     clock.playing = wantsToPlay && !tailChecking && !pendingWrap;
-    buffering = wantsToPlay && buffer.entryAt(clock.cursorMs) === null;
+    buffering = !clock.followingHead && wantsToPlay && buffer.entryAt(clock.cursorMs) === null;
     lastTick = performance.now();
     planBuffer();
     updateControls();
@@ -11616,6 +11933,8 @@ function bindRecordedTimelineControls(
   bind(range, "change", changeRange);
   bind(slider, "pointerdown", () => {
     if (mode !== "replay" || seekWasPlaying !== null) return;
+    clock.leaveReplayHead();
+    abortLiveRequests();
     seekWasPlaying = wantsToPlay;
     wantsToPlay = false;
     clock.playing = false;
@@ -11626,6 +11945,10 @@ function bindRecordedTimelineControls(
     wantsToPlay = false;
     clock.playing = false;
     const progress = MathUtils.clamp((Number(slider.value) || 0) / 1000, 0, 1);
+    if (progress < 0.999) {
+      clock.leaveReplayHead();
+      abortLiveRequests();
+    }
     clock.seek(MathUtils.lerp(clock.rangeStartMs, clock.rangeEndMs, progress));
     activeReplaySignature = "#invalid";
     renderCursor();
@@ -11663,7 +11986,7 @@ function bindRecordedTimelineControls(
   });
   bind(document, "visibilitychange", () => {
     lastTick = performance.now();
-    if (document.visibilityState === "visible" && mode === "live") {
+    if (document.visibilityState === "visible" && (mode === "live" || (mode === "replay" && clock.followingHead))) {
       liveNextPoll.clear();
       pollLive();
     } else if (document.visibilityState === "visible" && mode === "replay") {
@@ -11694,9 +12017,11 @@ function bindRecordedTimelineControls(
       requestGeneration += 1;
       abortReplayRequests();
       abortLiveRequests();
+      viewer.setPlaybackLoadPressure(false);
       responseCache.clear();
       window.clearTimeout(seekDebounceTimer);
       window.clearTimeout(speedReplanTimer);
+      window.clearTimeout(rangeSwitchReleaseTimer);
       window.cancelAnimationFrame(animationFrame);
       window.clearInterval(pollTimer);
       disposers.forEach((dispose) => dispose());

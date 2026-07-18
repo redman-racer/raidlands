@@ -20,13 +20,18 @@ export type MapViewerDiagnosticsSnapshot = {
     mode: string;
     state: string;
     speed: number;
+    targetSpeed: number;
+    effectiveSpeed: number;
+    followingHead: boolean;
+    schedulerTier: string;
+    pausedReason: string;
     rangeStartMs: number;
     rangeEndMs: number;
     cursorMs: number;
     wipeStartMs: number;
   };
-  buffer: { chunks: number; bytes: number; activeRequests: number };
-  timingsMs: { request: number; download: number; parse: number; merge: number; bufferPlan: number; cursorRender: number };
+  buffer: { chunks: number; bytes: number; activeRequests: number; eventPages: number; eventsComplete: boolean; eventBacklog: number };
+  timingsMs: { request: number; download: number; parseQueue: number; parse: number; merge: number; bufferPlan: number; cursorRender: number };
   activeObjects: { objects: number; meshes: number; instancedMeshes: number; lines: number; sprites: number };
   lod: {
     monument: { queued: number; active: number; cached: number; map: number; mid: number; close: number };
@@ -178,6 +183,11 @@ export class MapViewerDiagnostics {
         mode: dataset.timelineMode || "",
         state: dataset.timelineState || "",
         speed: finite(dataset.timelineSpeed, 1),
+        targetSpeed: finite(dataset.timelineTargetSpeed, 1),
+        effectiveSpeed: finite(dataset.timelineEffectiveSpeed, 1),
+        followingHead: dataset.timelineFollowingHead === "true",
+        schedulerTier: dataset.timelineSchedulerTier || "",
+        pausedReason: dataset.timelinePausedReason || "",
         rangeStartMs: finite(dataset.timelineRangeStartMs),
         rangeEndMs: finite(dataset.timelineRangeEndMs),
         cursorMs: finite(dataset.timelineCursorMs),
@@ -187,10 +197,14 @@ export class MapViewerDiagnostics {
         chunks: finite(dataset.timelineBufferChunks),
         bytes: finite(dataset.timelineBufferBytes),
         activeRequests: finite(dataset.timelineActiveRequests),
+        eventPages: finite(dataset.timelineEventPages),
+        eventsComplete: dataset.timelineEventsComplete !== "false",
+        eventBacklog: finite(dataset.timelineEventBacklog),
       },
       timingsMs: {
         request: finite(dataset.timelineRequestMs),
         download: finite(dataset.timelineDownloadMs),
+        parseQueue: finite(dataset.timelineParseQueueMs),
         parse: finite(dataset.timelineParseMs),
         merge: finite(dataset.timelineMergeMs),
         bufferPlan: finite(dataset.timelineBufferPlanMs),
@@ -337,9 +351,9 @@ export class MapViewerDiagnostics {
       `FPS ${snapshot.fps.rolling} avg ${snapshot.fps.average} | p95 frame ${snapshot.frameTimeMs.p95}ms`,
       `rAF peak ${snapshot.longestRafGapMs}ms | long tasks ${snapshot.longTasks.count} (${snapshot.longTasks.longestDurationMs}ms max)`,
       `renderer ${snapshot.renderer.calls} calls | ${snapshot.renderer.triangles.toLocaleString()} tris | ${snapshot.renderer.geometries} geom | ${snapshot.renderer.textures} tex`,
-      `quality ${snapshot.quality.runtime}/${snapshot.quality.performanceTier} | replay ${snapshot.replay.state} ${snapshot.replay.speed}x`,
-      `buffer ${snapshot.buffer.chunks} chunks ${Math.round(snapshot.buffer.bytes / 1024)}KB | req ${snapshot.buffer.activeRequests}`,
-      `timeline req ${snapshot.timingsMs.request} parse ${snapshot.timingsMs.parse} merge ${snapshot.timingsMs.merge} render ${snapshot.timingsMs.cursorRender}ms`,
+      `quality ${snapshot.quality.runtime}/${snapshot.quality.performanceTier} | replay ${snapshot.replay.state} ${snapshot.replay.targetSpeed}x/${snapshot.replay.effectiveSpeed}x`,
+      `buffer ${snapshot.buffer.chunks} chunks ${Math.round(snapshot.buffer.bytes / 1024)}KB | req ${snapshot.buffer.activeRequests} | events ${snapshot.buffer.eventBacklog} across ${snapshot.buffer.eventPages} pages ${snapshot.buffer.eventsComplete ? "complete" : "pending"}`,
+      `timeline req ${snapshot.timingsMs.request} queue ${snapshot.timingsMs.parseQueue} parse ${snapshot.timingsMs.parse} merge ${snapshot.timingsMs.merge} render ${snapshot.timingsMs.cursorRender}ms`,
       `monument q/a/cache ${snapshot.lod.monument.queued}/${snapshot.lod.monument.active}/${snapshot.lod.monument.cached} | tree ${snapshot.lod.tree.queued}/${snapshot.lod.tree.active}/${snapshot.lod.tree.cached}`,
       snapshot.heap ? `heap ${Math.round(snapshot.heap.usedBytes / 1048576)}MB / ${Math.round(snapshot.heap.totalBytes / 1048576)}MB` : "heap unavailable",
     ].join("\n");

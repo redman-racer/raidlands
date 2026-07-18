@@ -854,9 +854,41 @@
       "sourcePath": "assets/Content/Props/Ladder_set/ladder_industrial_600.glb",
       "localPath": "Content/Props/Ladder_set/ladder_industrial_600.glb",
       "position": [
-        -3.65,
-        5.1,
-        -3.75
+        -6,
+        5.35,
+        -7.25
+      ],
+      "rotation": [
+        0,
+        0,
+        90
+      ],
+      "scale": [
+        0.82,
+        0.82,
+        0.82
+      ],
+      "normalizeMode": "AABB bottom-center; preserve aspect",
+      "targetExtent": 5,
+      "anchor": "Center",
+      "castShadow": true,
+      "receiveShadow": true,
+      "lodClass": "Structure",
+      "occlusionPriority": "Low",
+      "renderOrder": 0
+    },
+    {
+      "id": "ENV_TRUSS_C",
+      "enabled": true,
+      "zone": "Environment",
+      "parent": "ENVIRONMENT",
+      "role": "Center overhead improvised truss",
+      "sourcePath": "assets/Content/Props/Ladder_set/ladder_industrial_600.glb",
+      "localPath": "Content/Props/Ladder_set/ladder_industrial_600.glb",
+      "position": [
+        0,
+        5.35,
+        -7.25
       ],
       "rotation": [
         0,
@@ -886,9 +918,9 @@
       "sourcePath": "assets/Content/Props/Ladder_set/ladder_industrial_600.glb",
       "localPath": "Content/Props/Ladder_set/ladder_industrial_600.glb",
       "position": [
-        3.65,
-        5.1,
-        -3.75
+        6,
+        5.35,
+        -7.25
       ],
       "rotation": [
         0,

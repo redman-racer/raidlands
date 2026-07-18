@@ -299,7 +299,14 @@ function raidlands_server_timeline_heatmap_stream(
     return $stream;
 }
 
-function raidlands_server_timeline_event_stream(string $server_id, string $wipe_key, array $bounds, bool $head_only): array
+function raidlands_server_timeline_event_stream(
+    string $server_id,
+    string $wipe_key,
+    array $bounds,
+    bool $head_only,
+    string $cursor = '',
+    int $limit = 800
+): array
 {
     $ready = raidlands_server_map_replay_events_are_ready();
     $available = $ready
@@ -319,42 +326,85 @@ function raidlands_server_timeline_event_stream(string $server_id, string $wipe_
         'ready' => $ready,
         'access' => ['allowed' => true, 'scope' => 'public'],
         'delay' => ['label' => 'Live', 'delaySeconds' => 0],
+        'complete' => true,
+        'nextCursor' => null,
         'items' => [],
     ];
     if ($head_only || !$ready) {
         return $stream;
     }
 
+    $limit = max(1, min(800, $limit));
+    $query_limit = $limit + 1;
+    $decoded_cursor = raidlands_server_timeline_event_cursor_decode($cursor);
+    if ($cursor !== '' && $decoded_cursor === null) {
+        throw new InvalidArgumentException('Recorded event cursor is invalid.');
+    }
+
     if (raidlands_server_map_replay_span_columns_are_ready()) {
+        $cursor_where = '';
+        $params = [
+            'server_id' => $server_id,
+            'wipe_key' => $wipe_key,
+            'window_start' => gmdate('Y-m-d H:i:s', $bounds['start']),
+            'window_end' => gmdate('Y-m-d H:i:s', $bounds['end']),
+            'open_window_end' => gmdate('Y-m-d H:i:s', $bounds['end']),
+        ];
+        if ($decoded_cursor !== null) {
+            $cursor_where = ' AND (
+              COALESCE(span_started_at, occurred_at) > :cursor_span_after
+              OR (COALESCE(span_started_at, occurred_at) = :cursor_span_occurred AND occurred_at > :cursor_occurred_after)
+              OR (COALESCE(span_started_at, occurred_at) = :cursor_span_id AND occurred_at = :cursor_occurred_id AND id > :cursor_id)
+            )';
+            $params['cursor_span_after'] = $decoded_cursor['span'];
+            $params['cursor_span_occurred'] = $decoded_cursor['span'];
+            $params['cursor_span_id'] = $decoded_cursor['span'];
+            $params['cursor_occurred_after'] = $decoded_cursor['occurred'];
+            $params['cursor_occurred_id'] = $decoded_cursor['occurred'];
+            $params['cursor_id'] = $decoded_cursor['id'];
+        }
         $rows = raidlands_db_fetch_all(
             'SELECT * FROM server_map_replay_events
              WHERE server_id = :server_id
                AND wipe_key = :wipe_key
                AND span_started_at <= :window_end
                AND COALESCE(span_ended_at, :open_window_end) >= :window_start
-             ORDER BY span_started_at ASC, occurred_at ASC
-             LIMIT 800',
-            [
-                'server_id' => $server_id,
-                'wipe_key' => $wipe_key,
-                'window_start' => gmdate('Y-m-d H:i:s', $bounds['start']),
-                'window_end' => gmdate('Y-m-d H:i:s', $bounds['end']),
-                'open_window_end' => gmdate('Y-m-d H:i:s', $bounds['end']),
-            ]
+             ' . $cursor_where . '
+             ORDER BY COALESCE(span_started_at, occurred_at) ASC, occurred_at ASC, id ASC
+             LIMIT ' . $query_limit,
+            $params
         );
     } else {
+        $cursor_where = '';
+        $params = [
+            'server_id' => $server_id,
+            'wipe_key' => $wipe_key,
+            'window_start' => gmdate('Y-m-d H:i:s', $bounds['start']),
+            'window_end' => gmdate('Y-m-d H:i:s', $bounds['end']),
+        ];
+        if ($decoded_cursor !== null) {
+            $cursor_where = ' AND (
+              occurred_at > :cursor_occurred_after
+              OR (occurred_at = :cursor_occurred_id AND id > :cursor_id)
+            )';
+            $params['cursor_occurred_after'] = $decoded_cursor['occurred'];
+            $params['cursor_occurred_id'] = $decoded_cursor['occurred'];
+            $params['cursor_id'] = $decoded_cursor['id'];
+        }
         $rows = raidlands_db_fetch_all(
             'SELECT * FROM server_map_replay_events
              WHERE server_id = :server_id AND wipe_key = :wipe_key
                AND occurred_at BETWEEN :window_start AND :window_end
-             ORDER BY occurred_at ASC LIMIT 800',
-            [
-                'server_id' => $server_id,
-                'wipe_key' => $wipe_key,
-                'window_start' => gmdate('Y-m-d H:i:s', $bounds['start']),
-                'window_end' => gmdate('Y-m-d H:i:s', $bounds['end']),
-            ]
+               ' . $cursor_where . '
+             ORDER BY occurred_at ASC, id ASC LIMIT ' . $query_limit,
+            $params
         );
+    }
+    $stream['complete'] = count($rows) <= $limit;
+    if (!$stream['complete']) {
+        $rows = array_slice($rows, 0, $limit);
+        $last_row = $rows[count($rows) - 1] ?? null;
+        $stream['nextCursor'] = is_array($last_row) ? raidlands_server_timeline_event_cursor_encode($last_row) : null;
     }
     $stream['items'] = array_map('raidlands_server_map_replay_event_from_row', $rows);
     return $stream;
@@ -382,6 +432,10 @@ function raidlands_server_timeline_public(array $query): array
     $metric = raidlands_server_heatmap_clean_metric($query['metric'] ?? 'all');
     $context = raidlands_server_location_viewer_context($server_id);
     $include_all = !empty($query['all']) && (string) $query['all'] !== '0';
+    $event_cursor = trim((string) ($query['eventCursor'] ?? ''));
+    $event_limit = array_key_exists('eventLimit', $query)
+        ? max(1, min(200, (int) $query['eventLimit']))
+        : 800;
     $streams = [];
 
     if (in_array('environment', $include, true)) {
@@ -394,7 +448,7 @@ function raidlands_server_timeline_public(array $query): array
         $streams['heatmap'] = raidlands_server_timeline_heatmap_stream($server_id, $wipe_key, $metric, $bounds, $sample_every, $head_only);
     }
     if (in_array('events', $include, true)) {
-        $streams['events'] = raidlands_server_timeline_event_stream($server_id, $wipe_key, $bounds, $head_only);
+        $streams['events'] = raidlands_server_timeline_event_stream($server_id, $wipe_key, $bounds, $head_only, $event_cursor, $event_limit);
     }
 
     return [

@@ -17,7 +17,13 @@ function raidlands_server_status_stale_seconds(): int
 {
     global $site_config;
 
-    return max(30, (int) ($site_config['serverStats']['staleSeconds'] ?? 90));
+    $exchange_seconds = max(30, min(300, (int) ($site_config['serverStats']['exchangeSeconds'] ?? 30)));
+    $configured_seconds = (int) ($site_config['serverStats']['staleSeconds'] ?? 120);
+
+    // The hub waits for each aggregate response before scheduling its next exchange.
+    // Four intervals leave room for request runtime and a missed exchange without
+    // presenting healthy 30-second telemetry as delayed.
+    return max($exchange_seconds * 4, $configured_seconds);
 }
 
 function raidlands_server_status_sample_retention_days(): int
@@ -1366,7 +1372,7 @@ function raidlands_server_player_location_rows_for_context(string $server_id, ar
              ORDER BY steam_id64 = :order_steam_id64 DESC, display_name ASC
              LIMIT 80',
             array_merge($params, [
-                'stale_after' => gmdate('Y-m-d H:i:s', time() - 120),
+                'stale_after' => gmdate('Y-m-d H:i:s', time() - raidlands_server_status_stale_seconds()),
                 'order_steam_id64' => $steam_id64,
             ])
         );
@@ -1423,7 +1429,7 @@ function raidlands_server_player_location_rows_all(string $server_id, string $se
              LIMIT 200',
             [
                 'server_id' => $server_id,
-                'stale_after' => gmdate('Y-m-d H:i:s', time() - 120),
+                'stale_after' => gmdate('Y-m-d H:i:s', time() - raidlands_server_status_stale_seconds()),
             ]
         );
     }

@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   desiredMonumentTier,
   monumentCacheEvictionKeys,
+  monumentMapTierEligible,
   monumentTierFitsBudget,
   parseMonumentMode,
   prioritizeMonuments,
@@ -21,11 +22,18 @@ describe("monument quality policy", () => {
 
   it("applies the requested tier caps and total resource budgets", () => {
     expect(resolveMonumentQuality("auto", "low")).toMatchObject({ resolved: "primitives", activeCloseLimit: 0, activeMidLimit: 0, activeMapLimit: 0, triangleBudget: 3_000_000, drawCallBudget: 2_500 });
-    expect(resolveMonumentQuality("detailed", "low")).toMatchObject({ resolved: "detailed", activeCloseLimit: 1, activeMidLimit: 4, activeMapLimit: 12 });
-    expect(resolveMonumentQuality("auto", "medium")).toMatchObject({ activeCloseLimit: 1, activeMidLimit: 9, activeMapLimit: 48, triangleBudget: 4_000_000, drawCallBudget: 3_000 });
-    expect(resolveMonumentQuality("auto", "high")).toMatchObject({ activeCloseLimit: 2, activeMidLimit: 16, activeMapLimit: 72, triangleBudget: 5_000_000, drawCallBudget: 3_500 });
-    expect(resolveMonumentQuality("auto", "ultra")).toMatchObject({ activeCloseLimit: 3, activeMidLimit: 24, activeMapLimit: 96, triangleBudget: 6_000_000, drawCallBudget: 4_000 });
-    expect(resolveMonumentQuality("primitives", "ultra")).toMatchObject({ resolved: "map", activeCloseLimit: 0, activeMidLimit: 0, activeMapLimit: 96 });
+    expect(resolveMonumentQuality("detailed", "low")).toMatchObject({ resolved: "detailed", activeCloseLimit: 1, activeMidLimit: 4, activeMapLimit: 8 });
+    expect(resolveMonumentQuality("auto", "medium")).toMatchObject({ activeCloseLimit: 1, activeMidLimit: 9, activeMapLimit: 12, triangleBudget: 4_000_000, drawCallBudget: 3_000 });
+    expect(resolveMonumentQuality("auto", "high")).toMatchObject({ activeCloseLimit: 2, activeMidLimit: 16, activeMapLimit: 20, triangleBudget: 5_000_000, drawCallBudget: 3_500 });
+    expect(resolveMonumentQuality("auto", "ultra")).toMatchObject({ activeCloseLimit: 3, activeMidLimit: 24, activeMapLimit: 28, triangleBudget: 6_000_000, drawCallBudget: 4_000 });
+    expect(resolveMonumentQuality("primitives", "ultra")).toMatchObject({ resolved: "map", activeCloseLimit: 0, activeMidLimit: 0, activeMapLimit: 28 });
+  });
+
+  it("keeps far monuments on primitives until they occupy enough screen space", () => {
+    const policy = resolveMonumentQuality("auto", "high");
+    expect(monumentMapTierEligible(15, false, policy)).toBe(false);
+    expect(monumentMapTierEligible(16, false, policy)).toBe(true);
+    expect(monumentMapTierEligible(1, true, policy)).toBe(true);
   });
 
   it("selects by projected screen diameter and focuses Close", () => {

@@ -36,6 +36,7 @@ type LoadedSource = {
 };
 type RankedPlacement = { placement: VegetationPlacement; index: number; distance: number };
 type TreeBatchGroup = { entry: TreeModelEntry; tier: TreeModelTier; placements: VegetationPlacement[] };
+type TreeBatchRecord = { objects: InstancedMesh[]; signature: string; tier: TreeModelTier };
 type TreeLoadTask = {
   key: string;
   entry: TreeModelEntry;
@@ -48,7 +49,7 @@ type TreeLoadTask = {
 
 const QUALITY_CLOSE: Record<EnvironmentQuality, number> = { low: 0, medium: 24, high: 72, ultra: 140 };
 const QUALITY_MID: Record<EnvironmentQuality, number> = { low: 0, medium: 220, high: 420, ultra: 720 };
-const QUALITY_INSTANCES: Record<EnvironmentQuality, number> = { low: 240, medium: 540, high: 920, ultra: 1450 };
+const QUALITY_INSTANCES: Record<EnvironmentQuality, number> = { low: 240, medium: 1450, high: 1450, ultra: 1450 };
 const QUALITY_CACHE: Record<EnvironmentQuality, { mid: number; close: number }> = {
   low: { mid: 0, close: 0 },
   medium: { mid: 8, close: 3 },
@@ -58,7 +59,7 @@ const QUALITY_CACHE: Record<EnvironmentQuality, { mid: number; close: number }> 
 const Y_AXIS = new Vector3(0, 1, 0);
 
 export function treeDecodeConcurrency(quality: EnvironmentQuality): number {
-  return quality === "low" ? 1 : 2;
+  return 1;
 }
 
 export function treeQualityLimits(quality: EnvironmentQuality): { mid: number; close: number } {
@@ -92,7 +93,7 @@ export class TreeModelController {
   private readonly failures = new Set<string>();
   private readonly pending = new Map<string, Promise<void>>();
   private readonly queue: TreeLoadTask[] = [];
-  private readonly batches: Object3D[] = [];
+  private readonly batchGroups = new Map<string, TreeBatchRecord>();
   private readonly activeSourceKeys = new Set<string>();
   private lastTick = 0;
   private lastMembershipSignature = "";
@@ -260,11 +261,25 @@ export class TreeModelController {
       return;
     }
     this.lastMembershipSignature = signature;
-    this.clearBatches();
     this.activeSourceKeys.clear();
+    for (const [key, record] of this.batchGroups) {
+      const group = groups.get(key);
+      const signature = group ? this.groupSignature(group) : "";
+      if (group && record.signature === signature) {
+        record.objects.forEach((batch) => { batch.castShadow = group.tier === "close" && (this.quality === "high" || this.quality === "ultra"); });
+        this.activeSourceKeys.add(key);
+        continue;
+      }
+      this.removeBatchRecord(key, record);
+    }
     for (const [key, group] of groups) {
       this.activeSourceKeys.add(key);
-      this.createBatch(group.entry, group.tier, group.placements);
+      if (this.batchGroups.has(key)) continue;
+      this.batchGroups.set(key, {
+        objects: this.createBatch(group.entry, group.tier, group.placements),
+        signature: this.groupSignature(group),
+        tier: group.tier,
+      });
     }
     this.evictDetailCaches();
     this.syncDiagnostics(groups);
@@ -311,9 +326,10 @@ export class TreeModelController {
     });
   }
 
-  private createBatch(entry: TreeModelEntry, tier: TreeModelTier, placements: VegetationPlacement[]): void {
+  private createBatch(entry: TreeModelEntry, tier: TreeModelTier, placements: VegetationPlacement[]): InstancedMesh[] {
     const source = this.sources.get(this.key(entry, tier));
-    if (!source) return;
+    if (!source) return [];
+    const created: InstancedMesh[] = [];
     const placementMatrix = new Matrix4();
     const translation = new Vector3();
     const rotation = new Quaternion();
@@ -337,8 +353,9 @@ export class TreeModelController {
       batch.computeBoundingBox();
       batch.computeBoundingSphere();
       this.layer.add(batch);
-      this.batches.push(batch);
+      created.push(batch);
     }
+    return created;
   }
 
   private load(entry: TreeModelEntry, tier: TreeModelTier, priority = 1000): Promise<void> {
@@ -455,18 +472,35 @@ export class TreeModelController {
   }
 
   private usedEntries(): TreeModelEntry[] {
-    return [...new Map(this.options.placements.map((placement) => {
+    const nearest = new Map<string, { entry: TreeModelEntry; distance: number }>();
+    this.options.placements.forEach((placement) => {
       const entry = treeModelForVariation(placement.biome, placement.variation);
-      return [entry.id, entry];
-    })).values()];
+      const distance = treePlacementDistance(this.options.camera.position, placement);
+      const existing = nearest.get(entry.id);
+      if (!existing || distance < existing.distance) nearest.set(entry.id, { entry, distance });
+    });
+    return [...nearest.values()].sort((left, right) => left.distance - right.distance).map(({ entry }) => entry);
   }
 
   private clearBatches(): void {
-    for (const batch of this.batches) {
+    for (const [key, record] of this.batchGroups) this.removeBatchRecord(key, record);
+  }
+
+  private removeBatchRecord(key: string, record: TreeBatchRecord): void {
+    record.objects.forEach((batch) => {
       this.layer.remove(batch);
-      if (batch instanceof InstancedMesh) batch.dispose();
+      batch.dispose();
+    });
+    this.batchGroups.delete(key);
+  }
+
+  private groupSignature(group: TreeBatchGroup): string {
+    let hash = 2166136261;
+    for (const placement of group.placements) {
+      hash ^= Math.round(placement.x) + Math.round(placement.z) * 31;
+      hash = Math.imul(hash, 16777619);
     }
-    this.batches.length = 0;
+    return `${group.tier}:${group.placements.length}:${hash >>> 0}`;
   }
 
   private disposeSource(source: LoadedSource): void {

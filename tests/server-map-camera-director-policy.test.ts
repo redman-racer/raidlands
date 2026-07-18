@@ -40,14 +40,24 @@ describe("server map cinematic camera director", () => {
   it("smooths FPS with hysteresis instead of oscillating at a threshold", () => {
     let state: DirectorFpsState = { smoothedFps: 60, tier: "healthy" };
     for (let index = 0; index < 40; index += 1) state = updateDirectorFpsState(state, 25);
-    expect(state.tier).toBe("constrained");
-    for (let index = 0; index < 40; index += 1) state = updateDirectorFpsState(state, 50);
+    expect(state.tier).toBe("healthy");
+    for (let index = 0; index < 40; index += 1) state = updateDirectorFpsState(state, 120);
     expect(state.tier).toBe("low");
-    for (let index = 0; index < 40; index += 1) state = updateDirectorFpsState(state, 30);
+    for (let index = 0; index < 80 && state.tier === "low"; index += 1) state = updateDirectorFpsState(state, 25);
     expect(state.tier).toBe("constrained");
+    for (let index = 0; index < 80; index += 1) state = updateDirectorFpsState(state, 25);
+    expect(state.tier).toBe("healthy");
   });
 
-  it("treats visible long frames as immediate low-performance evidence", () => {
+  it("absorbs an isolated loading hitch without changing tier", () => {
+    let state: DirectorFpsState = { smoothedFps: 60, tier: "healthy" };
+    state = updateDirectorFpsState(state, 500);
+    expect(state.tier).toBe("healthy");
+    for (let index = 0; index < 20; index += 1) state = updateDirectorFpsState(state, 1000 / 30);
+    expect(state.tier).toBe("healthy");
+  });
+
+  it("treats sustained long frames as low-performance evidence", () => {
     let state: DirectorFpsState = { smoothedFps: 60, tier: "healthy" };
     for (let index = 0; index < 12; index += 1) state = updateDirectorFpsState(state, 500, 0.25);
     expect(state.tier).toBe("low");

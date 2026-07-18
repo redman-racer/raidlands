@@ -243,6 +243,12 @@ function leaderboard_podium_value(array $row, string $board, string $metric): st
 function leaderboard_podium_markup(array $leaders, string $board, string $metric): string
 {
     $leaders = raidlands_podium_decorate_leaders($leaders, $board);
+    if (isset($_GET['podium-capture'])) {
+        while (count($leaders) < 3) {
+            $rank = count($leaders) + 1;
+            $leaders[] = ['display_name' => 'Raidlands Contender ' . $rank, 'kills' => max(1, 4 - $rank)];
+        }
+    }
     $metric_labels = [
         'kills' => 'kills', 'kdr' => 'K/D', 'playtime' => 'played', 'rp' => 'RP',
         'npc_kills' => 'NPC kills', 'deaths_by_npc' => 'NPC deaths', 'deaths' => 'deaths',
@@ -291,6 +297,10 @@ function leaderboard_podium_markup(array $leaders, string $board, string $metric
         . ' data-scene-model-base="' . e(asset_url('media/models/leaderboard-scene/')) . '"'
         . ' data-environment-src="' . e(asset_url('media/skyboxes/leaderboard-industrial-night-v2.hdr')) . '"'
         . ' data-backdrop-src="' . e(asset_url('media/leaderboard-arena-backdrop-v1.webp')) . '"'
+        . ' data-ground-albedo-src="' . e(asset_url('media/textures/leaderboard-junkyard-dirt-albedo.webp')) . '"'
+        . ' data-ground-normal-src="' . e(asset_url('media/textures/leaderboard-junkyard-dirt-normal.webp')) . '"'
+        . ' data-ground-arm-src="' . e(asset_url('media/textures/leaderboard-junkyard-dirt-arm.webp')) . '"'
+        . ' data-ground-fallback-src="' . e(asset_url('media/textures/road-dirt.webp')) . '"'
         . ' data-poster-src="' . e(asset_url('media/leaderboard-podium-poster.webp')) . '"'
         . ' data-decoder-path="' . e(asset_url('media/models/draco/')) . '" aria-label="Top three podium">'
         . '<div class="leaderboard-podium-heading"><span>Current category</span><strong data-podium-category>' . e($theme) . '</strong></div>'

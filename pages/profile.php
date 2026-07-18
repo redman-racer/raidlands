@@ -139,7 +139,11 @@ $profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_
       <?php else : ?>
         <div class="podium-profile-grid" data-podium-profile>
           <section class="leaderboard-podium podium-profile-preview" data-leaderboard-podium data-podium-layout="single" data-board="players" data-metric="kills"
-            data-model-base="<?= e(asset_url('media/models/leaderboard/')) ?>" data-decoder-path="<?= e(asset_url('media/models/draco/')) ?>" aria-label="Your podium preview">
+            data-model-base="<?= e(asset_url('media/models/leaderboard/')) ?>" data-decoder-path="<?= e(asset_url('media/models/draco/')) ?>"
+            data-ground-albedo-src="<?= e(asset_url('media/textures/leaderboard-junkyard-dirt-albedo.webp')) ?>"
+            data-ground-normal-src="<?= e(asset_url('media/textures/leaderboard-junkyard-dirt-normal.webp')) ?>"
+            data-ground-arm-src="<?= e(asset_url('media/textures/leaderboard-junkyard-dirt-arm.webp')) ?>"
+            data-ground-fallback-src="<?= e(asset_url('media/textures/road-dirt.webp')) ?>" aria-label="Your podium preview">
             <div class="leaderboard-podium-stage" data-podium-stage aria-hidden="true"></div>
             <div class="leaderboard-podium-cards" data-podium-cards></div>
             <p class="leaderboard-podium-status" data-podium-status aria-live="polite">Loading your podium preview.</p>

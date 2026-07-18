@@ -1342,12 +1342,16 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                         <input type="text" list="admin-status-provider-options" name="site_config[serverStats][provider]" maxlength="40" value="<?= e((string) ($admin_site['serverStats']['provider'] ?? 'raidlands')) ?>">
                       </label>
                       <label class="admin-field">
-                        <?= admin_field_head('Status refresh seconds', 'How often browsers refresh the public status endpoint.') ?>
-                        <input type="number" min="30" max="3600" name="site_config[serverStats][cacheSeconds]" value="<?= e((string) ($admin_site['serverStats']['cacheSeconds'] ?? 60)) ?>">
+                        <?= admin_field_head('Game server exchange seconds', 'Cadence of the centralized WebsiteBridgeHub request. Live website viewers use this same interval.') ?>
+                        <input type="number" min="30" max="300" name="site_config[serverStats][exchangeSeconds]" value="<?= e((string) ($admin_site['serverStats']['exchangeSeconds'] ?? 30)) ?>">
                       </label>
                       <label class="admin-field">
-                        <?= admin_field_head('Heartbeat stale seconds', 'How long the website waits before marking the latest server heartbeat delayed.') ?>
-                        <input type="number" min="30" max="3600" name="site_config[serverStats][staleSeconds]" value="<?= e((string) ($admin_site['serverStats']['staleSeconds'] ?? 90)) ?>">
+                        <?= admin_field_head('Status refresh seconds', 'How often browsers refresh the public status endpoint.') ?>
+                        <input type="number" min="30" max="3600" name="site_config[serverStats][cacheSeconds]" value="<?= e((string) ($admin_site['serverStats']['cacheSeconds'] ?? 30)) ?>">
+                      </label>
+                      <label class="admin-field">
+                        <?= admin_field_head('Heartbeat stale seconds', 'How long the website waits before marking the latest server heartbeat delayed. Keep this at four or more exchange intervals.') ?>
+                        <input type="number" min="120" max="3600" name="site_config[serverStats][staleSeconds]" value="<?= e((string) ($admin_site['serverStats']['staleSeconds'] ?? 120)) ?>">
                       </label>
                       <div class="admin-alert success admin-span-all">Steam sign-in is handled natively at <code>/link/</code>. Configure Discord OAuth, guild behavior, and role mappings in Site Setup → Discord.</div>
                     </div>

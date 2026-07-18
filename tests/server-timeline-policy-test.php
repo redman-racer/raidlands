@@ -54,4 +54,17 @@ $ended_span = raidlands_server_timeline_event_span([
 ], strtotime('2026-07-17T10:08:00Z'), strtotime('2026-07-17T10:00:01Z'));
 timeline_policy_test($ended_span['end'] === strtotime('2026-07-17T10:08:00Z'), 'ended vehicle spans close at the recorded end');
 
+$cursor = raidlands_server_timeline_event_cursor_encode([
+    'id' => 42,
+    'span_started_at' => '2026-07-17 10:00:00',
+    'occurred_at' => '2026-07-17 10:05:00',
+]);
+$decoded_cursor = raidlands_server_timeline_event_cursor_decode($cursor);
+timeline_policy_test($cursor !== '' && $decoded_cursor === [
+    'span' => '2026-07-17 10:00:00',
+    'occurred' => '2026-07-17 10:05:00',
+    'id' => 42,
+], 'event pagination cursor preserves deterministic ordering fields');
+timeline_policy_test(raidlands_server_timeline_event_cursor_decode('not-a-cursor') === null, 'invalid event cursors are rejected');
+
 echo "server timeline policy: {$tests} assertions passed\n";

@@ -8,17 +8,19 @@ import {
 } from "../assets/ts/server-map-viewer/tree-model-controller";
 
 describe("tree model runtime policy", () => {
-  it("bounds decode concurrency to one at low quality and two otherwise", () => {
+  it("keeps tree decoding serial so nearby assets do not arrive in a burst", () => {
     expect(treeDecodeConcurrency("low")).toBe(1);
-    expect(treeDecodeConcurrency("medium")).toBe(2);
-    expect(treeDecodeConcurrency("high")).toBe(2);
-    expect(treeDecodeConcurrency("ultra")).toBe(2);
+    expect(treeDecodeConcurrency("medium")).toBe(1);
+    expect(treeDecodeConcurrency("high")).toBe(1);
+    expect(treeDecodeConcurrency("ultra")).toBe(1);
   });
 
   it("uses map-only tree LOD at low quality", () => {
     expect(treeQualityLimits("low")).toEqual({ mid: 0, close: 0 });
     expect(treeInstanceLimit("low")).toBe(240);
-    expect(treeInstanceLimit("medium")).toBe(540);
+    expect(treeInstanceLimit("medium")).toBe(1450);
+    expect(treeInstanceLimit("high")).toBe(treeInstanceLimit("medium"));
+    expect(treeInstanceLimit("ultra")).toBe(treeInstanceLimit("medium"));
     expect(treeQualityLimits("medium")).toMatchObject({ mid: 220, close: 24 });
   });
 

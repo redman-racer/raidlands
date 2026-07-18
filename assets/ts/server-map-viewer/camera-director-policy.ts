@@ -42,6 +42,8 @@ export type DirectorShotTiming = {
   motionScale: number;
 };
 
+export const VIEWER_TARGET_FPS = 30;
+
 export type DirectorShotPlan = DirectorShotTiming & {
   id: string;
   kind: DirectorShotKind;
@@ -75,18 +77,17 @@ export function updateDirectorFpsState(
   smoothing = 0.08,
 ): DirectorFpsState {
   if (!(frameMs > 0) || frameMs > 5000) return state;
-  if (frameMs >= 250) return { smoothedFps: Math.min(state.smoothedFps, 4), tier: "low" };
   const fps = clamp(1000 / Math.min(frameMs, 1000), 1, 120);
   const smoothedFps = lerp(state.smoothedFps || fps, fps, clamp(smoothing, 0.01, 1));
   let tier = state.tier;
   if (tier === "healthy") {
-    if (smoothedFps < 28) tier = "low";
-    else if (smoothedFps < 43) tier = "constrained";
+    if (smoothedFps < 11) tier = "low";
+    else if (smoothedFps < 15) tier = "constrained";
   } else if (tier === "constrained") {
-    if (smoothedFps < 26) tier = "low";
-    else if (smoothedFps > 47) tier = "healthy";
-  } else if (smoothedFps > 32) {
-    tier = smoothedFps > 47 ? "healthy" : "constrained";
+    if (smoothedFps < 10) tier = "low";
+    else if (smoothedFps > 28) tier = "healthy";
+  } else if (smoothedFps > 16) {
+    tier = "constrained";
   }
   return { smoothedFps, tier };
 }

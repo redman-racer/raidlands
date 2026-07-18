@@ -2,6 +2,44 @@
 
 declare(strict_types=1);
 
+function raidlands_server_timeline_event_cursor_encode(array $row): string
+{
+    $payload = json_encode([
+        'span' => (string) ($row['span_started_at'] ?? $row['occurred_at'] ?? ''),
+        'occurred' => (string) ($row['occurred_at'] ?? ''),
+        'id' => (int) ($row['id'] ?? 0),
+    ], JSON_UNESCAPED_SLASHES);
+    if (!is_string($payload)) {
+        return '';
+    }
+    return rtrim(strtr(base64_encode($payload), '+/', '-_'), '=');
+}
+
+function raidlands_server_timeline_event_cursor_decode(string $cursor): ?array
+{
+    $cursor = trim($cursor);
+    if ($cursor === '' || strlen($cursor) > 1024) {
+        return null;
+    }
+    $padding = (4 - (strlen($cursor) % 4)) % 4;
+    $decoded = base64_decode(strtr($cursor . str_repeat('=', $padding), '-_', '+/'), true);
+    $payload = is_string($decoded) ? json_decode($decoded, true) : null;
+    if (!is_array($payload)) {
+        return null;
+    }
+    $span = strtotime(trim((string) ($payload['span'] ?? '')));
+    $occurred = strtotime(trim((string) ($payload['occurred'] ?? '')));
+    $id = (int) ($payload['id'] ?? 0);
+    if ($span === false || $occurred === false || $id < 1) {
+        return null;
+    }
+    return [
+        'span' => gmdate('Y-m-d H:i:s', $span),
+        'occurred' => gmdate('Y-m-d H:i:s', $occurred),
+        'id' => $id,
+    ];
+}
+
 function raidlands_server_timeline_bounds(
     ?int $requested_start,
     ?int $requested_end,

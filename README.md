@@ -52,12 +52,12 @@ over `.env` and stay ignored by Git.
 - `OPENAI_RAIDLANDS_API_KEY`, `OPENAI_RAIDLANDS_MODEL`, `OPENAI_RAIDLANDS_AI_ENABLED`, `OPENAI_RAIDLANDS_TIMEOUT_SECONDS`
 - `OPENAI_RAIDLANDS_AGENT_ENABLED`, `OPENAI_RAIDLANDS_AGENT_MODEL`, `OPENAI_RAIDLANDS_AGENT_TIMEOUT_SECONDS`, `OPENAI_RAIDLANDS_AGENT_MAX_TOOL_ROUNDS`
 - `RAIDLANDS_CONNECT_COMMAND`, `RAIDLANDS_STEAM_CONNECT_URL`, `RAIDLANDS_DISCORD_INVITE_URL`
-- `RAIDLANDS_SERVER_STATS_PROVIDER`, `RAIDLANDS_SERVER_STATUS_CACHE_SECONDS`, `RAIDLANDS_SERVER_STATUS_STALE_SECONDS`
+- `RAIDLANDS_SERVER_STATS_PROVIDER`, `RAIDLANDS_SERVER_EXCHANGE_INTERVAL_SECONDS`, `RAIDLANDS_SERVER_STATUS_CACHE_SECONDS`, `RAIDLANDS_SERVER_STATUS_STALE_SECONDS`
 - `RAIDLANDS_SERVER_STATUS_SAMPLE_RETENTION_DAYS`, `RAIDLANDS_SERVER_STATUS_HOURLY_RETENTION_MONTHS`
 - `RAIDLANDS_WIPE_TIME`, `RAIDLANDS_WIPE_TIMEZONE`
 - `RAIDLANDS_DISCORD_CLIENT_ID`, `RAIDLANDS_DISCORD_CLIENT_SECRET`, `RAIDLANDS_DISCORD_BOT_TOKEN`, `RAIDLANDS_DISCORD_REDIRECT_URI`
 
-Live server status is served by `api/server-status.php`. WebsiteVipBridge sends heartbeats through the signed bridge exchange; the public endpoint uses the latest heartbeat, marks delayed data stale, and falls back to config values before the first heartbeat arrives. Recent player-safe samples and long-term hourly/daily rollups are exposed through `/api/server-status-history.php` for the `/server/` activity graph.
+Live server status is served by `api/server-status.php`. WebsiteVipBridge sends heartbeats through the signed bridge exchange. The website defaults to a 30-second exchange/viewer cadence and waits four exchange intervals before marking telemetry delayed, leaving room for aggregate request runtime and one missed exchange. The public endpoint uses the latest heartbeat and falls back to config values before the first heartbeat arrives. Recent player-safe samples and long-term hourly/daily rollups are exposed through `/api/server-status-history.php` for the `/server/` activity graph.
 
 Steam sign-in uses native Steam OpenID only. Manual SteamID64 entry is intentionally disabled. Discord linking starts only from a verified Steam session, uses Discord OAuth scopes `identify guilds.join`, and synchronizes the verified role plus configured Store/Groups role mappings.
 

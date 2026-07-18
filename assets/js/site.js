@@ -45,8 +45,9 @@
       serverStatusHistoryUrl: `${basePath}api/server-status-history.php`,
       serverStats: {
         provider: "raidlands",
-        cacheSeconds: 60,
-        staleSeconds: 90
+        exchangeSeconds: 30,
+        cacheSeconds: 30,
+        staleSeconds: 120
       },
       wipe: {
         days: [4],

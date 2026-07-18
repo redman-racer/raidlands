@@ -1,10 +1,12 @@
 import { describe, expect, it } from "vitest";
 import {
   adaptiveEnvironmentQuality,
+  adaptivePerformanceTiming,
   defaultEnvironmentQuality,
   parseEnvironmentQuality,
   preferredEnvironmentQuality,
   resolveEnvironmentQuality,
+  stepAdaptivePerformanceTier,
 } from "../assets/ts/server-map-viewer/environment-quality";
 import type { FogCapabilities } from "../assets/ts/server-map-viewer/fog-detail";
 
@@ -85,12 +87,26 @@ describe("server map environment quality", () => {
     expect(preferredEnvironmentQuality(null, "high", false, 1440)).toBe("high");
   });
 
-  it("locks ultra fidelity while adaptively capping lower requested tiers", () => {
+  it("keeps requested quality as a ceiling while adapting to measured FPS", () => {
     expect(adaptiveEnvironmentQuality("ultra", "healthy")).toBe("ultra");
-    expect(adaptiveEnvironmentQuality("ultra", "constrained")).toBe("ultra");
-    expect(adaptiveEnvironmentQuality("ultra", "low")).toBe("ultra");
+    expect(adaptiveEnvironmentQuality("ultra", "constrained")).toBe("medium");
+    expect(adaptiveEnvironmentQuality("ultra", "low")).toBe("low");
     expect(adaptiveEnvironmentQuality("high", "constrained")).toBe("medium");
     expect(adaptiveEnvironmentQuality("high", "low")).toBe("low");
     expect(adaptiveEnvironmentQuality("low", "healthy")).toBe("low");
+  });
+
+  it("moves progressively toward measured performance in either direction", () => {
+    expect(stepAdaptivePerformanceTier("low", "healthy")).toBe("constrained");
+    expect(stepAdaptivePerformanceTier("constrained", "healthy")).toBe("healthy");
+    expect(stepAdaptivePerformanceTier("healthy", "constrained")).toBe("constrained");
+    expect(stepAdaptivePerformanceTier("healthy", "low")).toBe("constrained");
+    expect(stepAdaptivePerformanceTier("constrained", "low")).toBe("low");
+  });
+
+  it("requires stable FPS and a dwell window before changing detail again", () => {
+    expect(adaptivePerformanceTiming("healthy", "constrained", 15)).toEqual({ stableForMs: 10_000, minimumDwellMs: 10_000 });
+    expect(adaptivePerformanceTiming("healthy", "low", 8)).toEqual({ stableForMs: 1_500, minimumDwellMs: 1_500 });
+    expect(adaptivePerformanceTiming("low", "healthy", 40)).toEqual({ stableForMs: 12_000, minimumDwellMs: 14_000 });
   });
 });

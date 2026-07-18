@@ -3,6 +3,7 @@ import {
   RECORDED_PLAYBACK_SPEEDS,
   RECORDED_BUFFER_MAX_BYTES,
   RECORDED_BUFFER_SPLIT_BYTES,
+  RECORDED_REPLAY_MAX_EVENT_STEP_MS,
   RecordedTimelineBatchCache,
   RecordedTimelineBuffer,
   RecordedTimelineClock,
@@ -12,13 +13,32 @@ import {
   recordedBatchSpanSeconds,
   recordedPrefetchThresholdMs,
   recordedCoverageDurationMs,
+  recordedRangeChangeForegroundBounds,
   recordedSampleEverySeconds,
   recordedTimelineFramesAround,
+  recordedTimelineNeedsDetailPressure,
   recordedTimelineRenderIntervalMs,
+  recordedReplayWrapPrefetchDue,
   relativeTimelineCursor,
 } from "../assets/ts/server-map-viewer/recorded-timeline";
 
 describe("recorded server timeline", () => {
+  it("sheds local detail for foreground replay loads but not live or speculative prefetch", () => {
+    const base = {
+      mode: "replay" as const,
+      modeSwitchLoading: false,
+      buffering: false,
+      tailChecking: false,
+      pendingWrap: false,
+      activeRequestPriorities: [] as number[],
+    };
+    expect(recordedTimelineNeedsDetailPressure({ ...base, mode: "live", buffering: true })).toBe(false);
+    expect(recordedTimelineNeedsDetailPressure({ ...base, modeSwitchLoading: true })).toBe(true);
+    expect(recordedTimelineNeedsDetailPressure({ ...base, activeRequestPriorities: [0] })).toBe(false);
+    expect(recordedTimelineNeedsDetailPressure({ ...base, activeRequestPriorities: [2] })).toBe(false);
+    expect(recordedTimelineNeedsDetailPressure({ ...base, activeRequestPriorities: [2, 2] })).toBe(true);
+  });
+
   it("advances one server second per wall second at 1x and scales only by the selected multiplier", () => {
     const clock = new RecordedTimelineClock();
     clock.configureReplay({ startMs: 0, endMs: 60_000, speed: 1, playing: true });
@@ -65,14 +85,25 @@ describe("recorded server timeline", () => {
     expect(relativeTimelineCursor(25, 0, 100, 1_000, 3_000)).toBe(1_500);
   });
 
-  it("starts first replay two minutes behind the recorded head without preceding the range", () => {
-    expect(initialRecordedReplayCursor(0, 10 * 60_000)).toBe(8 * 60_000);
-    expect(initialRecordedReplayCursor(0, 60_000)).toBe(0);
+  it("starts replay at the latest recorded frame", () => {
+    expect(initialRecordedReplayCursor(0, 10 * 60_000)).toBe(10 * 60_000);
+    expect(initialRecordedReplayCursor(0, 60_000)).toBe(60_000);
+  });
+
+  it("uses a narrow foreground window while a historical range change settles", () => {
+    expect(recordedRangeChangeForegroundBounds(30 * 60_000, 0, 60 * 60_000)).toEqual({
+      startMs: 29.5 * 60_000,
+      endMs: 30.5 * 60_000,
+    });
+    expect(recordedRangeChangeForegroundBounds(60 * 60_000, 0, 60 * 60_000)).toEqual({
+      startMs: 59.5 * 60_000,
+      endMs: 60 * 60_000,
+    });
   });
 
   it("uses bounded batches and recorded-frame decimation only at high speeds", () => {
     expect(recordedBatchSpanSeconds(1)).toBe(300);
-    expect(recordedBatchSpanSeconds(512)).toBe(3_600);
+    expect(recordedBatchSpanSeconds(512)).toBe(300);
     expect(recordedSampleEverySeconds(12)).toBe(0);
     expect(recordedSampleEverySeconds(512)).toBe(43);
     expect(recordedPrefetchThresholdMs(8)).toBe(240_000);
@@ -259,5 +290,40 @@ describe("recorded server timeline", () => {
     clock.resolveReplayTail(12_000);
     expect(clock.tick(2_000, Number.POSITIVE_INFINITY, false)).toMatchObject({ cursorMs: 12_000, buffering: true, wrapped: false });
     expect(clock.tick(1, Number.POSITIVE_INFINITY, true)).toMatchObject({ cursorMs: 2_000, wrapped: true });
+  });
+
+  it("follows the replay head without wrapping and catches up when the head advances", () => {
+    const clock = new RecordedTimelineClock();
+    clock.configureReplay({ startMs: 0, endMs: 10_000, speed: 8, effectiveSpeed: 4, loop: true, followingHead: true });
+    expect(clock.cursorMs).toBe(10_000);
+    expect(clock.tick(1_000, 10_000)).toMatchObject({ cursorMs: 10_000, waiting: true, wrapped: false, needsTailCheck: false });
+    clock.setReplayHead(18_000);
+    expect(clock.tick(1_000, 18_000)).toMatchObject({ cursorMs: 14_000, waiting: false });
+    expect(clock.playbackState(false, true)).toBe("performance-limited");
+  });
+
+  it("leaves head following after a historical seek and can explicitly reattach", () => {
+    const clock = new RecordedTimelineClock();
+    clock.configureReplay({ startMs: 0, endMs: 60_000, followingHead: true });
+    clock.seek(30_000);
+    expect(clock.followingHead).toBe(false);
+    expect(clock.playbackState()).toBe("historical-playing");
+    clock.followReplayHead();
+    expect(clock.followingHead).toBe(true);
+    expect(clock.cursorMs).toBe(60_000);
+  });
+
+  it("uses effective wall time for historical loop prefetch and never prefetches while following", () => {
+    expect(recordedReplayWrapPrefetchDue(8 * 60_000, 10 * 60_000, 1, false)).toBe(false);
+    expect(recordedReplayWrapPrefetchDue(590_000, 600_000, 1, false)).toBe(true);
+    expect(recordedReplayWrapPrefetchDue(8 * 60_000, 10 * 60_000, 512, false)).toBe(true);
+    expect(recordedReplayWrapPrefetchDue(599_000, 600_000, 512, true)).toBe(false);
+  });
+
+  it("caps each accelerated cursor step so short event windows cannot be skipped", () => {
+    const clock = new RecordedTimelineClock();
+    clock.configureReplay({ startMs: 0, endMs: 10 * 60_000, speed: 512, effectiveSpeed: 512, playing: true });
+    expect(clock.tick(1_000).cursorMs).toBe(RECORDED_REPLAY_MAX_EVENT_STEP_MS);
+    expect(clock.tick(1_000).cursorMs).toBe(RECORDED_REPLAY_MAX_EVENT_STEP_MS * 2);
   });
 });

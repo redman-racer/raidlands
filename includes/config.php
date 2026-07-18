@@ -27,8 +27,9 @@ $site_config = [
     'serverOnline' => raidlands_env_bool('RAIDLANDS_SERVER_ONLINE', true),
     'serverStats' => [
         'provider' => $raidlands_status_provider,
-        'cacheSeconds' => raidlands_env_int('RAIDLANDS_SERVER_STATUS_CACHE_SECONDS', 60),
-        'staleSeconds' => raidlands_env_int('RAIDLANDS_SERVER_STATUS_STALE_SECONDS', 90),
+        'exchangeSeconds' => raidlands_env_int('RAIDLANDS_SERVER_EXCHANGE_INTERVAL_SECONDS', 30),
+        'cacheSeconds' => raidlands_env_int('RAIDLANDS_SERVER_STATUS_CACHE_SECONDS', 30),
+        'staleSeconds' => raidlands_env_int('RAIDLANDS_SERVER_STATUS_STALE_SECONDS', 120),
         'sampleRetentionDays' => raidlands_env_int('RAIDLANDS_SERVER_STATUS_SAMPLE_RETENTION_DAYS', 30),
         'hourlyRetentionMonths' => raidlands_env_int('RAIDLANDS_SERVER_STATUS_HOURLY_RETENTION_MONTHS', 24),
     ],
