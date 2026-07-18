@@ -9,6 +9,7 @@ import {
 function clonePayload(fields: PayloadEventFields): PayloadEventFields {
   return {
     ...fields,
+    AmmoSequence: [...(fields.AmmoSequence ?? [])],
     DamageScales: { ...fields.DamageScales },
   };
 }

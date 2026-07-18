@@ -73,8 +73,8 @@ export function podiumWeaponLayout(weapon: string, rank: number): PodiumWeaponLa
   const side = rank === 1 ? -1 : 1;
   const turnsBroadside = weapon === "rocket-launcher" || weapon === "sap";
   return {
-    position: [side * 1.04, 1.42, 0.18],
-    rotation: [weapon === "rocket-launcher" ? 0 : -0.06, turnsBroadside ? Math.PI / 2 : 0, side * 0.12],
-    size: weapon === "sap" ? 0.48 : 1.02,
+    position: [side * (weapon === "rocket-launcher" ? 0.5 : 0.4), weapon === "sap" ? 1.12 : 1.24, 0.34],
+    rotation: [weapon === "rocket-launcher" ? 0 : -0.08, turnsBroadside ? Math.PI / 2 : 0, side * 0.1],
+    size: weapon === "sap" ? 0.42 : weapon === "rocket-launcher" ? 1.04 : 0.92,
   };
 }

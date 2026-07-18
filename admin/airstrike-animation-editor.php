@@ -318,8 +318,8 @@ $editor_config = [
                 </aside>
                 <div class="airstrike-workspace-editor">
                   <div class="airstrike-ordnance-editor-actions"><button type="button" data-editor-release-add hidden>Add selected kind</button><button type="button" data-editor-release-duplicate>Duplicate selected</button><button type="button" data-editor-release-delete>Delete selected</button></div>
-                  <nav class="airstrike-ordnance-tabs" role="tablist" aria-label="Ordnance fields"><button class="is-active" type="button" data-editor-ordnance-tab="basic">Basic</button><button type="button" data-editor-ordnance-tab="targeting">Targeting</button><button type="button" data-editor-ordnance-tab="advanced">Advanced</button></nav>
-                  <div class="airstrike-release-editor" data-editor-manual-editor></div><div class="airstrike-release-editor" data-editor-repeated-editor></div>
+                  <nav class="airstrike-ordnance-tabs" role="tablist" aria-label="Ordnance fields"><button class="is-active" type="button" data-editor-ordnance-tab="basic">Basic</button><button type="button" data-editor-ordnance-tab="targeting">Targeting</button><button type="button" data-editor-ordnance-tab="advanced">Advanced</button><button type="button" data-editor-ordnance-tab="audio">Audio</button></nav>
+                  <div class="airstrike-release-editor" data-editor-manual-editor></div><div class="airstrike-release-editor" data-editor-repeated-editor></div><div class="airstrike-release-editor" data-editor-audio-editor data-ordnance-section="audio"></div>
                 </div>
               </div>
             </section>

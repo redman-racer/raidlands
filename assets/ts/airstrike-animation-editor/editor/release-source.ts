@@ -37,6 +37,7 @@ export const PAYLOAD_ADVANCED_TARGET_FIELDS = [
 ] as const satisfies readonly (keyof PayloadEventFields)[];
 
 export const PAYLOAD_ADVANCED_FIELDS = [
+  "AmmoSequence",
   "LaunchSpeed",
   "FuseSeconds",
   "DamageScale",
@@ -83,6 +84,7 @@ function cloneProfile(profile: EditorSourceProfile): EditorSourceProfile {
 function clonePayloadFields(fields: PayloadEventFields): PayloadEventFields {
   return {
     Payload: fields.Payload,
+    AmmoSequence: [...(fields.AmmoSequence ?? [])],
     Count: fields.Count,
     CarrierOffsetX: fields.CarrierOffsetX,
     CarrierOffsetY: fields.CarrierOffsetY,
@@ -460,7 +462,7 @@ export function updateManualPayloadField(
   profile: EditorSourceProfile,
   releaseId: string,
   field: keyof PayloadEventFields,
-  value: string | number | Record<string, number>,
+  value: string | number | string[] | Record<string, number>,
 ): EditorSourceProfile {
   if (profile.ReleaseSource.Mode !== "manual" && profile.ReleaseSource.Mode !== "mixed") {
     return cloneProfile(profile);
@@ -494,7 +496,7 @@ export function updateRepeatedHardpointSequence(profile: EditorSourceProfile, se
 export function updateRepeatedTemplateField(
   profile: EditorSourceProfile,
   field: keyof PayloadEventFields,
-  value: string | number | Record<string, number>,
+  value: string | number | string[] | Record<string, number>,
 ): EditorSourceProfile {
   const groupId = profile.ReleaseSource.Mode === "repeated" || profile.ReleaseSource.Mode === "mixed" ? repeatedReleaseGroups(profile.ReleaseSource)[0]?.Id ?? "" : "";
   return updateRepeatedGroupTemplateField(profile, groupId, field, value);
@@ -603,7 +605,7 @@ export function updateRepeatedGroupTemplateField(
   profile: EditorSourceProfile,
   groupId: string,
   field: keyof PayloadEventFields,
-  value: string | number | Record<string, number>,
+  value: string | number | string[] | Record<string, number>,
 ): EditorSourceProfile {
   if (profile.ReleaseSource.Mode !== "repeated" && profile.ReleaseSource.Mode !== "mixed") {
     return cloneProfile(profile);
@@ -624,7 +626,7 @@ export function payloadOptions(): readonly PayloadCatalogEntry[] {
 function assignPayloadField(
   target: PayloadEventFields,
   field: keyof PayloadEventFields,
-  value: string | number | Record<string, number>,
+  value: string | number | string[] | Record<string, number>,
 ): void {
   if (field === "Payload") {
     target.Payload = String(value);
@@ -632,6 +634,10 @@ function assignPayloadField(
   }
   if (field === "DamageScales") {
     target.DamageScales = typeof value === "object" && value !== null && !Array.isArray(value) ? { ...value } : {};
+    return;
+  }
+  if (field === "AmmoSequence") {
+    target.AmmoSequence = Array.isArray(value) ? value.map(String) as PayloadEventFields["AmmoSequence"] : [];
     return;
   }
   if (field === "TargetingMode") {

@@ -1,6 +1,6 @@
 {
   "SchemaVersion": 3,
-  "CompilerVersion": "raidlands-airanim-1",
+  "CompilerVersion": "raidlands-airanim-2",
   "PublishedRevision": 1,
   "AllowDangerousPayloadPreview": false,
   "Profiles": {
@@ -14,6 +14,7 @@
       "ReleaseTemplate": {
         "Time": 2,
         "Payload": "bradley_longbarrel_burst",
+        "AmmoSequence": [],
         "Index": 0,
         "Count": 2,
         "CarrierOffsetX": 0,
@@ -78,6 +79,7 @@
           "Template": {
             "Time": 2,
             "Payload": "bradley_longbarrel_burst",
+            "AmmoSequence": [],
             "Index": 0,
             "Count": 1,
             "CarrierOffsetX": 0,
@@ -110,6 +112,7 @@
           "Template": {
             "Time": 6,
             "Payload": "bradley_longbarrel_burst",
+            "AmmoSequence": [],
             "Index": 0,
             "Count": 1,
             "CarrierOffsetX": 0,
@@ -135,8 +138,8 @@
         }
       ],
       "CompiledTrack": {
-        "CompilerVersion": "raidlands-airanim-1",
-        "SourceHash": "6c19829f2097af36345d7a43e2f28a8e07eaedf15ccf6584966746069de9a224",
+        "CompilerVersion": "raidlands-airanim-2",
+        "SourceHash": "56ef85e61034add8c318a6f09857dee1267f5949a921fdcae3705014eb5b2a06",
         "CoordinateSystem": "unity-target-relative-local-v1",
         "SampleRateHz": 30,
         "SampleIntervalSeconds": 0.033333,

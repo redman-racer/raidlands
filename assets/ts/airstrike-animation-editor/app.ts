@@ -53,7 +53,16 @@ import {
   WAYPOINT_FIELDS,
   type EditableWaypointField,
 } from "./editor/waypoint-source";
-import type { EditorSourceProfile, PayloadEventFields, SourcePayloadEvent, VehiclePreviewMetadataFile } from "./types";
+import {
+  SUPPORTED_AUDIO_CUES,
+  type AudioSource,
+  type EditorSourceProfile,
+  type PayloadEventFields,
+  type SourceAudioEvent,
+  type SourceAudioGroup,
+  type SourcePayloadEvent,
+  type VehiclePreviewMetadataFile,
+} from "./types";
 import { payloadCatalogEntry } from "./payload-catalog";
 import { canonicalJson } from "./canonical-json";
 import { AirstrikeAgentController, type AgentEditorContext, type AgentWorkspaceScope } from "./editor/agent";
@@ -124,6 +133,7 @@ interface EditorElements {
   repeatedReleaseList: HTMLElement;
   manualReleaseEditor: HTMLElement;
   repeatedReleaseEditor: HTMLElement;
+  audioEditor: HTMLElement;
   releaseTimeline: HTMLElement;
   workspaceReleaseTimeline: HTMLElement;
   ordnanceScheduleSummary: HTMLElement;
@@ -283,6 +293,7 @@ function starterSource(): EditorSourceProfile {
         DamageScales: {},
       },
     },
+    AudioSource: { Mode: "automatic", Events: [], Groups: [] },
     EditorMetadata: {
       Notes: "",
       Tags: [],
@@ -318,6 +329,26 @@ function parseProfileSource(value: string): EditorSourceProfile {
     throw new Error("Source JSON must be an object.");
   }
   return normalizeProfilePayloadTargeting(parsed as EditorSourceProfile);
+}
+
+function updateProfileAudio(profile: EditorSourceProfile, mutate: (audio: AudioSource) => void): EditorSourceProfile {
+  const next = JSON.parse(JSON.stringify(profile)) as EditorSourceProfile;
+  const audio: AudioSource = next.AudioSource ?? { Mode: "automatic", Events: [], Groups: [] };
+  audio.Events = Array.isArray(audio.Events) ? audio.Events : [];
+  audio.Groups = Array.isArray(audio.Groups) ? audio.Groups : [];
+  mutate(audio);
+  next.AudioSource = audio;
+  return next;
+}
+
+function nextStableId(prefix: string, existing: readonly string[]): string {
+  let index = existing.length + 1;
+  let candidate = `${prefix}_${String(index).padStart(3, "0")}`;
+  while (existing.includes(candidate)) {
+    index += 1;
+    candidate = `${prefix}_${String(index).padStart(3, "0")}`;
+  }
+  return candidate;
 }
 
 function formatValidationEntry(entry: unknown): string {
@@ -358,7 +389,7 @@ class AirstrikeEditorApp {
   private activeToolOpener: HTMLElement | null = null;
   private readonly toolWindowPositions = new Map<ToolId, ToolWindowPosition>();
   private validationState: ValidationState = { status: "not-run", errors: 0, warnings: 0 };
-  private ordnanceTab: "basic" | "targeting" | "advanced" = "basic";
+  private ordnanceTab: "basic" | "targeting" | "advanced" | "audio" = "basic";
   private metadata: VehiclePreviewMetadataFile | null = null;
   private playbackFrame = 0;
   private playbackStartedAt = 0;
@@ -1177,6 +1208,7 @@ class AirstrikeEditorApp {
     this.elements.repeatedReleaseList.textContent = "";
     this.elements.manualReleaseEditor.textContent = "";
     this.elements.repeatedReleaseEditor.textContent = "";
+    this.elements.audioEditor.textContent = "";
     if (!profile) {
       this.elements.addRelease.disabled = true;
       this.elements.duplicateRelease.disabled = true;
@@ -1225,6 +1257,7 @@ class AirstrikeEditorApp {
     const repeatedCollection = this.elements.root.querySelector<HTMLElement>("[data-editor-repeated-collection]");
     if (manualCollection) manualCollection.hidden = profile.ReleaseSource.Mode === "repeated";
     if (repeatedCollection) repeatedCollection.hidden = profile.ReleaseSource.Mode === "manual";
+    this.renderAudioEditor(profile);
     this.renderOrdnanceTab();
     this.renderOrdnanceScheduleSummary();
     this.enhanceNumericControls(this.elements.root);
@@ -1443,10 +1476,171 @@ class AirstrikeEditorApp {
     this.elements.repeatedReleaseEditor.appendChild(advanced);
   }
 
+  private renderAudioEditor(profile: EditorSourceProfile): void {
+    const audio = profile.AudioSource ?? { Mode: "automatic" as const, Events: [], Groups: [] };
+    const heading = document.createElement("h3");
+    heading.textContent = "Vehicle and weapon audio";
+    const help = document.createElement("p");
+    help.className = "airstrike-editor-muted";
+    help.textContent = "Authored mode replaces generic flyover cues. One-shot events and repeating groups are evaluated against the live carrier position at playback time.";
+    this.elements.audioEditor.append(heading, help);
+
+    const mode = document.createElement("select");
+    mode.append(new Option("Automatic legacy cues", "automatic"), new Option("Authored timeline cues", "authored"));
+    mode.value = audio.Mode;
+    mode.addEventListener("change", () => this.applyProfile(updateProfileAudio(this.state.profile ?? profile, (next) => {
+      next.Mode = mode.value === "authored" ? "authored" : "automatic";
+    }), true));
+    this.elements.audioEditor.appendChild(this.fieldWrapper("Audio mode", mode));
+
+    if (audio.Mode !== "authored") {
+      const note = document.createElement("p");
+      note.className = "airstrike-editor-muted";
+      note.textContent = "Switch to authored mode to place repeatable F-15 passes, cannon bursts, and other curated cues.";
+      this.elements.audioEditor.appendChild(note);
+      return;
+    }
+
+    const actions = document.createElement("div");
+    actions.className = "airstrike-editor-inline-actions";
+    const addEvent = document.createElement("button");
+    addEvent.type = "button";
+    addEvent.textContent = "Add one-shot cue";
+    addEvent.addEventListener("click", () => this.applyProfile(updateProfileAudio(this.state.profile ?? profile, (next) => {
+      const event: SourceAudioEvent = {
+        Id: nextStableId("audio_event", next.Events.map((entry) => entry.Id)),
+        Time: Math.min(profile.DurationSeconds, this.state.scrubTime),
+        Cue: "f15_pass",
+        Anchor: "carrier",
+        OffsetX: 0,
+        OffsetY: 0,
+        OffsetZ: 0,
+      };
+      next.Events.push(event);
+    }), true));
+    const addGroup = document.createElement("button");
+    addGroup.type = "button";
+    addGroup.textContent = "Add repeating cue group";
+    addGroup.addEventListener("click", () => this.applyProfile(updateProfileAudio(this.state.profile ?? profile, (next) => {
+      const start = Math.min(profile.DurationSeconds, this.state.scrubTime);
+      const group: SourceAudioGroup = {
+        Id: nextStableId("audio_group", next.Groups.map((entry) => entry.Id)),
+        Name: "Flyover pass",
+        StartTime: start,
+        EndTime: Math.min(profile.DurationSeconds, start + 2),
+        IntervalSeconds: 0.75,
+        MaximumCues: 8,
+        Cue: "f15_pass",
+        Anchor: "carrier",
+        OffsetX: 0,
+        OffsetY: 0,
+        OffsetZ: 0,
+      };
+      next.Groups.push(group);
+    }), true));
+    actions.append(addEvent, addGroup);
+    this.elements.audioEditor.appendChild(actions);
+
+    const cueSelect = (selected: string, onChange: (value: string) => void): HTMLSelectElement => {
+      const select = document.createElement("select");
+      SUPPORTED_AUDIO_CUES.forEach((cue) => select.appendChild(new Option(cue.replace(/_/g, " "), cue)));
+      select.value = selected;
+      select.addEventListener("change", () => onChange(select.value));
+      return select;
+    };
+    const anchorSelect = (selected: string, onChange: (value: "carrier" | "target") => void): HTMLSelectElement => {
+      const select = document.createElement("select");
+      select.append(new Option("Live carrier", "carrier"), new Option("Strike target", "target"));
+      select.value = selected;
+      select.addEventListener("change", () => onChange(select.value === "target" ? "target" : "carrier"));
+      return select;
+    };
+    const commitEvent = (id: string, mutate: (entry: SourceAudioEvent) => void): void => {
+      this.applyProfile(updateProfileAudio(this.state.profile ?? profile, (next) => {
+        const entry = next.Events.find((candidate) => candidate.Id === id);
+        if (entry) mutate(entry);
+      }), true);
+    };
+    const commitGroup = (id: string, mutate: (entry: SourceAudioGroup) => void): void => {
+      this.applyProfile(updateProfileAudio(this.state.profile ?? profile, (next) => {
+        const entry = next.Groups.find((candidate) => candidate.Id === id);
+        if (entry) mutate(entry);
+      }), true);
+    };
+    const offsetFields = <T extends SourceAudioEvent | SourceAudioGroup>(container: HTMLElement, entry: T, commit: (mutate: (target: T) => void) => void): void => {
+      for (const key of ["OffsetX", "OffsetY", "OffsetZ"] as const) {
+        container.appendChild(this.fieldWrapper(key, this.createNumberInput(entry[key], 0.1, (value, mode) => {
+          if (mode === "live") commit((target) => { target[key] = value; });
+        })));
+      }
+    };
+
+    const eventSection = document.createElement("section");
+    eventSection.className = "airstrike-workspace-section";
+    const eventHeading = document.createElement("h3");
+    eventHeading.textContent = `One-shot cues (${audio.Events.length})`;
+    eventSection.appendChild(eventHeading);
+    audio.Events.forEach((event) => {
+      const row = document.createElement("article");
+      row.className = "airstrike-editor-advanced";
+      const title = document.createElement("strong");
+      title.textContent = event.Id;
+      row.appendChild(title);
+      row.appendChild(this.fieldWrapper("Time", this.createNumberInput(event.Time, 0.01, (value, mode) => {
+        if (mode === "live") commitEvent(event.Id, (entry) => { entry.Time = value; });
+      })));
+      row.appendChild(this.fieldWrapper("Cue", cueSelect(event.Cue, (value) => commitEvent(event.Id, (entry) => { entry.Cue = value as SourceAudioEvent["Cue"]; }))));
+      row.appendChild(this.fieldWrapper("Anchor", anchorSelect(event.Anchor, (value) => commitEvent(event.Id, (entry) => { entry.Anchor = value; }))));
+      offsetFields(row, event, (mutate) => commitEvent(event.Id, mutate));
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.textContent = "Delete cue";
+      remove.addEventListener("click", () => this.applyProfile(updateProfileAudio(this.state.profile ?? profile, (next) => {
+        next.Events = next.Events.filter((entry) => entry.Id !== event.Id);
+      }), true));
+      row.appendChild(remove);
+      eventSection.appendChild(row);
+    });
+    this.elements.audioEditor.appendChild(eventSection);
+
+    const groupSection = document.createElement("section");
+    groupSection.className = "airstrike-workspace-section";
+    const groupHeading = document.createElement("h3");
+    groupHeading.textContent = `Repeating cue groups (${audio.Groups.length})`;
+    groupSection.appendChild(groupHeading);
+    audio.Groups.forEach((group) => {
+      const row = document.createElement("article");
+      row.className = "airstrike-editor-advanced";
+      const name = document.createElement("input");
+      name.type = "text";
+      name.maxLength = 100;
+      name.value = group.Name;
+      name.addEventListener("change", () => commitGroup(group.Id, (entry) => { entry.Name = name.value; }));
+      row.appendChild(this.fieldWrapper("Group name", name));
+      for (const [key, step] of [["StartTime", 0.01], ["EndTime", 0.01], ["IntervalSeconds", 0.01], ["MaximumCues", 1]] as const) {
+        row.appendChild(this.fieldWrapper(key, this.createNumberInput(group[key], step, (value, mode) => {
+          if (mode === "live") commitGroup(group.Id, (entry) => { entry[key] = key === "MaximumCues" ? Math.max(1, Math.round(value)) : value; });
+        })));
+      }
+      row.appendChild(this.fieldWrapper("Cue", cueSelect(group.Cue, (value) => commitGroup(group.Id, (entry) => { entry.Cue = value as SourceAudioGroup["Cue"]; }))));
+      row.appendChild(this.fieldWrapper("Anchor", anchorSelect(group.Anchor, (value) => commitGroup(group.Id, (entry) => { entry.Anchor = value; }))));
+      offsetFields(row, group, (mutate) => commitGroup(group.Id, mutate));
+      const remove = document.createElement("button");
+      remove.type = "button";
+      remove.textContent = "Delete group";
+      remove.addEventListener("click", () => this.applyProfile(updateProfileAudio(this.state.profile ?? profile, (next) => {
+        next.Groups = next.Groups.filter((entry) => entry.Id !== group.Id);
+      }), true));
+      row.appendChild(remove);
+      groupSection.appendChild(row);
+    });
+    this.elements.audioEditor.appendChild(groupSection);
+  }
+
   private renderTargetingControls(
     parent: HTMLElement,
     fields: PayloadEventFields,
-    onChange: (field: PayloadField, value: string | number | Record<string, number>, mode: NumberInputCommitMode) => void,
+    onChange: (field: PayloadField, value: string | number | string[] | Record<string, number>, mode: NumberInputCommitMode) => void,
   ): void {
     const mode = fields.TargetingMode === "advanced" ? "advanced" : "simple";
     const section = document.createElement("section");
@@ -1502,7 +1696,7 @@ class AirstrikeEditorApp {
     parent: HTMLElement,
     fields: PayloadEventFields,
     fieldNames: readonly PayloadField[],
-    onChange: (field: PayloadField, value: string | number | Record<string, number>, mode: NumberInputCommitMode) => void,
+    onChange: (field: PayloadField, value: string | number | string[] | Record<string, number>, mode: NumberInputCommitMode) => void,
   ): void {
     const grid = document.createElement("div");
     grid.className = "airstrike-payload-field-grid";
@@ -1542,6 +1736,46 @@ class AirstrikeEditorApp {
           wrapper.appendChild(detail);
         }
         grid.appendChild(wrapper);
+      } else if (field === "AmmoSequence") {
+        const presets: Record<string, string[]> = {
+          legacy: [],
+          combat_mix: ["gau8_api", "gau8_hei", "gau8_api"],
+          urban_mix: ["gau8_hei", "gau8_tp", "gau8_hei"],
+          api_only: ["gau8_api"],
+          hei_only: ["gau8_hei"],
+          training_only: ["gau8_tp"],
+          incendiary_tracer_only: ["incendiary_tracer"],
+        };
+        const current = fields.AmmoSequence ?? [];
+        const preset = Object.entries(presets).find(([, sequence]) => JSON.stringify(sequence) === JSON.stringify(current))?.[0] ?? "custom";
+        const container = document.createElement("div");
+        const select = document.createElement("select");
+        select.append(
+          new Option("Legacy/default behavior", "legacy"),
+          new Option("GAU-8 combat mix (2 API : 1 HEI)", "combat_mix"),
+          new Option("GAU-8 urban mix (2 HEI : 1 TP)", "urban_mix"),
+          new Option("API only", "api_only"),
+          new Option("HEI only", "hei_only"),
+          new Option("Training/practice only", "training_only"),
+          new Option("Incendiary tracer only (gameplay)", "incendiary_tracer_only"),
+          new Option("Custom deterministic sequence", "custom"),
+        );
+        select.value = preset;
+        const custom = document.createElement("input");
+        custom.type = "text";
+        custom.value = current.join(", ");
+        custom.placeholder = "gau8_api, gau8_hei, gau8_api";
+        custom.hidden = preset !== "custom";
+        select.addEventListener("change", () => {
+          custom.hidden = select.value !== "custom";
+          if (select.value !== "custom") onChange(field, presets[select.value] ?? [], "live");
+        });
+        custom.addEventListener("change", () => onChange(field, custom.value.split(",").map((entry) => entry.trim()).filter(Boolean), "live"));
+        const detail = document.createElement("small");
+        detail.className = "airstrike-payload-detail";
+        detail.textContent = "The sequence cycles deterministically across every logical round; no damage rounds are sampled or discarded.";
+        container.append(select, custom, detail);
+        grid.appendChild(this.fieldWrapper("Ammo mix", container));
       } else if (field === "DamageScales") {
         const input = document.createElement("textarea");
         input.rows = 3;
@@ -2064,7 +2298,7 @@ class AirstrikeEditorApp {
     this.elements.root.querySelectorAll<HTMLButtonElement>("[data-editor-ordnance-tab]").forEach((button) => {
       button.addEventListener("click", () => {
         const tab = String(button.dataset.editorOrdnanceTab || "basic");
-        this.ordnanceTab = tab === "targeting" || tab === "advanced" ? tab : "basic";
+        this.ordnanceTab = tab === "targeting" || tab === "advanced" || tab === "audio" ? tab : "basic";
         this.renderOrdnanceTab();
       });
     });
@@ -3107,6 +3341,7 @@ function collectElements(root: HTMLElement): EditorElements {
     repeatedReleaseList: query(root, "[data-editor-repeated-releases]"),
     manualReleaseEditor: query(root, "[data-editor-manual-editor]"),
     repeatedReleaseEditor: query(root, "[data-editor-repeated-editor]"),
+    audioEditor: query(root, "[data-editor-audio-editor]"),
     releaseTimeline: query(root, "[data-editor-release-timeline]"),
     workspaceReleaseTimeline: query(root, "[data-editor-workspace-release-timeline]"),
     ordnanceScheduleSummary: query(root, "[data-editor-ordnance-schedule-summary]"),

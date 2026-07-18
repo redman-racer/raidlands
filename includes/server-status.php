@@ -2717,6 +2717,8 @@ function raidlands_server_map_replay_events_ingest_snapshot(array $payload, stri
             updated_at = NOW()'
     );
     $accepted = 0;
+    $accepted_event_keys = [];
+    $rejected_events = [];
 
     foreach ($events as $index => $event) {
         if (!is_array($event)) {
@@ -2725,6 +2727,11 @@ function raidlands_server_map_replay_events_ingest_snapshot(array $payload, stri
 
         $type = raidlands_server_map_replay_event_type($event['event_type'] ?? $event['eventType'] ?? $event['type'] ?? '');
         if ($type === '') {
+            $rejected_events[] = [
+                'eventKey' => raidlands_server_status_clean_text($event['event_key'] ?? $event['eventKey'] ?? '', 160),
+                'index' => $index,
+                'error' => 'invalid_event_type',
+            ];
             continue;
         }
 
@@ -2760,12 +2767,15 @@ function raidlands_server_map_replay_events_ingest_snapshot(array $payload, stri
         }
         $statement->execute($params);
         $accepted += 1;
+        $accepted_event_keys[] = $event_key;
     }
 
     return [
         'serverId' => $server_id,
         'wipeKey' => $wipe_key,
         'acceptedEvents' => $accepted,
+        'acceptedEventKeys' => $accepted_event_keys,
+        'rejectedEvents' => $rejected_events,
     ];
 }
 

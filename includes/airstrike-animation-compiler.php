@@ -11,7 +11,7 @@ declare(strict_types=1);
 
 function raidlands_airstrike_animation_compiler_version(): string
 {
-    return 'raidlands-airanim-1';
+    return 'raidlands-airanim-2';
 }
 
 function raidlands_airstrike_animation_compiler_limits(): array
@@ -34,6 +34,16 @@ function raidlands_airstrike_animation_compiler_limits(): array
 function raidlands_airstrike_animation_supported_vehicles(): array
 {
     return ['drone', 'cargo_plane', 'f15', 'a10', 'attack_heli'];
+}
+
+function raidlands_airstrike_animation_supported_ammo_types(): array
+{
+    return ['gau8_api', 'gau8_hei', 'gau8_tp', 'incendiary_tracer'];
+}
+
+function raidlands_airstrike_animation_supported_audio_cues(): array
+{
+    return ['vehicle_engine', 'air_movement', 'large_flyover', 'bullet_flyby', 'f15_pass', 'gau8_burst', 'machine_gun_burst', 'rocket_launch', 'mlrs_launch'];
 }
 
 function raidlands_airstrike_animation_supported_payloads(): array
@@ -398,6 +408,19 @@ function raidlands_airstrike_animation_validate_event(
     }
 
     $count = $event['Count'] ?? 1;
+
+    if (array_key_exists('AmmoSequence', $event)) {
+        $ammo_sequence = $event['AmmoSequence'];
+        if (!is_array($ammo_sequence) || count($ammo_sequence) > 32) {
+            raidlands_airstrike_animation_validation_error($errors, $path . '.AmmoSequence', 'ammo_sequence', 'AmmoSequence must contain at most 32 entries.');
+        } else {
+            foreach ($ammo_sequence as $index => $ammo) {
+                if (!is_string($ammo) || !in_array(strtolower(trim($ammo)), raidlands_airstrike_animation_supported_ammo_types(), true)) {
+                    raidlands_airstrike_animation_validation_error($errors, $path . '.AmmoSequence[' . $index . ']', 'supported_ammo', 'Ammo type is not supported.');
+                }
+            }
+        }
+    }
 
     if ((!is_int($count) && !is_float($count))
         || !is_finite((float) $count)
@@ -1033,6 +1056,85 @@ function raidlands_airstrike_animation_validate_profile(
         }
     }
 
+    if (array_key_exists('AudioSource', $source)) {
+        $audio = $source['AudioSource'];
+        $audio_path = $path . '.AudioSource';
+        if (!is_array($audio)) {
+            raidlands_airstrike_animation_validation_error($errors, $audio_path, 'object', 'AudioSource must be an object.');
+        } else {
+            $mode = strtolower(trim((string) ($audio['Mode'] ?? '')));
+            if ($mode !== 'automatic' && $mode !== 'authored') {
+                raidlands_airstrike_animation_validation_error($errors, $audio_path . '.Mode', 'audio_mode', 'Audio mode must be automatic or authored.');
+            }
+            $validate_cue = static function (array $entry, string $entry_path) use (&$errors): void {
+                $cue = strtolower(trim((string) ($entry['Cue'] ?? '')));
+                if (!in_array($cue, raidlands_airstrike_animation_supported_audio_cues(), true)) {
+                    raidlands_airstrike_animation_validation_error($errors, $entry_path . '.Cue', 'supported_audio_cue', 'Audio cue is not supported.');
+                }
+                $anchor = strtolower(trim((string) ($entry['Anchor'] ?? '')));
+                if ($anchor !== 'carrier' && $anchor !== 'target') {
+                    raidlands_airstrike_animation_validation_error($errors, $entry_path . '.Anchor', 'audio_anchor', 'Audio anchor must be carrier or target.');
+                }
+                foreach (['OffsetX', 'OffsetY', 'OffsetZ'] as $field) {
+                    raidlands_airstrike_animation_validate_number($errors, $entry[$field] ?? null, $entry_path . '.' . $field, -500.0, 500.0);
+                }
+            };
+            $events = $audio['Events'] ?? null;
+            if (!is_array($events) || count($events) > 160) {
+                raidlands_airstrike_animation_validation_error($errors, $audio_path . '.Events', 'audio_events', 'Audio Events must be an array of at most 160 entries.');
+            } else {
+                $ids = [];
+                foreach ($events as $index => $event) {
+                    $event_path = $audio_path . '.Events[' . $index . ']';
+                    if (!is_array($event)) {
+                        raidlands_airstrike_animation_validation_error($errors, $event_path, 'object', 'Audio event must be an object.');
+                        continue;
+                    }
+                    $id = (string) ($event['Id'] ?? '');
+                    if (!preg_match('/^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$/', $id) || isset($ids[$id])) {
+                        raidlands_airstrike_animation_validation_error($errors, $event_path . '.Id', 'stable_id', 'Audio event ID must be unique and safe.');
+                    }
+                    $ids[$id] = true;
+                    raidlands_airstrike_animation_validate_number($errors, $event['Time'] ?? null, $event_path . '.Time', 0.0, (float) ($source['DurationSeconds'] ?? 0.0));
+                    $validate_cue($event, $event_path);
+                }
+            }
+            $groups = $audio['Groups'] ?? null;
+            if (!is_array($groups) || count($groups) > 40) {
+                raidlands_airstrike_animation_validation_error($errors, $audio_path . '.Groups', 'audio_groups', 'Audio Groups must be an array of at most 40 entries.');
+            } else {
+                $ids = [];
+                foreach ($groups as $index => $group) {
+                    $group_path = $audio_path . '.Groups[' . $index . ']';
+                    if (!is_array($group)) {
+                        raidlands_airstrike_animation_validation_error($errors, $group_path, 'object', 'Audio group must be an object.');
+                        continue;
+                    }
+                    $id = (string) ($group['Id'] ?? '');
+                    if (!preg_match('/^[A-Za-z0-9][A-Za-z0-9_.-]{0,99}$/', $id) || isset($ids[$id])) {
+                        raidlands_airstrike_animation_validation_error($errors, $group_path . '.Id', 'stable_id', 'Audio group ID must be unique and safe.');
+                    }
+                    $ids[$id] = true;
+                    $name = trim((string) ($group['Name'] ?? ''));
+                    if ($name === '' || strlen($name) > 100) {
+                        raidlands_airstrike_animation_validation_error($errors, $group_path . '.Name', 'name', 'Audio group name must be between 1 and 100 characters.');
+                    }
+                    raidlands_airstrike_animation_validate_number($errors, $group['StartTime'] ?? null, $group_path . '.StartTime', 0.0, (float) ($source['DurationSeconds'] ?? 0.0));
+                    raidlands_airstrike_animation_validate_number($errors, $group['EndTime'] ?? null, $group_path . '.EndTime', 0.0, (float) ($source['DurationSeconds'] ?? 0.0));
+                    if (is_numeric($group['StartTime'] ?? null) && is_numeric($group['EndTime'] ?? null) && (float) $group['EndTime'] < (float) $group['StartTime']) {
+                        raidlands_airstrike_animation_validation_error($errors, $group_path . '.EndTime', 'audio_time_range', 'EndTime must not precede StartTime.');
+                    }
+                    raidlands_airstrike_animation_validate_number($errors, $group['IntervalSeconds'] ?? null, $group_path . '.IntervalSeconds', 0.05, 30.0);
+                    $maximum = $group['MaximumCues'] ?? null;
+                    if (!is_numeric($maximum) || floor((float) $maximum) !== (float) $maximum || (int) $maximum < 1 || (int) $maximum > 160) {
+                        raidlands_airstrike_animation_validation_error($errors, $group_path . '.MaximumCues', 'audio_cue_count', 'MaximumCues must be an integer between 1 and 160.');
+                    }
+                    $validate_cue($group, $group_path);
+                }
+            }
+        }
+    }
+
     $editor_metadata = is_array($source['EditorMetadata'] ?? null) ? $source['EditorMetadata'] : [];
 
     if (array_key_exists('GlobalTargetSpeedMetersPerSecond', $editor_metadata)) {
@@ -1542,6 +1644,10 @@ function raidlands_airstrike_animation_runtime_event(array $event, float $time, 
     return [
         'Time' => raidlands_airstrike_animation_quantize($time),
         'Payload' => strtolower(trim((string) ($event['Payload'] ?? ''))),
+        'AmmoSequence' => array_values(array_map(
+            static fn ($ammo): string => strtolower(trim((string) $ammo)),
+            is_array($event['AmmoSequence'] ?? null) ? $event['AmmoSequence'] : []
+        )),
         'Index' => $index,
         'Count' => $count,
         'CarrierOffsetX' => raidlands_airstrike_animation_quantize(raidlands_airstrike_animation_number($event['CarrierOffsetX'] ?? 0.0)),
@@ -1576,6 +1682,10 @@ function raidlands_airstrike_animation_targeting_mode($value): string
 
 function raidlands_airstrike_animation_payload_object_shape(array $fields): array
 {
+    $fields['AmmoSequence'] = array_values(array_map(
+        static fn ($ammo): string => strtolower(trim((string) $ammo)),
+        is_array($fields['AmmoSequence'] ?? null) ? $fields['AmmoSequence'] : []
+    ));
     $fields['TargetingMode'] = raidlands_airstrike_animation_targeting_mode($fields['TargetingMode'] ?? null);
     $fields['AccuracyPercent'] = raidlands_airstrike_animation_quantize(
         max(0.0, min(100.0, raidlands_airstrike_animation_number($fields['AccuracyPercent'] ?? 75.0, 75.0)))
@@ -1698,6 +1808,30 @@ function raidlands_airstrike_animation_source_hash_projection(
         }
     }
 
+    $audio_projection = null;
+    if (is_array($source['AudioSource'] ?? null)) {
+        $audio = $source['AudioSource'];
+        $audio_events = [];
+        foreach (is_array($audio['Events'] ?? null) ? $audio['Events'] : [] as $event) {
+            if (is_array($event)) {
+                unset($event['Id']);
+                $audio_events[] = $event;
+            }
+        }
+        $audio_groups = [];
+        foreach (is_array($audio['Groups'] ?? null) ? $audio['Groups'] : [] as $group) {
+            if (is_array($group)) {
+                unset($group['Id'], $group['Name']);
+                $audio_groups[] = $group;
+            }
+        }
+        $audio_projection = [
+            'Mode' => (string) ($audio['Mode'] ?? ''),
+            'Events' => $audio_events,
+            'Groups' => $audio_groups,
+        ];
+    }
+
     $projection = [
         'ProfileKey' => raidlands_airstrike_animation_profile_key($source),
         'Vehicle' => (string) ($source['Vehicle'] ?? ''),
@@ -1710,6 +1844,7 @@ function raidlands_airstrike_animation_source_hash_projection(
         'RotationMode' => (string) ($source['RotationMode'] ?? ''),
         'Waypoints' => $waypoints,
         'ReleaseSource' => $release_projection,
+        'AudioSource' => $audio_projection,
     ];
 
     $editor_metadata = is_array($source['EditorMetadata'] ?? null) ? $source['EditorMetadata'] : [];
@@ -1928,6 +2063,46 @@ function raidlands_airstrike_animation_legacy_event(array $event, int $fallback_
     );
 }
 
+function raidlands_airstrike_animation_compile_audio_source(array $audio): array
+{
+    $events = array_values(array_filter($audio['Events'] ?? [], 'is_array'));
+    usort($events, static function (array $left, array $right): int {
+        $time = raidlands_airstrike_animation_number($left['Time'] ?? 0.0) <=> raidlands_airstrike_animation_number($right['Time'] ?? 0.0);
+        return $time !== 0 ? $time : strcmp((string) ($left['Id'] ?? ''), (string) ($right['Id'] ?? ''));
+    });
+    $runtime_events = array_map(static fn (array $event): array => [
+        'Time' => raidlands_airstrike_animation_quantize(raidlands_airstrike_animation_number($event['Time'] ?? 0.0)),
+        'Cue' => strtolower(trim((string) ($event['Cue'] ?? ''))),
+        'Anchor' => strtolower(trim((string) ($event['Anchor'] ?? 'carrier'))),
+        'OffsetX' => raidlands_airstrike_animation_quantize(raidlands_airstrike_animation_number($event['OffsetX'] ?? 0.0)),
+        'OffsetY' => raidlands_airstrike_animation_quantize(raidlands_airstrike_animation_number($event['OffsetY'] ?? 0.0)),
+        'OffsetZ' => raidlands_airstrike_animation_quantize(raidlands_airstrike_animation_number($event['OffsetZ'] ?? 0.0)),
+    ], $events);
+
+    $groups = array_values(array_filter($audio['Groups'] ?? [], 'is_array'));
+    usort($groups, static function (array $left, array $right): int {
+        $time = raidlands_airstrike_animation_number($left['StartTime'] ?? 0.0) <=> raidlands_airstrike_animation_number($right['StartTime'] ?? 0.0);
+        return $time !== 0 ? $time : strcmp((string) ($left['Id'] ?? ''), (string) ($right['Id'] ?? ''));
+    });
+    $runtime_groups = array_map(static fn (array $group): array => [
+        'StartTime' => raidlands_airstrike_animation_quantize(raidlands_airstrike_animation_number($group['StartTime'] ?? 0.0)),
+        'EndTime' => raidlands_airstrike_animation_quantize(raidlands_airstrike_animation_number($group['EndTime'] ?? 0.0)),
+        'IntervalSeconds' => raidlands_airstrike_animation_quantize(raidlands_airstrike_animation_number($group['IntervalSeconds'] ?? 0.75, 0.75)),
+        'MaximumCues' => (int) ($group['MaximumCues'] ?? 1),
+        'Cue' => strtolower(trim((string) ($group['Cue'] ?? ''))),
+        'Anchor' => strtolower(trim((string) ($group['Anchor'] ?? 'carrier'))),
+        'OffsetX' => raidlands_airstrike_animation_quantize(raidlands_airstrike_animation_number($group['OffsetX'] ?? 0.0)),
+        'OffsetY' => raidlands_airstrike_animation_quantize(raidlands_airstrike_animation_number($group['OffsetY'] ?? 0.0)),
+        'OffsetZ' => raidlands_airstrike_animation_quantize(raidlands_airstrike_animation_number($group['OffsetZ'] ?? 0.0)),
+    ], $groups);
+
+    return [
+        'AudioMode' => strtolower(trim((string) ($audio['Mode'] ?? 'automatic'))),
+        'AudioEvents' => $runtime_events,
+        'AudioGroups' => $runtime_groups,
+    ];
+}
+
 function raidlands_airstrike_animation_compile_profile(array $source, array $vehicle_metadata = []): array
 {
     raidlands_airstrike_animation_assert_valid_profile($source, $vehicle_metadata);
@@ -1989,6 +2164,10 @@ function raidlands_airstrike_animation_compile_profile(array $source, array $veh
 
     if (!empty($schedule['generated_groups'])) {
         $runtime['GeneratedReleaseGroups'] = $schedule['generated_groups'];
+    }
+
+    if (is_array($source['AudioSource'] ?? null)) {
+        $runtime = array_merge($runtime, raidlands_airstrike_animation_compile_audio_source($source['AudioSource']));
     }
 
     return raidlands_airstrike_animation_canonical_value($runtime);

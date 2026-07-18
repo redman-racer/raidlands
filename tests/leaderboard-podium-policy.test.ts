@@ -14,8 +14,11 @@ import {
   buildIndustrialPedestal, pedestalConfigForRank, pedestalRanksForLayout,
 } from "../assets/ts/leaderboard-podium/pedestal";
 import {
-  anchorPoint, arenaPlacementTransform, ArenaManifest, clampArenaRotation, generatedThemePlacements,
-  normalizationScale, orbitCameraPosition, podiumCategoryTitle, podiumThemeFor, showcaseThemeSockets,
+  anchorPoint, ARENA_IDLE_ORBIT_AMPLITUDE, ARENA_IDLE_ORBIT_CYCLE_MS, ARENA_IDLE_ORBIT_RESUME_DELAY_MS,
+  arenaPlacementTransform, ArenaManifest, clampArenaRotation, FORWARD_MOUND_VISIBILITY,
+  generatedThemePlacements, idleArenaYawTarget, normalizationScale, orbitCameraPosition,
+  podiumCategoryTitle, podiumThemeFor, shouldLiftForwardMoundVisibility, shouldRenderArenaPlacement,
+  showcaseThemeSockets,
 } from "../assets/ts/leaderboard-podium/scene-policy";
 
 function anchoredRoot(anchors: Record<string, [number, number, number]>): Group {
@@ -74,8 +77,10 @@ describe("leaderboard podium policy", () => {
     expect(Math.abs(podiumCharacterYaw(1))).toBeLessThan(Math.PI / 2);
     const centerRifle = podiumWeaponLayout("ak47", 0);
     const leftRocket = podiumWeaponLayout("rocket-launcher", 1);
-    expect(centerRifle.position[0]).toBeGreaterThan(0.8);
-    expect(leftRocket.position[0]).toBeLessThan(-0.8);
+    expect(centerRifle.position[0]).toBeGreaterThan(0.3);
+    expect(centerRifle.position[0]).toBeLessThan(0.6);
+    expect(centerRifle.position[1]).toBeCloseTo(1.24);
+    expect(leftRocket.position[0]).toBeCloseTo(-0.5);
     expect(leftRocket.rotation[1]).toBe(Math.PI / 2);
   });
 
@@ -154,15 +159,93 @@ describe("leaderboard podium policy", () => {
     expect(left.distanceTo(target)).toBeCloseTo(base.distanceTo(target), 5);
   });
 
-  it("authors a U-shaped arena with protected foreground edges", () => {
+  it("adds a delayed reduced-motion-aware idle orbit around the selected view", () => {
+    const interaction = 1_000;
+    expect(idleArenaYawTarget(interaction + ARENA_IDLE_ORBIT_RESUME_DELAY_MS, interaction, false)).toBe(0);
+    expect(idleArenaYawTarget(interaction + ARENA_IDLE_ORBIT_RESUME_DELAY_MS + ARENA_IDLE_ORBIT_CYCLE_MS / 4, interaction, false))
+      .toBeCloseTo(ARENA_IDLE_ORBIT_AMPLITUDE, 6);
+    expect(idleArenaYawTarget(interaction + 60_000, interaction, true)).toBe(0);
+  });
+
+  it("keeps every mound but halves deterministic backdrop detail on mobile", () => {
+    expect(shouldRenderArenaPlacement("BG_MOUND_01", true)).toBe(true);
+    expect(shouldRenderArenaPlacement("BG_DETAIL_01", true)).toBe(true);
+    expect(shouldRenderArenaPlacement("BG_DETAIL_02", true)).toBe(false);
+    expect(shouldRenderArenaPlacement("BG_DETAIL_18", false)).toBe(true);
+  });
+
+  it("lifts visibility only for the six forward side mounds", () => {
+    expect(shouldLiftForwardMoundVisibility("BG_MOUND_11")).toBe(false);
+    expect(shouldLiftForwardMoundVisibility("BG_MOUND_12")).toBe(true);
+    expect(shouldLiftForwardMoundVisibility("BG_MOUND_17")).toBe(true);
+    expect(shouldLiftForwardMoundVisibility("BG_MOUND_18")).toBe(false);
+    expect(shouldLiftForwardMoundVisibility("BG_DETAIL_12")).toBe(false);
+    expect(FORWARD_MOUND_VISIBILITY.colorMultiplier).toBeGreaterThan(1);
+    expect(FORWARD_MOUND_VISIBILITY.emissiveIntensity).toBeGreaterThan(.5);
+    expect(FORWARD_MOUND_VISIBILITY.horizontalScale).toBeGreaterThan(1);
+    expect(FORWARD_MOUND_VISIBILITY.verticalScale).toBeGreaterThan(1);
+  });
+
+  it("authors a U-shaped arena with an open foreground", () => {
     const manifest = JSON.parse(readFileSync(resolve(__dirname, "../assets/data/leaderboard-scene-manifest.json"), "utf8")) as ArenaManifest;
     const transformed = manifest.basePlacements.map(arenaPlacementTransform);
     expect(transformed.filter((placement) => placement.zone === "rear").length).toBeGreaterThan(10);
     expect(transformed.filter((placement) => placement.zone === "left-wing").length).toBeGreaterThan(8);
     expect(transformed.filter((placement) => placement.zone === "right-wing").length).toBeGreaterThan(8);
     const foreground = transformed.filter((placement) => placement.zone === "foreground");
-    expect(foreground.length).toBeGreaterThanOrEqual(4);
-    foreground.forEach((placement) => expect(Math.abs(placement.position[0])).toBeGreaterThanOrEqual(5.8));
+    expect(foreground).toHaveLength(0);
+  });
+
+  it("authors a continuous U-shaped junkyard backdrop outside the podium and camera envelope", () => {
+    const manifest = JSON.parse(readFileSync(resolve(__dirname, "../assets/data/leaderboard-scene-manifest.json"), "utf8")) as ArenaManifest;
+    const mounds = manifest.basePlacements.filter((placement) => placement.id.startsWith("BG_MOUND_"));
+    const details = manifest.basePlacements.filter((placement) => placement.id.startsWith("BG_DETAIL_"));
+    expect(mounds).toHaveLength(17);
+    expect(mounds.filter((placement) => placement.position[2] < -16)).toHaveLength(5);
+    expect(mounds.filter((placement) => placement.position[0] < -17)).toHaveLength(6);
+    expect(mounds.filter((placement) => placement.position[0] > 17)).toHaveLength(6);
+    const forwardMounds = mounds.filter((placement) => Number(placement.id.slice("BG_MOUND_".length)) >= 12);
+    expect(forwardMounds).toHaveLength(6);
+    expect(forwardMounds.every((placement) => Math.abs(placement.position[0]) >= 20 && placement.position[2] >= .5)).toBe(true);
+    expect(forwardMounds.every((placement) => shouldRenderArenaPlacement(placement.id, true))).toBe(true);
+    expect(forwardMounds.map((placement) => placement.position)).toEqual([
+      [-24.5, -.23, .5], [-23, -.23, 5], [-20, -.2, 9.5],
+      [24.5, -.23, .5], [23, -.23, 5], [20, -.2, 9.5],
+    ]);
+    expect(forwardMounds.map((placement) => placement.rotation[1])).toEqual([102, 108, 116, -102, -108, -116]);
+    for (let index = 0; index < 3; index += 1) {
+      const left = forwardMounds[index]; const right = forwardMounds[index + 3];
+      expect(right.position).toEqual([-left.position[0], left.position[1], left.position[2]]);
+      expect(right.rotation).toEqual([left.rotation[0], -left.rotation[1], left.rotation[2]]);
+      expect(right.scale).toEqual(left.scale);
+    }
+    expect(details).toHaveLength(18);
+    expect(details.filter((placement) => /compact_car|pickuptruck/.test(placement.localPath))).toHaveLength(12);
+    expect(details.filter((placement) => /junkyard_stack/.test(placement.localPath))).toHaveLength(6);
+    expect(details.filter((placement) => shouldRenderArenaPlacement(placement.id, true))).toHaveLength(9);
+    expect(details.filter((placement) => Math.abs(placement.position[0]) > 17).every((placement) => placement.position[2] <= -4.5)).toBe(true);
+
+    const sourceSearchlight = manifest.basePlacements.find((placement) => placement.id === "FIX_SEARCH_L");
+    const sourceSearchlightRight = manifest.basePlacements.find((placement) => placement.id === "FIX_SEARCH_R");
+    expect(sourceSearchlight).toBeDefined();
+    expect(sourceSearchlightRight).toBeDefined();
+    const searchlight = arenaPlacementTransform(sourceSearchlight!);
+    const searchlightRight = arenaPlacementTransform(sourceSearchlightRight!);
+    const base = new Vector3(0, 3.25, 11.7); const target = new Vector3(0, 1.42, -.35);
+    let minimumClearance = Number.POSITIVE_INFINITY;
+    let minimumMoundClearance = Number.POSITIVE_INFINITY;
+    for (let degrees = -75; degrees <= 75; degrees += 1) {
+      const camera = orbitCameraPosition(base, target, degrees * Math.PI / 180, 0);
+      minimumClearance = Math.min(minimumClearance, camera.distanceTo(new Vector3(...searchlight.position)));
+      minimumClearance = Math.min(minimumClearance, camera.distanceTo(new Vector3(...searchlightRight.position)));
+      forwardMounds.forEach((placement) => {
+        minimumMoundClearance = Math.min(minimumMoundClearance, camera.distanceTo(new Vector3(...placement.position)));
+      });
+    }
+    expect(searchlight.position).toEqual([-20.5, 4.65, -7]);
+    expect(searchlightRight.position).toEqual([20.5, 4.72, -7]);
+    expect(minimumClearance).toBeGreaterThan(13);
+    expect(minimumMoundClearance).toBeGreaterThan(10.5);
   });
 
   it("vendors the complete pinned scene with valid hashes and deterministic theme sockets", () => {
@@ -171,10 +254,21 @@ describe("leaderboard podium policy", () => {
     const manifest = JSON.parse(manifestText) as ArenaManifest;
     expect(manifestText).not.toMatch(/https?:\/\//i);
     expect(manifest.revision).toBe("494242bdeae941e3389b34a819c514aae2cf39f8");
-    expect(manifest.assets).toHaveLength(76);
-    expect(manifest.basePlacements).toHaveLength(81);
+    expect(manifest.assets).toHaveLength(79);
+    expect(manifest.basePlacements).toHaveLength(116);
     expect(manifest.characterAnchors).toHaveLength(3);
     expect(Object.keys(manifest.themes)).toHaveLength(6);
+    const mostKills = generatedThemePlacements("most-kills", manifest.themes["most-kills"]);
+    expect(mostKills).toHaveLength(6);
+    expect(mostKills.filter((placement) => placement.position[0] < 0)).toHaveLength(3);
+    expect(mostKills.filter((placement) => placement.position[0] > 0)).toHaveLength(3);
+    mostKills.forEach((placement) => {
+      expect(placement.position[1]).toBe(0);
+      expect(placement.position[2]).toBeLessThanOrEqual(-3.1);
+      expect(placement.position[2]).toBeGreaterThanOrEqual(-3.74);
+      expect(placement.anchor).toBe("Object center");
+      expect(placement.role).toMatch(/grounded|floor/i);
+    });
     for (const asset of manifest.assets) {
       expect(asset.sourcePath.startsWith("assets/")).toBe(true);
       expect(asset.localPath.includes("../")).toBe(false);

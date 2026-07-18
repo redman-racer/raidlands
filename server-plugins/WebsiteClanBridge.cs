@@ -1,6 +1,7 @@
 using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Linq;
 using System.Security.Cryptography;
 using System.Text;
 using Newtonsoft.Json;
@@ -12,21 +13,27 @@ using Oxide.Core.Plugins;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteClanBridge", "Raidlands", "1.0.0")]
+    [Info("WebsiteClanBridge", "Raidlands", "1.1.0")]
     [Description("Processes Raidlands website clan management actions through k1lly0u Clans.")]
     public class WebsiteClanBridge : CovalencePlugin
     {
         [PluginReference] private Plugin Clans;
+        [PluginReference] private Plugin WebsiteBridgeHub;
 
         private Configuration config;
         private Timer pollTimer;
         private Timer snapshotTimer;
         private Timer pendingSnapshotTimer;
+        private Timer snapshotRetryTimer;
         private Dictionary<string, string> secrets;
         private const string SecretsConfigName = "Secrets.local";
         private const string VipBridgeConfigName = "WebsiteVipBridge";
+        private const string ActionLedgerDataFile = "WebsiteClanBridge/action_results";
         private string secretsConfigSource;
         private string vipBridgeSharedSecretSetting;
+        private ActionLedger actionLedger;
+        private bool snapshotInFlight;
+        private int snapshotFailures;
 
         private class Configuration
         {
@@ -74,6 +81,19 @@ namespace Oxide.Plugins
             public string actor_role;
             public string target_steam_id64;
             public string error;
+        }
+
+        private class ActionLedger
+        {
+            public Dictionary<long, ActionLedgerEntry> actions = new Dictionary<long, ActionLedgerEntry>();
+        }
+
+        private class ActionLedgerEntry
+        {
+            public ClanActionResult result;
+            public string processed_at;
+            public bool acknowledged;
+            public string acknowledged_at;
         }
 
         private class BridgeResponse
@@ -135,6 +155,7 @@ namespace Oxide.Plugins
 
         private void OnServerInitialized()
         {
+            LoadActionLedger();
             if (!CanRequest())
             {
                 return;
@@ -142,12 +163,9 @@ namespace Oxide.Plugins
 
             LogBridgeSecretDiagnostics();
 
-            if (config.ClanActionsEnabled)
+            if (config.ClanActionsEnabled && (WebsiteBridgeHub == null || !WebsiteBridgeHub.IsLoaded))
             {
-                var pollInterval = Math.Max(10, config.PollIntervalSeconds);
-                timer.Once(8f, PollClanActions);
-                pollTimer = timer.Every(pollInterval, PollClanActions);
-                Puts($"WebsiteClanBridge polling clan actions every {pollInterval} seconds.");
+                PrintError("WebsiteBridgeHub is not loaded. Clan actions are paused; no legacy polling fallback will be started.");
             }
 
             if (config.SnapshotSyncEnabled)
@@ -164,6 +182,8 @@ namespace Oxide.Plugins
             pollTimer?.Destroy();
             snapshotTimer?.Destroy();
             pendingSnapshotTimer?.Destroy();
+            snapshotRetryTimer?.Destroy();
+            SaveActionLedger();
         }
 
         private void OnClanCreate(string tag)
@@ -345,6 +365,12 @@ namespace Oxide.Plugins
                 return;
             }
 
+            if (snapshotInFlight)
+            {
+                PrintWarning("Clan snapshot sync skipped because the previous request is still in flight.");
+                return;
+            }
+
             if (Clans == null || !Clans.IsLoaded)
             {
                 PrintWarning("Cannot sync clan snapshot because Clans is not loaded.");
@@ -366,12 +392,14 @@ namespace Oxide.Plugins
             };
             var body = payload.ToString(Formatting.None);
             var url = $"{TrimSlash(config.ApiBaseUrl)}/api/server/clan-snapshot.php";
-
+            snapshotInFlight = true;
             SendPost(url, body, (code, response) =>
             {
+                snapshotInFlight = false;
                 if (!IsSuccess(code, response, out var error))
                 {
                     PrintWarning($"Clan snapshot sync failed: {error}");
+                    ScheduleSnapshotRetry();
                     return;
                 }
 
@@ -380,11 +408,155 @@ namespace Oxide.Plugins
                 if (result == null || !result.ok)
                 {
                     PrintWarning($"Clan snapshot sync failed: {result?.error ?? "invalid response"}");
+                    ScheduleSnapshotRetry();
                     return;
                 }
 
+                snapshotRetryTimer?.Destroy();
+                snapshotRetryTimer = null;
+                snapshotFailures = 0;
                 Puts($"Clan snapshot synced for {clans.Count} clans.");
             });
+        }
+
+        private void ScheduleSnapshotRetry()
+        {
+            snapshotFailures++;
+            var exponent = Math.Min(4, Math.Max(0, snapshotFailures - 1));
+            var delay = Math.Min(300, 30 * (1 << exponent));
+            snapshotRetryTimer?.Destroy();
+            snapshotRetryTimer = timer.Once(delay, SyncClanSnapshot);
+        }
+
+        [HookMethod(nameof(API_CollectWebsiteBridgeExchange))]
+        public object API_CollectWebsiteBridgeExchange(long sequence)
+        {
+            LoadActionLedger();
+            PruneActionLedger();
+            return new JObject
+            {
+                ["action_limit"] = Math.Max(1, Math.Min(50, config.ActionBatchSize)),
+                ["results"] = JArray.FromObject(actionLedger.actions.Values
+                    .Where(entry => entry != null && !entry.acknowledged && entry.result != null)
+                    .OrderBy(entry => entry.processed_at ?? "")
+                    .Take(Math.Max(1, Math.Min(50, config.ActionBatchSize)))
+                    .Select(entry => entry.result)
+                    .ToList())
+            };
+        }
+
+        [HookMethod(nameof(API_ApplyWebsiteBridgeExchange))]
+        public object API_ApplyWebsiteBridgeExchange(long sequence, JObject response)
+        {
+            if (response == null)
+            {
+                return false;
+            }
+            LoadActionLedger();
+            var ackIds = (response["acknowledgements"]?["ids"] as JArray ?? new JArray()).Values<long>().ToList();
+            foreach (var id in ackIds)
+            {
+                if (actionLedger.actions.TryGetValue(id, out var entry) && entry != null)
+                {
+                    entry.acknowledged = true;
+                    entry.acknowledged_at = DateTime.UtcNow.ToString("o");
+                }
+            }
+
+            var actionsSection = response["actions"] as JObject;
+            if (actionsSection?.Value<bool?>("ok") == true)
+            {
+                var changed = false;
+                foreach (var action in (actionsSection["items"] as JArray ?? new JArray()).ToObject<List<ClanAction>>() ?? new List<ClanAction>())
+                {
+                    if (action == null || action.id <= 0)
+                    {
+                        continue;
+                    }
+                    if (!actionLedger.actions.TryGetValue(action.id, out var existing) || existing?.result == null)
+                    {
+                        var result = ExecuteClanAction(action);
+                        actionLedger.actions[action.id] = new ActionLedgerEntry
+                        {
+                            result = result,
+                            processed_at = DateTime.UtcNow.ToString("o"),
+                            acknowledged = false,
+                            acknowledged_at = ""
+                        };
+                        changed = changed || result.ok;
+                    }
+                }
+                if (changed)
+                {
+                    QueueSnapshotSync();
+                }
+            }
+            else if (actionsSection != null)
+            {
+                PrintWarning("Website clan action exchange failed: " + (actionsSection.Value<string>("error") ?? "unknown error"));
+            }
+            SaveActionLedger();
+            return true;
+        }
+
+        [HookMethod(nameof(API_GetWebsiteBridgeQueueDepth))]
+        public object API_GetWebsiteBridgeQueueDepth()
+        {
+            LoadActionLedger();
+            return new Dictionary<string, object>
+            {
+                ["pending_results"] = actionLedger.actions.Values.Count(entry => entry != null && !entry.acknowledged && entry.result != null),
+                ["retained_actions"] = actionLedger.actions.Count,
+                ["snapshot_in_flight"] = snapshotInFlight
+            };
+        }
+
+        private void LoadActionLedger()
+        {
+            if (actionLedger != null)
+            {
+                return;
+            }
+            try
+            {
+                actionLedger = Interface.Oxide.DataFileSystem.ReadObject<ActionLedger>(ActionLedgerDataFile) ?? new ActionLedger();
+            }
+            catch (Exception ex)
+            {
+                PrintWarning("Could not read clan action ledger: " + ex.Message);
+                actionLedger = new ActionLedger();
+            }
+            actionLedger.actions = actionLedger.actions ?? new Dictionary<long, ActionLedgerEntry>();
+        }
+
+        private void SaveActionLedger()
+        {
+            if (actionLedger == null)
+            {
+                return;
+            }
+            try
+            {
+                Interface.Oxide.DataFileSystem.WriteObject(ActionLedgerDataFile, actionLedger, true);
+            }
+            catch (Exception ex)
+            {
+                PrintWarning("Could not write clan action ledger: " + ex.Message);
+            }
+        }
+
+        private void PruneActionLedger()
+        {
+            LoadActionLedger();
+            var cutoff = DateTime.UtcNow.AddDays(-14);
+            var remove = actionLedger.actions
+                .Where(item => item.Value != null && item.Value.acknowledged && DateTime.TryParse(item.Value.acknowledged_at, out var when) && when.ToUniversalTime() < cutoff)
+                .Select(item => item.Key)
+                .ToList();
+            foreach (var id in remove)
+            {
+                actionLedger.actions.Remove(id);
+            }
         }
 
         private bool CanRequest()

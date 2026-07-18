@@ -15,7 +15,7 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteVipBridge", "Raidlands", "1.8.0")]
+    [Info("WebsiteVipBridge", "Raidlands", "1.9.0")]
     [Description("Syncs website VIP entitlements and player stats between Raidlands.net and the Rust server.")]
     public class WebsiteVipBridge : CovalencePlugin
     {
@@ -33,6 +33,10 @@ namespace Oxide.Plugins
         private Timer rpPurchaseTimer;
         private Timer rpPointTimer;
         private Timer heatmapTimer;
+        private Timer statsRetryTimer;
+        private Timer heatmapRetryTimer;
+        private Timer kitSnapshotRetryTimer;
+        private Timer permissionSnapshotRetryTimer;
         private DateTime rpPurchasePollStartedAt = DateTime.MinValue;
         private DateTime rpPointPollStartedAt = DateTime.MinValue;
         private int rpPurchasePollGeneration;
@@ -48,6 +52,7 @@ namespace Oxide.Plugins
         private const string DeletedGroupsDataFile = "WebsiteVipBridge/deleted_groups";
         private const string StorefrontOverridesDataFile = "WebsiteVipBridge/storefront_overrides";
         private const string RaidStatsDataFile = "WebsiteVipBridge/raid_stats";
+        private const string ExchangeStateDataFile = "WebsiteVipBridge/exchange_state";
         private string secretsConfigSource;
         private RpPurchaseLedger rpPurchaseData;
         private RpPointLedger rpPointData;
@@ -58,17 +63,32 @@ namespace Oxide.Plugins
         private bool rpPointPollInFlight;
         private readonly HashSet<string> rpResultPostsInFlight = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
         private readonly HashSet<string> rpPointResultPostsInFlight = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+        private readonly List<JObject> pendingKitSyncResults = new List<JObject>();
+        private readonly List<JObject> pendingPermissionSyncResults = new List<JObject>();
         private readonly Dictionary<string, HeatmapBucket> heatmapBuckets = new Dictionary<string, HeatmapBucket>(StringComparer.OrdinalIgnoreCase);
         private DateTime heatmapWindowStartedAt = DateTime.UtcNow;
         private DateTime lastHeatmapSyncAt = DateTime.MinValue;
         private bool heatmapEndpointMissing;
+        private bool statsSnapshotInFlight;
+        private bool heatmapSnapshotInFlight;
+        private bool kitSnapshotInFlight;
+        private bool permissionSnapshotInFlight;
+        private int statsSnapshotFailures;
+        private int heatmapSnapshotFailures;
+        private int kitSnapshotFailures;
+        private int permissionSnapshotFailures;
         private DateTime lastStatsSyncAt = DateTime.MinValue;
+        private DateTime lastStatsSyncAttemptAt = DateTime.MinValue;
         private string lastStatsSyncError = "";
         private readonly Dictionary<string, DateTime> raidAttackDedup = new Dictionary<string, DateTime>(StringComparer.OrdinalIgnoreCase);
         private bool isUnloading;
+        private bool exchangeStateLoaded;
 
         [PluginReference]
         private Plugin ServerRewards;
+
+        [PluginReference]
+        private Plugin WebsiteBridgeHub;
 
         private static readonly HashSet<string> ProtectedGroups = new HashSet<string>(StringComparer.OrdinalIgnoreCase)
         {
@@ -302,6 +322,7 @@ namespace Oxide.Plugins
             public bool HeatmapEnabled = false;
             public int HeatmapSyncIntervalSeconds = 300;
             public int HeatmapBucketSize = 100;
+            [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
             public List<string> HeatmapMetrics = new List<string>
             {
                 "player_deaths",
@@ -323,10 +344,11 @@ namespace Oxide.Plugins
             public bool KitSyncEnabled = true;
             public int KitSyncIntervalSeconds = 180;
             public bool PermissionSyncEnabled = true;
-            public int PermissionSyncIntervalSeconds = 180;
+            public int PermissionSyncIntervalSeconds = 600;
             public int PermissionSnapshotDebounceSeconds = 10;
             public int PermissionSnapshotSettledDelaySeconds = 120;
             public int KitDataBackupCount = 8;
+            [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
             public List<string> KitPermissionManagedGroups = new List<string>
             {
                 "default",
@@ -346,6 +368,7 @@ namespace Oxide.Plugins
                 "claim_discord_member",
                 "claim_discord_booster"
             };
+            [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
             public List<string> KitPermissionPrefixes = new List<string>
             {
                 "kits.",
@@ -353,6 +376,7 @@ namespace Oxide.Plugins
             };
             public string WipeKey = "";
             public string WipeStartedAt = "";
+            [JsonProperty(ObjectCreationHandling = ObjectCreationHandling.Replace)]
             public List<string> ManagedGroups = new List<string>
             {
                 "rank_vip",
@@ -583,6 +607,7 @@ namespace Oxide.Plugins
             public string wipe_key;
             public string wipe_started_at;
             public string generated_at;
+            public bool bots_authoritative;
             public List<StatsPlayer> players = new List<StatsPlayer>();
             public List<StatsBot> bots = new List<StatsBot>();
         }
@@ -949,6 +974,11 @@ namespace Oxide.Plugins
                 config.KitPermissionPrefixes = defaults.KitPermissionPrefixes;
             }
 
+            config.HeatmapMetrics = DistinctConfigValues(config.HeatmapMetrics);
+            config.KitPermissionManagedGroups = DistinctConfigValues(config.KitPermissionManagedGroups);
+            config.KitPermissionPrefixes = DistinctConfigValues(config.KitPermissionPrefixes);
+            config.ManagedGroups = DistinctConfigValues(config.ManagedGroups);
+
             if (config.StorefrontBundles == null)
             {
                 config.StorefrontBundles = new Dictionary<string, StorefrontGroupBundle>(StringComparer.OrdinalIgnoreCase);
@@ -958,6 +988,15 @@ namespace Oxide.Plugins
             SaveConfig();
         }
 
+        private static List<string> DistinctConfigValues(IEnumerable<string> values)
+        {
+            var seen = new HashSet<string>(StringComparer.OrdinalIgnoreCase);
+            return (values ?? Enumerable.Empty<string>())
+                .Select(value => (value ?? "").Trim())
+                .Where(value => value.Length > 0 && seen.Add(value))
+                .ToList();
+        }
+
         protected override void SaveConfig()
         {
             Config.WriteObject(config, true);
@@ -965,6 +1004,7 @@ namespace Oxide.Plugins
 
         private void OnServerInitialized()
         {
+            LoadExchangeState();
             LoadRaidStats();
             EnsureRaidStatsWipe(ResolveWipeKey(GetWipeStartedAt()));
             LoadDeletedGroupState();
@@ -972,27 +1012,29 @@ namespace Oxide.Plugins
             EnsureManagedGroups(config.ManagedGroups);
             SyncBrandConfigs();
             LogBridgeSecretDiagnostics();
-            SyncChanges();
             StartKitSync();
             StartPermissionSync();
-            StartStatusHeartbeat();
-            StartRpPurchasePolling();
-            StartRpPointPolling();
+            LoadRpPurchaseData();
+            LoadRpPointData();
+            PruneRpPurchaseData();
+            PruneRpPointData();
             StartHeatmapSync();
 
-            var interval = Math.Max(30, config.SyncIntervalSeconds);
-            syncTimer = timer.Every(interval, () => RunScheduled("VIP change sync timer", SyncChanges));
+            if (WebsiteBridgeHub == null || !WebsiteBridgeHub.IsLoaded)
+            {
+                PrintError("WebsiteBridgeHub is not loaded. Frequent VIP/control synchronization is paused; no legacy polling fallback will be started.");
+            }
 
             if (config.StatsEnabled)
             {
                 var statsInterval = Math.Max(60, config.StatsSyncIntervalSeconds);
                 timer.Once(10f, () => RunScheduled("Initial stats sync", SyncStatsSnapshot));
                 statsTimer = timer.Every(statsInterval, () => RunScheduled("Stats sync timer", SyncStatsSnapshot));
-                Puts($"WebsiteVipBridge syncing VIP every {interval} seconds and stats every {statsInterval} seconds.");
+                Puts($"WebsiteVipBridge using WebsiteBridgeHub for control/status exchange and syncing stats every {statsInterval} seconds.");
                 return;
             }
 
-            Puts($"WebsiteVipBridge syncing VIP every {interval} seconds. Stats sync is disabled.");
+            Puts("WebsiteVipBridge using WebsiteBridgeHub for control/status exchange. Stats sync is disabled.");
         }
 
         private void Unload()
@@ -1011,6 +1053,10 @@ namespace Oxide.Plugins
             rpPurchaseTimer?.Destroy();
             rpPointTimer?.Destroy();
             heatmapTimer?.Destroy();
+            statsRetryTimer?.Destroy();
+            heatmapRetryTimer?.Destroy();
+            kitSnapshotRetryTimer?.Destroy();
+            permissionSnapshotRetryTimer?.Destroy();
             rpPurchasePollGeneration++;
             rpPointPollGeneration++;
             rpPurchasePollInFlight = false;
@@ -1020,6 +1066,7 @@ namespace Oxide.Plugins
             SaveDeletedGroupState();
             SaveStorefrontOverrides();
             SaveRaidStats();
+            SaveExchangeState();
         }
 
         private void OnServerSave()
@@ -2353,61 +2400,11 @@ namespace Oxide.Plugins
                 return;
             }
 
-            if (entry.posted && !force)
+            if (!entry.posted || force)
             {
-                return;
-            }
-
-            if (rpResultPostsInFlight.Contains(entry.request_id))
-            {
-                return;
-            }
-
-            rpResultPostsInFlight.Add(entry.request_id);
-
-            var body = BuildRpPurchaseResultPayload(entry).ToString(Formatting.None);
-            var url = $"{TrimSlash(config.ApiBaseUrl)}/api/server/rp-purchase-result.php";
-
-            SendPost(url, body, (code, response) =>
-            {
-                rpResultPostsInFlight.Remove(entry.request_id);
-                entry.post_attempts++;
-
-                if (!IsSuccess(code, response, out var error))
-                {
-                    entry.last_post_error = error;
-                    SaveRpPurchaseData();
-                    PrintWarning($"RP purchase result post failed for {entry.request_id}: {error}");
-                    return;
-                }
-
-                JObject payload;
-
-                try
-                {
-                    payload = JObject.Parse(response);
-                }
-                catch (Exception ex)
-                {
-                    entry.last_post_error = $"invalid response ({ex.Message})";
-                    SaveRpPurchaseData();
-                    PrintWarning($"RP purchase result post failed for {entry.request_id}: {entry.last_post_error}");
-                    return;
-                }
-
-                if (JsonToken(payload, "ok") != null && !JsonBool(payload, false, "ok"))
-                {
-                    entry.last_post_error = JsonString(payload, "error", "message", "reason");
-                    SaveRpPurchaseData();
-                    PrintWarning($"RP purchase result post failed for {entry.request_id}: {entry.last_post_error}");
-                    return;
-                }
-
-                entry.posted = true;
-                entry.posted_at = DateTime.UtcNow.ToString("o");
-                entry.last_post_error = "";
+                entry.last_post_error = "queued for WebsiteBridgeHub";
                 SaveRpPurchaseData();
-            });
+            }
         }
 
         private JObject BuildRpPurchaseResultPayload(RpPurchaseLedgerEntry entry)
@@ -3029,61 +3026,11 @@ namespace Oxide.Plugins
                 return;
             }
 
-            if (entry.posted && !force)
+            if (!entry.posted || force)
             {
-                return;
-            }
-
-            if (rpPointResultPostsInFlight.Contains(entry.request_id))
-            {
-                return;
-            }
-
-            rpPointResultPostsInFlight.Add(entry.request_id);
-
-            var body = BuildRpPointResultPayload(entry).ToString(Formatting.None);
-            var url = $"{TrimSlash(config.ApiBaseUrl)}/api/server/rp-point-result.php";
-
-            SendPost(url, body, (code, response) =>
-            {
-                rpPointResultPostsInFlight.Remove(entry.request_id);
-                entry.post_attempts++;
-
-                if (!IsSuccess(code, response, out var error))
-                {
-                    entry.last_post_error = error;
-                    SaveRpPointData();
-                    PrintWarning($"RP point result post failed for {entry.request_id}: {error}");
-                    return;
-                }
-
-                JObject payload;
-
-                try
-                {
-                    payload = JObject.Parse(response);
-                }
-                catch (Exception ex)
-                {
-                    entry.last_post_error = $"invalid response ({ex.Message})";
-                    SaveRpPointData();
-                    PrintWarning($"RP point result post failed for {entry.request_id}: {entry.last_post_error}");
-                    return;
-                }
-
-                if (JsonToken(payload, "ok") != null && !JsonBool(payload, false, "ok"))
-                {
-                    entry.last_post_error = JsonString(payload, "error", "message", "reason");
-                    SaveRpPointData();
-                    PrintWarning($"RP point result post failed for {entry.request_id}: {entry.last_post_error}");
-                    return;
-                }
-
-                entry.posted = true;
-                entry.posted_at = DateTime.UtcNow.ToString("o");
-                entry.last_post_error = "";
+                entry.last_post_error = "queued for WebsiteBridgeHub";
                 SaveRpPointData();
-            });
+            }
         }
 
         private JObject BuildRpPointResultPayload(RpPointLedgerEntry entry)
@@ -3209,13 +3156,7 @@ namespace Oxide.Plugins
 
         private void QueueStatusHeartbeat()
         {
-            if (!config.StatusHeartbeatEnabled || !CanRequest())
-            {
-                return;
-            }
-
-            pendingStatusHeartbeatTimer?.Destroy();
-            pendingStatusHeartbeatTimer = timer.Once(Math.Max(3, config.StatusHeartbeatDebounceSeconds), () => RunScheduled("Queued status heartbeat", SyncStatusHeartbeat));
+            // WebsiteBridgeHub collects the latest heartbeat on its next exchange.
         }
 
         private void SyncStatusHeartbeat()
@@ -3365,13 +3306,26 @@ namespace Oxide.Plugins
 
         private void QueueStatsSync()
         {
-            if (!config.StatsEnabled || !CanRequest())
+            if (!config.StatsEnabled || !CanRequest() || statsSnapshotInFlight)
             {
                 return;
             }
 
             pendingStatsTimer?.Destroy();
-            pendingStatsTimer = timer.Once(Math.Max(5, config.StatsDebounceSeconds), () => RunScheduled("Queued stats sync", SyncStatsSnapshot));
+            pendingStatsTimer = timer.Once(StatsQueueDelaySeconds(), () => RunScheduled("Queued stats sync", SyncStatsSnapshot));
+        }
+
+        private float StatsQueueDelaySeconds()
+        {
+            var delay = Math.Max(5, config.StatsDebounceSeconds);
+            if (lastStatsSyncAttemptAt == DateTime.MinValue)
+            {
+                return delay;
+            }
+
+            var interval = Math.Max(60, config.StatsSyncIntervalSeconds);
+            var elapsed = (DateTime.UtcNow - lastStatsSyncAttemptAt).TotalSeconds;
+            return (float)Math.Max(delay, interval - elapsed);
         }
 
         private void SyncStatsSnapshot()
@@ -3379,21 +3333,25 @@ namespace Oxide.Plugins
             pendingStatsTimer?.Destroy();
             pendingStatsTimer = null;
 
-            if (!config.StatsEnabled || !CanRequest())
+            if (!config.StatsEnabled || !CanRequest() || statsSnapshotInFlight)
             {
                 return;
             }
 
+            lastStatsSyncAttemptAt = DateTime.UtcNow;
             var snapshot = BuildStatsSnapshot();
             var body = JsonConvert.SerializeObject(snapshot);
             var url = $"{TrimSlash(config.ApiBaseUrl)}/api/server/stats-snapshot.php";
 
+            statsSnapshotInFlight = true;
             SendPost(url, body, (code, response) =>
             {
+                statsSnapshotInFlight = false;
                 if (!IsSuccess(code, response, out var error))
                 {
                     lastStatsSyncError = error ?? "request failed";
                     PrintWarning($"Stats snapshot sync failed: {error}");
+                    ScheduleDirectSnapshotRetry(ref statsRetryTimer, ref statsSnapshotFailures, SyncStatsSnapshot, "stats");
                     return;
                 }
 
@@ -3403,9 +3361,11 @@ namespace Oxide.Plugins
                 {
                     lastStatsSyncError = payload?.error ?? "invalid response";
                     PrintWarning($"Stats snapshot sync failed: {lastStatsSyncError}");
+                    ScheduleDirectSnapshotRetry(ref statsRetryTimer, ref statsSnapshotFailures, SyncStatsSnapshot, "stats");
                     return;
                 }
 
+                ResetDirectSnapshotRetry(ref statsRetryTimer, ref statsSnapshotFailures);
                 lastStatsSyncAt = DateTime.UtcNow;
                 lastStatsSyncError = "";
                 var raidProfiles = snapshot.players.Count(player => player.raid_damage > player.raid_damage_baseline
@@ -3428,13 +3388,15 @@ namespace Oxide.Plugins
             AddRewardPoints(playersById);
             AddConnectedPlayers(playersById);
             AddRaidStats(playersById, ResolveWipeKey(wipeStartedAt));
-            var botStats = AddRoamBotStats(playersById);
+            bool botsAuthoritative;
+            var botStats = AddRoamBotStats(playersById, out botsAuthoritative);
 
             return new StatsSnapshot
             {
                 wipe_key = ResolveWipeKey(wipeStartedAt),
                 wipe_started_at = wipeStartedAt == DateTime.MinValue ? null : wipeStartedAt.ToUniversalTime().ToString("o"),
                 generated_at = DateTime.UtcNow.ToString("o"),
+                bots_authoritative = botsAuthoritative,
                 players = playersById.Values
                     .OrderByDescending(player => player.kills)
                     .ThenByDescending(player => player.playtime_seconds)
@@ -3872,7 +3834,7 @@ namespace Oxide.Plugins
                 return;
             }
 
-            pendingStatsTimer = timer.Once(Math.Max(5, config.StatsDebounceSeconds), () => RunScheduled("Raid stats sync", SyncStatsSnapshot));
+            pendingStatsTimer = timer.Once(StatsQueueDelaySeconds(), () => RunScheduled("Raid stats sync", SyncStatsSnapshot));
         }
 
         private ulong ResolveRaidAttackerId(HitInfo info)
@@ -3989,10 +3951,11 @@ namespace Oxide.Plugins
             return value > long.MaxValue - increment ? long.MaxValue : value + increment;
         }
 
-        private List<StatsBot> AddRoamBotStats(Dictionary<string, StatsPlayer> playersById)
+        private List<StatsBot> AddRoamBotStats(Dictionary<string, StatsPlayer> playersById, out bool authoritative)
         {
             var data = ReadDataFile<RoamBotStatsData>("RaidlandsRoamBots/stats");
             var bots = new List<StatsBot>();
+            authoritative = data != null;
 
             if (data == null)
             {
@@ -4062,10 +4025,13 @@ namespace Oxide.Plugins
                 .ToList();
 
             var limit = Math.Max(0, config.StatsBotSnapshotLimit);
+            if (limit > 0 && ordered.Count > limit)
+            {
+                authoritative = false;
+                return ordered.Take(limit).ToList();
+            }
 
-            return limit > 0 && ordered.Count > limit
-                ? ordered.Take(limit).ToList()
-                : ordered;
+            return ordered;
         }
 
         private void StartHeatmapSync()
@@ -4180,7 +4146,7 @@ namespace Oxide.Plugins
 
         private void SyncHeatmapSnapshot()
         {
-            if (!IsHeatmapEnabled() || !CanRequest() || heatmapEndpointMissing)
+            if (!IsHeatmapEnabled() || !CanRequest() || heatmapEndpointMissing || heatmapSnapshotInFlight)
             {
                 return;
             }
@@ -4215,18 +4181,22 @@ namespace Oxide.Plugins
             var body = JsonConvert.SerializeObject(snapshot);
             var url = $"{TrimSlash(config.ApiBaseUrl)}/api/server/heatmap-snapshot.php";
 
+            heatmapSnapshotInFlight = true;
             SendPost(url, body, (code, response) =>
             {
+                heatmapSnapshotInFlight = false;
                 if (!IsSuccess(code, response, out var error))
                 {
                     if (code == 404)
                     {
                         heatmapEndpointMissing = true;
+                        ResetDirectSnapshotRetry(ref heatmapRetryTimer, ref heatmapSnapshotFailures);
                         PrintWarning("Heatmap snapshot endpoint returned 404. Heatmap posting is paused until WebsiteVipBridge is reloaded or websitevip.heatmap.sync is run after the website endpoint is deployed.");
                         return;
                     }
 
                     PrintWarning($"Heatmap snapshot sync failed: {error}");
+                    ScheduleDirectSnapshotRetry(ref heatmapRetryTimer, ref heatmapSnapshotFailures, SyncHeatmapSnapshot, "heatmap");
                     return;
                 }
 
@@ -4235,9 +4205,11 @@ namespace Oxide.Plugins
                 if (payload == null || !payload.ok)
                 {
                     PrintWarning($"Heatmap snapshot sync failed: {payload?.error ?? "invalid response"}");
+                    ScheduleDirectSnapshotRetry(ref heatmapRetryTimer, ref heatmapSnapshotFailures, SyncHeatmapSnapshot, "heatmap");
                     return;
                 }
 
+                ResetDirectSnapshotRetry(ref heatmapRetryTimer, ref heatmapSnapshotFailures);
                 heatmapBuckets.Clear();
                 heatmapWindowStartedAt = DateTime.UtcNow;
                 lastHeatmapSyncAt = heatmapWindowStartedAt;
@@ -4297,14 +4269,12 @@ namespace Oxide.Plugins
 
             var interval = Math.Max(60, config.KitSyncIntervalSeconds);
             pendingKitSnapshotTimer = timer.Once(15f, () => RunScheduled("Initial kit snapshot", PostKitSnapshot));
-            timer.Once(25f, () => RunScheduled("Initial kit sync", SyncKits));
-            kitSyncTimer = timer.Every(interval, () => RunScheduled("Kit sync timer", SyncKits));
-            Puts($"WebsiteVipBridge syncing kits every {interval} seconds.");
+            Puts($"WebsiteVipBridge publishes kit snapshots directly; website kit revisions are consumed through WebsiteBridgeHub (legacy interval was {interval}s).");
         }
 
         private void PostKitSnapshot()
         {
-            if (!config.KitSyncEnabled || !CanRequest())
+            if (!config.KitSyncEnabled || !CanRequest() || kitSnapshotInFlight)
             {
                 return;
             }
@@ -4321,11 +4291,14 @@ namespace Oxide.Plugins
                 }.ToString(Formatting.None);
                 var url = $"{TrimSlash(config.ApiBaseUrl)}/api/server/kits-snapshot.php";
 
+                kitSnapshotInFlight = true;
                 SendPost(url, body, (code, response) =>
                 {
+                    kitSnapshotInFlight = false;
                     if (!IsSuccess(code, response, out var error))
                     {
                         PrintWarning($"Kit snapshot post failed: {error}");
+                        ScheduleDirectSnapshotRetry(ref kitSnapshotRetryTimer, ref kitSnapshotFailures, PostKitSnapshot, "kit registry");
                         return;
                     }
 
@@ -4334,14 +4307,17 @@ namespace Oxide.Plugins
                     if (payload == null || !payload.ok)
                     {
                         PrintWarning($"Kit snapshot post failed: {payload?.error ?? "invalid response"}");
+                        ScheduleDirectSnapshotRetry(ref kitSnapshotRetryTimer, ref kitSnapshotFailures, PostKitSnapshot, "kit registry");
                         return;
                     }
 
+                    ResetDirectSnapshotRetry(ref kitSnapshotRetryTimer, ref kitSnapshotFailures);
                     Puts("Posted kit snapshot to website.");
                 });
             }
             catch (Exception ex)
             {
+                kitSnapshotInFlight = false;
                 PrintWarning($"Could not build kit snapshot: {ex.Message}");
             }
         }
@@ -4586,7 +4562,7 @@ namespace Oxide.Plugins
 
             timer.Once(3f, () => RunScheduled("Post-kit permission sync", () =>
             {
-                SyncPermissions();
+                QueuePermissionSnapshot("Post-kit permission registry snapshot", 1f);
                 PostKitSyncResult(payload.revision, true, $"Applied kit revision {payload.revision}; backups: {string.Join(", ", backups.Select(Path.GetFileName).ToArray())}");
             }));
         }
@@ -4976,36 +4952,21 @@ namespace Oxide.Plugins
 
         private void PostKitSyncResult(long revision, bool success, string message)
         {
-            if (!CanRequest())
+            if (revision <= 0)
             {
                 return;
             }
 
-            var body = new JObject
+            pendingKitSyncResults.RemoveAll(item => item.Value<long>("revision") == revision);
+            pendingKitSyncResults.Add(new JObject
             {
                 ["revision"] = revision,
                 ["status"] = success ? "applied" : "failed",
                 ["ok"] = success,
                 ["message"] = message ?? "",
                 ["payload_hash"] = ""
-            }.ToString(Formatting.None);
-            var url = $"{TrimSlash(config.ApiBaseUrl)}/api/server/kits-sync-result.php";
-
-            SendPost(url, body, (code, response) =>
-            {
-                if (!IsSuccess(code, response, out var error))
-                {
-                    PrintWarning($"Kit sync result post failed: {error}");
-                    return;
-                }
-
-                var payload = JsonConvert.DeserializeObject<KitResultResponse>(response);
-
-                if (payload == null || !payload.ok)
-                {
-                    PrintWarning($"Kit sync result post failed: {payload?.error ?? "invalid response"}");
-                }
             });
+            SaveExchangeState();
         }
 
         private void StartPermissionSync()
@@ -5019,9 +4980,7 @@ namespace Oxide.Plugins
             var interval = Math.Max(60, config.PermissionSyncIntervalSeconds);
             QueuePermissionSnapshot("Initial permission registry snapshot", 20f);
             timer.Once(Math.Max(45, config.PermissionSnapshotSettledDelaySeconds), () => QueuePermissionSnapshot("Settled permission registry snapshot", 1f));
-            timer.Once(30f, () => RunScheduled("Initial permission sync", SyncPermissions));
-            permissionSyncTimer = timer.Every(interval, () => RunScheduled("Permission sync timer", SyncPermissions));
-            Puts($"WebsiteVipBridge syncing permissions every {interval} seconds.");
+            Puts($"WebsiteVipBridge publishes permission snapshots directly; website permission revisions are consumed through WebsiteBridgeHub (legacy interval was {interval}s).");
         }
 
         private void QueuePermissionSnapshotForPluginChange(string context, Plugin plugin)
@@ -5053,7 +5012,7 @@ namespace Oxide.Plugins
 
         private void PostPermissionSnapshot()
         {
-            if (!config.PermissionSyncEnabled || !CanRequest())
+            if (!config.PermissionSyncEnabled || !CanRequest() || permissionSnapshotInFlight)
             {
                 return;
             }
@@ -5073,11 +5032,14 @@ namespace Oxide.Plugins
                 }.ToString(Formatting.None);
                 var url = $"{TrimSlash(config.ApiBaseUrl)}/api/server/permissions-snapshot.php";
 
+                permissionSnapshotInFlight = true;
                 SendPost(url, body, (code, response) =>
                 {
+                    permissionSnapshotInFlight = false;
                     if (!IsSuccess(code, response, out var error))
                     {
                         PrintWarning($"Permission snapshot post failed: {error}");
+                        ScheduleDirectSnapshotRetry(ref permissionSnapshotRetryTimer, ref permissionSnapshotFailures, PostPermissionSnapshot, "permission registry");
                         return;
                     }
 
@@ -5086,14 +5048,17 @@ namespace Oxide.Plugins
                     if (payload == null || !payload.ok)
                     {
                         PrintWarning($"Permission snapshot post failed: {payload?.error ?? "invalid response"}");
+                        ScheduleDirectSnapshotRetry(ref permissionSnapshotRetryTimer, ref permissionSnapshotFailures, PostPermissionSnapshot, "permission registry");
                         return;
                     }
 
+                    ResetDirectSnapshotRetry(ref permissionSnapshotRetryTimer, ref permissionSnapshotFailures);
                     Puts($"Posted permission snapshot to website ({permissions.Count} permissions, {groups.Count} groups).");
                 });
             }
             catch (Exception ex)
             {
+                permissionSnapshotInFlight = false;
                 PrintWarning($"Could not build permission snapshot: {ex.Message}");
             }
         }
@@ -5457,36 +5422,21 @@ namespace Oxide.Plugins
 
         private void PostPermissionSyncResult(long revision, bool success, string message)
         {
-            if (!CanRequest())
+            if (revision <= 0)
             {
                 return;
             }
 
-            var body = new JObject
+            pendingPermissionSyncResults.RemoveAll(item => item.Value<long>("revision") == revision);
+            pendingPermissionSyncResults.Add(new JObject
             {
                 ["revision"] = revision,
                 ["status"] = success ? "applied" : "failed",
                 ["ok"] = success,
                 ["message"] = message ?? "",
                 ["payload_hash"] = ""
-            }.ToString(Formatting.None);
-            var url = $"{TrimSlash(config.ApiBaseUrl)}/api/server/permissions-sync-result.php";
-
-            SendPost(url, body, (code, response) =>
-            {
-                if (!IsSuccess(code, response, out var error))
-                {
-                    PrintWarning($"Permission sync result post failed: {error}");
-                    return;
-                }
-
-                var payload = JsonConvert.DeserializeObject<KitResultResponse>(response);
-
-                if (payload == null || !payload.ok)
-                {
-                    PrintWarning($"Permission sync result post failed: {payload?.error ?? "invalid response"}");
-                }
             });
+            SaveExchangeState();
         }
 
         private List<PermissionSnapshotGroup> CurrentPermissionGroups()
@@ -6158,7 +6108,10 @@ namespace Oxide.Plugins
 
             if (Uri.TryCreate(trimmed, UriKind.Absolute, out uri))
             {
-                return string.Equals(uri.Scheme, "https", StringComparison.OrdinalIgnoreCase);
+                return string.Equals(uri.Scheme, "https", StringComparison.OrdinalIgnoreCase)
+                    || (string.Equals(config.ServerId, "raidlands-dev", StringComparison.OrdinalIgnoreCase)
+                        && uri.IsLoopback
+                        && string.Equals(uri.Scheme, "http", StringComparison.OrdinalIgnoreCase));
             }
 
             return NormalizeAssetPath(trimmed).StartsWith("assets/media/kits/", StringComparison.OrdinalIgnoreCase);
@@ -6778,6 +6731,305 @@ namespace Oxide.Plugins
             return $"{baseUrl}/{normalizedPath}";
         }
 
+        [HookMethod(nameof(API_CollectWebsiteBridgeExchange))]
+        public object API_CollectWebsiteBridgeExchange(long sequence)
+        {
+            LoadExchangeState();
+            LoadRpPurchaseData();
+            LoadRpPointData();
+            var purchaseResults = rpPurchaseData.processed.Values
+                .Where(entry => entry != null && !entry.posted)
+                .OrderBy(entry => entry.processed_at ?? "")
+                .Take(Math.Max(1, config.RpPurchasePollLimit))
+                .Select(BuildRpPurchaseResultPayload)
+                .ToList();
+            var pointResults = rpPointData.processed.Values
+                .Where(entry => entry != null && !entry.posted)
+                .OrderBy(entry => entry.processed_at ?? "")
+                .Take(Math.Max(1, config.RpPointRequestPollLimit))
+                .Select(BuildRpPointResultPayload)
+                .ToList();
+
+            return new JObject
+            {
+                ["heartbeat"] = config.StatusHeartbeatEnabled ? JObject.FromObject(BuildStatusHeartbeat()) : null,
+                ["cursor"] = cursor,
+                ["kit_revision"] = kitRevision,
+                ["permission_revision"] = permissionRevision,
+                ["rp_purchase_limit"] = Math.Max(1, config.RpPurchasePollLimit),
+                ["rp_point_limit"] = Math.Max(1, config.RpPointRequestPollLimit),
+                ["results"] = new JObject
+                {
+                    ["rp_purchases"] = JArray.FromObject(purchaseResults),
+                    ["rp_points"] = JArray.FromObject(pointResults),
+                    ["kits"] = JArray.FromObject(pendingKitSyncResults),
+                    ["permissions"] = JArray.FromObject(pendingPermissionSyncResults)
+                }
+            };
+        }
+
+        [HookMethod(nameof(API_GetWebsiteBridgeQueueDepth))]
+        public object API_GetWebsiteBridgeQueueDepth()
+        {
+            LoadRpPurchaseData();
+            LoadRpPointData();
+            return new Dictionary<string, object>
+            {
+                ["rp_purchase_results"] = rpPurchaseData.processed.Values.Count(entry => entry != null && !entry.posted),
+                ["rp_point_results"] = rpPointData.processed.Values.Count(entry => entry != null && !entry.posted),
+                ["kit_results"] = pendingKitSyncResults.Count,
+                ["permission_results"] = pendingPermissionSyncResults.Count,
+                ["direct_snapshots_in_flight"] = (statsSnapshotInFlight ? 1 : 0) + (heatmapSnapshotInFlight ? 1 : 0) + (kitSnapshotInFlight ? 1 : 0) + (permissionSnapshotInFlight ? 1 : 0)
+            };
+        }
+
+        [HookMethod(nameof(API_ApplyWebsiteBridgeExchange))]
+        public object API_ApplyWebsiteBridgeExchange(long sequence, JObject response)
+        {
+            if (response == null)
+            {
+                return false;
+            }
+
+            ApplyExchangeAcknowledgements(response["acknowledgements"] as JObject);
+            ApplyExchangeVipChanges(response["changes"] as JObject);
+            ApplyExchangeRpPurchases(response["rp_purchases"] as JObject);
+            ApplyExchangeRpPoints(response["rp_points"] as JObject);
+            ApplyExchangeKitSync(response["kits"] as JObject);
+            ApplyExchangePermissionSync(response["permissions"] as JObject);
+            if ((response["heartbeat"] as JObject)?.Value<bool?>("ok") == true)
+            {
+                lastStatusHeartbeatAt = DateTime.UtcNow;
+            }
+            SaveExchangeState();
+            return true;
+        }
+
+        private void LoadExchangeState()
+        {
+            if (exchangeStateLoaded)
+            {
+                return;
+            }
+            exchangeStateLoaded = true;
+            try
+            {
+                var state = Interface.Oxide.DataFileSystem.ReadObject<JObject>(ExchangeStateDataFile);
+                cursor = Math.Max(0, state?.Value<long?>("cursor") ?? 0);
+                kitRevision = Math.Max(0, state?.Value<long?>("kit_revision") ?? 0);
+                permissionRevision = Math.Max(0, state?.Value<long?>("permission_revision") ?? 0);
+                pendingKitSyncResults.Clear();
+                pendingKitSyncResults.AddRange((state?["pending_kit_results"] as JArray ?? new JArray()).OfType<JObject>());
+                pendingPermissionSyncResults.Clear();
+                pendingPermissionSyncResults.AddRange((state?["pending_permission_results"] as JArray ?? new JArray()).OfType<JObject>());
+            }
+            catch (Exception ex)
+            {
+                PrintWarning("Could not read website exchange cursor state: " + ex.Message);
+            }
+        }
+
+        private void SaveExchangeState()
+        {
+            if (!exchangeStateLoaded)
+            {
+                return;
+            }
+            try
+            {
+                Interface.Oxide.DataFileSystem.WriteObject(ExchangeStateDataFile, new JObject
+                {
+                    ["cursor"] = cursor,
+                    ["kit_revision"] = kitRevision,
+                    ["permission_revision"] = permissionRevision,
+                    ["pending_kit_results"] = JArray.FromObject(pendingKitSyncResults),
+                    ["pending_permission_results"] = JArray.FromObject(pendingPermissionSyncResults),
+                    ["saved_at"] = DateTime.UtcNow.ToString("o")
+                }, true);
+            }
+            catch (Exception ex)
+            {
+                PrintWarning("Could not persist website exchange cursor state: " + ex.Message);
+            }
+        }
+
+        private void ApplyExchangeAcknowledgements(JObject acknowledgements)
+        {
+            if (acknowledgements == null)
+            {
+                return;
+            }
+
+            var purchaseIds = ExchangeStringSet(acknowledgements["rp_purchases"]?["ids"]);
+            foreach (var id in purchaseIds)
+            {
+                if (rpPurchaseData.processed.TryGetValue(id, out var entry) && entry != null)
+                {
+                    entry.posted = true;
+                    entry.posted_at = DateTime.UtcNow.ToString("o");
+                    entry.last_post_error = "";
+                    entry.post_attempts++;
+                }
+            }
+            if (purchaseIds.Count > 0)
+            {
+                SaveRpPurchaseData();
+            }
+
+            var pointIds = ExchangeStringSet(acknowledgements["rp_points"]?["ids"]);
+            foreach (var id in pointIds)
+            {
+                if (rpPointData.processed.TryGetValue(id, out var entry) && entry != null)
+                {
+                    entry.posted = true;
+                    entry.posted_at = DateTime.UtcNow.ToString("o");
+                    entry.last_post_error = "";
+                    entry.post_attempts++;
+                }
+            }
+            if (pointIds.Count > 0)
+            {
+                SaveRpPointData();
+            }
+
+            var kitAcks = new HashSet<long>((acknowledgements["kits"]?["revisions"] as JArray ?? new JArray()).Values<long>());
+            var permissionAcks = new HashSet<long>((acknowledgements["permissions"]?["revisions"] as JArray ?? new JArray()).Values<long>());
+            pendingKitSyncResults.RemoveAll(item => kitAcks.Contains(item.Value<long>("revision")));
+            pendingPermissionSyncResults.RemoveAll(item => permissionAcks.Contains(item.Value<long>("revision")));
+        }
+
+        private void ApplyExchangeVipChanges(JObject section)
+        {
+            if (section?.Value<bool?>("ok") != true)
+            {
+                WarnExchangeSection("VIP changes", section);
+                return;
+            }
+
+            var payload = section.ToObject<ChangesResponse>();
+            EnsureManagedGroups(payload?.managed_groups);
+            foreach (var player in payload?.players ?? new List<PlayerState>())
+            {
+                if (player != null && !string.IsNullOrWhiteSpace(player.steam_id64))
+                {
+                    ApplyDesiredGroups(player.steam_id64, player.groups, payload.managed_groups);
+                }
+            }
+            if (payload != null && payload.cursor > cursor)
+            {
+                cursor = payload.cursor;
+            }
+        }
+
+        private void ApplyExchangeRpPurchases(JObject section)
+        {
+            if (section?.Value<bool?>("ok") != true)
+            {
+                WarnExchangeSection("RP purchases", section);
+                return;
+            }
+            foreach (var request in ExtractRpPurchaseRequests(section))
+            {
+                HandleRpPurchaseRequest(request);
+            }
+        }
+
+        private void ApplyExchangeRpPoints(JObject section)
+        {
+            if (section?.Value<bool?>("ok") != true)
+            {
+                WarnExchangeSection("RP points", section);
+                return;
+            }
+            foreach (var request in ExtractRpPointRequests(section))
+            {
+                HandleRpPointRequest(request);
+            }
+        }
+
+        private void ApplyExchangeKitSync(JObject section)
+        {
+            if (section?.Value<bool?>("ok") != true)
+            {
+                WarnExchangeSection("kit sync", section);
+                return;
+            }
+            var payload = section.ToObject<KitSyncResponse>();
+            if (payload == null)
+            {
+                return;
+            }
+            if (!payload.has_update)
+            {
+                kitRevision = Math.Max(kitRevision, payload.revision);
+                return;
+            }
+            var validation = ValidateKitSyncPayload(payload);
+            if (validation.Count > 0)
+            {
+                PostKitSyncResult(payload.revision, false, string.Join("; ", validation.Take(8).ToArray()));
+                return;
+            }
+            try
+            {
+                ApplyKitSyncPayload(payload);
+            }
+            catch (Exception ex)
+            {
+                PostKitSyncResult(payload.revision, false, ex.Message);
+                PrintWarning($"Kit exchange revision {payload.revision} failed: {ex.Message}");
+            }
+        }
+
+        private void ApplyExchangePermissionSync(JObject section)
+        {
+            if (section?.Value<bool?>("ok") != true)
+            {
+                WarnExchangeSection("permission sync", section);
+                return;
+            }
+            var payload = section.ToObject<PermissionSyncResponse>();
+            if (payload == null)
+            {
+                return;
+            }
+            if (!payload.has_update)
+            {
+                permissionRevision = Math.Max(permissionRevision, payload.revision);
+                return;
+            }
+            var validation = ValidatePermissionSyncPayload(payload);
+            if (validation.Count > 0)
+            {
+                PostPermissionSyncResult(payload.revision, false, string.Join("; ", validation.Take(8).ToArray()));
+                return;
+            }
+            try
+            {
+                var changeCount = ApplyPermissionSyncPayload(payload);
+                permissionRevision = payload.revision;
+                PostPermissionSyncResult(payload.revision, true, $"Applied permission revision {payload.revision}; changed {changeCount} grant(s).");
+            }
+            catch (Exception ex)
+            {
+                PostPermissionSyncResult(payload.revision, false, ex.Message);
+                PrintWarning($"Permission exchange revision {payload.revision} failed: {ex.Message}");
+            }
+        }
+
+        private static HashSet<string> ExchangeStringSet(JToken token)
+        {
+            return new HashSet<string>((token as JArray ?? new JArray()).Values<string>().Where(value => !string.IsNullOrWhiteSpace(value)), StringComparer.OrdinalIgnoreCase);
+        }
+
+        private void WarnExchangeSection(string name, JObject section)
+        {
+            if (section != null)
+            {
+                PrintWarning($"Website bridge {name} section failed: {section.Value<string>("error") ?? "unknown error"}");
+            }
+        }
+
         private bool CanRequest()
         {
             if (string.IsNullOrWhiteSpace(config.ApiBaseUrl))
@@ -6806,6 +7058,28 @@ namespace Oxide.Plugins
             }
 
             Puts($"Bridge SharedSecret source: {DescribeSecretSource(config.SharedSecret)}; length: {sharedSecret.Length}; fingerprint: {SecretFingerprint(sharedSecret)}");
+        }
+
+        private void ScheduleDirectSnapshotRetry(ref Timer retryTimer, ref int failures, Action action, string label)
+        {
+            failures++;
+            var exponent = Math.Min(4, Math.Max(0, failures - 1));
+            var delay = Math.Min(300, 30 * (1 << exponent));
+            retryTimer?.Destroy();
+            retryTimer = timer.Once(delay, () =>
+            {
+                if (!isUnloading)
+                {
+                    RunScheduled(label + " snapshot retry", action);
+                }
+            });
+        }
+
+        private void ResetDirectSnapshotRetry(ref Timer retryTimer, ref int failures)
+        {
+            retryTimer?.Destroy();
+            retryTimer = null;
+            failures = 0;
         }
 
         private void SendGet(string url, Action<int, string> callback)

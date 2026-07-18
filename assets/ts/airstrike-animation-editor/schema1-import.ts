@@ -23,6 +23,7 @@ function payloadFields(value: Partial<RuntimePayloadEvent> | undefined): Payload
   const source = value ?? {};
   return {
     Payload: typeof source.Payload === "string" ? source.Payload.trim().toLowerCase() : DEFAULT_PAYLOAD_EVENT.Payload,
+    AmmoSequence: Array.isArray(source.AmmoSequence) ? [...source.AmmoSequence] : [],
     Count: Math.max(1, integerOr(source.Count, DEFAULT_PAYLOAD_EVENT.Count)),
     CarrierOffsetX: finiteOr(source.CarrierOffsetX, DEFAULT_PAYLOAD_EVENT.CarrierOffsetX),
     CarrierOffsetY: finiteOr(source.CarrierOffsetY, DEFAULT_PAYLOAD_EVENT.CarrierOffsetY),

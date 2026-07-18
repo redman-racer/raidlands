@@ -33,8 +33,8 @@ http://127.0.0.1:4177/
 - `assets/js/site.js` handles behavior only: mobile nav, copy buttons, auth placeholders, reveal effects, metrics, and wipe countdowns.
 - `includes/database.php` and `includes/store.php` provide the MySQL, Stripe, SteamID64, entitlement, and WebsiteVipBridge API layer.
 - `database/` contains the store, stats, clan management/API-key, admin auth migrations, and seed data.
-- `server-plugins/WebsiteVipBridge.cs` is the uMod/Oxide bridge plugin for syncing website entitlements to Rust permission groups and player stats to leaderboards.
-- `server-plugins/WebsiteClanBridge.cs` is the uMod/Oxide bridge plugin for syncing clan snapshots and processing public clan API actions.
+- `server-plugins/WebsiteBridgeHub.cs` owns the signed 30-second `/api/server/bridge-exchange.php` transport shared by the VIP, map, and clan modules.
+- `server-plugins/WebsiteVipBridge.cs`, `WebsiteMapBridge.cs`, and `WebsiteClanBridge.cs` remain separate functional modules. Large snapshots, direct join checks, and wipe uploads use their independent endpoints.
 
 ## Important Config
 
@@ -57,7 +57,7 @@ over `.env` and stay ignored by Git.
 - `RAIDLANDS_WIPE_TIME`, `RAIDLANDS_WIPE_TIMEZONE`
 - `RAIDLANDS_DISCORD_CLIENT_ID`, `RAIDLANDS_DISCORD_CLIENT_SECRET`, `RAIDLANDS_DISCORD_BOT_TOKEN`, `RAIDLANDS_DISCORD_REDIRECT_URI`
 
-Live server status is served by `api/server-status.php`. WebsiteVipBridge posts signed heartbeats to `/api/server/status-heartbeat.php`; the public endpoint uses the latest heartbeat, marks delayed data stale, and falls back to config values before the first heartbeat arrives. Recent player-safe samples and long-term hourly/daily rollups are exposed through `/api/server-status-history.php` for the `/server/` activity graph.
+Live server status is served by `api/server-status.php`. WebsiteVipBridge sends heartbeats through the signed bridge exchange; the public endpoint uses the latest heartbeat, marks delayed data stale, and falls back to config values before the first heartbeat arrives. Recent player-safe samples and long-term hourly/daily rollups are exposed through `/api/server-status-history.php` for the `/server/` activity graph.
 
 Steam sign-in uses native Steam OpenID only. Manual SteamID64 entry is intentionally disabled. Discord linking starts only from a verified Steam session, uses Discord OAuth scopes `identify guilds.join`, and synchronizes the verified role plus configured Store/Groups role mappings.
 
@@ -138,16 +138,18 @@ Public store flow:
 Game-server flow:
 
 - Install Rust Kits by k1lly0u.
+- Put `server-plugins/WebsiteBridgeHub.cs` into the uMod/Oxide plugins folder and configure it from `server-plugins/WebsiteBridgeHub.config.example.json`.
 - Put `server-plugins/WebsiteVipBridge.cs` into the uMod/Oxide plugins folder.
+- Put `server-plugins/WebsiteMapBridge.cs` into the uMod/Oxide plugins folder when website map/replay telemetry is enabled.
 - Put `server-plugins/WebsiteClanBridge.cs` into the uMod/Oxide plugins folder when clan website/API management is enabled.
-- Configure the plugin with the same `ApiBaseUrl`, `ServerId`, and `SharedSecret` as the website. Use `server-plugins/WebsiteVipBridge.config.example.json` as the shape of the generated plugin config.
+- Configure all bridge plugins with the same `ApiBaseUrl`, `ServerId`, and `SharedSecret` as the website. The hub exchanges at most one request at a time every 30 seconds and backs off to 300 seconds after failures.
 - Leave `WipeKey` blank for automatic leaderboard seasons. WebsiteVipBridge will derive a stable key from `ServerId` and the Rust save creation time after each wipe. Set `WipeKey` only for a deliberate manual override; a static value like `raidlands-main` will keep every wipe in one leaderboard season.
-- The plugin calls `/api/server/vip-player.php` and `/api/server/vip-changes.php`, then adds/removes managed Oxide groups.
-- The plugin posts `/api/server/status-heartbeat.php` for the public status panel and `/server/` page.
+- Direct joins still call `/api/server/vip-player.php`. Change polling, status, RP work, kit/permission revisions, map telemetry, replay events, and clan actions share `/api/server/bridge-exchange.php`.
 - The plugin posts `/api/server/stats-snapshot.php` with KDRScoreboard kills/deaths, PlaytimeTracker playtime, ServerRewards RP, and persistent raid counters for `/leaderboard/` and `/profile/`.
 - Raid counters start when WebsiteVipBridge 1.8.0 is installed (no historical backfill). They count non-melee damage to enemy player-owned building/decay entities, raid explosives that hit those targets, and the player who lands the final blow on an enemy tool cupboard. Owners and native Rust teammates are excluded.
 - Use `websitevip.stats.status` to inspect the active wipe, tracked raid profiles, last successful sync, and last error; use `websitevip.stats.sync` to request an immediate signed snapshot.
-- WebsiteClanBridge posts `/api/server/clan-snapshot.php`, polls `/api/server/clan-actions.php`, and reports `/api/server/clan-action-result.php`.
+- WebsiteClanBridge continues posting `/api/server/clan-snapshot.php`; action claims and results use the shared exchange.
+- Use `websitebridge.status` over server console or RCON for latency, HTTP/byte totals, failure/backoff state, calls per minute, module health, and queue depths.
 
 ## Admin Panel
 

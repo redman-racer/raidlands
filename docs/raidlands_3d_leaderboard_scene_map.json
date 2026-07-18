@@ -39,24 +39,24 @@
   "camera": {
     "Camera_ID": "CAM_MAIN",
     "Type": "Perspective",
-    "Pos_X_m": 0.0,
+    "Pos_X_m": 0,
     "Pos_Y_m": 4.35,
     "Pos_Z_m": 13.2,
-    "Target_X_m": 0.0,
+    "Target_X_m": 0,
     "Target_Y_m": 1.72,
     "Target_Z_m": -0.55,
-    "Vertical_FOV_deg": 41.0,
-    "Focal_Length_35mm_Equivalent_mm": 48.0,
+    "Vertical_FOV_deg": 41,
+    "Focal_Length_35mm_Equivalent_mm": 48,
     "Near_m": 0.05,
-    "Far_m": 60.0,
+    "Far_m": 60,
     "Aspect": "16:9",
-    "Orbit_Pivot_X_m": 0.0,
+    "Orbit_Pivot_X_m": 0,
     "Orbit_Pivot_Y_m": 1.55,
     "Orbit_Pivot_Z_m": -0.35,
-    "Yaw_Min_deg": -18.0,
-    "Yaw_Max_deg": 18.0,
-    "Pitch_Min_deg": -3.0,
-    "Pitch_Max_deg": 10.0,
+    "Yaw_Min_deg": -18,
+    "Yaw_Max_deg": 18,
+    "Pitch_Min_deg": -3,
+    "Pitch_Max_deg": 10,
     "Damping": 0.1,
     "Exposure_EV": -0.45,
     "Notes": "Frame all three podiums with ~0.55 m breathing room above the center character. Use target/lookAt as authoritative."
@@ -287,9 +287,9 @@
       "parent_id": "PODIUM_ROOT",
       "node_type": "Custom completed pedestal",
       "position_m": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "rotation_deg": [
         0,
@@ -310,7 +310,7 @@
       "node_type": "Custom completed pedestal",
       "position_m": [
         -4.2,
-        0.0,
+        0,
         0.22
       ],
       "rotation_deg": [
@@ -332,7 +332,7 @@
       "node_type": "Custom completed pedestal",
       "position_m": [
         4.2,
-        0.0,
+        0,
         0.22
       ],
       "rotation_deg": [
@@ -349,11 +349,33 @@
       "notes": "Suggested radius 1.55 m; top Y = 0.40–0.43 m."
     },
     {
+      "node_id": "BACKDROP",
+      "parent_id": "SCENE_ROOT",
+      "node_type": "Logical group",
+      "position_m": [
+        0,
+        0,
+        0
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "inherits_transform": true,
+      "notes": "Distant U-shaped junkyard mound and wreck perimeter."
+    },
+    {
       "node_id": "ORBIT_PIVOT",
       "parent_id": "SCENE_ROOT",
       "node_type": "Interaction pivot",
       "position_m": [
-        0.0,
+        0,
         1.55,
         -0.35
       ],
@@ -384,9 +406,9 @@
       "Pos_X_m": -4.8,
       "Pos_Y_m": -0.11,
       "Pos_Z_m": 1.6,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 0.0,
-      "Rot_Z_deg": 0.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 0,
+      "Rot_Z_deg": 0,
       "Scale_X": 2.45,
       "Scale_Y": 0.08,
       "Scale_Z": 2.05,
@@ -413,15 +435,16 @@
         1.6
       ],
       "rotation_deg_xyz": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "scale_xyz": [
         2.45,
         0.08,
         2.05
-      ]
+      ],
+      "Distance_From_Origin_m": 5.061
     },
     {
       "Instance_ID": "ENV_FLOOR_02",
@@ -432,12 +455,12 @@
       "Asset_Name": "Cube Tiled Metal 11 Alt2",
       "Full_Path": "assets/bundled/prefabs/modding/Cubes/Tiled/cube_tiled_metal_11_alt2.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": 0.0,
+      "Pos_X_m": 0,
       "Pos_Y_m": -0.11,
       "Pos_Z_m": 1.6,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 0.0,
-      "Rot_Z_deg": 0.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 0,
+      "Rot_Z_deg": 0,
       "Scale_X": 2.45,
       "Scale_Y": 0.08,
       "Scale_Z": 2.05,
@@ -459,20 +482,21 @@
       "filename": "cube_tiled_metal_11_alt2.glb",
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
-        0.0,
+        0,
         -0.11,
         1.6
       ],
       "rotation_deg_xyz": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "scale_xyz": [
         2.45,
         0.08,
         2.05
-      ]
+      ],
+      "Distance_From_Origin_m": 1.604
     },
     {
       "Instance_ID": "ENV_FLOOR_03",
@@ -486,9 +510,9 @@
       "Pos_X_m": 4.8,
       "Pos_Y_m": -0.11,
       "Pos_Z_m": 1.6,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 0.0,
-      "Rot_Z_deg": 0.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 0,
+      "Rot_Z_deg": 0,
       "Scale_X": 2.45,
       "Scale_Y": 0.08,
       "Scale_Z": 2.05,
@@ -515,15 +539,16 @@
         1.6
       ],
       "rotation_deg_xyz": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "scale_xyz": [
         2.45,
         0.08,
         2.05
-      ]
+      ],
+      "Distance_From_Origin_m": 5.061
     },
     {
       "Instance_ID": "ENV_FLOOR_04",
@@ -537,9 +562,9 @@
       "Pos_X_m": -4.8,
       "Pos_Y_m": -0.11,
       "Pos_Z_m": -2.4,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 0.0,
-      "Rot_Z_deg": 0.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 0,
+      "Rot_Z_deg": 0,
       "Scale_X": 2.45,
       "Scale_Y": 0.08,
       "Scale_Z": 2.05,
@@ -566,15 +591,16 @@
         -2.4
       ],
       "rotation_deg_xyz": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "scale_xyz": [
         2.45,
         0.08,
         2.05
-      ]
+      ],
+      "Distance_From_Origin_m": 5.368
     },
     {
       "Instance_ID": "ENV_FLOOR_05",
@@ -585,12 +611,12 @@
       "Asset_Name": "Cube Tiled Metal 11 Alt2",
       "Full_Path": "assets/bundled/prefabs/modding/Cubes/Tiled/cube_tiled_metal_11_alt2.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": 0.0,
+      "Pos_X_m": 0,
       "Pos_Y_m": -0.11,
       "Pos_Z_m": -2.4,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 0.0,
-      "Rot_Z_deg": 0.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 0,
+      "Rot_Z_deg": 0,
       "Scale_X": 2.45,
       "Scale_Y": 0.08,
       "Scale_Z": 2.05,
@@ -612,20 +638,21 @@
       "filename": "cube_tiled_metal_11_alt2.glb",
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
-        0.0,
+        0,
         -0.11,
         -2.4
       ],
       "rotation_deg_xyz": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "scale_xyz": [
         2.45,
         0.08,
         2.05
-      ]
+      ],
+      "Distance_From_Origin_m": 2.403
     },
     {
       "Instance_ID": "ENV_FLOOR_06",
@@ -639,9 +666,9 @@
       "Pos_X_m": 4.8,
       "Pos_Y_m": -0.11,
       "Pos_Z_m": -2.4,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 0.0,
-      "Rot_Z_deg": 0.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 0,
+      "Rot_Z_deg": 0,
       "Scale_X": 2.45,
       "Scale_Y": 0.08,
       "Scale_Z": 2.05,
@@ -668,15 +695,16 @@
         -2.4
       ],
       "rotation_deg_xyz": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "scale_xyz": [
         2.45,
         0.08,
         2.05
-      ]
+      ],
+      "Distance_From_Origin_m": 5.368
     },
     {
       "Instance_ID": "ENV_BACKWALL_01",
@@ -690,14 +718,14 @@
       "Pos_X_m": -4.8,
       "Pos_Y_m": 2.65,
       "Pos_Z_m": -5.35,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 0.0,
-      "Rot_Z_deg": 0.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 0,
+      "Rot_Z_deg": 0,
       "Scale_X": 2.45,
       "Scale_Y": 2.75,
       "Scale_Z": 0.1,
       "Normalize_Mode": "Native-meters preferred; non-uniform wall scale",
-      "Target_Extent_m": 5.0,
+      "Target_Extent_m": 5,
       "Anchor": "Center",
       "Axis_Alignment": "Panel face toward +Z",
       "Cast_Shadow": true,
@@ -719,15 +747,16 @@
         -5.35
       ],
       "rotation_deg_xyz": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "scale_xyz": [
         2.45,
         2.75,
         0.1
-      ]
+      ],
+      "Distance_From_Origin_m": 7.661
     },
     {
       "Instance_ID": "ENV_BACKWALL_02",
@@ -738,17 +767,17 @@
       "Asset_Name": "Cube Tiled Charcoal 02",
       "Full_Path": "assets/bundled/prefabs/modding/Cubes/Tiled/cube_tiled_charcoal_02.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": 0.0,
+      "Pos_X_m": 0,
       "Pos_Y_m": 2.65,
       "Pos_Z_m": -5.35,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 0.0,
-      "Rot_Z_deg": 0.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 0,
+      "Rot_Z_deg": 0,
       "Scale_X": 2.45,
       "Scale_Y": 2.75,
       "Scale_Z": 0.1,
       "Normalize_Mode": "Native-meters preferred; non-uniform wall scale",
-      "Target_Extent_m": 5.0,
+      "Target_Extent_m": 5,
       "Anchor": "Center",
       "Axis_Alignment": "Panel face toward +Z",
       "Cast_Shadow": true,
@@ -765,20 +794,21 @@
       "filename": "cube_tiled_charcoal_02.glb",
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
-        0.0,
+        0,
         2.65,
         -5.35
       ],
       "rotation_deg_xyz": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "scale_xyz": [
         2.45,
         2.75,
         0.1
-      ]
+      ],
+      "Distance_From_Origin_m": 5.97
     },
     {
       "Instance_ID": "ENV_BACKWALL_03",
@@ -792,14 +822,14 @@
       "Pos_X_m": 4.8,
       "Pos_Y_m": 2.65,
       "Pos_Z_m": -5.35,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 0.0,
-      "Rot_Z_deg": 0.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 0,
+      "Rot_Z_deg": 0,
       "Scale_X": 2.45,
       "Scale_Y": 2.75,
       "Scale_Z": 0.1,
       "Normalize_Mode": "Native-meters preferred; non-uniform wall scale",
-      "Target_Extent_m": 5.0,
+      "Target_Extent_m": 5,
       "Anchor": "Center",
       "Axis_Alignment": "Panel face toward +Z",
       "Cast_Shadow": true,
@@ -821,15 +851,16 @@
         -5.35
       ],
       "rotation_deg_xyz": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "scale_xyz": [
         2.45,
         2.75,
         0.1
-      ]
+      ],
+      "Distance_From_Origin_m": 7.661
     },
     {
       "Instance_ID": "ENV_SIDEWALL_L",
@@ -843,9 +874,9 @@
       "Pos_X_m": -7.25,
       "Pos_Y_m": 2.45,
       "Pos_Z_m": -2.3,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 90.0,
-      "Rot_Z_deg": 0.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 90,
+      "Rot_Z_deg": 0,
       "Scale_X": 1.55,
       "Scale_Y": 2.55,
       "Scale_Z": 0.1,
@@ -872,15 +903,16 @@
         -2.3
       ],
       "rotation_deg_xyz": [
-        0.0,
-        90.0,
-        0.0
+        0,
+        90,
+        0
       ],
       "scale_xyz": [
         1.55,
         2.55,
         0.1
-      ]
+      ],
+      "Distance_From_Origin_m": 7.991
     },
     {
       "Instance_ID": "ENV_SIDEWALL_R",
@@ -894,9 +926,9 @@
       "Pos_X_m": 7.25,
       "Pos_Y_m": 2.45,
       "Pos_Z_m": -2.3,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -90.0,
-      "Rot_Z_deg": 0.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -90,
+      "Rot_Z_deg": 0,
       "Scale_X": 1.55,
       "Scale_Y": 2.55,
       "Scale_Z": 0.1,
@@ -923,15 +955,16 @@
         -2.3
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -90.0,
-        0.0
+        0,
+        -90,
+        0
       ],
       "scale_xyz": [
         1.55,
         2.55,
         0.1
-      ]
+      ],
+      "Distance_From_Origin_m": 7.991
     },
     {
       "Instance_ID": "ENV_TARP_BACK",
@@ -942,15 +975,15 @@
       "Asset_Name": "Helipad Tarpaulin",
       "Full_Path": "assets/Content/Props/Helipad_tarpaulin/helipad_tarpaulin.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": 0.0,
+      "Pos_X_m": 0,
       "Pos_Y_m": 2.4,
       "Pos_Z_m": -5.05,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 0.0,
-      "Rot_Z_deg": 0.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 0,
+      "Rot_Z_deg": 0,
       "Scale_X": 2.65,
       "Scale_Y": 2.15,
-      "Scale_Z": 1.0,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 5.2,
       "Anchor": "Center",
@@ -969,20 +1002,21 @@
       "filename": "helipad_tarpaulin.glb",
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
-        0.0,
+        0,
         2.4,
         -5.05
       ],
       "rotation_deg_xyz": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "scale_xyz": [
         2.65,
         2.15,
-        1.0
-      ]
+        1
+      ],
+      "Distance_From_Origin_m": 5.591
     },
     {
       "Instance_ID": "ENV_TRUSS_L",
@@ -996,14 +1030,14 @@
       "Pos_X_m": -3.65,
       "Pos_Y_m": 5.1,
       "Pos_Z_m": -3.75,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 0.0,
-      "Rot_Z_deg": 90.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 0,
+      "Rot_Z_deg": 90,
       "Scale_X": 0.82,
       "Scale_Y": 0.82,
       "Scale_Z": 0.82,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
-      "Target_Extent_m": 5.0,
+      "Target_Extent_m": 5,
       "Anchor": "Center",
       "Axis_Alignment": "Long axis along X",
       "Cast_Shadow": true,
@@ -1025,15 +1059,16 @@
         -3.75
       ],
       "rotation_deg_xyz": [
-        0.0,
-        0.0,
-        90.0
+        0,
+        0,
+        90
       ],
       "scale_xyz": [
         0.82,
         0.82,
         0.82
-      ]
+      ],
+      "Distance_From_Origin_m": 7.307
     },
     {
       "Instance_ID": "ENV_TRUSS_R",
@@ -1047,14 +1082,14 @@
       "Pos_X_m": 3.65,
       "Pos_Y_m": 5.1,
       "Pos_Z_m": -3.75,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 0.0,
-      "Rot_Z_deg": 90.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 0,
+      "Rot_Z_deg": 90,
       "Scale_X": 0.82,
       "Scale_Y": 0.82,
       "Scale_Z": 0.82,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
-      "Target_Extent_m": 5.0,
+      "Target_Extent_m": 5,
       "Anchor": "Center",
       "Axis_Alignment": "Long axis along X",
       "Cast_Shadow": true,
@@ -1076,15 +1111,16 @@
         -3.75
       ],
       "rotation_deg_xyz": [
-        0.0,
-        0.0,
-        90.0
+        0,
+        0,
+        90
       ],
       "scale_xyz": [
         0.82,
         0.82,
         0.82
-      ]
+      ],
+      "Distance_From_Origin_m": 7.307
     },
     {
       "Instance_ID": "CHAR_RANK_2",
@@ -1098,12 +1134,12 @@
       "Pos_X_m": -4.2,
       "Pos_Y_m": 0.43,
       "Pos_Z_m": 0.12,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 2.0,
-      "Rot_Z_deg": 0.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 2,
+      "Rot_Z_deg": 0,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 1.82,
       "Anchor": "Feet / bottom-center",
@@ -1127,15 +1163,16 @@
         0.12
       ],
       "rotation_deg_xyz": [
-        0.0,
-        2.0,
-        0.0
+        0,
+        2,
+        0
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 4.224
     },
     {
       "Instance_ID": "CHAR_RANK_1",
@@ -1146,12 +1183,12 @@
       "Asset_Name": "Mannequin Roadsign",
       "Full_Path": "assets/Content/Props/Mannequin/Models/Merged/mannequin_roadsign.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": 0.0,
+      "Pos_X_m": 0,
       "Pos_Y_m": 0.61,
       "Pos_Z_m": -0.03,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -1.0,
-      "Rot_Z_deg": 0.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -1,
+      "Rot_Z_deg": 0,
       "Scale_X": 1.04,
       "Scale_Y": 1.04,
       "Scale_Z": 1.04,
@@ -1173,20 +1210,21 @@
       "filename": "mannequin_roadsign.glb",
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
-        0.0,
+        0,
         0.61,
         -0.03
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -1.0,
-        0.0
+        0,
+        -1,
+        0
       ],
       "scale_xyz": [
         1.04,
         1.04,
         1.04
-      ]
+      ],
+      "Distance_From_Origin_m": 0.611
     },
     {
       "Instance_ID": "CHAR_RANK_3",
@@ -1200,12 +1238,12 @@
       "Pos_X_m": 4.2,
       "Pos_Y_m": 0.43,
       "Pos_Z_m": 0.12,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -3.0,
-      "Rot_Z_deg": 0.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -3,
+      "Rot_Z_deg": 0,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 1.82,
       "Anchor": "Feet / bottom-center",
@@ -1229,15 +1267,16 @@
         0.12
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -3.0,
-        0.0
+        0,
+        -3,
+        0
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 4.224
     },
     {
       "Instance_ID": "L_SHELF_01",
@@ -1248,12 +1287,12 @@
       "Asset_Name": "Shelf1V2",
       "Full_Path": "assets/Content/Props/Old Shelves/shelf1v2.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": -5.6,
-      "Pos_Y_m": 0.0,
-      "Pos_Z_m": -2.75,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 8.0,
-      "Rot_Z_deg": 0.0,
+      "Pos_X_m": -18.5,
+      "Pos_Y_m": 0,
+      "Pos_Z_m": -9.5,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 78,
+      "Rot_Z_deg": 0,
       "Scale_X": 1.05,
       "Scale_Y": 1.05,
       "Scale_Z": 1.05,
@@ -1276,19 +1315,20 @@
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
         -5.6,
-        0.0,
+        0,
         -2.75
       ],
       "rotation_deg_xyz": [
-        0.0,
-        8.0,
-        0.0
+        0,
+        8,
+        0
       ],
       "scale_xyz": [
         1.05,
         1.05,
         1.05
-      ]
+      ],
+      "Distance_From_Origin_m": 20.797
     },
     {
       "Instance_ID": "L_WORKBENCH_01",
@@ -1299,12 +1339,12 @@
       "Asset_Name": "Workbench",
       "Full_Path": "assets/Content/Props/Misc_dressing_props/workbench.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": -3.35,
-      "Pos_Y_m": 0.0,
-      "Pos_Z_m": -2.85,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -12.0,
-      "Rot_Z_deg": 0.0,
+      "Pos_X_m": -20,
+      "Pos_Y_m": 0,
+      "Pos_Z_m": -5,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 82,
+      "Rot_Z_deg": 0,
       "Scale_X": 0.9,
       "Scale_Y": 0.9,
       "Scale_Z": 0.9,
@@ -1327,42 +1367,43 @@
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
         -3.35,
-        0.0,
+        0,
         -2.85
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -12.0,
-        0.0
+        0,
+        -12,
+        0
       ],
       "scale_xyz": [
         0.9,
         0.9,
         0.9
-      ]
+      ],
+      "Distance_From_Origin_m": 20.616
     },
     {
       "Instance_ID": "L_WEAPON_AK",
       "Enabled": true,
       "Zone": "Left Cluster",
       "Parent_Node": "LEFT_CLUSTER",
-      "Role": "Leaning/displayed weapon",
+      "Role": "Left discarded rifle floor pile",
       "Asset_Name": "Ak47U Worldmodel",
       "Full_Path": "assets/prefabs/Weapons/ak47u/ak47u.worldmodel.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": -5.7,
-      "Pos_Y_m": 1.35,
-      "Pos_Z_m": -2.18,
-      "Rot_X_deg": 2.0,
-      "Rot_Y_deg": 12.0,
-      "Rot_Z_deg": -67.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Pos_X_m": -6.9,
+      "Pos_Y_m": 0,
+      "Pos_Z_m": -3.12,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 16,
+      "Rot_Z_deg": 3,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 1.05,
       "Anchor": "Object center",
-      "Axis_Alignment": "Long axis diagonal up-right",
+      "Axis_Alignment": "Long axis scattered across ground plane",
       "Cast_Shadow": true,
       "Receive_Shadow": true,
       "LOD_Class": "Hero",
@@ -1370,50 +1411,51 @@
       "Occlusion_Priority": "Critical",
       "Render_Order": 0,
       "Placement_Confidence": "Medium",
-      "Notes": "After AABB normalization, rotate around center and sink 0.02 m into rack contact.",
+      "Notes": "Loose discarded weapon pile behind and outside the side podium; rotated AABB is snapped to floor contact at runtime.",
       "Source_URL": "https://github.com/Facepunch/RustRelay.Assets/blob/494242bdeae941e3389b34a819c514aae2cf39f8/assets/prefabs/Weapons/ak47u/ak47u.worldmodel.glb",
       "CDN_URL": "https://cdn.jsdelivr.net/gh/Facepunch/RustRelay.Assets@494242bdeae941e3389b34a819c514aae2cf39f8/assets/prefabs/Weapons/ak47u/ak47u.worldmodel.glb",
       "repo_directory": "assets/prefabs/Weapons/ak47u",
       "filename": "ak47u.worldmodel.glb",
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
-        -5.7,
-        1.35,
-        -2.18
+        -6.9,
+        0,
+        -3.12
       ],
       "rotation_deg_xyz": [
-        2.0,
-        12.0,
-        -67.0
+        0,
+        16,
+        3
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 7.573
     },
     {
       "Instance_ID": "L_WEAPON_LR300",
       "Enabled": true,
       "Zone": "Left Cluster",
       "Parent_Node": "LEFT_CLUSTER",
-      "Role": "Leaning/displayed weapon",
+      "Role": "Left discarded rifle floor pile",
       "Asset_Name": "Lr300 Worldmodel",
       "Full_Path": "assets/prefabs/Weapons/lr300/lr300.worldmodel.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": -5.13,
-      "Pos_Y_m": 1.72,
-      "Pos_Z_m": -2.28,
-      "Rot_X_deg": -2.0,
-      "Rot_Y_deg": -4.0,
-      "Rot_Z_deg": -55.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Pos_X_m": -7.24,
+      "Pos_Y_m": 0,
+      "Pos_Z_m": -3.46,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -31,
+      "Rot_Z_deg": -5,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 1.15,
       "Anchor": "Object center",
-      "Axis_Alignment": "Long axis diagonal up-right",
+      "Axis_Alignment": "Long axis scattered across ground plane",
       "Cast_Shadow": true,
       "Receive_Shadow": true,
       "LOD_Class": "Hero",
@@ -1421,50 +1463,51 @@
       "Occlusion_Priority": "Critical",
       "Render_Order": 0,
       "Placement_Confidence": "Medium",
-      "Notes": "After AABB normalization, rotate around center and sink 0.02 m into rack contact.",
+      "Notes": "Loose discarded weapon pile behind and outside the side podium; rotated AABB is snapped to floor contact at runtime.",
       "Source_URL": "https://github.com/Facepunch/RustRelay.Assets/blob/494242bdeae941e3389b34a819c514aae2cf39f8/assets/prefabs/Weapons/lr300/lr300.worldmodel.glb",
       "CDN_URL": "https://cdn.jsdelivr.net/gh/Facepunch/RustRelay.Assets@494242bdeae941e3389b34a819c514aae2cf39f8/assets/prefabs/Weapons/lr300/lr300.worldmodel.glb",
       "repo_directory": "assets/prefabs/Weapons/lr300",
       "filename": "lr300.worldmodel.glb",
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
-        -5.13,
-        1.72,
-        -2.28
+        -7.24,
+        0,
+        -3.46
       ],
       "rotation_deg_xyz": [
-        -2.0,
-        -4.0,
-        -55.0
+        0,
+        -31,
+        -5
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 8.024
     },
     {
       "Instance_ID": "L_WEAPON_MP5",
       "Enabled": true,
       "Zone": "Left Cluster",
       "Parent_Node": "LEFT_CLUSTER",
-      "Role": "Leaning/displayed weapon",
+      "Role": "Left discarded SMG floor pile",
       "Asset_Name": "Mp5 Worldmodel",
       "Full_Path": "assets/prefabs/Weapons/mp5/mp5.worldmodel.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": -4.47,
-      "Pos_Y_m": 1.42,
-      "Pos_Z_m": -2.38,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 10.0,
-      "Rot_Z_deg": -78.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Pos_X_m": -6.54,
+      "Pos_Y_m": 0,
+      "Pos_Z_m": -3.72,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 47,
+      "Rot_Z_deg": 7,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 0.78,
       "Anchor": "Object center",
-      "Axis_Alignment": "Long axis diagonal up-right",
+      "Axis_Alignment": "Long axis scattered across ground plane",
       "Cast_Shadow": true,
       "Receive_Shadow": true,
       "LOD_Class": "Hero",
@@ -1472,50 +1515,51 @@
       "Occlusion_Priority": "Critical",
       "Render_Order": 0,
       "Placement_Confidence": "Medium",
-      "Notes": "After AABB normalization, rotate around center and sink 0.02 m into rack contact.",
+      "Notes": "Loose discarded weapon pile behind and outside the side podium; rotated AABB is snapped to floor contact at runtime.",
       "Source_URL": "https://github.com/Facepunch/RustRelay.Assets/blob/494242bdeae941e3389b34a819c514aae2cf39f8/assets/prefabs/Weapons/mp5/mp5.worldmodel.glb",
       "CDN_URL": "https://cdn.jsdelivr.net/gh/Facepunch/RustRelay.Assets@494242bdeae941e3389b34a819c514aae2cf39f8/assets/prefabs/Weapons/mp5/mp5.worldmodel.glb",
       "repo_directory": "assets/prefabs/Weapons/mp5",
       "filename": "mp5.worldmodel.glb",
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
-        -4.47,
-        1.42,
-        -2.38
+        -6.54,
+        0,
+        -3.72
       ],
       "rotation_deg_xyz": [
-        0.0,
-        10.0,
-        -78.0
+        0,
+        47,
+        7
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 7.524
     },
     {
       "Instance_ID": "L_WEAPON_SPAS",
       "Enabled": true,
-      "Zone": "Left Cluster",
-      "Parent_Node": "LEFT_CLUSTER",
-      "Role": "Leaning/displayed weapon",
+      "Zone": "Right Cluster",
+      "Parent_Node": "RIGHT_CLUSTER",
+      "Role": "Right discarded shotgun floor pile",
       "Asset_Name": "Spas12 Worldmodel",
       "Full_Path": "assets/prefabs/Weapons/spas12/spas12.worldmodel.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": -3.75,
-      "Pos_Y_m": 1.78,
-      "Pos_Z_m": -2.52,
-      "Rot_X_deg": 1.0,
-      "Rot_Y_deg": -15.0,
-      "Rot_Z_deg": -51.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Pos_X_m": 6.92,
+      "Pos_Y_m": 0,
+      "Pos_Z_m": -3.1,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -16,
+      "Rot_Z_deg": -3,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 1.12,
       "Anchor": "Object center",
-      "Axis_Alignment": "Long axis diagonal up-right",
+      "Axis_Alignment": "Long axis scattered across ground plane",
       "Cast_Shadow": true,
       "Receive_Shadow": true,
       "LOD_Class": "Hero",
@@ -1523,27 +1567,28 @@
       "Occlusion_Priority": "Critical",
       "Render_Order": 0,
       "Placement_Confidence": "Medium",
-      "Notes": "After AABB normalization, rotate around center and sink 0.02 m into rack contact.",
+      "Notes": "Loose discarded weapon pile behind and outside the side podium; rotated AABB is snapped to floor contact at runtime.",
       "Source_URL": "https://github.com/Facepunch/RustRelay.Assets/blob/494242bdeae941e3389b34a819c514aae2cf39f8/assets/prefabs/Weapons/spas12/spas12.worldmodel.glb",
       "CDN_URL": "https://cdn.jsdelivr.net/gh/Facepunch/RustRelay.Assets@494242bdeae941e3389b34a819c514aae2cf39f8/assets/prefabs/Weapons/spas12/spas12.worldmodel.glb",
       "repo_directory": "assets/prefabs/Weapons/spas12",
       "filename": "spas12.worldmodel.glb",
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
-        -3.75,
-        1.78,
-        -2.52
+        6.92,
+        0,
+        -3.1
       ],
       "rotation_deg_xyz": [
-        1.0,
-        -15.0,
-        -51.0
+        0,
+        -16,
+        -3
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 7.583
     },
     {
       "Instance_ID": "L_WEAPON_THOMPSON",
@@ -1557,12 +1602,12 @@
       "Pos_X_m": -3.1,
       "Pos_Y_m": 1.3,
       "Pos_Z_m": -2.38,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 8.0,
-      "Rot_Z_deg": -73.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 8,
+      "Rot_Z_deg": -73,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 0.82,
       "Anchor": "Object center",
@@ -1586,15 +1631,16 @@
         -2.38
       ],
       "rotation_deg_xyz": [
-        0.0,
-        8.0,
-        -73.0
+        0,
+        8,
+        -73
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 4.119
     },
     {
       "Instance_ID": "L_TURRET_50CAL",
@@ -1605,12 +1651,12 @@
       "Asset_Name": "50 Cal Rear Single",
       "Full_Path": "assets/Content/Vehicles/Boats/PTboat/Turrets/50cal/Prefabs/50_cal_rear_single.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": -6.15,
+      "Pos_X_m": -21,
       "Pos_Y_m": 0.52,
-      "Pos_Z_m": -2.62,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 25.0,
-      "Rot_Z_deg": 0.0,
+      "Pos_Z_m": -5.5,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 78,
+      "Rot_Z_deg": 0,
       "Scale_X": 0.8,
       "Scale_Y": 0.8,
       "Scale_Z": 0.8,
@@ -1637,15 +1683,16 @@
         -2.62
       ],
       "rotation_deg_xyz": [
-        0.0,
-        25.0,
-        0.0
+        0,
+        25,
+        0
       ],
       "scale_xyz": [
         0.8,
         0.8,
         0.8
-      ]
+      ],
+      "Distance_From_Origin_m": 21.715
     },
     {
       "Instance_ID": "L_CRATE_A",
@@ -1656,15 +1703,15 @@
       "Asset_Name": "Fishing Net Crate A",
       "Full_Path": "assets/Content/Props/Fishing_nets/fishing_net_crate_a.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": -6.18,
-      "Pos_Y_m": 0.0,
-      "Pos_Z_m": -1.55,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 7.0,
-      "Rot_Z_deg": 0.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Pos_X_m": -12,
+      "Pos_Y_m": 0,
+      "Pos_Z_m": -5.5,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 42,
+      "Rot_Z_deg": 0,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 0.95,
       "Anchor": "Bottom-center",
@@ -1684,19 +1731,20 @@
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
         -6.18,
-        0.0,
+        0,
         -1.55
       ],
       "rotation_deg_xyz": [
-        0.0,
-        7.0,
-        0.0
+        0,
+        7,
+        0
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 13.2
     },
     {
       "Instance_ID": "L_CRATE_B",
@@ -1707,15 +1755,15 @@
       "Asset_Name": "Fishing Net Crate B",
       "Full_Path": "assets/Content/Props/Fishing_nets/fishing_net_crate_b.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": -5.63,
+      "Pos_X_m": -12.6,
       "Pos_Y_m": 0.54,
-      "Pos_Z_m": -1.76,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -9.0,
-      "Rot_Z_deg": 2.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Pos_Z_m": -5.9,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 28,
+      "Rot_Z_deg": 2,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 0.82,
       "Anchor": "Bottom-center",
@@ -1739,15 +1787,16 @@
         -1.76
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -9.0,
-        2.0
+        0,
+        -9,
+        2
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 13.923
     },
     {
       "Instance_ID": "L_CRATE_C",
@@ -1759,14 +1808,14 @@
       "Full_Path": "assets/Content/Props/Food Containers/applecrate_a.glb",
       "Path_Verification": "Verified exact path",
       "Pos_X_m": -3.05,
-      "Pos_Y_m": 0.0,
+      "Pos_Y_m": 0,
       "Pos_Z_m": -1.75,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -13.0,
-      "Rot_Z_deg": 0.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -13,
+      "Rot_Z_deg": 0,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 0.82,
       "Anchor": "Bottom-center",
@@ -1786,19 +1835,20 @@
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
         -3.05,
-        0.0,
+        0,
         -1.75
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -13.0,
-        0.0
+        0,
+        -13,
+        0
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 3.516
     },
     {
       "Instance_ID": "L_BARREL_RAD",
@@ -1809,15 +1859,15 @@
       "Asset_Name": "Radbarrel",
       "Full_Path": "assets/Content/Props/Barrels/radbarrel.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": -4.75,
-      "Pos_Y_m": 0.0,
-      "Pos_Z_m": -1.48,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 15.0,
-      "Rot_Z_deg": 0.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Pos_X_m": -13,
+      "Pos_Y_m": 0,
+      "Pos_Z_m": -6.8,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 38,
+      "Rot_Z_deg": 0,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 0.92,
       "Anchor": "Bottom-center",
@@ -1837,19 +1887,20 @@
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
         -4.75,
-        0.0,
+        0,
         -1.48
       ],
       "rotation_deg_xyz": [
-        0.0,
-        15.0,
-        0.0
+        0,
+        15,
+        0
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 14.671
     },
     {
       "Instance_ID": "L_BARREL_DENTED",
@@ -1860,15 +1911,15 @@
       "Asset_Name": "Dented Barrel",
       "Full_Path": "assets/Content/Props/Barrels/dented_barrel.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": -6.58,
-      "Pos_Y_m": 0.0,
-      "Pos_Z_m": -1.18,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -12.0,
-      "Rot_Z_deg": 4.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Pos_X_m": -12.2,
+      "Pos_Y_m": 0,
+      "Pos_Z_m": -6.3,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -18,
+      "Rot_Z_deg": 4,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 0.88,
       "Anchor": "Bottom-center",
@@ -1888,19 +1939,20 @@
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
         -6.58,
-        0.0,
+        0,
         -1.18
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -12.0,
-        4.0
+        0,
+        -12,
+        4
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 13.731
     },
     {
       "Instance_ID": "L_JUNK_A",
@@ -1912,11 +1964,11 @@
       "Full_Path": "assets/Content/Props/Junkyard_stacks/junkyard_stack_a.glb",
       "Path_Verification": "Verified exact path",
       "Pos_X_m": -6.38,
-      "Pos_Y_m": 0.0,
+      "Pos_Y_m": 0,
       "Pos_Z_m": -4.1,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 17.0,
-      "Rot_Z_deg": 0.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 17,
+      "Rot_Z_deg": 0,
       "Scale_X": 1.15,
       "Scale_Y": 1.15,
       "Scale_Z": 1.15,
@@ -1939,19 +1991,20 @@
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
         -6.38,
-        0.0,
+        0,
         -4.1
       ],
       "rotation_deg_xyz": [
-        0.0,
-        17.0,
-        0.0
+        0,
+        17,
+        0
       ],
       "scale_xyz": [
         1.15,
         1.15,
         1.15
-      ]
+      ],
+      "Distance_From_Origin_m": 7.584
     },
     {
       "Instance_ID": "L_JUNK_B",
@@ -1962,12 +2015,12 @@
       "Asset_Name": "Junkyard Stack B",
       "Full_Path": "assets/Content/Props/Junkyard_stacks/junkyard_stack_b.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": -3.7,
-      "Pos_Y_m": 0.0,
-      "Pos_Z_m": -4.3,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -14.0,
-      "Rot_Z_deg": 0.0,
+      "Pos_X_m": -23,
+      "Pos_Y_m": 0,
+      "Pos_Z_m": -12,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 82,
+      "Rot_Z_deg": 0,
       "Scale_X": 1.05,
       "Scale_Y": 1.05,
       "Scale_Z": 1.05,
@@ -1990,19 +2043,20 @@
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
         -3.7,
-        0.0,
+        0,
         -4.3
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -14.0,
-        0.0
+        0,
+        -14,
+        0
       ],
       "scale_xyz": [
         1.05,
         1.05,
         1.05
-      ]
+      ],
+      "Distance_From_Origin_m": 25.942
     },
     {
       "Instance_ID": "L_BARRICADE_WOOD",
@@ -2013,12 +2067,12 @@
       "Asset_Name": "Barricade Cover Wood Static",
       "Full_Path": "assets/Content/Props/Barricades_static/barricade_cover_wood_static.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": -2.62,
+      "Pos_X_m": -20.5,
       "Pos_Y_m": 0.02,
-      "Pos_Z_m": -3.72,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -8.0,
-      "Rot_Z_deg": -5.0,
+      "Pos_Z_m": -6.5,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 78,
+      "Rot_Z_deg": -5,
       "Scale_X": 1.15,
       "Scale_Y": 1.15,
       "Scale_Z": 1.15,
@@ -2045,15 +2099,16 @@
         -3.72
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -8.0,
-        -5.0
+        0,
+        -8,
+        -5
       ],
       "scale_xyz": [
         1.15,
         1.15,
         1.15
-      ]
+      ],
+      "Distance_From_Origin_m": 21.506
     },
     {
       "Instance_ID": "L_BARBEDWIRE",
@@ -2067,9 +2122,9 @@
       "Pos_X_m": -4.75,
       "Pos_Y_m": 1.05,
       "Pos_Z_m": -4.65,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 4.0,
-      "Rot_Z_deg": 0.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 4,
+      "Rot_Z_deg": 0,
       "Scale_X": 1.1,
       "Scale_Y": 1.1,
       "Scale_Z": 1.1,
@@ -2096,15 +2151,16 @@
         -4.65
       ],
       "rotation_deg_xyz": [
-        0.0,
-        4.0,
-        0.0
+        0,
+        4,
+        0
       ],
       "scale_xyz": [
         1.1,
         1.1,
         1.1
-      ]
+      ],
+      "Distance_From_Origin_m": 6.73
     },
     {
       "Instance_ID": "C_COVER_PANEL",
@@ -2118,9 +2174,9 @@
       "Pos_X_m": -0.2,
       "Pos_Y_m": 0.18,
       "Pos_Z_m": -3.45,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -6.0,
-      "Rot_Z_deg": -8.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -6,
+      "Rot_Z_deg": -8,
       "Scale_X": 1.55,
       "Scale_Y": 1.55,
       "Scale_Z": 1.55,
@@ -2147,15 +2203,16 @@
         -3.45
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -6.0,
-        -8.0
+        0,
+        -6,
+        -8
       ],
       "scale_xyz": [
         1.55,
         1.55,
         1.55
-      ]
+      ],
+      "Distance_From_Origin_m": 3.46
     },
     {
       "Instance_ID": "C_JUNK_C",
@@ -2166,12 +2223,12 @@
       "Asset_Name": "Junkyard Stack C",
       "Full_Path": "assets/Content/Props/Junkyard_stacks/junkyard_stack_c.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": 1.85,
-      "Pos_Y_m": 0.0,
-      "Pos_Z_m": -4.15,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -19.0,
-      "Rot_Z_deg": 0.0,
+      "Pos_X_m": 22,
+      "Pos_Y_m": 0,
+      "Pos_Z_m": -7,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -78,
+      "Rot_Z_deg": 0,
       "Scale_X": 1.18,
       "Scale_Y": 1.18,
       "Scale_Z": 1.18,
@@ -2194,19 +2251,20 @@
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
         1.85,
-        0.0,
+        0,
         -4.15
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -19.0,
-        0.0
+        0,
+        -19,
+        0
       ],
       "scale_xyz": [
         1.18,
         1.18,
         1.18
-      ]
+      ],
+      "Distance_From_Origin_m": 23.087
     },
     {
       "Instance_ID": "C_JUNK_D",
@@ -2217,12 +2275,12 @@
       "Asset_Name": "Junkyard Stack D",
       "Full_Path": "assets/Content/Props/Junkyard_stacks/junkyard_stack_d.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": -1.95,
-      "Pos_Y_m": 0.0,
-      "Pos_Z_m": -4.22,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 16.0,
-      "Rot_Z_deg": 0.0,
+      "Pos_X_m": -22,
+      "Pos_Y_m": 0,
+      "Pos_Z_m": -7,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 78,
+      "Rot_Z_deg": 0,
       "Scale_X": 1.1,
       "Scale_Y": 1.1,
       "Scale_Z": 1.1,
@@ -2245,19 +2303,20 @@
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
         -1.95,
-        0.0,
+        0,
         -4.22
       ],
       "rotation_deg_xyz": [
-        0.0,
-        16.0,
-        0.0
+        0,
+        16,
+        0
       ],
       "scale_xyz": [
         1.1,
         1.1,
         1.1
-      ]
+      ],
+      "Distance_From_Origin_m": 23.087
     },
     {
       "Instance_ID": "C_SKIP",
@@ -2271,9 +2330,9 @@
       "Pos_X_m": 0.2,
       "Pos_Y_m": -0.08,
       "Pos_Z_m": -4.72,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 1.0,
-      "Rot_Z_deg": 0.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 1,
+      "Rot_Z_deg": 0,
       "Scale_X": 0.86,
       "Scale_Y": 0.86,
       "Scale_Z": 0.86,
@@ -2300,15 +2359,16 @@
         -4.72
       ],
       "rotation_deg_xyz": [
-        0.0,
-        1.0,
-        0.0
+        0,
+        1,
+        0
       ],
       "scale_xyz": [
         0.86,
         0.86,
         0.86
-      ]
+      ],
+      "Distance_From_Origin_m": 4.725
     },
     {
       "Instance_ID": "C_WEAPON_L96",
@@ -2322,12 +2382,12 @@
       "Pos_X_m": -1.47,
       "Pos_Y_m": 1.52,
       "Pos_Z_m": -2.32,
-      "Rot_X_deg": 1.0,
-      "Rot_Y_deg": -13.0,
-      "Rot_Z_deg": -63.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Rot_X_deg": 1,
+      "Rot_Y_deg": -13,
+      "Rot_Z_deg": -63,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 1.28,
       "Anchor": "Object center",
@@ -2351,15 +2411,16 @@
         -2.32
       ],
       "rotation_deg_xyz": [
-        1.0,
-        -13.0,
-        -63.0
+        1,
+        -13,
+        -63
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 3.139
     },
     {
       "Instance_ID": "C_WEAPON_M39",
@@ -2373,12 +2434,12 @@
       "Pos_X_m": -0.88,
       "Pos_Y_m": 1.05,
       "Pos_Z_m": -1.93,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 6.0,
-      "Rot_Z_deg": -55.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 6,
+      "Rot_Z_deg": -55,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 1.08,
       "Anchor": "Object center",
@@ -2402,38 +2463,39 @@
         -1.93
       ],
       "rotation_deg_xyz": [
-        0.0,
-        6.0,
-        -55.0
+        0,
+        6,
+        -55
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 2.367
     },
     {
       "Instance_ID": "C_WEAPON_AK",
       "Enabled": true,
-      "Zone": "Center Cluster",
-      "Parent_Node": "CENTER_CLUSTER",
-      "Role": "Hero weapon fan",
+      "Zone": "Right Cluster",
+      "Parent_Node": "RIGHT_CLUSTER",
+      "Role": "Right discarded rifle floor pile",
       "Asset_Name": "Ak47U Worldmodel",
       "Full_Path": "assets/prefabs/Weapons/ak47u/ak47u.worldmodel.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": 0.72,
-      "Pos_Y_m": 1.48,
-      "Pos_Z_m": -2.02,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -9.0,
-      "Rot_Z_deg": 61.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Pos_X_m": 7.26,
+      "Pos_Y_m": 0,
+      "Pos_Z_m": -3.48,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 31,
+      "Rot_Z_deg": 5,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 1.04,
       "Anchor": "Object center",
-      "Axis_Alignment": "Long axis diagonal up-left",
+      "Axis_Alignment": "Long axis scattered across ground plane",
       "Cast_Shadow": true,
       "Receive_Shadow": true,
       "LOD_Class": "Hero",
@@ -2441,50 +2503,51 @@
       "Occlusion_Priority": "Critical",
       "Render_Order": 0,
       "Placement_Confidence": "Medium",
-      "Notes": "Maintain a clear 0.20 m gap from first-place character silhouette.",
+      "Notes": "Loose discarded weapon pile behind and outside the side podium; rotated AABB is snapped to floor contact at runtime.",
       "Source_URL": "https://github.com/Facepunch/RustRelay.Assets/blob/494242bdeae941e3389b34a819c514aae2cf39f8/assets/prefabs/Weapons/ak47u/ak47u.worldmodel.glb",
       "CDN_URL": "https://cdn.jsdelivr.net/gh/Facepunch/RustRelay.Assets@494242bdeae941e3389b34a819c514aae2cf39f8/assets/prefabs/Weapons/ak47u/ak47u.worldmodel.glb",
       "repo_directory": "assets/prefabs/Weapons/ak47u",
       "filename": "ak47u.worldmodel.glb",
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
-        0.72,
-        1.48,
-        -2.02
+        7.26,
+        0,
+        -3.48
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -9.0,
-        61.0
+        0,
+        31,
+        5
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 8.051
     },
     {
       "Instance_ID": "C_WEAPON_HMLMG",
       "Enabled": true,
-      "Zone": "Center Cluster",
-      "Parent_Node": "CENTER_CLUSTER",
-      "Role": "Hero weapon fan",
+      "Zone": "Right Cluster",
+      "Parent_Node": "RIGHT_CLUSTER",
+      "Role": "Right discarded machine-gun floor pile",
       "Asset_Name": "Hmlmg Worldmodel",
       "Full_Path": "assets/prefabs/Weapons/HMLMG/hmlmg.worldmodel.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": 1.2,
-      "Pos_Y_m": 0.98,
-      "Pos_Z_m": -2.25,
-      "Rot_X_deg": 2.0,
-      "Rot_Y_deg": -16.0,
-      "Rot_Z_deg": 58.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Pos_X_m": 6.52,
+      "Pos_Y_m": 0,
+      "Pos_Z_m": -3.74,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -47,
+      "Rot_Z_deg": -7,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 1.22,
       "Anchor": "Object center",
-      "Axis_Alignment": "Long axis diagonal up-left",
+      "Axis_Alignment": "Long axis scattered across ground plane",
       "Cast_Shadow": true,
       "Receive_Shadow": true,
       "LOD_Class": "Hero",
@@ -2492,27 +2555,28 @@
       "Occlusion_Priority": "Critical",
       "Render_Order": 0,
       "Placement_Confidence": "Medium",
-      "Notes": "Maintain a clear 0.20 m gap from first-place character silhouette.",
+      "Notes": "Loose discarded weapon pile behind and outside the side podium; rotated AABB is snapped to floor contact at runtime.",
       "Source_URL": "https://github.com/Facepunch/RustRelay.Assets/blob/494242bdeae941e3389b34a819c514aae2cf39f8/assets/prefabs/Weapons/HMLMG/hmlmg.worldmodel.glb",
       "CDN_URL": "https://cdn.jsdelivr.net/gh/Facepunch/RustRelay.Assets@494242bdeae941e3389b34a819c514aae2cf39f8/assets/prefabs/Weapons/HMLMG/hmlmg.worldmodel.glb",
       "repo_directory": "assets/prefabs/Weapons/HMLMG",
       "filename": "hmlmg.worldmodel.glb",
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
-        1.2,
-        0.98,
-        -2.25
+        6.52,
+        0,
+        -3.74
       ],
       "rotation_deg_xyz": [
-        2.0,
-        -16.0,
-        58.0
+        0,
+        -47,
+        -7
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 7.517
     },
     {
       "Instance_ID": "C_MINIGUN",
@@ -2526,9 +2590,9 @@
       "Pos_X_m": 1.82,
       "Pos_Y_m": 0.45,
       "Pos_Z_m": -2.55,
-      "Rot_X_deg": 2.0,
-      "Rot_Y_deg": -22.0,
-      "Rot_Z_deg": 17.0,
+      "Rot_X_deg": 2,
+      "Rot_Y_deg": -22,
+      "Rot_Z_deg": 17,
       "Scale_X": 0.78,
       "Scale_Y": 0.78,
       "Scale_Z": 0.78,
@@ -2555,15 +2619,16 @@
         -2.55
       ],
       "rotation_deg_xyz": [
-        2.0,
-        -22.0,
-        17.0
+        2,
+        -22,
+        17
       ],
       "scale_xyz": [
         0.78,
         0.78,
         0.78
-      ]
+      ],
+      "Distance_From_Origin_m": 3.165
     },
     {
       "Instance_ID": "C_CRATE_L",
@@ -2575,14 +2640,14 @@
       "Full_Path": "assets/Content/Props/Food Containers/potatocrate_a.glb",
       "Path_Verification": "Verified exact path",
       "Pos_X_m": -1.9,
-      "Pos_Y_m": 0.0,
+      "Pos_Y_m": 0,
       "Pos_Z_m": -1.8,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 10.0,
-      "Rot_Z_deg": 0.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 10,
+      "Rot_Z_deg": 0,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 0.84,
       "Anchor": "Bottom-center",
@@ -2602,19 +2667,20 @@
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
         -1.9,
-        0.0,
+        0,
         -1.8
       ],
       "rotation_deg_xyz": [
-        0.0,
-        10.0,
-        0.0
+        0,
+        10,
+        0
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 2.617
     },
     {
       "Instance_ID": "C_CRATE_R",
@@ -2626,14 +2692,14 @@
       "Full_Path": "assets/Content/Props/Food Containers/orangecrate_a.glb",
       "Path_Verification": "Verified exact path",
       "Pos_X_m": 1.95,
-      "Pos_Y_m": 0.0,
+      "Pos_Y_m": 0,
       "Pos_Z_m": -1.83,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -8.0,
-      "Rot_Z_deg": 0.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -8,
+      "Rot_Z_deg": 0,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 0.88,
       "Anchor": "Bottom-center",
@@ -2653,19 +2719,20 @@
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
         1.95,
-        0.0,
+        0,
         -1.83
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -8.0,
-        0.0
+        0,
+        -8,
+        0
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 2.674
     },
     {
       "Instance_ID": "C_TOOLBOX",
@@ -2679,12 +2746,12 @@
       "Pos_X_m": -0.95,
       "Pos_Y_m": 0.08,
       "Pos_Z_m": -1.65,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -16.0,
-      "Rot_Z_deg": 0.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -16,
+      "Rot_Z_deg": 0,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 0.58,
       "Anchor": "Bottom-center",
@@ -2708,15 +2775,16 @@
         -1.65
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -16.0,
-        0.0
+        0,
+        -16,
+        0
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 1.906
     },
     {
       "Instance_ID": "C_CARGOPACK",
@@ -2730,12 +2798,12 @@
       "Pos_X_m": 0.95,
       "Pos_Y_m": 0.1,
       "Pos_Z_m": -1.7,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 21.0,
-      "Rot_Z_deg": 0.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 21,
+      "Rot_Z_deg": 0,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 0.62,
       "Anchor": "Bottom-center",
@@ -2759,15 +2827,16 @@
         -1.7
       ],
       "rotation_deg_xyz": [
-        0.0,
-        21.0,
-        0.0
+        0,
+        21,
+        0
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 1.95
     },
     {
       "Instance_ID": "C_RUBBLE_L",
@@ -2781,9 +2850,9 @@
       "Pos_X_m": -2.2,
       "Pos_Y_m": -0.03,
       "Pos_Z_m": -2.95,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 15.0,
-      "Rot_Z_deg": 0.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 15,
+      "Rot_Z_deg": 0,
       "Scale_X": 0.92,
       "Scale_Y": 0.92,
       "Scale_Z": 0.92,
@@ -2810,15 +2879,16 @@
         -2.95
       ],
       "rotation_deg_xyz": [
-        0.0,
-        15.0,
-        0.0
+        0,
+        15,
+        0
       ],
       "scale_xyz": [
         0.92,
         0.92,
         0.92
-      ]
+      ],
+      "Distance_From_Origin_m": 3.68
     },
     {
       "Instance_ID": "C_RUBBLE_R",
@@ -2832,9 +2902,9 @@
       "Pos_X_m": 2.25,
       "Pos_Y_m": -0.03,
       "Pos_Z_m": -3.05,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -18.0,
-      "Rot_Z_deg": 0.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -18,
+      "Rot_Z_deg": 0,
       "Scale_X": 0.95,
       "Scale_Y": 0.95,
       "Scale_Z": 0.95,
@@ -2861,15 +2931,16 @@
         -3.05
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -18.0,
-        0.0
+        0,
+        -18,
+        0
       ],
       "scale_xyz": [
         0.95,
         0.95,
         0.95
-      ]
+      ],
+      "Distance_From_Origin_m": 3.79
     },
     {
       "Instance_ID": "C_BARBED_TOP",
@@ -2880,12 +2951,12 @@
       "Asset_Name": "Barbedwire Set Straight300",
       "Full_Path": "assets/Content/Props/Barbedwire_set/barbedwire_set_straight300.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": 0.0,
+      "Pos_X_m": 0,
       "Pos_Y_m": 2.55,
       "Pos_Z_m": -4.62,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 0.0,
-      "Rot_Z_deg": 0.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 0,
+      "Rot_Z_deg": 0,
       "Scale_X": 1.25,
       "Scale_Y": 1.25,
       "Scale_Z": 1.25,
@@ -2907,20 +2978,21 @@
       "filename": "barbedwire_set_straight300.glb",
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
-        0.0,
+        0,
         2.55,
         -4.62
       ],
       "rotation_deg_xyz": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "scale_xyz": [
         1.25,
         1.25,
         1.25
-      ]
+      ],
+      "Distance_From_Origin_m": 5.277
     },
     {
       "Instance_ID": "R_SHELF_01",
@@ -2931,12 +3003,12 @@
       "Asset_Name": "Shelf3V2",
       "Full_Path": "assets/Content/Props/Old Shelves/shelf3v2.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": 5.8,
-      "Pos_Y_m": 0.0,
-      "Pos_Z_m": -2.88,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -9.0,
-      "Rot_Z_deg": 0.0,
+      "Pos_X_m": 18.5,
+      "Pos_Y_m": 0,
+      "Pos_Z_m": -9.5,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -78,
+      "Rot_Z_deg": 0,
       "Scale_X": 1.05,
       "Scale_Y": 1.05,
       "Scale_Z": 1.05,
@@ -2959,19 +3031,20 @@
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
         5.8,
-        0.0,
+        0,
         -2.88
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -9.0,
-        0.0
+        0,
+        -9,
+        0
       ],
       "scale_xyz": [
         1.05,
         1.05,
         1.05
-      ]
+      ],
+      "Distance_From_Origin_m": 20.797
     },
     {
       "Instance_ID": "R_MLRS_ROCKET_01",
@@ -2985,9 +3058,9 @@
       "Pos_X_m": 3.28,
       "Pos_Y_m": 0.08,
       "Pos_Z_m": -1.95,
-      "Rot_X_deg": 90.0,
-      "Rot_Y_deg": -5.0,
-      "Rot_Z_deg": -4.0,
+      "Rot_X_deg": 90,
+      "Rot_Y_deg": -5,
+      "Rot_Z_deg": -4,
       "Scale_X": 0.92,
       "Scale_Y": 0.92,
       "Scale_Z": 0.92,
@@ -3014,15 +3087,16 @@
         -1.95
       ],
       "rotation_deg_xyz": [
-        90.0,
-        -5.0,
-        -4.0
+        90,
+        -5,
+        -4
       ],
       "scale_xyz": [
         0.92,
         0.92,
         0.92
-      ]
+      ],
+      "Distance_From_Origin_m": 3.817
     },
     {
       "Instance_ID": "R_MLRS_ROCKET_02",
@@ -3036,9 +3110,9 @@
       "Pos_X_m": 3.72,
       "Pos_Y_m": 0.13,
       "Pos_Z_m": -2.12,
-      "Rot_X_deg": 90.0,
-      "Rot_Y_deg": 4.0,
-      "Rot_Z_deg": 2.0,
+      "Rot_X_deg": 90,
+      "Rot_Y_deg": 4,
+      "Rot_Z_deg": 2,
       "Scale_X": 0.92,
       "Scale_Y": 0.92,
       "Scale_Z": 0.92,
@@ -3065,15 +3139,16 @@
         -2.12
       ],
       "rotation_deg_xyz": [
-        90.0,
-        4.0,
-        2.0
+        90,
+        4,
+        2
       ],
       "scale_xyz": [
         0.92,
         0.92,
         0.92
-      ]
+      ],
+      "Distance_From_Origin_m": 4.284
     },
     {
       "Instance_ID": "R_MLRS_ROCKET_03",
@@ -3087,9 +3162,9 @@
       "Pos_X_m": 4.14,
       "Pos_Y_m": 0.1,
       "Pos_Z_m": -1.9,
-      "Rot_X_deg": 90.0,
-      "Rot_Y_deg": -2.0,
-      "Rot_Z_deg": -1.0,
+      "Rot_X_deg": 90,
+      "Rot_Y_deg": -2,
+      "Rot_Z_deg": -1,
       "Scale_X": 0.92,
       "Scale_Y": 0.92,
       "Scale_Z": 0.92,
@@ -3116,15 +3191,16 @@
         -1.9
       ],
       "rotation_deg_xyz": [
-        90.0,
-        -2.0,
-        -1.0
+        90,
+        -2,
+        -1
       ],
       "scale_xyz": [
         0.92,
         0.92,
         0.92
-      ]
+      ],
+      "Distance_From_Origin_m": 4.556
     },
     {
       "Instance_ID": "R_MLRS_ROCKET_04",
@@ -3138,9 +3214,9 @@
       "Pos_X_m": 4.58,
       "Pos_Y_m": 0.06,
       "Pos_Z_m": -2.18,
-      "Rot_X_deg": 90.0,
-      "Rot_Y_deg": 5.0,
-      "Rot_Z_deg": 4.0,
+      "Rot_X_deg": 90,
+      "Rot_Y_deg": 5,
+      "Rot_Z_deg": 4,
       "Scale_X": 0.92,
       "Scale_Y": 0.92,
       "Scale_Z": 0.92,
@@ -3167,15 +3243,16 @@
         -2.18
       ],
       "rotation_deg_xyz": [
-        90.0,
-        5.0,
-        4.0
+        90,
+        5,
+        4
       ],
       "scale_xyz": [
         0.92,
         0.92,
         0.92
-      ]
+      ],
+      "Distance_From_Origin_m": 5.073
     },
     {
       "Instance_ID": "R_MLRS_ROCKET_05",
@@ -3189,9 +3266,9 @@
       "Pos_X_m": 5.02,
       "Pos_Y_m": 0.11,
       "Pos_Z_m": -1.93,
-      "Rot_X_deg": 90.0,
-      "Rot_Y_deg": -4.0,
-      "Rot_Z_deg": -3.0,
+      "Rot_X_deg": 90,
+      "Rot_Y_deg": -4,
+      "Rot_Z_deg": -3,
       "Scale_X": 0.92,
       "Scale_Y": 0.92,
       "Scale_Z": 0.92,
@@ -3218,15 +3295,16 @@
         -1.93
       ],
       "rotation_deg_xyz": [
-        90.0,
-        -4.0,
-        -3.0
+        90,
+        -4,
+        -3
       ],
       "scale_xyz": [
         0.92,
         0.92,
         0.92
-      ]
+      ],
+      "Distance_From_Origin_m": 5.379
     },
     {
       "Instance_ID": "R_MLRS_ROCKET_06",
@@ -3240,9 +3318,9 @@
       "Pos_X_m": 5.43,
       "Pos_Y_m": 0.08,
       "Pos_Z_m": -2.16,
-      "Rot_X_deg": 90.0,
-      "Rot_Y_deg": 3.0,
-      "Rot_Z_deg": 3.0,
+      "Rot_X_deg": 90,
+      "Rot_Y_deg": 3,
+      "Rot_Z_deg": 3,
       "Scale_X": 0.92,
       "Scale_Y": 0.92,
       "Scale_Z": 0.92,
@@ -3269,15 +3347,16 @@
         -2.16
       ],
       "rotation_deg_xyz": [
-        90.0,
-        3.0,
-        3.0
+        90,
+        3,
+        3
       ],
       "scale_xyz": [
         0.92,
         0.92,
         0.92
-      ]
+      ],
+      "Distance_From_Origin_m": 5.844
     },
     {
       "Instance_ID": "R_ROCKET_LAUNCHER",
@@ -3291,12 +3370,12 @@
       "Pos_X_m": 5.62,
       "Pos_Y_m": 1.32,
       "Pos_Z_m": -1.68,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -20.0,
-      "Rot_Z_deg": 69.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -20,
+      "Rot_Z_deg": 69,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 1.18,
       "Anchor": "Object center",
@@ -3320,15 +3399,16 @@
         -1.68
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -20.0,
-        69.0
+        0,
+        -20,
+        69
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 6.012
     },
     {
       "Instance_ID": "R_MISSILE_POD",
@@ -3339,12 +3419,12 @@
       "Asset_Name": "Ahmissilepod",
       "Full_Path": "assets/Content/Vehicles/AttackHelicopter/ahmissilepod.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": 5.85,
+      "Pos_X_m": 12,
       "Pos_Y_m": 0.8,
-      "Pos_Z_m": -2.7,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -25.0,
-      "Rot_Z_deg": 6.0,
+      "Pos_Z_m": -6.5,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -52,
+      "Rot_Z_deg": 6,
       "Scale_X": 0.85,
       "Scale_Y": 0.85,
       "Scale_Z": 0.85,
@@ -3371,15 +3451,16 @@
         -2.7
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -25.0,
-        6.0
+        0,
+        -25,
+        6
       ],
       "scale_xyz": [
         0.85,
         0.85,
         0.85
-      ]
+      ],
+      "Distance_From_Origin_m": 13.671
     },
     {
       "Instance_ID": "R_ATTACKHELI_TURRET",
@@ -3390,12 +3471,12 @@
       "Asset_Name": "Turret Attackheli",
       "Full_Path": "assets/Content/Vehicles/AttackHelicopter/SubEnts/turret_attackheli.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": 6.25,
+      "Pos_X_m": 21,
       "Pos_Y_m": 0.63,
-      "Pos_Z_m": -1.72,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -34.0,
-      "Rot_Z_deg": 0.0,
+      "Pos_Z_m": -5.5,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -78,
+      "Rot_Z_deg": 0,
       "Scale_X": 0.84,
       "Scale_Y": 0.84,
       "Scale_Z": 0.84,
@@ -3422,15 +3503,16 @@
         -1.72
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -34.0,
-        0.0
+        0,
+        -34,
+        0
       ],
       "scale_xyz": [
         0.84,
         0.84,
         0.84
-      ]
+      ],
+      "Distance_From_Origin_m": 21.717
     },
     {
       "Instance_ID": "R_HELI_GUN",
@@ -3441,12 +3523,12 @@
       "Asset_Name": "Heli Gun",
       "Full_Path": "assets/Content/Props/Helicopter_parts/heli_gun.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": 6.6,
-      "Pos_Y_m": 0.55,
-      "Pos_Z_m": -2.15,
-      "Rot_X_deg": 8.0,
-      "Rot_Y_deg": -48.0,
-      "Rot_Z_deg": 18.0,
+      "Pos_X_m": 13,
+      "Pos_Y_m": 0.02,
+      "Pos_Z_m": -6.8,
+      "Rot_X_deg": 8,
+      "Rot_Y_deg": -72,
+      "Rot_Z_deg": 18,
       "Scale_X": 0.72,
       "Scale_Y": 0.72,
       "Scale_Z": 0.72,
@@ -3473,15 +3555,16 @@
         -2.15
       ],
       "rotation_deg_xyz": [
-        8.0,
-        -48.0,
-        18.0
+        8,
+        -48,
+        18
       ],
       "scale_xyz": [
         0.72,
         0.72,
         0.72
-      ]
+      ],
+      "Distance_From_Origin_m": 14.671
     },
     {
       "Instance_ID": "R_HELI_COCKPIT",
@@ -3492,12 +3575,12 @@
       "Asset_Name": "Heli Cockpit",
       "Full_Path": "assets/Content/Props/Helicopter_parts/heli_cockpit.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": 6.72,
+      "Pos_X_m": 21,
       "Pos_Y_m": -0.05,
-      "Pos_Z_m": -3.72,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -28.0,
-      "Rot_Z_deg": -5.0,
+      "Pos_Z_m": -8,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -82,
+      "Rot_Z_deg": -5,
       "Scale_X": 0.86,
       "Scale_Y": 0.86,
       "Scale_Z": 0.86,
@@ -3524,15 +3607,16 @@
         -3.72
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -28.0,
-        -5.0
+        0,
+        -28,
+        -5
       ],
       "scale_xyz": [
         0.86,
         0.86,
         0.86
-      ]
+      ],
+      "Distance_From_Origin_m": 22.472
     },
     {
       "Instance_ID": "R_HELI_TAIL",
@@ -3543,12 +3627,12 @@
       "Asset_Name": "Heli Tail",
       "Full_Path": "assets/Content/Props/Helicopter_parts/heli_tail.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": 5.58,
+      "Pos_X_m": 23,
       "Pos_Y_m": 0.1,
-      "Pos_Z_m": -4.28,
-      "Rot_X_deg": 5.0,
-      "Rot_Y_deg": 31.0,
-      "Rot_Z_deg": -12.0,
+      "Pos_Z_m": -12,
+      "Rot_X_deg": 5,
+      "Rot_Y_deg": 78,
+      "Rot_Z_deg": -12,
       "Scale_X": 0.88,
       "Scale_Y": 0.88,
       "Scale_Z": 0.88,
@@ -3575,15 +3659,16 @@
         -4.28
       ],
       "rotation_deg_xyz": [
-        5.0,
-        31.0,
-        -12.0
+        5,
+        31,
+        -12
       ],
       "scale_xyz": [
         0.88,
         0.88,
         0.88
-      ]
+      ],
+      "Distance_From_Origin_m": 25.942
     },
     {
       "Instance_ID": "R_HELI_DOOR",
@@ -3594,12 +3679,12 @@
       "Asset_Name": "Heli Door A",
       "Full_Path": "assets/Content/Props/Helicopter_parts/heli_door_a.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": 6.82,
+      "Pos_X_m": 20.5,
       "Pos_Y_m": 0.18,
-      "Pos_Z_m": -2.82,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -25.0,
-      "Rot_Z_deg": 77.0,
+      "Pos_Z_m": -6.5,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -82,
+      "Rot_Z_deg": 77,
       "Scale_X": 0.94,
       "Scale_Y": 0.94,
       "Scale_Z": 0.94,
@@ -3626,15 +3711,16 @@
         -2.82
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -25.0,
-        77.0
+        0,
+        -25,
+        77
       ],
       "scale_xyz": [
         0.94,
         0.94,
         0.94
-      ]
+      ],
+      "Distance_From_Origin_m": 21.507
     },
     {
       "Instance_ID": "R_RUSTY_CAR",
@@ -3645,17 +3731,17 @@
       "Asset_Name": "Compact Car A Rusty",
       "Full_Path": "assets/Content/Vehicles/Compact/compact_car_a_rusty.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": 7.35,
-      "Pos_Y_m": -0.12,
-      "Pos_Z_m": -4.42,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -31.0,
-      "Rot_Z_deg": 0.0,
+      "Pos_X_m": 12.8,
+      "Pos_Y_m": -0.18,
+      "Pos_Z_m": -9,
+      "Rot_X_deg": 4,
+      "Rot_Y_deg": -67,
+      "Rot_Z_deg": -9,
       "Scale_X": 0.72,
       "Scale_Y": 0.72,
       "Scale_Z": 0.72,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
-      "Target_Extent_m": 3.0,
+      "Target_Extent_m": 3,
       "Anchor": "Bottom-center",
       "Axis_Alignment": "Preserve native axes",
       "Cast_Shadow": true,
@@ -3677,15 +3763,16 @@
         -4.42
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -31.0,
-        0.0
+        0,
+        -31,
+        0
       ],
       "scale_xyz": [
         0.72,
         0.72,
         0.72
-      ]
+      ],
+      "Distance_From_Origin_m": 15.648
     },
     {
       "Instance_ID": "R_JUNK_E",
@@ -3697,11 +3784,11 @@
       "Full_Path": "assets/Content/Props/Junkyard_stacks/junkyard_stack_e.glb",
       "Path_Verification": "Verified exact path",
       "Pos_X_m": 6.1,
-      "Pos_Y_m": 0.0,
+      "Pos_Y_m": 0,
       "Pos_Z_m": -4.05,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -16.0,
-      "Rot_Z_deg": 0.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -16,
+      "Rot_Z_deg": 0,
       "Scale_X": 1.12,
       "Scale_Y": 1.12,
       "Scale_Z": 1.12,
@@ -3724,19 +3811,20 @@
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
         6.1,
-        0.0,
+        0,
         -4.05
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -16.0,
-        0.0
+        0,
+        -16,
+        0
       ],
       "scale_xyz": [
         1.12,
         1.12,
         1.12
-      ]
+      ],
+      "Distance_From_Origin_m": 7.322
     },
     {
       "Instance_ID": "R_JUNK_F",
@@ -3747,12 +3835,12 @@
       "Asset_Name": "Junkyard Stack F",
       "Full_Path": "assets/Content/Props/Junkyard_stacks/junkyard_stack_f.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": 3.35,
-      "Pos_Y_m": 0.0,
-      "Pos_Z_m": -4.25,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 19.0,
-      "Rot_Z_deg": 0.0,
+      "Pos_X_m": 23,
+      "Pos_Y_m": 0,
+      "Pos_Z_m": -12,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -82,
+      "Rot_Z_deg": 0,
       "Scale_X": 1.08,
       "Scale_Y": 1.08,
       "Scale_Z": 1.08,
@@ -3775,19 +3863,20 @@
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
         3.35,
-        0.0,
+        0,
         -4.25
       ],
       "rotation_deg_xyz": [
-        0.0,
-        19.0,
-        0.0
+        0,
+        19,
+        0
       ],
       "scale_xyz": [
         1.08,
         1.08,
         1.08
-      ]
+      ],
+      "Distance_From_Origin_m": 25.942
     },
     {
       "Instance_ID": "R_CRATE_A",
@@ -3798,15 +3887,15 @@
       "Asset_Name": "Orangecrate A",
       "Full_Path": "assets/Content/Props/Food Containers/orangecrate_a.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": 5.72,
-      "Pos_Y_m": 0.0,
-      "Pos_Z_m": -1.18,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -12.0,
-      "Rot_Z_deg": 0.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Pos_X_m": 12,
+      "Pos_Y_m": 0,
+      "Pos_Z_m": -5.5,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -42,
+      "Rot_Z_deg": 0,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 0.88,
       "Anchor": "Bottom-center",
@@ -3826,19 +3915,20 @@
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
         5.72,
-        0.0,
+        0,
         -1.18
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -12.0,
-        0.0
+        0,
+        -12,
+        0
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 13.2
     },
     {
       "Instance_ID": "R_CRATE_B",
@@ -3849,15 +3939,15 @@
       "Asset_Name": "Fishing Net Crate B",
       "Full_Path": "assets/Content/Props/Fishing_nets/fishing_net_crate_b.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": 6.15,
+      "Pos_X_m": 12.6,
       "Pos_Y_m": 0.52,
-      "Pos_Z_m": -1.42,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 11.0,
-      "Rot_Z_deg": 1.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Pos_Z_m": -5.9,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -28,
+      "Rot_Z_deg": 1,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 0.78,
       "Anchor": "Bottom-center",
@@ -3881,15 +3971,16 @@
         -1.42
       ],
       "rotation_deg_xyz": [
-        0.0,
-        11.0,
-        1.0
+        0,
+        11,
+        1
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 13.923
     },
     {
       "Instance_ID": "R_BARREL_RED",
@@ -3901,14 +3992,14 @@
       "Full_Path": "assets/Content/Props/Barrels/fuel_barrel_red.glb",
       "Path_Verification": "Verified exact path",
       "Pos_X_m": 3.06,
-      "Pos_Y_m": 0.0,
+      "Pos_Y_m": 0,
       "Pos_Z_m": -1.42,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -8.0,
-      "Rot_Z_deg": 0.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -8,
+      "Rot_Z_deg": 0,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 0.9,
       "Anchor": "Bottom-center",
@@ -3928,19 +4019,20 @@
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
         3.06,
-        0.0,
+        0,
         -1.42
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -8.0,
-        0.0
+        0,
+        -8,
+        0
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 3.373
     },
     {
       "Instance_ID": "R_BARREL_YELLOW",
@@ -3951,15 +4043,15 @@
       "Asset_Name": "Fuel Barrel Yellow",
       "Full_Path": "assets/Content/Props/Barrels/fuel_barrel_yellow.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": 6.45,
-      "Pos_Y_m": 0.0,
-      "Pos_Z_m": -1.0,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 12.0,
-      "Rot_Z_deg": 0.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Pos_X_m": 12.2,
+      "Pos_Y_m": 0,
+      "Pos_Z_m": -6.3,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 18,
+      "Rot_Z_deg": 0,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 0.88,
       "Anchor": "Bottom-center",
@@ -3979,19 +4071,20 @@
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
         6.45,
-        0.0,
-        -1.0
+        0,
+        -1
       ],
       "rotation_deg_xyz": [
-        0.0,
-        12.0,
-        0.0
+        0,
+        12,
+        0
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 13.731
     },
     {
       "Instance_ID": "R_JERRYCAN_BLACK",
@@ -4005,12 +4098,12 @@
       "Pos_X_m": 5.1,
       "Pos_Y_m": 0.02,
       "Pos_Z_m": -1.1,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -23.0,
-      "Rot_Z_deg": 0.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -23,
+      "Rot_Z_deg": 0,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 0.46,
       "Anchor": "Bottom-center",
@@ -4034,15 +4127,16 @@
         -1.1
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -23.0,
-        0.0
+        0,
+        -23,
+        0
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 5.217
     },
     {
       "Instance_ID": "R_JERRYCAN_YELLOW",
@@ -4056,12 +4150,12 @@
       "Pos_X_m": 5.38,
       "Pos_Y_m": 0.02,
       "Pos_Z_m": -1.02,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 18.0,
-      "Rot_Z_deg": 0.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 18,
+      "Rot_Z_deg": 0,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 0.46,
       "Anchor": "Bottom-center",
@@ -4085,15 +4179,16 @@
         -1.02
       ],
       "rotation_deg_xyz": [
-        0.0,
-        18.0,
-        0.0
+        0,
+        18,
+        0
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 5.476
     },
     {
       "Instance_ID": "R_BARBED_BEND",
@@ -4107,9 +4202,9 @@
       "Pos_X_m": 6.2,
       "Pos_Y_m": 1.05,
       "Pos_Z_m": -4.55,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -16.0,
-      "Rot_Z_deg": 0.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -16,
+      "Rot_Z_deg": 0,
       "Scale_X": 1.05,
       "Scale_Y": 1.05,
       "Scale_Z": 1.05,
@@ -4136,15 +4231,16 @@
         -4.55
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -16.0,
-        0.0
+        0,
+        -16,
+        0
       ],
       "scale_xyz": [
         1.05,
         1.05,
         1.05
-      ]
+      ],
+      "Distance_From_Origin_m": 7.762
     },
     {
       "Instance_ID": "R_RUBBLE",
@@ -4158,9 +4254,9 @@
       "Pos_X_m": 5.85,
       "Pos_Y_m": -0.04,
       "Pos_Z_m": -3.18,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -10.0,
-      "Rot_Z_deg": 0.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -10,
+      "Rot_Z_deg": 0,
       "Scale_X": 0.88,
       "Scale_Y": 0.88,
       "Scale_Z": 0.88,
@@ -4187,34 +4283,35 @@
         -3.18
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -10.0,
-        0.0
+        0,
+        -10,
+        0
       ],
       "scale_xyz": [
         0.88,
         0.88,
         0.88
-      ]
+      ],
+      "Distance_From_Origin_m": 6.659
     },
     {
       "Instance_ID": "FG_WHEEL_L",
       "Enabled": true,
-      "Zone": "Foreground",
-      "Parent_Node": "FOREGROUND",
+      "Zone": "Left Cluster",
+      "Parent_Node": "LEFT_CLUSTER",
       "Role": "Left foreground wheel",
       "Asset_Name": "Metalwheel",
       "Full_Path": "assets/Content/Props/Metal Wheel/metalwheel.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": -6.2,
+      "Pos_X_m": -13,
       "Pos_Y_m": 0.16,
-      "Pos_Z_m": 0.65,
-      "Rot_X_deg": 90.0,
-      "Rot_Y_deg": 0.0,
-      "Rot_Z_deg": 18.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Pos_Z_m": -4.8,
+      "Rot_X_deg": 90,
+      "Rot_Y_deg": 22,
+      "Rot_Z_deg": 18,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 0.82,
       "Anchor": "Bottom-center",
@@ -4238,34 +4335,35 @@
         0.65
       ],
       "rotation_deg_xyz": [
-        90.0,
-        0.0,
-        18.0
+        90,
+        0,
+        18
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 13.859
     },
     {
       "Instance_ID": "FG_WHEEL_R",
       "Enabled": true,
-      "Zone": "Foreground",
-      "Parent_Node": "FOREGROUND",
+      "Zone": "Right Cluster",
+      "Parent_Node": "RIGHT_CLUSTER",
       "Role": "Right foreground wheel",
       "Asset_Name": "Metalwheel",
       "Full_Path": "assets/Content/Props/Metal Wheel/metalwheel.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": 6.05,
+      "Pos_X_m": 13,
       "Pos_Y_m": 0.15,
-      "Pos_Z_m": 0.7,
-      "Rot_X_deg": 90.0,
-      "Rot_Y_deg": 0.0,
-      "Rot_Z_deg": -22.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Pos_Z_m": -4.8,
+      "Rot_X_deg": 90,
+      "Rot_Y_deg": -22,
+      "Rot_Z_deg": -22,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 0.78,
       "Anchor": "Bottom-center",
@@ -4289,15 +4387,16 @@
         0.7
       ],
       "rotation_deg_xyz": [
-        90.0,
-        0.0,
-        -22.0
+        90,
+        0,
+        -22
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 13.859
     },
     {
       "Instance_ID": "FG_RUBBLE_L",
@@ -4311,12 +4410,12 @@
       "Pos_X_m": -2.65,
       "Pos_Y_m": -0.05,
       "Pos_Z_m": 0.95,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 18.0,
-      "Rot_Z_deg": 0.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 18,
+      "Rot_Z_deg": 0,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 1.4,
       "Anchor": "Bottom-center",
@@ -4340,15 +4439,16 @@
         0.95
       ],
       "rotation_deg_xyz": [
-        0.0,
-        18.0,
-        0.0
+        0,
+        18,
+        0
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 2.816
     },
     {
       "Instance_ID": "FG_RUBBLE_C",
@@ -4362,12 +4462,12 @@
       "Pos_X_m": 0.15,
       "Pos_Y_m": -0.05,
       "Pos_Z_m": 1.2,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -7.0,
-      "Rot_Z_deg": 0.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -7,
+      "Rot_Z_deg": 0,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 1.2,
       "Anchor": "Bottom-center",
@@ -4391,15 +4491,16 @@
         1.2
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -7.0,
-        0.0
+        0,
+        -7,
+        0
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 1.21
     },
     {
       "Instance_ID": "FG_RUBBLE_R",
@@ -4413,12 +4514,12 @@
       "Pos_X_m": 2.8,
       "Pos_Y_m": -0.05,
       "Pos_Z_m": 0.92,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -16.0,
-      "Rot_Z_deg": 0.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -16,
+      "Rot_Z_deg": 0,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 1.45,
       "Anchor": "Bottom-center",
@@ -4442,15 +4543,16 @@
         0.92
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -16.0,
-        0.0
+        0,
+        -16,
+        0
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 2.948
     },
     {
       "Instance_ID": "FG_GRAVEL",
@@ -4461,17 +4563,17 @@
       "Asset_Name": "Coal Pile Gravel 6X6",
       "Full_Path": "assets/Content/Props/Rubble_piles/coal_pile_gravel_6x6.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": 0.0,
+      "Pos_X_m": 0,
       "Pos_Y_m": -0.09,
       "Pos_Z_m": -0.65,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 4.0,
-      "Rot_Z_deg": 0.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 4,
+      "Rot_Z_deg": 0,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
-      "Target_Extent_m": 2.0,
+      "Target_Extent_m": 2,
       "Anchor": "Bottom-center",
       "Axis_Alignment": "Preserve native axes",
       "Cast_Shadow": true,
@@ -4488,20 +4590,21 @@
       "filename": "coal_pile_gravel_6x6.glb",
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
-        0.0,
+        0,
         -0.09,
         -0.65
       ],
       "rotation_deg_xyz": [
-        0.0,
-        4.0,
-        0.0
+        0,
+        4,
+        0
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 0.656
     },
     {
       "Instance_ID": "FIX_SEARCH_L",
@@ -4512,15 +4615,15 @@
       "Asset_Name": "Searchlight Static Mt",
       "Full_Path": "assets/Content/Props/Lights_Prefabs/searchlight_static_mt.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": -5.85,
+      "Pos_X_m": -20.5,
       "Pos_Y_m": 4.65,
-      "Pos_Z_m": -3.25,
-      "Rot_X_deg": 12.0,
-      "Rot_Y_deg": 31.0,
-      "Rot_Z_deg": 0.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Pos_Z_m": -7,
+      "Rot_X_deg": 12,
+      "Rot_Y_deg": 78,
+      "Rot_Z_deg": 0,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 1.05,
       "Anchor": "Bottom-center",
@@ -4539,20 +4642,21 @@
       "filename": "searchlight_static_mt.glb",
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
-        -5.85,
+        -18.5,
         4.65,
-        -3.25
+        -5.5
       ],
       "rotation_deg_xyz": [
-        12.0,
-        31.0,
-        0.0
+        12,
+        78,
+        0
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 22.156
     },
     {
       "Instance_ID": "FIX_SEARCH_R",
@@ -4563,15 +4667,15 @@
       "Asset_Name": "Searchlight Static Mt",
       "Full_Path": "assets/Content/Props/Lights_Prefabs/searchlight_static_mt.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": 5.72,
+      "Pos_X_m": 20.5,
       "Pos_Y_m": 4.72,
-      "Pos_Z_m": -3.18,
-      "Rot_X_deg": 13.0,
-      "Rot_Y_deg": -32.0,
-      "Rot_Z_deg": 0.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Pos_Z_m": -7,
+      "Rot_X_deg": 13,
+      "Rot_Y_deg": -78,
+      "Rot_Z_deg": 0,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 1.05,
       "Anchor": "Bottom-center",
@@ -4595,15 +4699,16 @@
         -3.18
       ],
       "rotation_deg_xyz": [
-        13.0,
-        -32.0,
-        0.0
+        13,
+        -32,
+        0
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 22.17
     },
     {
       "Instance_ID": "FIX_CEILING_L",
@@ -4615,14 +4720,14 @@
       "Full_Path": "assets/Content/Props/Misc_dressing_props/Minors/scrap_ceilinglight.glb",
       "Path_Verification": "Verified exact path",
       "Pos_X_m": -1.72,
-      "Pos_Y_m": 5.0,
+      "Pos_Y_m": 5,
       "Pos_Z_m": -2.85,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 0.0,
-      "Rot_Z_deg": 0.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 0,
+      "Rot_Z_deg": 0,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 0.8,
       "Anchor": "Bottom-center",
@@ -4642,19 +4747,20 @@
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
         -1.72,
-        5.0,
+        5,
         -2.85
       ],
       "rotation_deg_xyz": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 6.007
     },
     {
       "Instance_ID": "FIX_CEILING_R",
@@ -4668,12 +4774,12 @@
       "Pos_X_m": 1.78,
       "Pos_Y_m": 5.02,
       "Pos_Z_m": -2.82,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 0.0,
-      "Rot_Z_deg": 0.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 0,
+      "Rot_Z_deg": 0,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 0.8,
       "Anchor": "Bottom-center",
@@ -4697,15 +4803,16 @@
         -2.82
       ],
       "rotation_deg_xyz": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 6.027
     },
     {
       "Instance_ID": "FIX_BARREL_LIGHT",
@@ -4716,17 +4823,17 @@
       "Asset_Name": "Light Barrel Station",
       "Full_Path": "assets/Content/Props/Misc_dressing_props/Minors/light_barrel_station.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": -6.55,
-      "Pos_Y_m": 0.0,
-      "Pos_Z_m": -3.15,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 14.0,
-      "Rot_Z_deg": 0.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Pos_X_m": -13.2,
+      "Pos_Y_m": 0,
+      "Pos_Z_m": -7.2,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 62,
+      "Rot_Z_deg": 0,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
-      "Target_Extent_m": 1.0,
+      "Target_Extent_m": 1,
       "Anchor": "Bottom-center",
       "Axis_Alignment": "Preserve native axes",
       "Cast_Shadow": true,
@@ -4744,19 +4851,20 @@
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
         -6.55,
-        0.0,
+        0,
         -3.15
       ],
       "rotation_deg_xyz": [
-        0.0,
-        14.0,
-        0.0
+        0,
+        14,
+        0
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 15.036
     },
     {
       "Instance_ID": "FIX_LIGHTPOST_R",
@@ -4767,15 +4875,15 @@
       "Asset_Name": "Lightpost A",
       "Full_Path": "assets/Content/Props/Lightpost/lightpost_a.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": 6.85,
-      "Pos_Y_m": 0.0,
-      "Pos_Z_m": -4.55,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -18.0,
-      "Rot_Z_deg": 0.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Pos_X_m": 13.2,
+      "Pos_Y_m": 0,
+      "Pos_Z_m": -7.2,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -48,
+      "Rot_Z_deg": 0,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 2.8,
       "Anchor": "Bottom-center",
@@ -4795,19 +4903,20 @@
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
         6.85,
-        0.0,
+        0,
         -4.55
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -18.0,
-        0.0
+        0,
+        -18,
+        0
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 15.036
     },
     {
       "Instance_ID": "FIX_FOG_L",
@@ -4818,15 +4927,15 @@
       "Asset_Name": "Fogmachine",
       "Full_Path": "assets/Content/Props/Fog Machine/fogmachine.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": -5.95,
+      "Pos_X_m": -13,
       "Pos_Y_m": 0.02,
-      "Pos_Z_m": -2.95,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 22.0,
-      "Rot_Z_deg": 0.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Pos_Z_m": -6.6,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 68,
+      "Rot_Z_deg": 0,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 0.58,
       "Anchor": "Bottom-center",
@@ -4850,15 +4959,16 @@
         -2.95
       ],
       "rotation_deg_xyz": [
-        0.0,
-        22.0,
-        0.0
+        0,
+        22,
+        0
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 14.579
     },
     {
       "Instance_ID": "FIX_FOG_C",
@@ -4869,15 +4979,15 @@
       "Asset_Name": "Fogmachine",
       "Full_Path": "assets/Content/Props/Fog Machine/fogmachine.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": 0.0,
+      "Pos_X_m": 0,
       "Pos_Y_m": 0.02,
       "Pos_Z_m": -4.2,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": 0.0,
-      "Rot_Z_deg": 0.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 0,
+      "Rot_Z_deg": 0,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 0.58,
       "Anchor": "Bottom-center",
@@ -4896,20 +5006,21 @@
       "filename": "fogmachine.glb",
       "file_type": "Binary glTF 2.0 (.glb)",
       "position_m": [
-        0.0,
+        0,
         0.02,
         -4.2
       ],
       "rotation_deg_xyz": [
-        0.0,
-        0.0,
-        0.0
+        0,
+        0,
+        0
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 4.2
     },
     {
       "Instance_ID": "FIX_FOG_R",
@@ -4920,15 +5031,15 @@
       "Asset_Name": "Fogmachine",
       "Full_Path": "assets/Content/Props/Fog Machine/fogmachine.glb",
       "Path_Verification": "Verified exact path",
-      "Pos_X_m": 5.95,
+      "Pos_X_m": 13,
       "Pos_Y_m": 0.02,
-      "Pos_Z_m": -2.95,
-      "Rot_X_deg": 0.0,
-      "Rot_Y_deg": -22.0,
-      "Rot_Z_deg": 0.0,
-      "Scale_X": 1.0,
-      "Scale_Y": 1.0,
-      "Scale_Z": 1.0,
+      "Pos_Z_m": -6.6,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -68,
+      "Rot_Z_deg": 0,
+      "Scale_X": 1,
+      "Scale_Y": 1,
+      "Scale_Z": 1,
       "Normalize_Mode": "AABB bottom-center; preserve aspect",
       "Target_Extent_m": 0.58,
       "Anchor": "Bottom-center",
@@ -4952,15 +5063,967 @@
         -2.95
       ],
       "rotation_deg_xyz": [
-        0.0,
-        -22.0,
-        0.0
+        0,
+        -22,
+        0
       ],
       "scale_xyz": [
-        1.0,
-        1.0,
-        1.0
-      ]
+        1,
+        1,
+        1
+      ],
+      "Distance_From_Origin_m": 14.579
+    },
+    {
+      "Instance_ID": "BG_MOUND_01",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Rear far-left junkyard mound",
+      "Asset_Name": "Junkyard Mound A",
+      "Full_Path": "assets/Content/structures/Junkyard/junkyard_mound_a.glb",
+      "Pos_X_m": -12.8,
+      "Pos_Y_m": -0.25,
+      "Pos_Z_m": -17.4,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 12,
+      "Rot_Z_deg": 0,
+      "Scale_X": 0.105,
+      "Scale_Y": 0.19,
+      "Scale_Z": 0.105,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 11,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Background",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -5,
+      "Distance_From_Origin_m": 21.602
+    },
+    {
+      "Instance_ID": "BG_MOUND_02",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Rear left junkyard mound",
+      "Asset_Name": "Junkyard Mound B",
+      "Full_Path": "assets/Content/structures/Junkyard/junkyard_mound_b.glb",
+      "Pos_X_m": -6.5,
+      "Pos_Y_m": -0.22,
+      "Pos_Z_m": -17.1,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -8,
+      "Rot_Z_deg": 0,
+      "Scale_X": 0.11,
+      "Scale_Y": 0.2,
+      "Scale_Z": 0.11,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 9,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Background",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -5,
+      "Distance_From_Origin_m": 18.295
+    },
+    {
+      "Instance_ID": "BG_MOUND_03",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Rear center junkyard mound",
+      "Asset_Name": "Junkyard Mound C",
+      "Full_Path": "assets/Content/structures/Junkyard/junkyard_mound_c.glb",
+      "Pos_X_m": 0,
+      "Pos_Y_m": -0.2,
+      "Pos_Z_m": -17.8,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 18,
+      "Rot_Z_deg": 0,
+      "Scale_X": 0.14,
+      "Scale_Y": 0.24,
+      "Scale_Z": 0.14,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 10,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Background",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -5,
+      "Distance_From_Origin_m": 17.801
+    },
+    {
+      "Instance_ID": "BG_MOUND_04",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Rear right junkyard mound",
+      "Asset_Name": "Junkyard Mound A",
+      "Full_Path": "assets/Content/structures/Junkyard/junkyard_mound_a.glb",
+      "Pos_X_m": 6.5,
+      "Pos_Y_m": -0.22,
+      "Pos_Z_m": -17.1,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 8,
+      "Rot_Z_deg": 0,
+      "Scale_X": 0.11,
+      "Scale_Y": 0.2,
+      "Scale_Z": 0.11,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 11,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Background",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -5,
+      "Distance_From_Origin_m": 18.295
+    },
+    {
+      "Instance_ID": "BG_MOUND_05",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Rear far-right junkyard mound",
+      "Asset_Name": "Junkyard Mound B",
+      "Full_Path": "assets/Content/structures/Junkyard/junkyard_mound_b.glb",
+      "Pos_X_m": 12.8,
+      "Pos_Y_m": -0.25,
+      "Pos_Z_m": -17.4,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -12,
+      "Rot_Z_deg": 0,
+      "Scale_X": 0.105,
+      "Scale_Y": 0.19,
+      "Scale_Z": 0.105,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 9,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Background",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -5,
+      "Distance_From_Origin_m": 21.602
+    },
+    {
+      "Instance_ID": "BG_MOUND_06",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Left rear junkyard mound",
+      "Asset_Name": "Junkyard Mound A",
+      "Full_Path": "assets/Content/structures/Junkyard/junkyard_mound_a.glb",
+      "Pos_X_m": -20.5,
+      "Pos_Y_m": -0.25,
+      "Pos_Z_m": -14,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 82,
+      "Rot_Z_deg": 0,
+      "Scale_X": 0.105,
+      "Scale_Y": 0.2,
+      "Scale_Z": 0.105,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 11,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Background",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -5,
+      "Distance_From_Origin_m": 24.826
+    },
+    {
+      "Instance_ID": "BG_MOUND_07",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Left middle junkyard mound",
+      "Asset_Name": "Junkyard Mound B",
+      "Full_Path": "assets/Content/structures/Junkyard/junkyard_mound_b.glb",
+      "Pos_X_m": -22.5,
+      "Pos_Y_m": -0.25,
+      "Pos_Z_m": -9,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 90,
+      "Rot_Z_deg": 0,
+      "Scale_X": 0.12,
+      "Scale_Y": 0.21,
+      "Scale_Z": 0.12,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 10,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Background",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -5,
+      "Distance_From_Origin_m": 24.235
+    },
+    {
+      "Instance_ID": "BG_MOUND_08",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Left foreground junkyard mound",
+      "Asset_Name": "Junkyard Mound C",
+      "Full_Path": "assets/Content/structures/Junkyard/junkyard_mound_c.glb",
+      "Pos_X_m": -24,
+      "Pos_Y_m": -0.2,
+      "Pos_Z_m": -4,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 96,
+      "Rot_Z_deg": 0,
+      "Scale_X": 0.14,
+      "Scale_Y": 0.24,
+      "Scale_Z": 0.14,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 10,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Background",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -5,
+      "Distance_From_Origin_m": 24.332
+    },
+    {
+      "Instance_ID": "BG_MOUND_09",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Right rear junkyard mound",
+      "Asset_Name": "Junkyard Mound A",
+      "Full_Path": "assets/Content/structures/Junkyard/junkyard_mound_a.glb",
+      "Pos_X_m": 20.5,
+      "Pos_Y_m": -0.25,
+      "Pos_Z_m": -14,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -82,
+      "Rot_Z_deg": 0,
+      "Scale_X": 0.105,
+      "Scale_Y": 0.2,
+      "Scale_Z": 0.105,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 11,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Background",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -5,
+      "Distance_From_Origin_m": 24.826
+    },
+    {
+      "Instance_ID": "BG_MOUND_10",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Right middle junkyard mound",
+      "Asset_Name": "Junkyard Mound B",
+      "Full_Path": "assets/Content/structures/Junkyard/junkyard_mound_b.glb",
+      "Pos_X_m": 22.5,
+      "Pos_Y_m": -0.25,
+      "Pos_Z_m": -9,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -90,
+      "Rot_Z_deg": 0,
+      "Scale_X": 0.12,
+      "Scale_Y": 0.21,
+      "Scale_Z": 0.12,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 10,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Background",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -5,
+      "Distance_From_Origin_m": 24.235
+    },
+    {
+      "Instance_ID": "BG_MOUND_11",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Right foreground junkyard mound",
+      "Asset_Name": "Junkyard Mound C",
+      "Full_Path": "assets/Content/structures/Junkyard/junkyard_mound_c.glb",
+      "Pos_X_m": 24,
+      "Pos_Y_m": -0.2,
+      "Pos_Z_m": -4,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -96,
+      "Rot_Z_deg": 0,
+      "Scale_X": 0.14,
+      "Scale_Y": 0.24,
+      "Scale_Z": 0.14,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 10,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Background",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -5,
+      "Distance_From_Origin_m": 24.332
+    },
+    {
+      "Instance_ID": "BG_MOUND_12",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Left forward-rear junkyard mound",
+      "Asset_Name": "Junkyard Mound A",
+      "Full_Path": "assets/Content/structures/Junkyard/junkyard_mound_a.glb",
+      "Pos_X_m": -24.5,
+      "Pos_Y_m": -0.23,
+      "Pos_Z_m": 0.5,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 102,
+      "Rot_Z_deg": 0,
+      "Scale_X": 0.105,
+      "Scale_Y": 0.19,
+      "Scale_Z": 0.105,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 11,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Background",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -5,
+      "Notes": "Forward side mound receives a restrained warm emissive lift at runtime for readability at orbit extremes.",
+      "Distance_From_Origin_m": 24.506
+    },
+    {
+      "Instance_ID": "BG_MOUND_13",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Left forward-middle junkyard mound",
+      "Asset_Name": "Junkyard Mound B",
+      "Full_Path": "assets/Content/structures/Junkyard/junkyard_mound_b.glb",
+      "Pos_X_m": -23,
+      "Pos_Y_m": -0.23,
+      "Pos_Z_m": 5,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 108,
+      "Rot_Z_deg": 0,
+      "Scale_X": 0.11,
+      "Scale_Y": 0.2,
+      "Scale_Z": 0.11,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 10,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Background",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -5,
+      "Notes": "Forward side mound receives a restrained warm emissive lift at runtime for readability at orbit extremes.",
+      "Distance_From_Origin_m": 23.538
+    },
+    {
+      "Instance_ID": "BG_MOUND_14",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Left front-edge junkyard mound",
+      "Asset_Name": "Junkyard Mound C",
+      "Full_Path": "assets/Content/structures/Junkyard/junkyard_mound_c.glb",
+      "Pos_X_m": -20,
+      "Pos_Y_m": -0.2,
+      "Pos_Z_m": 9.5,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 116,
+      "Rot_Z_deg": 0,
+      "Scale_X": 0.12,
+      "Scale_Y": 0.22,
+      "Scale_Z": 0.12,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 10,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Background",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -5,
+      "Notes": "Forward side mound receives a restrained warm emissive lift at runtime for readability at orbit extremes.",
+      "Distance_From_Origin_m": 22.142
+    },
+    {
+      "Instance_ID": "BG_MOUND_15",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Right forward-rear junkyard mound",
+      "Asset_Name": "Junkyard Mound A",
+      "Full_Path": "assets/Content/structures/Junkyard/junkyard_mound_a.glb",
+      "Pos_X_m": 24.5,
+      "Pos_Y_m": -0.23,
+      "Pos_Z_m": 0.5,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -102,
+      "Rot_Z_deg": 0,
+      "Scale_X": 0.105,
+      "Scale_Y": 0.19,
+      "Scale_Z": 0.105,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 11,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Background",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -5,
+      "Notes": "Forward side mound receives a restrained warm emissive lift at runtime for readability at orbit extremes.",
+      "Distance_From_Origin_m": 24.506
+    },
+    {
+      "Instance_ID": "BG_MOUND_16",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Right forward-middle junkyard mound",
+      "Asset_Name": "Junkyard Mound B",
+      "Full_Path": "assets/Content/structures/Junkyard/junkyard_mound_b.glb",
+      "Pos_X_m": 23,
+      "Pos_Y_m": -0.23,
+      "Pos_Z_m": 5,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -108,
+      "Rot_Z_deg": 0,
+      "Scale_X": 0.11,
+      "Scale_Y": 0.2,
+      "Scale_Z": 0.11,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 10,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Background",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -5,
+      "Notes": "Forward side mound receives a restrained warm emissive lift at runtime for readability at orbit extremes.",
+      "Distance_From_Origin_m": 23.538
+    },
+    {
+      "Instance_ID": "BG_MOUND_17",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Right front-edge junkyard mound",
+      "Asset_Name": "Junkyard Mound C",
+      "Full_Path": "assets/Content/structures/Junkyard/junkyard_mound_c.glb",
+      "Pos_X_m": 20,
+      "Pos_Y_m": -0.2,
+      "Pos_Z_m": 9.5,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -116,
+      "Rot_Z_deg": 0,
+      "Scale_X": 0.12,
+      "Scale_Y": 0.22,
+      "Scale_Z": 0.12,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 10,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Background",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -5,
+      "Notes": "Forward side mound receives a restrained warm emissive lift at runtime for readability at orbit extremes.",
+      "Distance_From_Origin_m": 22.142
+    },
+    {
+      "Instance_ID": "BG_DETAIL_01",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Embedded compact wreck",
+      "Asset_Name": "Rusty Compact Car",
+      "Full_Path": "assets/Content/Vehicles/Compact/compact_car_a_rusty.glb",
+      "Pos_X_m": -12.5,
+      "Pos_Y_m": 1.4,
+      "Pos_Z_m": -17,
+      "Rot_X_deg": 8,
+      "Rot_Y_deg": 24,
+      "Rot_Z_deg": -12,
+      "Scale_X": 0.95,
+      "Scale_Y": 0.95,
+      "Scale_Z": 0.95,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 4.5,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Detail",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -3,
+      "Distance_From_Origin_m": 21.147
+    },
+    {
+      "Instance_ID": "BG_DETAIL_02",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Embedded pickup wreck",
+      "Asset_Name": "Shreddable Pickup Truck",
+      "Full_Path": "assets/Content/Vehicles/Crane_Magnet/shreddable_pickuptruck.glb",
+      "Pos_X_m": -9.5,
+      "Pos_Y_m": 1.1,
+      "Pos_Z_m": -16.5,
+      "Rot_X_deg": -6,
+      "Rot_Y_deg": -40,
+      "Rot_Z_deg": 8,
+      "Scale_X": 0.9,
+      "Scale_Y": 0.9,
+      "Scale_Z": 0.9,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 5.2,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Detail",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -3,
+      "Distance_From_Origin_m": 19.071
+    },
+    {
+      "Instance_ID": "BG_DETAIL_03",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Embedded compact wreck",
+      "Asset_Name": "Rusty Compact Car",
+      "Full_Path": "assets/Content/Vehicles/Compact/compact_car_a_rusty.glb",
+      "Pos_X_m": -6.4,
+      "Pos_Y_m": 1.6,
+      "Pos_Z_m": -17.2,
+      "Rot_X_deg": 12,
+      "Rot_Y_deg": 95,
+      "Rot_Z_deg": 14,
+      "Scale_X": 0.92,
+      "Scale_Y": 0.92,
+      "Scale_Z": 0.92,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 4.4,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Detail",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -3,
+      "Distance_From_Origin_m": 18.422
+    },
+    {
+      "Instance_ID": "BG_DETAIL_04",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Embedded pickup wreck",
+      "Asset_Name": "Shreddable Pickup Truck",
+      "Full_Path": "assets/Content/Vehicles/Crane_Magnet/shreddable_pickuptruck.glb",
+      "Pos_X_m": -2.6,
+      "Pos_Y_m": 1.5,
+      "Pos_Z_m": -17.5,
+      "Rot_X_deg": -9,
+      "Rot_Y_deg": 20,
+      "Rot_Z_deg": -13,
+      "Scale_X": 0.9,
+      "Scale_Y": 0.9,
+      "Scale_Z": 0.9,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 5.2,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Detail",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -3,
+      "Distance_From_Origin_m": 17.756
+    },
+    {
+      "Instance_ID": "BG_DETAIL_05",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Embedded compact wreck",
+      "Asset_Name": "Rusty Compact Car",
+      "Full_Path": "assets/Content/Vehicles/Compact/compact_car_a_rusty.glb",
+      "Pos_X_m": 0.7,
+      "Pos_Y_m": 2,
+      "Pos_Z_m": -17.8,
+      "Rot_X_deg": 16,
+      "Rot_Y_deg": -22,
+      "Rot_Z_deg": 8,
+      "Scale_X": 0.95,
+      "Scale_Y": 0.95,
+      "Scale_Z": 0.95,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 4.5,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Detail",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -3,
+      "Distance_From_Origin_m": 17.926
+    },
+    {
+      "Instance_ID": "BG_DETAIL_06",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Embedded pickup wreck",
+      "Asset_Name": "Shreddable Pickup Truck",
+      "Full_Path": "assets/Content/Vehicles/Crane_Magnet/shreddable_pickuptruck.glb",
+      "Pos_X_m": 4.1,
+      "Pos_Y_m": 1.45,
+      "Pos_Z_m": -17.3,
+      "Rot_X_deg": -12,
+      "Rot_Y_deg": 64,
+      "Rot_Z_deg": 11,
+      "Scale_X": 0.88,
+      "Scale_Y": 0.88,
+      "Scale_Z": 0.88,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 5.1,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Detail",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -3,
+      "Distance_From_Origin_m": 17.838
+    },
+    {
+      "Instance_ID": "BG_DETAIL_07",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Embedded compact wreck",
+      "Asset_Name": "Rusty Compact Car",
+      "Full_Path": "assets/Content/Vehicles/Compact/compact_car_a_rusty.glb",
+      "Pos_X_m": 7.2,
+      "Pos_Y_m": 1.5,
+      "Pos_Z_m": -16.8,
+      "Rot_X_deg": 9,
+      "Rot_Y_deg": -48,
+      "Rot_Z_deg": -14,
+      "Scale_X": 0.92,
+      "Scale_Y": 0.92,
+      "Scale_Z": 0.92,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 4.4,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Detail",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -3,
+      "Distance_From_Origin_m": 18.339
+    },
+    {
+      "Instance_ID": "BG_DETAIL_08",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Embedded pickup wreck",
+      "Asset_Name": "Shreddable Pickup Truck",
+      "Full_Path": "assets/Content/Vehicles/Crane_Magnet/shreddable_pickuptruck.glb",
+      "Pos_X_m": 11,
+      "Pos_Y_m": 1.35,
+      "Pos_Z_m": -17.1,
+      "Rot_X_deg": -8,
+      "Rot_Y_deg": 26,
+      "Rot_Z_deg": 12,
+      "Scale_X": 0.9,
+      "Scale_Y": 0.9,
+      "Scale_Z": 0.9,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 5.2,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Detail",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -3,
+      "Distance_From_Origin_m": 20.377
+    },
+    {
+      "Instance_ID": "BG_DETAIL_09",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Left-side compact wreck",
+      "Asset_Name": "Rusty Compact Car",
+      "Full_Path": "assets/Content/Vehicles/Compact/compact_car_a_rusty.glb",
+      "Pos_X_m": -21,
+      "Pos_Y_m": 1.5,
+      "Pos_Z_m": -12.5,
+      "Rot_X_deg": 14,
+      "Rot_Y_deg": 88,
+      "Rot_Z_deg": -9,
+      "Scale_X": 0.92,
+      "Scale_Y": 0.92,
+      "Scale_Z": 0.92,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 4.4,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Detail",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -3,
+      "Distance_From_Origin_m": 24.485
+    },
+    {
+      "Instance_ID": "BG_DETAIL_10",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Left-side pickup wreck",
+      "Asset_Name": "Shreddable Pickup Truck",
+      "Full_Path": "assets/Content/Vehicles/Crane_Magnet/shreddable_pickuptruck.glb",
+      "Pos_X_m": -23,
+      "Pos_Y_m": 1.35,
+      "Pos_Z_m": -7,
+      "Rot_X_deg": -10,
+      "Rot_Y_deg": 96,
+      "Rot_Z_deg": 12,
+      "Scale_X": 0.9,
+      "Scale_Y": 0.9,
+      "Scale_Z": 0.9,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 5.2,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Detail",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -3,
+      "Distance_From_Origin_m": 24.08
+    },
+    {
+      "Instance_ID": "BG_DETAIL_11",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Right-side compact wreck",
+      "Asset_Name": "Rusty Compact Car",
+      "Full_Path": "assets/Content/Vehicles/Compact/compact_car_a_rusty.glb",
+      "Pos_X_m": 21,
+      "Pos_Y_m": 1.5,
+      "Pos_Z_m": -12.5,
+      "Rot_X_deg": 14,
+      "Rot_Y_deg": -88,
+      "Rot_Z_deg": 9,
+      "Scale_X": 0.92,
+      "Scale_Y": 0.92,
+      "Scale_Z": 0.92,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 4.4,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Detail",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -3,
+      "Distance_From_Origin_m": 24.485
+    },
+    {
+      "Instance_ID": "BG_DETAIL_12",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Right-side pickup wreck",
+      "Asset_Name": "Shreddable Pickup Truck",
+      "Full_Path": "assets/Content/Vehicles/Crane_Magnet/shreddable_pickuptruck.glb",
+      "Pos_X_m": 23,
+      "Pos_Y_m": 1.35,
+      "Pos_Z_m": -7,
+      "Rot_X_deg": -10,
+      "Rot_Y_deg": -96,
+      "Rot_Z_deg": -12,
+      "Scale_X": 0.9,
+      "Scale_Y": 0.9,
+      "Scale_Z": 0.9,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 5.2,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Detail",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -3,
+      "Distance_From_Origin_m": 24.08
+    },
+    {
+      "Instance_ID": "BG_DETAIL_13",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Left foreground junk stack",
+      "Asset_Name": "Junkyard Stack A",
+      "Full_Path": "assets/Content/Props/Junkyard_stacks/junkyard_stack_a.glb",
+      "Pos_X_m": -24,
+      "Pos_Y_m": 0.2,
+      "Pos_Z_m": -4.5,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 78,
+      "Rot_Z_deg": 0,
+      "Scale_X": 0.9,
+      "Scale_Y": 0.9,
+      "Scale_Z": 0.9,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 3.5,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Detail",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -3,
+      "Distance_From_Origin_m": 24.419
+    },
+    {
+      "Instance_ID": "BG_DETAIL_14",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Left foreground junk stack",
+      "Asset_Name": "Junkyard Stack B",
+      "Full_Path": "assets/Content/Props/Junkyard_stacks/junkyard_stack_b.glb",
+      "Pos_X_m": -25,
+      "Pos_Y_m": 0.25,
+      "Pos_Z_m": -8.5,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 102,
+      "Rot_Z_deg": 0,
+      "Scale_X": 0.9,
+      "Scale_Y": 0.9,
+      "Scale_Z": 0.9,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 3.5,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Detail",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -3,
+      "Distance_From_Origin_m": 26.407
+    },
+    {
+      "Instance_ID": "BG_DETAIL_15",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Right foreground junk stack",
+      "Asset_Name": "Junkyard Stack C",
+      "Full_Path": "assets/Content/Props/Junkyard_stacks/junkyard_stack_c.glb",
+      "Pos_X_m": 24,
+      "Pos_Y_m": 0.2,
+      "Pos_Z_m": -4.5,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -78,
+      "Rot_Z_deg": 0,
+      "Scale_X": 0.9,
+      "Scale_Y": 0.9,
+      "Scale_Z": 0.9,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 3.5,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Detail",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -3,
+      "Distance_From_Origin_m": 24.419
+    },
+    {
+      "Instance_ID": "BG_DETAIL_16",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Right foreground junk stack",
+      "Asset_Name": "Junkyard Stack D",
+      "Full_Path": "assets/Content/Props/Junkyard_stacks/junkyard_stack_d.glb",
+      "Pos_X_m": 25,
+      "Pos_Y_m": 0.25,
+      "Pos_Z_m": -8.5,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -102,
+      "Rot_Z_deg": 0,
+      "Scale_X": 0.9,
+      "Scale_Y": 0.9,
+      "Scale_Z": 0.9,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 3.5,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Detail",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -3,
+      "Distance_From_Origin_m": 26.407
+    },
+    {
+      "Instance_ID": "BG_DETAIL_17",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Rear-left junk stack",
+      "Asset_Name": "Junkyard Stack E",
+      "Full_Path": "assets/Content/Props/Junkyard_stacks/junkyard_stack_e.glb",
+      "Pos_X_m": -4,
+      "Pos_Y_m": 0.15,
+      "Pos_Z_m": -15.8,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": 12,
+      "Rot_Z_deg": 0,
+      "Scale_X": 0.9,
+      "Scale_Y": 0.9,
+      "Scale_Z": 0.9,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 3.5,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Detail",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -3,
+      "Distance_From_Origin_m": 16.299
+    },
+    {
+      "Instance_ID": "BG_DETAIL_18",
+      "Enabled": true,
+      "Zone": "Backdrop",
+      "Parent_Node": "BACKDROP",
+      "Role": "Rear-right junk stack",
+      "Asset_Name": "Junkyard Stack F",
+      "Full_Path": "assets/Content/Props/Junkyard_stacks/junkyard_stack_f.glb",
+      "Pos_X_m": 4,
+      "Pos_Y_m": 0.15,
+      "Pos_Z_m": -15.8,
+      "Rot_X_deg": 0,
+      "Rot_Y_deg": -12,
+      "Rot_Z_deg": 0,
+      "Scale_X": 0.9,
+      "Scale_Y": 0.9,
+      "Scale_Z": 0.9,
+      "Normalize_Mode": "Native-meters preferred",
+      "Target_Extent_m": 3.5,
+      "Anchor": "Bottom-center",
+      "Cast_Shadow": false,
+      "Receive_Shadow": true,
+      "LOD_Class": "Detail",
+      "Occlusion_Priority": "Low",
+      "Render_Order": -3,
+      "Distance_From_Origin_m": 16.299
     }
   ],
   "lights": [
@@ -4975,10 +6038,10 @@
       "Target_X_m": null,
       "Target_Y_m": null,
       "Target_Z_m": null,
-      "Yaw_From_-Z_deg": 0.0,
-      "Pitch_deg": 0.0,
-      "Roll_deg": 0.0,
-      "Target_Distance_m": 0.0,
+      "Yaw_From_-Z_deg": 0,
+      "Pitch_deg": 0,
+      "Roll_deg": 0,
+      "Target_Distance_m": 0,
       "Intensity": 0.22,
       "Intensity_Units": "relative",
       "Color_Temperature_K": 7000,
@@ -5001,21 +6064,21 @@
       "Type": "Spot",
       "Parent": "SCENE_ROOT",
       "Fixture_Instance_ID": "FIX_SEARCH_L",
-      "Pos_X_m": -5.85,
+      "Pos_X_m": -20.5,
       "Pos_Y_m": 4.65,
-      "Pos_Z_m": 1.2,
-      "Target_X_m": -1.2,
+      "Pos_Z_m": -7,
+      "Target_X_m": -8,
       "Target_Y_m": 1.35,
-      "Target_Z_m": -0.5,
-      "Yaw_From_-Z_deg": -69.92,
-      "Pitch_deg": -33.68,
-      "Roll_deg": 0.0,
-      "Target_Distance_m": 5.95,
+      "Target_Z_m": -14,
+      "Yaw_From_-Z_deg": -60.75,
+      "Pitch_deg": -12.97,
+      "Roll_deg": 0,
+      "Target_Distance_m": 14.7,
       "Intensity": 42000,
       "Intensity_Units": "candela",
       "Color_Temperature_K": 4300,
       "Color_Hex": "#FFD3AF",
-      "Range_m": 18,
+      "Range_m": 26,
       "Inner_Cone_deg": 18,
       "Outer_Cone_deg": 32,
       "Penumbra": 0.48,
@@ -5026,28 +6089,28 @@
       "Shadow_Bias": -0.0006,
       "Volumetric_Weight": 0.55,
       "Enabled": true,
-      "Notes": "Primary warm left key; allows left mannequin and weapon fan to read."
+      "Notes": "Moved beyond the orbit envelope; sweeps the distant left junkyard backdrop without intersecting the camera."
     },
     {
       "Entity_ID": "LIGHT_KEY_RIGHT",
       "Type": "Spot",
       "Parent": "SCENE_ROOT",
       "Fixture_Instance_ID": "FIX_SEARCH_R",
-      "Pos_X_m": 5.72,
+      "Pos_X_m": 20.5,
       "Pos_Y_m": 4.72,
-      "Pos_Z_m": 1.35,
-      "Target_X_m": 1.25,
+      "Pos_Z_m": -7,
+      "Target_X_m": 8,
       "Target_Y_m": 1.38,
-      "Target_Z_m": -0.55,
-      "Yaw_From_-Z_deg": 66.97,
-      "Pitch_deg": -34.51,
-      "Roll_deg": 0.0,
-      "Target_Distance_m": 5.89,
+      "Target_Z_m": -14,
+      "Yaw_From_-Z_deg": 60.75,
+      "Pitch_deg": -13.12,
+      "Roll_deg": 0,
+      "Target_Distance_m": 14.71,
       "Intensity": 46000,
       "Intensity_Units": "candela",
       "Color_Temperature_K": 4650,
       "Color_Hex": "#FFE0C0",
-      "Range_m": 18,
+      "Range_m": 26,
       "Inner_Cone_deg": 17,
       "Outer_Cone_deg": 31,
       "Penumbra": 0.5,
@@ -5058,7 +6121,7 @@
       "Shadow_Bias": -0.0006,
       "Volumetric_Weight": 0.58,
       "Enabled": true,
-      "Notes": "Slightly brighter right key to reveal rockets and third-place armor."
+      "Notes": "Moved beyond the orbit envelope; sweeps the distant right junkyard backdrop without intersecting the camera."
     },
     {
       "Entity_ID": "LIGHT_RIM_CENTER",
@@ -5068,12 +6131,12 @@
       "Pos_X_m": 0.1,
       "Pos_Y_m": 5.3,
       "Pos_Z_m": -2.7,
-      "Target_X_m": 0.0,
+      "Target_X_m": 0,
       "Target_Y_m": 1.25,
       "Target_Z_m": 0.1,
       "Yaw_From_-Z_deg": 177.95,
       "Pitch_deg": -55.32,
-      "Roll_deg": 0.0,
+      "Roll_deg": 0,
       "Target_Distance_m": 4.92,
       "Intensity": 36000,
       "Intensity_Units": "candela",
@@ -5097,15 +6160,15 @@
       "Type": "Rect area",
       "Parent": "SCENE_ROOT",
       "Fixture_Instance_ID": "",
-      "Pos_X_m": 0.0,
-      "Pos_Y_m": 3.0,
+      "Pos_X_m": 0,
+      "Pos_Y_m": 3,
       "Pos_Z_m": 7.2,
-      "Target_X_m": 0.0,
+      "Target_X_m": 0,
       "Target_Y_m": 1.45,
       "Target_Z_m": -0.25,
-      "Yaw_From_-Z_deg": -0.0,
+      "Yaw_From_-Z_deg": 0,
       "Pitch_deg": -11.75,
-      "Roll_deg": 0.0,
+      "Roll_deg": 0,
       "Target_Distance_m": 7.61,
       "Intensity": 5200,
       "Intensity_Units": "lumens",
@@ -5115,8 +6178,8 @@
       "Inner_Cone_deg": 0,
       "Outer_Cone_deg": 0,
       "Penumbra": 0,
-      "Area_Width_m": 6.0,
-      "Area_Height_m": 2.0,
+      "Area_Width_m": 6,
+      "Area_Height_m": 2,
       "Cast_Shadow": false,
       "Shadow_Map": "",
       "Shadow_Bias": 0,
@@ -5137,7 +6200,7 @@
       "Target_Z_m": -2.3,
       "Yaw_From_-Z_deg": 149.22,
       "Pitch_deg": -50.34,
-      "Roll_deg": 0.0,
+      "Roll_deg": 0,
       "Target_Distance_m": 4.29,
       "Intensity": 15000,
       "Intensity_Units": "candela",
@@ -5169,7 +6232,7 @@
       "Target_Z_m": -2.2,
       "Yaw_From_-Z_deg": -151.56,
       "Pitch_deg": -51.65,
-      "Roll_deg": 0.0,
+      "Roll_deg": 0,
       "Target_Distance_m": 4.4,
       "Intensity": 16000,
       "Intensity_Units": "candela",
@@ -5193,21 +6256,21 @@
       "Type": "Point",
       "Parent": "SCENE_ROOT",
       "Fixture_Instance_ID": "",
-      "Pos_X_m": 0.0,
+      "Pos_X_m": 0,
       "Pos_Y_m": 0.62,
       "Pos_Z_m": 0.65,
       "Target_X_m": null,
       "Target_Y_m": null,
       "Target_Z_m": null,
-      "Yaw_From_-Z_deg": 0.0,
-      "Pitch_deg": 0.0,
-      "Roll_deg": 0.0,
-      "Target_Distance_m": 0.0,
+      "Yaw_From_-Z_deg": 0,
+      "Pitch_deg": 0,
+      "Roll_deg": 0,
+      "Target_Distance_m": 0,
       "Intensity": 1150,
       "Intensity_Units": "candela",
       "Color_Temperature_K": 1850,
       "Color_Hex": "#FF5A16",
-      "Range_m": 4.0,
+      "Range_m": 4,
       "Inner_Cone_deg": 0,
       "Outer_Cone_deg": 0,
       "Penumbra": 0,
@@ -5231,10 +6294,10 @@
       "Target_X_m": null,
       "Target_Y_m": null,
       "Target_Z_m": null,
-      "Yaw_From_-Z_deg": 0.0,
-      "Pitch_deg": 0.0,
-      "Roll_deg": 0.0,
-      "Target_Distance_m": 0.0,
+      "Yaw_From_-Z_deg": 0,
+      "Pitch_deg": 0,
+      "Roll_deg": 0,
+      "Target_Distance_m": 0,
       "Intensity": 650,
       "Intensity_Units": "candela",
       "Color_Temperature_K": 1850,
@@ -5263,10 +6326,10 @@
       "Target_X_m": null,
       "Target_Y_m": null,
       "Target_Z_m": null,
-      "Yaw_From_-Z_deg": 0.0,
-      "Pitch_deg": 0.0,
-      "Roll_deg": 0.0,
-      "Target_Distance_m": 0.0,
+      "Yaw_From_-Z_deg": 0,
+      "Pitch_deg": 0,
+      "Roll_deg": 0,
+      "Target_Distance_m": 0,
       "Intensity": 650,
       "Intensity_Units": "candela",
       "Color_Temperature_K": 1850,
@@ -5295,15 +6358,15 @@
       "Target_X_m": null,
       "Target_Y_m": null,
       "Target_Z_m": null,
-      "Yaw_From_-Z_deg": 0.0,
-      "Pitch_deg": 0.0,
-      "Roll_deg": 0.0,
-      "Target_Distance_m": 0.0,
+      "Yaw_From_-Z_deg": 0,
+      "Pitch_deg": 0,
+      "Roll_deg": 0,
+      "Target_Distance_m": 0,
       "Intensity": 820,
       "Intensity_Units": "candela",
       "Color_Temperature_K": 2100,
       "Color_Hex": "#FF7A2A",
-      "Range_m": 4.0,
+      "Range_m": 4,
       "Inner_Cone_deg": 0,
       "Outer_Cone_deg": 0,
       "Penumbra": 0,
@@ -5327,15 +6390,15 @@
       "Target_X_m": null,
       "Target_Y_m": null,
       "Target_Z_m": null,
-      "Yaw_From_-Z_deg": 0.0,
-      "Pitch_deg": 0.0,
-      "Roll_deg": 0.0,
-      "Target_Distance_m": 0.0,
+      "Yaw_From_-Z_deg": 0,
+      "Pitch_deg": 0,
+      "Roll_deg": 0,
+      "Target_Distance_m": 0,
       "Intensity": 900,
       "Intensity_Units": "candela",
       "Color_Temperature_K": 3000,
       "Color_Hex": "#FFD09A",
-      "Range_m": 6.0,
+      "Range_m": 6,
       "Inner_Cone_deg": 0,
       "Outer_Cone_deg": 0,
       "Penumbra": 0,

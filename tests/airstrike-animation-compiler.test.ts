@@ -200,6 +200,26 @@ describe("airstrike animation golden fixtures", () => {
     expect(alternatingGroup.Template.Count).toBe(1);
   });
 
+  it("compiles deterministic ammo mixes and authored audio timelines", async () => {
+    const metadata = await json<VehiclePreviewMetadataFile>(metadataPath);
+    const source = await json<EditorSourceBundle>(join(fixtureRoot, "grouped-repeated-schedule", "source.json"));
+    const sourceProfile = Object.values(source.Profiles)[0]!;
+    if (sourceProfile.ReleaseSource.Mode !== "repeated" || !sourceProfile.ReleaseSource.Groups?.[0]) throw new Error("fixture shape");
+    sourceProfile.ReleaseSource.Groups[0].Template.AmmoSequence = ["gau8_api", "gau8_hei", "gau8_api"];
+    sourceProfile.AudioSource = {
+      Mode: "authored",
+      Events: [{ Id: "pass_001", Time: 1.25, Cue: "f15_pass", Anchor: "carrier", OffsetX: 0, OffsetY: 0, OffsetZ: 0 }],
+      Groups: [{ Id: "gun_001", Name: "Cannon report", StartTime: 2, EndTime: 3, IntervalSeconds: 0.25, MaximumCues: 12, Cue: "gau8_burst", Anchor: "carrier", OffsetX: 0, OffsetY: -1, OffsetZ: 2 }],
+    };
+    const validation = validateSourceBundle(source, metadata);
+    expect(validation).toEqual([]);
+    const runtime = Object.values(compileSourceBundle(source, { publishedRevision: 1, vehicleMetadata: metadata }).bundle.Profiles)[0]!;
+    expect(runtime.GeneratedReleaseGroups?.[0]?.Template.AmmoSequence).toEqual(["gau8_api", "gau8_hei", "gau8_api"]);
+    expect(runtime.AudioMode).toBe("authored");
+    expect(runtime.AudioEvents).toMatchObject([{ Time: 1.25, Cue: "f15_pass", Anchor: "carrier" }]);
+    expect(runtime.AudioGroups).toMatchObject([{ StartTime: 2, EndTime: 3, IntervalSeconds: 0.25, MaximumCues: 12, Cue: "gau8_burst" }]);
+  });
+
   it("uses explicit Unity/Three reflection helpers and Unity Euler order", () => {
     const value = { x: 3, y: 4, z: 5 };
     expect(threeVectorToUnity(unityVectorToThree(value))).toEqual(value);

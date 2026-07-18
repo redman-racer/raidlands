@@ -147,8 +147,8 @@ async function main() {
   };
   const serialized = `${JSON.stringify(manifest, null, 2)}\n`;
 
-  if (assets.length !== 76) throw new Error(`Expected 76 unique scene assets; found ${assets.length}.`);
-  if (source.asset_placements.length !== 90 || characterRows.length !== 3 || baseRows.length + mostKillsRows.length !== 87) {
+  if (assets.length !== 79) throw new Error(`Expected 79 unique scene assets; found ${assets.length}.`);
+  if (source.asset_placements.length !== 125 || characterRows.length !== 3 || baseRows.length + mostKillsRows.length !== 122) {
     throw new Error("Scene-map placement counts do not match the approved plan.");
   }
 

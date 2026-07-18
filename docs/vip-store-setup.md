@@ -73,8 +73,8 @@ Cash checkout remains inactive until real Stripe prices are configured.
 - Admin > Store controls RP offers per product: RP cost, active flag, lifetime/timed duration, and optional auto-renew for timed offers.
 - Admin > Store controls cash offers per product: amount, currency, active flag, optional external Stripe Price ID, and lifetime/timed/recurring access. Lifetime cash passes grant access with no scheduled expiration.
 - Each active store product must have at least one applied group. Purchases and manual grants apply those groups; Kits and Groups control the permissions those groups receive. Migration `025_store_lifetime_kit_unlock_groups.sql` creates managed groups for the individual kit unlock products.
-- The website queues RP purchases first. `WebsiteVipBridge` polls `/api/server/rp-purchases.php`, verifies and deducts live ServerRewards RP, then posts the result to `/api/server/rp-purchase-result.php`.
-- Vote rewards and RP games queue generic point changes through `/api/server/rp-point-requests.php`; `WebsiteVipBridge` confirms ServerRewards debits/credits exactly once and posts results to `/api/server/rp-point-result.php`.
+- The website queues RP purchases first. `WebsiteVipBridge` receives requests and acknowledges results through the shared `/api/server/bridge-exchange.php`, while preserving its local exactly-once ledger around live ServerRewards debits.
+- Vote rewards and RP games use the same exchange for generic ServerRewards debits/credits and result acknowledgement.
 - Migration 063 adds European Roulette, five-reel Slots, and persisted Blackjack. Blackjack queues its wager before dealing, queues a second debit before double-down resolution, and uses a separate payout request. Confirmed hands auto-stand after ten minutes if abandoned.
 - Roulette uses the published European single-zero table. Blackjack uses six decks, dealer stand on soft 17, and 3:2 naturals. The RP Games admin preset changes the audited Slots paytable only: Safe is approximately 80.75% RTP, Balanced is approximately 85.39%, and Generous is approximately 90.06%. It does not silently change Roulette or Blackjack table rules.
 - Entitlements activate only after the bridge confirms the debit.
@@ -85,8 +85,8 @@ Cash checkout remains inactive until real Stripe prices are configured.
 
 1. Install Rust Kits by k1lly0u.
 2. Configure kit contents, cooldowns, max uses, hidden kit behavior, and kit permission strings in Rust Kits.
-3. Put `server-plugins/WebsiteVipBridge.cs` in the uMod/Oxide plugins folder.
-4. Put `server-plugins/WebsiteClanBridge.cs` in the uMod/Oxide plugins folder if website or public API clan management should be live.
+3. Put `server-plugins/WebsiteBridgeHub.cs` and `server-plugins/WebsiteVipBridge.cs` in the uMod/Oxide plugins folder.
+4. Put `server-plugins/WebsiteMapBridge.cs` and `server-plugins/WebsiteClanBridge.cs` in the uMod/Oxide plugins folder when their website features are enabled.
 5. Set `ApiBaseUrl`, `ServerId`, and `SharedSecret` in the generated plugin configs. `ServerId` must match `RAIDLANDS_BRIDGE_SERVER_ID`, and `SharedSecret` must match `RAIDLANDS_BRIDGE_SHARED_SECRET`.
 6. Keep `WipeKey` blank unless you need a manual season override. Blank lets WebsiteVipBridge derive a new leaderboard season key from the Rust save creation time after each wipe; a fixed key will keep stats in the same season.
 7. Select the groups each Store product applies in Admin > Store, link kits there only for product-card previews, then manage kit access and perk permissions from Admin > Kits and Admin > Groups. Existing starter groups include:

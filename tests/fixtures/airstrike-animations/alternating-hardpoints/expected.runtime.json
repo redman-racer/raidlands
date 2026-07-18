@@ -1,6 +1,6 @@
 {
   "SchemaVersion": 3,
-  "CompilerVersion": "raidlands-airanim-1",
+  "CompilerVersion": "raidlands-airanim-2",
   "PublishedRevision": 1,
   "AllowDangerousPayloadPreview": false,
   "Profiles": {
@@ -14,6 +14,7 @@
       "ReleaseTemplate": {
         "Time": 1,
         "Payload": "rocket",
+        "AmmoSequence": [],
         "Index": 0,
         "Count": 2,
         "CarrierOffsetX": 0.1,
@@ -69,6 +70,7 @@
           "Template": {
             "Time": 1,
             "Payload": "rocket",
+            "AmmoSequence": [],
             "Index": 0,
             "Count": 1,
             "CarrierOffsetX": 0.1,
@@ -105,8 +107,8 @@
         }
       ],
       "CompiledTrack": {
-        "CompilerVersion": "raidlands-airanim-1",
-        "SourceHash": "2b9e2d9d827849555deae362b55a0bb0bde5f18cbb6cdb55a825b57259f48182",
+        "CompilerVersion": "raidlands-airanim-2",
+        "SourceHash": "4bd67cfb21dcbcdeedda1b999900fb9afaad8a16aa11fdbc0416ffefd2a86c99",
         "CoordinateSystem": "unity-target-relative-local-v1",
         "SampleRateHz": 30,
         "SampleIntervalSeconds": 0.033333,

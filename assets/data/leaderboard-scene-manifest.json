@@ -318,6 +318,28 @@
       "notes": "Suggested radius 1.55 m; top Y = 0.40–0.43 m."
     },
     {
+      "node_id": "BACKDROP",
+      "parent_id": "SCENE_ROOT",
+      "node_type": "Logical group",
+      "position_m": [
+        0,
+        0,
+        0
+      ],
+      "rotation_deg": [
+        0,
+        0,
+        0
+      ],
+      "scale": [
+        1,
+        1,
+        1
+      ],
+      "inherits_transform": true,
+      "notes": "Distant U-shaped junkyard mound and wreck perimeter."
+    },
+    {
       "node_id": "ORBIT_PIVOT",
       "parent_id": "SCENE_ROOT",
       "node_type": "Interaction pivot",
@@ -896,13 +918,13 @@
       "sourcePath": "assets/Content/Props/Old Shelves/shelf1v2.glb",
       "localPath": "Content/Props/Old Shelves/shelf1v2.glb",
       "position": [
-        -5.6,
+        -18.5,
         0,
-        -2.75
+        -9.5
       ],
       "rotation": [
         0,
-        8,
+        78,
         0
       ],
       "scale": [
@@ -928,13 +950,13 @@
       "sourcePath": "assets/Content/Props/Misc_dressing_props/workbench.glb",
       "localPath": "Content/Props/Misc_dressing_props/workbench.glb",
       "position": [
-        -3.35,
+        -20,
         0,
-        -2.85
+        -5
       ],
       "rotation": [
         0,
-        -12,
+        82,
         0
       ],
       "scale": [
@@ -992,13 +1014,13 @@
       "sourcePath": "assets/Content/Vehicles/Boats/PTboat/Turrets/50cal/Prefabs/50_cal_rear_single.glb",
       "localPath": "Content/Vehicles/Boats/PTboat/Turrets/50cal/Prefabs/50_cal_rear_single.glb",
       "position": [
-        -6.15,
+        -21,
         0.52,
-        -2.62
+        -5.5
       ],
       "rotation": [
         0,
-        25,
+        78,
         0
       ],
       "scale": [
@@ -1024,13 +1046,13 @@
       "sourcePath": "assets/Content/Props/Fishing_nets/fishing_net_crate_a.glb",
       "localPath": "Content/Props/Fishing_nets/fishing_net_crate_a.glb",
       "position": [
-        -6.18,
+        -12,
         0,
-        -1.55
+        -5.5
       ],
       "rotation": [
         0,
-        7,
+        42,
         0
       ],
       "scale": [
@@ -1056,13 +1078,13 @@
       "sourcePath": "assets/Content/Props/Fishing_nets/fishing_net_crate_b.glb",
       "localPath": "Content/Props/Fishing_nets/fishing_net_crate_b.glb",
       "position": [
-        -5.63,
+        -12.6,
         0.54,
-        -1.76
+        -5.9
       ],
       "rotation": [
         0,
-        -9,
+        28,
         2
       ],
       "scale": [
@@ -1120,13 +1142,13 @@
       "sourcePath": "assets/Content/Props/Barrels/radbarrel.glb",
       "localPath": "Content/Props/Barrels/radbarrel.glb",
       "position": [
-        -4.75,
+        -13,
         0,
-        -1.48
+        -6.8
       ],
       "rotation": [
         0,
-        15,
+        38,
         0
       ],
       "scale": [
@@ -1152,13 +1174,13 @@
       "sourcePath": "assets/Content/Props/Barrels/dented_barrel.glb",
       "localPath": "Content/Props/Barrels/dented_barrel.glb",
       "position": [
-        -6.58,
+        -12.2,
         0,
-        -1.18
+        -6.3
       ],
       "rotation": [
         0,
-        -12,
+        -18,
         4
       ],
       "scale": [
@@ -1216,13 +1238,13 @@
       "sourcePath": "assets/Content/Props/Junkyard_stacks/junkyard_stack_b.glb",
       "localPath": "Content/Props/Junkyard_stacks/junkyard_stack_b.glb",
       "position": [
-        -3.7,
+        -23,
         0,
-        -4.3
+        -12
       ],
       "rotation": [
         0,
-        -14,
+        82,
         0
       ],
       "scale": [
@@ -1248,13 +1270,13 @@
       "sourcePath": "assets/Content/Props/Barricades_static/barricade_cover_wood_static.glb",
       "localPath": "Content/Props/Barricades_static/barricade_cover_wood_static.glb",
       "position": [
-        -2.62,
+        -20.5,
         0.02,
-        -3.72
+        -6.5
       ],
       "rotation": [
         0,
-        -8,
+        78,
         -5
       ],
       "scale": [
@@ -1344,13 +1366,13 @@
       "sourcePath": "assets/Content/Props/Junkyard_stacks/junkyard_stack_c.glb",
       "localPath": "Content/Props/Junkyard_stacks/junkyard_stack_c.glb",
       "position": [
-        1.85,
+        22,
         0,
-        -4.15
+        -7
       ],
       "rotation": [
         0,
-        -19,
+        -78,
         0
       ],
       "scale": [
@@ -1376,13 +1398,13 @@
       "sourcePath": "assets/Content/Props/Junkyard_stacks/junkyard_stack_d.glb",
       "localPath": "Content/Props/Junkyard_stacks/junkyard_stack_d.glb",
       "position": [
-        -1.95,
+        -22,
         0,
-        -4.22
+        -7
       ],
       "rotation": [
         0,
-        16,
+        78,
         0
       ],
       "scale": [
@@ -1760,13 +1782,13 @@
       "sourcePath": "assets/Content/Props/Old Shelves/shelf3v2.glb",
       "localPath": "Content/Props/Old Shelves/shelf3v2.glb",
       "position": [
-        5.8,
+        18.5,
         0,
-        -2.88
+        -9.5
       ],
       "rotation": [
         0,
-        -9,
+        -78,
         0
       ],
       "scale": [
@@ -2016,13 +2038,13 @@
       "sourcePath": "assets/Content/Vehicles/AttackHelicopter/ahmissilepod.glb",
       "localPath": "Content/Vehicles/AttackHelicopter/ahmissilepod.glb",
       "position": [
-        5.85,
+        12,
         0.8,
-        -2.7
+        -6.5
       ],
       "rotation": [
         0,
-        -25,
+        -52,
         6
       ],
       "scale": [
@@ -2048,13 +2070,13 @@
       "sourcePath": "assets/Content/Vehicles/AttackHelicopter/SubEnts/turret_attackheli.glb",
       "localPath": "Content/Vehicles/AttackHelicopter/SubEnts/turret_attackheli.glb",
       "position": [
-        6.25,
+        21,
         0.63,
-        -1.72
+        -5.5
       ],
       "rotation": [
         0,
-        -34,
+        -78,
         0
       ],
       "scale": [
@@ -2080,13 +2102,13 @@
       "sourcePath": "assets/Content/Props/Helicopter_parts/heli_gun.glb",
       "localPath": "Content/Props/Helicopter_parts/heli_gun.glb",
       "position": [
-        6.6,
-        0.55,
-        -2.15
+        13,
+        0.02,
+        -6.8
       ],
       "rotation": [
         8,
-        -48,
+        -72,
         18
       ],
       "scale": [
@@ -2112,13 +2134,13 @@
       "sourcePath": "assets/Content/Props/Helicopter_parts/heli_cockpit.glb",
       "localPath": "Content/Props/Helicopter_parts/heli_cockpit.glb",
       "position": [
-        6.72,
+        21,
         -0.05,
-        -3.72
+        -8
       ],
       "rotation": [
         0,
-        -28,
+        -82,
         -5
       ],
       "scale": [
@@ -2144,13 +2166,13 @@
       "sourcePath": "assets/Content/Props/Helicopter_parts/heli_tail.glb",
       "localPath": "Content/Props/Helicopter_parts/heli_tail.glb",
       "position": [
-        5.58,
+        23,
         0.1,
-        -4.28
+        -12
       ],
       "rotation": [
         5,
-        31,
+        78,
         -12
       ],
       "scale": [
@@ -2176,13 +2198,13 @@
       "sourcePath": "assets/Content/Props/Helicopter_parts/heli_door_a.glb",
       "localPath": "Content/Props/Helicopter_parts/heli_door_a.glb",
       "position": [
-        6.82,
+        20.5,
         0.18,
-        -2.82
+        -6.5
       ],
       "rotation": [
         0,
-        -25,
+        -82,
         77
       ],
       "scale": [
@@ -2208,14 +2230,14 @@
       "sourcePath": "assets/Content/Vehicles/Compact/compact_car_a_rusty.glb",
       "localPath": "Content/Vehicles/Compact/compact_car_a_rusty.glb",
       "position": [
-        7.35,
-        -0.12,
-        -4.42
+        12.8,
+        -0.18,
+        -9
       ],
       "rotation": [
-        0,
-        -31,
-        0
+        4,
+        -67,
+        -9
       ],
       "scale": [
         0.72,
@@ -2272,13 +2294,13 @@
       "sourcePath": "assets/Content/Props/Junkyard_stacks/junkyard_stack_f.glb",
       "localPath": "Content/Props/Junkyard_stacks/junkyard_stack_f.glb",
       "position": [
-        3.35,
+        23,
         0,
-        -4.25
+        -12
       ],
       "rotation": [
         0,
-        19,
+        -82,
         0
       ],
       "scale": [
@@ -2304,13 +2326,13 @@
       "sourcePath": "assets/Content/Props/Food Containers/orangecrate_a.glb",
       "localPath": "Content/Props/Food Containers/orangecrate_a.glb",
       "position": [
-        5.72,
+        12,
         0,
-        -1.18
+        -5.5
       ],
       "rotation": [
         0,
-        -12,
+        -42,
         0
       ],
       "scale": [
@@ -2336,13 +2358,13 @@
       "sourcePath": "assets/Content/Props/Fishing_nets/fishing_net_crate_b.glb",
       "localPath": "Content/Props/Fishing_nets/fishing_net_crate_b.glb",
       "position": [
-        6.15,
+        12.6,
         0.52,
-        -1.42
+        -5.9
       ],
       "rotation": [
         0,
-        11,
+        -28,
         1
       ],
       "scale": [
@@ -2400,13 +2422,13 @@
       "sourcePath": "assets/Content/Props/Barrels/fuel_barrel_yellow.glb",
       "localPath": "Content/Props/Barrels/fuel_barrel_yellow.glb",
       "position": [
-        6.45,
+        12.2,
         0,
-        -1
+        -6.3
       ],
       "rotation": [
         0,
-        12,
+        18,
         0
       ],
       "scale": [
@@ -2554,19 +2576,19 @@
     {
       "id": "FG_WHEEL_L",
       "enabled": true,
-      "zone": "Foreground",
-      "parent": "FOREGROUND",
+      "zone": "Left Cluster",
+      "parent": "LEFT_CLUSTER",
       "role": "Left foreground wheel",
       "sourcePath": "assets/Content/Props/Metal Wheel/metalwheel.glb",
       "localPath": "Content/Props/Metal Wheel/metalwheel.glb",
       "position": [
-        -6.2,
+        -13,
         0.16,
-        0.65
+        -4.8
       ],
       "rotation": [
         90,
-        0,
+        22,
         18
       ],
       "scale": [
@@ -2586,19 +2608,19 @@
     {
       "id": "FG_WHEEL_R",
       "enabled": true,
-      "zone": "Foreground",
-      "parent": "FOREGROUND",
+      "zone": "Right Cluster",
+      "parent": "RIGHT_CLUSTER",
       "role": "Right foreground wheel",
       "sourcePath": "assets/Content/Props/Metal Wheel/metalwheel.glb",
       "localPath": "Content/Props/Metal Wheel/metalwheel.glb",
       "position": [
-        6.05,
+        13,
         0.15,
-        0.7
+        -4.8
       ],
       "rotation": [
         90,
-        0,
+        -22,
         -22
       ],
       "scale": [
@@ -2752,13 +2774,13 @@
       "sourcePath": "assets/Content/Props/Lights_Prefabs/searchlight_static_mt.glb",
       "localPath": "Content/Props/Lights_Prefabs/searchlight_static_mt.glb",
       "position": [
-        -5.85,
+        -20.5,
         4.65,
-        -3.25
+        -7
       ],
       "rotation": [
         12,
-        31,
+        78,
         0
       ],
       "scale": [
@@ -2784,13 +2806,13 @@
       "sourcePath": "assets/Content/Props/Lights_Prefabs/searchlight_static_mt.glb",
       "localPath": "Content/Props/Lights_Prefabs/searchlight_static_mt.glb",
       "position": [
-        5.72,
+        20.5,
         4.72,
-        -3.18
+        -7
       ],
       "rotation": [
         13,
-        -32,
+        -78,
         0
       ],
       "scale": [
@@ -2880,13 +2902,13 @@
       "sourcePath": "assets/Content/Props/Misc_dressing_props/Minors/light_barrel_station.glb",
       "localPath": "Content/Props/Misc_dressing_props/Minors/light_barrel_station.glb",
       "position": [
-        -6.55,
+        -13.2,
         0,
-        -3.15
+        -7.2
       ],
       "rotation": [
         0,
-        14,
+        62,
         0
       ],
       "scale": [
@@ -2912,13 +2934,13 @@
       "sourcePath": "assets/Content/Props/Lightpost/lightpost_a.glb",
       "localPath": "Content/Props/Lightpost/lightpost_a.glb",
       "position": [
-        6.85,
+        13.2,
         0,
-        -4.55
+        -7.2
       ],
       "rotation": [
         0,
-        -18,
+        -48,
         0
       ],
       "scale": [
@@ -2944,13 +2966,13 @@
       "sourcePath": "assets/Content/Props/Fog Machine/fogmachine.glb",
       "localPath": "Content/Props/Fog Machine/fogmachine.glb",
       "position": [
-        -5.95,
+        -13,
         0.02,
-        -2.95
+        -6.6
       ],
       "rotation": [
         0,
-        22,
+        68,
         0
       ],
       "scale": [
@@ -3008,13 +3030,13 @@
       "sourcePath": "assets/Content/Props/Fog Machine/fogmachine.glb",
       "localPath": "Content/Props/Fog Machine/fogmachine.glb",
       "position": [
-        5.95,
+        13,
         0.02,
-        -2.95
+        -6.6
       ],
       "rotation": [
         0,
-        -22,
+        -68,
         0
       ],
       "scale": [
@@ -3030,6 +3052,1126 @@
       "lodClass": "Secondary",
       "occlusionPriority": "Low",
       "renderOrder": 0
+    },
+    {
+      "id": "BG_MOUND_01",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Rear far-left junkyard mound",
+      "sourcePath": "assets/Content/structures/Junkyard/junkyard_mound_a.glb",
+      "localPath": "Content/structures/Junkyard/junkyard_mound_a.glb",
+      "position": [
+        -12.8,
+        -0.25,
+        -17.4
+      ],
+      "rotation": [
+        0,
+        12,
+        0
+      ],
+      "scale": [
+        0.105,
+        0.19,
+        0.105
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 11,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Background",
+      "occlusionPriority": "Low",
+      "renderOrder": -5
+    },
+    {
+      "id": "BG_MOUND_02",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Rear left junkyard mound",
+      "sourcePath": "assets/Content/structures/Junkyard/junkyard_mound_b.glb",
+      "localPath": "Content/structures/Junkyard/junkyard_mound_b.glb",
+      "position": [
+        -6.5,
+        -0.22,
+        -17.1
+      ],
+      "rotation": [
+        0,
+        -8,
+        0
+      ],
+      "scale": [
+        0.11,
+        0.2,
+        0.11
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 9,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Background",
+      "occlusionPriority": "Low",
+      "renderOrder": -5
+    },
+    {
+      "id": "BG_MOUND_03",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Rear center junkyard mound",
+      "sourcePath": "assets/Content/structures/Junkyard/junkyard_mound_c.glb",
+      "localPath": "Content/structures/Junkyard/junkyard_mound_c.glb",
+      "position": [
+        0,
+        -0.2,
+        -17.8
+      ],
+      "rotation": [
+        0,
+        18,
+        0
+      ],
+      "scale": [
+        0.14,
+        0.24,
+        0.14
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 10,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Background",
+      "occlusionPriority": "Low",
+      "renderOrder": -5
+    },
+    {
+      "id": "BG_MOUND_04",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Rear right junkyard mound",
+      "sourcePath": "assets/Content/structures/Junkyard/junkyard_mound_a.glb",
+      "localPath": "Content/structures/Junkyard/junkyard_mound_a.glb",
+      "position": [
+        6.5,
+        -0.22,
+        -17.1
+      ],
+      "rotation": [
+        0,
+        8,
+        0
+      ],
+      "scale": [
+        0.11,
+        0.2,
+        0.11
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 11,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Background",
+      "occlusionPriority": "Low",
+      "renderOrder": -5
+    },
+    {
+      "id": "BG_MOUND_05",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Rear far-right junkyard mound",
+      "sourcePath": "assets/Content/structures/Junkyard/junkyard_mound_b.glb",
+      "localPath": "Content/structures/Junkyard/junkyard_mound_b.glb",
+      "position": [
+        12.8,
+        -0.25,
+        -17.4
+      ],
+      "rotation": [
+        0,
+        -12,
+        0
+      ],
+      "scale": [
+        0.105,
+        0.19,
+        0.105
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 9,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Background",
+      "occlusionPriority": "Low",
+      "renderOrder": -5
+    },
+    {
+      "id": "BG_MOUND_06",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Left rear junkyard mound",
+      "sourcePath": "assets/Content/structures/Junkyard/junkyard_mound_a.glb",
+      "localPath": "Content/structures/Junkyard/junkyard_mound_a.glb",
+      "position": [
+        -20.5,
+        -0.25,
+        -14
+      ],
+      "rotation": [
+        0,
+        82,
+        0
+      ],
+      "scale": [
+        0.105,
+        0.2,
+        0.105
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 11,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Background",
+      "occlusionPriority": "Low",
+      "renderOrder": -5
+    },
+    {
+      "id": "BG_MOUND_07",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Left middle junkyard mound",
+      "sourcePath": "assets/Content/structures/Junkyard/junkyard_mound_b.glb",
+      "localPath": "Content/structures/Junkyard/junkyard_mound_b.glb",
+      "position": [
+        -22.5,
+        -0.25,
+        -9
+      ],
+      "rotation": [
+        0,
+        90,
+        0
+      ],
+      "scale": [
+        0.12,
+        0.21,
+        0.12
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 10,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Background",
+      "occlusionPriority": "Low",
+      "renderOrder": -5
+    },
+    {
+      "id": "BG_MOUND_08",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Left foreground junkyard mound",
+      "sourcePath": "assets/Content/structures/Junkyard/junkyard_mound_c.glb",
+      "localPath": "Content/structures/Junkyard/junkyard_mound_c.glb",
+      "position": [
+        -24,
+        -0.2,
+        -4
+      ],
+      "rotation": [
+        0,
+        96,
+        0
+      ],
+      "scale": [
+        0.14,
+        0.24,
+        0.14
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 10,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Background",
+      "occlusionPriority": "Low",
+      "renderOrder": -5
+    },
+    {
+      "id": "BG_MOUND_09",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Right rear junkyard mound",
+      "sourcePath": "assets/Content/structures/Junkyard/junkyard_mound_a.glb",
+      "localPath": "Content/structures/Junkyard/junkyard_mound_a.glb",
+      "position": [
+        20.5,
+        -0.25,
+        -14
+      ],
+      "rotation": [
+        0,
+        -82,
+        0
+      ],
+      "scale": [
+        0.105,
+        0.2,
+        0.105
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 11,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Background",
+      "occlusionPriority": "Low",
+      "renderOrder": -5
+    },
+    {
+      "id": "BG_MOUND_10",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Right middle junkyard mound",
+      "sourcePath": "assets/Content/structures/Junkyard/junkyard_mound_b.glb",
+      "localPath": "Content/structures/Junkyard/junkyard_mound_b.glb",
+      "position": [
+        22.5,
+        -0.25,
+        -9
+      ],
+      "rotation": [
+        0,
+        -90,
+        0
+      ],
+      "scale": [
+        0.12,
+        0.21,
+        0.12
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 10,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Background",
+      "occlusionPriority": "Low",
+      "renderOrder": -5
+    },
+    {
+      "id": "BG_MOUND_11",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Right foreground junkyard mound",
+      "sourcePath": "assets/Content/structures/Junkyard/junkyard_mound_c.glb",
+      "localPath": "Content/structures/Junkyard/junkyard_mound_c.glb",
+      "position": [
+        24,
+        -0.2,
+        -4
+      ],
+      "rotation": [
+        0,
+        -96,
+        0
+      ],
+      "scale": [
+        0.14,
+        0.24,
+        0.14
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 10,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Background",
+      "occlusionPriority": "Low",
+      "renderOrder": -5
+    },
+    {
+      "id": "BG_MOUND_12",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Left forward-rear junkyard mound",
+      "sourcePath": "assets/Content/structures/Junkyard/junkyard_mound_a.glb",
+      "localPath": "Content/structures/Junkyard/junkyard_mound_a.glb",
+      "position": [
+        -24.5,
+        -0.23,
+        0.5
+      ],
+      "rotation": [
+        0,
+        102,
+        0
+      ],
+      "scale": [
+        0.105,
+        0.19,
+        0.105
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 11,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Background",
+      "occlusionPriority": "Low",
+      "renderOrder": -5
+    },
+    {
+      "id": "BG_MOUND_13",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Left forward-middle junkyard mound",
+      "sourcePath": "assets/Content/structures/Junkyard/junkyard_mound_b.glb",
+      "localPath": "Content/structures/Junkyard/junkyard_mound_b.glb",
+      "position": [
+        -23,
+        -0.23,
+        5
+      ],
+      "rotation": [
+        0,
+        108,
+        0
+      ],
+      "scale": [
+        0.11,
+        0.2,
+        0.11
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 10,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Background",
+      "occlusionPriority": "Low",
+      "renderOrder": -5
+    },
+    {
+      "id": "BG_MOUND_14",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Left front-edge junkyard mound",
+      "sourcePath": "assets/Content/structures/Junkyard/junkyard_mound_c.glb",
+      "localPath": "Content/structures/Junkyard/junkyard_mound_c.glb",
+      "position": [
+        -20,
+        -0.2,
+        9.5
+      ],
+      "rotation": [
+        0,
+        116,
+        0
+      ],
+      "scale": [
+        0.12,
+        0.22,
+        0.12
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 10,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Background",
+      "occlusionPriority": "Low",
+      "renderOrder": -5
+    },
+    {
+      "id": "BG_MOUND_15",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Right forward-rear junkyard mound",
+      "sourcePath": "assets/Content/structures/Junkyard/junkyard_mound_a.glb",
+      "localPath": "Content/structures/Junkyard/junkyard_mound_a.glb",
+      "position": [
+        24.5,
+        -0.23,
+        0.5
+      ],
+      "rotation": [
+        0,
+        -102,
+        0
+      ],
+      "scale": [
+        0.105,
+        0.19,
+        0.105
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 11,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Background",
+      "occlusionPriority": "Low",
+      "renderOrder": -5
+    },
+    {
+      "id": "BG_MOUND_16",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Right forward-middle junkyard mound",
+      "sourcePath": "assets/Content/structures/Junkyard/junkyard_mound_b.glb",
+      "localPath": "Content/structures/Junkyard/junkyard_mound_b.glb",
+      "position": [
+        23,
+        -0.23,
+        5
+      ],
+      "rotation": [
+        0,
+        -108,
+        0
+      ],
+      "scale": [
+        0.11,
+        0.2,
+        0.11
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 10,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Background",
+      "occlusionPriority": "Low",
+      "renderOrder": -5
+    },
+    {
+      "id": "BG_MOUND_17",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Right front-edge junkyard mound",
+      "sourcePath": "assets/Content/structures/Junkyard/junkyard_mound_c.glb",
+      "localPath": "Content/structures/Junkyard/junkyard_mound_c.glb",
+      "position": [
+        20,
+        -0.2,
+        9.5
+      ],
+      "rotation": [
+        0,
+        -116,
+        0
+      ],
+      "scale": [
+        0.12,
+        0.22,
+        0.12
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 10,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Background",
+      "occlusionPriority": "Low",
+      "renderOrder": -5
+    },
+    {
+      "id": "BG_DETAIL_01",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Embedded compact wreck",
+      "sourcePath": "assets/Content/Vehicles/Compact/compact_car_a_rusty.glb",
+      "localPath": "Content/Vehicles/Compact/compact_car_a_rusty.glb",
+      "position": [
+        -12.5,
+        1.4,
+        -17
+      ],
+      "rotation": [
+        8,
+        24,
+        -12
+      ],
+      "scale": [
+        0.95,
+        0.95,
+        0.95
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 4.5,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Detail",
+      "occlusionPriority": "Low",
+      "renderOrder": -3
+    },
+    {
+      "id": "BG_DETAIL_02",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Embedded pickup wreck",
+      "sourcePath": "assets/Content/Vehicles/Crane_Magnet/shreddable_pickuptruck.glb",
+      "localPath": "Content/Vehicles/Crane_Magnet/shreddable_pickuptruck.glb",
+      "position": [
+        -9.5,
+        1.1,
+        -16.5
+      ],
+      "rotation": [
+        -6,
+        -40,
+        8
+      ],
+      "scale": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 5.2,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Detail",
+      "occlusionPriority": "Low",
+      "renderOrder": -3
+    },
+    {
+      "id": "BG_DETAIL_03",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Embedded compact wreck",
+      "sourcePath": "assets/Content/Vehicles/Compact/compact_car_a_rusty.glb",
+      "localPath": "Content/Vehicles/Compact/compact_car_a_rusty.glb",
+      "position": [
+        -6.4,
+        1.6,
+        -17.2
+      ],
+      "rotation": [
+        12,
+        95,
+        14
+      ],
+      "scale": [
+        0.92,
+        0.92,
+        0.92
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 4.4,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Detail",
+      "occlusionPriority": "Low",
+      "renderOrder": -3
+    },
+    {
+      "id": "BG_DETAIL_04",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Embedded pickup wreck",
+      "sourcePath": "assets/Content/Vehicles/Crane_Magnet/shreddable_pickuptruck.glb",
+      "localPath": "Content/Vehicles/Crane_Magnet/shreddable_pickuptruck.glb",
+      "position": [
+        -2.6,
+        1.5,
+        -17.5
+      ],
+      "rotation": [
+        -9,
+        20,
+        -13
+      ],
+      "scale": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 5.2,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Detail",
+      "occlusionPriority": "Low",
+      "renderOrder": -3
+    },
+    {
+      "id": "BG_DETAIL_05",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Embedded compact wreck",
+      "sourcePath": "assets/Content/Vehicles/Compact/compact_car_a_rusty.glb",
+      "localPath": "Content/Vehicles/Compact/compact_car_a_rusty.glb",
+      "position": [
+        0.7,
+        2,
+        -17.8
+      ],
+      "rotation": [
+        16,
+        -22,
+        8
+      ],
+      "scale": [
+        0.95,
+        0.95,
+        0.95
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 4.5,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Detail",
+      "occlusionPriority": "Low",
+      "renderOrder": -3
+    },
+    {
+      "id": "BG_DETAIL_06",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Embedded pickup wreck",
+      "sourcePath": "assets/Content/Vehicles/Crane_Magnet/shreddable_pickuptruck.glb",
+      "localPath": "Content/Vehicles/Crane_Magnet/shreddable_pickuptruck.glb",
+      "position": [
+        4.1,
+        1.45,
+        -17.3
+      ],
+      "rotation": [
+        -12,
+        64,
+        11
+      ],
+      "scale": [
+        0.88,
+        0.88,
+        0.88
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 5.1,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Detail",
+      "occlusionPriority": "Low",
+      "renderOrder": -3
+    },
+    {
+      "id": "BG_DETAIL_07",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Embedded compact wreck",
+      "sourcePath": "assets/Content/Vehicles/Compact/compact_car_a_rusty.glb",
+      "localPath": "Content/Vehicles/Compact/compact_car_a_rusty.glb",
+      "position": [
+        7.2,
+        1.5,
+        -16.8
+      ],
+      "rotation": [
+        9,
+        -48,
+        -14
+      ],
+      "scale": [
+        0.92,
+        0.92,
+        0.92
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 4.4,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Detail",
+      "occlusionPriority": "Low",
+      "renderOrder": -3
+    },
+    {
+      "id": "BG_DETAIL_08",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Embedded pickup wreck",
+      "sourcePath": "assets/Content/Vehicles/Crane_Magnet/shreddable_pickuptruck.glb",
+      "localPath": "Content/Vehicles/Crane_Magnet/shreddable_pickuptruck.glb",
+      "position": [
+        11,
+        1.35,
+        -17.1
+      ],
+      "rotation": [
+        -8,
+        26,
+        12
+      ],
+      "scale": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 5.2,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Detail",
+      "occlusionPriority": "Low",
+      "renderOrder": -3
+    },
+    {
+      "id": "BG_DETAIL_09",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Left-side compact wreck",
+      "sourcePath": "assets/Content/Vehicles/Compact/compact_car_a_rusty.glb",
+      "localPath": "Content/Vehicles/Compact/compact_car_a_rusty.glb",
+      "position": [
+        -21,
+        1.5,
+        -12.5
+      ],
+      "rotation": [
+        14,
+        88,
+        -9
+      ],
+      "scale": [
+        0.92,
+        0.92,
+        0.92
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 4.4,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Detail",
+      "occlusionPriority": "Low",
+      "renderOrder": -3
+    },
+    {
+      "id": "BG_DETAIL_10",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Left-side pickup wreck",
+      "sourcePath": "assets/Content/Vehicles/Crane_Magnet/shreddable_pickuptruck.glb",
+      "localPath": "Content/Vehicles/Crane_Magnet/shreddable_pickuptruck.glb",
+      "position": [
+        -23,
+        1.35,
+        -7
+      ],
+      "rotation": [
+        -10,
+        96,
+        12
+      ],
+      "scale": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 5.2,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Detail",
+      "occlusionPriority": "Low",
+      "renderOrder": -3
+    },
+    {
+      "id": "BG_DETAIL_11",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Right-side compact wreck",
+      "sourcePath": "assets/Content/Vehicles/Compact/compact_car_a_rusty.glb",
+      "localPath": "Content/Vehicles/Compact/compact_car_a_rusty.glb",
+      "position": [
+        21,
+        1.5,
+        -12.5
+      ],
+      "rotation": [
+        14,
+        -88,
+        9
+      ],
+      "scale": [
+        0.92,
+        0.92,
+        0.92
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 4.4,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Detail",
+      "occlusionPriority": "Low",
+      "renderOrder": -3
+    },
+    {
+      "id": "BG_DETAIL_12",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Right-side pickup wreck",
+      "sourcePath": "assets/Content/Vehicles/Crane_Magnet/shreddable_pickuptruck.glb",
+      "localPath": "Content/Vehicles/Crane_Magnet/shreddable_pickuptruck.glb",
+      "position": [
+        23,
+        1.35,
+        -7
+      ],
+      "rotation": [
+        -10,
+        -96,
+        -12
+      ],
+      "scale": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 5.2,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Detail",
+      "occlusionPriority": "Low",
+      "renderOrder": -3
+    },
+    {
+      "id": "BG_DETAIL_13",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Left foreground junk stack",
+      "sourcePath": "assets/Content/Props/Junkyard_stacks/junkyard_stack_a.glb",
+      "localPath": "Content/Props/Junkyard_stacks/junkyard_stack_a.glb",
+      "position": [
+        -24,
+        0.2,
+        -4.5
+      ],
+      "rotation": [
+        0,
+        78,
+        0
+      ],
+      "scale": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 3.5,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Detail",
+      "occlusionPriority": "Low",
+      "renderOrder": -3
+    },
+    {
+      "id": "BG_DETAIL_14",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Left foreground junk stack",
+      "sourcePath": "assets/Content/Props/Junkyard_stacks/junkyard_stack_b.glb",
+      "localPath": "Content/Props/Junkyard_stacks/junkyard_stack_b.glb",
+      "position": [
+        -25,
+        0.25,
+        -8.5
+      ],
+      "rotation": [
+        0,
+        102,
+        0
+      ],
+      "scale": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 3.5,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Detail",
+      "occlusionPriority": "Low",
+      "renderOrder": -3
+    },
+    {
+      "id": "BG_DETAIL_15",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Right foreground junk stack",
+      "sourcePath": "assets/Content/Props/Junkyard_stacks/junkyard_stack_c.glb",
+      "localPath": "Content/Props/Junkyard_stacks/junkyard_stack_c.glb",
+      "position": [
+        24,
+        0.2,
+        -4.5
+      ],
+      "rotation": [
+        0,
+        -78,
+        0
+      ],
+      "scale": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 3.5,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Detail",
+      "occlusionPriority": "Low",
+      "renderOrder": -3
+    },
+    {
+      "id": "BG_DETAIL_16",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Right foreground junk stack",
+      "sourcePath": "assets/Content/Props/Junkyard_stacks/junkyard_stack_d.glb",
+      "localPath": "Content/Props/Junkyard_stacks/junkyard_stack_d.glb",
+      "position": [
+        25,
+        0.25,
+        -8.5
+      ],
+      "rotation": [
+        0,
+        -102,
+        0
+      ],
+      "scale": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 3.5,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Detail",
+      "occlusionPriority": "Low",
+      "renderOrder": -3
+    },
+    {
+      "id": "BG_DETAIL_17",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Rear-left junk stack",
+      "sourcePath": "assets/Content/Props/Junkyard_stacks/junkyard_stack_e.glb",
+      "localPath": "Content/Props/Junkyard_stacks/junkyard_stack_e.glb",
+      "position": [
+        -4,
+        0.15,
+        -15.8
+      ],
+      "rotation": [
+        0,
+        12,
+        0
+      ],
+      "scale": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 3.5,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Detail",
+      "occlusionPriority": "Low",
+      "renderOrder": -3
+    },
+    {
+      "id": "BG_DETAIL_18",
+      "enabled": true,
+      "zone": "Backdrop",
+      "parent": "BACKDROP",
+      "role": "Rear-right junk stack",
+      "sourcePath": "assets/Content/Props/Junkyard_stacks/junkyard_stack_f.glb",
+      "localPath": "Content/Props/Junkyard_stacks/junkyard_stack_f.glb",
+      "position": [
+        4,
+        0.15,
+        -15.8
+      ],
+      "rotation": [
+        0,
+        -12,
+        0
+      ],
+      "scale": [
+        0.9,
+        0.9,
+        0.9
+      ],
+      "normalizeMode": "Native-meters preferred",
+      "targetExtent": 3.5,
+      "anchor": "Bottom-center",
+      "castShadow": false,
+      "receiveShadow": true,
+      "lodClass": "Detail",
+      "occlusionPriority": "Low",
+      "renderOrder": -3
     }
   ],
   "lights": [
@@ -3070,21 +4212,21 @@
       "Type": "Spot",
       "Parent": "SCENE_ROOT",
       "Fixture_Instance_ID": "FIX_SEARCH_L",
-      "Pos_X_m": -5.85,
+      "Pos_X_m": -20.5,
       "Pos_Y_m": 4.65,
-      "Pos_Z_m": 1.2,
-      "Target_X_m": -1.2,
+      "Pos_Z_m": -7,
+      "Target_X_m": -8,
       "Target_Y_m": 1.35,
-      "Target_Z_m": -0.5,
-      "Yaw_From_-Z_deg": -69.92,
-      "Pitch_deg": -33.68,
+      "Target_Z_m": -14,
+      "Yaw_From_-Z_deg": -60.75,
+      "Pitch_deg": -12.97,
       "Roll_deg": 0,
-      "Target_Distance_m": 5.95,
+      "Target_Distance_m": 14.7,
       "Intensity": 42000,
       "Intensity_Units": "candela",
       "Color_Temperature_K": 4300,
       "Color_Hex": "#FFD3AF",
-      "Range_m": 18,
+      "Range_m": 26,
       "Inner_Cone_deg": 18,
       "Outer_Cone_deg": 32,
       "Penumbra": 0.48,
@@ -3095,28 +4237,28 @@
       "Shadow_Bias": -0.0006,
       "Volumetric_Weight": 0.55,
       "Enabled": true,
-      "Notes": "Primary warm left key; allows left mannequin and weapon fan to read."
+      "Notes": "Moved beyond the orbit envelope; sweeps the distant left junkyard backdrop without intersecting the camera."
     },
     {
       "Entity_ID": "LIGHT_KEY_RIGHT",
       "Type": "Spot",
       "Parent": "SCENE_ROOT",
       "Fixture_Instance_ID": "FIX_SEARCH_R",
-      "Pos_X_m": 5.72,
+      "Pos_X_m": 20.5,
       "Pos_Y_m": 4.72,
-      "Pos_Z_m": 1.35,
-      "Target_X_m": 1.25,
+      "Pos_Z_m": -7,
+      "Target_X_m": 8,
       "Target_Y_m": 1.38,
-      "Target_Z_m": -0.55,
-      "Yaw_From_-Z_deg": 66.97,
-      "Pitch_deg": -34.51,
+      "Target_Z_m": -14,
+      "Yaw_From_-Z_deg": 60.75,
+      "Pitch_deg": -13.12,
       "Roll_deg": 0,
-      "Target_Distance_m": 5.89,
+      "Target_Distance_m": 14.71,
       "Intensity": 46000,
       "Intensity_Units": "candela",
       "Color_Temperature_K": 4650,
       "Color_Hex": "#FFE0C0",
-      "Range_m": 18,
+      "Range_m": 26,
       "Inner_Cone_deg": 17,
       "Outer_Cone_deg": 31,
       "Penumbra": 0.5,
@@ -3127,7 +4269,7 @@
       "Shadow_Bias": -0.0006,
       "Volumetric_Weight": 0.58,
       "Enabled": true,
-      "Notes": "Slightly brighter right key to reveal rockets and third-place armor."
+      "Notes": "Moved beyond the orbit envelope; sweeps the distant right junkyard backdrop without intersecting the camera."
     },
     {
       "Entity_ID": "LIGHT_RIM_CENTER",
@@ -3502,18 +4644,18 @@
           "enabled": true,
           "zone": "Left Cluster",
           "parent": "LEFT_CLUSTER",
-          "role": "Leaning/displayed weapon",
+          "role": "Left discarded rifle floor pile",
           "sourcePath": "assets/prefabs/Weapons/ak47u/ak47u.worldmodel.glb",
           "localPath": "prefabs/Weapons/ak47u/ak47u.worldmodel.glb",
           "position": [
-            -5.7,
-            1.35,
-            -2.18
+            -6.9,
+            0,
+            -3.12
           ],
           "rotation": [
-            2,
-            12,
-            -67
+            0,
+            16,
+            3
           ],
           "scale": [
             1,
@@ -3534,18 +4676,18 @@
           "enabled": true,
           "zone": "Left Cluster",
           "parent": "LEFT_CLUSTER",
-          "role": "Leaning/displayed weapon",
+          "role": "Left discarded rifle floor pile",
           "sourcePath": "assets/prefabs/Weapons/lr300/lr300.worldmodel.glb",
           "localPath": "prefabs/Weapons/lr300/lr300.worldmodel.glb",
           "position": [
-            -5.13,
-            1.72,
-            -2.28
+            -7.24,
+            0,
+            -3.46
           ],
           "rotation": [
-            -2,
-            -4,
-            -55
+            0,
+            -31,
+            -5
           ],
           "scale": [
             1,
@@ -3566,18 +4708,18 @@
           "enabled": true,
           "zone": "Left Cluster",
           "parent": "LEFT_CLUSTER",
-          "role": "Leaning/displayed weapon",
+          "role": "Left discarded SMG floor pile",
           "sourcePath": "assets/prefabs/Weapons/mp5/mp5.worldmodel.glb",
           "localPath": "prefabs/Weapons/mp5/mp5.worldmodel.glb",
           "position": [
-            -4.47,
-            1.42,
-            -2.38
+            -6.54,
+            0,
+            -3.72
           ],
           "rotation": [
             0,
-            10,
-            -78
+            47,
+            7
           ],
           "scale": [
             1,
@@ -3596,20 +4738,20 @@
         {
           "id": "L_WEAPON_SPAS",
           "enabled": true,
-          "zone": "Left Cluster",
-          "parent": "LEFT_CLUSTER",
-          "role": "Leaning/displayed weapon",
+          "zone": "Right Cluster",
+          "parent": "RIGHT_CLUSTER",
+          "role": "Right discarded shotgun floor pile",
           "sourcePath": "assets/prefabs/Weapons/spas12/spas12.worldmodel.glb",
           "localPath": "prefabs/Weapons/spas12/spas12.worldmodel.glb",
           "position": [
-            -3.75,
-            1.78,
-            -2.52
+            6.92,
+            0,
+            -3.1
           ],
           "rotation": [
-            1,
-            -15,
-            -51
+            0,
+            -16,
+            -3
           ],
           "scale": [
             1,
@@ -3628,20 +4770,20 @@
         {
           "id": "C_WEAPON_AK",
           "enabled": true,
-          "zone": "Center Cluster",
-          "parent": "CENTER_CLUSTER",
-          "role": "Hero weapon fan",
+          "zone": "Right Cluster",
+          "parent": "RIGHT_CLUSTER",
+          "role": "Right discarded rifle floor pile",
           "sourcePath": "assets/prefabs/Weapons/ak47u/ak47u.worldmodel.glb",
           "localPath": "prefabs/Weapons/ak47u/ak47u.worldmodel.glb",
           "position": [
-            0.72,
-            1.48,
-            -2.02
+            7.26,
+            0,
+            -3.48
           ],
           "rotation": [
             0,
-            -9,
-            61
+            31,
+            5
           ],
           "scale": [
             1,
@@ -3660,20 +4802,20 @@
         {
           "id": "C_WEAPON_HMLMG",
           "enabled": true,
-          "zone": "Center Cluster",
-          "parent": "CENTER_CLUSTER",
-          "role": "Hero weapon fan",
+          "zone": "Right Cluster",
+          "parent": "RIGHT_CLUSTER",
+          "role": "Right discarded machine-gun floor pile",
           "sourcePath": "assets/prefabs/Weapons/HMLMG/hmlmg.worldmodel.glb",
           "localPath": "prefabs/Weapons/HMLMG/hmlmg.worldmodel.glb",
           "position": [
-            1.2,
-            0.98,
-            -2.25
+            6.52,
+            0,
+            -3.74
           ],
           "rotation": [
-            2,
-            -16,
-            58
+            0,
+            -47,
+            -7
           ],
           "scale": [
             1,
@@ -4383,6 +5525,24 @@
       "localPath": "Content/Props/Rubble_piles/conc_pile_6x6.glb",
       "bytes": 64088,
       "sha256": "a9b8ff6f0d66bd4dc356c386a71b04e9698dc0a6f2b1bf87f3c73f4d3a06d876"
+    },
+    {
+      "sourcePath": "assets/Content/structures/Junkyard/junkyard_mound_a.glb",
+      "localPath": "Content/structures/Junkyard/junkyard_mound_a.glb",
+      "bytes": 247772,
+      "sha256": "13203a463df4b84b910074325f07f90243f38d47987efaf13fcc1b795a22925a"
+    },
+    {
+      "sourcePath": "assets/Content/structures/Junkyard/junkyard_mound_b.glb",
+      "localPath": "Content/structures/Junkyard/junkyard_mound_b.glb",
+      "bytes": 247836,
+      "sha256": "5b7334a960f862a124816317ecd7a894ad15be6e8059b6a5d3234e056de71784"
+    },
+    {
+      "sourcePath": "assets/Content/structures/Junkyard/junkyard_mound_c.glb",
+      "localPath": "Content/structures/Junkyard/junkyard_mound_c.glb",
+      "bytes": 227876,
+      "sha256": "6451c15334ceb4d38ceb1ee399058bdc1eefeaaf45e398a62c9a4c0ab68dbc7e"
     },
     {
       "sourcePath": "assets/Content/Vehicles/AttackHelicopter/ahmissilepod.glb",

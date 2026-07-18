@@ -1,6 +1,8 @@
 import {
   EDITOR_SOURCE_SCHEMA_VERSION,
   SourceValidationError,
+  SUPPORTED_AMMO_TYPES,
+  SUPPORTED_AUDIO_CUES,
   SUPPORTED_PAYLOADS,
   SUPPORTED_VEHICLES,
   type EditorSourceBundle,
@@ -18,6 +20,9 @@ const MAX_WAYPOINTS = 256;
 const MAX_MANUAL_EVENTS = 80;
 const MAX_COMPILED_RELEASE_UNITS = 2000;
 const MAX_REPEATED_GROUPS = 40;
+const MAX_AUDIO_EVENTS = 160;
+const MAX_AUDIO_GROUPS = 40;
+const MAX_AUDIO_CUES_PER_GROUP = 160;
 
 function addIssue(issues: ValidationIssue[], path: string, code: string, message: string): void {
   issues.push({ path, code, message });
@@ -78,6 +83,17 @@ function validatePayloadFields(
     addIssue(issues, `${path}.Payload`, "supported_payload", "Must be a supported payload identifier.");
   } else if (payload !== "" && !SUPPORTED_PAYLOADS.includes(payload as never)) {
     addIssue(issues, `${path}.Payload`, "supported_payload", "Must be empty or a supported payload identifier.");
+  }
+  if (value.AmmoSequence !== undefined) {
+    if (!Array.isArray(value.AmmoSequence) || value.AmmoSequence.length > 32) {
+      addIssue(issues, `${path}.AmmoSequence`, "ammo_sequence", "Must be an array of at most 32 ammo identifiers.");
+    } else {
+      value.AmmoSequence.forEach((ammo, index) => {
+        if (typeof ammo !== "string" || !SUPPORTED_AMMO_TYPES.includes(ammo as never)) {
+          addIssue(issues, `${path}.AmmoSequence[${index}]`, "supported_ammo", "Must be a supported ammo identifier.");
+        }
+      });
+    }
   }
   validateInteger(value.Count, `${path}.Count`, issues, 1, MAX_COMPILED_RELEASE_UNITS);
   validateFinite(value.CarrierOffsetX, `${path}.CarrierOffsetX`, issues, -250, 250);
@@ -406,6 +422,66 @@ function validateProfile(
     }
   }
 
+  if (profile.AudioSource !== undefined) {
+    const audioPath = `${path}.AudioSource`;
+    if (!isRecord(profile.AudioSource)) {
+      addIssue(issues, audioPath, "object", "Must be an object.");
+    } else {
+      const audio = profile.AudioSource;
+      if (audio.Mode !== "automatic" && audio.Mode !== "authored") {
+        addIssue(issues, `${audioPath}.Mode`, "audio_mode", "Must be automatic or authored.");
+      }
+      const validateCue = (value: Record<string, unknown>, cuePath: string): void => {
+        if (typeof value.Cue !== "string" || !SUPPORTED_AUDIO_CUES.includes(value.Cue as never)) {
+          addIssue(issues, `${cuePath}.Cue`, "supported_audio_cue", "Must be a supported audio cue.");
+        }
+        if (value.Anchor !== "carrier" && value.Anchor !== "target") {
+          addIssue(issues, `${cuePath}.Anchor`, "audio_anchor", "Must be carrier or target.");
+        }
+        validateFinite(value.OffsetX, `${cuePath}.OffsetX`, issues, -500, 500);
+        validateFinite(value.OffsetY, `${cuePath}.OffsetY`, issues, -500, 500);
+        validateFinite(value.OffsetZ, `${cuePath}.OffsetZ`, issues, -500, 500);
+      };
+      if (!Array.isArray(audio.Events) || audio.Events.length > MAX_AUDIO_EVENTS) {
+        addIssue(issues, `${audioPath}.Events`, "audio_events", `Must be an array of at most ${MAX_AUDIO_EVENTS} events.`);
+      } else {
+        const ids = new Set<string>();
+        audio.Events.forEach((event, index) => {
+          const eventPath = `${audioPath}.Events[${index}]`;
+          if (!isRecord(event)) return addIssue(issues, eventPath, "object", "Must be an object.");
+          if (typeof event.Id !== "string" || !STABLE_ID_PATTERN.test(event.Id) || ids.has(event.Id)) {
+            addIssue(issues, `${eventPath}.Id`, "stable_id", "Must be a unique safe audio-event ID.");
+          } else ids.add(event.Id);
+          validateFinite(event.Time, `${eventPath}.Time`, issues, 0, Number(profile.DurationSeconds));
+          validateCue(event, eventPath);
+        });
+      }
+      if (!Array.isArray(audio.Groups) || audio.Groups.length > MAX_AUDIO_GROUPS) {
+        addIssue(issues, `${audioPath}.Groups`, "audio_groups", `Must be an array of at most ${MAX_AUDIO_GROUPS} groups.`);
+      } else {
+        const ids = new Set<string>();
+        audio.Groups.forEach((group, index) => {
+          const groupPath = `${audioPath}.Groups[${index}]`;
+          if (!isRecord(group)) return addIssue(issues, groupPath, "object", "Must be an object.");
+          if (typeof group.Id !== "string" || !STABLE_ID_PATTERN.test(group.Id) || ids.has(group.Id)) {
+            addIssue(issues, `${groupPath}.Id`, "stable_id", "Must be a unique safe audio-group ID.");
+          } else ids.add(group.Id);
+          if (typeof group.Name !== "string" || group.Name.trim() === "" || group.Name.length > 100) {
+            addIssue(issues, `${groupPath}.Name`, "name", "Must be a name between 1 and 100 characters.");
+          }
+          validateFinite(group.StartTime, `${groupPath}.StartTime`, issues, 0, Number(profile.DurationSeconds));
+          validateFinite(group.EndTime, `${groupPath}.EndTime`, issues, 0, Number(profile.DurationSeconds));
+          if (typeof group.StartTime === "number" && typeof group.EndTime === "number" && group.EndTime < group.StartTime) {
+            addIssue(issues, `${groupPath}.EndTime`, "audio_time_range", "Must not precede StartTime.");
+          }
+          validateFinite(group.IntervalSeconds, `${groupPath}.IntervalSeconds`, issues, 0.05, 30);
+          validateInteger(group.MaximumCues, `${groupPath}.MaximumCues`, issues, 1, MAX_AUDIO_CUES_PER_GROUP);
+          validateCue(group, groupPath);
+        });
+      }
+    }
+  }
+
   const editorMetadata = isRecord(profile.EditorMetadata) ? profile.EditorMetadata : {};
   const globalSpeed = editorMetadata.GlobalTargetSpeedMetersPerSecond;
   if (globalSpeed !== undefined) {
@@ -462,6 +538,7 @@ export function assertValidSourceBundle(value: unknown, metadata?: VehiclePrevie
 export function clonePayloadFields(fields: PayloadEventFields): PayloadEventFields {
   return {
     Payload: fields.Payload,
+    AmmoSequence: [...(fields.AmmoSequence ?? [])],
     Count: fields.Count,
     CarrierOffsetX: fields.CarrierOffsetX,
     CarrierOffsetY: fields.CarrierOffsetY,

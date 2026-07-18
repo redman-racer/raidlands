@@ -17,33 +17,42 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteMapBridge", "Raidlands", "1.0.23")]
+    [Info("WebsiteMapBridge", "Raidlands", "1.1.0")]
     [Description("Publishes the current RustMapApi map image and sampled terrain to the Raidlands website.")]
     public class WebsiteMapBridge : CovalencePlugin
     {
         [PluginReference] private Plugin RustMapApi;
         [PluginReference] private Plugin Clans;
         [PluginReference] private Plugin RaidlandsEvents;
+        [PluginReference] private Plugin WebsiteBridgeHub;
 
         private const string SecretsConfigName = "Secrets.local";
         private const string VipBridgeConfigName = "WebsiteVipBridge";
         private const int EncodingJpg = 1;
         private const int EncodingPng = 2;
+        private const string ReplayOutboxDataFile = "WebsiteMapBridge/replay_outbox";
+        private const int MaximumReplayOutboxEntries = 2000;
 
         private Configuration config;
         private Timer autoPublishTimer;
+        private Timer mapPublishRetryTimer;
         private Timer playerLocationTimer;
         private Timer environmentTimer;
         private Timer worldEventTimer;
+        private Timer worldEntityReconciliationTimer;
+        private List<BaseNetworkable> worldEntityReconciliationSnapshot;
+        private int worldEntityReconciliationIndex;
         private Dictionary<string, string> secrets;
         private string secretsConfigSource;
         private JObject vipBridgeConfig;
         private bool publishInFlight;
+        private int mapPublishFailures;
         private string lastPublishedWipeKey = "";
         private string lastEnvironmentSyncAt = "";
         private string lastEnvironmentDiagnosticSummary = "awaiting first environment sample";
         private long lastEnvironmentSampleMilliseconds;
         private string lastWeatherOverrideSignature = "";
+        private JObject cachedEnvironmentExchangePayload;
         private bool worldEventPublishInFlight;
         private DateTime worldEventPublishStartedUtc = DateTime.MinValue;
         private long worldEventPublishGeneration;
@@ -56,6 +65,9 @@ namespace Oxide.Plugins
         private readonly Dictionary<ulong, bool> discreteEntityStates = new Dictionary<ulong, bool>();
         private readonly Dictionary<ulong, AirdropCorrelation> airdropCorrelations = new Dictionary<ulong, AirdropCorrelation>();
         private readonly Dictionary<string, MemberInfo> weatherConVarMemberCache = new Dictionary<string, MemberInfo>(StringComparer.OrdinalIgnoreCase);
+        private ReplayOutboxState replayOutbox;
+        private readonly Dictionary<long, Dictionary<string, string>> replayBatchesBySequence = new Dictionary<long, Dictionary<string, string>>();
+        private const int WorldEntityReconciliationBatchSize = 250;
 
         private class Configuration
         {
@@ -344,8 +356,15 @@ namespace Oxide.Plugins
             public float x;
             public float y;
             public float z;
+            public string profile_key;
             public string vehicle;
             public Dictionary<string, object> payload;
+        }
+
+        private class ReplayOutboxState
+        {
+            public Dictionary<string, ReplayEventPayload> pending = new Dictionary<string, ReplayEventPayload>(StringComparer.OrdinalIgnoreCase);
+            public Dictionary<string, ReplayEventPayload> quarantined = new Dictionary<string, ReplayEventPayload>(StringComparer.OrdinalIgnoreCase);
         }
 
         private class ReplayEventSnapshotResponse
@@ -425,6 +444,7 @@ namespace Oxide.Plugins
         private void OnServerInitialized()
         {
             LogBridgeSecretDiagnostics();
+            LoadReplayOutbox();
             if (config.AutoPublishOnServerInitialized)
             {
                 QueueAutoPublish("server initialized");
@@ -432,6 +452,10 @@ namespace Oxide.Plugins
             StartPlayerLocationPublisher();
             StartEnvironmentPublisher();
             StartWorldEventPublisher();
+            if (WebsiteBridgeHub == null || !WebsiteBridgeHub.IsLoaded)
+            {
+                PrintError("WebsiteBridgeHub is not loaded. Frequent map telemetry is queued locally; no legacy publishing fallback will be started.");
+            }
         }
 
         private void OnNewSave(string filename)
@@ -448,13 +472,26 @@ namespace Oxide.Plugins
             }
 
             var baseEntity = entity as BaseEntity;
-            var prefab = baseEntity == null ? "" : (baseEntity.PrefabName ?? baseEntity.ShortPrefabName ?? "");
+            if (baseEntity == null)
+            {
+                return;
+            }
+
+            var prefab = baseEntity.PrefabName ?? baseEntity.ShortPrefabName ?? "";
             if (prefab.IndexOf("supply_drop", StringComparison.OrdinalIgnoreCase) >= 0)
             {
                 timer.Once(0.25f, () => PublishAirdropReplayEvent(baseEntity, false));
             }
 
-            timer.Once(0.5f, () => TryTrackWorldEntity(baseEntity, true));
+            if (config.PublishWorldEvents && IsWorldEventCandidate(baseEntity))
+            {
+                timer.Once(0.5f, () => TryTrackWorldEntity(baseEntity, true));
+            }
+
+            if (config.PublishDiscreteServerEvents && IsIndustrialDieselEngine(baseEntity))
+            {
+                timer.Once(0.5f, () => TrackIndustrialDieselEngine(baseEntity, true));
+            }
         }
 
         private void OnEntityKill(BaseNetworkable entity)
@@ -471,6 +508,11 @@ namespace Oxide.Plugins
             {
                 airdropCorrelations.Remove(baseEntity.net.ID.Value);
             }
+        }
+
+        private void OnDieselEngineToggled(DieselEngine engine)
+        {
+            TrackIndustrialDieselEngine(engine, true);
         }
 
         private void OnSupplyDropLanded(SupplyDrop entity)
@@ -495,15 +537,20 @@ namespace Oxide.Plugins
         {
             autoPublishTimer?.Destroy();
             autoPublishTimer = null;
+            mapPublishRetryTimer?.Destroy();
+            mapPublishRetryTimer = null;
             playerLocationTimer?.Destroy();
             playerLocationTimer = null;
             environmentTimer?.Destroy();
             environmentTimer = null;
             worldEventTimer?.Destroy();
             worldEventTimer = null;
+            StopWorldEntityReconciliation();
             trackedWorldEntities.Clear();
             discreteEntityStates.Clear();
             airdropCorrelations.Clear();
+            SaveReplayOutbox();
+            replayBatchesBySequence.Clear();
         }
 
         private void OnRustMapApiReady()
@@ -590,7 +637,7 @@ namespace Oxide.Plugins
                 return;
             }
 
-            ReplyToCommand(arg, "WebsiteMapBridge v1.0.23 status requested; reading cached diagnostics.");
+            ReplyToCommand(arg, "WebsiteMapBridge v1.1.0 status requested; reading cached diagnostics.");
 
             try
             {
@@ -600,7 +647,7 @@ namespace Oxide.Plugins
 
                 ReplyToCommand(
                     arg,
-                    $"WebsiteMapBridge v1.0.23 status: server={ResolveServerId()}, api={apiState}, ready=not-probed, secret={secretState}, render={config.RenderName}, textureRender={config.TextureRenderName}, autoPublishReady={config.AutoPublishOnRustMapApiReady}, autoPublishInit={config.AutoPublishOnServerInitialized}, terrainEnabled={config.PublishTerrain}, terrainResolution={config.TerrainSampleResolution}, monumentsEnabled={config.IncludeMonuments}, roads=enabled, powerLines=enabled, skybox={config.PublishSkybox}/{config.SkyboxImagePath}, playerLocations={config.PublishPlayerLocations}/{config.PlayerLocationIntervalSeconds}s, raidlandsEvents={config.PublishRaidlandsEvents}/{(RaidlandsEvents != null && RaidlandsEvents.IsLoaded ? "ready" : "missing")}, worldEvents={config.PublishWorldEvents}/{config.WorldEventIntervalSeconds}s active={trackedWorldEntities.Values.Count(entry => entry.state != "ended")} last={lastWorldEventSyncAt} accepted={lastWorldEventAccepted} inFlight={worldEventPublishInFlight}/{WorldEventPublishAgeSeconds():0.0}s error={lastWorldEventError}, environment={config.PublishEnvironment}/{config.EnvironmentIntervalSeconds}s last={FirstNonEmpty(lastEnvironmentSyncAt, "never")}, sampleMs={lastEnvironmentSampleMilliseconds}, sampled=[{lastEnvironmentDiagnosticSummary}], replayEvents={config.PublishReplayEvents}, heightMap={heightMapState}, lastWipe={lastPublishedWipeKey}."
+                    $"WebsiteMapBridge v1.1.0 status: server={ResolveServerId()}, api={apiState}, ready=not-probed, secret={secretState}, render={config.RenderName}, textureRender={config.TextureRenderName}, autoPublishReady={config.AutoPublishOnRustMapApiReady}, autoPublishInit={config.AutoPublishOnServerInitialized}, terrainEnabled={config.PublishTerrain}, terrainResolution={config.TerrainSampleResolution}, monumentsEnabled={config.IncludeMonuments}, roads=enabled, powerLines=enabled, skybox={config.PublishSkybox}/{config.SkyboxImagePath}, playerLocations={config.PublishPlayerLocations}/{config.PlayerLocationIntervalSeconds}s, raidlandsEvents={config.PublishRaidlandsEvents}/{(RaidlandsEvents != null && RaidlandsEvents.IsLoaded ? "ready" : "missing")}, worldEvents={config.PublishWorldEvents}/{config.WorldEventIntervalSeconds}s active={trackedWorldEntities.Values.Count(entry => entry.state != "ended")} last={lastWorldEventSyncAt} accepted={lastWorldEventAccepted} inFlight={worldEventPublishInFlight}/{WorldEventPublishAgeSeconds():0.0}s error={lastWorldEventError}, environment={config.PublishEnvironment}/{config.EnvironmentIntervalSeconds}s last={FirstNonEmpty(lastEnvironmentSyncAt, "never")}, sampleMs={lastEnvironmentSampleMilliseconds}, sampled=[{lastEnvironmentDiagnosticSummary}], replayEvents={config.PublishReplayEvents}, heightMap={heightMapState}, lastWipe={lastPublishedWipeKey}."
                 );
             }
             catch (Exception ex)
@@ -756,43 +803,53 @@ namespace Oxide.Plugins
         {
             playerLocationTimer?.Destroy();
             playerLocationTimer = null;
-
-            if (!config.PublishPlayerLocations && !config.PublishRaidlandsEvents)
-            {
-                return;
-            }
-
-            var interval = Math.Max(5, config.PlayerLocationIntervalSeconds);
-            playerLocationTimer = timer.Every(interval, () => PublishPlayerLocations(message => Puts(message), false));
-            timer.Once(Math.Max(3, Math.Min(10, interval)), () => PublishPlayerLocations(message => Puts(message), false));
         }
 
         private void StartEnvironmentPublisher()
         {
             environmentTimer?.Destroy();
             environmentTimer = null;
-
             if (!config.PublishEnvironment)
             {
                 return;
             }
-
             var interval = Math.Max(30, config.EnvironmentIntervalSeconds);
-            environmentTimer = timer.Every(interval, () => PublishEnvironment(message => Puts(message), false));
-            timer.Once(Math.Max(3, Math.Min(10, interval)), () => PublishEnvironment(message => Puts(message), false));
+            timer.Once(1f, SampleEnvironmentForExchange);
+            environmentTimer = timer.Every(interval, SampleEnvironmentForExchange);
+        }
+
+        private void SampleEnvironmentForExchange()
+        {
+            var sampleTimer = System.Diagnostics.Stopwatch.StartNew();
+            try
+            {
+                var environment = CreateEnvironmentPayload();
+                sampleTimer.Stop();
+                lastEnvironmentSampleMilliseconds = sampleTimer.ElapsedMilliseconds;
+                lastEnvironmentDiagnosticSummary = $"TOD {environment.rust_time:0.00}, cloud {FormatSample(environment.cloud_coverage)}, rain {FormatSample(environment.rain_intensity)}, fog {FormatSample(environment.fog_intensity)}; {environment.weather_sample_summary}";
+                ReportWeatherOverrideMode(environment.weather);
+                cachedEnvironmentExchangePayload = JObject.FromObject(environment);
+            }
+            catch (Exception ex)
+            {
+                sampleTimer.Stop();
+                lastEnvironmentSampleMilliseconds = sampleTimer.ElapsedMilliseconds;
+                PrintWarning("Environment exchange sampling failed: " + ex.Message);
+            }
         }
 
         private void StartWorldEventPublisher()
         {
             worldEventTimer?.Destroy();
             worldEventTimer = null;
+            StopWorldEntityReconciliation();
 
             if (!config.PublishReplayEvents || (!config.PublishWorldEvents && !config.PublishDiscreteServerEvents))
             {
                 return;
             }
 
-            DiscoverWorldEntities();
+            StartWorldEntityReconciliation();
             var interval = Math.Max(3, config.WorldEventIntervalSeconds);
             worldEventTimer = timer.Every(interval, () => SampleAndPublishWorldEvents(message => Puts(message), false));
             timer.Once(Math.Max(2, Math.Min(5, interval)), () => SampleAndPublishWorldEvents(message => Puts(message), false));
@@ -1847,17 +1904,92 @@ namespace Oxide.Plugins
             });
         }
 
-        private void DiscoverWorldEntities()
+        private void StartWorldEntityReconciliation()
         {
-            if (!config.PublishWorldEvents || BaseNetworkable.serverEntities == null)
+            StopWorldEntityReconciliation();
+            if (BaseNetworkable.serverEntities == null)
             {
                 return;
             }
 
-            foreach (var networkable in BaseNetworkable.serverEntities.ToList())
+            worldEntityReconciliationSnapshot = BaseNetworkable.serverEntities.ToList();
+            worldEntityReconciliationIndex = 0;
+            ProcessWorldEntityReconciliationBatch();
+            if (worldEntityReconciliationSnapshot != null)
             {
-                TryTrackWorldEntity(networkable as BaseEntity, false);
+                worldEntityReconciliationTimer = timer.Every(0.05f, ProcessWorldEntityReconciliationBatch);
             }
+        }
+
+        private void ProcessWorldEntityReconciliationBatch()
+        {
+            var snapshot = worldEntityReconciliationSnapshot;
+            if (snapshot == null)
+            {
+                StopWorldEntityReconciliation();
+                return;
+            }
+
+            var end = Math.Min(snapshot.Count, worldEntityReconciliationIndex + WorldEntityReconciliationBatchSize);
+            for (; worldEntityReconciliationIndex < end; worldEntityReconciliationIndex++)
+            {
+                var entity = snapshot[worldEntityReconciliationIndex] as BaseEntity;
+                if (entity == null || entity.IsDestroyed || entity.net == null)
+                {
+                    continue;
+                }
+
+                if (config.PublishWorldEvents && IsWorldEventCandidate(entity))
+                {
+                    TryTrackWorldEntity(entity, false);
+                }
+
+                if (config.PublishDiscreteServerEvents && IsIndustrialDieselEngine(entity))
+                {
+                    TrackIndustrialDieselEngine(entity, true);
+                }
+            }
+
+            if (worldEntityReconciliationIndex < snapshot.Count)
+            {
+                return;
+            }
+
+            StopWorldEntityReconciliation();
+        }
+
+        private void StopWorldEntityReconciliation()
+        {
+            worldEntityReconciliationTimer?.Destroy();
+            worldEntityReconciliationTimer = null;
+            worldEntityReconciliationSnapshot = null;
+            worldEntityReconciliationIndex = 0;
+        }
+
+        private bool IsWorldEventCandidate(BaseEntity entity)
+        {
+            if (entity == null)
+            {
+                return false;
+            }
+
+            if (entity is BradleyAPC || entity is PatrolHelicopter || entity is CargoPlane || entity is CargoShip)
+            {
+                return true;
+            }
+
+            var prefab = entity.PrefabName ?? entity.ShortPrefabName ?? "";
+            var typeName = entity.GetType().Name;
+            return prefab.IndexOf("bradleyapc", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   prefab.IndexOf("m2bradley", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   prefab.IndexOf("patrolhelicopter", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   prefab.IndexOf("cargo_plane", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   prefab.IndexOf("cargoplane", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   prefab.IndexOf("ch47", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   prefab.IndexOf("cargoship", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   prefab.IndexOf("f15", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   typeName.IndexOf("ch47", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   typeName.IndexOf("f15", StringComparison.OrdinalIgnoreCase) >= 0;
         }
 
         private void TryTrackWorldEntity(BaseEntity entity, bool spawnedNow)
@@ -1989,12 +2121,6 @@ namespace Oxide.Plugins
                 return;
             }
 
-            DiscoverWorldEntities();
-            if (config.PublishDiscreteServerEvents)
-            {
-                SampleDiscreteEntityStates();
-            }
-
             var now = DateTime.UtcNow;
             foreach (var tracked in trackedWorldEntities.Values.ToList())
             {
@@ -2093,36 +2219,6 @@ namespace Oxide.Plugins
 
         private void PublishTrackedWorldEntities(Action<string> reply, bool verbose)
         {
-            if (worldEventPublishInFlight)
-            {
-                var inFlightAgeSeconds = WorldEventPublishAgeSeconds();
-                if (inFlightAgeSeconds <= WorldEventInFlightTimeoutSeconds())
-                {
-                    if (verbose)
-                    {
-                        reply?.Invoke($"Website world-event sync is already in flight ({inFlightAgeSeconds:0.0}s).");
-                    }
-                    return;
-                }
-
-                lastWorldEventError = $"abandoned stuck request after {inFlightAgeSeconds:0.0}s";
-                PrintWarning("Website world-event sync watchdog released a stuck request: " + lastWorldEventError);
-                worldEventPublishInFlight = false;
-                worldEventPublishStartedUtc = DateTime.MinValue;
-                activeWorldEventPublishGeneration = 0;
-            }
-
-            var secret = ResolveBridgeSharedSecret();
-            if (string.IsNullOrWhiteSpace(secret))
-            {
-                lastWorldEventError = "shared secret missing";
-                if (verbose)
-                {
-                    reply?.Invoke("Cannot sync website world events because the bridge SharedSecret is empty.");
-                }
-                return;
-            }
-
             var trackedToPublish = trackedWorldEntities.Values.Where(entry => entry.dirty).Take(250).ToList();
             if (trackedToPublish.Count == 0)
             {
@@ -2139,70 +2235,25 @@ namespace Oxide.Plugins
                 return;
             }
 
-            var snapshot = new ReplayEventSnapshotPayload
+            QueueReplayEvents(events);
+            foreach (var tracked in trackedToPublish)
             {
-                server_id = ResolveServerId(),
-                wipe_key = ResolveWipeKey(),
-                events = events
-            };
-            var body = JsonConvert.SerializeObject(snapshot);
-            var publishedRevisions = trackedToPublish.ToDictionary(entry => entry.networkId, entry => entry.revision);
-            lastWorldEventPayloadBytes = Encoding.UTF8.GetByteCount(body);
-            var url = $"{TrimSlash(ResolveApiBaseUrl())}/api/server/map-replay-events-snapshot.php";
-            var publishGeneration = ++worldEventPublishGeneration;
-            activeWorldEventPublishGeneration = publishGeneration;
-            worldEventPublishStartedUtc = DateTime.UtcNow;
-            worldEventPublishInFlight = true;
-            SendPost(url, body, (code, response) =>
+                tracked.dirty = false;
+                if (tracked.state == "spawned")
+                {
+                    tracked.state = "active";
+                    tracked.dirty = true;
+                    tracked.revision++;
+                }
+                else if (tracked.state == "ended")
+                {
+                    trackedWorldEntities.Remove(tracked.networkId);
+                }
+            }
+            if (verbose)
             {
-                if (activeWorldEventPublishGeneration != publishGeneration)
-                {
-                    return;
-                }
-                worldEventPublishInFlight = false;
-                worldEventPublishStartedUtc = DateTime.MinValue;
-                activeWorldEventPublishGeneration = 0;
-                int accepted;
-                string requestError;
-                if (!TryValidateReplayEventResponse(code, response, events.Count, out accepted, out requestError))
-                {
-                    lastWorldEventAccepted = accepted;
-                    lastWorldEventError = requestError;
-                    if (verbose)
-                    {
-                        reply?.Invoke("Website world-event sync failed: " + requestError);
-                    }
-                    return;
-                }
-
-                lastWorldEventAccepted = accepted;
-                lastWorldEventError = "none";
-                lastWorldEventSyncAt = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
-                foreach (var tracked in trackedToPublish)
-                {
-                    int publishedRevision;
-                    if (!publishedRevisions.TryGetValue(tracked.networkId, out publishedRevision) || tracked.revision != publishedRevision)
-                    {
-                        continue;
-                    }
-                    tracked.dirty = false;
-                    if (tracked.state == "spawned")
-                    {
-                        tracked.state = "active";
-                        tracked.dirty = true;
-                        tracked.revision++;
-                    }
-                    else if (tracked.state == "ended")
-                    {
-                        trackedWorldEntities.Remove(tracked.networkId);
-                    }
-                }
-
-                if (verbose)
-                {
-                    reply?.Invoke($"Website world events synced: {accepted}/{events.Count} accepted. {BuildWorldEventStatus()}");
-                }
-            });
+                reply?.Invoke($"Queued {events.Count} website world event(s). {BuildWorldEventStatus()}");
+            }
         }
 
         private ReplayEventPayload CreateTrackedWorldReplayEvent(TrackedWorldEntity tracked)
@@ -2480,79 +2531,75 @@ namespace Oxide.Plugins
             }
         }
 
-        private void SampleDiscreteEntityStates()
+        private bool IsIndustrialDieselEngine(BaseEntity entity)
         {
-            if (BaseNetworkable.serverEntities == null)
+            if (entity == null)
+            {
+                return false;
+            }
+
+            if (entity is DieselEngine)
+            {
+                return true;
+            }
+
+            var prefab = entity.PrefabName ?? entity.ShortPrefabName ?? "";
+            return prefab.IndexOf("diesel_engine", StringComparison.OrdinalIgnoreCase) >= 0 ||
+                   prefab.IndexOf("dieselengine", StringComparison.OrdinalIgnoreCase) >= 0;
+        }
+
+        private void TrackIndustrialDieselEngine(BaseEntity entity, bool publishActiveOnFirstObservation)
+        {
+            if (!config.PublishReplayEvents || !config.PublishDiscreteServerEvents ||
+                entity == null || entity.IsDestroyed || entity.net == null || !IsIndustrialDieselEngine(entity))
             {
                 return;
             }
 
-            var seen = new HashSet<ulong>();
-            foreach (var networkable in BaseNetworkable.serverEntities.ToList())
+            var monument = FindNearestMonumentContext(entity.transform.position);
+            var isExcavator = monument.IndexOf("excavator", StringComparison.OrdinalIgnoreCase) >= 0;
+            var isQuarry = monument.IndexOf("quarry", StringComparison.OrdinalIgnoreCase) >= 0;
+            if (!isExcavator && !isQuarry)
             {
-                var entity = networkable as BaseEntity;
-                if (entity == null || entity.IsDestroyed || entity.net == null)
-                {
-                    continue;
-                }
-
-                var prefab = (entity.PrefabName ?? entity.ShortPrefabName ?? "").ToLowerInvariant();
-                if (!prefab.Contains("diesel_engine") && !prefab.Contains("dieselengine"))
-                {
-                    continue;
-                }
-
-                var monument = FindNearestMonumentContext(entity.transform.position);
-                var isExcavator = monument.IndexOf("excavator", StringComparison.OrdinalIgnoreCase) >= 0;
-                var isQuarry = monument.IndexOf("quarry", StringComparison.OrdinalIgnoreCase) >= 0;
-                if (!isExcavator && !isQuarry)
-                {
-                    continue;
-                }
-
-                var networkId = entity.net.ID.Value;
-                seen.Add(networkId);
-                var isOn = entity.HasFlag(BaseEntity.Flags.On);
-                bool previous;
-                if (!discreteEntityStates.TryGetValue(networkId, out previous))
-                {
-                    discreteEntityStates[networkId] = isOn;
-                    if (!isOn)
-                    {
-                        continue;
-                    }
-                }
-                else if (previous == isOn)
-                {
-                    continue;
-                }
-                else
-                {
-                    discreteEntityStates[networkId] = isOn;
-                }
-
-                var family = isExcavator ? "excavator" : "quarry";
-                var eventType = family + (isOn ? "_start" : "_stop");
-                PublishDiscreteReplayEvent(
-                    "industrial:" + family + ":" + networkId.ToString(CultureInfo.InvariantCulture),
-                    eventType,
-                    entity.transform.position,
-                    "",
-                    new Dictionary<string, object>
-                    {
-                        ["kind"] = "server_event",
-                        ["eventType"] = eventType,
-                        ["state"] = isOn ? "active" : "ended",
-                        ["networkId"] = networkId.ToString(CultureInfo.InvariantCulture),
-                        ["prefab"] = entity.PrefabName ?? entity.ShortPrefabName ?? "",
-                        ["monument"] = monument
-                    });
+                return;
             }
 
-            foreach (var networkId in discreteEntityStates.Keys.Where(id => !seen.Contains(id)).ToList())
+            var networkId = entity.net.ID.Value;
+            var isOn = entity.HasFlag(BaseEntity.Flags.On);
+            bool previous;
+            if (!discreteEntityStates.TryGetValue(networkId, out previous))
             {
-                discreteEntityStates.Remove(networkId);
+                discreteEntityStates[networkId] = isOn;
+                if (!publishActiveOnFirstObservation || !isOn)
+                {
+                    return;
+                }
             }
+            else if (previous == isOn)
+            {
+                return;
+            }
+            else
+            {
+                discreteEntityStates[networkId] = isOn;
+            }
+
+            var family = isExcavator ? "excavator" : "quarry";
+            var eventType = family + (isOn ? "_start" : "_stop");
+            PublishDiscreteReplayEvent(
+                "industrial:" + family + ":" + networkId.ToString(CultureInfo.InvariantCulture),
+                eventType,
+                entity.transform.position,
+                "",
+                new Dictionary<string, object>
+                {
+                    ["kind"] = "server_event",
+                    ["eventType"] = eventType,
+                    ["state"] = isOn ? "active" : "ended",
+                    ["networkId"] = networkId.ToString(CultureInfo.InvariantCulture),
+                    ["prefab"] = entity.PrefabName ?? entity.ShortPrefabName ?? "",
+                    ["monument"] = monument
+                });
         }
 
         private string FindNearestMonumentContext(Vector3 position)
@@ -2604,43 +2651,17 @@ namespace Oxide.Plugins
 
         private void PublishReplayEvents(List<ReplayEventPayload> events, string label, Action<string> reply, bool verbose)
         {
-            if (events == null || events.Count == 0 || string.IsNullOrWhiteSpace(ResolveBridgeSharedSecret()))
+            if (events == null || events.Count == 0)
             {
                 return;
             }
 
             var submitted = events.Take(250).ToList();
-            var snapshot = new ReplayEventSnapshotPayload
+            QueueReplayEvents(submitted);
+            if (verbose)
             {
-                server_id = ResolveServerId(),
-                wipe_key = ResolveWipeKey(),
-                events = submitted
-            };
-            var body = JsonConvert.SerializeObject(snapshot);
-            var url = $"{TrimSlash(ResolveApiBaseUrl())}/api/server/map-replay-events-snapshot.php";
-            SendPost(url, body, (code, response) =>
-            {
-                int accepted;
-                string requestError;
-                if (!TryValidateReplayEventResponse(code, response, submitted.Count, out accepted, out requestError))
-                {
-                    lastWorldEventError = requestError;
-                    PrintWarning("Website " + label + " replay event post failed: " + requestError);
-                    if (verbose)
-                    {
-                        reply?.Invoke("Website " + label + " event sync failed: " + requestError);
-                    }
-                    return;
-                }
-
-                lastWorldEventAccepted = accepted;
-                lastWorldEventError = "none";
-                lastWorldEventSyncAt = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
-                if (verbose)
-                {
-                    reply?.Invoke($"Website {label} events synced: {accepted}/{submitted.Count} accepted.");
-                }
-            });
+                reply?.Invoke($"Queued {submitted.Count} website {label} event(s) for WebsiteBridgeHub.");
+            }
         }
 
         private void PublishAnnouncedRaidlandsEvents(Action<string> reply, bool verbose)
@@ -2787,8 +2808,317 @@ namespace Oxide.Plugins
             return "";
         }
 
+        [HookMethod(nameof(API_CollectWebsiteBridgeExchange))]
+        public object API_CollectWebsiteBridgeExchange(long sequence)
+        {
+            LoadReplayOutbox();
+            PublishAnnouncedRaidlandsEvents(null, false);
+            var module = new JObject();
+
+            if (config.PublishEnvironment)
+            {
+                if (cachedEnvironmentExchangePayload == null)
+                {
+                    SampleEnvironmentForExchange();
+                }
+                if (cachedEnvironmentExchangePayload != null)
+                {
+                    module["environment"] = cachedEnvironmentExchangePayload.DeepClone();
+                }
+            }
+
+            if (config.PublishPlayerLocations)
+            {
+                module["player_locations"] = JObject.FromObject(CreatePlayerLocationPayload());
+            }
+
+            var replayBatch = BuildReplayExchangeBatch(sequence, module);
+            if (replayBatch != null)
+            {
+                module["replay_events"] = replayBatch;
+            }
+            return module;
+        }
+
+        [HookMethod(nameof(API_ApplyWebsiteBridgeExchange))]
+        public object API_ApplyWebsiteBridgeExchange(long sequence, JObject response)
+        {
+            if (response == null)
+            {
+                return false;
+            }
+
+            var environment = response["environment"] as JObject;
+            if (environment?.Value<bool?>("ok") == true)
+            {
+                lastEnvironmentSyncAt = environment["result"]?.Value<string>("sampledAt") ?? DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
+            }
+
+            var replay = response["replay_events"] as JObject;
+            if (replay != null)
+            {
+                if (replay.Value<bool?>("ok") == true)
+                {
+                    ApplyReplayExchangeAcknowledgements(sequence, replay["result"] as JObject);
+                }
+                else
+                {
+                    lastWorldEventError = replay.Value<string>("error") ?? "exchange replay section failed";
+                    replayBatchesBySequence.Remove(sequence);
+                }
+            }
+            return true;
+        }
+
+        [HookMethod(nameof(API_QueueWebsiteReplayEvent))]
+        public object API_QueueWebsiteReplayEvent(object value)
+        {
+            try
+            {
+                var token = value as JToken ?? JToken.FromObject(value);
+                var item = token as JObject;
+                if (item == null)
+                {
+                    return false;
+                }
+                var eventPayload = new ReplayEventPayload
+                {
+                    event_key = FirstNonEmpty(item.Value<string>("event_key"), item.Value<string>("eventKey")),
+                    event_type = FirstNonEmpty(item.Value<string>("event_type"), item.Value<string>("eventType"), item.Value<string>("type")),
+                    occurred_at = FirstNonEmpty(item.Value<string>("occurred_at"), item.Value<string>("occurredAt"), DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture)),
+                    x = item.Value<float?>("x") ?? 0f,
+                    y = item.Value<float?>("y") ?? 0f,
+                    z = item.Value<float?>("z") ?? 0f,
+                    profile_key = FirstNonEmpty(item.Value<string>("profile_key"), item.Value<string>("profileKey")),
+                    vehicle = item.Value<string>("vehicle") ?? "",
+                    payload = (item["payload"] as JObject)?.ToObject<Dictionary<string, object>>() ?? new Dictionary<string, object>()
+                };
+                var queued = QueueReplayEvent(eventPayload);
+                if (queued)
+                {
+                    SaveReplayOutbox();
+                }
+                return queued;
+            }
+            catch (Exception ex)
+            {
+                PrintWarning("Rejected external website replay event: " + ex.Message);
+                return false;
+            }
+        }
+
+        [HookMethod(nameof(API_GetWebsiteBridgeQueueDepth))]
+        public object API_GetWebsiteBridgeQueueDepth()
+        {
+            LoadReplayOutbox();
+            return new Dictionary<string, object>
+            {
+                ["pending"] = replayOutbox.pending.Count,
+                ["quarantined"] = replayOutbox.quarantined.Count
+            };
+        }
+
+        private PlayerLocationSnapshotPayload CreatePlayerLocationPayload()
+        {
+            var players = new List<PlayerLocationPayload>();
+            foreach (var player in BasePlayer.activePlayerList)
+            {
+                if (player == null || !player.IsConnected || player.userID == 0)
+                {
+                    continue;
+                }
+                var position = player.transform.position;
+                players.Add(new PlayerLocationPayload
+                {
+                    steam_id64 = player.UserIDString,
+                    display_name = player.displayName ?? "",
+                    clan_tag = ResolveClanTag(player),
+                    x = (float)Math.Round(position.x, 3),
+                    y = (float)Math.Round(position.y, 3),
+                    z = (float)Math.Round(position.z, 3)
+                });
+            }
+            return new PlayerLocationSnapshotPayload
+            {
+                server_id = ResolveServerId(),
+                wipe_key = ResolveWipeKey(),
+                sampled_at = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture),
+                players = players
+            };
+        }
+
+        private JObject BuildReplayExchangeBatch(long sequence, JObject existingModule)
+        {
+            if (!config.PublishReplayEvents || replayOutbox.pending.Count == 0)
+            {
+                return null;
+            }
+            var selected = new List<ReplayEventPayload>();
+            var hashes = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
+            foreach (var item in replayOutbox.pending.Values.OrderBy(entry => entry.occurred_at ?? "").Take(250))
+            {
+                selected.Add(item);
+                var candidate = new JObject
+                {
+                    ["server_id"] = ResolveServerId(),
+                    ["wipe_key"] = ResolveWipeKey(),
+                    ["events"] = JArray.FromObject(selected)
+                };
+                var approximateModule = (JObject)existingModule.DeepClone();
+                approximateModule["replay_events"] = candidate;
+                if (Encoding.UTF8.GetByteCount(approximateModule.ToString(Formatting.None)) > 850000)
+                {
+                    selected.RemoveAt(selected.Count - 1);
+                    break;
+                }
+                hashes[item.event_key] = ReplayEventHash(item);
+            }
+            if (selected.Count == 0)
+            {
+                return null;
+            }
+            replayBatchesBySequence[sequence] = hashes;
+            lastWorldEventPayloadBytes = Encoding.UTF8.GetByteCount(JsonConvert.SerializeObject(selected));
+            return new JObject
+            {
+                ["server_id"] = ResolveServerId(),
+                ["wipe_key"] = ResolveWipeKey(),
+                ["events"] = JArray.FromObject(selected)
+            };
+        }
+
+        private void ApplyReplayExchangeAcknowledgements(long sequence, JObject result)
+        {
+            if (!replayBatchesBySequence.TryGetValue(sequence, out var sent))
+            {
+                return;
+            }
+            var accepted = new HashSet<string>((result?["acceptedEventKeys"] as JArray ?? new JArray()).Values<string>(), StringComparer.OrdinalIgnoreCase);
+            foreach (var key in accepted)
+            {
+                if (replayOutbox.pending.TryGetValue(key, out var current) && sent.TryGetValue(key, out var hash) && ReplayEventHash(current) == hash)
+                {
+                    replayOutbox.pending.Remove(key);
+                }
+            }
+            foreach (var rejected in (result?["rejectedEvents"] as JArray ?? new JArray()).OfType<JObject>())
+            {
+                var key = rejected.Value<string>("eventKey") ?? "";
+                if (key.Length > 0 && replayOutbox.pending.TryGetValue(key, out var current) && sent.TryGetValue(key, out var hash) && ReplayEventHash(current) == hash)
+                {
+                    replayOutbox.pending.Remove(key);
+                    replayOutbox.quarantined[key] = current;
+                    PrintWarning($"Quarantined website replay event {key}: {rejected.Value<string>("error") ?? "rejected"}");
+                }
+            }
+            while (replayOutbox.quarantined.Count > 200)
+            {
+                replayOutbox.quarantined.Remove(replayOutbox.quarantined.Keys.First());
+            }
+            lastWorldEventAccepted = accepted.Count;
+            lastWorldEventError = "none";
+            lastWorldEventSyncAt = DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture);
+            replayBatchesBySequence.Remove(sequence);
+            SaveReplayOutbox();
+        }
+
+        private void QueueReplayEvents(IEnumerable<ReplayEventPayload> events)
+        {
+            var changed = false;
+            foreach (var item in events ?? Enumerable.Empty<ReplayEventPayload>())
+            {
+                changed = QueueReplayEvent(item) || changed;
+            }
+            if (changed)
+            {
+                SaveReplayOutbox();
+            }
+        }
+
+        private bool QueueReplayEvent(ReplayEventPayload item)
+        {
+            LoadReplayOutbox();
+            if (item == null || string.IsNullOrWhiteSpace(item.event_type))
+            {
+                if (item != null)
+                {
+                    item.event_key = FirstNonEmpty(item.event_key, "invalid-" + Sha256(JsonConvert.SerializeObject(item)));
+                    replayOutbox.quarantined[item.event_key] = item;
+                    TrimReplayQuarantine();
+                    SaveReplayOutbox();
+                    PrintWarning("Quarantined website replay event " + item.event_key + ": missing event_type.");
+                }
+                return false;
+            }
+            item.event_key = string.IsNullOrWhiteSpace(item.event_key)
+                ? Sha256(item.event_type + "|" + (item.occurred_at ?? "") + "|" + item.x.ToString("0.###", CultureInfo.InvariantCulture) + "|" + item.z.ToString("0.###", CultureInfo.InvariantCulture))
+                : item.event_key.Trim();
+            item.occurred_at = FirstNonEmpty(item.occurred_at, DateTime.UtcNow.ToString("o", CultureInfo.InvariantCulture));
+            item.payload = item.payload ?? new Dictionary<string, object>();
+            replayOutbox.pending[item.event_key] = item;
+            if (replayOutbox.pending.Count > MaximumReplayOutboxEntries)
+            {
+                var oldest = replayOutbox.pending.Values.OrderBy(entry => entry.occurred_at ?? "").FirstOrDefault();
+                if (oldest != null)
+                {
+                    replayOutbox.pending.Remove(oldest.event_key);
+                    PrintWarning("Website replay outbox reached its 2000-event cap; quarantined oldest event " + oldest.event_key + ".");
+                    replayOutbox.quarantined[oldest.event_key] = oldest;
+                    TrimReplayQuarantine();
+                }
+            }
+            return true;
+        }
+
+        private void TrimReplayQuarantine()
+        {
+            while (replayOutbox.quarantined.Count > 200)
+            {
+                replayOutbox.quarantined.Remove(replayOutbox.quarantined.Keys.First());
+            }
+        }
+
+        private void LoadReplayOutbox()
+        {
+            if (replayOutbox != null)
+            {
+                return;
+            }
+            try
+            {
+                replayOutbox = Interface.Oxide.DataFileSystem.ReadObject<ReplayOutboxState>(ReplayOutboxDataFile) ?? new ReplayOutboxState();
+            }
+            catch (Exception ex)
+            {
+                PrintWarning("Could not read website replay outbox: " + ex.Message);
+                replayOutbox = new ReplayOutboxState();
+            }
+            replayOutbox.pending = new Dictionary<string, ReplayEventPayload>(replayOutbox.pending ?? new Dictionary<string, ReplayEventPayload>(), StringComparer.OrdinalIgnoreCase);
+            replayOutbox.quarantined = new Dictionary<string, ReplayEventPayload>(replayOutbox.quarantined ?? new Dictionary<string, ReplayEventPayload>(), StringComparer.OrdinalIgnoreCase);
+        }
+
+        private void SaveReplayOutbox()
+        {
+            if (replayOutbox == null)
+            {
+                return;
+            }
+            try
+            {
+                Interface.Oxide.DataFileSystem.WriteObject(ReplayOutboxDataFile, replayOutbox, true);
+            }
+            catch (Exception ex)
+            {
+                PrintWarning("Could not write website replay outbox: " + ex.Message);
+            }
+        }
+
+        private static string ReplayEventHash(ReplayEventPayload item) => Sha256(JsonConvert.SerializeObject(item));
+
         private void PublishMap(string reason, Action<string> reply, bool force, string renderName, float scale)
         {
+            renderName = string.IsNullOrWhiteSpace(renderName) ? config.RenderName : renderName.Trim();
+            scale = Math.Max(0.05f, scale);
             if (publishInFlight)
             {
                 reply?.Invoke("Website map publish is already in progress.");
@@ -2798,6 +3128,10 @@ namespace Oxide.Plugins
             if (!CanPublish(out var error))
             {
                 reply?.Invoke(error);
+                if (!force)
+                {
+                    ScheduleMapPublishRetry(reason, renderName, scale);
+                }
                 return;
             }
 
@@ -2806,13 +3140,12 @@ namespace Oxide.Plugins
 
             if (!force && string.Equals(lastPublishedWipeKey, wipeKey, StringComparison.OrdinalIgnoreCase))
             {
+                ResetMapPublishRetry();
                 reply?.Invoke($"Website map already published for wipe key {wipeKey}.");
                 return;
             }
 
             publishInFlight = true;
-            renderName = string.IsNullOrWhiteSpace(renderName) ? config.RenderName : renderName.Trim();
-            scale = Math.Max(0.05f, scale);
 
             try
             {
@@ -2822,8 +3155,7 @@ namespace Oxide.Plugins
 
                 if (!(mapObject is Hash<string, object> map))
                 {
-                    publishInFlight = false;
-                    reply?.Invoke($"RustMapApi could not render {renderName}: {mapObject ?? "empty response"}");
+                    FailMapPublish($"RustMapApi could not render {renderName}: {mapObject ?? "empty response"}", reply, force, reason, renderName, scale);
                     return;
                 }
 
@@ -2831,8 +3163,7 @@ namespace Oxide.Plugins
 
                 if (image == null || image.Length == 0)
                 {
-                    publishInFlight = false;
-                    reply?.Invoke($"RustMapApi returned an empty {renderName} image.");
+                    FailMapPublish($"RustMapApi returned an empty {renderName} image.", reply, force, reason, renderName, scale);
                     return;
                 }
 
@@ -2876,7 +3207,7 @@ namespace Oxide.Plugins
 
                     if (!IsSuccess(code, response, out var requestError))
                     {
-                        reply?.Invoke($"Website map publish failed: {requestError}");
+                        FailMapPublish($"Website map publish failed: {requestError}", reply, force, reason, renderName, scale);
                         return;
                     }
 
@@ -2888,16 +3219,17 @@ namespace Oxide.Plugins
                     }
                     catch (Exception ex)
                     {
-                        reply?.Invoke($"Website map publish returned invalid JSON: {ex.Message}");
+                        FailMapPublish($"Website map publish returned invalid JSON: {ex.Message}", reply, force, reason, renderName, scale);
                         return;
                     }
 
                     if (result == null || !result.ok)
                     {
-                        reply?.Invoke($"Website map publish failed: {result?.error ?? "invalid response"}");
+                        FailMapPublish($"Website map publish failed: {result?.error ?? "invalid response"}", reply, force, reason, renderName, scale);
                         return;
                     }
 
+                    ResetMapPublishRetry();
                     lastPublishedWipeKey = wipeKey;
                     var publicUrl = FirstNonEmpty(result.map?.url, result.map?.publicUrl, result.url);
                     var textureUrl = result.map?.textureUrl ?? "";
@@ -2924,9 +3256,35 @@ namespace Oxide.Plugins
             }
             catch (Exception ex)
             {
-                publishInFlight = false;
-                reply?.Invoke($"Website map publish failed: {ex.GetType().Name}: {ex.Message}");
+                FailMapPublish($"Website map publish failed: {ex.GetType().Name}: {ex.Message}", reply, force, reason, renderName, scale);
             }
+        }
+
+        private void FailMapPublish(string message, Action<string> reply, bool force, string reason, string renderName, float scale)
+        {
+            publishInFlight = false;
+            reply?.Invoke(message);
+            if (!force)
+            {
+                ScheduleMapPublishRetry(reason, renderName, scale);
+            }
+        }
+
+        private void ScheduleMapPublishRetry(string reason, string renderName, float scale)
+        {
+            mapPublishFailures++;
+            var exponent = Math.Min(4, Math.Max(0, mapPublishFailures - 1));
+            var delay = Math.Min(300, 30 * (1 << exponent));
+            mapPublishRetryTimer?.Destroy();
+            mapPublishRetryTimer = timer.Once(delay, () => PublishMap("retry after " + reason, message => Puts(message), false, renderName, scale));
+            PrintWarning($"Website map publish will retry in {delay}s after failure {mapPublishFailures}.");
+        }
+
+        private void ResetMapPublishRetry()
+        {
+            mapPublishRetryTimer?.Destroy();
+            mapPublishRetryTimer = null;
+            mapPublishFailures = 0;
         }
 
         private bool CanPublish(out string error)

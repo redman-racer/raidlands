@@ -2,7 +2,7 @@ import payloadCatalogJson from "../../airstrike-animation-editor/payload-catalog
 
 export const EDITOR_SOURCE_SCHEMA_VERSION = 2 as const;
 export const RUNTIME_SCHEMA_VERSION = 3 as const;
-export const DEFAULT_COMPILER_VERSION = "raidlands-airanim-1";
+export const DEFAULT_COMPILER_VERSION = "raidlands-airanim-2";
 export const RUNTIME_COORDINATE_SYSTEM = "unity-target-relative-local-v1";
 export const DEFAULT_SAMPLE_RATE_HZ = 30;
 
@@ -34,6 +34,60 @@ export const SUPPORTED_PAYLOADS = PAYLOAD_CATALOG_ENTRIES.map((entry) => entry.i
 
 export type SupportedPayload = string;
 
+export const SUPPORTED_AMMO_TYPES = [
+  "gau8_api",
+  "gau8_hei",
+  "gau8_tp",
+  "incendiary_tracer",
+] as const;
+
+export type SupportedAmmoType = (typeof SUPPORTED_AMMO_TYPES)[number];
+
+export const SUPPORTED_AUDIO_CUES = [
+  "vehicle_engine",
+  "air_movement",
+  "large_flyover",
+  "bullet_flyby",
+  "f15_pass",
+  "gau8_burst",
+  "machine_gun_burst",
+  "rocket_launch",
+  "mlrs_launch",
+] as const;
+
+export type SupportedAudioCue = (typeof SUPPORTED_AUDIO_CUES)[number];
+export type AudioAnchor = "carrier" | "target";
+
+export interface SourceAudioEvent {
+  Id: string;
+  Time: number;
+  Cue: SupportedAudioCue;
+  Anchor: AudioAnchor;
+  OffsetX: number;
+  OffsetY: number;
+  OffsetZ: number;
+}
+
+export interface SourceAudioGroup {
+  Id: string;
+  Name: string;
+  StartTime: number;
+  EndTime: number;
+  IntervalSeconds: number;
+  MaximumCues: number;
+  Cue: SupportedAudioCue;
+  Anchor: AudioAnchor;
+  OffsetX: number;
+  OffsetY: number;
+  OffsetZ: number;
+}
+
+export interface AudioSource {
+  Mode: "automatic" | "authored";
+  Events: SourceAudioEvent[];
+  Groups: SourceAudioGroup[];
+}
+
 export interface Vector3Value {
   x: number;
   y: number;
@@ -61,6 +115,8 @@ export interface SourceWaypoint {
 
 export interface PayloadEventFields {
   Payload: string;
+  /** Deterministic per-round sequence. Empty/omitted preserves legacy payload behavior. */
+  AmmoSequence?: SupportedAmmoType[];
   Count: number;
   CarrierOffsetX: number;
   CarrierOffsetY: number;
@@ -170,6 +226,7 @@ export interface EditorSourceProfile {
   RotationMode: "follow_path_plus_offset" | "authored_orientation";
   Waypoints: SourceWaypoint[];
   ReleaseSource: ReleaseSource;
+  AudioSource?: AudioSource;
   EditorMetadata: EditorMetadata;
 }
 
@@ -192,6 +249,27 @@ export interface RuntimeWaypoint {
 export interface RuntimePayloadEvent extends PayloadEventFields {
   Time: number;
   Index: number;
+}
+
+export interface RuntimeAudioEvent {
+  Time: number;
+  Cue: SupportedAudioCue;
+  Anchor: AudioAnchor;
+  OffsetX: number;
+  OffsetY: number;
+  OffsetZ: number;
+}
+
+export interface RuntimeAudioGroup {
+  StartTime: number;
+  EndTime: number;
+  IntervalSeconds: number;
+  MaximumCues: number;
+  Cue: SupportedAudioCue;
+  Anchor: AudioAnchor;
+  OffsetX: number;
+  OffsetY: number;
+  OffsetZ: number;
 }
 
 export interface RuntimeReleaseOffset {
@@ -245,6 +323,9 @@ export interface RuntimeVisualProfile {
   Waypoints: RuntimeWaypoint[];
   PayloadEvents: RuntimePayloadEvent[];
   GeneratedReleaseGroups?: RuntimeGeneratedReleaseGroup[];
+  AudioMode?: "automatic" | "authored";
+  AudioEvents?: RuntimeAudioEvent[];
+  AudioGroups?: RuntimeAudioGroup[];
   CompiledTrack: CompiledVisualTrack;
   CompiledReleaseEvents?: RuntimePayloadEvent[];
 }
@@ -330,6 +411,7 @@ export class SourceValidationError extends Error {
 
 export const DEFAULT_PAYLOAD_EVENT: PayloadEventFields = {
   Payload: "",
+  AmmoSequence: [],
   Count: 1,
   CarrierOffsetX: 0,
   CarrierOffsetY: 0,

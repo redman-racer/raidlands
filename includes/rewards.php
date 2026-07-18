@@ -3399,7 +3399,7 @@ function raidlands_rewards_handle_games_request(): void
     raidlands_store_redirect('rp-games');
 }
 
-function raidlands_rewards_bridge_point_requests(int $limit = 25): array
+function raidlands_rewards_bridge_point_requests(int $limit = 25, int $reclaim_after_seconds = 600): array
 {
     if (!raidlands_rewards_is_ready()) {
         return [];
@@ -3413,10 +3413,13 @@ function raidlands_rewards_bridge_point_requests(int $limit = 25): array
          SET status = 'expired', message = 'The server did not process this RP point request before it expired.', updated_at = NOW()
          WHERE status = 'queued' AND expires_at IS NOT NULL AND expires_at <= NOW()"
     );
+    $reclaim_after_seconds = max(45, min(3600, $reclaim_after_seconds));
+    $reclaim_before = gmdate('Y-m-d H:i:s', time() - $reclaim_after_seconds);
     raidlands_db_execute(
         "UPDATE rp_point_requests
          SET status = 'queued', locked_at = NULL, updated_at = NOW()
-         WHERE status = 'processing' AND locked_at IS NOT NULL AND locked_at < DATE_SUB(NOW(), INTERVAL 10 MINUTE)"
+         WHERE status = 'processing' AND locked_at IS NOT NULL AND locked_at < :reclaim_before",
+        ['reclaim_before' => $reclaim_before]
     );
 
     $rows = raidlands_db_fetch_all(

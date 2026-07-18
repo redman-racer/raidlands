@@ -24,13 +24,15 @@ import { normalizeWearableOrigin, podiumCharacterYaw, podiumWeaponLayout } from 
 import { buildIndustrialPedestal, pedestalConfigForRank, pedestalRanksForLayout } from "./pedestal";
 import {
   anchorPoint, arenaPlacementTransform, ArenaManifest, ArenaPlacement, clampArenaRotation,
-  generatedThemePlacements, orbitCameraPosition, podiumCategoryTitle, podiumThemeFor,
+  FORWARD_MOUND_VISIBILITY, generatedThemePlacements, idleArenaYawTarget, orbitCameraPosition,
+  podiumCategoryTitle, podiumThemeFor, shouldLiftForwardMoundVisibility, shouldRenderArenaPlacement,
 } from "./scene-policy";
 
 type Payload = { leaders?: Leader[]; metric?: string; board?: string };
 type CameraRecord = Record<string, unknown>;
 
 const APPROVED_SCENE_REVISION = "494242bdeae941e3389b34a819c514aae2cf39f8";
+const APPROVED_SCENE_ASSET_COUNT = 79;
 const ARENA_CAMERA = {
   fov: 37,
   position: new Vector3(0, 3.25, 11.7),
@@ -207,6 +209,8 @@ class PodiumScene {
   private targetPitch = 0;
   private currentYaw = 0;
   private currentPitch = 0;
+  private currentIdleYaw = 0;
+  private lastCameraInteractionAt = performance.now();
   private orbitFov = ARENA_CAMERA.fov;
   private dragPointer = -1;
   private dragX = 0;
@@ -262,23 +266,25 @@ class PodiumScene {
   }
 
   private async buildArenaStage() {
-    const response = await fetch(this.host.dataset.sceneManifest || "", { cache: "force-cache", headers: { Accept: "application/json" } });
+    const response = await fetch(this.host.dataset.sceneManifest || "", { cache: "no-cache", headers: { Accept: "application/json" } });
     if (!response.ok) throw new Error(`scene manifest returned ${response.status}`);
     const manifest = await response.json() as ArenaManifest;
-    if (manifest.revision !== APPROVED_SCENE_REVISION || manifest.assets.length !== 76) throw new Error("unapproved scene manifest");
+    if (manifest.revision !== APPROVED_SCENE_REVISION || manifest.assets.length !== APPROVED_SCENE_ASSET_COUNT) throw new Error("unapproved scene manifest");
     this.manifest = manifest; this.host.dataset.sceneRevision = manifest.revision;
     const camera = manifest.camera;
     this.camera.fov = ARENA_CAMERA.fov; this.camera.near = numeric(camera, "Near_m", .05); this.camera.far = numeric(camera, "Far_m", 60);
     this.cameraBase.copy(ARENA_CAMERA.position); this.cameraTarget.copy(ARENA_CAMERA.target);
     this.renderer.toneMappingExposure = Math.pow(2, numeric(camera, "Exposure_EV", -.45) - .55);
     this.scene.background = new Color(0x0b0d0e); this.scene.fog = new FogExp2(0x171a1b, .042);
-    const hasEnvironment = await this.buildArenaEnvironment().catch(() => false);
-    if (!hasEnvironment) await this.buildBackdropPanels();
+    const fallbackOnly = new URLSearchParams(location.search).has("podium-fallback");
+    const hasEnvironment = fallbackOnly ? false : await this.buildArenaEnvironment().catch(() => false);
+    if (!hasEnvironment) { await this.buildBackdropPanels(); this.host.dataset.sceneEnvironment = "panels"; }
     this.buildArenaPodiums(manifest); this.buildSolidFloor(); this.buildArenaLights(manifest); this.buildAtmosphere();
     this.setupComposer();
     this.resize();
     const placements = manifest.basePlacements
       .filter((placement) => this.useNativePlacement(placement))
+      .filter((placement) => shouldRenderArenaPlacement(placement.id, this.mobile))
       .sort((left, right) => this.placementPriority(left) - this.placementPriority(right));
     const loaded = await this.loadPlacementBatch(placements, this.baseRoot, 6);
     this.host.dataset.scenePlacements = String(loaded);
@@ -332,12 +338,20 @@ class PodiumScene {
   private placementRenderScale(placement: ArenaPlacement): [number, number, number] {
     // The RustRelay GLBs share Unity's meter scale. Only the generic tiled cubes
     // are intentionally stretched to construct the arena shell.
-    if (/^ENV_(?:FLOOR|BACKWALL|SIDEWALL)/.test(placement.id)) return placement.scale;
+    if (shouldLiftForwardMoundVisibility(placement.id)) {
+      return [
+        placement.scale[0] * FORWARD_MOUND_VISIBILITY.horizontalScale,
+        placement.scale[1] * FORWARD_MOUND_VISIBILITY.verticalScale,
+        placement.scale[2] * FORWARD_MOUND_VISIBILITY.horizontalScale,
+      ];
+    }
+    if (/^(?:ENV_(?:FLOOR|BACKWALL|SIDEWALL)|BG_)/.test(placement.id)) return placement.scale;
     return [1, 1, 1];
   }
 
   private useNativePlacement(placement: ArenaPlacement): boolean {
     if (placement.id === "ENV_TARP_BACK" || placement.id.startsWith("ENV_FLOOR_") || placement.id.startsWith("ENV_SIDEWALL_")) return false;
+    if (["L_WEAPON_THOMPSON", "C_WEAPON_L96", "C_WEAPON_M39", "C_MINIGUN", "R_ROCKET_LAUNCHER"].includes(placement.id)) return false;
     return !/(?:RUBBLE|GRAVEL)/.test(placement.id);
   }
 
@@ -388,8 +402,10 @@ class PodiumScene {
     }
     const leftWing = new PointLight(0xff7b32, 4.2, 10, 2); leftWing.position.set(-7.4, 2.15, 1.2);
     const rightWing = new PointLight(0xffad62, 3.8, 10, 2); rightWing.position.set(7.4, 2.15, 1.2);
+    const leftForwardFill = new PointLight(0xff7430, 8, 14, 2); leftForwardFill.position.set(-16.5, 3.1, 5);
+    const rightForwardFill = new PointLight(0xff8e45, 7.5, 14, 2); rightForwardFill.position.set(16.5, 3.1, 5);
     const rearFill = new PointLight(0x7e99a2, 2.1, 13, 2); rearFill.position.set(0, 3.6, -7.4);
-    this.scene.add(leftWing, rightWing, rearFill);
+    this.scene.add(leftWing, rightWing, leftForwardFill, rightForwardFill, rearFill);
   }
 
   private addLightShaft(start: Vector3, end: Vector3, color: string, weight: number) {
@@ -397,6 +413,21 @@ class PodiumScene {
     const shaft = new Mesh(new ConeGeometry(.72, length, 18, 1, true), new MeshBasicMaterial({ color, transparent: true, opacity: .014 * weight, depthWrite: false, blending: AdditiveBlending }));
     shaft.position.copy(start).add(end).multiplyScalar(.5); shaft.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), direction.normalize());
     shaft.renderOrder = 18; this.effectsRoot.add(shaft);
+  }
+
+  private addBackdropSweep(start: Vector3, end: Vector3, phase: number) {
+    const direction = end.clone().sub(start); const length = direction.length();
+    const material = new MeshBasicMaterial({ color: 0xffa45e, transparent: true, opacity: .018, depthWrite: false, blending: AdditiveBlending });
+    const shaft = new Mesh(new ConeGeometry(.92, length, 18, 1, true), material);
+    shaft.position.copy(start).add(end).multiplyScalar(.5);
+    shaft.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), direction.normalize());
+    shaft.renderOrder = 18;
+    shaft.userData = { backdropSweep: true, start, end, phase, amplitude: 3.2, opacity: material.opacity };
+    this.effectsRoot.add(shaft);
+
+    const practical = new PointLight(0xff8c42, 1.45, 10, 2);
+    practical.position.copy(start); practical.userData = { backdropFlicker: true, baseIntensity: practical.intensity, phase };
+    this.effectsRoot.add(practical);
   }
 
   private buildAtmosphere() {
@@ -430,6 +461,20 @@ class PodiumScene {
       };
       this.effectsRoot.add(smoke);
     });
+    const backdropHaze: Array<[number, number, number, number]> = this.mobile
+      ? [[-12, 1.8, -14.5, 8.5], [0, 2.1, -15.5, 10], [12, 1.8, -14.5, 8.5]]
+      : [[-16, 1.8, -9, 8], [-10, 2, -15, 9], [0, 2.25, -16, 11], [10, 2, -15, 9], [16, 1.8, -9, 8]];
+    backdropHaze.forEach(([x, y, z, width], index) => {
+      const haze = new Sprite(new SpriteMaterial({ map: texture, color: 0x6d7374, transparent: true, opacity: .075, depthWrite: false }));
+      haze.position.set(x, y, z); haze.scale.set(width, 3.2, 1); haze.renderOrder = 16;
+      haze.userData = {
+        smoke: true, phase: 20 + index * 1.45, speed: .045 + index * .006,
+        drift: .48, opacity: .075, basePosition: haze.position.clone(), baseScale: haze.scale.clone(),
+      };
+      this.effectsRoot.add(haze);
+    });
+    this.addBackdropSweep(new Vector3(-16.6, 5.4, -8.2), new Vector3(-5.5, 1.2, -16.5), 0.4);
+    this.addBackdropSweep(new Vector3(16.6, 5.5, -8.2), new Vector3(5.5, 1.2, -16.5), 2.7);
     this.addEmbers(this.mobile ? 28 : 64, 0x5eed1234);
   }
 
@@ -492,6 +537,19 @@ class PodiumScene {
         });
         mesh.material = Array.isArray(mesh.material) ? materials : materials[0];
       }
+      if (shouldLiftForwardMoundVisibility(placement.id)) {
+        const materials = (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).map((source) => {
+          const material = source.clone() as MeshStandardMaterial;
+          if (material.color) material.color.multiplyScalar(FORWARD_MOUND_VISIBILITY.colorMultiplier);
+          material.toneMapped = false;
+          if (material.isMeshStandardMaterial) {
+            material.emissive.setHex(FORWARD_MOUND_VISIBILITY.emissive);
+            material.emissiveIntensity = FORWARD_MOUND_VISIBILITY.emissiveIntensity;
+          }
+          return material;
+        });
+        mesh.material = Array.isArray(mesh.material) ? materials : materials[0];
+      }
       mesh.castShadow = placement.castShadow && primary && !this.mobile; mesh.receiveShadow = placement.receiveShadow; mesh.renderOrder = placement.renderOrder;
       mesh.frustumCulled = true;
     });
@@ -500,7 +558,7 @@ class PodiumScene {
     const transform = arenaPlacementTransform(placement);
     wrapper.position.set(...transform.position); wrapper.rotation.set(...transform.rotation.map(MathUtils.degToRad) as [number, number, number]);
     const decorativeWeapon = /weapon|rifle|launcher|(?:^|[^a-z])gun(?:[^a-z]|$)/i.test(`${placement.role} ${placement.localPath}`);
-    if (decorativeWeapon) {
+    if (decorativeWeapon && transform.position[1] <= .08) {
       wrapper.updateMatrixWorld(true);
       const rotatedBounds = new Box3().setFromObject(wrapper);
       wrapper.position.y += .025 - rotatedBounds.min.y;
@@ -513,9 +571,9 @@ class PodiumScene {
 
   async setPresentation(board: string, metric: string, leaders: Leader[]) {
     const generation = ++this.generation; this.characterRoot.clear(); this.themeRoot.clear();
-    this.targetYaw = 0; this.targetPitch = 0;
+    this.targetYaw = 0; this.targetPitch = 0; this.currentIdleYaw = 0; this.lastCameraInteractionAt = performance.now();
     try { await this.arenaReady; }
-    catch { this.fail("Arena assets unavailable. Showing the poster and leaderboard cards."); return; }
+    catch (error) { console.warn("Raidlands podium arena failed to initialize.", error); this.fail("Arena assets unavailable. Showing the poster and leaderboard cards."); return; }
     if (generation !== this.generation || this.disposed) return;
     const sceneLeaders = leaders.length ? leaders.slice(0, 3) : [{}, {}, {}];
     await Promise.all([
@@ -622,25 +680,33 @@ class PodiumScene {
 
   private onPointerDown = (event: PointerEvent) => {
     if (this.singleLayout || this.disposed) return; this.dragPointer = event.pointerId; this.dragX = event.clientX; this.dragY = event.clientY;
+    const yawLimit = MathUtils.degToRad(this.mobile ? 60 : 75);
+    this.currentYaw = MathUtils.clamp(this.currentYaw + this.currentIdleYaw, -yawLimit, yawLimit);
+    this.targetYaw = MathUtils.clamp(this.targetYaw + this.currentIdleYaw, -yawLimit, yawLimit);
+    this.currentIdleYaw = 0;
+    this.lastCameraInteractionAt = performance.now();
     this.renderer.domElement.setPointerCapture(event.pointerId); this.host.dataset.podiumDragging = "true";
   };
 
   private onPointerMove = (event: PointerEvent) => {
     if (event.pointerId !== this.dragPointer) return;
     const deltaX = event.clientX - this.dragX; const deltaY = event.clientY - this.dragY; this.dragX = event.clientX; this.dragY = event.clientY;
+    this.lastCameraInteractionAt = performance.now();
     const clamped = clampArenaRotation(this.targetYaw + deltaX * .004, this.targetPitch + deltaY * .003, this.mobile ? 60 : 75);
     this.targetYaw = clamped.yaw; this.targetPitch = clamped.pitch;
   };
 
   private onPointerUp = (event: PointerEvent) => {
     if (event.pointerId !== this.dragPointer) return; this.dragPointer = -1; this.host.dataset.podiumDragging = "false";
+    this.lastCameraInteractionAt = performance.now();
     if (this.renderer.domElement.hasPointerCapture(event.pointerId)) this.renderer.domElement.releasePointerCapture(event.pointerId);
   };
 
   private updateArenaCamera() {
     const yawLimit = MathUtils.degToRad(this.mobile ? 60 : 75);
-    const edge = MathUtils.clamp(Math.abs(this.currentYaw) / yawLimit, 0, 1);
-    const orbit = orbitCameraPosition(this.cameraOrbitBase, this.cameraTarget, this.currentYaw, this.currentPitch);
+    const effectiveYaw = MathUtils.clamp(this.currentYaw + this.currentIdleYaw, -yawLimit, yawLimit);
+    const edge = MathUtils.clamp(Math.abs(effectiveYaw) / yawLimit, 0, 1);
+    const orbit = orbitCameraPosition(this.cameraOrbitBase, this.cameraTarget, effectiveYaw, this.currentPitch);
     orbit.sub(this.cameraTarget).multiplyScalar(1 + edge * (this.mobile ? .08 : .12)).add(this.cameraTarget);
     this.camera.position.copy(orbit);
     const nextFov = ARENA_CAMERA.fov + edge * (this.mobile ? 1.5 : 2.5);
@@ -649,13 +715,30 @@ class PodiumScene {
   }
 
   private animate = () => {
-    if (this.disposed) return; const time = performance.now() * .001;
+    if (this.disposed) return; const now = performance.now(); const time = now * .001;
     this.currentYaw += (this.targetYaw - this.currentYaw) * .1; this.currentPitch += (this.targetPitch - this.currentPitch) * .1;
+    const idleTarget = this.singleLayout ? 0 : idleArenaYawTarget(now, this.lastCameraInteractionAt, this.reduceMotion);
+    this.currentIdleYaw += (idleTarget - this.currentIdleYaw) * .055;
     if (!this.singleLayout) this.updateArenaCamera();
     if (!this.reduceMotion) {
       this.characterRoot.children.forEach((character) => { character.position.y = character.userData.baseY + Math.sin(time * .72 + character.userData.phase) * .012; });
       const embers = this.effectsRoot.getObjectByName("ArenaEmbers"); if (embers) embers.position.y = Math.sin(time * .28) * .14;
       this.effectsRoot.children.forEach((effect) => {
+        if (effect instanceof PointLight && effect.userData.backdropFlicker) {
+          const phase = Number(effect.userData.phase || 0); const baseIntensity = Number(effect.userData.baseIntensity || 1);
+          effect.intensity = baseIntensity * (.94 + Math.sin(time * 2.1 + phase) * .045 + Math.sin(time * 5.3 + phase * 2) * .015);
+          return;
+        }
+        if (effect instanceof Mesh && effect.userData.backdropSweep) {
+          const start = effect.userData.start as Vector3; const baseEnd = effect.userData.end as Vector3;
+          const phase = Number(effect.userData.phase || 0); const end = baseEnd.clone();
+          end.x += Math.sin(time * .24 + phase) * Number(effect.userData.amplitude || 3);
+          const direction = end.clone().sub(start);
+          effect.position.copy(start).add(end).multiplyScalar(.5);
+          effect.quaternion.setFromUnitVectors(new Vector3(0, 1, 0), direction.normalize());
+          (effect.material as MeshBasicMaterial).opacity = Number(effect.userData.opacity || .018) * (.88 + Math.sin(time * 1.8 + phase) * .12);
+          return;
+        }
         if (!(effect instanceof Sprite) || !effect.userData.smoke) return;
         const phase = Number(effect.userData.phase || 0); const speed = Number(effect.userData.speed || .08);
         const drift = Number(effect.userData.drift || .25); const basePosition = effect.userData.basePosition as Vector3;

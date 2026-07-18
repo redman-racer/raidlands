@@ -2102,9 +2102,12 @@ function raidlands_store_queue_due_rp_renewals(): void
     }
 }
 
-function raidlands_store_bridge_rp_requests(int $limit = 25): array
+function raidlands_store_bridge_rp_requests(int $limit = 25, int $reclaim_after_seconds = 600): array
 {
     raidlands_store_queue_due_rp_renewals();
+
+    $reclaim_after_seconds = max(45, min(3600, $reclaim_after_seconds));
+    $reclaim_before = gmdate('Y-m-d H:i:s', time() - $reclaim_after_seconds);
 
     raidlands_db_execute(
         "UPDATE rp_purchase_requests
@@ -2114,7 +2117,8 @@ function raidlands_store_bridge_rp_requests(int $limit = 25): array
     raidlands_db_execute(
         "UPDATE rp_purchase_requests
          SET status = 'queued', locked_at = NULL, updated_at = NOW()
-         WHERE status = 'processing' AND locked_at IS NOT NULL AND locked_at < DATE_SUB(NOW(), INTERVAL 10 MINUTE)"
+         WHERE status = 'processing' AND locked_at IS NOT NULL AND locked_at < :reclaim_before",
+        ['reclaim_before' => $reclaim_before]
     );
 
     $rows = raidlands_db_fetch_all(

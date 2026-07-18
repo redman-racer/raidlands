@@ -618,10 +618,12 @@ function raidlands_clans_store_snapshot(array $payload, string $server_id): arra
     }
 }
 
-function raidlands_clans_claim_actions(string $server_id, int $limit = 25): array
+function raidlands_clans_claim_actions(string $server_id, int $limit = 25, int $reclaim_after_seconds = 300): array
 {
     $server_id = trim($server_id) !== '' ? trim($server_id) : raidlands_clans_server_id();
     $limit = max(1, min(50, $limit));
+    $reclaim_after_seconds = max(45, min(3600, $reclaim_after_seconds));
+    $reclaim_before = gmdate('Y-m-d H:i:s', time() - $reclaim_after_seconds);
     $pdo = raidlands_db_required();
     $pdo->beginTransaction();
 
@@ -632,13 +634,13 @@ function raidlands_clans_claim_actions(string $server_id, int $limit = 25): arra
              WHERE server_id = :server_id
                 AND (
                     status = 'queued'
-                    OR (status = 'processing' AND (claimed_at IS NULL OR claimed_at < DATE_SUB(NOW(), INTERVAL 5 MINUTE)))
+                    OR (status = 'processing' AND (claimed_at IS NULL OR claimed_at < :reclaim_before))
                 )
              ORDER BY id ASC
              LIMIT {$limit}
              FOR UPDATE"
         );
-        $statement->execute(['server_id' => $server_id]);
+        $statement->execute(['server_id' => $server_id, 'reclaim_before' => $reclaim_before]);
         $rows = $statement->fetchAll();
 
         if ($rows === []) {

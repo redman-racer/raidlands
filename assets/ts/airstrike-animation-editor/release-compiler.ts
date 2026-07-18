@@ -24,6 +24,7 @@ function runtimeEvent(fields: PayloadEventFields, time: number, index: number): 
   return {
     Time: quantizeCanonicalNumber(time),
     Payload: fields.Payload,
+    AmmoSequence: [...(fields.AmmoSequence ?? [])],
     Index: index,
     Count: fields.Count,
     CarrierOffsetX: quantizeCanonicalNumber(fields.CarrierOffsetX),

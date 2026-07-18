@@ -1,0 +1,11 @@
+{
+  "ApiBaseUrl": "https://raidlands.net",
+  "ServerId": "raidlands-main",
+  "SharedSecret": "${RAIDLANDS_BRIDGE_SHARED_SECRET}",
+  "ExchangeIntervalSeconds": 30,
+  "RequestTimeoutSeconds": 20,
+  "MaximumBodyBytes": 1048576,
+  "StartupDelaySeconds": 10,
+  "MaximumBackoffSeconds": 300,
+  "AllowInsecureHttpForDevelopment": false
+}

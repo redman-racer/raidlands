@@ -87,6 +87,13 @@ function sourceHashProjection(
     RotationMode: profile.RotationMode,
     Waypoints: profile.Waypoints.map(({ Id: _id, ...waypoint }) => waypoint),
     ReleaseSource: releaseProjection,
+    AudioSource: profile.AudioSource
+      ? {
+          Mode: profile.AudioSource.Mode,
+          Events: profile.AudioSource.Events.map(({ Id: _id, ...event }) => event),
+          Groups: profile.AudioSource.Groups.map(({ Id: _id, Name: _name, ...group }) => group),
+        }
+      : null,
     ...(profile.EditorMetadata.GlobalTargetSpeedMetersPerSecond !== undefined
       ? { GlobalTargetSpeedMetersPerSecond: profile.EditorMetadata.GlobalTargetSpeedMetersPerSecond }
       : {}),
@@ -143,6 +150,7 @@ export function compileSourceProfile(
   const releases = compileReleaseSchedule(profile, options.vehicleMetadata);
   const sourceHash = sha256Hex(canonicalJson(sourceHashProjection(profile, releases.resolvedHardpointOffsets)));
   const frames = compileFrames(profile, options.sampleRateHz);
+  const audio = profile.AudioSource;
   const firstPayloadDelay =
     profile.ReleaseSource.Mode === "manual" && profile.ReleaseSource.Events.length > 0
       ? Math.min(...profile.ReleaseSource.Events.map((event) => event.Time))
@@ -177,6 +185,34 @@ export function compileSourceProfile(
     })),
     PayloadEvents: releases.legacyEvents,
     ...(releases.generatedGroups.length === 0 ? {} : { GeneratedReleaseGroups: releases.generatedGroups }),
+    ...(audio
+      ? {
+          AudioMode: audio.Mode,
+          AudioEvents: [...audio.Events]
+            .sort((left, right) => left.Time - right.Time || left.Id.localeCompare(right.Id))
+            .map(({ Id: _id, Time, Cue, Anchor, OffsetX, OffsetY, OffsetZ }) => ({
+              Time: quantizeCanonicalNumber(Time),
+              Cue,
+              Anchor,
+              OffsetX: quantizeCanonicalNumber(OffsetX),
+              OffsetY: quantizeCanonicalNumber(OffsetY),
+              OffsetZ: quantizeCanonicalNumber(OffsetZ),
+            })),
+          AudioGroups: [...audio.Groups]
+            .sort((left, right) => left.StartTime - right.StartTime || left.Id.localeCompare(right.Id))
+            .map(({ Id: _id, Name: _name, StartTime, EndTime, IntervalSeconds, MaximumCues, Cue, Anchor, OffsetX, OffsetY, OffsetZ }) => ({
+              StartTime: quantizeCanonicalNumber(StartTime),
+              EndTime: quantizeCanonicalNumber(EndTime),
+              IntervalSeconds: quantizeCanonicalNumber(IntervalSeconds),
+              MaximumCues,
+              Cue,
+              Anchor,
+              OffsetX: quantizeCanonicalNumber(OffsetX),
+              OffsetY: quantizeCanonicalNumber(OffsetY),
+              OffsetZ: quantizeCanonicalNumber(OffsetZ),
+            })),
+        }
+      : {}),
     CompiledTrack: {
       CompilerVersion: options.compilerVersion,
       SourceHash: sourceHash,

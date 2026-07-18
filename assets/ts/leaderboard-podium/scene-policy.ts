@@ -64,6 +64,17 @@ export type ArenaPlacementTransform = {
   zone: ArenaShowcaseZone;
 };
 
+export const ARENA_IDLE_ORBIT_AMPLITUDE = MathUtils.degToRad(8);
+export const ARENA_IDLE_ORBIT_CYCLE_MS = 28_000;
+export const ARENA_IDLE_ORBIT_RESUME_DELAY_MS = 8_000;
+export const FORWARD_MOUND_VISIBILITY = {
+  horizontalScale: 1.43,
+  verticalScale: 1.25,
+  colorMultiplier: 1.4,
+  emissive: 0x3a1b0c,
+  emissiveIntensity: .75,
+} as const;
+
 const RAID_METRICS = new Set([
   "raid_damage", "rockets_used", "c4_used", "satchels_used", "explosive_ammo_used", "tcs_destroyed",
 ]);
@@ -101,6 +112,23 @@ export function clampArenaRotation(yaw: number, pitch: number, yawLimitDegrees =
   };
 }
 
+export function idleArenaYawTarget(nowMs: number, lastInteractionMs: number, reducedMotion: boolean): number {
+  if (reducedMotion) return 0;
+  const activeFor = nowMs - lastInteractionMs - ARENA_IDLE_ORBIT_RESUME_DELAY_MS;
+  if (activeFor <= 0) return 0;
+  return Math.sin((activeFor / ARENA_IDLE_ORBIT_CYCLE_MS) * Math.PI * 2) * ARENA_IDLE_ORBIT_AMPLITUDE;
+}
+
+export function shouldRenderArenaPlacement(id: string, mobile: boolean): boolean {
+  if (!mobile || !id.startsWith("BG_DETAIL_")) return true;
+  const ordinal = Number(id.match(/(\d+)$/)?.[1] || 0);
+  return ordinal > 0 && ordinal % 2 === 1;
+}
+
+export function shouldLiftForwardMoundVisibility(id: string): boolean {
+  return /^BG_MOUND_(?:1[2-7])$/.test(id);
+}
+
 export function orbitCameraPosition(base: Vector3, target: Vector3, yaw: number, pitch: number): Vector3 {
   const offset = base.clone().sub(target);
   const radius = Math.max(offset.length(), 0.00001);
@@ -124,55 +152,55 @@ const SHOWCASE_LAYOUT: Record<string, Partial<ArenaPlacementTransform> & { zone:
   ENV_TRUSS_L: { position: [-4.1, 5.35, -7.25], rotation: [0, -8, 90], zone: "rear" },
   ENV_TRUSS_R: { position: [4.1, 5.35, -7.25], rotation: [0, 8, 90], zone: "rear" },
   L_JUNK_A: { position: [-6.55, -.15, -7.78], rotation: [3, 44, -11], zone: "rear" },
-  L_JUNK_B: { position: [-17, 0, 15], rotation: [0, 82, 0], zone: "left-wing" },
-  C_JUNK_C: { position: [17, 0, -.8], rotation: [0, -78, 0], zone: "right-wing" },
-  C_JUNK_D: { position: [-17, 0, -.8], rotation: [0, 78, 0], zone: "left-wing" },
+  L_JUNK_B: { position: [-23, 0, -12], rotation: [0, 82, 0], zone: "left-wing" },
+  C_JUNK_C: { position: [22, 0, -7], rotation: [0, -78, 0], zone: "right-wing" },
+  C_JUNK_D: { position: [-22, 0, -7], rotation: [0, 78, 0], zone: "left-wing" },
   R_JUNK_E: { position: [6.1, -.18, -7.58], rotation: [-3, -42, 13], zone: "rear" },
-  R_JUNK_F: { position: [17, 0, 15], rotation: [0, -82, 0], zone: "right-wing" },
+  R_JUNK_F: { position: [23, 0, -12], rotation: [0, -82, 0], zone: "right-wing" },
   C_SKIP: { position: [.2, -.08, -8.65], rotation: [0, -2, 0], zone: "rear" },
   C_COVER_PANEL: { position: [.1, .18, -9.15], rotation: [0, -5, -7], zone: "rear" },
-  L_BARRICADE_WOOD: { position: [-17.2, .02, -3.9], rotation: [0, 78, -5], zone: "left-wing" },
+  L_BARRICADE_WOOD: { position: [-20.5, .02, -6.5], rotation: [0, 78, -5], zone: "left-wing" },
   L_BARBEDWIRE: { position: [-5.05, 1.05, -9.35], rotation: [0, 98, -3], zone: "rear" },
   C_BARBED_TOP: { position: [0, 3.1, -9.5], rotation: [0, 90, 2], zone: "rear" },
   R_BARBED_BEND: { position: [6.25, 1.05, -8.9], rotation: [0, -20, 0], zone: "rear" },
-  L_SHELF_01: { position: [-15.6, 0, -4.85], rotation: [0, 78, 0], zone: "left-wing" },
-  L_WORKBENCH_01: { position: [-15.5, 0, 4.75], rotation: [0, 82, 0], zone: "left-wing" },
-  L_TURRET_50CAL: { position: [-14.6, .52, 4.1], rotation: [0, 78, 0], zone: "left-wing" },
-  L_CRATE_A: { position: [-7.25, 0, 5.75], rotation: [0, 42, 0], zone: "left-wing" },
-  L_CRATE_B: { position: [-6.85, .54, 5.45], rotation: [0, 28, 2], zone: "left-wing" },
+  L_SHELF_01: { position: [-18.5, 0, -9.5], rotation: [0, 78, 0], zone: "left-wing" },
+  L_WORKBENCH_01: { position: [-20, 0, -5], rotation: [0, 82, 0], zone: "left-wing" },
+  L_TURRET_50CAL: { position: [-21, .52, -5.5], rotation: [0, 78, 0], zone: "left-wing" },
+  L_CRATE_A: { position: [-12, 0, -5.5], rotation: [0, 42, 0], zone: "left-wing" },
+  L_CRATE_B: { position: [-12.6, .54, -5.9], rotation: [0, 28, 2], zone: "left-wing" },
   L_CRATE_C: { position: [-5.55, 0, -.75], rotation: [0, -18, 0], zone: "podium" },
-  L_BARREL_RAD: { position: [-8, 0, 3.75], rotation: [0, 38, 0], zone: "left-wing" },
-  L_BARREL_DENTED: { position: [-7.2, 0, 6.55], rotation: [0, -18, 4], zone: "foreground" },
+  L_BARREL_RAD: { position: [-13, 0, -6.8], rotation: [0, 38, 0], zone: "left-wing" },
+  L_BARREL_DENTED: { position: [-12.2, 0, -6.3], rotation: [0, -18, 4], zone: "left-wing" },
   L_WEAPON_THOMPSON: { position: [-5.25, .02, -1.2], rotation: [0, 14, -68], zone: "podium" },
   C_WEAPON_L96: { position: [-1.65, .02, -1.55], rotation: [0, -8, -66], zone: "podium" },
   C_WEAPON_M39: { position: [1.65, .02, -1.55], rotation: [0, 8, 66], zone: "podium" },
   C_MINIGUN: { position: [2.15, .02, -1.8], rotation: [0, -18, 10], zone: "podium" },
-  R_SHELF_01: { position: [15.6, 0, -4.85], rotation: [0, -78, 0], zone: "right-wing" },
+  R_SHELF_01: { position: [18.5, 0, -9.5], rotation: [0, -78, 0], zone: "right-wing" },
   R_ROCKET_LAUNCHER: { position: [5.25, .02, -1.2], rotation: [0, -14, 68], zone: "podium" },
-  R_MISSILE_POD: { position: [8, .8, -4.15], rotation: [0, -52, 6], zone: "right-wing" },
-  R_ATTACKHELI_TURRET: { position: [14.6, .63, 4.1], rotation: [0, -78, 0], zone: "right-wing" },
-  R_HELI_GUN: { position: [8, .02, 5.15], rotation: [8, -72, 18], zone: "right-wing" },
-  R_HELI_COCKPIT: { position: [14.45, -.05, 1.8], rotation: [0, -82, -5], zone: "right-wing" },
-  R_HELI_TAIL: { position: [17.4, .1, -5.2], rotation: [5, 78, -12], zone: "right-wing" },
-  R_HELI_DOOR: { position: [14.6, .18, 6.1], rotation: [0, -82, 77], zone: "foreground" },
-  R_RUSTY_CAR: { position: [8.4, -.18, -7.05], rotation: [4, -67, -9], zone: "right-wing" },
-  R_CRATE_A: { position: [7.25, 0, 5.75], rotation: [0, -42, 0], zone: "right-wing" },
-  R_CRATE_B: { position: [6.85, .52, 5.45], rotation: [0, -28, 1], zone: "right-wing" },
+  R_MISSILE_POD: { position: [12, .8, -6.5], rotation: [0, -52, 6], zone: "right-wing" },
+  R_ATTACKHELI_TURRET: { position: [21, .63, -5.5], rotation: [0, -78, 0], zone: "right-wing" },
+  R_HELI_GUN: { position: [13, .02, -6.8], rotation: [8, -72, 18], zone: "right-wing" },
+  R_HELI_COCKPIT: { position: [21, -.05, -8], rotation: [0, -82, -5], zone: "right-wing" },
+  R_HELI_TAIL: { position: [23, .1, -12], rotation: [5, 78, -12], zone: "right-wing" },
+  R_HELI_DOOR: { position: [20.5, .18, -6.5], rotation: [0, -82, 77], zone: "right-wing" },
+  R_RUSTY_CAR: { position: [12.8, -.18, -9], rotation: [4, -67, -9], zone: "right-wing" },
+  R_CRATE_A: { position: [12, 0, -5.5], rotation: [0, -42, 0], zone: "right-wing" },
+  R_CRATE_B: { position: [12.6, .52, -5.9], rotation: [0, -28, 1], zone: "right-wing" },
   R_BARREL_RED: { position: [5.55, 0, -.65], rotation: [0, 18, 0], zone: "podium" },
-  R_BARREL_YELLOW: { position: [7.2, 0, 6.55], rotation: [0, 18, 0], zone: "foreground" },
+  R_BARREL_YELLOW: { position: [12.2, 0, -6.3], rotation: [0, 18, 0], zone: "right-wing" },
   R_JERRYCAN_BLACK: { position: [5.45, .02, -.9], rotation: [0, -20, 0], zone: "podium" },
   R_JERRYCAN_YELLOW: { position: [5.72, .02, -.82], rotation: [0, 22, 0], zone: "podium" },
-  FG_WHEEL_L: { position: [-7.8, .16, 7.1], rotation: [90, 22, 18], zone: "foreground" },
-  FG_WHEEL_R: { position: [7.8, .15, 7.1], rotation: [90, -22, -22], zone: "foreground" },
-  FIX_SEARCH_L: { position: [-7.15, 4.65, -3.35], rotation: [12, 48, 0], zone: "left-wing" },
-  FIX_SEARCH_R: { position: [7.15, 4.72, -3.35], rotation: [13, -48, 0], zone: "right-wing" },
+  FG_WHEEL_L: { position: [-13, .16, -4.8], rotation: [90, 22, 18], zone: "left-wing" },
+  FG_WHEEL_R: { position: [13, .15, -4.8], rotation: [90, -22, -22], zone: "right-wing" },
+  FIX_SEARCH_L: { position: [-20.5, 4.65, -7], rotation: [12, 78, 0], zone: "left-wing" },
+  FIX_SEARCH_R: { position: [20.5, 4.72, -7], rotation: [13, -78, 0], zone: "right-wing" },
   FIX_CEILING_L: { position: [-2.65, 5, -6.25], zone: "rear" },
   FIX_CEILING_R: { position: [2.65, 5.02, -6.25], zone: "rear" },
-  FIX_BARREL_LIGHT: { position: [-8.1, 0, 4.3], rotation: [0, 62, 0], zone: "left-wing" },
-  FIX_LIGHTPOST_R: { position: [8.15, 0, -4.5], rotation: [0, -48, 0], zone: "right-wing" },
-  FIX_FOG_L: { position: [-8.1, .02, 5.15], rotation: [0, 68, 0], zone: "left-wing" },
+  FIX_BARREL_LIGHT: { position: [-13.2, 0, -7.2], rotation: [0, 62, 0], zone: "left-wing" },
+  FIX_LIGHTPOST_R: { position: [13.2, 0, -7.2], rotation: [0, -48, 0], zone: "right-wing" },
+  FIX_FOG_L: { position: [-13, .02, -6.6], rotation: [0, 68, 0], zone: "left-wing" },
   FIX_FOG_C: { position: [0, .02, -5.3], zone: "rear" },
-  FIX_FOG_R: { position: [8.1, .02, 5.15], rotation: [0, -68, 0], zone: "right-wing" },
+  FIX_FOG_R: { position: [13, .02, -6.6], rotation: [0, -68, 0], zone: "right-wing" },
 };
 
 export function arenaPlacementTransform(placement: Pick<ArenaPlacement, "id" | "position" | "rotation">): ArenaPlacementTransform {
@@ -238,6 +266,9 @@ function themeExtent(asset: ArenaThemeAsset): number {
 }
 
 export function generatedThemePlacements(themeKey: string, theme: ArenaTheme): ArenaPlacement[] {
+  if (themeKey === "most-kills" && theme.placements.length) {
+    return theme.placements.map((placement) => ({ ...placement }));
+  }
   const placements: ArenaPlacement[] = [];
   let socketIndex = 0;
   for (const asset of theme.assets) {
