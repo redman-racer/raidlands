@@ -1,13 +1,14 @@
 import {
   ACESFilmicToneMapping, AdditiveBlending, AmbientLight, Box3, BufferAttribute, BufferGeometry,
   CanvasTexture, ClampToEdgeWrapping, Color, ConeGeometry, CylinderGeometry, DirectionalLight, FogExp2,
-  Float32BufferAttribute, Group, HemisphereLight, LinearFilter, MathUtils, Mesh, MeshBasicMaterial,
+  EquirectangularReflectionMapping, Float32BufferAttribute, Group, HemisphereLight, LinearFilter, MathUtils, Mesh, MeshBasicMaterial,
   MeshStandardMaterial, Object3D, PCFSoftShadowMap, PerspectiveCamera, PlaneGeometry, PointLight,
-  Points, PointsMaterial, RectAreaLight, Scene, SkinnedMesh, SpotLight, Sprite,
-  SpriteMaterial, SRGBColorSpace, TextureLoader, Vector2, Vector3, WebGLRenderer,
+  PMREMGenerator, Points, PointsMaterial, RectAreaLight, Scene, SkinnedMesh, SpotLight, Sprite,
+  SpriteMaterial, SRGBColorSpace, Texture, TextureLoader, Vector2, Vector3, WebGLRenderer, WebGLRenderTarget,
 } from "three";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
+import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
 import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
 import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
@@ -185,6 +186,8 @@ class PodiumScene {
   private themeRoot = new Group();
   private effectsRoot = new Group();
   private loader: GLTFLoader;
+  private environmentTexture?: Texture;
+  private environmentTarget?: WebGLRenderTarget;
   private modelCache = new Map<string, Promise<Object3D>>();
   private observer: ResizeObserver;
   private frame = 0;
@@ -269,7 +272,8 @@ class PodiumScene {
     this.cameraBase.copy(ARENA_CAMERA.position); this.cameraTarget.copy(ARENA_CAMERA.target);
     this.renderer.toneMappingExposure = Math.pow(2, numeric(camera, "Exposure_EV", -.45) - .55);
     this.scene.background = new Color(0x0b0d0e); this.scene.fog = new FogExp2(0x171a1b, .042);
-    await this.buildBackdropPanels();
+    const hasEnvironment = await this.buildArenaEnvironment().catch(() => false);
+    if (!hasEnvironment) await this.buildBackdropPanels();
     this.buildArenaPodiums(manifest); this.buildSolidFloor(); this.buildArenaLights(manifest); this.buildAtmosphere();
     this.setupComposer();
     this.resize();
@@ -281,6 +285,23 @@ class PodiumScene {
     const loadedIds = new Set(this.baseRoot.children.map((child) => child.name));
     const missingCritical = placements.filter((placement) => placement.lodClass === "Hero" && !loadedIds.has(placement.id));
     if (loaded < 1 || missingCritical.length) throw new Error("critical arena models unavailable");
+  }
+
+  private async buildArenaEnvironment(): Promise<boolean> {
+    const source = this.host.dataset.environmentSrc || ""; if (!source) return false;
+    const texture = await new RGBELoader().loadAsync(source);
+    if (this.disposed) { texture.dispose(); return false; }
+    texture.mapping = EquirectangularReflectionMapping;
+    const generator = new PMREMGenerator(this.renderer);
+    generator.compileEquirectangularShader();
+    const target = generator.fromEquirectangular(texture); generator.dispose();
+    this.environmentTexture = texture; this.environmentTarget = target;
+    this.scene.background = texture; this.scene.environment = target.texture;
+    this.scene.backgroundIntensity = .62; this.scene.environmentIntensity = .72;
+    const rotation = MathUtils.degToRad(180);
+    this.scene.backgroundRotation.set(0, rotation, 0); this.scene.environmentRotation.set(0, rotation, 0);
+    this.host.dataset.sceneEnvironment = "hdri";
+    return true;
   }
 
   private async buildBackdropPanels() {
@@ -667,7 +688,8 @@ class PodiumScene {
       if ((node as Points).isPoints) { const points = node as Points; geometries.add(points.geometry); materials.add(points.material as PointsMaterial); }
       if (node instanceof Sprite) materials.add(node.material);
     });
-    geometries.forEach((geometry) => geometry.dispose()); materials.forEach((material) => material.dispose()); this.composer?.dispose(); this.renderer.dispose();
+    geometries.forEach((geometry) => geometry.dispose()); materials.forEach((material) => material.dispose());
+    this.environmentTexture?.dispose(); this.environmentTarget?.dispose(); this.composer?.dispose(); this.renderer.dispose();
   }
 }
 
