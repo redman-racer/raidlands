@@ -272,7 +272,7 @@ $editor_config = [
 
       <dialog class="airstrike-tool-dialog airstrike-tool-dialog-profile" data-editor-tool-dialog="profile" aria-labelledby="airstrike-tool-profile-title">
         <div class="airstrike-tool-shell">
-          <header class="airstrike-tool-head"><div><p class="section-kicker">Profile</p><h2 id="airstrike-tool-profile-title">Profile Setup</h2></div><button type="button" data-editor-tool-close aria-label="Close profile setup">&times;</button></header>
+          <header class="airstrike-tool-head"><div><p class="section-kicker">Profile</p><h2 id="airstrike-tool-profile-title">Profile Setup</h2></div><div class="airstrike-tool-window-actions"><button type="button" data-editor-tool-minimize aria-label="Minimize profile setup" title="Minimize">&minus;</button><button type="button" data-editor-tool-close aria-label="Close profile setup" title="Close">&times;</button></div></header>
           <div class="airstrike-tool-layout">
             <section class="airstrike-tool-content">
               <p class="airstrike-editor-muted">Set the stable draft identity, preview vehicle, and notes shared with the AI helper.</p>
@@ -289,7 +289,7 @@ $editor_config = [
 
       <dialog class="airstrike-tool-dialog airstrike-tool-dialog-wide" data-editor-tool-dialog="flight-path" aria-labelledby="airstrike-tool-flight-title">
         <div class="airstrike-tool-shell">
-          <header class="airstrike-tool-head"><div><p class="section-kicker">Route</p><h2 id="airstrike-tool-flight-title">Flight Path</h2></div><button type="button" data-editor-tool-close aria-label="Close flight path">&times;</button></header>
+          <header class="airstrike-tool-head"><div><p class="section-kicker">Route</p><h2 id="airstrike-tool-flight-title">Flight Path</h2></div><div class="airstrike-tool-window-actions"><button type="button" data-editor-tool-minimize aria-label="Minimize flight path" title="Minimize">&minus;</button><button type="button" data-editor-tool-close aria-label="Close flight path" title="Close">&times;</button></div></header>
           <div class="airstrike-tool-layout">
             <section class="airstrike-tool-content airstrike-flight-workspace">
               <aside class="airstrike-workspace-collection"><header><strong>Waypoints</strong><div><button type="button" data-editor-waypoint-add>Add</button><button type="button" data-editor-waypoint-duplicate>Duplicate</button><button type="button" data-editor-waypoint-delete>Delete</button></div></header><div class="airstrike-waypoint-list" data-editor-waypoints></div></aside>
@@ -306,7 +306,7 @@ $editor_config = [
 
       <dialog class="airstrike-tool-dialog airstrike-tool-dialog-wide" data-editor-tool-dialog="ordnance" aria-labelledby="airstrike-tool-ordnance-title">
         <div class="airstrike-tool-shell">
-          <header class="airstrike-tool-head"><div><p class="section-kicker">Payload</p><h2 id="airstrike-tool-ordnance-title">Ordnance Editor</h2></div><button type="button" data-editor-tool-close aria-label="Close ordnance editor">&times;</button></header>
+          <header class="airstrike-tool-head"><div><p class="section-kicker">Payload</p><h2 id="airstrike-tool-ordnance-title">Ordnance Editor</h2></div><div class="airstrike-tool-window-actions"><button type="button" data-editor-tool-minimize aria-label="Minimize ordnance editor" title="Minimize">&minus;</button><button type="button" data-editor-tool-close aria-label="Close ordnance editor" title="Close">&times;</button></div></header>
           <div class="airstrike-tool-layout">
             <section class="airstrike-tool-content airstrike-ordnance-workspace">
               <div class="airstrike-ordnance-overview"><label class="admin-field"><span>Release source</span><select data-editor-release-mode><option value="manual">Manual events</option><option value="repeated">Automatic groups</option><option value="mixed">Mixed events + groups</option></select></label><strong data-editor-ordnance-schedule-summary>No scheduled payloads</strong></div>
@@ -331,7 +331,7 @@ $editor_config = [
 
       <dialog class="airstrike-tool-dialog" data-editor-tool-dialog="view-validation" aria-labelledby="airstrike-tool-view-title">
         <div class="airstrike-tool-shell">
-          <header class="airstrike-tool-head"><div><p class="section-kicker">Review</p><h2 id="airstrike-tool-view-title">View &amp; Validation</h2></div><button type="button" data-editor-tool-close aria-label="Close review tools">&times;</button></header>
+          <header class="airstrike-tool-head"><div><p class="section-kicker">Review</p><h2 id="airstrike-tool-view-title">View &amp; Validation</h2></div><div class="airstrike-tool-window-actions"><button type="button" data-editor-tool-minimize aria-label="Minimize review tools" title="Minimize">&minus;</button><button type="button" data-editor-tool-close aria-label="Close review tools" title="Close">&times;</button></div></header>
           <div class="airstrike-tool-layout">
             <section class="airstrike-tool-content"><div class="airstrike-editor-reference-toggles"><label class="airstrike-editor-checkbox"><input type="checkbox" data-editor-terrain-reference checked><span><strong>Map heightmap</strong><small>Rust terrain surface</small></span></label><label class="airstrike-editor-checkbox"><input type="checkbox" data-editor-ground-grid checked><span><strong>Meter grid</strong><small>Flat scale grid</small></span></label><label class="airstrike-editor-checkbox"><input type="checkbox" data-editor-scene-extras checked><span><strong>Scene extras</strong><small>Players, crates, and scale props</small></span></label></div><div class="airstrike-editor-inline-actions"><button class="airstrike-editor-action-button" type="button" data-editor-validate>Validate profile</button><button class="airstrike-editor-action-button" type="button" data-editor-compile>Compile preview</button></div><div class="airstrike-editor-validation" data-editor-feedback>Load or create a profile, then validate before publishing.</div><article class="airstrike-review-compile"><strong data-editor-compile-summary-review>No compiled track yet</strong><pre data-editor-output-review></pre></article></section>
             <aside class="airstrike-context-agent" data-agent-context-rail data-agent-scope="view-validation"></aside>

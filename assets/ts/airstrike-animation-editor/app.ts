@@ -179,6 +179,11 @@ interface ToolSession {
   opener: HTMLElement | null;
 }
 
+interface ToolWindowPosition {
+  left: number;
+  top: number;
+}
+
 interface ValidationState {
   status: "not-run" | "running" | "passed" | "failed";
   errors: number;
@@ -351,6 +356,7 @@ class AirstrikeEditorApp {
   private toolSession: ToolSession | null = null;
   private activeTool: ToolId | null = null;
   private activeToolOpener: HTMLElement | null = null;
+  private readonly toolWindowPositions = new Map<ToolId, ToolWindowPosition>();
   private validationState: ValidationState = { status: "not-run", errors: 0, warnings: 0 };
   private ordnanceTab: "basic" | "targeting" | "advanced" = "basic";
   private metadata: VehiclePreviewMetadataFile | null = null;
@@ -2036,10 +2042,25 @@ class AirstrikeEditorApp {
         event.preventDefault();
         void this.requestToolClose();
       });
+      dialog.addEventListener("keydown", (event) => {
+        if (event.key === "Escape") {
+          event.preventDefault();
+          void this.requestToolClose();
+        }
+      });
       dialog.querySelectorAll<HTMLButtonElement>("[data-editor-tool-close]").forEach((button) => button.addEventListener("click", () => void this.requestToolClose()));
+      dialog.querySelector<HTMLButtonElement>("[data-editor-tool-minimize]")?.addEventListener("click", () => this.toggleToolMinimized(dialog));
       dialog.querySelector<HTMLButtonElement>("[data-editor-tool-cancel]")?.addEventListener("click", () => void this.cancelActiveTool());
       dialog.querySelector<HTMLButtonElement>("[data-editor-tool-apply]")?.addEventListener("click", () => void this.applyActiveTool());
+      const head = dialog.querySelector<HTMLElement>(".airstrike-tool-head");
+      head?.addEventListener("pointerdown", (event) => this.startToolDrag(dialog, event));
+      head?.addEventListener("dblclick", (event) => {
+        if (!(event.target instanceof Element) || !event.target.closest("button, input, select, textarea, a")) {
+          this.toggleToolMinimized(dialog);
+        }
+      });
     });
+    window.addEventListener("resize", () => this.constrainOpenToolWindow());
     this.elements.root.querySelectorAll<HTMLButtonElement>("[data-editor-ordnance-tab]").forEach((button) => {
       button.addEventListener("click", () => {
         const tab = String(button.dataset.editorOrdnanceTab || "basic");
@@ -2077,7 +2098,120 @@ class AirstrikeEditorApp {
     this.agent.workspaceChanged(value);
     this.updateToolSessionStatus();
     this.renderInspectorSummaries();
-    dialog.showModal();
+    dialog.classList.remove("is-minimized");
+    this.updateToolMinimizeButton(dialog, false);
+    dialog.show();
+    window.requestAnimationFrame(() => this.positionToolWindow(dialog, value));
+  }
+
+  private positionToolWindow(dialog: HTMLDialogElement, tool: ToolId): void {
+    const saved = this.toolWindowPositions.get(tool) ?? this.loadToolWindowPosition(tool);
+    const rect = dialog.getBoundingClientRect();
+    const requested = saved ?? {
+      left: (window.innerWidth - rect.width) / 2,
+      top: Math.max(16, (window.innerHeight - rect.height) / 2),
+    };
+    this.setToolWindowPosition(dialog, requested.left, requested.top);
+  }
+
+  private startToolDrag(dialog: HTMLDialogElement, event: PointerEvent): void {
+    if (event.button !== 0 || (event.target instanceof Element && event.target.closest("button, input, select, textarea, a"))) {
+      return;
+    }
+    const head = event.currentTarget as HTMLElement;
+    const rect = dialog.getBoundingClientRect();
+    const originX = event.clientX;
+    const originY = event.clientY;
+    dialog.classList.add("is-dragging");
+    head.setPointerCapture(event.pointerId);
+    event.preventDefault();
+
+    const move = (moveEvent: PointerEvent): void => {
+      if (moveEvent.pointerId !== event.pointerId) return;
+      this.setToolWindowPosition(dialog, rect.left + moveEvent.clientX - originX, rect.top + moveEvent.clientY - originY);
+    };
+    const finish = (finishEvent: PointerEvent): void => {
+      if (finishEvent.pointerId !== event.pointerId) return;
+      head.removeEventListener("pointermove", move);
+      head.removeEventListener("pointerup", finish);
+      head.removeEventListener("pointercancel", finish);
+      if (head.hasPointerCapture(event.pointerId)) head.releasePointerCapture(event.pointerId);
+      dialog.classList.remove("is-dragging");
+      this.rememberToolWindowPosition(dialog);
+    };
+    head.addEventListener("pointermove", move);
+    head.addEventListener("pointerup", finish);
+    head.addEventListener("pointercancel", finish);
+  }
+
+  private toggleToolMinimized(dialog: HTMLDialogElement): void {
+    const minimized = !dialog.classList.contains("is-minimized");
+    dialog.classList.toggle("is-minimized", minimized);
+    this.updateToolMinimizeButton(dialog, minimized);
+    window.requestAnimationFrame(() => {
+      this.constrainToolWindow(dialog);
+      this.rememberToolWindowPosition(dialog);
+    });
+  }
+
+  private updateToolMinimizeButton(dialog: HTMLDialogElement, minimized: boolean): void {
+    const button = dialog.querySelector<HTMLButtonElement>("[data-editor-tool-minimize]");
+    if (!button) return;
+    button.textContent = minimized ? "\u25a1" : "\u2212";
+    button.setAttribute("aria-label", minimized ? "Restore tool window" : "Minimize tool window");
+    button.title = minimized ? "Restore" : "Minimize";
+    button.setAttribute("aria-expanded", String(!minimized));
+  }
+
+  private setToolWindowPosition(dialog: HTMLDialogElement, left: number, top: number): void {
+    const rect = dialog.getBoundingClientRect();
+    const edge = 8;
+    const maximumLeft = Math.max(edge, window.innerWidth - rect.width - edge);
+    const maximumTop = Math.max(edge, window.innerHeight - rect.height - edge);
+    dialog.style.left = `${Math.round(clamp(left, edge, maximumLeft))}px`;
+    dialog.style.top = `${Math.round(clamp(top, edge, maximumTop))}px`;
+  }
+
+  private constrainToolWindow(dialog: HTMLDialogElement): void {
+    if (!dialog.open) return;
+    const rect = dialog.getBoundingClientRect();
+    this.setToolWindowPosition(dialog, rect.left, rect.top);
+  }
+
+  private constrainOpenToolWindow(): void {
+    const dialog = this.activeDialog();
+    if (dialog) this.constrainToolWindow(dialog);
+  }
+
+  private toolWindowStorageKey(tool: ToolId): string {
+    return `raidlands.airstrike-animation-editor.tool-window.${tool}`;
+  }
+
+  private loadToolWindowPosition(tool: ToolId): ToolWindowPosition | null {
+    try {
+      const parsed = JSON.parse(window.localStorage.getItem(this.toolWindowStorageKey(tool)) || "null") as Partial<ToolWindowPosition> | null;
+      if (parsed && Number.isFinite(parsed.left) && Number.isFinite(parsed.top)) {
+        const position = { left: Number(parsed.left), top: Number(parsed.top) };
+        this.toolWindowPositions.set(tool, position);
+        return position;
+      }
+    } catch {
+      // A remembered position is convenient, but never required to use a tool window.
+    }
+    return null;
+  }
+
+  private rememberToolWindowPosition(dialog: HTMLDialogElement): void {
+    const tool = String(dialog.dataset.editorToolDialog || "");
+    if (!this.isToolId(tool)) return;
+    const rect = dialog.getBoundingClientRect();
+    const position = { left: Math.round(rect.left), top: Math.round(rect.top) };
+    this.toolWindowPositions.set(tool, position);
+    try {
+      window.localStorage.setItem(this.toolWindowStorageKey(tool), JSON.stringify(position));
+    } catch {
+      // Editing remains fully functional when storage is disabled.
+    }
   }
 
   private activeDialog(): HTMLDialogElement | null {
@@ -2132,7 +2266,11 @@ class AirstrikeEditorApp {
 
   private closeActiveTool(opener: HTMLElement | null = null): void {
     const dialog = this.activeDialog();
-    if (dialog?.open) dialog.close();
+    if (dialog?.open) {
+      this.rememberToolWindowPosition(dialog);
+      dialog.close();
+      dialog.classList.remove("is-minimized", "is-dragging");
+    }
     this.activeTool = null;
     this.agent.workspaceChanged("full");
     this.renderInspectorSummaries();

@@ -699,22 +699,14 @@ function raidlands_airstrike_agent_create_proposal(int $thread_id, int $assistan
     );
     $compile = raidlands_airstrike_agent_compile_summary($after);
     $diff = raidlands_airstrike_agent_semantic_diff($before, $after);
-    $assistant_item = $assistant_item_id > 0
-        ? raidlands_db_fetch_one(
-            'SELECT id FROM airstrike_agent_items WHERE id = :id AND thread_id = :thread_id LIMIT 1',
-            ['id' => $assistant_item_id, 'thread_id' => $thread_id]
-        )
-        : null;
-    $proposal_assistant_item_id = $assistant_item === null ? null : (int) $assistant_item['id'];
     raidlands_db_execute(
         'INSERT INTO airstrike_agent_proposals
-            (thread_id, assistant_item_id, base_source_sha256, candidate_source_sha256, candidate_source_json,
+            (thread_id, base_source_sha256, candidate_source_sha256, candidate_source_json,
              diff_json, validation_json, compile_summary_json)
-         VALUES (:thread_id, :assistant_item_id, :base_hash, :candidate_hash, :candidate_json,
+         VALUES (:thread_id, :base_hash, :candidate_hash, :candidate_json,
                  :diff_json, :validation_json, :compile_json)',
         [
             'thread_id' => $thread_id,
-            'assistant_item_id' => $proposal_assistant_item_id,
             'base_hash' => raidlands_airstrike_agent_source_hash($before),
             'candidate_hash' => raidlands_airstrike_agent_source_hash($after),
             'candidate_json' => raidlands_airstrike_agent_source_json($after),
@@ -724,6 +716,26 @@ function raidlands_airstrike_agent_create_proposal(int $thread_id, int $assistan
         ]
     );
     $id = (int) raidlands_db_required()->lastInsertId();
+    if ($id <= 0) {
+        throw new RuntimeException('The agent proposal was inserted but its database ID could not be captured.');
+    }
+    // The candidate is durable before this optional association is attempted.
+    // The JOIN only supplies an ID that already exists in the parent table, and
+    // any environment-specific FK problem cannot discard the proposal.
+    if ($assistant_item_id > 0) {
+        try {
+            raidlands_db_execute(
+                'UPDATE airstrike_agent_proposals p
+                 INNER JOIN airstrike_agent_items i
+                    ON i.id = :assistant_item_id AND i.thread_id = p.thread_id
+                 SET p.assistant_item_id = i.id
+                 WHERE p.id = :proposal_id',
+                ['assistant_item_id' => $assistant_item_id, 'proposal_id' => $id]
+            );
+        } catch (Throwable $error) {
+            error_log('Raidlands airstrike agent: proposal ' . $id . ' was saved without an assistant item association.');
+        }
+    }
     return [
         'id' => $id,
         'baseSourceHash' => raidlands_airstrike_agent_source_hash($before),

@@ -246,5 +246,11 @@ airstrike_agent_test(
         && $item_id_position < $thread_touch_position,
     'agent item IDs are captured before any subsequent SQL statement can reset lastInsertId'
 );
+airstrike_agent_test(
+    str_contains((string) $agent_php, '(thread_id, base_source_sha256, candidate_source_sha256, candidate_source_json,')
+        && str_contains((string) $agent_php, 'INNER JOIN airstrike_agent_items i')
+        && str_contains((string) $agent_php, 'was saved without an assistant item association.'),
+    'proposals are inserted without the optional item FK before a guarded association attempt'
+);
 
 echo 'Airstrike animation agent tests passed (' . $tests . " assertions).\n";

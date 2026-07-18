@@ -1263,7 +1263,7 @@
 .airstrike-ordnance-editor-actions button,
 .airstrike-ordnance-tabs button,
 .airstrike-tool-footer button,
-.airstrike-tool-head > button,
+.airstrike-tool-window-actions > button,
 .airstrike-context-agent button {
   appearance: none;
   min-height: 30px;
@@ -1277,13 +1277,18 @@
 }
 .airstrike-editor-tool-card button:hover,
 .airstrike-tool-footer button:hover,
+.airstrike-tool-window-actions > button:hover,
 .airstrike-context-agent button:hover { border-color: rgba(54, 197, 230, .65); background: rgba(19, 56, 64, .9); }
 .airstrike-editor-tool-card nav button { width: 30px; min-height: 24px; padding: 2px; }
 
 .airstrike-tool-dialog {
+  position: fixed;
+  inset: auto;
+  z-index: 120;
   width: min(860px, calc(100vw - 48px));
   max-width: none;
   max-height: calc(100vh - 48px);
+  margin: 0;
   padding: 0;
   border: 1px solid rgba(129, 167, 174, .36);
   border-radius: 10px;
@@ -1293,18 +1298,33 @@
   box-shadow: 0 28px 90px rgba(0, 0, 0, .72);
 }
 .airstrike-tool-dialog-wide { width: min(1180px, calc(100vw - 48px)); }
-.airstrike-tool-dialog::backdrop { background: rgba(1, 4, 5, .58); backdrop-filter: blur(2px); }
+.airstrike-tool-dialog[open] { display: block; }
+.airstrike-tool-dialog.is-dragging { user-select: none; }
+.airstrike-tool-dialog.is-minimized {
+  width: min(340px, calc(100vw - 24px));
+  max-height: none;
+}
+.airstrike-tool-dialog.is-minimized .airstrike-tool-layout,
+.airstrike-tool-dialog.is-minimized .airstrike-tool-footer { display: none; }
+.airstrike-tool-dialog.is-minimized .airstrike-tool-shell { max-height: none; grid-template-rows: auto; }
 .airstrike-tool-shell { max-height: calc(100vh - 50px); display: grid; grid-template-rows: auto minmax(0, 1fr) auto; }
 .airstrike-tool-head,
 .airstrike-tool-footer { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 14px; background: rgba(1, 5, 6, .55); }
-.airstrike-tool-head { border-bottom: 1px solid rgba(129, 167, 174, .18); }
+.airstrike-tool-head {
+  border-bottom: 1px solid rgba(129, 167, 174, .18);
+  cursor: grab;
+  touch-action: none;
+}
+.airstrike-tool-dialog.is-dragging .airstrike-tool-head { cursor: grabbing; }
 .airstrike-tool-footer { border-top: 1px solid rgba(129, 167, 174, .18); justify-content: flex-end; }
 .airstrike-tool-footer > span { margin-right: auto; color: #91a4a8; font-size: 11px; }
 .airstrike-tool-footer [data-editor-tool-apply] { border-color: rgba(54, 197, 230, .55); background: rgba(19, 83, 96, .72); }
 .airstrike-tool-head h2,
 .airstrike-tool-head p { margin: 0; }
 .airstrike-tool-head h2 { margin-top: 2px; font-size: 18px; }
-.airstrike-tool-head > button { width: 34px; padding: 0; font-size: 20px; }
+.airstrike-tool-window-actions { display: flex; align-items: center; gap: 6px; }
+.airstrike-tool-window-actions > button { width: 34px; padding: 0; font-size: 20px; }
+.airstrike-tool-window-actions [data-editor-tool-minimize] { font-size: 17px; }
 .airstrike-tool-layout { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 330px; overflow: hidden; }
 .airstrike-tool-content { min-width: 0; min-height: 0; display: grid; align-content: start; gap: 12px; padding: 14px; overflow: auto; }
 .airstrike-tool-content input,
