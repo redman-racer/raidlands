@@ -112,7 +112,7 @@ describe("leaderboard podium policy", () => {
     const bounds = new Box3().setFromObject(result.root); const size = bounds.getSize(new Vector3());
     expect(result.root.name).toBe("PedestalRootRank1");
     expect(size.x).toBeCloseTo(2.46, 1);
-    expect(result.standingHeight).toBeCloseTo(0.63, 3);
+    expect(result.standingHeight).toBeCloseTo(0.63 * pedestalConfigForRank(1).verticalScale, 3);
     expect(result.root.getObjectByName("BottomFootplate")).toBeTruthy();
     expect(result.root.getObjectByName("MainDrum")).toBeTruthy();
     expect(result.root.getObjectByName("UpperRim")).toBeTruthy();
@@ -131,7 +131,7 @@ describe("leaderboard podium policy", () => {
     });
     expect(pedestalConfigForRank(1).horizontalScale).toBe(1);
     expect(pedestalConfigForRank(2).horizontalScale).toBeCloseTo(0.84);
-    expect(pedestalConfigForRank(3).verticalScale).toBeCloseTo(0.69);
+    expect(pedestalConfigForRank(3).verticalScale).toBeCloseTo(1.03);
   });
 
   it("selects one profile pedestal or the full leaderboard trio", () => {

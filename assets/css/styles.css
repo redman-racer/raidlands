@@ -4832,6 +4832,21 @@ h3,
 
 .leaderboard-podium[data-podium-state="ready"] .leaderboard-podium-status { opacity: 0; }
 
+.leaderboard-podium[data-podium-signage="ready"] .leaderboard-podium-heading,
+.leaderboard-podium[data-podium-signage="ready"] .leaderboard-podium-cards {
+  position: fixed !important;
+  width: 1px !important;
+  height: 1px !important;
+  min-width: 0 !important;
+  margin: -1px !important;
+  padding: 0 !important;
+  overflow: hidden !important;
+  clip: rect(0 0 0 0) !important;
+  clip-path: inset(50%) !important;
+  border: 0 !important;
+  white-space: nowrap !important;
+}
+
 html[data-podium-capture="true"] .feedback-chip,
 html[data-podium-capture="true"] .chat-widget { display: none !important; }
 
@@ -6938,10 +6953,14 @@ a.leaderboard-steam:hover,
 @media (max-width: 700px) {
   .leaderboard-podium:not(.podium-profile-preview) { min-height: 560px; }
 
+  .leaderboard-podium:not(.podium-profile-preview)[data-podium-signage="ready"] { min-height: 400px; }
+
   .leaderboard-podium:not(.podium-profile-preview) .leaderboard-podium-stage {
     bottom: auto;
     height: 255px;
   }
+
+  .leaderboard-podium:not(.podium-profile-preview)[data-podium-signage="ready"] .leaderboard-podium-stage { height: 100%; }
 
   .leaderboard-podium-heading {
     top: 10px;

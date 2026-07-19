@@ -32,9 +32,9 @@ const BASE_STANDING_HEIGHT = 0.63;
 
 export function pedestalConfigForRank(rank: PedestalRank, segments = 48): PedestalConfig {
   const variants: Record<PedestalRank, Omit<PedestalConfig, "rank" | "segments">> = {
-    1: { horizontalScale: 1, verticalScale: 1, accent: 0x9a7440 },
-    2: { horizontalScale: 0.84, verticalScale: 0.75, accent: 0x88918f },
-    3: { horizontalScale: 0.79, verticalScale: 0.69, accent: 0x825038 },
+    1: { horizontalScale: 1, verticalScale: 1.38, accent: 0x9a7440 },
+    2: { horizontalScale: 0.84, verticalScale: 1.12, accent: 0x88918f },
+    3: { horizontalScale: 0.79, verticalScale: 1.03, accent: 0x825038 },
   };
   return { rank, segments: Math.max(32, Math.min(64, Math.round(segments))), ...variants[rank] };
 }

@@ -25,13 +25,18 @@ import {
 import { normalizeWearableOrigin, podiumCharacterYaw, podiumWeaponLayout } from "./layout";
 import { buildIndustrialPedestal, pedestalConfigForRank, pedestalRanksForLayout } from "./pedestal";
 import {
+  buildIndustrialSign, CATEGORY_SIGN_TRANSFORM, fitSignageText, industrialSignDetail,
+  industrialSignVariantForRank, INDUSTRIAL_SIGN_PROFILES, IndustrialSignSurfaceTextures,
+  playerSignageText, playerSignageTransform,
+} from "./signage";
+import {
   anchorPoint, arenaPlacementTransform, ArenaManifest, ArenaPlacement, clampArenaRotation,
-  FORWARD_MOUND_VISIBILITY, generatedThemePlacements, idleArenaYawTarget, isBarbedWirePlacement, JUNKYARD_ATMOSPHERE, JUNKYARD_GROUND,
+  FORWARD_MOUND_VISIBILITY, idleArenaYawTarget, isBarbedWirePlacement, JUNKYARD_ATMOSPHERE, JUNKYARD_GROUND,
   junkyardFallbackFogLayers, junkyardGroundedPlacementY, junkyardGroundHeight, junkyardGroundScatter,
   junkyardGroundSurfaceShade, JUNKYARD_GANTRY_LAYOUT, JUNKYARD_PODIUM_CENTERS_X,
   JUNKYARD_SEARCHLIGHTS, junkyardSearchlightTarget, PROFILE_PODIUM_GROUND, profilePodiumGroundHeight,
   JunkyardFogQualityState, nextJunkyardFogQuality,
-  orbitCameraPosition, podiumCategoryTitle, podiumGroundMaterialState, podiumThemeFor,
+  orbitCameraPosition, podiumCategoryTitle, podiumGroundMaterialState,
   shouldLiftForwardMoundVisibility, shouldRenderArenaPlacement,
 } from "./scene-policy";
 
@@ -205,6 +210,55 @@ function hazeTexture(): CanvasTexture {
   const texture = new CanvasTexture(canvas); texture.minFilter = LinearFilter; texture.magFilter = LinearFilter; return texture;
 }
 
+function signageCanvas(width = 1024, height = 256): { canvas: HTMLCanvasElement; context: CanvasRenderingContext2D } {
+  const canvas = document.createElement("canvas"); canvas.width = width; canvas.height = height;
+  const context = canvas.getContext("2d")!;
+  context.fillStyle = "#050606"; context.fillRect(0, 0, width, height);
+  const glow = context.createRadialGradient(width / 2, height * .48, 12, width / 2, height * .48, width * .58);
+  glow.addColorStop(0, "#25150d"); glow.addColorStop(.52, "#0d0c0a"); glow.addColorStop(1, "#030404");
+  context.fillStyle = glow; context.fillRect(7, 7, width - 14, height - 14);
+  // Fine staggered perforations read as a physical grille without extra geometry.
+  context.fillStyle = "rgba(0,0,0,.58)";
+  for (let y = 10; y < height - 8; y += 8) for (let x = 10 + ((y / 8) % 2) * 4; x < width - 8; x += 8) {
+    context.beginPath(); context.arc(x, y, 1.65, 0, Math.PI * 2); context.fill();
+  }
+  const edge = context.createLinearGradient(0, 0, width, 0);
+  edge.addColorStop(0, "rgba(0,0,0,.82)"); edge.addColorStop(.08, "rgba(0,0,0,0)"); edge.addColorStop(.92, "rgba(0,0,0,0)"); edge.addColorStop(1, "rgba(0,0,0,.82)");
+  context.fillStyle = edge; context.fillRect(0, 0, width, height);
+  let seed = width * 31 + height;
+  for (let index = 0; index < 180; index += 1) {
+    seed = (seed * 1664525 + 1013904223) >>> 0; const x = seed % width;
+    seed = (seed * 1664525 + 1013904223) >>> 0; const y = seed % height;
+    context.fillStyle = index % 3 ? "rgba(255,139,55,.045)" : "rgba(110,77,55,.12)"; context.fillRect(x, y, 2 + index % 4, 1);
+  }
+  return { canvas, context };
+}
+
+function categorySignTexture(title: string): CanvasTexture {
+  const { canvas, context } = signageCanvas();
+  context.textAlign = "center"; context.textBaseline = "middle";
+  context.font = "800 35px Arial Narrow, Arial, sans-serif"; context.letterSpacing = "5px"; context.fillStyle = "#d2cbc0";
+  context.fillText("CURRENT CATEGORY", canvas.width / 2, 57);
+  context.shadowColor = "#ff5a16"; context.shadowBlur = 24; context.fillStyle = "#ff792c";
+  const fit = fitSignageText(title.toUpperCase(), 900, (text, size) => { context.font = `900 ${size}px Impact, Arial Narrow, sans-serif`; return context.measureText(text).width; }, 102, 64);
+  context.font = `900 ${fit.fontSize}px Impact, Arial Narrow, sans-serif`; context.letterSpacing = "3px";
+  context.fillText(fit.text, canvas.width / 2, 164);
+  const texture = new CanvasTexture(canvas); texture.colorSpace = SRGBColorSpace; texture.minFilter = LinearFilter; texture.magFilter = LinearFilter; return texture;
+}
+
+function playerSignTexture(text: ReturnType<typeof playerSignageText>): CanvasTexture {
+  const { canvas, context } = signageCanvas(); const split = 205;
+  context.strokeStyle = "rgba(255,132,45,.55)"; context.lineWidth = 4; context.beginPath(); context.moveTo(split, 18); context.lineTo(split, 238); context.stroke();
+  context.textAlign = "center"; context.textBaseline = "middle"; context.fillStyle = "#ff8a30"; context.shadowColor = "#ff5a16"; context.shadowBlur = 18;
+  context.font = "900 100px Impact, Arial Narrow, sans-serif"; context.fillText(`#${text.rank}`, split / 2, 127);
+  context.textAlign = "left"; context.shadowBlur = 14;
+  const fitted = fitSignageText(text.name, 735, (candidate, size) => { context.font = `800 ${size}px Arial Narrow, Arial, sans-serif`; return context.measureText(candidate).width; }, 64, 38);
+  context.font = `800 ${fitted.fontSize}px Arial Narrow, Arial, sans-serif`; context.fillText(fitted.text, 245, 91);
+  context.shadowBlur = 7; context.fillStyle = "#f1e4d2"; context.font = "700 39px Arial Narrow, Arial, sans-serif";
+  context.fillText(`${text.value} ${text.label}`, 245, 176);
+  const texture = new CanvasTexture(canvas); texture.colorSpace = SRGBColorSpace; texture.minFilter = LinearFilter; texture.magFilter = LinearFilter; return texture;
+}
+
 const VOLUMETRIC_FOG_SHADER = {
   uniforms: {
     tDiffuse: { value: null }, tDepth: { value: null },
@@ -302,12 +356,13 @@ class PodiumScene {
   private baseRoot = new Group();
   private pedestalRoot = new Group();
   private characterRoot = new Group();
-  private themeRoot = new Group();
+  private signageRoot = new Group();
   private effectsRoot = new Group();
   private loader: GLTFLoader;
   private environmentTexture?: Texture;
   private environmentTarget?: WebGLRenderTarget;
   private ownedTextures = new Set<Texture>();
+  private signSurfacePromise?: Promise<IndustrialSignSurfaceTextures | undefined>;
   private searchlights: Array<{ light: SpotLight; shaft: Mesh; side: -1 | 1; phase: number }> = [];
   private groundFogLayers: Array<{ mesh: Mesh; texture: Texture; speed: Vector2; offset: Vector2 }> = [];
   private volumetricFogPass?: ShaderPass;
@@ -328,7 +383,7 @@ class PodiumScene {
   private manifest?: ArenaManifest;
   private arenaReady: Promise<void>;
   private rankX = [0, -2.55, 2.55];
-  private standingHeights = [0.63, 0.4725, 0.4347];
+  private standingHeights = [0.8694, 0.7056, 0.6489];
   private cameraBase = ARENA_CAMERA.position.clone();
   private cameraOrbitBase = ARENA_CAMERA.position.clone();
   private cameraTarget = ARENA_CAMERA.target.clone();
@@ -361,7 +416,7 @@ class PodiumScene {
     this.backdropRoot.name = "GENERATED_BACKDROP_PANELS"; this.backdropRoot.position.set(0, 2.8, -12.5);
     this.scene.add(this.camera);
     this.worldRoot.name = "SCENE_ROOT";
-    this.worldRoot.add(this.backdropRoot, this.baseRoot, this.pedestalRoot, this.characterRoot, this.themeRoot, this.effectsRoot);
+    this.worldRoot.add(this.backdropRoot, this.baseRoot, this.pedestalRoot, this.characterRoot, this.signageRoot, this.effectsRoot);
     this.scene.add(this.worldRoot);
     if (this.singleLayout) this.arenaReady = this.buildSingleStage();
     else this.arenaReady = this.buildArenaStage();
@@ -370,18 +425,33 @@ class PodiumScene {
     this.renderer.domElement.addEventListener("pointermove", this.onPointerMove);
     this.renderer.domElement.addEventListener("pointerup", this.onPointerUp);
     this.renderer.domElement.addEventListener("pointercancel", this.onPointerUp);
+    document.addEventListener("visibilitychange", this.onVisibilityChange);
     this.renderer.domElement.addEventListener("webglcontextlost", (event) => { event.preventDefault(); this.fail("3D unavailable. Showing the arena poster and leaderboard cards."); });
     this.animate();
+  }
+
+  attachTo(host: HTMLElement) {
+    if (this.host === host) return;
+    const stage = host.querySelector<HTMLElement>("[data-podium-stage]"); if (!stage) throw new Error("missing-stage");
+    this.observer.disconnect();
+    this.host = host;
+    this.singleLayout = host.dataset.podiumLayout === "single";
+    stage.append(this.renderer.domElement);
+    this.observer.observe(stage);
+    this.resize();
   }
 
   private async buildSingleStage() {
     this.scene.background = new Color(0x100f0d); this.scene.fog = new FogExp2(0x17130f, .045);
     this.renderer.toneMappingExposure = 1.08;
-    this.scene.add(new AmbientLight(0x8d8171, 1.15));
-    const key = new DirectionalLight(0xffc184, 4.8); key.position.set(4, 9, 6); key.castShadow = true;
+    this.scene.add(new AmbientLight(0x8d8171, 1));
+    const key = new DirectionalLight(0xffc995, 5.2); key.name = "PROFILE_CHARACTER_KEY"; key.position.set(4, 9, 6); key.castShadow = true;
     key.shadow.mapSize.set(1024, 1024); key.shadow.camera.near = 1; key.shadow.camera.far = 24;
     key.shadow.camera.left = -4; key.shadow.camera.right = 4; key.shadow.camera.top = 5; key.shadow.camera.bottom = -2; key.shadow.bias = -0.0006; this.scene.add(key);
-    const rim = new DirectionalLight(0xd45a22, 2.4); rim.position.set(-6, 5, -4); this.scene.add(rim);
+    const fill = new DirectionalLight(0xd9e4df, 1.25); fill.name = "PROFILE_CHARACTER_FILL"; fill.position.set(-4, 4.5, 5.5);
+    const rim = new DirectionalLight(0xd45a22, 2); rim.name = "PROFILE_CHARACTER_WARM_RIM"; rim.position.set(-6, 5, -4);
+    const coolRim = new DirectionalLight(0x8eb7c7, 1.05); coolRim.name = "PROFILE_CHARACTER_COOL_RIM"; coolRim.position.set(4.5, 4, -5);
+    this.scene.add(fill, rim, coolRim);
     const ground = await this.buildTexturedGround(PROFILE_PODIUM_GROUND, profilePodiumGroundHeight, "PROFILE_PODIUM_GROUND");
     this.baseRoot.add(ground);
     const floor = new Mesh(new CylinderGeometry(5.5, 6.2, 0.34, 12), new MeshStandardMaterial({ color: 0x211e19, metalness: .52, roughness: .68 }));
@@ -656,6 +726,28 @@ class PodiumScene {
     const terrainRake = new DirectionalLight(0xd98549, .9); terrainRake.name = "ARENA_TERRAIN_RAKE";
     terrainRake.position.set(-13, 1.9, 8); terrainRake.target.position.set(7, -.1, -18);
     this.scene.add(leftWing, rightWing, leftForwardFill, rightForwardFill, rearFill, terrainRake, terrainRake.target);
+    this.addArenaCharacterLights();
+  }
+
+  private addArenaCharacterLights() {
+    const keyIntensity = this.mobile ? 58 : 92;
+    const rimIntensity = this.mobile ? 24 : 38;
+    this.rankX.forEach((x, rank) => {
+      const targetY = this.standingHeights[rank] + 1.15;
+      const key = new SpotLight(0xffd4a6, keyIntensity, 10, MathUtils.degToRad(31), .82, 1.45);
+      key.name = `PODIUM_CHARACTER_KEY_RANK_${rank + 1}`;
+      key.position.set(x + (rank === 1 ? -.55 : .55), targetY + 2.15, 4.15);
+      key.target.position.set(x, targetY, 0);
+      key.castShadow = false;
+
+      const rim = new SpotLight(0x8eb8c8, rimIntensity, 8, MathUtils.degToRad(35), .88, 1.5);
+      rim.name = `PODIUM_CHARACTER_RIM_RANK_${rank + 1}`;
+      rim.position.set(x + (rank === 2 ? .7 : -.7), targetY + 1.25, -2.8);
+      rim.target.position.set(x, targetY + .1, 0);
+      rim.castShadow = false;
+
+      this.scene.add(key, key.target, rim, rim.target);
+    });
   }
 
   private addLightShaft(start: Vector3, end: Vector3, color: string, weight: number) {
@@ -772,6 +864,9 @@ class PodiumScene {
 
   private updateFogPerformance(now: number) {
     if (!this.volumetricFogCapable || this.capture) return;
+    if (document.hidden) {
+      this.fogReadyAt = 0; this.fogSampleStartedAt = now; this.fogSampleFrames = 0; return;
+    }
     if (this.host.dataset.podiumState !== "ready") {
       this.fogReadyAt = 0; this.fogSampleStartedAt = now; this.fogSampleFrames = 0; return;
     }
@@ -785,6 +880,12 @@ class PodiumScene {
     this.host.dataset.sceneFogFps = framesPerSecond.toFixed(1);
     this.fogSampleStartedAt = now; this.fogSampleFrames = 0;
   }
+
+  private onVisibilityChange = () => {
+    const now = performance.now();
+    this.fogReadyAt = 0; this.fogSampleStartedAt = now; this.fogSampleFrames = 0;
+    this.fogQuality.lowSamples = 0; this.fogQuality.highSamples = 0;
+  };
 
   private placementPriority(placement: ArenaPlacement): number {
     const classes: Record<string, number> = { Hero: 0, Primary: 1, Structure: 2, Secondary: 3, Detail: 4 };
@@ -880,20 +981,23 @@ class PodiumScene {
   }
 
   async setPresentation(board: string, metric: string, leaders: Leader[]) {
-    const generation = ++this.generation; this.characterRoot.clear(); this.themeRoot.clear();
+    const generation = ++this.generation; this.characterRoot.clear();
     this.targetYaw = 0; this.targetPitch = 0; this.currentIdleYaw = 0; this.lastCameraInteractionAt = performance.now();
     try { await this.arenaReady; }
     catch (error) { console.warn("Raidlands podium arena failed to initialize.", error); this.fail("Arena assets unavailable. Showing the poster and leaderboard cards."); return; }
     if (generation !== this.generation || this.disposed) return;
     const sceneLeaders = leaders.length ? leaders.slice(0, 3) : [{}, {}, {}];
-    await Promise.all([
-      ...sceneLeaders.map((leader, rank) => this.addCharacter(leader, rank, generation)),
-      this.singleLayout ? Promise.resolve() : this.addTheme(board, metric, generation),
-    ]);
+    if (!this.singleLayout) {
+      const signSurface = await this.loadSignSurface();
+      if (generation !== this.generation || this.disposed) return;
+      this.buildSignage(board, metric, leaders.slice(0, 3), signSurface);
+    }
+    await Promise.all(sceneLeaders.map((leader, rank) => this.addCharacter(leader, rank, generation)));
     if (generation === this.generation && !this.disposed) {
       this.host.dataset.sceneCharacters = String(this.characterRoot.children.length);
-      this.host.dataset.sceneThemeProps = String(this.themeRoot.children.reduce((total, group) => total + group.children.length, 0));
+      this.host.dataset.sceneThemeProps = "0";
       this.host.dataset.podiumState = "ready";
+      if (!this.singleLayout) this.host.dataset.podiumSignage = "ready";
       this.status(leaders.length ? "Player arena ready." : "3D arena ready.");
     }
   }
@@ -926,7 +1030,7 @@ class PodiumScene {
     visual.position.x -= center.x; visual.position.y -= fitted.min.y; visual.position.z -= center.z;
     const wrapper = new Group(); wrapper.add(visual);
     const anchor = this.characterAnchor(rank);
-    wrapper.position.set(anchor?.position[0] ?? this.rankX[rank], anchor?.position[1] ?? (this.standingHeights[rank] + .01), anchor?.position[2] ?? 0);
+    wrapper.position.set(anchor?.position[0] ?? this.rankX[rank], this.standingHeights[rank] + .01, anchor?.position[2] ?? 0);
     wrapper.rotation.y = podiumCharacterYaw(rank); wrapper.userData.baseY = wrapper.position.y; wrapper.userData.phase = rank * 1.7;
     const weaponKey = podiumWeapon(leader);
     if (weaponKey) {
@@ -941,14 +1045,6 @@ class PodiumScene {
       } catch { /* The selected outfit remains visible if its weapon fails. */ }
     }
     this.characterRoot.add(wrapper);
-  }
-
-  private async addTheme(board: string, metric: string, generation: number) {
-    if (!this.manifest) return; const key = podiumThemeFor(board, metric); if (key === "neutral") return;
-    const theme = this.manifest.themes[key]; if (!theme) return;
-    const placements = generatedThemePlacements(key, theme); const staging = new Group(); staging.name = `Theme_${key}`;
-    await this.loadPlacementBatch(placements, staging, 4);
-    if (generation === this.generation && !this.disposed) this.themeRoot.add(staging);
   }
 
   private async loadInstance(url: string): Promise<Object3D> {
@@ -974,13 +1070,83 @@ class PodiumScene {
     return cloneSkinnedScene(await promise);
   }
 
+  private clearSignage() {
+    const geometries = new Set<BufferGeometry>(); const materials = new Set<MeshStandardMaterial | MeshBasicMaterial>(); const textures = new Set<CanvasTexture>();
+    this.signageRoot.traverse((node) => {
+      const mesh = node as Mesh; if (!mesh.isMesh) return;
+      geometries.add(mesh.geometry);
+      (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).forEach((material) => {
+        const standard = material as MeshStandardMaterial;
+        if (standard.map instanceof CanvasTexture) textures.add(standard.map);
+        materials.add(material as MeshStandardMaterial);
+      });
+    });
+    geometries.forEach((geometry) => geometry.dispose()); materials.forEach((material) => material.dispose()); textures.forEach((texture) => texture.dispose());
+    this.signageRoot.clear();
+  }
+
+  private loadSignSurface(): Promise<IndustrialSignSurfaceTextures | undefined> {
+    if (this.signSurfacePromise) return this.signSurfacePromise;
+    this.signSurfacePromise = (async () => {
+      const sources = [this.host.dataset.signAlbedoSrc, this.host.dataset.signNormalSrc, this.host.dataset.signArmSrc];
+      if (sources.some((source) => !source)) return undefined;
+      try {
+        const [albedo, normal, arm] = await Promise.all(sources.map((source) => new TextureLoader().loadAsync(source!)));
+        if (this.disposed) { albedo.dispose(); normal.dispose(); arm.dispose(); return undefined; }
+        const anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
+        [albedo, normal, arm].forEach((texture) => {
+          texture.wrapS = MirroredRepeatWrapping; texture.wrapT = MirroredRepeatWrapping;
+          texture.repeat.set(2.2, 1.35); texture.anisotropy = anisotropy; this.ownedTextures.add(texture);
+        });
+        albedo.colorSpace = SRGBColorSpace; return { albedo, normal, arm };
+      } catch { return undefined; }
+    })();
+    return this.signSurfacePromise;
+  }
+
+  private buildSignage(board: string, metric: string, leaders: Leader[], surface?: IndustrialSignSurfaceTextures) {
+    this.clearSignage();
+    const detail = industrialSignDetail(this.mobile); const categoryProfile = INDUSTRIAL_SIGN_PROFILES.category;
+    const category = buildIndustrialSign({ variant: "category", detail, ...categoryProfile, texture: categorySignTexture(podiumCategoryTitle(board, metric)), surface }).root;
+    category.name = "CATEGORY_SIGN"; category.position.set(...CATEGORY_SIGN_TRANSFORM.position);
+    if (this.mobile) category.scale.setScalar(1.35);
+    for (const x of [-2.35, 2.35]) {
+      const chain = new Group(); chain.name = "CATEGORY_HANGING_CHAIN";
+      const links = this.mobile ? 4 : 7; const chainMaterial = new MeshStandardMaterial({ color: 0x171512, metalness: .94, roughness: .42 });
+      for (let index = 0; index < links; index += 1) {
+        const link = new Mesh(new CylinderGeometry(.027, .027, .18, 8), chainMaterial);
+        link.position.y = index * .15; link.rotation.z = index % 2 ? Math.PI / 2 : 0; chain.add(link);
+      }
+      chain.position.set(x, CATEGORY_SIGN_TRANSFORM.position[1] + .82, CATEGORY_SIGN_TRANSFORM.position[2]); this.signageRoot.add(chain);
+    }
+    this.signageRoot.add(category);
+    if (!this.mobile) {
+      for (const x of [-2.05, 2.05]) {
+        const light = new PointLight(0xff5a16, 4.2, 3.2, 2); light.name = "SIGN_ACCENT_LIGHT";
+        light.position.set(x, CATEGORY_SIGN_TRANSFORM.position[1] - .55, CATEGORY_SIGN_TRANSFORM.position[2] + .62); this.signageRoot.add(light);
+      }
+    }
+    for (let rank = 1; rank <= 3; rank += 1) {
+      const transform = playerSignageTransform(rank, this.mobile, this.rankX[rank - 1]);
+      const variant = industrialSignVariantForRank(rank); const profile = INDUSTRIAL_SIGN_PROFILES[variant];
+      const plaque = buildIndustrialSign({ variant, detail, ...profile, texture: playerSignTexture(playerSignageText(leaders[rank - 1], rank, board, metric)), surface }).root;
+      plaque.name = `PLAYER_SIGN_${rank}`; plaque.position.set(...transform.position);
+      plaque.rotation.set(transform.pitch, transform.yaw, 0); plaque.scale.setScalar(transform.scale);
+      this.signageRoot.add(plaque);
+      if (rank === 1 && !this.mobile) {
+        const winnerLight = new PointLight(0xff4a0c, 3.4, 2.5, 2); winnerLight.name = "WINNER_SIGN_LIGHT";
+        winnerLight.position.set(transform.position[0], transform.position[1] - .18, transform.position[2] + .7); this.signageRoot.add(winnerLight);
+      }
+    }
+  }
+
   private resize() {
     const stage = this.host.querySelector<HTMLElement>("[data-podium-stage]"); if (!stage) return;
     const width = Math.max(1, stage.clientWidth); const height = Math.max(1, stage.clientHeight); this.camera.aspect = width / height;
     if (this.singleLayout) {
       this.camera.position.set(0, 2.65, this.camera.aspect < .9 ? 9.4 : this.camera.aspect < 1.35 ? 7.8 : 6.4); this.camera.lookAt(0, 1.22, 0);
     } else {
-      const framing = this.camera.aspect < 16 / 9 ? (16 / 9) / Math.max(.7, this.camera.aspect) : 1;
+      const framing = this.camera.aspect < 16 / 9 ? (16 / 9) / Math.max(this.mobile ? .9 : .7, this.camera.aspect) : 1;
       this.cameraOrbitBase.copy(this.cameraBase);
       this.cameraOrbitBase.z = this.cameraTarget.z + (this.cameraBase.z - this.cameraTarget.z) * framing;
       this.updateArenaCamera();
@@ -1059,6 +1225,7 @@ class PodiumScene {
     if (this.disposed) return; this.disposed = true; cancelAnimationFrame(this.frame); this.observer.disconnect();
     this.renderer.domElement.removeEventListener("pointerdown", this.onPointerDown); this.renderer.domElement.removeEventListener("pointermove", this.onPointerMove);
     this.renderer.domElement.removeEventListener("pointerup", this.onPointerUp); this.renderer.domElement.removeEventListener("pointercancel", this.onPointerUp);
+    document.removeEventListener("visibilitychange", this.onVisibilityChange);
     const geometries = new Set<BufferGeometry>(); const materials = new Set<MeshStandardMaterial | MeshBasicMaterial | PointsMaterial>();
     this.scene.traverse((node) => {
       const mesh = node as Mesh; if (mesh.isMesh && mesh.geometry) geometries.add(mesh.geometry);
@@ -1071,9 +1238,19 @@ class PodiumScene {
 }
 
 const instances = new Map<HTMLElement, PodiumScene>();
+let sharedLeaderboardScene: PodiumScene | undefined;
 function activateHost(host: HTMLElement): PodiumScene | undefined {
+  if (host.dataset.podiumLayout !== "single" && sharedLeaderboardScene) {
+    sharedLeaderboardScene.attachTo(host);
+    instances.set(host, sharedLeaderboardScene);
+    return sharedLeaderboardScene;
+  }
   if (instances.has(host) || !supportsWebGL2()) { if (!supportsWebGL2()) host.dataset.podiumState = "fallback"; return instances.get(host); }
-  try { const scene = new PodiumScene(host); instances.set(host, scene); return scene; } catch { host.dataset.podiumState = "fallback"; }
+  try {
+    const scene = new PodiumScene(host); instances.set(host, scene);
+    if (host.dataset.podiumLayout !== "single") sharedLeaderboardScene = scene;
+    return scene;
+  } catch { host.dataset.podiumState = "fallback"; }
 }
 
 function present(host: HTMLElement, payload: Payload) {
@@ -1099,4 +1276,4 @@ document.addEventListener("raidlands:podium-preview", (event) => {
   if (host) present(host, custom.detail);
 });
 
-window.addEventListener("pagehide", () => instances.forEach((instance) => instance.dispose()), { once: true });
+window.addEventListener("pagehide", () => new Set(instances.values()).forEach((instance) => instance.dispose()), { once: true });
