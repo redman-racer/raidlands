@@ -12,10 +12,87 @@ function raidlands_podium_is_ready(): bool
         raidlands_db_fetch_one('SELECT player_id FROM player_podium_profiles LIMIT 1');
         raidlands_db_fetch_one('SELECT id FROM player_outfit_observations LIMIT 1');
         raidlands_db_fetch_one('SELECT id FROM player_weapon_observations LIMIT 1');
+        raidlands_db_fetch_one('SELECT id FROM podium_pose_presets LIMIT 1');
+        raidlands_db_fetch_one('SELECT pose_key FROM player_podium_profiles LIMIT 1');
         return true;
     } catch (Throwable $error) {
         return false;
     }
+}
+
+function raidlands_podium_pose_bones(): array
+{
+    return [
+        'pelvis', 'spine', 'spine1', 'spine2', 'neck', 'head',
+        'l_clavicle', 'l_upperarm', 'l_forearm', 'l_hand',
+        'r_clavicle', 'r_upperarm', 'r_forearm', 'r_hand',
+        'l_thigh', 'l_calf', 'l_foot', 'r_thigh', 'r_calf', 'r_foot',
+    ];
+}
+
+function raidlands_podium_normalize_pose_rotations($value): array
+{
+    if (!is_array($value)) return [];
+    $allowed = array_fill_keys(raidlands_podium_pose_bones(), true);
+    $result = [];
+    foreach ($value as $bone => $rotation) {
+        $bone = strtolower(trim((string) $bone));
+        if (!isset($allowed[$bone]) || !is_array($rotation)) continue;
+        $axes = [];
+        foreach (['x', 'y', 'z'] as $axis) {
+            $number = filter_var($rotation[$axis] ?? 0, FILTER_VALIDATE_FLOAT);
+            $axes[$axis] = round(max(-3.141593, min(3.141593, $number === false ? 0.0 : (float) $number)), 6);
+        }
+        if (abs($axes['x']) + abs($axes['y']) + abs($axes['z']) > 0.00001) $result[$bone] = $axes;
+    }
+    ksort($result, SORT_STRING);
+    return $result;
+}
+
+function raidlands_podium_poses(bool $include_inactive = false): array
+{
+    $poses = ['default' => ['key' => 'default', 'label' => 'Raidlands Default', 'bones' => []]];
+    if (!raidlands_podium_is_ready()) return $poses;
+    $rows = raidlands_db_fetch_all(
+        'SELECT pose_key, label, rotations_json, is_active FROM podium_pose_presets'
+        . ($include_inactive ? '' : ' WHERE is_active = 1')
+        . ' ORDER BY label ASC, id ASC'
+    );
+    foreach ($rows as $row) {
+        $key = raidlands_podium_clean_key($row['pose_key'] ?? '', 64);
+        if ($key === '' || $key === 'default') continue;
+        $poses[$key] = [
+            'key' => $key,
+            'label' => trim((string) ($row['label'] ?? $key)),
+            'bones' => raidlands_podium_normalize_pose_rotations(json_decode((string) ($row['rotations_json'] ?? '{}'), true)),
+            'active' => !empty($row['is_active']),
+        ];
+    }
+    return $poses;
+}
+
+function raidlands_podium_pose_payload(string $pose_key): array
+{
+    $poses = raidlands_podium_poses();
+    return $poses[$pose_key] ?? $poses['default'];
+}
+
+function raidlands_podium_save_pose_preset(string $label, $rotations, string $actor_steam_id64): array
+{
+    if (!raidlands_podium_is_ready()) throw new RuntimeException('Run database migration 069 before saving poses.');
+    $label = trim(preg_replace('/\s+/', ' ', $label) ?? '');
+    if ($label === '' || mb_strlen($label) > 80) throw new InvalidArgumentException('Enter a pose name up to 80 characters.');
+    $bones = raidlands_podium_normalize_pose_rotations($rotations);
+    if ($bones === []) throw new InvalidArgumentException('Move at least one bone before saving the pose.');
+    $base = trim(preg_replace('/[^a-z0-9]+/', '-', strtolower($label)), '-');
+    $base = substr($base !== '' ? $base : 'pose', 0, 48);
+    $key = $base;
+    for ($suffix = 2; isset(raidlands_podium_poses(true)[$key]); $suffix++) $key = substr($base, 0, 54) . '-' . $suffix;
+    raidlands_db_execute(
+        'INSERT INTO podium_pose_presets (pose_key, label, rotations_json, created_by_steam_id64) VALUES (:pose_key, :label, :rotations_json, :actor)',
+        ['pose_key' => $key, 'label' => $label, 'rotations_json' => json_encode($bones, JSON_UNESCAPED_SLASHES), 'actor' => $actor_steam_id64 ?: null]
+    );
+    return ['key' => $key, 'label' => $label, 'bones' => $bones];
 }
 
 function raidlands_podium_presets(): array
@@ -201,10 +278,10 @@ function raidlands_podium_observed_outfit_payload(array $row): ?array
 function raidlands_podium_profile(int $player_id): array
 {
     if (!raidlands_podium_is_ready() || $player_id <= 0) {
-        return ['outfit_mode' => 'auto', 'outfit_key' => '', 'weapon_mode' => 'auto', 'weapon_key' => ''];
+        return ['outfit_mode' => 'auto', 'outfit_key' => '', 'weapon_mode' => 'auto', 'weapon_key' => '', 'pose_key' => 'default'];
     }
-    return raidlands_db_fetch_one('SELECT outfit_mode, outfit_key, weapon_mode, weapon_key FROM player_podium_profiles WHERE player_id = :player_id', ['player_id' => $player_id])
-        ?? ['outfit_mode' => 'auto', 'outfit_key' => '', 'weapon_mode' => 'auto', 'weapon_key' => ''];
+    return raidlands_db_fetch_one('SELECT outfit_mode, outfit_key, weapon_mode, weapon_key, pose_key FROM player_podium_profiles WHERE player_id = :player_id', ['player_id' => $player_id])
+        ?? ['outfit_mode' => 'auto', 'outfit_key' => '', 'weapon_mode' => 'auto', 'weapon_key' => '', 'pose_key' => 'default'];
 }
 
 function raidlands_podium_current_wipe_id(): int
@@ -264,6 +341,7 @@ function raidlands_podium_resolve_player(int $player_id, string $identity): arra
     }
     $outfit = $outfit ?? $fallback;
     $outfit['weapon'] = raidlands_podium_resolve_weapon($player_id, $identity, $profile);
+    $outfit['pose'] = raidlands_podium_pose_payload((string) ($profile['pose_key'] ?? 'default'));
     return $outfit;
 }
 
@@ -324,7 +402,7 @@ function raidlands_podium_profile_bundle(int $player_id, string $identity): arra
         if ($payload === null) continue;
         $outfits[] = ['key' => (string) $row['outfit_signature'], 'label' => $payload['label'] . ' (' . (int) $row['sample_count'] . ' captures)', 'appearance' => $payload];
     }
-    return ['profile' => $profile, 'resolved' => raidlands_podium_resolve_player($player_id, $identity), 'presets' => raidlands_podium_presets(), 'weapons' => raidlands_podium_weapons(), 'captured_outfits' => $outfits, 'captured_weapons' => raidlands_podium_captured_weapons($player_id)];
+    return ['profile' => $profile, 'resolved' => raidlands_podium_resolve_player($player_id, $identity), 'presets' => raidlands_podium_presets(), 'weapons' => raidlands_podium_weapons(), 'poses' => raidlands_podium_poses(), 'pose_bones' => raidlands_podium_pose_bones(), 'captured_outfits' => $outfits, 'captured_weapons' => raidlands_podium_captured_weapons($player_id)];
 }
 
 function raidlands_podium_save_profile(int $player_id, array $input): void
@@ -334,19 +412,21 @@ function raidlands_podium_save_profile(int $player_id, array $input): void
     $outfit_key = raidlands_podium_clean_key($input['outfit_key'] ?? '', 96);
     $weapon_mode = raidlands_podium_clean_key($input['weapon_mode'] ?? 'auto', 16);
     $weapon_key = raidlands_podium_clean_key($input['weapon_key'] ?? '', 96);
+    $pose_key = raidlands_podium_clean_key($input['pose_key'] ?? 'default', 64);
     if (!in_array($outfit_mode, ['auto', 'preset', 'captured'], true)) throw new InvalidArgumentException('Choose a valid outfit mode.');
     if (!in_array($weapon_mode, ['auto', 'preset', 'captured', 'none'], true)) throw new InvalidArgumentException('Choose a valid weapon mode.');
     if ($outfit_mode === 'preset' && !isset(raidlands_podium_presets()[$outfit_key])) throw new InvalidArgumentException('That podium outfit is unavailable.');
     if ($outfit_mode === 'captured' && raidlands_db_fetch_one('SELECT id FROM player_outfit_observations WHERE player_id = :player_id AND outfit_signature = :signature', ['player_id' => $player_id, 'signature' => $outfit_key]) === null) throw new InvalidArgumentException('That captured outfit does not belong to this player.');
     if ($weapon_mode === 'preset' && !isset(raidlands_podium_weapons()[$weapon_key])) throw new InvalidArgumentException('That podium weapon is unavailable.');
+    if (!isset(raidlands_podium_poses()[$pose_key])) throw new InvalidArgumentException('That podium pose is unavailable.');
     if ($weapon_mode === 'captured') {
         [$shortname, $skin] = array_pad(explode(':', $weapon_key, 2), 2, '0');
         if (raidlands_db_fetch_one('SELECT id FROM player_weapon_observations WHERE player_id = :player_id AND weapon_shortname = :shortname AND skin_id = :skin_id', ['player_id' => $player_id, 'shortname' => $shortname, 'skin_id' => raidlands_podium_skin_id($skin)]) === null) throw new InvalidArgumentException('That captured weapon does not belong to this player.');
     }
     $statement = raidlands_db_required()->prepare(
-        'INSERT INTO player_podium_profiles (player_id, outfit_mode, outfit_key, weapon_mode, weapon_key)
-         VALUES (:player_id, :outfit_mode, :outfit_key, :weapon_mode, :weapon_key)
-         ON DUPLICATE KEY UPDATE outfit_mode = VALUES(outfit_mode), outfit_key = VALUES(outfit_key), weapon_mode = VALUES(weapon_mode), weapon_key = VALUES(weapon_key), updated_at = NOW()'
+        'INSERT INTO player_podium_profiles (player_id, outfit_mode, outfit_key, weapon_mode, weapon_key, pose_key)
+         VALUES (:player_id, :outfit_mode, :outfit_key, :weapon_mode, :weapon_key, :pose_key)
+         ON DUPLICATE KEY UPDATE outfit_mode = VALUES(outfit_mode), outfit_key = VALUES(outfit_key), weapon_mode = VALUES(weapon_mode), weapon_key = VALUES(weapon_key), pose_key = VALUES(pose_key), updated_at = NOW()'
     );
-    $statement->execute(['player_id' => $player_id, 'outfit_mode' => $outfit_mode, 'outfit_key' => $outfit_key ?: null, 'weapon_mode' => $weapon_mode, 'weapon_key' => $weapon_key ?: null]);
+    $statement->execute(['player_id' => $player_id, 'outfit_mode' => $outfit_mode, 'outfit_key' => $outfit_key ?: null, 'weapon_mode' => $weapon_mode, 'weapon_key' => $weapon_key ?: null, 'pose_key' => $pose_key]);
 }

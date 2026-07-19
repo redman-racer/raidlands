@@ -1,11 +1,14 @@
 export type PodiumWearable = { asset?: string; skin_id?: string };
 export type PodiumWeapon = { asset?: string; shortname?: string; skin_id?: string; label?: string; source?: string } | null;
+export type PodiumBoneRotation = { x?: number; y?: number; z?: number };
+export type PodiumPose = { key?: string; label?: string; bones?: Record<string, PodiumBoneRotation> };
 export type PodiumAppearance = {
   preset?: string;
   label?: string;
   source?: string;
   wearables?: PodiumWearable[];
   weapon?: PodiumWeapon;
+  pose?: PodiumPose;
 };
 export type Leader = Record<string, unknown> & { appearance?: PodiumAppearance };
 

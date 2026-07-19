@@ -107,7 +107,7 @@ function renderCards(host: HTMLElement, leaders: Leader[], board: string, metric
   });
 }
 
-function poseWearable(root: Object3D, rank: number) {
+function poseWearable(root: Object3D, rank: number, bones: Record<string, { x?: number; y?: number; z?: number }> = {}) {
   const lean = [0, -0.025, 0.025][rank] || 0;
   root.traverse((node) => {
     const name = node.name.toLowerCase();
@@ -117,6 +117,12 @@ function poseWearable(root: Object3D, rank: number) {
     if (name === "l_forearm") { node.rotation.y -= 0.3; node.rotation.z += 0.12; }
     if (name === "r_forearm") { node.rotation.y += 0.3; node.rotation.z -= 0.12; }
     if (name === "head") node.rotation.y += [0, 0.06, -0.06][rank] || 0;
+    const custom = bones[name];
+    if (custom) {
+      node.rotation.x += Number(custom.x) || 0;
+      node.rotation.y += Number(custom.y) || 0;
+      node.rotation.z += Number(custom.z) || 0;
+    }
     if ((node as Mesh).isMesh) {
       const mesh = node as Mesh;
       mesh.castShadow = true; mesh.receiveShadow = true; mesh.frustumCulled = false;
@@ -1008,14 +1014,15 @@ class PodiumScene {
 
   private async addCharacter(leader: Leader, rank: number, generation: number) {
     const keys = podiumWearables(leader, rank); const roots: Object3D[] = [];
+    const poseBones = leader.appearance?.pose?.bones || {};
     await Promise.all(keys.map(async (key) => {
       const file = LEADERBOARD_PODIUM_ASSETS[key]; if (!file) return;
-      try { const model = await this.loadInstance(joinedUrl(this.host.dataset.modelBase || "", file)); normalizeWearableOrigin(model); poseWearable(model, rank); roots.push(model); }
+      try { const model = await this.loadInstance(joinedUrl(this.host.dataset.modelBase || "", file)); normalizeWearableOrigin(model); poseWearable(model, rank, poseBones); roots.push(model); }
       catch { /* Resolve through the fallback chain below. */ }
     }));
     if (!roots.length) {
       await Promise.all(LEADERBOARD_PODIUM_PRESETS.survivor.map(async (key) => {
-        try { const model = await this.loadInstance(joinedUrl(this.host.dataset.modelBase || "", LEADERBOARD_PODIUM_ASSETS[key])); normalizeWearableOrigin(model); poseWearable(model, rank); roots.push(model); }
+        try { const model = await this.loadInstance(joinedUrl(this.host.dataset.modelBase || "", LEADERBOARD_PODIUM_ASSETS[key])); normalizeWearableOrigin(model); poseWearable(model, rank, poseBones); roots.push(model); }
         catch { /* The merged mannequin is the final scene fallback. */ }
       }));
     }

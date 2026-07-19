@@ -30,4 +30,12 @@ $hazmat = raidlands_podium_observed_outfit_payload(['items_json' => '[{"slot":"w
 podium_assert($hazmat !== null && $hazmat['wearables'][0]['asset'] === 'hazmat' && $hazmat['wearables'][0]['skin_id'] === '999', 'Full suits must retain unknown Workshop skin IDs while using the vanilla asset.');
 podium_assert(raidlands_podium_default_preset('76561198000000000') === raidlands_podium_default_preset('76561198000000000'), 'SteamID defaults must remain stable.');
 
+$pose = raidlands_podium_normalize_pose_rotations([
+    'L_UpperArm' => ['x' => '0.5', 'y' => 99, 'z' => -0.25],
+    'not_a_real_bone' => ['x' => 1, 'y' => 1, 'z' => 1],
+    'head' => ['x' => 0, 'y' => 0, 'z' => 0],
+]);
+podium_assert(isset($pose['l_upperarm']) && !isset($pose['not_a_real_bone']) && !isset($pose['head']), 'Pose normalization must keep only supported, non-zero bones.');
+podium_assert($pose['l_upperarm']['x'] === 0.5 && $pose['l_upperarm']['y'] === 3.141593, 'Pose rotations must be numeric and clamped to a safe radian range.');
+
 echo "Podium appearance policy tests passed.\n";

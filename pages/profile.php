@@ -4,6 +4,7 @@ require_once $site_root . '/includes/store.php';
 require_once $site_root . '/includes/stats.php';
 require_once $site_root . '/includes/podium.php';
 require_once $site_root . '/includes/discord.php';
+require_once $site_root . '/includes/admin.php';
 
 $profile_player = raidlands_store_current_player();
 $profile_entitlements = [];
@@ -16,6 +17,7 @@ $profile_cash_subscriptions = [];
 $profile_flash = raidlands_store_flash();
 $profile_discord = null;
 $profile_podium = null;
+$profile_is_podium_admin = false;
 
 if ($profile_player !== null && !empty($profile_player['id'])) {
     $profile_discord = raidlands_discord_identity_for_player((int) $profile_player['id']);
@@ -28,6 +30,7 @@ if ($profile_player !== null && !empty($profile_player['id'])) {
     $profile_rp_subscriptions = raidlands_store_rp_subscriptions_for_player((int) $profile_player['id']);
     $profile_cash_subscriptions = raidlands_store_cash_subscriptions_for_player((int) $profile_player['id']);
     $profile_podium = raidlands_podium_profile_bundle((int) $profile_player['id'], (string) $profile_player['steam_id64']);
+    $profile_is_podium_admin = raidlands_admin_can('admin.access');
 }
 
 $profile_display_name = $profile_player !== null
@@ -135,9 +138,9 @@ $profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_
       </div>
 
       <?php if (!raidlands_podium_is_ready()) : ?>
-        <div class="form-status warning">Run database migration 064 to enable saved podium appearances. The leaderboard will use stable vanilla player presets until then.</div>
+        <div class="form-status warning">Run database migrations 064 and 069 to enable saved podium appearances and poses. The leaderboard will use stable vanilla player presets until then.</div>
       <?php else : ?>
-        <div class="podium-profile-grid" data-podium-profile>
+        <div class="podium-profile-grid" data-podium-profile data-pose-api="<?= e(route_url('api/profile/podium-poses.php')) ?>" data-podium-admin="<?= $profile_is_podium_admin ? 'true' : 'false' ?>">
           <section class="leaderboard-podium podium-profile-preview" data-leaderboard-podium data-podium-layout="single" data-board="players" data-metric="kills"
             data-model-base="<?= e(asset_url('media/models/leaderboard/')) ?>" data-decoder-path="<?= e(asset_url('media/models/draco/')) ?>"
             data-ground-albedo-src="<?= e(asset_url('media/textures/leaderboard-junkyard-dirt-albedo.webp')) ?>"
@@ -156,6 +159,7 @@ $profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_
             <input type="hidden" name="outfit_key" value="<?= e((string) ($podium_profile['outfit_key'] ?? '')) ?>" data-podium-outfit-key>
             <input type="hidden" name="weapon_mode" value="<?= e((string) ($podium_profile['weapon_mode'] ?? 'auto')) ?>" data-podium-weapon-mode>
             <input type="hidden" name="weapon_key" value="<?= e((string) ($podium_profile['weapon_key'] ?? '')) ?>" data-podium-weapon-key>
+            <input type="hidden" name="pose_key" value="<?= e((string) ($podium_profile['pose_key'] ?? 'default')) ?>" data-podium-pose-key>
             <script type="application/json" data-podium-profile-bundle><?= $podium_bundle_json ?: '{}' ?></script>
 
             <label>
@@ -201,6 +205,37 @@ $profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_
                 <?php endif; ?>
               </select>
             </label>
+
+            <label>
+              <span>Pose</span>
+              <select data-podium-pose-select>
+                <?php foreach ((array) ($profile_podium['poses'] ?? []) as $key => $pose) : ?>
+                  <option value="<?= e((string) $key) ?>"<?= (string) ($podium_profile['pose_key'] ?? 'default') === (string) $key ? ' selected' : '' ?>><?= e((string) ($pose['label'] ?? $key)) ?></option>
+                <?php endforeach; ?>
+              </select>
+            </label>
+
+            <?php if ($profile_is_podium_admin) : ?>
+              <section class="podium-pose-editor" data-podium-pose-editor>
+                <div class="podium-pose-editor-heading">
+                  <div><span class="tag">Admin</span><strong>Pose editor</strong></div>
+                  <button class="btn btn-secondary" type="button" data-pose-reset>Reset bone</button>
+                </div>
+                <label><span>Bone</span><select data-pose-bone>
+                  <?php foreach ((array) ($profile_podium['pose_bones'] ?? []) as $bone) : ?>
+                    <option value="<?= e((string) $bone) ?>"><?= e(ucwords(str_replace('_', ' ', (string) $bone))) ?></option>
+                  <?php endforeach; ?>
+                </select></label>
+                <?php foreach (['x' => 'Pitch (X)', 'y' => 'Yaw (Y)', 'z' => 'Roll (Z)'] as $axis => $label) : ?>
+                  <label class="podium-pose-axis"><span><?= e($label) ?> <output data-pose-output="<?= e($axis) ?>">0&deg;</output></span><input type="range" min="-180" max="180" step="1" value="0" data-pose-axis="<?= e($axis) ?>"></label>
+                <?php endforeach; ?>
+                <div class="podium-pose-save">
+                  <label><span>New pose name</span><input type="text" maxlength="80" placeholder="Victory stance" data-pose-name></label>
+                  <button class="btn btn-primary" type="button" data-pose-save>Save as Available Pose</button>
+                </div>
+                <p class="podium-pose-status" data-pose-status aria-live="polite">Adjust a bone to preview it on every mannequin layer.</p>
+              </section>
+            <?php endif; ?>
 
             <div class="podium-profile-guidance">
               <strong>How Auto works</strong>
