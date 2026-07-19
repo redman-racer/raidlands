@@ -7,6 +7,7 @@ import {
   replayTimelineHistoryRate,
   rustWorldQuaternionToViewerQuaternion,
   sampleTimestampedWorldRoute,
+  worldVehiclePositionIsOnMap,
 } from "../assets/ts/server-map-viewer/world-event-replay-policy";
 
 function displayedVehicleForward(rotation: Quaternion): Vector3 {
@@ -48,9 +49,21 @@ describe("server-map live world-event replay", () => {
     expect(extrapolated?.position.x).toBeCloseTo(20);
   });
 
+  it("de-renders vehicles once their center reaches the map boundary", () => {
+    expect(worldVehiclePositionIsOnMap({ x: 2249.9, z: -120 }, 4500)).toBe(true);
+    expect(worldVehiclePositionIsOnMap({ x: 2250, z: -120 }, 4500)).toBe(false);
+    expect(worldVehiclePositionIsOnMap({ x: 120, z: -2251 }, 4500)).toBe(false);
+  });
+
+  it("refreshes reused live-timeline vehicle runs with each server route update", () => {
+    const viewerSource = readFileSync(resolve("assets/ts/server-map-viewer/app.ts"), "utf8");
+    expect(viewerSource).toContain("if (!replayEventIsWorldVehicle(event))");
+    expect(viewerSource).not.toContain("if (!this.persistent || !replayWorldVehicleIsActive(event))");
+  });
+
   it("keeps portable-airstrike carriers in the live world-entity feed", () => {
     const source = readFileSync(resolve("server-plugins/WebsiteMapBridge.cs"), "utf8");
-    expect(source).toContain('[Info("WebsiteMapBridge", "Raidlands", "1.0.23")]');
+    expect(source).toContain('[Info("WebsiteMapBridge", "Raidlands", "1.1.0")]');
     expect(source).not.toContain("API_IsWebsiteReplayCarrier");
     expect(source).toContain("if (!TryDescribeWorldEntity(entity, out descriptor))");
     expect(source).toContain('typeName.Contains("f15") || prefab.Contains("f15")');

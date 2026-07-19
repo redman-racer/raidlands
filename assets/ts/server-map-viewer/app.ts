@@ -89,6 +89,7 @@ import {
   replayTimelineHistoryRate,
   rustWorldQuaternionToViewerQuaternion,
   sampleTimestampedWorldRoute,
+  worldVehiclePositionIsOnMap,
 } from "./world-event-replay-policy";
 import {
   fogRayMarchSamples,
@@ -5419,6 +5420,11 @@ class GenericMapEventReplayRun implements MapReplayRun {
       } else if (!this.airborne) {
         position.y = Math.max(position.y, this.target.y);
       }
+      if (replayEventIsWorldVehicle(this.event) && !worldVehiclePositionIsOnMap(position, this.terrain.worldSize || 4500)) {
+        this.group.visible = false;
+        this.vehicleMarker.visible = false;
+        return true;
+      }
       this.vehicleMarker.position.copy(position);
       if (routePose || currentPose) {
         this.vehicleMarker.quaternion.copy((routePose || currentPose)!.rotation);
@@ -5431,7 +5437,7 @@ class GenericMapEventReplayRun implements MapReplayRun {
   }
 
   public refresh(event: MapReplayEvent): void {
-    if (!this.persistent || !replayWorldVehicleIsActive(event)) {
+    if (!replayEventIsWorldVehicle(event)) {
       return;
     }
 

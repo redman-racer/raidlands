@@ -15,6 +15,26 @@ describe("leaderboard 3D progressive loading", () => {
     expect(page).not.toContain("build/airstrike-animation-editor/leaderboard-podium.js')) ?>\"></script>");
   });
 
+  it("renders one persistent podium host into four board slots", () => {
+    const page = read("pages/leaderboard.php");
+    expect(page.match(/data-leaderboard-podium-slot/g)).toHaveLength(4);
+    expect(page.match(/leaderboard_podium_markup\(/g)).toHaveLength(2);
+    expect(page).toContain("$leaderboard_active_leaders = match ($leaderboard_board)");
+    expect(page).toContain("switch ($leaderboard_board)");
+    expect(page).toContain("Only the requested board needs database work");
+  });
+
+  it("coordinates SPA requests and history for every board", () => {
+    const site = read("assets/js/site.js");
+    expect(site).toContain('new AbortController()');
+    expect(site).toContain('root.__leaderboardRequestGeneration');
+    expect(site).toContain('loadLeaderboardPanel(root, panel, "replace")');
+    expect(site).toContain('loadLeaderboardPanel(root, panel, "none")');
+    expect(site).toContain('["players", "raids", "bots", "rp-games"]');
+    expect(site).toContain('podiumSlot.append(podium)');
+    expect(site).toContain('root.dispatchEvent(new CustomEvent("raidlands:leaderboard-payload"');
+  });
+
   it("keeps Vite dependency preloads relative to the nested build directory", () => {
     const vite = read("vite.config.ts");
     const builtLoader = read("assets/build/airstrike-animation-editor/leaderboard-podium-loader.js");
@@ -34,17 +54,15 @@ describe("leaderboard 3D progressive loading", () => {
     expect(apache).toContain('Request_URI "\\.(?:glb|webp|hdr)$" no-gzip');
   });
 
-  it("reveals the winner in an interactive scene before secondary characters", () => {
+  it("updates only changed character ranks and keeps the arena interactive", () => {
     const app = read("assets/ts/leaderboard-podium/app.ts");
-    const winner = app.indexOf("const winner = await this.buildCharacter");
-    const interactive = app.indexOf('this.host.dataset.podiumState = "interactive"', winner);
-    const secondary = app.indexOf("for (let index = 1; index < sceneLeaders.length", interactive);
-    const details = app.indexOf('this.host.dataset.podiumState = "details"', secondary);
-    expect(winner).toBeGreaterThan(-1);
-    expect(interactive).toBeGreaterThan(winner);
-    expect(secondary).toBeGreaterThan(interactive);
-    expect(details).toBeGreaterThan(secondary);
-    expect(app).toContain('Array.from({ length: 3 }, (_, index) => leaders[index] || {})');
+    const presentation = app.slice(app.indexOf("async setPresentation"), app.indexOf("private setRankCharacter"));
+    expect(presentation).toContain("podiumPresentationSignatures");
+    expect(presentation).toContain("this.currentCharacterSignatures");
+    expect(presentation).toContain("for (const rank of loadRanks)");
+    expect(presentation).toContain("this.setRankCharacter");
+    expect(presentation).toContain('this.host.dataset.podiumState = "interactive"');
+    expect(presentation).not.toContain("this.characterRoot.clear()");
   });
 
   it("prefetches winner wearables together but parses and assembles them sequentially", () => {
@@ -100,7 +118,7 @@ describe("leaderboard 3D progressive loading", () => {
   it("loads HDR and a dynamically imported effects pipeline after scene assembly", () => {
     const app = read("assets/ts/leaderboard-podium/app.ts");
     const effects = read("assets/ts/leaderboard-podium/effects.ts");
-    const complete = app.slice(app.indexOf("private async completePresentation"), app.indexOf("private characterAnchor"));
+    const complete = app.slice(app.indexOf("private async completeStaticPresentation"), app.indexOf("private characterAnchor"));
     expect(complete.indexOf("this.arenaEnhancement()")).toBeLessThan(complete.indexOf("this.buildArenaEnvironment()"));
     expect(complete.indexOf("this.buildArenaEnvironment()")).toBeLessThan(complete.indexOf("this.setupComposer()"));
     expect(app).toContain('import("./effects")');
@@ -114,7 +132,7 @@ describe("leaderboard 3D progressive loading", () => {
 
   it("only reports ready after placements, HDR, and effects complete", () => {
     const app = read("assets/ts/leaderboard-podium/app.ts");
-    const completion = app.indexOf("complete = await this.completePresentation");
+    const completion = app.indexOf("complete = await this.completeStaticPresentation");
     const ready = app.indexOf('this.host.dataset.podiumState = "ready"', completion);
     expect(completion).toBeGreaterThan(-1);
     expect(ready).toBeGreaterThan(completion);

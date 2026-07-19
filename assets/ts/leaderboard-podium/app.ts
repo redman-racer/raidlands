@@ -34,6 +34,7 @@ import {
   orbitCameraPosition, podiumCategoryTitle, podiumGroundMaterialState,
   shouldLiftForwardMoundVisibility, shouldRenderArenaPlacement, shouldUseNativeArenaPlacement,
 } from "./scene-policy";
+import { podiumPresentationSignatures, type PodiumPresentation } from "./presentation";
 
 type Payload = { leaders?: Leader[]; metric?: string; board?: string };
 type PoseRotation = { x?: number; y?: number; z?: number };
@@ -294,6 +295,13 @@ class PodiumScene {
   private ownedTextures = new Set<Texture>();
   private warmedTextures = new WeakSet<Texture>();
   private signSurfacePromise?: Promise<IndustrialSignSurfaceTextures | undefined>;
+  private signageDisplays = new Map<string, Mesh>();
+  private signageTextures = new Map<string, CanvasTexture>();
+  private signageSurfaceApplied = false;
+  private currentSignageSignature = "";
+  private currentCharacterSignatures: [string, string, string] = ["", "", ""];
+  private targetPresentationSignature = "";
+  private characterByRank = new Map<number, Group>();
   private searchlights: Array<{ light: SpotLight; shaft: Mesh; side: -1 | 1; phase: number }> = [];
   private groundFogLayers: Array<{ mesh: Mesh; texture: Texture; speed: Vector2; offset: Vector2 }> = [];
   private volumetricFogPass?: NonNullable<PodiumEffectsPipeline["volumetricFogPass"]>;
@@ -418,23 +426,6 @@ class PodiumScene {
     this.animate();
   }
 
-  attachTo(host: HTMLElement) {
-    if (this.host === host) return;
-    const stage = host.querySelector<HTMLElement>("[data-podium-stage]"); if (!stage) throw new Error("missing-stage");
-    const previousHost = this.host;
-    ["sceneRevision", "sceneGround", "sceneEnvironment", "sceneEffects", "sceneFog", "scenePlacements", "scenePlacementsTotal", "sceneCharacters", "podiumSignage", "podiumDetail"].forEach((key) => {
-      const value = previousHost.dataset[key]; if (value !== undefined) host.dataset[key] = value;
-    });
-    this.observer.disconnect();
-    this.sceneObserver?.disconnect();
-    this.host = host;
-    this.singleLayout = host.dataset.podiumLayout === "single";
-    stage.append(this.renderer.domElement);
-    this.observer.observe(stage);
-    this.sceneObserver?.observe(stage);
-    this.resize();
-  }
-
   private yieldForMainWork = async () => {
     await yieldThroughPaint();
     const scheduling = (navigator as Navigator & { scheduling?: { isInputPending?: () => boolean } }).scheduling;
@@ -522,6 +513,7 @@ class PodiumScene {
 
   private async buildArenaStage() {
     this.host.dataset.podiumState = "scene"; this.status("Building the arena shell…", 62);
+    this.host.dataset.sceneEffects = "direct";
     this.recordPhase("scene");
     const response = await fetch(this.host.dataset.sceneManifest || "", { cache: "default", headers: { Accept: "application/json" } });
     if (!response.ok) throw new Error(`scene manifest returned ${response.status}`);
@@ -1331,41 +1323,75 @@ class PodiumScene {
   }
 
   async setPresentation(board: string, metric: string, leaders: Leader[]) {
+    const presentation: PodiumPresentation = { board, metric, leaders: leaders.slice(0, 3) };
+    const signatures = podiumPresentationSignatures(presentation);
+    if (signatures.presentation === this.targetPresentationSignature) return;
+    this.targetPresentationSignature = signatures.presentation;
     const generation = ++this.generation;
     this.targetYaw = 0; this.targetPitch = 0; this.currentIdleYaw = 0; this.lastCameraInteractionAt = performance.now();
     try { await this.arenaReady; }
     catch (error) { console.warn("Raidlands podium arena failed to initialize.", error); this.fail("Arena assets unavailable. Showing the poster and leaderboard cards."); return; }
     if (generation !== this.generation || this.disposed) return;
-    this.host.dataset.podiumState = "characters"; this.status("Loading the winning character…", 76);
-    const sceneLeaders = Array.from({ length: 3 }, (_, index) => leaders[index] || {});
-    podiumWearables(sceneLeaders[0], 0).forEach((key) => {
-      const file = LEADERBOARD_PODIUM_ASSETS[key];
-      if (file) void this.scheduler.prefetch(joinedUrl(this.host.dataset.modelBase || "", file), LOAD_PRIORITY.winner).catch(() => undefined);
-    });
-    if (!this.singleLayout) await this.scheduler.runMain(LOAD_PRIORITY.winner, () => this.buildSignage(board, metric, leaders.slice(0, 3)));
+
+    const firstPresentation = !this.host.dataset.podiumPresentation;
+    this.host.dataset.podiumPresentation = signatures.presentation;
+    this.host.dataset.podiumState = "characters";
+    this.status("Updating podium contenders...", 76);
+
+    if (!this.singleLayout && signatures.signage !== this.currentSignageSignature) {
+      await this.scheduler.runMain(LOAD_PRIORITY.winner, () => {
+        if (this.signageDisplays.size) this.updateSignage(board, metric, presentation.leaders);
+        else this.buildSignage(board, metric, presentation.leaders);
+      });
+      this.currentSignageSignature = signatures.signage;
+    }
+
+    const targetLeaders = Array.from({ length: 3 }, (_, index) => presentation.leaders[index]);
+    const changedRanks = signatures.characters
+      .map((signature, index) => signature !== this.currentCharacterSignatures[index] ? index : -1)
+      .filter((index) => index >= 0);
+    changedRanks.filter((rank) => !signatures.characters[rank]).forEach((rank) => this.removeRankCharacter(rank));
+    const loadRanks = changedRanks.filter((rank) => Boolean(signatures.characters[rank] && targetLeaders[rank]));
+
+    const winner = targetLeaders[0];
+    if (loadRanks.includes(0) && winner) {
+      podiumWearables(winner, 0).forEach((key) => {
+        const file = LEADERBOARD_PODIUM_ASSETS[key];
+        if (file) void this.scheduler.prefetch(joinedUrl(this.host.dataset.modelBase || "", file), LOAD_PRIORITY.winner).catch(() => undefined);
+      });
+    }
     await this.warmShaderObjects(this.shellShaderObjects(true), LOAD_PRIORITY.winner);
-    const winner = await this.buildCharacter(sceneLeaders[0], 0, generation);
-    if (generation !== this.generation || this.disposed) return;
-    if (!winner) { this.fail("Character assets unavailable. Showing the poster and leaderboard cards."); return; }
-    this.characterRoot.clear(); this.characterRoot.add(winner);
-    if (generation !== this.generation || this.disposed) return;
-    this.poseBones = { ...(sceneLeaders[0]?.appearance?.pose?.bones || {}) };
-    this.rebuildPoseEditorRig();
-    this.host.dataset.sceneCharacters = "1"; this.host.dataset.sceneThemeProps = "0";
-    this.setProgress(82);
+
+    let charactersComplete = true;
+    for (const rank of loadRanks) {
+      const character = await this.buildCharacter(targetLeaders[rank], rank, generation);
+      if (generation !== this.generation || this.disposed) return;
+      if (character) this.setRankCharacter(rank, character, signatures.characters[rank], targetLeaders[rank]);
+      else charactersComplete = false;
+      if (!this.singleLayout) {
+        this.host.dataset.podiumState = "interactive";
+        this.host.dataset.sceneEffects = this.composer ? "full" : "direct";
+        this.status(`Updating contenders - ${this.characterByRank.size}/3`, 80 + rank * 2);
+      }
+    }
+
+    this.host.dataset.sceneCharacters = String(this.characterByRank.size);
+    this.host.dataset.sceneThemeProps = "0";
+    this.setProgress(86);
     if (this.singleLayout) {
       this.host.dataset.podiumState = "ready";
       this.status(leaders.length ? "Player arena ready." : "3D arena ready.", 100);
+      if (!charactersComplete) this.targetPresentationSignature = "";
       return;
     }
+
     this.streaming = true;
     this.host.dataset.podiumState = "interactive";
-    this.host.dataset.podiumDetail = "loading";
-    this.host.dataset.sceneEffects = "direct";
-    this.recordPhase("interactive");
-    this.status("Loading arena detail — 0/0", 83);
+    this.host.dataset.podiumDetail = this.host.dataset.podiumDetail === "ready" ? "ready" : "loading";
+    this.host.dataset.sceneEffects = this.composer ? "full" : "direct";
+    if (firstPresentation) this.recordPhase("interactive");
     let complete = false;
-    try { complete = await this.completePresentation(board, metric, leaders, sceneLeaders, generation); }
+    try { complete = await this.completeStaticPresentation(presentation, signatures.signage, generation) && charactersComplete; }
     catch (error) { console.warn("Raidlands podium detail finished partially.", error); }
     if (generation !== this.generation || this.disposed) return;
     this.streaming = false;
@@ -1375,60 +1401,71 @@ class PodiumScene {
       this.recordPhase("ready");
       this.status(leaders.length ? "Player arena ready." : "3D arena ready.", 100);
     } else {
+      this.targetPresentationSignature = "";
       this.host.dataset.podiumDetail = "partial";
       this.host.dataset.podiumState = "interactive";
       this.status("Arena is interactive; some detail could not be loaded.", 99);
     }
   }
 
-  private async completePresentation(board: string, metric: string, leaders: Leader[], sceneLeaders: Leader[], generation: number): Promise<boolean> {
-    let complete = true;
-    let signSurface: IndustrialSignSurfaceTextures | undefined;
-    for (let index = 1; index < sceneLeaders.length; index += 1) {
-      const character = await this.buildCharacter(sceneLeaders[index], index, generation);
-      if (generation !== this.generation || this.disposed) return false;
-      if (character) {
-        await this.scheduler.runMain(LOAD_PRIORITY.secondaryCharacter, async () => {
-          this.characterRoot.add(character);
-        });
-      } else complete = false;
-      this.host.dataset.sceneCharacters = String(this.characterRoot.children.length);
-      this.status(`Loading contenders — ${this.characterRoot.children.length}/3`, 83 + index);
+  private setRankCharacter(rank: number, character: Group, signature: string, leader: Leader | undefined) {
+    const previous = this.characterByRank.get(rank);
+    if (previous) this.characterRoot.remove(previous);
+    character.userData.podiumRank = rank + 1;
+    this.characterRoot.add(character);
+    this.characterByRank.set(rank, character);
+    this.currentCharacterSignatures[rank] = signature;
+    if (rank === 0) {
+      this.poseBones = { ...(leader?.appearance?.pose?.bones || {}) };
+      this.rebuildPoseEditorRig();
     }
-    this.host.dataset.sceneCharacters = String(this.characterRoot.children.length);
-    this.setProgress(86);
-    if (!this.singleLayout) {
+  }
+
+  private removeRankCharacter(rank: number) {
+    const previous = this.characterByRank.get(rank);
+    if (previous) this.characterRoot.remove(previous);
+    this.characterByRank.delete(rank);
+    this.currentCharacterSignatures[rank] = "";
+    if (rank === 0) {
+      this.poseBones = {};
+      this.rebuildPoseEditorRig();
+    }
+    this.host.dataset.sceneCharacters = String(this.characterByRank.size);
+  }
+
+  private async completeStaticPresentation(presentation: PodiumPresentation, signageSignature: string, generation: number): Promise<boolean> {
+    let complete = true;
+    if (!this.signageSurfaceApplied) {
       try {
-        signSurface = await this.loadSignSurface();
+        const signSurface = await this.loadSignSurface();
         if (generation !== this.generation || this.disposed) return false;
-        await this.scheduler.runMain(LOAD_PRIORITY.detail, () => this.buildSignage(board, metric, leaders.slice(0, 3), signSurface));
-        await this.warmShaderObjects([...this.signageRoot.children], LOAD_PRIORITY.detail);
-        this.host.dataset.podiumSignage = "ready";
-      } catch { signSurface = undefined; }
+        if (signSurface) {
+          await this.scheduler.runMain(LOAD_PRIORITY.detail, () => this.buildSignage(
+            presentation.board,
+            presentation.metric,
+            presentation.leaders,
+            signSurface,
+          ));
+          this.currentSignageSignature = signageSignature;
+          await this.warmShaderObjects([...this.signageRoot.children], LOAD_PRIORITY.detail);
+          this.host.dataset.podiumSignage = "ready";
+        } else complete = false;
+      } catch { complete = false; }
     }
     if (this.arenaEnhancement) {
       this.host.dataset.podiumState = "details";
-      this.status("Loading arena detail — 0/0", 86);
+      this.status("Loading arena detail â€” 0/0", 86);
       complete = await this.arenaEnhancement() && complete;
     }
     if (generation !== this.generation || this.disposed) return false;
-    if (!signSurface) {
-      try {
-        signSurface = await this.loadSignSurface();
-        if (signSurface) {
-          await this.scheduler.runMain(LOAD_PRIORITY.detail, () => this.buildSignage(board, metric, leaders.slice(0, 3), signSurface));
-          await this.warmShaderObjects([...this.signageRoot.children], LOAD_PRIORITY.detail);
-        }
-        else complete = false;
-      } catch { complete = false; }
-    }
     try { complete = await this.buildArenaEnvironment() && complete; }
     catch (error) { console.warn("Raidlands podium HDR environment was unavailable.", error); complete = false; }
     if (generation !== this.generation || this.disposed) return false;
     try { complete = await this.setupComposer() && complete; }
     catch (error) { console.warn("Raidlands podium effects were unavailable.", error); complete = false; }
-    return complete && this.characterRoot.children.length === 3;
+    return complete;
   }
+
 
   private characterAnchor(rank: number): ArenaPlacement | undefined {
     const id = `CHAR_RANK_${rank + 1}`; return this.manifest?.characterAnchors.find((placement) => placement.id === id);
@@ -1616,17 +1653,15 @@ class PodiumScene {
   }
 
   private clearSignage() {
-    const geometries = new Set<BufferGeometry>(); const materials = new Set<MeshStandardMaterial | MeshBasicMaterial>(); const textures = new Set<CanvasTexture>();
+    const geometries = new Set<BufferGeometry>(); const materials = new Set<MeshStandardMaterial | MeshBasicMaterial>();
     this.signageRoot.traverse((node) => {
       const mesh = node as Mesh; if (!mesh.isMesh) return;
       geometries.add(mesh.geometry);
-      (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).forEach((material) => {
-        const standard = material as MeshStandardMaterial;
-        if (standard.map instanceof CanvasTexture) textures.add(standard.map);
-        materials.add(material as MeshStandardMaterial);
-      });
+      (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).forEach((material) => materials.add(material as MeshStandardMaterial));
     });
-    geometries.forEach((geometry) => geometry.dispose()); materials.forEach((material) => material.dispose()); textures.forEach((texture) => texture.dispose());
+    geometries.forEach((geometry) => geometry.dispose()); materials.forEach((material) => material.dispose());
+    this.signageTextures.forEach((texture) => texture.dispose());
+    this.signageTextures.clear(); this.signageDisplays.clear();
     this.signageRoot.clear();
   }
 
@@ -1655,7 +1690,10 @@ class PodiumScene {
   private buildSignage(board: string, metric: string, leaders: Leader[], surface?: IndustrialSignSurfaceTextures) {
     this.clearSignage();
     const detail = industrialSignDetail(this.mobile); const categoryProfile = INDUSTRIAL_SIGN_PROFILES.category;
-    const category = buildIndustrialSign({ variant: "category", detail, ...categoryProfile, texture: categorySignTexture(podiumCategoryTitle(board, metric)), surface }).root;
+    const categoryTexture = categorySignTexture(podiumCategoryTitle(board, metric));
+    const categorySign = buildIndustrialSign({ variant: "category", detail, ...categoryProfile, texture: categoryTexture, surface });
+    const category = categorySign.root;
+    this.signageDisplays.set("category", categorySign.display); this.signageTextures.set("category", categoryTexture);
     category.name = "CATEGORY_SIGN"; category.position.set(...CATEGORY_SIGN_TRANSFORM.position);
     if (this.mobile) category.scale.setScalar(1.35);
     for (const x of [-2.35, 2.35]) {
@@ -1677,7 +1715,10 @@ class PodiumScene {
     for (let rank = 1; rank <= 3; rank += 1) {
       const transform = playerSignageTransform(rank, this.mobile, this.rankX[rank - 1]);
       const variant = industrialSignVariantForRank(rank); const profile = INDUSTRIAL_SIGN_PROFILES[variant];
-      const plaque = buildIndustrialSign({ variant, detail, ...profile, texture: playerSignTexture(playerSignageText(leaders[rank - 1], rank, board, metric)), surface }).root;
+      const texture = playerSignTexture(playerSignageText(leaders[rank - 1], rank, board, metric));
+      const sign = buildIndustrialSign({ variant, detail, ...profile, texture, surface });
+      const plaque = sign.root;
+      this.signageDisplays.set(`rank-${rank}`, sign.display); this.signageTextures.set(`rank-${rank}`, texture);
       plaque.name = `PLAYER_SIGN_${rank}`; plaque.position.set(...transform.position);
       plaque.rotation.set(transform.pitch, transform.yaw, 0); plaque.scale.setScalar(transform.scale);
       this.signageRoot.add(plaque);
@@ -1686,6 +1727,24 @@ class PodiumScene {
         winnerLight.position.set(transform.position[0], transform.position[1] - .18, transform.position[2] + .7); this.signageRoot.add(winnerLight);
       }
     }
+    this.signageSurfaceApplied = Boolean(surface);
+  }
+
+  private updateSignage(board: string, metric: string, leaders: Leader[]) {
+    this.updateSignageTexture("category", categorySignTexture(podiumCategoryTitle(board, metric)));
+    for (let rank = 1; rank <= 3; rank += 1) {
+      this.updateSignageTexture(`rank-${rank}`, playerSignTexture(playerSignageText(leaders[rank - 1], rank, board, metric)));
+    }
+  }
+
+  private updateSignageTexture(key: string, texture: CanvasTexture) {
+    const display = this.signageDisplays.get(key);
+    if (!display) { texture.dispose(); return; }
+    const material = display.material as MeshStandardMaterial;
+    const previous = this.signageTextures.get(key);
+    material.map = texture; material.emissiveMap = texture; material.needsUpdate = true;
+    this.signageTextures.set(key, texture);
+    if (previous && previous !== texture) previous.dispose();
   }
 
   private resize() {
@@ -1874,20 +1933,15 @@ class PodiumScene {
       if (mesh.isMesh) (Array.isArray(mesh.material) ? mesh.material : [mesh.material]).forEach((material) => materials.add(material as MeshStandardMaterial));
       if ((node as Points).isPoints) { const points = node as Points; geometries.add(points.geometry); materials.add(points.material as PointsMaterial); }
     });
-    geometries.forEach((geometry) => geometry.dispose()); materials.forEach((material) => material.dispose()); this.ownedTextures.forEach((texture) => texture.dispose());
+    geometries.forEach((geometry) => geometry.dispose()); materials.forEach((material) => material.dispose());
+    this.signageTextures.forEach((texture) => texture.dispose()); this.ownedTextures.forEach((texture) => texture.dispose());
     this.environmentTexture?.dispose(); this.environmentTarget?.dispose(); this.composer?.dispose(); this.draco.dispose(); this.renderer.dispose();
     if (this.debugEnabled) delete (window as Window & { raidlandsPodiumDiagnostics?: unknown }).raidlandsPodiumDiagnostics;
   }
 }
 
 const instances = new Map<HTMLElement, PodiumScene>();
-let sharedLeaderboardScene: PodiumScene | undefined;
 function activateHost(host: HTMLElement): PodiumScene | undefined {
-  if (host.dataset.podiumLayout !== "single" && sharedLeaderboardScene) {
-    sharedLeaderboardScene.attachTo(host);
-    instances.set(host, sharedLeaderboardScene);
-    return sharedLeaderboardScene;
-  }
   if (instances.has(host) || !supportsWebGL2()) {
     if (!supportsWebGL2()) {
       host.dataset.podiumState = "fallback";
@@ -1897,9 +1951,7 @@ function activateHost(host: HTMLElement): PodiumScene | undefined {
     return instances.get(host);
   }
   try {
-    const scene = new PodiumScene(host); instances.set(host, scene);
-    if (host.dataset.podiumLayout !== "single") sharedLeaderboardScene = scene;
-    return scene;
+    const scene = new PodiumScene(host); instances.set(host, scene); return scene;
   } catch { host.dataset.podiumState = "fallback"; }
 }
 
@@ -1917,8 +1969,8 @@ document.querySelectorAll<HTMLElement>("[data-leaderboard-podium]").forEach((hos
 
 document.addEventListener("raidlands:leaderboard-payload", (event) => {
   const custom = event as CustomEvent<Payload>;
-  const panel = custom.target instanceof HTMLElement ? custom.target.closest<HTMLElement>("[data-leaderboard-panel]") : null;
-  const host = panel?.querySelector<HTMLElement>("[data-leaderboard-podium]"); if (host) present(host, custom.detail);
+  const root = custom.target instanceof HTMLElement ? custom.target.closest<HTMLElement>("[data-leaderboard]") : null;
+  const host = root?.querySelector<HTMLElement>("[data-leaderboard-podium]"); if (host) present(host, custom.detail);
 });
 
 document.addEventListener("raidlands:podium-preview", (event) => {

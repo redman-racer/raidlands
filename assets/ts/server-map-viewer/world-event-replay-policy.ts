@@ -13,6 +13,11 @@ export type TimestampedWorldRouteSample = {
   rotation: Quaternion;
 };
 
+export type WorldMapPosition = {
+  x: number;
+  z: number;
+};
+
 const MODEL_FORWARD_CORRECTION = new Quaternion(0, 1, 0, 0);
 
 /**
@@ -35,6 +40,20 @@ export function replayTimelineFrameIntervalMs(frameSeconds: number, playbackSpee
 
 export function replayTimelineHistoryRate(frameSeconds: number, playbackSpeed: number): number {
   return MathUtils.clamp(Number(playbackSpeed) || 1, 0.25, 512);
+}
+
+/**
+ * The terrain mesh ends exactly at half the Rust world size. Vehicles whose
+ * center reaches that boundary have left the renderable map and must no
+ * longer be kept alive by a still-active server entity.
+ */
+export function worldVehiclePositionIsOnMap(position: WorldMapPosition, worldSize: number): boolean {
+  const size = Number(worldSize);
+  const x = Number(position?.x);
+  const z = Number(position?.z);
+  if (!Number.isFinite(size) || size <= 0 || !Number.isFinite(x) || !Number.isFinite(z)) return false;
+  const half = size / 2;
+  return Math.abs(x) < half && Math.abs(z) < half;
 }
 
 export function sampleTimestampedWorldRoute(

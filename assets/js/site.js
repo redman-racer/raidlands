@@ -1649,6 +1649,16 @@
       updateLeaderboardControls(root);
 
       root.addEventListener("click", event => {
+        const retry = event.target.closest("[data-leaderboard-retry]");
+
+        if (retry && root.contains(retry)) {
+          event.preventDefault();
+          const panel = leaderboardPanel(root, root.dataset.activeBoard || "players");
+
+          if (panel) loadLeaderboardPanel(root, panel, "none");
+          return;
+        }
+
         const tab = event.target.closest("[data-leaderboard-tab]");
 
         if (tab && root.contains(tab)) {
@@ -1660,7 +1670,7 @@
 
           readLeaderboardLink(panel, tab.href, true);
           activateLeaderboardBoard(root, board, false);
-          loadLeaderboardPanel(root, panel, true);
+          loadLeaderboardPanel(root, panel, "push");
           return;
         }
 
@@ -1674,7 +1684,7 @@
 
           readLeaderboardLink(panel, scope.href, true);
           syncLeaderboardSharedState(root, panel);
-          loadLeaderboardPanel(root, panel, true);
+          loadLeaderboardPanel(root, panel, "push");
           return;
         }
 
@@ -1688,7 +1698,7 @@
 
           panel.dataset.metric = normalizeLeaderboardMetric(panel.dataset.board, metric.getAttribute("data-leaderboard-metric"));
           panel.dataset.page = "1";
-          loadLeaderboardPanel(root, panel, true);
+          loadLeaderboardPanel(root, panel, "push");
           return;
         }
 
@@ -1704,7 +1714,7 @@
           if (!panel) return;
 
           readLeaderboardLink(panel, pageLink.href, false);
-          loadLeaderboardPanel(root, panel, true);
+          loadLeaderboardPanel(root, panel, "push");
         }
       });
 
@@ -1731,7 +1741,7 @@
               panel.dataset.search = search.value.trim();
               panel.dataset.page = "1";
               syncLeaderboardSharedState(root, panel);
-              loadLeaderboardPanel(root, panel, true);
+              loadLeaderboardPanel(root, panel, "replace");
             }, 320);
           });
         }
@@ -1741,7 +1751,7 @@
             panel.dataset.perPage = normalizeLeaderboardPageSize(pageSize.value);
             panel.dataset.page = "1";
             syncLeaderboardSharedState(root, panel);
-            loadLeaderboardPanel(root, panel, true);
+            loadLeaderboardPanel(root, panel, "push");
           });
         }
 
@@ -1754,14 +1764,14 @@
             panel.dataset.scope = wipeId ? "wipe" : "current";
             panel.dataset.page = "1";
             syncLeaderboardSharedState(root, panel);
-            loadLeaderboardPanel(root, panel, true);
+            loadLeaderboardPanel(root, panel, "push");
           });
         }
       });
 
       window.addEventListener("popstate", () => {
         const params = new URLSearchParams(window.location.search);
-        const board = params.get("board") === "bots" ? "bots" : "players";
+        const board = normalizeLeaderboardBoard(params.get("board"));
         const panel = leaderboardPanel(root, board);
 
         if (!panel) return;
@@ -1769,8 +1779,10 @@
         readLeaderboardParams(panel, params, false);
         activateLeaderboardBoard(root, board, false);
         syncLeaderboardSharedState(root, panel);
-        loadLeaderboardPanel(root, panel, false);
+        loadLeaderboardPanel(root, panel, "none");
       });
+
+      root.dataset.leaderboardEnhanced = "true";
     });
   }
 
@@ -1788,16 +1800,26 @@
     panel.dataset.perPage = normalizeLeaderboardPageSize(formData.get("per_page"));
     panel.dataset.page = "1";
     syncLeaderboardSharedState(root, panel);
-    loadLeaderboardPanel(root, panel, true);
+    loadLeaderboardPanel(root, panel, "push");
   }
 
   function leaderboardPanel(root, board) {
-    const normalized = ["players", "raids", "bots", "rp-games"].includes(board) ? board : "players";
+    const normalized = normalizeLeaderboardBoard(board);
     return root.querySelector(`[data-leaderboard-panel][data-board="${normalized}"]`);
   }
 
   function activateLeaderboardBoard(root, board, updateUrl) {
-    const activeBoard = ["players", "raids", "bots", "rp-games"].includes(board) ? board : "players";
+    const activeBoard = normalizeLeaderboardBoard(board);
+    const activePanel = leaderboardPanel(root, activeBoard);
+    const podium = root.querySelector("[data-leaderboard-podium]");
+    const podiumSlot = activePanel && activePanel.querySelector("[data-leaderboard-podium-slot]");
+
+    // Move the one persistent viewer host before panel visibility changes. The
+    // renderer, WebGL context, loaded arena, and observers all stay attached to
+    // the same DOM subtree throughout the transition.
+    if (podium && podiumSlot && podium.parentElement !== podiumSlot) {
+      podiumSlot.append(podium);
+    }
 
     root.dataset.activeBoard = activeBoard;
     root.querySelectorAll("[data-leaderboard-tab]").forEach(tab => {
@@ -1820,7 +1842,7 @@
       const panel = leaderboardPanel(root, activeBoard);
 
       if (panel) {
-        updateLeaderboardHistory(panel, true);
+        updateLeaderboardHistory(panel, "push");
       }
     }
   }
@@ -1849,41 +1871,89 @@
     panel.dataset.page = resetPage ? "1" : normalizeLeaderboardPage(params.get("page"));
   }
 
-  async function loadLeaderboardPanel(root, panel, updateUrl) {
+  async function loadLeaderboardPanel(root, panel, historyMode) {
+    if (root.__leaderboardAbortController) {
+      root.__leaderboardAbortController.abort();
+    }
+
+    const controller = typeof AbortController === "function" ? new AbortController() : null;
+    const requestGeneration = (Number(root.__leaderboardRequestGeneration) || 0) + 1;
+    root.__leaderboardAbortController = controller;
+    root.__leaderboardRequestGeneration = requestGeneration;
+
     syncLeaderboardSharedState(root, panel);
     updateLeaderboardControls(root);
+    hideLeaderboardError(root);
+    root.querySelectorAll("[data-leaderboard-panel]").forEach(item => item.classList.remove("is-loading"));
     panel.classList.add("is-loading");
+    root.dataset.leaderboardUpdating = "true";
+    root.setAttribute("aria-busy", "true");
+    const updateStatus = root.querySelector("[data-leaderboard-update-status]");
 
-    const requestId = String(Date.now()) + String(Math.random());
-    panel.dataset.requestId = requestId;
+    if (updateStatus) {
+      updateStatus.textContent = `Updating ${leaderboardBoardLabel(panel.dataset.board)}...`;
+    }
+
+    if (historyMode === "push" || historyMode === "replace") {
+      updateLeaderboardHistory(panel, historyMode);
+    }
 
     try {
       const response = await fetch(leaderboardApiUrl(root, panel), {
         cache: "no-store",
+        signal: controller ? controller.signal : undefined,
         headers: {
           Accept: "application/json"
         }
       });
       const payload = await readJsonResponse(response);
 
-      if (panel.dataset.requestId !== requestId) return;
+      if (Number(root.__leaderboardRequestGeneration) !== requestGeneration) return;
+      if (root.dataset.activeBoard !== panel.dataset.board) return;
 
       if (!response.ok || !payload.ok) {
         throw new Error(payload.error || `Leaderboard request failed with HTTP ${response.status}.`);
       }
 
       applyLeaderboardPayload(root, panel, payload);
-
-      if (updateUrl) {
-        updateLeaderboardHistory(panel, true);
-      }
+      if (historyMode !== "none") updateLeaderboardHistory(panel, "replace");
     } catch (error) {
-      showToast(error.message || "Leaderboard could not be loaded.");
+      if (error && error.name === "AbortError") return;
+      if (Number(root.__leaderboardRequestGeneration) !== requestGeneration) return;
+      showLeaderboardError(root, error.message || "Leaderboard could not be loaded.");
     } finally {
-      if (panel.dataset.requestId === requestId) {
+      if (Number(root.__leaderboardRequestGeneration) === requestGeneration) {
         panel.classList.remove("is-loading");
+        root.dataset.leaderboardUpdating = "false";
+        root.removeAttribute("aria-busy");
+        if (root.__leaderboardAbortController === controller) root.__leaderboardAbortController = null;
       }
     }
+  }
+
+  function leaderboardBoardLabel(board) {
+    const labels = {
+      players: "Player Stats",
+      raids: "Raid Stats",
+      bots: "Bot Stats",
+      "rp-games": "RP Games"
+    };
+
+    return labels[normalizeLeaderboardBoard(board)] || labels.players;
+  }
+
+  function hideLeaderboardError(root) {
+    const error = root.querySelector("[data-leaderboard-error]");
+
+    if (error) error.hidden = true;
+  }
+
+  function showLeaderboardError(root, message) {
+    const error = root.querySelector("[data-leaderboard-error]");
+    const copy = root.querySelector("[data-leaderboard-error-message]");
+
+    if (copy) copy.textContent = String(message || "Leaderboard data could not be loaded.");
+    if (error) error.hidden = false;
   }
 
   function leaderboardApiUrl(root, panel) {
@@ -1938,7 +2008,7 @@
     return `${url.pathname}${url.search}${url.hash}`;
   }
 
-  function updateLeaderboardHistory(panel, push) {
+  function updateLeaderboardHistory(panel, mode) {
     if (!window.history || !window.history.pushState) return;
 
     const next = leaderboardPageUrl(panel);
@@ -1946,12 +2016,14 @@
 
     if (next === current) return;
 
-    if (push) {
+    if (mode === "push") {
       window.history.pushState({ leaderboard: true }, "", next);
       return;
     }
 
-    window.history.replaceState({ leaderboard: true }, "", next);
+    if (mode === "replace") {
+      window.history.replaceState({ leaderboard: true }, "", next);
+    }
   }
 
   function applyLeaderboardPayload(root, panel, payload) {
@@ -1967,7 +2039,18 @@
     panel.dataset.total = String(Math.max(0, Number(payload.total) || 0));
     panel.dataset.pages = normalizeLeaderboardPage(payload.pages);
     renderLeaderboardRows(panel, rows);
-    panel.dispatchEvent(new CustomEvent("raidlands:leaderboard-payload", {
+    const podium = root.querySelector("[data-leaderboard-podium]");
+    const podiumPayload = podium && podium.querySelector("[data-podium-payload]");
+
+    if (podiumPayload) {
+      podiumPayload.textContent = JSON.stringify({
+        leaders: Array.isArray(payload.leaders) ? payload.leaders : [],
+        board: payload.board || panel.dataset.board || "players",
+        metric: payload.metric || panel.dataset.metric || "kills"
+      });
+    }
+
+    root.dispatchEvent(new CustomEvent("raidlands:leaderboard-payload", {
       bubbles: true,
       detail: payload
     }));
@@ -2190,7 +2273,7 @@
 
     root.querySelectorAll("[data-leaderboard-tab]").forEach(tab => {
       const requestedBoard = tab.getAttribute("data-leaderboard-tab") || "players";
-      const board = ["players", "raids", "bots", "rp-games"].includes(requestedBoard) ? requestedBoard : "players";
+      const board = normalizeLeaderboardBoard(requestedBoard);
       const panel = leaderboardPanel(root, board);
       const selected = root.dataset.activeBoard === board;
 
@@ -2250,6 +2333,11 @@
     const end = Math.min(total, page * perPage);
 
     return `${formatLeaderboardNumber(start)}-${formatLeaderboardNumber(end)} of ${formatLeaderboardNumber(total)}`;
+  }
+
+  function normalizeLeaderboardBoard(board) {
+    const value = String(board || "");
+    return ["players", "raids", "bots", "rp-games"].includes(value) ? value : "players";
   }
 
   function normalizeLeaderboardScope(scope) {

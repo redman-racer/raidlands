@@ -27,61 +27,91 @@ $leaderboard_bot_metric = $leaderboard_board === 'bots'
 $leaderboard_raid_metric = $leaderboard_board === 'raids'
     ? raidlands_stats_raid_metric($leaderboard_metric_query)
     : 'raid_damage';
-$leaderboard_player_result = $leaderboard_ready
-    ? raidlands_stats_leaderboard_result(
-        $leaderboard_player_metric,
-        $leaderboard_scope,
-        $leaderboard_board === 'players' ? $leaderboard_page : 1,
-        $leaderboard_per_page,
-        $leaderboard_search,
-        $leaderboard_wipe_id,
-        $leaderboard_wipe_key
-    )
-    : raidlands_stats_page_result([], 0, 1, $leaderboard_per_page);
-$leaderboard_raid_result = $leaderboard_ready
-    ? raidlands_stats_raid_leaderboard_result(
-        $leaderboard_raid_metric,
-        $leaderboard_scope,
-        $leaderboard_board === 'raids' ? $leaderboard_page : 1,
-        $leaderboard_per_page,
-        $leaderboard_search,
-        $leaderboard_wipe_id,
-        $leaderboard_wipe_key
-    )
-    : raidlands_stats_page_result([], 0, 1, $leaderboard_per_page);
-$leaderboard_bot_result = $leaderboard_ready
-    ? raidlands_stats_bot_leaderboard_result(
-        $leaderboard_scope,
-        $leaderboard_board === 'bots' ? $leaderboard_page : 1,
-        $leaderboard_per_page,
-        $leaderboard_search,
-        $leaderboard_bot_metric,
-        $leaderboard_wipe_id,
-        $leaderboard_wipe_key
-    )
-    : raidlands_stats_page_result([], 0, 1, $leaderboard_per_page);
-$leaderboard_rp_result = $leaderboard_ready
-    ? raidlands_rewards_leaderboard_result(
-        $leaderboard_scope,
-        $leaderboard_board === 'rp-games' ? $leaderboard_page : 1,
-        $leaderboard_per_page,
-        $leaderboard_search,
-        $leaderboard_wipe_id,
-        $leaderboard_wipe_key
-    )
-    : raidlands_stats_page_result([], 0, 1, $leaderboard_per_page);
-$leaderboard_player_leaders = $leaderboard_ready
-    ? raidlands_stats_leaderboard_leaders($leaderboard_player_metric, $leaderboard_scope, $leaderboard_wipe_id, $leaderboard_wipe_key)
-    : [];
-$leaderboard_raid_leaders = $leaderboard_ready
-    ? raidlands_stats_raid_leaderboard_leaders($leaderboard_raid_metric, $leaderboard_scope, $leaderboard_wipe_id, $leaderboard_wipe_key)
-    : [];
-$leaderboard_bot_leaders = $leaderboard_ready
-    ? raidlands_stats_bot_leaderboard_leaders($leaderboard_scope, $leaderboard_bot_metric, $leaderboard_wipe_id, $leaderboard_wipe_key)
-    : [];
-$leaderboard_rp_leaders = $leaderboard_ready
-    ? raidlands_rewards_leaderboard_leaders($leaderboard_scope, $leaderboard_wipe_id, $leaderboard_wipe_key)
-    : [];
+$leaderboard_player_result = raidlands_stats_page_result([], 0, 1, $leaderboard_per_page);
+$leaderboard_raid_result = raidlands_stats_page_result([], 0, 1, $leaderboard_per_page);
+$leaderboard_bot_result = raidlands_stats_page_result([], 0, 1, $leaderboard_per_page);
+$leaderboard_rp_result = raidlands_stats_page_result([], 0, 1, $leaderboard_per_page);
+$leaderboard_player_leaders = [];
+$leaderboard_raid_leaders = [];
+$leaderboard_bot_leaders = [];
+$leaderboard_rp_leaders = [];
+
+// Only the requested board needs database work on the initial document render.
+// The inactive panels are hydrated through the JSON endpoint when selected, while
+// their ordinary links still provide a complete no-JavaScript fallback.
+if ($leaderboard_ready) {
+    switch ($leaderboard_board) {
+        case 'raids':
+            $leaderboard_raid_result = raidlands_stats_raid_leaderboard_result(
+                $leaderboard_raid_metric,
+                $leaderboard_scope,
+                $leaderboard_page,
+                $leaderboard_per_page,
+                $leaderboard_search,
+                $leaderboard_wipe_id,
+                $leaderboard_wipe_key
+            );
+            $leaderboard_raid_leaders = raidlands_stats_raid_leaderboard_leaders(
+                $leaderboard_raid_metric,
+                $leaderboard_scope,
+                $leaderboard_wipe_id,
+                $leaderboard_wipe_key
+            );
+            break;
+
+        case 'bots':
+            $leaderboard_bot_result = raidlands_stats_bot_leaderboard_result(
+                $leaderboard_scope,
+                $leaderboard_page,
+                $leaderboard_per_page,
+                $leaderboard_search,
+                $leaderboard_bot_metric,
+                $leaderboard_wipe_id,
+                $leaderboard_wipe_key
+            );
+            $leaderboard_bot_leaders = raidlands_stats_bot_leaderboard_leaders(
+                $leaderboard_scope,
+                $leaderboard_bot_metric,
+                $leaderboard_wipe_id,
+                $leaderboard_wipe_key
+            );
+            break;
+
+        case 'rp-games':
+            $leaderboard_rp_result = raidlands_rewards_leaderboard_result(
+                $leaderboard_scope,
+                $leaderboard_page,
+                $leaderboard_per_page,
+                $leaderboard_search,
+                $leaderboard_wipe_id,
+                $leaderboard_wipe_key
+            );
+            $leaderboard_rp_leaders = raidlands_rewards_leaderboard_leaders(
+                $leaderboard_scope,
+                $leaderboard_wipe_id,
+                $leaderboard_wipe_key
+            );
+            break;
+
+        default:
+            $leaderboard_player_result = raidlands_stats_leaderboard_result(
+                $leaderboard_player_metric,
+                $leaderboard_scope,
+                $leaderboard_page,
+                $leaderboard_per_page,
+                $leaderboard_search,
+                $leaderboard_wipe_id,
+                $leaderboard_wipe_key
+            );
+            $leaderboard_player_leaders = raidlands_stats_leaderboard_leaders(
+                $leaderboard_player_metric,
+                $leaderboard_scope,
+                $leaderboard_wipe_id,
+                $leaderboard_wipe_key
+            );
+            break;
+    }
+}
 $leaderboard_wipe = $leaderboard_ready ? raidlands_stats_active_wipe() : null;
 $leaderboard_selected_wipe = $leaderboard_ready && $leaderboard_scope === 'wipe'
     ? raidlands_stats_wipe($leaderboard_wipe_id, $leaderboard_wipe_key)
@@ -324,6 +354,7 @@ function leaderboard_podium_markup(array $leaders, string $board, string $metric
         . ' data-decoder-path="' . e(asset_url('media/models/draco/')) . '" aria-label="Top three podium">'
         . '<div class="leaderboard-podium-heading"><span>Current category</span><strong data-podium-category>' . e($theme) . '</strong></div>'
         . '<div class="leaderboard-podium-drag" aria-hidden="true"><span>◌</span> Drag to rotate</div>'
+        . '<div class="leaderboard-podium-update" data-leaderboard-update-status role="status" aria-live="polite">Updating leaderboard...</div>'
         . '<div class="leaderboard-podium-stage" data-podium-stage aria-hidden="true">'
         . '<img class="leaderboard-podium-poster" src="' . e(asset_url('media/leaderboard-podium-poster.webp')) . '" alt="" decoding="async" fetchpriority="high">'
         . '</div>'
@@ -351,6 +382,24 @@ function leaderboard_podium_markup(array $leaders, string $board, string $metric
         . '<script type="application/json" data-podium-payload>' . ($payload ?: '{"leaders":[]}') . '</script>'
         . '</section>';
 }
+
+$leaderboard_active_metric = match ($leaderboard_board) {
+    'raids' => $leaderboard_raid_metric,
+    'bots' => $leaderboard_bot_metric,
+    'rp-games' => 'total-won',
+    default => $leaderboard_player_metric,
+};
+$leaderboard_active_leaders = match ($leaderboard_board) {
+    'raids' => $leaderboard_raid_leaders,
+    'bots' => $leaderboard_bot_leaders,
+    'rp-games' => $leaderboard_rp_leaders,
+    default => $leaderboard_player_leaders,
+};
+$leaderboard_podium_html = leaderboard_podium_markup(
+    $leaderboard_active_leaders,
+    $leaderboard_board,
+    $leaderboard_active_metric
+);
 ?>
 <?= render_page_hero('leaderboard',
     '<a class="btn btn-primary" href="' . e(route_url('play')) . '">Join Server</a>'
@@ -417,6 +466,11 @@ function leaderboard_podium_markup(array $leaders, string $board, string $metric
             data-leaderboard-tab="rp-games">RP Games</a>
         </div>
 
+        <div class="form-status error leaderboard-request-error" data-leaderboard-error role="status" hidden>
+          <span data-leaderboard-error-message>Leaderboard data could not be loaded.</span>
+          <button class="btn btn-secondary copy-small" type="button" data-leaderboard-retry>Retry</button>
+        </div>
+
         <section
           id="leaderboard-players"
           class="<?= e(leaderboard_panel_classes('players', $leaderboard_board)) ?>"
@@ -454,7 +508,9 @@ function leaderboard_podium_markup(array $leaders, string $board, string $metric
             </div>
           </div>
 
-          <?= leaderboard_podium_markup($leaderboard_player_leaders, 'players', $leaderboard_player_metric) ?>
+          <div class="leaderboard-podium-slot" data-leaderboard-podium-slot>
+            <?php if ($leaderboard_board === 'players') : ?><?= $leaderboard_podium_html ?><?php endif; ?>
+          </div>
 
           <form class="leaderboard-filterbar" method="get" action="<?= e(route_url('leaderboard')) ?>" data-leaderboard-form>
             <input type="hidden" name="board" value="players">
@@ -586,7 +642,9 @@ function leaderboard_podium_markup(array $leaders, string $board, string $metric
             </div>
           </div>
 
-          <?= leaderboard_podium_markup($leaderboard_raid_leaders, 'raids', $leaderboard_raid_metric) ?>
+          <div class="leaderboard-podium-slot" data-leaderboard-podium-slot>
+            <?php if ($leaderboard_board === 'raids') : ?><?= $leaderboard_podium_html ?><?php endif; ?>
+          </div>
 
           <form class="leaderboard-filterbar" method="get" action="<?= e(route_url('leaderboard')) ?>" data-leaderboard-form>
             <input type="hidden" name="board" value="raids">
@@ -706,7 +764,9 @@ function leaderboard_podium_markup(array $leaders, string $board, string $metric
             </div>
           </div>
 
-          <?= leaderboard_podium_markup($leaderboard_bot_leaders, 'bots', $leaderboard_bot_metric) ?>
+          <div class="leaderboard-podium-slot" data-leaderboard-podium-slot>
+            <?php if ($leaderboard_board === 'bots') : ?><?= $leaderboard_podium_html ?><?php endif; ?>
+          </div>
 
           <form class="leaderboard-filterbar" method="get" action="<?= e(route_url('leaderboard')) ?>" data-leaderboard-form>
             <input type="hidden" name="board" value="bots">
@@ -811,7 +871,9 @@ function leaderboard_podium_markup(array $leaders, string $board, string $metric
             </div>
           </div>
 
-          <?= leaderboard_podium_markup($leaderboard_rp_leaders, 'rp-games', 'total-won') ?>
+          <div class="leaderboard-podium-slot" data-leaderboard-podium-slot>
+            <?php if ($leaderboard_board === 'rp-games') : ?><?= $leaderboard_podium_html ?><?php endif; ?>
+          </div>
 
           <form class="leaderboard-filterbar" method="get" action="<?= e(route_url('leaderboard')) ?>" data-leaderboard-form>
             <input type="hidden" name="board" value="rp-games">
