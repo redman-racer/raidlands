@@ -15,6 +15,23 @@ describe("leaderboard 3D loading plan", () => {
     expect(page).not.toContain("build/airstrike-animation-editor/leaderboard-podium.js')) ?>\"></script>");
   });
 
+  it("keeps Vite dependency preloads relative to the nested build directory", () => {
+    const vite = read("vite.config.ts");
+    const builtLoader = read("assets/build/airstrike-animation-editor/leaderboard-podium-loader.js");
+    expect(vite).toContain('base: "./"');
+    expect(builtLoader).toContain('./chunks/three.module-');
+    expect(builtLoader).not.toContain('return"/"');
+  });
+
+  it("warms 3D routes only on user intent and respects constrained connections", () => {
+    const site = read("assets/js/site.js");
+    const apache = read(".htaccess");
+    expect(site).toContain("init3dRouteWarmup()");
+    expect(site).toContain('preload.rel = "modulepreload"');
+    expect(site).toContain("connection.saveData || slowConnection");
+    expect(apache).toContain("max-age=31536000, immutable");
+  });
+
   it("reveals the winner before loading secondary characters and arena detail", () => {
     const app = read("assets/ts/leaderboard-podium/app.ts");
     const winner = app.indexOf("const winner = await this.buildCharacter");

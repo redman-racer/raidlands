@@ -108,6 +108,7 @@
     initRpGames();
     initClanManagement();
     initLeaderboards();
+    init3dRouteWarmup();
     initStoreCatalog();
     initEffectsWhenLoaderReveals();
     bindServerHistoryControls();
@@ -130,6 +131,47 @@
         serverHistoryResizeTimer = window.setTimeout(() => drawServerHistoryChart(serverHistoryPayload), 120);
       });
     }
+  }
+
+  function init3dRouteWarmup() {
+    const connection = navigator.connection || {};
+    const slowConnection = /^(?:slow-2g|2g|3g)$/i.test(String(connection.effectiveType || ""));
+
+    if (connection.saveData || slowConnection) return;
+
+    const buildBase = new URL(`${doc.dataset.base || "./"}assets/build/airstrike-animation-editor/`, document.baseURI);
+    const routes = {
+      leaderboard: new URL("leaderboard-podium.js", buildBase).href,
+      server: new URL("server-map-viewer.js", buildBase).href
+    };
+    const warmed = new Set();
+
+    const warmLink = target => {
+      const anchor = target instanceof Element ? target.closest("a[href]") : null;
+
+      if (!anchor) return;
+
+      let destination;
+
+      try {
+        const path = new URL(anchor.href, document.baseURI).pathname.replace(/\/+$/, "");
+        destination = path.endsWith("/leaderboard") ? "leaderboard" : path.endsWith("/server") ? "server" : "";
+      } catch (error) {
+        return;
+      }
+
+      if (!destination || warmed.has(destination) || pageId === destination) return;
+
+      warmed.add(destination);
+      const preload = document.createElement("link");
+      preload.rel = "modulepreload";
+      preload.href = routes[destination];
+      preload.crossOrigin = "anonymous";
+      document.head.appendChild(preload);
+    };
+
+    document.addEventListener("pointerover", event => warmLink(event.target), { passive: true });
+    document.addEventListener("focusin", event => warmLink(event.target));
   }
 
   function initEffectsWhenLoaderReveals() {

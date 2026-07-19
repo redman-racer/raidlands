@@ -2,6 +2,9 @@ import { resolve } from "node:path";
 import { defineConfig } from "vite";
 
 export default defineConfig({
+  // Every entry is served from assets/build/airstrike-animation-editor/. Relative
+  // preload URLs keep Vite's dynamic-import dependencies under that directory.
+  base: "./",
   build: {
     outDir: "assets/build/airstrike-animation-editor",
     emptyOutDir: true,
