@@ -24,9 +24,17 @@ function raidlands_podium_pose_bones(): array
 {
     return [
         'pelvis', 'spine', 'spine1', 'spine2', 'neck', 'head',
+
         'l_clavicle', 'l_upperarm', 'l_forearm', 'l_hand',
         'r_clavicle', 'r_upperarm', 'r_forearm', 'r_hand',
-        'l_thigh', 'l_calf', 'l_foot', 'r_thigh', 'r_calf', 'r_foot',
+
+        // Actual RustRelay mannequin bone names.
+        'l_hip', 'l_knee', 'l_foot',
+        'r_hip', 'r_knee', 'r_foot',
+
+        // Retain legacy aliases for old presets or replacement models.
+        'l_thigh', 'l_calf',
+        'r_thigh', 'r_calf',
     ];
 }
 
