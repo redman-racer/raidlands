@@ -5,7 +5,7 @@ import {
   FrontSide, LineBasicMaterial, LineSegments, LinearFilter, MathUtils, Mesh, MeshBasicMaterial, MeshDepthMaterial, MeshStandardMaterial, MirroredRepeatWrapping, Object3D,
   PCFSoftShadowMap, PerspectiveCamera, PlaneGeometry, PointLight,
   Points, PointsMaterial, Raycaster, RectAreaLight, Scene, SkinnedMesh, SphereGeometry, SpotLight,
-  RGBADepthPacking, SRGBColorSpace, Texture, TextureLoader, Vector2, Vector3, WebGLRenderer, WebGLRenderTarget,
+  RGBADepthPacking, SRGBColorSpace, Texture, TextureLoader, Vector2, Vector3, WebGLRenderer,
 } from "three";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
@@ -275,7 +275,6 @@ class PodiumScene {
   private scene = new Scene();
   private camera = new PerspectiveCamera(41, 1, 0.05, 60);
   private renderer: WebGLRenderer;
-  private attachmentWarmTarget = new WebGLRenderTarget(1, 1, { depthBuffer: true, stencilBuffer: false });
   private composer?: PodiumEffectsPipeline["composer"];
   private backdropRoot = new Group();
   private worldRoot = new Group();
@@ -1242,9 +1241,7 @@ class PodiumScene {
         if (this.disposed) break;
         const priority = this.placementPriority(placement);
         await this.warmObjectResources(instance, priority);
-        await this.scheduler.runMain(priority, () => {
-          parent.add(instance); this.warmAttachedPlacement(instance, parent);
-        }, `placement:${placement.id}:attach-render`);
+        await this.scheduler.runMain(priority, () => parent.add(instance), `placement:${placement.id}:attach`);
         loaded += 1;
         onProgress?.(loaded);
       } catch { /* Individual dressing assets degrade without removing the podium. */ }
@@ -1331,33 +1328,6 @@ class PodiumScene {
     wrapper.scale.set(...renderScale);
     return wrapper;
     }, `placement:${placement.id}:configure`);
-  }
-
-  private warmAttachedPlacement(instance: Object3D, parent: Group): void {
-    const hidden: Array<{ object: Object3D; visible: boolean }> = [];
-    const hide = (object: Object3D) => { hidden.push({ object, visible: object.visible }); object.visible = false; };
-    [this.backdropRoot, this.pedestalRoot, this.characterRoot, this.signageRoot, this.effectsRoot, this.poseEditorRoot]
-      .forEach(hide);
-    parent.children.forEach((child) => { if (child !== instance) hide(child); });
-    const culled: Array<{ object: Object3D & { frustumCulled: boolean }; value: boolean }> = [];
-    instance.traverse((node) => {
-      const renderable = node as Object3D & { isMesh?: boolean; isPoints?: boolean; isLine?: boolean; frustumCulled: boolean };
-      if (renderable.isMesh || renderable.isPoints || renderable.isLine) {
-        culled.push({ object: renderable, value: renderable.frustumCulled }); renderable.frustumCulled = false;
-      }
-    });
-    const previousTarget = this.renderer.getRenderTarget();
-    const shadowsEnabled = this.renderer.shadowMap.enabled;
-    try {
-      this.renderer.shadowMap.enabled = false;
-      this.renderer.setRenderTarget(this.attachmentWarmTarget);
-      this.renderer.render(this.scene, this.camera);
-    } finally {
-      this.renderer.shadowMap.enabled = shadowsEnabled;
-      this.renderer.setRenderTarget(previousTarget);
-      culled.forEach(({ object, value }) => { object.frustumCulled = value; });
-      hidden.forEach(({ object, visible }) => { object.visible = visible; });
-    }
   }
 
   async setPresentation(board: string, metric: string, leaders: Leader[]) {
@@ -1905,7 +1875,7 @@ class PodiumScene {
       if ((node as Points).isPoints) { const points = node as Points; geometries.add(points.geometry); materials.add(points.material as PointsMaterial); }
     });
     geometries.forEach((geometry) => geometry.dispose()); materials.forEach((material) => material.dispose()); this.ownedTextures.forEach((texture) => texture.dispose());
-    this.environmentTexture?.dispose(); this.environmentTarget?.dispose(); this.attachmentWarmTarget.dispose(); this.composer?.dispose(); this.draco.dispose(); this.renderer.dispose();
+    this.environmentTexture?.dispose(); this.environmentTarget?.dispose(); this.composer?.dispose(); this.draco.dispose(); this.renderer.dispose();
     if (this.debugEnabled) delete (window as Window & { raidlandsPodiumDiagnostics?: unknown }).raidlandsPodiumDiagnostics;
   }
 }
