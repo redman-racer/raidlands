@@ -147,6 +147,7 @@ function raidlands_podium_save_pose_preset(string $label, $rotations, string $ac
 function raidlands_podium_presets(): array
 {
     return [
+        'fully-heavy' => ['label' => 'Fully Heavy', 'wearables' => ['body-head', 'body-torso', 'body-legs', 'body-hands', 'body-feet', 'hoodie', 'pants', 'boots', 'tactical-gloves', 'roadsign-kilt', 'metal-chestplate', 'metal-facemask']],
         'survivor' => ['label' => 'Vanilla Survivor', 'wearables' => ['body-head', 'body-torso', 'body-legs', 'body-hands', 'body-feet', 'hoodie', 'pants', 'boots']],
         'hazmat' => ['label' => 'Hazmat', 'wearables' => ['hazmat']],
         'arctic' => ['label' => 'Arctic Hazmat', 'wearables' => ['arctic-hazmat']],
@@ -172,6 +173,10 @@ function raidlands_podium_wearable_assets(): array
         'hoodie' => 'hoodie',
         'pants' => 'pants',
         'shoes.boots' => 'boots',
+        'tactical.gloves' => 'tactical-gloves',
+        'roadsign.kilt' => 'roadsign-kilt',
+        'metal.plate.torso' => 'metal-chestplate',
+        'metal.facemask' => 'metal-facemask',
         'hazmatsuit' => 'hazmat',
         'suit.ninja' => 'ninja-suit',
         'scientistsuit_heavy' => 'heavy-scientist',
@@ -283,14 +288,13 @@ function raidlands_podium_ingest_observation(PDO $pdo, int $player_id, int $wipe
 
 function raidlands_podium_default_preset(string $identity): string
 {
-    $keys = array_keys(raidlands_podium_presets());
-    return $keys[abs((int) crc32($identity)) % count($keys)];
+    return 'fully-heavy';
 }
 
 function raidlands_podium_preset_payload(string $preset_key, string $source = 'preset'): array
 {
     $presets = raidlands_podium_presets();
-    $preset_key = isset($presets[$preset_key]) ? $preset_key : 'survivor';
+    $preset_key = isset($presets[$preset_key]) ? $preset_key : 'fully-heavy';
     return [
         'preset' => $preset_key,
         'label' => $presets[$preset_key]['label'],

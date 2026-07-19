@@ -5,7 +5,8 @@ const directory = new URL("../assets/media/models/leaderboard/", import.meta.url
 const wearableFiles = new Set([
   "arctic-hazmat.glb", "body-feet.glb", "body-hands.glb", "body-head.glb", "body-legs.glb",
   "body-torso.glb", "boots.glb", "hazmat.glb", "heavy-scientist.glb", "hoodie.glb",
-  "ninja-suit.glb", "pants.glb",
+  "metal-chestplate.glb", "metal-facemask.glb", "ninja-suit.glb", "pants.glb",
+  "roadsign-kilt.glb", "tactical-gloves.glb",
 ]);
 const files = (await readdir(directory)).filter((file) => wearableFiles.has(file));
 

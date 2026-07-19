@@ -26,9 +26,27 @@ $complete = raidlands_podium_observed_outfit_payload(['items_json' => json_encod
 podium_assert($complete !== null && count($complete['wearables']) === 8, 'Complete layered outfits must include the mannequin body and three garments.');
 podium_assert(raidlands_podium_observed_outfit_payload(['items_json' => '[{"slot":"wear-0","shortname":"hoodie","skin_id":"0"}]']) === null, 'Incomplete captured looks must not replace a fully dressed fallback.');
 
+$fully_heavy = raidlands_podium_observed_outfit_payload(['items_json' => json_encode([
+    ['slot' => 'wear-0', 'shortname' => 'metal.facemask', 'skin_id' => '1'],
+    ['slot' => 'wear-1', 'shortname' => 'metal.plate.torso', 'skin_id' => '2'],
+    ['slot' => 'wear-2', 'shortname' => 'roadsign.kilt', 'skin_id' => '3'],
+    ['slot' => 'wear-3', 'shortname' => 'hoodie', 'skin_id' => '4'],
+    ['slot' => 'wear-4', 'shortname' => 'pants', 'skin_id' => '5'],
+    ['slot' => 'wear-5', 'shortname' => 'shoes.boots', 'skin_id' => '6'],
+    ['slot' => 'wear-6', 'shortname' => 'tactical.gloves', 'skin_id' => '7'],
+])]);
+$fully_heavy_assets = array_column((array) ($fully_heavy['wearables'] ?? []), 'asset');
+podium_assert($fully_heavy !== null && count($fully_heavy_assets) === 12, 'Fully Heavy captures must include five mannequin body layers and all seven garments.');
+foreach (['metal-facemask', 'metal-chestplate', 'roadsign-kilt', 'hoodie', 'pants', 'boots', 'tactical-gloves'] as $asset) {
+    podium_assert(in_array($asset, $fully_heavy_assets, true), 'Fully Heavy captures must map ' . $asset . '.');
+}
+
 $hazmat = raidlands_podium_observed_outfit_payload(['items_json' => '[{"slot":"wear-0","shortname":"hazmatsuit","skin_id":"999"}]']);
 podium_assert($hazmat !== null && $hazmat['wearables'][0]['asset'] === 'hazmat' && $hazmat['wearables'][0]['skin_id'] === '999', 'Full suits must retain unknown Workshop skin IDs while using the vanilla asset.');
-podium_assert(raidlands_podium_default_preset('76561198000000000') === raidlands_podium_default_preset('76561198000000000'), 'SteamID defaults must remain stable.');
+podium_assert(raidlands_podium_default_preset('76561198000000000') === 'fully-heavy', 'Player defaults must use Fully Heavy.');
+podium_assert(raidlands_podium_default_preset('bot:scientist') === 'fully-heavy', 'Bot defaults must use Fully Heavy.');
+podium_assert(raidlands_podium_preset_payload('missing')['preset'] === 'fully-heavy', 'Invalid preset keys must fall back to Fully Heavy.');
+podium_assert(raidlands_podium_presets()['heavy']['label'] === 'Heavy Scientist', 'The legacy Heavy Scientist preset must remain available.');
 
 $pose = raidlands_podium_normalize_pose_rotations([
     'L_UpperArm' => ['x' => '0.5', 'y' => 99, 'z' => -0.25],

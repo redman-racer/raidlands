@@ -64,7 +64,12 @@ describe("leaderboard podium policy", () => {
 
   it("uses resolved appearances and safe deterministic fallbacks", () => {
     expect(podiumWearables({ appearance: { wearables: [{ asset: "hazmat" }, { asset: "missing" }] } })).toEqual(["hazmat"]);
-    expect(podiumWearables({}, 0)).toEqual(LEADERBOARD_PODIUM_PRESETS.survivor);
+    expect(LEADERBOARD_PODIUM_PRESETS["fully-heavy"]).toEqual([
+      "body-head", "body-torso", "body-legs", "body-hands", "body-feet",
+      "hoodie", "pants", "boots", "tactical-gloves", "roadsign-kilt", "metal-chestplate", "metal-facemask",
+    ]);
+    expect(podiumWearables({}, 0)).toEqual(LEADERBOARD_PODIUM_PRESETS["fully-heavy"]);
+    expect(podiumWearables({}, 4)).toEqual(LEADERBOARD_PODIUM_PRESETS["fully-heavy"]);
     expect(podiumWeapon({ appearance: { weapon: { asset: "ak47" } } })).toBe("ak47");
     expect(podiumWeapon({ appearance: { weapon: { asset: "missing" } } })).toBe("");
   });

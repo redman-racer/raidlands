@@ -21,6 +21,10 @@ export const LEADERBOARD_PODIUM_ASSETS: Record<string, string> = {
   hoodie: "hoodie.glb",
   pants: "pants.glb",
   boots: "boots.glb",
+  "tactical-gloves": "tactical-gloves.glb",
+  "roadsign-kilt": "roadsign-kilt.glb",
+  "metal-chestplate": "metal-chestplate.glb",
+  "metal-facemask": "metal-facemask.glb",
   hazmat: "hazmat.glb",
   "arctic-hazmat": "arctic-hazmat.glb",
   "ninja-suit": "ninja-suit.glb",
@@ -33,6 +37,10 @@ export const LEADERBOARD_PODIUM_ASSETS: Record<string, string> = {
 };
 
 export const LEADERBOARD_PODIUM_PRESETS: Record<string, string[]> = {
+  "fully-heavy": [
+    "body-head", "body-torso", "body-legs", "body-hands", "body-feet",
+    "hoodie", "pants", "boots", "tactical-gloves", "roadsign-kilt", "metal-chestplate", "metal-facemask",
+  ],
   survivor: ["body-head", "body-torso", "body-legs", "body-hands", "body-feet", "hoodie", "pants", "boots"],
   hazmat: ["hazmat"],
   arctic: ["arctic-hazmat"],
@@ -64,8 +72,7 @@ export function podiumWearables(leader: Leader, fallbackIndex = 0): string[] {
     ? leader.appearance!.wearables!.map((item) => String(item?.asset || "")).filter((key) => Boolean(LEADERBOARD_PODIUM_ASSETS[key]))
     : [];
   if (supplied.length) return [...new Set(supplied)];
-  const keys = Object.keys(LEADERBOARD_PODIUM_PRESETS);
-  return LEADERBOARD_PODIUM_PRESETS[keys[Math.abs(fallbackIndex) % keys.length]];
+  return LEADERBOARD_PODIUM_PRESETS["fully-heavy"];
 }
 
 export function podiumWeapon(leader: Leader): string {
