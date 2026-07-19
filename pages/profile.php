@@ -143,11 +143,20 @@ $profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_
         <div class="podium-profile-grid" data-podium-profile data-pose-api="<?= e(route_url('api/profile/podium-poses.php')) ?>" data-podium-admin="<?= $profile_is_podium_admin ? 'true' : 'false' ?>">
           <section class="leaderboard-podium podium-profile-preview" data-leaderboard-podium data-podium-layout="single" data-board="players" data-metric="kills"
             data-pose-editor="<?= $profile_is_podium_admin ? 'true' : 'false' ?>" data-pose-bones="<?= e(implode(',', (array) ($profile_podium['pose_bones'] ?? []))) ?>"
+            data-interaction-mode="spin"
             data-model-base="<?= e(asset_url('media/models/leaderboard/')) ?>" data-decoder-path="<?= e(asset_url('media/models/draco/')) ?>"
             data-ground-albedo-src="<?= e(asset_url('media/textures/leaderboard-junkyard-dirt-albedo.webp')) ?>"
             data-ground-normal-src="<?= e(asset_url('media/textures/leaderboard-junkyard-dirt-normal.webp')) ?>"
             data-ground-arm-src="<?= e(asset_url('media/textures/leaderboard-junkyard-dirt-arm.webp')) ?>"
             data-ground-fallback-src="<?= e(asset_url('media/textures/road-dirt.webp')) ?>" aria-label="Your podium preview">
+            <?php if ($profile_is_podium_admin) : ?>
+              <button class="podium-profile-mode-toggle" type="button" data-podium-mode-toggle aria-pressed="false">
+                <span data-podium-mode-label>Spin character</span>
+                <small>Switch to pose editing</small>
+              </button>
+            <?php else : ?>
+              <p class="podium-profile-spin-hint">Drag to spin</p>
+            <?php endif; ?>
             <div class="leaderboard-podium-stage" data-podium-stage aria-hidden="true"></div>
             <div class="leaderboard-podium-cards" data-podium-cards></div>
             <p class="leaderboard-podium-status" data-podium-status aria-live="polite">Loading your podium preview.</p>

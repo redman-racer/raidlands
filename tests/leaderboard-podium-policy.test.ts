@@ -140,6 +140,15 @@ describe("leaderboard podium policy", () => {
     expect(pedestalRanksForLayout("unexpected")).toEqual([1, 2, 3]);
   });
 
+  it("keeps profile characters grounded while allowing drag-to-spin beside pose editing", () => {
+    const source = readFileSync(resolve(__dirname, "../assets/ts/leaderboard-podium/app.ts"), "utf8");
+    expect(source).toContain("this.standingHeights[rank], anchor?.position[2]");
+    expect(source).toContain("this.targetCharacterYaw += deltaX * .012");
+    expect(source).toContain('this.host.dataset.interactionMode !== "pose"');
+    expect(source).toContain("if (!this.singleLayout) this.characterRoot.children.forEach");
+    expect(source).not.toContain("void this.completePresentation(board, metric, leaders, sceneLeaders, generation)");
+  });
+
   it("maps live leaderboard views to the approved arena themes and titles", () => {
     expect(podiumThemeFor("players", "kills")).toBe("most-kills");
     expect(podiumThemeFor("players", "rp")).toBe("most-rp");

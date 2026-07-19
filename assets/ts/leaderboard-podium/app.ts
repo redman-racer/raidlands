@@ -71,14 +71,8 @@ function supportsWebGL2(): boolean {
   try { return Boolean(document.createElement("canvas").getContext("webgl2")); } catch { return false; }
 }
 
-function waitForBrowserIdle(timeout = 1000): Promise<void> {
-  return new Promise((resolve) => {
-    const idleWindow = window as Window & typeof globalThis & {
-      requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
-    };
-    if (idleWindow.requestIdleCallback) idleWindow.requestIdleCallback(() => window.setTimeout(resolve, 24), { timeout });
-    else window.setTimeout(resolve, 32);
-  });
+function yieldToRenderer(): Promise<void> {
+  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
 }
 
 function parsePayload(host: HTMLElement): Payload {
@@ -431,11 +425,13 @@ class PodiumScene {
   private posePointer = new Vector2();
   private activePoseBone = "";
   private activePoseButton = -1;
+  private targetCharacterYaw = 0;
+  private currentCharacterYaw = 0;
 
   constructor(private host: HTMLElement) {
     const stage = host.querySelector<HTMLElement>("[data-podium-stage]"); if (!stage) throw new Error("missing-stage");
     host.dataset.podiumState = "initializing";
-    this.status("Starting the 3D renderer…");
+    this.status("Starting the 3D renderer…", 46);
     const capture = new URLSearchParams(location.search).has("podium-capture"); this.capture = capture;
     if (capture) {
       host.dataset.podiumCapture = "true";
@@ -503,7 +499,7 @@ class PodiumScene {
   }
 
   private async buildArenaStage() {
-    this.host.dataset.podiumState = "scene"; this.status("Building the arena shell…");
+    this.host.dataset.podiumState = "scene"; this.status("Building the arena shell…", 62);
     const response = await fetch(this.host.dataset.sceneManifest || "", { cache: "no-cache", headers: { Accept: "application/json" } });
     if (!response.ok) throw new Error(`scene manifest returned ${response.status}`);
     const manifest = await response.json() as ArenaManifest;
@@ -514,8 +510,11 @@ class PodiumScene {
     this.cameraBase.copy(ARENA_CAMERA.position); this.cameraTarget.copy(ARENA_CAMERA.target);
     this.renderer.toneMappingExposure = Math.pow(2, numeric(camera, "Exposure_EV", -.45) - .55);
     this.scene.background = new Color(0x0b0d0e); this.scene.fog = new FogExp2(0x171a1b, JUNKYARD_ATMOSPHERE.sceneFogDensity);
-    await this.buildBackdropPanels(); this.host.dataset.sceneEnvironment = "panels";
+    const fallbackOnly = new URLSearchParams(location.search).has("podium-fallback");
+    const hasEnvironment = fallbackOnly ? false : await this.buildArenaEnvironment().catch(() => false);
+    if (!hasEnvironment) { await this.buildBackdropPanels(); this.host.dataset.sceneEnvironment = "panels"; }
     this.buildArenaPodiums(manifest); this.buildInitialFloor(); this.buildArenaGantrySupports(); this.buildArenaLights(manifest); this.buildAtmosphere();
+    this.setupComposer();
     this.resize();
     const placements = manifest.basePlacements
       .filter((placement) => this.useNativePlacement(placement))
@@ -535,9 +534,8 @@ class PodiumScene {
   private async enhanceArena(placements: ArenaPlacement[]) {
     if (this.arenaEnhancementStarted || this.disposed) return;
     this.arenaEnhancementStarted = true; this.host.dataset.podiumDetail = "loading";
-    // Protect the first-interaction window, then yield between every expensive decode/build.
-    await new Promise<void>((resolve) => window.setTimeout(resolve, 3000));
-    await waitForBrowserIdle();
+    // Let the completed podium paint once, then stream detail without artificial idle delays.
+    await yieldToRenderer();
     const floor = this.baseRoot.getObjectByName("ARENA_JUNKYARD_GROUND") as Mesh | undefined;
     if (floor) {
       try {
@@ -547,30 +545,35 @@ class PodiumScene {
       } catch { /* The fast material remains usable. */ }
     }
     if (this.disposed) return;
-    await waitForBrowserIdle();
-    const priorityPlacements = placements.filter((placement) => placement.lodClass === "Hero" || placement.lodClass === "Primary");
-    // The poster-backed shell supplies distant detail; cap live GLBs to keep draw calls predictable.
-    const detailPlacements = placements.filter((placement) => placement.lodClass === "Secondary").slice(0, this.mobile ? 0 : 8);
-    let loaded = await this.loadPlacementBatch(priorityPlacements, this.baseRoot, 1, true);
-    if (!this.disposed) {
-      await waitForBrowserIdle();
-      loaded += await this.loadPlacementBatch(detailPlacements, this.baseRoot, 1, true);
-    }
+    await yieldToRenderer();
+    this.host.dataset.scenePlacements = "0";
+    this.host.dataset.scenePlacementsTotal = String(placements.length);
+    let loaded = await this.loadPlacementBatch(placements, this.baseRoot, this.mobile ? 3 : 6, true, (count) => {
+      this.host.dataset.scenePlacements = String(count);
+      this.setProgress(88 + (count / Math.max(placements.length, 1)) * 11);
+    });
     if (this.disposed) return;
+    let loadedIds = new Set(this.baseRoot.children.map((child) => child.name));
+    let missing = placements.filter((placement) => !loadedIds.has(placement.id));
+    if (missing.length) {
+      await yieldToRenderer();
+      const firstPassLoaded = loaded;
+      loaded += await this.loadPlacementBatch(missing, this.baseRoot, this.mobile ? 2 : 3, true, (count) => {
+        const total = firstPassLoaded + count;
+        this.host.dataset.scenePlacements = String(total);
+        this.setProgress(88 + (total / Math.max(placements.length, 1)) * 11);
+      });
+      loadedIds = new Set(this.baseRoot.children.map((child) => child.name));
+      missing = placements.filter((placement) => !loadedIds.has(placement.id));
+    }
     this.host.dataset.scenePlacements = String(loaded);
-    await waitForBrowserIdle(2000);
-    const params = new URLSearchParams(location.search);
-    const useHdri = !params.has("podium-fallback") && (this.capture || params.has("podium-hdri"));
-    if (useHdri) {
-      const hasEnvironment = await this.buildArenaEnvironment().catch(() => false);
-      if (hasEnvironment) this.backdropRoot.visible = false;
+    if (missing.length || loaded !== placements.length) {
+      this.host.dataset.scenePlacementsFailed = missing.map((placement) => placement.id).join(",");
+      throw new Error(`arena placements unavailable: ${missing.map((placement) => placement.id).join(", ")}`);
     }
-    await waitForBrowserIdle(2000);
-    if (this.capture || params.has("podium-effects")) {
-      try { this.setupComposer(); this.resize(); } catch { /* Direct rendering remains available. */ }
-    } else {
-      this.setFogQuality("fallback"); this.host.dataset.sceneEffects = "performance";
-    }
+    delete this.host.dataset.scenePlacementsFailed;
+    await yieldToRenderer();
+    this.host.dataset.sceneEffects = this.composer ? "full" : "direct";
     this.host.dataset.podiumDetail = "ready";
   }
 
@@ -947,7 +950,9 @@ class PodiumScene {
   }
 
   private updateFogPerformance(now: number) {
-    if (!this.volumetricFogCapable || this.capture) return;
+    // The desktop composition is authored around the volumetric pass. Background-tab
+    // throttling can look like poor GPU performance and must not replace it with flat fog.
+    if (!this.mobile || !this.volumetricFogCapable || this.capture) return;
     if (document.hidden) {
       this.fogReadyAt = 0; this.fogSampleStartedAt = now; this.fogSampleFrames = 0; return;
     }
@@ -976,14 +981,20 @@ class PodiumScene {
     return classes[placement.lodClass] ?? 3;
   }
 
-  private async loadPlacementBatch(placements: ArenaPlacement[], parent: Group, concurrency: number, yieldBetween = false): Promise<number> {
+  private async loadPlacementBatch(
+    placements: ArenaPlacement[],
+    parent: Group,
+    concurrency: number,
+    yieldBetween = false,
+    onProgress?: (loaded: number) => void,
+  ): Promise<number> {
     let cursor = 0; let loaded = 0;
     const worker = async () => {
       while (cursor < placements.length && !this.disposed) {
         const placement = placements[cursor++];
-        try { const instance = await this.createPlacement(placement); parent.add(instance); loaded += 1; }
+        try { const instance = await this.createPlacement(placement); parent.add(instance); loaded += 1; onProgress?.(loaded); }
         catch { /* Individual dressing assets degrade without removing the podium. */ }
-        if (yieldBetween) await waitForBrowserIdle(500);
+        if (yieldBetween) await yieldToRenderer();
       }
     };
     await Promise.all(Array.from({ length: Math.min(concurrency, placements.length) }, () => worker())); return loaded;
@@ -1071,8 +1082,8 @@ class PodiumScene {
     try { await this.arenaReady; }
     catch (error) { console.warn("Raidlands podium arena failed to initialize.", error); this.fail("Arena assets unavailable. Showing the poster and leaderboard cards."); return; }
     if (generation !== this.generation || this.disposed) return;
-    this.host.dataset.podiumState = "characters"; this.status("Loading the winning character…");
-    const sceneLeaders = leaders.length ? leaders.slice(0, 3) : [{}, {}, {}];
+    this.host.dataset.podiumState = "characters"; this.status("Loading the winning character…", 76);
+    const sceneLeaders = Array.from({ length: 3 }, (_, index) => leaders[index] || {});
     if (!this.singleLayout) this.buildSignage(board, metric, leaders.slice(0, 3));
     const winner = await this.buildCharacter(sceneLeaders[0], 0, generation);
     if (generation !== this.generation || this.disposed) return;
@@ -1081,9 +1092,20 @@ class PodiumScene {
     this.poseBones = { ...(sceneLeaders[0]?.appearance?.pose?.bones || {}) };
     this.rebuildPoseEditorRig();
     this.host.dataset.sceneCharacters = "1"; this.host.dataset.sceneThemeProps = "0";
+    this.setProgress(82);
+    if (this.singleLayout) {
+      this.host.dataset.podiumState = "ready";
+      this.status(leaders.length ? "Player arena ready." : "3D arena ready.", 100);
+      return;
+    }
+    try { await this.completePresentation(board, metric, leaders, sceneLeaders, generation); }
+    catch (error) {
+      console.warn("Raidlands podium presentation failed to initialize.", error);
+      this.fail("Arena assets unavailable. Showing the poster and leaderboard cards."); return;
+    }
+    if (generation !== this.generation || this.disposed) return;
     this.host.dataset.podiumState = "ready";
-    this.status(leaders.length ? "Player arena ready." : "3D arena ready.");
-    void this.completePresentation(board, metric, leaders, sceneLeaders, generation);
+    this.status(leaders.length ? "Player arena ready." : "3D arena ready.", 100);
   }
 
   private async completePresentation(board: string, metric: string, leaders: Leader[], sceneLeaders: Leader[], generation: number) {
@@ -1091,13 +1113,18 @@ class PodiumScene {
     if (generation !== this.generation || this.disposed) return;
     secondaryCharacters.forEach((character) => { if (character) this.characterRoot.add(character); });
     this.host.dataset.sceneCharacters = String(this.characterRoot.children.length);
+    this.setProgress(86);
     if (!this.singleLayout) {
       const signSurface = await this.loadSignSurface();
       if (generation !== this.generation || this.disposed) return;
       this.buildSignage(board, metric, leaders.slice(0, 3), signSurface);
       this.host.dataset.podiumSignage = "ready";
     }
-    if (this.arenaEnhancement) void this.arenaEnhancement().catch((error) => console.warn("Raidlands podium detail enhancement failed.", error));
+    if (this.arenaEnhancement) {
+      this.host.dataset.podiumState = "details";
+      this.status("Loading arena detail…", 88);
+      await this.arenaEnhancement();
+    }
   }
 
   private characterAnchor(rank: number): ArenaPlacement | undefined {
@@ -1129,7 +1156,9 @@ class PodiumScene {
     visual.position.x -= center.x; visual.position.y -= fitted.min.y; visual.position.z -= center.z;
     const wrapper = new Group(); wrapper.add(visual);
     const anchor = this.characterAnchor(rank);
-    wrapper.position.set(anchor?.position[0] ?? this.rankX[rank], this.standingHeights[rank] + .01, anchor?.position[2] ?? 0);
+    // Keep the fitted soles exactly on the authored standing surface. The profile
+    // viewer does not apply the leaderboard's idle bounce, so it cannot appear to hover.
+    wrapper.position.set(anchor?.position[0] ?? this.rankX[rank], this.standingHeights[rank], anchor?.position[2] ?? 0);
     wrapper.rotation.y = podiumCharacterYaw(rank); wrapper.userData.baseY = wrapper.position.y; wrapper.userData.phase = rank * 1.7;
     const weaponKey = podiumWeapon(leader);
     if (weaponKey) {
@@ -1164,6 +1193,7 @@ class PodiumScene {
         rigidReplacements.forEach(({ source, replacement }) => { if (source.parent) { source.parent.add(replacement); source.parent.remove(source); } });
         return root;
       });
+      promise = promise.catch((error) => { this.modelCache.delete(url); throw error; });
       this.modelCache.set(url, promise);
     }
     return cloneSkinnedScene(await promise);
@@ -1188,14 +1218,14 @@ class PodiumScene {
     this.updatePoseEditorRig();
   }
 
-  private rebuildPoseEditorRig() {
+  rebuildPoseEditorRig() {
     this.poseEditorRoot.traverse((node) => {
       const mesh = node as Mesh; if (mesh.geometry) mesh.geometry.dispose();
       const material = (mesh as Mesh).material; if (material) (Array.isArray(material) ? material : [material]).forEach((item) => item.dispose());
     });
     this.poseEditorRoot.clear(); this.editableBoneNodes.clear(); this.primaryBoneNodes.clear();
     this.poseHandles.clear(); this.poseHandleTargets.clear(); this.poseLinePairs = []; this.poseLine = undefined;
-    if (this.host.dataset.poseEditor !== "true" || !this.characterRoot.children.length) return;
+    if (this.host.dataset.poseEditor !== "true" || this.host.dataset.interactionMode !== "pose" || !this.characterRoot.children.length) return;
     this.characterRoot.traverse((node) => {
       const name = node.name.toLowerCase();
       if (!this.editableBoneNames.has(name) || !node.userData.podiumBaseRotation) return;
@@ -1323,18 +1353,25 @@ class PodiumScene {
   private onPointerDown = (event: PointerEvent) => {
     if (this.disposed) return;
     if (this.singleLayout) {
-      if (this.host.dataset.poseEditor !== "true" || (event.button !== 0 && event.button !== 2)) return;
-      if (this.activePoseBone && event.pointerId === this.dragPointer) { this.activePoseButton = event.button; return; }
-      const rect = this.renderer.domElement.getBoundingClientRect();
-      this.posePointer.set(((event.clientX - rect.left) / Math.max(1, rect.width)) * 2 - 1, -((event.clientY - rect.top) / Math.max(1, rect.height)) * 2 + 1);
-      this.poseRaycaster.setFromCamera(this.posePointer, this.camera);
-      const hit = this.poseRaycaster.intersectObjects([...this.poseHandles.values()], false)[0];
-      const bone = String(hit?.object.userData.poseBone || ""); if (!bone) return;
-      event.preventDefault(); this.activePoseBone = bone; this.activePoseButton = event.button;
-      this.dragPointer = event.pointerId; this.dragX = event.clientX; this.dragY = event.clientY;
-      this.renderer.domElement.setPointerCapture(event.pointerId); this.host.dataset.poseBoneDragging = "true";
-      this.host.dispatchEvent(new CustomEvent("raidlands:podium-bone-select", { detail: { bone } }));
-      this.updatePoseEditorRig(); return;
+      const poseMode = this.host.dataset.poseEditor === "true" && this.host.dataset.interactionMode === "pose";
+      if (poseMode) {
+        if (event.button !== 0 && event.button !== 2) return;
+        if (this.activePoseBone && event.pointerId === this.dragPointer) { this.activePoseButton = event.button; return; }
+        const rect = this.renderer.domElement.getBoundingClientRect();
+        this.posePointer.set(((event.clientX - rect.left) / Math.max(1, rect.width)) * 2 - 1, -((event.clientY - rect.top) / Math.max(1, rect.height)) * 2 + 1);
+        this.poseRaycaster.setFromCamera(this.posePointer, this.camera);
+        const hit = this.poseRaycaster.intersectObjects([...this.poseHandles.values()], false)[0];
+        const bone = String(hit?.object.userData.poseBone || ""); if (!bone) return;
+        event.preventDefault(); this.activePoseBone = bone; this.activePoseButton = event.button;
+        this.dragPointer = event.pointerId; this.dragX = event.clientX; this.dragY = event.clientY;
+        this.renderer.domElement.setPointerCapture(event.pointerId); this.host.dataset.poseBoneDragging = "true";
+        this.host.dispatchEvent(new CustomEvent("raidlands:podium-bone-select", { detail: { bone } }));
+        this.updatePoseEditorRig(); return;
+      }
+      if (event.button !== 0) return;
+      event.preventDefault(); this.dragPointer = event.pointerId; this.dragX = event.clientX; this.dragY = event.clientY;
+      this.renderer.domElement.setPointerCapture(event.pointerId); this.host.dataset.podiumDragging = "true";
+      return;
     }
     this.dragPointer = event.pointerId; this.dragX = event.clientX; this.dragY = event.clientY;
     const yawLimit = MathUtils.degToRad(this.mobile ? 60 : 75);
@@ -1359,6 +1396,11 @@ class PodiumScene {
       }
       this.poseBones[this.activePoseBone] = next; this.setPoseBones(this.poseBones);
       this.host.dispatchEvent(new CustomEvent("raidlands:podium-bone-edit", { detail: { bone: this.activePoseBone, rotation: next } }));
+      return;
+    }
+    if (this.singleLayout) {
+      event.preventDefault();
+      this.targetCharacterYaw += deltaX * .012;
       return;
     }
     this.lastCameraInteractionAt = performance.now();
@@ -1407,6 +1449,8 @@ class PodiumScene {
   private animate = () => {
     if (this.disposed) return; const now = performance.now(); const time = now * .001;
     this.currentYaw += (this.targetYaw - this.currentYaw) * .1; this.currentPitch += (this.targetPitch - this.currentPitch) * .1;
+    this.currentCharacterYaw += (this.targetCharacterYaw - this.currentCharacterYaw) * .16;
+    if (this.singleLayout && this.characterRoot.children[0]) this.characterRoot.children[0].rotation.y = podiumCharacterYaw(0) + this.currentCharacterYaw;
     const idleTarget = this.singleLayout ? 0 : idleArenaYawTarget(now, this.lastCameraInteractionAt, this.reduceMotion);
     this.currentIdleYaw += (idleTarget - this.currentIdleYaw) * .055;
     if (!this.singleLayout) this.updateArenaCamera();
@@ -1419,7 +1463,7 @@ class PodiumScene {
       texture.offset.set(offset.x + motionTime * speed.x, offset.y + motionTime * speed.y);
     });
     if (!this.reduceMotion) {
-      this.characterRoot.children.forEach((character) => { character.position.y = character.userData.baseY + Math.sin(time * .72 + character.userData.phase) * .012; });
+      if (!this.singleLayout) this.characterRoot.children.forEach((character) => { character.position.y = character.userData.baseY + Math.sin(time * .72 + character.userData.phase) * .012; });
       const embers = this.effectsRoot.getObjectByName("ArenaEmbers"); if (embers) embers.position.y = Math.sin(time * .28) * .14;
     }
     if (this.poseHandles.size) this.updatePoseEditorRig();
@@ -1433,8 +1477,22 @@ class PodiumScene {
     this.frame = requestAnimationFrame(this.animate);
   };
 
-  private status(message: string) { const node = this.host.querySelector<HTMLElement>("[data-podium-status]"); if (node) node.textContent = message; }
-  private fail(message: string) { this.host.dataset.podiumState = "fallback"; this.status(message); this.dispose(); }
+  private setProgress(progress: number) {
+    const value = Math.max(0, Math.min(100, Math.round(progress)));
+    this.host.style.setProperty("--loader-progress", String(value));
+    this.host.style.setProperty("--loader-progress-sweep", `${value * 3.6}deg`);
+    this.host.style.setProperty("--loader-progress-tip-opacity", value > 0 && value < 100 ? "1" : "0");
+    this.host.style.setProperty("--loader-progress-tip-angle", `${value * 3.6 - 180}deg`);
+    this.host.style.setProperty("--loader-progress-tip-counter-angle", `${180 - value * 3.6}deg`);
+    const node = this.host.querySelector<HTMLElement>("[data-podium-progress-value]");
+    if (node) node.textContent = String(value).padStart(2, "0");
+  }
+
+  private status(message: string, progress?: number) {
+    const node = this.host.querySelector<HTMLElement>("[data-podium-status]"); if (node) node.textContent = message;
+    if (progress !== undefined) this.setProgress(progress);
+  }
+  private fail(message: string) { this.host.dataset.podiumState = "fallback"; this.status(message, 100); this.dispose(); }
 
   dispose() {
     if (this.disposed) return; this.disposed = true; cancelAnimationFrame(this.frame); this.observer.disconnect();
@@ -1506,6 +1564,14 @@ document.addEventListener("raidlands:podium-pose-change", (event) => {
   const host = custom.target instanceof HTMLElement ? custom.target.closest<HTMLElement>("[data-leaderboard-podium]") : null;
   const instance = host ? instances.get(host) : undefined;
   if (instance) instance.setPoseBones(custom.detail?.bones || {});
+});
+
+document.addEventListener("raidlands:podium-interaction-mode", (event) => {
+  const custom = event as CustomEvent<{ mode?: string }>;
+  const host = custom.target instanceof HTMLElement ? custom.target.closest<HTMLElement>("[data-leaderboard-podium]") : null;
+  if (!host) return;
+  host.dataset.interactionMode = custom.detail?.mode === "pose" ? "pose" : "spin";
+  instances.get(host)?.rebuildPoseEditorRig();
 });
 
 window.addEventListener("pagehide", () => new Set(instances.values()).forEach((instance) => instance.dispose()), { once: true });

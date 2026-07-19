@@ -42,13 +42,63 @@ describe("leaderboard 3D loading plan", () => {
     expect(ready).toBeGreaterThan(winner);
     expect(secondary).toBeGreaterThan(ready);
     expect(enhancement).toBeGreaterThan(secondary);
+    expect(app).toContain('Array.from({ length: 3 }, (_, index) => leaders[index] || {})');
   });
 
-  it("keeps large textures and arena placements out of the shell's critical path", () => {
+  it("finishes the HDR environment under the loader and defers arena placements", () => {
     const app = read("assets/ts/leaderboard-podium/app.ts");
     const shell = app.slice(app.indexOf("private async buildArenaStage"), app.indexOf("private buildInitialFloor"));
-    expect(shell).not.toContain("buildArenaEnvironment()");
+    expect(shell).toContain("await this.buildArenaEnvironment()");
+    expect(shell).toContain("if (!hasEnvironment) { await this.buildBackdropPanels()");
     expect(shell).not.toContain("buildSolidFloor()");
     expect(shell).not.toContain("loadPlacementBatch(");
+  });
+
+  it("streams the complete approved placement set without long idle gates", () => {
+    const app = read("assets/ts/leaderboard-podium/app.ts");
+    const enhancement = app.slice(app.indexOf("private async enhanceArena"), app.indexOf("private async buildArenaEnvironment"));
+    expect(enhancement).toContain("loadPlacementBatch(placements");
+    expect(enhancement).toContain("scenePlacementsTotal");
+    expect(enhancement).toContain("let missing = placements.filter");
+    expect(enhancement).toContain("arena placements unavailable");
+    expect(enhancement).not.toContain("setTimeout(resolve, 3000)");
+    expect(app).toContain("if (yieldBetween) await yieldToRenderer()");
+    expect(app).toContain("this.modelCache.delete(url)");
+  });
+
+  it("uses the Raidlands loader treatment and reveals only after arena detail", () => {
+    const page = read("pages/leaderboard.php");
+    const app = read("assets/ts/leaderboard-podium/app.ts");
+    const styles = read("assets/css/styles.css");
+    expect(page).toContain("raidlands-loader--podium");
+    expect(page).toContain("data-podium-progress-value");
+    expect(styles).toContain(".raidlands-loader--podium .raidlands-loader-progress");
+    expect(app.indexOf("await this.completePresentation")).toBeLessThan(app.indexOf('this.host.dataset.podiumState = "ready"', app.indexOf("await this.completePresentation")));
+    expect(app).toContain('this.host.dataset.podiumState = "details"');
+  });
+
+  it("loads the HDRI background by default before revealing the arena", () => {
+    const app = read("assets/ts/leaderboard-podium/app.ts");
+    const enhancement = app.slice(app.indexOf("private async enhanceArena"), app.indexOf("private async buildArenaEnvironment"));
+    expect(app).toContain('const fallbackOnly = new URLSearchParams(location.search).has("podium-fallback")');
+    expect(app).toContain("fallbackOnly ? false : await this.buildArenaEnvironment()");
+    expect(enhancement).not.toContain("buildArenaEnvironment");
+    expect(app).toContain("this.scene.background = texture");
+    expect(app).toContain('this.host.dataset.sceneEnvironment = "hdri"');
+    expect(app).toContain("new PMREMGenerator");
+    expect(app).toContain("this.scene.environment = target.texture");
+    expect(app).toContain('this.host.dataset.sceneEffects = this.composer ? "full" : "direct"');
+  });
+
+  it("preserves the original full volumetric fog composer", () => {
+    const app = read("assets/ts/leaderboard-podium/app.ts");
+    expect(app).toContain("this.buildAtmosphere();\n    this.setupComposer();");
+    expect(app).toContain("composer.addPass(fogPass)");
+    expect(app).toContain('this.setFogQuality("volumetric")');
+    expect(app).toContain("const ssao = new SSAOPass");
+    expect(app).toContain("composer.addPass(ssao)");
+    expect(app).toContain("composer.addPass(new UnrealBloomPass");
+    expect(app).toContain("if (!this.mobile || !this.volumetricFogCapable || this.capture) return");
+    expect(app).not.toContain("this.buildSmoke(texture)");
   });
 });

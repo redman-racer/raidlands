@@ -5,10 +5,24 @@ type IdleWindow = Window & typeof globalThis & {
 const hosts = [...document.querySelectorAll<HTMLElement>("[data-leaderboard-podium]")];
 let loading: Promise<unknown> | undefined;
 
+const phaseProgress: Record<string, number> = { poster: 0, queued: 14, loading: 30, initializing: 46, scene: 62, characters: 76, details: 88, ready: 100, fallback: 100 };
+
+function setProgress(host: HTMLElement, progress: number) {
+  const value = Math.max(0, Math.min(100, Math.round(progress)));
+  host.style.setProperty("--loader-progress", String(value));
+  host.style.setProperty("--loader-progress-sweep", `${value * 3.6}deg`);
+  host.style.setProperty("--loader-progress-tip-opacity", value > 0 && value < 100 ? "1" : "0");
+  host.style.setProperty("--loader-progress-tip-angle", `${value * 3.6 - 180}deg`);
+  host.style.setProperty("--loader-progress-tip-counter-angle", `${180 - value * 3.6}deg`);
+  const progressValue = host.querySelector<HTMLElement>("[data-podium-progress-value]");
+  if (progressValue) progressValue.textContent = String(value).padStart(2, "0");
+}
+
 function setPhase(state: string, message: string) {
   hosts.forEach((host) => {
     if (host.dataset.podiumState === "ready" || host.dataset.podiumState === "fallback") return;
     host.dataset.podiumState = state;
+    setProgress(host, phaseProgress[state] ?? 0);
     const status = host.querySelector<HTMLElement>("[data-podium-status]");
     if (status) status.textContent = message;
   });

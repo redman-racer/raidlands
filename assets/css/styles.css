@@ -4966,49 +4966,57 @@ html[data-podium-capture="true"] .leaderboard-podium[data-podium-capture="true"]
 .leaderboard-podium-loader {
   position: absolute;
   z-index: 4;
-  top: 17px;
-  left: 20px;
+  inset: 0;
   display: grid;
-  width: min(250px, calc(50% - 40px));
-  gap: 6px;
-  padding: 8px 10px;
-  border: 1px solid rgba(104, 96, 85, .52);
-  border-radius: 2px;
-  background: rgba(8, 10, 10, .78);
-  box-shadow: 0 8px 24px rgba(0, 0, 0, .28);
-  backdrop-filter: blur(7px);
-  transition: opacity .3s ease, visibility .3s ease;
+  width: 100%;
+  padding: 18px;
+  place-items: stretch;
+  color: #f3eee3;
+  background:
+    radial-gradient(ellipse at 66% 48%, rgba(255, 138, 40, .14), transparent 36%),
+    linear-gradient(180deg, rgba(5, 6, 7, .32), rgba(5, 6, 7, .88)),
+    url("../media/texture-grunge.svg") center / 760px repeat,
+    url("../media/loading/battlefield-background.webp") center / cover no-repeat,
+    #050607;
+  overflow: hidden;
+  isolation: isolate;
+  transition: opacity .42s ease, visibility .42s ease;
   pointer-events: none;
 }
 
-.leaderboard-podium-progress {
-  display: block;
-  height: 3px;
-  overflow: hidden;
-  background: rgba(255, 255, 255, .1);
+.raidlands-loader--podium::before,
+.raidlands-loader--podium::after { display: block; }
+
+.raidlands-loader--podium .raidlands-loader-frame {
+  min-height: 0;
+  grid-template-columns: 1fr;
+  place-items: center;
+  gap: 0;
 }
 
-.leaderboard-podium-progress i {
-  display: block;
-  width: var(--podium-load-progress, 8%);
-  height: 100%;
-  background: linear-gradient(90deg, #a83e18, #ef7b37, #ffc269);
-  box-shadow: 0 0 12px rgba(239, 123, 55, .62);
-  transition: width .5s ease;
+.raidlands-loader--podium .raidlands-loader-frame::before { inset: 2px; }
+.raidlands-loader--podium .raidlands-loader-core {
+  --loader-ring-size: clamp(220px, 34vw, 330px);
+  justify-self: center;
+  width: min(100%, 430px);
+  padding: 0;
+  gap: 10px;
 }
 
-.leaderboard-podium[data-podium-state="queued"] { --podium-load-progress: 16%; }
-.leaderboard-podium[data-podium-state="loading"] { --podium-load-progress: 34%; }
-.leaderboard-podium[data-podium-state="initializing"] { --podium-load-progress: 52%; }
-.leaderboard-podium[data-podium-state="scene"] { --podium-load-progress: 72%; }
-.leaderboard-podium[data-podium-state="characters"] { --podium-load-progress: 88%; }
-.leaderboard-podium[data-podium-state="fallback"] { --podium-load-progress: 100%; }
-.leaderboard-podium[data-podium-state="fallback"] .leaderboard-podium-progress i { background: #706a62; box-shadow: none; }
+.raidlands-loader--podium .raidlands-loader-logo { width: clamp(92px, 13vw, 138px); }
+.raidlands-loader--podium .raidlands-loader-progress-value {
+  margin-top: clamp(36px, 7vw, 68px);
+  font-size: clamp(3.2rem, 7vw, 5.4rem);
+}
+.raidlands-loader--podium .raidlands-loader-progress-label { font-size: clamp(.68rem, 1vw, .9rem); }
+.raidlands-loader--podium .raidlands-loader-progress-route { font-size: clamp(.58rem, .8vw, .72rem); }
+.raidlands-loader--podium .raidlands-loader-state { font-size: .78rem; letter-spacing: .07em; }
+.leaderboard-podium[data-podium-state="fallback"] .raidlands-loader-progress::after { filter: grayscale(1); opacity: .35; }
 
 .leaderboard-podium-status {
   margin: 0;
-  color: var(--muted);
-  font-size: .7rem;
+  color: rgba(243, 238, 227, .76);
+  font-size: .78rem;
   letter-spacing: .06em;
   text-transform: uppercase;
 }
@@ -5064,9 +5072,9 @@ html[data-podium-capture="true"] .leaderboard-podium[data-podium-capture="true"]
 .podium-profile-preview[data-podium-state="fallback"] { min-height: 190px; }
 
 .podium-profile-preview .leaderboard-podium-card:not([data-podium-rank="1"]) { display: none; }
-.podium-profile-preview[data-pose-editor="true"] .leaderboard-podium-stage { cursor: crosshair; }
+.podium-profile-preview[data-pose-editor="true"][data-interaction-mode="pose"] .leaderboard-podium-stage { cursor: crosshair; }
 .podium-profile-preview[data-pose-editor="true"][data-pose-bone-dragging="true"] .leaderboard-podium-stage { cursor: grabbing; }
-.podium-profile-preview[data-pose-editor="true"]::after {
+.podium-profile-preview[data-pose-editor="true"][data-interaction-mode="pose"]::after {
   content: "JOINTS: LEFT-DRAG TO BEND  •  RIGHT-DRAG TO ROLL";
   position: absolute;
   z-index: 4;
@@ -5081,6 +5089,34 @@ html[data-podium-capture="true"] .leaderboard-podium[data-podium-capture="true"]
   clip-path: none;
   pointer-events: none;
 }
+
+.podium-profile-mode-toggle,
+.podium-profile-spin-hint {
+  position: absolute;
+  z-index: 5;
+  top: 12px;
+  right: 12px;
+}
+
+.podium-profile-mode-toggle {
+  display: grid;
+  gap: 2px;
+  min-width: 150px;
+  padding: 8px 11px;
+  border: 1px solid rgba(255, 138, 40, .42);
+  border-radius: 3px;
+  color: #f1e9dd;
+  background: rgba(8, 10, 10, .88);
+  box-shadow: 0 8px 22px rgba(0, 0, 0, .32);
+  font: inherit;
+  text-align: left;
+  cursor: pointer;
+}
+
+.podium-profile-mode-toggle small { color: #a9a198; font-size: .63rem; }
+.podium-profile-mode-toggle[aria-pressed="true"] { border-color: rgba(145, 240, 162, .62); color: #aef3ba; }
+.podium-profile-spin-hint { margin: 0; color: #c9c1b6; font-size: .68rem; letter-spacing: .08em; text-transform: uppercase; pointer-events: none; }
+.podium-profile-preview[data-pose-editor="true"]::before { right: 174px; left: 12px; transform: none; text-align: left; }
 
 .podium-profile-form {
   display: grid;
@@ -7051,7 +7087,7 @@ a.leaderboard-steam:hover,
 
   .leaderboard-podium-heading strong { font-size: 1.3rem; }
   .leaderboard-podium-drag { display: none; }
-  .leaderboard-podium:not(.podium-profile-preview) .leaderboard-podium-loader { top: 70px; left: 20px; width: calc(100% - 40px); }
+  .leaderboard-podium:not(.podium-profile-preview) .leaderboard-podium-loader { inset: 0; width: 100%; }
 
   .leaderboard-podium:not(.podium-profile-preview) .leaderboard-podium-cards {
     top: 270px;

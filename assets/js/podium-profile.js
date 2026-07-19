@@ -18,7 +18,21 @@
   try { original = JSON.parse(payloadNode ? payloadNode.textContent || "{}" : "{}"); } catch (error) { original = {}; }
   if (!outfitSelect || !weaponSelect || !poseSelect) return;
   var editor = form.querySelector("[data-podium-pose-editor]");
+  var modeToggle = host.querySelector("[data-podium-mode-toggle]");
   var workingBones = {};
+
+  function setInteractionMode(mode) {
+    var poseMode = mode === "pose";
+    host.dataset.interactionMode = poseMode ? "pose" : "spin";
+    if (modeToggle) {
+      modeToggle.setAttribute("aria-pressed", poseMode ? "true" : "false");
+      var label = modeToggle.querySelector("[data-podium-mode-label]");
+      var detail = modeToggle.querySelector("small");
+      if (label) label.textContent = poseMode ? "Edit pose" : "Spin character";
+      if (detail) detail.textContent = poseMode ? "Switch to character spin" : "Switch to pose editing";
+    }
+    host.dispatchEvent(new CustomEvent("raidlands:podium-interaction-mode", { bubbles: true, detail: { mode: poseMode ? "pose" : "spin" } }));
+  }
 
   function split(value) {
     var index = String(value || "").indexOf("|");
@@ -89,6 +103,13 @@
   outfitSelect.addEventListener("change", function () { update(editor ? editorPose() : null); });
   weaponSelect.addEventListener("change", function () { update(editor ? editorPose() : null); });
   poseSelect.addEventListener("change", function () { cloneSelectedBones(); refreshBoneControls(); update(); });
+
+  if (modeToggle) {
+    modeToggle.addEventListener("click", function () {
+      setInteractionMode(host.dataset.interactionMode === "pose" ? "spin" : "pose");
+    });
+    setInteractionMode("spin");
+  }
 
   if (editor) {
     cloneSelectedBones(); refreshBoneControls();
