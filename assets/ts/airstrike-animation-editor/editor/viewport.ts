@@ -37,6 +37,7 @@ import {
 import { OrbitControls } from "three/examples/jsm/controls/OrbitControls.js";
 import { TransformControls } from "three/examples/jsm/controls/TransformControls.js";
 import { evaluateSourcePose } from "../math";
+import { usesDownwardVehiclePath } from "../payload-catalog";
 import type { EditorSourceProfile, VehiclePreviewMetadataFile } from "../types";
 import { applyRaidlandsEnvironment } from "../../shared/three-environment";
 import { getSharedCanvasTexture, loadSharedTexture } from "../../shared/three-asset-cache";
@@ -1231,11 +1232,17 @@ export class AirstrikeViewport {
     });
     carrierOffset.applyQuaternion(vehicleRotation);
     origin.add(carrierOffset);
-    const target = unityPositionToThreeVector({
-      x: release.fields.TargetOffsetX,
-      y: release.fields.TargetOffsetY,
-      z: release.fields.TargetOffsetZ,
-    });
+    const target = release.followVehiclePath
+      ? origin.clone().add(
+          usesDownwardVehiclePath(release.fields.Payload)
+            ? new Vector3(0, -500, 0)
+            : new Vector3(0, 0, -500).applyQuaternion(vehicleRotation),
+        )
+      : unityPositionToThreeVector({
+          x: release.fields.TargetOffsetX,
+          y: release.fields.TargetOffsetY,
+          z: release.fields.TargetOffsetZ,
+        });
     return { origin, target };
   }
 
@@ -1301,11 +1308,17 @@ export class AirstrikeViewport {
       });
       carrierOffset.applyQuaternion(unityQuaternionValueToThreeQuaternion(pose.rotation));
       origin.add(carrierOffset);
-      const target = unityPositionToThreeVector({
-        x: release.fields.TargetOffsetX,
-        y: release.fields.TargetOffsetY,
-        z: release.fields.TargetOffsetZ,
-      });
+      const target = release.followVehiclePath
+        ? origin.clone().add(
+            usesDownwardVehiclePath(release.fields.Payload)
+              ? new Vector3(0, -500, 0)
+              : new Vector3(0, 0, -500).applyQuaternion(unityQuaternionValueToThreeQuaternion(pose.rotation)),
+          )
+        : unityPositionToThreeVector({
+            x: release.fields.TargetOffsetX,
+            y: release.fields.TargetOffsetY,
+            z: release.fields.TargetOffsetZ,
+          });
       const marker = new Mesh(this.releaseGeometry, proposalReleaseMaterial);
       marker.position.copy(origin);
       marker.scale.setScalar(0.72);

@@ -18,6 +18,8 @@ import {
   updateManualReleaseTime,
   updateReleaseMode,
   updateRepeatedGroupField,
+  updateRepeatedGroupFollowVehiclePath,
+  updateRepeatedGroupTemplateField,
 } from "../assets/ts/airstrike-animation-editor/editor/release-source";
 import {
   metersPerSecondToMilesPerHour,
@@ -246,6 +248,41 @@ describe("airstrike authoring release sources", () => {
     }]);
     expect(runtime.CompiledReleaseEvents).toBeUndefined();
     expect(getReleasePreviewEvents(source, metadata()).map((event) => event.time)).toEqual([1, 1, 1.05, 1.1, 1.2, 1.25]);
+  });
+
+  it("compiles automatic vehicle-path targeting into a compact trajectory group", () => {
+    const repeated = updateReleaseMode(profileFixture(), "repeated");
+    const groupId = getRepeatedReleaseGroups(repeated)[0]!.Id;
+    const followed = updateRepeatedGroupFollowVehiclePath(repeated, groupId, true);
+
+    expect(validateSourceBundle(bundle(followed), metadata())).toEqual([]);
+    expect(getReleasePreviewEvents(followed, metadata()).every((event) => event.followVehiclePath)).toBe(true);
+    const runtime = compileSourceBundle(bundle(followed), { publishedRevision: 1, vehicleMetadata: metadata() });
+    expect(runtime.bundle.CompilerVersion).toBe("raidlands-airanim-3");
+    expect(runtime.bundle.Profiles.authoring_test!.GeneratedReleaseGroups).toMatchObject([{
+      Template: { Payload: "hv_rocket", TargetingMode: "trajectory" },
+    }]);
+    expect(runtime.bundle.Profiles.authoring_test!.ReleaseTemplate.TargetingMode).toBe("trajectory");
+    expect(runtime.canonicalJson).not.toContain("FollowVehiclePath");
+    expect(runtime.canonicalJson).not.toContain("TargetSource");
+
+    const baselineHash = compileSourceBundle(bundle(repeated), { publishedRevision: 1, vehicleMetadata: metadata() })
+      .sourceHashes.authoring_test;
+    expect(runtime.sourceHashes.authoring_test).not.toBe(baselineHash);
+  });
+
+  it("keeps homing missiles on native homing", () => {
+    const repeated = updateReleaseMode(profileFixture(), "repeated");
+    const groupId = getRepeatedReleaseGroups(repeated)[0]!.Id;
+    const followed = updateRepeatedGroupFollowVehiclePath(repeated, groupId, true);
+    const homing = updateRepeatedGroupTemplateField(followed, groupId, "Payload", "homing_missile");
+    expect(getRepeatedReleaseGroups(homing)[0]!.FollowVehiclePath).toBe(false);
+
+    const invalid = structuredClone(homing);
+    if (invalid.ReleaseSource.Mode === "repeated" && invalid.ReleaseSource.Groups?.[0]) {
+      invalid.ReleaseSource.Groups[0].FollowVehiclePath = true;
+    }
+    expect(validateSourceBundle(bundle(invalid), metadata()).map((issue) => issue.code)).toContain("native_homing");
   });
 
   it("rejects overlapping bursts and combined schedules above 2,000 units", () => {

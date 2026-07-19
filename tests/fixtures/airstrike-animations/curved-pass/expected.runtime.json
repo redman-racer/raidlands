@@ -1,6 +1,6 @@
 {
   "SchemaVersion": 3,
-  "CompilerVersion": "raidlands-airanim-2",
+  "CompilerVersion": "raidlands-airanim-3",
   "PublishedRevision": 1,
   "AllowDangerousPayloadPreview": false,
   "Profiles": {
@@ -79,7 +79,7 @@
       ],
       "PayloadEvents": [],
       "CompiledTrack": {
-        "CompilerVersion": "raidlands-airanim-2",
+        "CompilerVersion": "raidlands-airanim-3",
         "SourceHash": "f8d0d2e5d61d7d72ffdbb9fb8622ff495d56d172ad481ec90e60da649fa3b6d1",
         "CoordinateSystem": "unity-target-relative-local-v1",
         "SampleRateHz": 30,

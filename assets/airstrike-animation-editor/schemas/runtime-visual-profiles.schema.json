@@ -38,10 +38,14 @@
       ],
       "properties": {
         "Time": { "type": "number" }, "Payload": { "type": "string" }, "Index": { "type": "integer", "minimum": 0 },
+        "AmmoSequence": { "type": "array", "items": { "type": "string" } },
         "Count": { "type": "integer", "minimum": 1, "maximum": 200 },
         "CarrierOffsetX": { "type": "number" }, "CarrierOffsetY": { "type": "number" }, "CarrierOffsetZ": { "type": "number" },
         "TargetOffsetX": { "type": "number" }, "TargetOffsetY": { "type": "number" }, "TargetOffsetZ": { "type": "number" },
-        "SpreadRadius": { "type": "number" }, "LaunchSpeed": { "type": "number" }, "FuseSeconds": { "type": "number" },
+        "SpreadRadius": { "type": "number" },
+        "TargetingMode": { "enum": ["simple", "advanced", "trajectory"] },
+        "AccuracyPercent": { "type": "number", "minimum": 0, "maximum": 100 },
+        "LaunchSpeed": { "type": "number" }, "FuseSeconds": { "type": "number" },
         "DamageScale": { "type": "number" }, "VehicleDamageScale": { "type": "number" }, "SplashRadius": { "type": "number" },
         "ImpactRadius": { "type": "number" }, "MaxTrackingSeconds": { "type": "number" }, "MaxTrackingDistance": { "type": "number" },
         "DamageScales": { "type": "object", "additionalProperties": { "type": "number" } }
@@ -113,7 +117,7 @@
         "PayloadEvents": { "type": "array", "maxItems": 80, "items": { "$ref": "#/$defs/payloadEvent" } },
         "GeneratedReleaseGroups": { "type": "array", "maxItems": 40, "items": { "$ref": "#/$defs/generatedReleaseGroup" } },
         "CompiledTrack": { "$ref": "#/$defs/compiledTrack" },
-        "CompiledReleaseEvents": { "type": "array", "maxItems": 200, "items": { "$ref": "#/$defs/payloadEvent" } }
+        "CompiledReleaseEvents": { "type": "array", "maxItems": 2000, "items": { "$ref": "#/$defs/payloadEvent" } }
       }
     }
   }

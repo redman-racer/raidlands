@@ -2,7 +2,7 @@ import payloadCatalogJson from "../../airstrike-animation-editor/payload-catalog
 
 export const EDITOR_SOURCE_SCHEMA_VERSION = 2 as const;
 export const RUNTIME_SCHEMA_VERSION = 3 as const;
-export const DEFAULT_COMPILER_VERSION = "raidlands-airanim-2";
+export const DEFAULT_COMPILER_VERSION = "raidlands-airanim-3";
 export const RUNTIME_COORDINATE_SYSTEM = "unity-target-relative-local-v1";
 export const DEFAULT_SAMPLE_RATE_HZ = 30;
 
@@ -181,6 +181,8 @@ export interface RepeatedReleaseGroup {
   MaximumUnits: number;
   Template: PayloadEventFields;
   HardpointSequence: string[];
+  /** Website-only authoring choice compiled into runtime trajectory targeting. */
+  FollowVehiclePath?: boolean;
 }
 
 export interface MixedReleaseSource {
@@ -246,10 +248,11 @@ export interface RuntimeWaypoint {
   RotationZ: number;
 }
 
-export interface RuntimePayloadEvent extends PayloadEventFields {
+export type RuntimePayloadEvent = Omit<PayloadEventFields, "TargetingMode"> & {
+  TargetingMode: PayloadEventFields["TargetingMode"] | "trajectory";
   Time: number;
   Index: number;
-}
+};
 
 export interface RuntimeAudioEvent {
   Time: number;

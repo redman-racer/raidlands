@@ -312,6 +312,9 @@ function validateProfile(
           if (typeof group.Name !== "string" || group.Name.trim() === "" || group.Name.length > 100) {
             addIssue(issues, `${groupPath}.Name`, "name", "Must be a name between 1 and 100 characters.");
           }
+          if (group.FollowVehiclePath !== undefined && typeof group.FollowVehiclePath !== "boolean") {
+            addIssue(issues, `${groupPath}.FollowVehiclePath`, "boolean", "Must be boolean when provided.");
+          }
           if (validateFinite(group.StartTime, `${groupPath}.StartTime`, issues, 0, Number(profile.DurationSeconds))) {
             earliest = Math.min(earliest, group.StartTime);
           }
@@ -340,6 +343,14 @@ function validateProfile(
             }
           }
           validatePayloadFields(group.Template, `${groupPath}.Template`, issues, false);
+          if (group.FollowVehiclePath === true && isRecord(group.Template) && group.Template.Payload === "homing_missile") {
+            addIssue(
+              issues,
+              `${groupPath}.FollowVehiclePath`,
+              "native_homing",
+              "Homing missiles always use native homing and cannot follow the vehicle path.",
+            );
+          }
           if (!Array.isArray(group.HardpointSequence)) {
             addIssue(issues, `${groupPath}.HardpointSequence`, "array", "Must be an array.");
           } else {

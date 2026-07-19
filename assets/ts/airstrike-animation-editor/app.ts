@@ -29,6 +29,7 @@ import {
   updateManualReleaseTime,
   updateReleaseMode,
   updateRepeatedGroupField,
+  updateRepeatedGroupFollowVehiclePath,
   updateRepeatedGroupHardpointSequence,
   updateRepeatedGroupName,
   updateRepeatedGroupTemplateField,
@@ -1430,6 +1431,41 @@ class AirstrikeEditorApp {
       );
     });
     basic.appendChild(this.fieldWrapper("Hardpoint sequence", sequence));
+
+    const targetingSource = document.createElement("div");
+    targetingSource.className = "airstrike-targeting-switch";
+    targetingSource.setAttribute("role", "group");
+    targetingSource.setAttribute("aria-label", "Automatic group target source");
+    const isHoming = group.Template.Payload === "homing_missile";
+    const targetingOptions = isHoming
+      ? [["Native homing", false]] as const
+      : [["Target ping", false], ["Follow vehicle path", true]] as const;
+    for (const [label, followsPath] of targetingOptions) {
+      const button = document.createElement("button");
+      button.type = "button";
+      button.textContent = label;
+      button.disabled = isHoming;
+      const active = isHoming || (group.FollowVehiclePath === true) === followsPath;
+      button.className = active ? "is-active" : "";
+      button.setAttribute("aria-pressed", active ? "true" : "false");
+      button.addEventListener("click", () => {
+        this.applyProfile(
+          updateRepeatedGroupFollowVehiclePath(this.state.profile ?? profile, group.Id, followsPath),
+          true,
+        );
+      });
+      targetingSource.appendChild(button);
+    }
+    const targetingSourceWrapper = this.fieldWrapper("Target behavior", targetingSource);
+    const targetingSourceHelp = document.createElement("small");
+    targetingSourceHelp.className = "airstrike-payload-detail";
+    targetingSourceHelp.textContent = isHoming
+      ? "Automatic homing missiles always retain Rust's native vehicle tracking."
+      : group.FollowVehiclePath === true
+        ? "Launches from the selected hardpoint along the live vehicle trajectory."
+        : "Aims at the stored ping using the targeting controls below.";
+    targetingSourceWrapper.appendChild(targetingSourceHelp);
+    basic.appendChild(targetingSourceWrapper);
 
     this.renderPayloadFieldGroup(basic, group.Template, PAYLOAD_COMMON_FIELDS.filter((field) => field !== "Count"), (field, value, mode) => {
       const next = updateRepeatedGroupTemplateField(this.state.profile ?? profile, group.Id, field, value);

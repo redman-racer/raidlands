@@ -294,6 +294,38 @@ airstrike_compiler_test($repeated_group['Template']['Count'] === 1, 'compact gro
 airstrike_compiler_test($repeated_group['StartTime'] === 0.2 && $repeated_group['IntervalSeconds'] === 0.3, 'compact group preserves burst timing');
 airstrike_compiler_test(array_column($repeated_group['HardpointOffsets'], 'X') === [-2.0, 2.0], 'alternating hardpoint offsets are compiler-resolved');
 
+$trajectory_source = airstrike_compiler_source([
+    'EditorSourceSchemaVersion' => 2,
+    'ProfileKey' => 'vehicle_path_trajectory',
+    'FirstPayloadDelaySeconds' => 0.2,
+    'ReleaseSource' => [
+        'Mode' => 'repeated',
+        'Groups' => [[
+            'Id' => 'wing_rockets',
+            'Name' => 'Wing rockets',
+            'StartTime' => 0.2,
+            'IntervalSeconds' => 0.3,
+            'UnitsPerRelease' => 1,
+            'MaximumUnits' => 2,
+            'FollowVehiclePath' => true,
+            'Template' => airstrike_compiler_payload(['Payload' => 'hv_rocket']),
+            'HardpointSequence' => [],
+        ]],
+    ],
+]);
+$trajectory_validation = raidlands_airstrike_animation_validate_profile($trajectory_source, 'Profiles.vehicle_path_trajectory');
+airstrike_compiler_test($trajectory_validation['ok'], 'vehicle-path automatic groups validate');
+$trajectory_runtime = raidlands_airstrike_animation_compile_profile($trajectory_source);
+airstrike_compiler_test($trajectory_runtime['GeneratedReleaseGroups'][0]['Template']['TargetingMode'] === 'trajectory', 'vehicle-path groups compile to trajectory targeting');
+airstrike_compiler_test($trajectory_runtime['ReleaseTemplate']['TargetingMode'] === 'trajectory', 'vehicle-path legacy template preserves trajectory targeting');
+airstrike_compiler_test(!array_key_exists('FollowVehiclePath', $trajectory_runtime['GeneratedReleaseGroups'][0]), 'editor-only vehicle-path field is omitted from runtime groups');
+
+$invalid_homing_trajectory = $trajectory_source;
+$invalid_homing_trajectory['ReleaseSource']['Groups'][0]['Template']['Payload'] = 'homing_missile';
+$invalid_homing_validation = raidlands_airstrike_animation_validate_profile($invalid_homing_trajectory, 'Profiles.invalid_homing_trajectory');
+airstrike_compiler_test(!$invalid_homing_validation['ok'], 'homing missiles reject vehicle-path targeting');
+airstrike_compiler_test(in_array('native_homing', array_column($invalid_homing_validation['errors'], 'code'), true), 'homing validation reports native_homing');
+
 $multi_burst_source = airstrike_compiler_source([
     'ProfileKey' => 'multi_burst_strafe',
     'FirstPayloadDelaySeconds' => 0.1,

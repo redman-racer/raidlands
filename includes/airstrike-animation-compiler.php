@@ -11,7 +11,7 @@ declare(strict_types=1);
 
 function raidlands_airstrike_animation_compiler_version(): string
 {
-    return 'raidlands-airanim-2';
+    return 'raidlands-airanim-3';
 }
 
 function raidlands_airstrike_animation_compiler_limits(): array
@@ -257,6 +257,8 @@ function raidlands_airstrike_animation_repeated_group(array $group, int $index =
             1
         ),
         'maximum_units' => raidlands_airstrike_animation_int($group['MaximumUnits'] ?? 0),
+        'follow_vehicle_path' => !empty($group['FollowVehiclePath']),
+        'follow_vehicle_path_present' => array_key_exists('FollowVehiclePath', $group),
         'template' => isset($group['Template']) && is_array($group['Template']) ? $group['Template'] : [],
         'hardpoint_sequence' => isset($group['HardpointSequence']) && is_array($group['HardpointSequence'])
             ? array_values(array_map('strval', $group['HardpointSequence']))
@@ -350,6 +352,8 @@ function raidlands_airstrike_animation_repeated_groups(array $release): array
         'unit_interval_seconds' => 0.0,
         'units_per_release' => $release['units_per_release'],
         'maximum_units' => $release['maximum_units'],
+        'follow_vehicle_path' => false,
+        'follow_vehicle_path_present' => false,
         'template' => $release['template'],
         'hardpoint_sequence' => $release['hardpoint_sequence'],
     ]];
@@ -888,6 +892,10 @@ function raidlands_airstrike_animation_validate_profile(
                         raidlands_airstrike_animation_validation_error($errors, $group_path . '.Name', 'name', 'Must be a name between 1 and 100 characters.');
                     }
 
+                    if (array_key_exists('FollowVehiclePath', $raw_group) && !is_bool($raw_group['FollowVehiclePath'])) {
+                        raidlands_airstrike_animation_validation_error($errors, $group_path . '.FollowVehiclePath', 'boolean', 'Must be boolean when provided.');
+                    }
+
                     $raw_start = $raw_group['StartTime'] ?? null;
                     $raw_interval = $raw_group['IntervalSeconds'] ?? null;
                     $raw_units = $raw_group['UnitsPerRelease'] ?? null;
@@ -942,6 +950,15 @@ function raidlands_airstrike_animation_validate_profile(
                     $template['Time'] = $group['start_time'];
                     $template['Count'] = max(1, $group['units_per_release']);
                     raidlands_airstrike_animation_validate_event($template, $group_path . '.Template', $duration_number, $errors);
+                    if (!empty($raw_group['FollowVehiclePath'])
+                        && strtolower(trim((string) ($template['Payload'] ?? ''))) === 'homing_missile') {
+                        raidlands_airstrike_animation_validation_error(
+                            $errors,
+                            $group_path . '.FollowVehiclePath',
+                            'native_homing',
+                            'Homing missiles always use native homing and cannot follow the vehicle path.'
+                        );
+                    }
 
                     $raw_hardpoints = $raw_group['HardpointSequence'] ?? null;
 
@@ -1677,7 +1694,11 @@ function raidlands_airstrike_animation_runtime_event(array $event, float $time, 
 
 function raidlands_airstrike_animation_targeting_mode($value): string
 {
-    return strtolower(trim((string) $value)) === 'advanced' ? 'advanced' : 'simple';
+    $mode = strtolower(trim((string) $value));
+    if ($mode === 'trajectory') {
+        return 'trajectory';
+    }
+    return $mode === 'advanced' ? 'advanced' : 'simple';
 }
 
 function raidlands_airstrike_animation_payload_object_shape(array $fields): array
@@ -1772,6 +1793,9 @@ function raidlands_airstrike_animation_source_hash_projection(
                 ];
                 if (!empty($group['unit_interval_present'])) {
                     $group_projection['UnitIntervalSeconds'] = $group['unit_interval_seconds'];
+                }
+                if (!empty($group['follow_vehicle_path_present'])) {
+                    $group_projection['FollowVehiclePath'] = !empty($group['follow_vehicle_path']);
                 }
                 $groups[] = $group_projection;
             }
@@ -1929,6 +1953,11 @@ function raidlands_airstrike_animation_compile_release_schedule(
             $primary_group = $candidate;
         }
     }
+    $primary_template = $primary_group['template'];
+    if (!empty($primary_group['follow_vehicle_path'])
+        && strtolower(trim((string) ($primary_template['Payload'] ?? ''))) !== 'homing_missile') {
+        $primary_template['TargetingMode'] = 'trajectory';
+    }
     $generated_groups = [];
     foreach ($groups as $automatic_group) {
         $offsets = [];
@@ -1940,6 +1969,10 @@ function raidlands_airstrike_animation_compile_release_schedule(
         }
         $template = $automatic_group['template'];
         $template['Count'] = 1;
+        if (!empty($automatic_group['follow_vehicle_path'])
+            && strtolower(trim((string) ($template['Payload'] ?? ''))) !== 'homing_missile') {
+            $template['TargetingMode'] = 'trajectory';
+        }
         $generated_groups[] = [
             'StartTime' => raidlands_airstrike_animation_quantize($automatic_group['start_time']),
             'IntervalSeconds' => raidlands_airstrike_animation_quantize($automatic_group['interval_seconds']),
@@ -1955,7 +1988,7 @@ function raidlands_airstrike_animation_compile_release_schedule(
         'legacy_maximum_units' => $manual_units + array_sum(array_column($groups, 'maximum_units')),
         'legacy_interval_seconds' => $primary_group['interval_seconds'],
         'legacy_template' => raidlands_airstrike_animation_runtime_event(
-            array_merge($primary_group['template'], ['Count' => $primary_group['units_per_release']]),
+            array_merge($primary_template, ['Count' => $primary_group['units_per_release']]),
             $primary_group['start_time'],
             0,
             $primary_group['units_per_release']

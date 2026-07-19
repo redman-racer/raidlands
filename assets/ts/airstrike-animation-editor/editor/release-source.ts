@@ -65,6 +65,7 @@ export interface ReleasePreviewEvent {
   fields: PayloadEventFields;
   sourceId?: string;
   hardpointId?: string;
+  followVehiclePath?: boolean;
 }
 
 export function effectiveAccuracyRadius(fields: Pick<PayloadEventFields, "SpreadRadius" | "AccuracyPercent">): number | null {
@@ -294,6 +295,7 @@ export function getReleasePreviewEvents(
         mode: "repeated",
         editable: false,
         hardpointId,
+        followVehiclePath: group.FollowVehiclePath === true,
         fields: { ...materializePayloadHardpoint(group.Template, hardpointId, profile, metadata), Count: 1 },
       });
     }
@@ -604,6 +606,22 @@ export function updateRepeatedGroupHardpointSequence(
   return next;
 }
 
+export function updateRepeatedGroupFollowVehiclePath(
+  profile: EditorSourceProfile,
+  groupId: string,
+  followVehiclePath: boolean,
+): EditorSourceProfile {
+  if (profile.ReleaseSource.Mode !== "repeated" && profile.ReleaseSource.Mode !== "mixed") {
+    return cloneProfile(profile);
+  }
+  const next = cloneProfile(profile);
+  const group = materializeRepeatedGroups(next).find((entry) => entry.Id === groupId);
+  if (group) {
+    group.FollowVehiclePath = followVehiclePath && group.Template.Payload !== "homing_missile";
+  }
+  return next;
+}
+
 export function updateRepeatedGroupTemplateField(
   profile: EditorSourceProfile,
   groupId: string,
@@ -618,6 +636,9 @@ export function updateRepeatedGroupTemplateField(
   if (group) {
     assignPayloadField(group.Template, field, value);
     group.Template.Count = 1;
+    if (field === "Payload" && group.Template.Payload === "homing_missile") {
+      group.FollowVehiclePath = false;
+    }
   }
   return next;
 }

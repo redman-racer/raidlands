@@ -20,7 +20,12 @@ function orderedManualEvents(profile: EditorSourceProfile) {
     : [];
 }
 
-function runtimeEvent(fields: PayloadEventFields, time: number, index: number): RuntimePayloadEvent {
+function runtimeEvent(
+  fields: PayloadEventFields,
+  time: number,
+  index: number,
+  targetingMode?: RuntimePayloadEvent["TargetingMode"],
+): RuntimePayloadEvent {
   return {
     Time: quantizeCanonicalNumber(time),
     Payload: fields.Payload,
@@ -34,7 +39,7 @@ function runtimeEvent(fields: PayloadEventFields, time: number, index: number): 
     TargetOffsetY: quantizeCanonicalNumber(fields.TargetOffsetY),
     TargetOffsetZ: quantizeCanonicalNumber(fields.TargetOffsetZ),
     SpreadRadius: quantizeCanonicalNumber(fields.SpreadRadius),
-    TargetingMode: fields.TargetingMode === "advanced" ? "advanced" : "simple",
+    TargetingMode: targetingMode ?? (fields.TargetingMode === "advanced" ? "advanced" : "simple"),
     AccuracyPercent: quantizeCanonicalNumber(
       Number.isFinite(fields.AccuracyPercent) ? Math.min(100, Math.max(0, fields.AccuracyPercent)) : 75,
     ),
@@ -154,6 +159,9 @@ export function compileReleaseSchedule(
   const primaryGroup = [...groups].sort((left, right) => left.StartTime - right.StartTime || left.Id.localeCompare(right.Id))[0]!;
   const template = clonePayloadFields(primaryGroup.Template);
   template.Count = primaryGroup.UnitsPerRelease;
+  const primaryTargetingMode = primaryGroup.FollowVehiclePath === true && template.Payload !== "homing_missile"
+    ? "trajectory"
+    : undefined;
   const hardpoints = resolveHardpoints(profile, metadata);
   const resolvedHardpointOffsets = hardpointProjection(hardpoints, groups.flatMap((group) => group.HardpointSequence));
   const grouped = hasGroupedRepeatedReleases(release);
@@ -162,7 +170,7 @@ export function compileReleaseSchedule(
       legacyMode: "generated",
       legacyMaximumUnits: 0,
       legacyIntervalSeconds: primaryGroup.IntervalSeconds,
-      legacyTemplate: runtimeEvent(template, primaryGroup.StartTime, 0),
+      legacyTemplate: runtimeEvent(template, primaryGroup.StartTime, 0, primaryTargetingMode),
       legacyEvents: [],
       generatedGroups: [],
       resolvedHardpointOffsets,
@@ -177,7 +185,12 @@ export function compileReleaseSchedule(
       UnitIntervalSeconds: quantizeCanonicalNumber(group.UnitIntervalSeconds ?? 0),
       UnitsPerRelease: group.UnitsPerRelease,
       MaximumUnits: group.MaximumUnits,
-      Template: runtimeEvent(templateFields, group.StartTime, 0),
+      Template: runtimeEvent(
+        templateFields,
+        group.StartTime,
+        0,
+        group.FollowVehiclePath === true && templateFields.Payload !== "homing_missile" ? "trajectory" : undefined,
+      ),
       HardpointOffsets: group.HardpointSequence.flatMap((id) => {
         const point = hardpoints.get(id);
         return point ? [{ X: point.x, Y: point.y, Z: point.z }] : [];
@@ -195,7 +208,7 @@ export function compileReleaseSchedule(
     legacyMaximumUnits: groups.reduce((sum, group) => sum + group.MaximumUnits, 0)
       + mixedEvents.reduce((sum, event) => sum + event.Count, 0),
     legacyIntervalSeconds: primaryGroup.IntervalSeconds,
-    legacyTemplate: runtimeEvent(template, primaryGroup.StartTime, 0),
+    legacyTemplate: runtimeEvent(template, primaryGroup.StartTime, 0, primaryTargetingMode),
     legacyEvents: mixedEvents,
     generatedGroups,
     resolvedHardpointOffsets,

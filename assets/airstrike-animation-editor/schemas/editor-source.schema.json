@@ -80,6 +80,7 @@
         "UnitIntervalSeconds": { "type": "number", "minimum": 0, "maximum": 30 },
         "UnitsPerRelease": { "type": "integer", "minimum": 1, "maximum": 200 },
         "MaximumUnits": { "type": "integer", "minimum": 1, "maximum": 200 },
+        "FollowVehiclePath": { "type": "boolean" },
         "Template": { "$ref": "#/$defs/payloadFields" },
         "HardpointSequence": {
           "type": "array",
