@@ -1,2 +1,2 @@
-import"./chunks/preload-helper-PPVm8Dsz.js";import"./chunks/three.module-Cy1K73rA.js";import"./chunks/GLTFLoader-Di0jQdMs.js";import{s}from"./chunks/app-Byy834NF.js";import"./chunks/SkeletonUtils-BCVmgslc.js";export{s as staticBounds};
+import"./chunks/preload-helper-PPVm8Dsz.js";import"./chunks/three.module-BIqZKwtq.js";import"./chunks/GLTFLoader-BHYly08j.js";import{s}from"./chunks/app-DcQE1WMg.js";import"./chunks/SkeletonUtils-BCVmgslc.js";export{s as staticBounds};
 //# sourceMappingURL=leaderboard-podium.js.map
