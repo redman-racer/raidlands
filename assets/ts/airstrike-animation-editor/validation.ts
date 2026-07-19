@@ -44,10 +44,10 @@ function validateFinite(
     return false;
   }
   if (minimum !== undefined && value < minimum) {
-    addIssue(issues, path, "minimum", `Must be at least ${minimum}.`);
+    addIssue(issues, path, "minimum", `Must be at least ${minimum}; received ${value}.`);
   }
   if (maximum !== undefined && value > maximum) {
-    addIssue(issues, path, "maximum", `Must be at most ${maximum}.`);
+    addIssue(issues, path, "maximum", `Must be at most ${maximum}; received ${value}.`);
   }
   return true;
 }

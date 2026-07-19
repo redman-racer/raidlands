@@ -1,23 +1,18 @@
 import {
   ACESFilmicToneMapping, AdditiveBlending, AmbientLight, Box3, BoxGeometry, BufferAttribute, BufferGeometry,
-  CanvasTexture, ClampToEdgeWrapping, Color, ConeGeometry, CylinderGeometry, DepthTexture, DirectionalLight, DoubleSide, FogExp2,
-  EquirectangularReflectionMapping, Float32BufferAttribute, Group, HemisphereLight, IcosahedronGeometry, InstancedMesh,
+  CanvasTexture, ClampToEdgeWrapping, Color, ConeGeometry, CylinderGeometry, DirectionalLight, DoubleSide, FogExp2,
+  Float32BufferAttribute, Group, HemisphereLight, IcosahedronGeometry, InstancedMesh,
   LineBasicMaterial, LineSegments, LinearFilter, MathUtils, Mesh, MeshBasicMaterial, MeshStandardMaterial, MirroredRepeatWrapping, Object3D,
   PCFSoftShadowMap, PerspectiveCamera, PlaneGeometry, PointLight,
-  PMREMGenerator, Points, PointsMaterial, Raycaster, RectAreaLight, Scene, SkinnedMesh, SphereGeometry, SpotLight,
-  SRGBColorSpace, Texture, TextureLoader, UnsignedIntType, Vector2, Vector3, WebGLRenderer, WebGLRenderTarget,
+  Points, PointsMaterial, Raycaster, RectAreaLight, Scene, SkinnedMesh, SphereGeometry, SpotLight,
+  SRGBColorSpace, Texture, TextureLoader, Vector2, Vector3, WebGLRenderer,
 } from "three";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
-import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
-import { MeshoptDecoder } from "three/addons/libs/meshopt_decoder.module.js";
-import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
-import { RenderPass } from "three/addons/postprocessing/RenderPass.js";
-import { ShaderPass } from "three/addons/postprocessing/ShaderPass.js";
-import { SSAOPass } from "three/addons/postprocessing/SSAOPass.js";
-import { UnrealBloomPass } from "three/addons/postprocessing/UnrealBloomPass.js";
 import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import { clone as cloneSkinnedScene } from "three/addons/utils/SkeletonUtils.js";
+import { PodiumAssetScheduler, yieldThroughPaint, type PodiumSchedulerSnapshot } from "./loading-scheduler";
+import type { PodiumEffectsPipeline, PodiumEnvironment } from "./effects";
 import {
   Leader, LEADERBOARD_PODIUM_ASSETS, LEADERBOARD_PODIUM_PRESETS,
   leaderboardPodiumMetricValue, podiumWearables, podiumWeapon,
@@ -33,11 +28,11 @@ import {
   anchorPoint, arenaPlacementTransform, ArenaManifest, ArenaPlacement, clampArenaRotation,
   FORWARD_MOUND_VISIBILITY, idleArenaYawTarget, isBarbedWirePlacement, JUNKYARD_ATMOSPHERE, JUNKYARD_GROUND,
   junkyardFallbackFogLayers, junkyardGroundedPlacementY, junkyardGroundHeight, junkyardGroundScatter,
-  junkyardGroundSurfaceShade, JUNKYARD_GANTRY_LAYOUT, JUNKYARD_PODIUM_CENTERS_X,
+  junkyardGroundSurfaceShade, JUNKYARD_GANTRY_LAYOUT,
   JUNKYARD_SEARCHLIGHTS, junkyardSearchlightTarget, PROFILE_PODIUM_GROUND, profilePodiumGroundHeight,
   JunkyardFogQualityState, nextJunkyardFogQuality,
   orbitCameraPosition, podiumCategoryTitle, podiumGroundMaterialState,
-  shouldLiftForwardMoundVisibility, shouldRenderArenaPlacement,
+  shouldLiftForwardMoundVisibility, shouldRenderArenaPlacement, shouldUseNativeArenaPlacement,
 } from "./scene-policy";
 
 type Payload = { leaders?: Leader[]; metric?: string; board?: string };
@@ -54,6 +49,20 @@ type GroundConfig = {
   readonly repeatX: number;
   readonly repeatY: number;
 };
+type LoadedModelSource = { root: Object3D; bounds: Box3 };
+
+const LOAD_PRIORITY = {
+  winner: 0,
+  secondaryCharacter: 5,
+  hero: 10,
+  primary: 20,
+  structure: 30,
+  secondary: 40,
+  detail: 50,
+  background: 60,
+  environment: 70,
+  effects: 80,
+} as const;
 
 const APPROVED_SCENE_REVISION = "494242bdeae941e3389b34a819c514aae2cf39f8";
 const APPROVED_SCENE_ASSET_COUNT = 79;
@@ -69,10 +78,6 @@ const SCENE_MODEL_FALLBACKS: Record<string, string> = {
 
 function supportsWebGL2(): boolean {
   try { return Boolean(document.createElement("canvas").getContext("webgl2")); } catch { return false; }
-}
-
-function yieldToRenderer(): Promise<void> {
-  return new Promise((resolve) => requestAnimationFrame(() => resolve()));
 }
 
 function parsePayload(host: HTMLElement): Payload {
@@ -272,98 +277,11 @@ function playerSignTexture(text: ReturnType<typeof playerSignageText>): CanvasTe
   const texture = new CanvasTexture(canvas); texture.colorSpace = SRGBColorSpace; texture.minFilter = LinearFilter; texture.magFilter = LinearFilter; return texture;
 }
 
-const VOLUMETRIC_FOG_SHADER = {
-  uniforms: {
-    tDiffuse: { value: null }, tDepth: { value: null },
-    cameraNear: { value: .05 }, cameraFar: { value: 60 },
-    cameraProjectionMatrixInverse: { value: null }, cameraWorldMatrix: { value: null },
-    fogTime: { value: 0 }, fogDensity: { value: JUNKYARD_ATMOSPHERE.volumetricDensity },
-  },
-  vertexShader: `
-    varying vec2 vUv;
-    void main() {
-      vUv = uv;
-      gl_Position = projectionMatrix * modelViewMatrix * vec4(position, 1.0);
-    }
-  `,
-  fragmentShader: `
-    uniform sampler2D tDiffuse;
-    uniform sampler2D tDepth;
-    uniform mat4 cameraProjectionMatrixInverse;
-    uniform mat4 cameraWorldMatrix;
-    uniform float fogTime;
-    uniform float fogDensity;
-    varying vec2 vUv;
-
-    float flowingNoise(vec3 point) {
-      vec3 p = point * vec3(.48, .82, .48);
-      float a = sin(p.x * 1.63 + sin(p.z * 1.17 + fogTime * .09) + p.y * 2.11);
-      float b = sin(p.z * 2.03 - p.x * .57 - fogTime * .065) * .52;
-      float c = sin(dot(p, vec3(.71, 2.37, 1.13)) + fogTime * .075) * .28;
-      float d = sin(p.x * 3.21 + p.z * 2.73 - fogTime * .12) * .16;
-      return .5 + .5 * (a + b + c + d) / 1.96;
-    }
-
-    float podiumFogInfluence(vec3 point) {
-      float distanceToPodium = min(
-        length(point.xz - vec2(${JUNKYARD_PODIUM_CENTERS_X[0]}, 0.0)),
-        min(
-          length(point.xz - vec2(${JUNKYARD_PODIUM_CENTERS_X[1].toFixed(1)}, 0.0)),
-          length(point.xz - vec2(${JUNKYARD_PODIUM_CENTERS_X[2]}, 0.0))
-        )
-      );
-      return 1.0 - smoothstep(${JUNKYARD_ATMOSPHERE.podiumInnerRadius.toFixed(1)}, ${JUNKYARD_ATMOSPHERE.podiumOuterRadius.toFixed(1)}, distanceToPodium);
-    }
-
-    vec3 worldPositionFromDepth(float depth) {
-      vec4 clip = vec4(vUv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
-      vec4 view = cameraProjectionMatrixInverse * clip;
-      view /= max(view.w, .00001);
-      return (cameraWorldMatrix * view).xyz;
-    }
-
-    void main() {
-      vec4 sceneColor = texture2D(tDiffuse, vUv);
-      float depth = texture2D(tDepth, vUv).x;
-      if (depth <= .00001) {
-        gl_FragColor = sceneColor;
-        return;
-      }
-      vec3 cameraPosition = cameraWorldMatrix[3].xyz;
-      vec3 surfacePosition = worldPositionFromDepth(depth);
-      vec3 ray = surfacePosition - cameraPosition;
-      float rayLength = min(length(ray), 36.0);
-      vec3 rayDirection = normalize(ray);
-      float jitter = fract(sin(dot(gl_FragCoord.xy, vec2(12.9898, 78.233))) * 43758.5453);
-      float integratedDensity = 0.0;
-      const int STEPS = 14;
-      for (int index = 0; index < STEPS; index++) {
-        float distanceAlongRay = (float(index) + jitter) / float(STEPS) * rayLength;
-        vec3 point = cameraPosition + rayDirection * distanceAlongRay;
-        float horizontal = (1.0 - smoothstep(14.0, 17.0, abs(point.x)))
-          * smoothstep(-17.0, -14.0, point.z) * (1.0 - smoothstep(4.3, 6.0, point.z));
-        float groundEntry = smoothstep(-.12, .08, point.y);
-        float mainBank = 1.0 - smoothstep(${JUNKYARD_ATMOSPHERE.fullBankHeight.toFixed(2)}, ${JUNKYARD_ATMOSPHERE.bankFadeHeight.toFixed(2)}, point.y);
-        float highWisps = (1.0 - smoothstep(${JUNKYARD_ATMOSPHERE.wispStartHeight.toFixed(2)}, ${JUNKYARD_ATMOSPHERE.wispFadeHeight.toFixed(1)}, point.y))
-          * ${JUNKYARD_ATMOSPHERE.wispStrength.toFixed(2)};
-        float vertical = groundEntry * max(mainBank, highWisps);
-        float noiseValue = smoothstep(.27, .82, flowingNoise(point));
-        float podiumBoost = podiumFogInfluence(point);
-        integratedDensity += horizontal * vertical * (.12 + noiseValue * .88) * (.62 + podiumBoost * 1.25);
-      }
-      float stepLength = rayLength / float(STEPS);
-      float fogAmount = min(${JUNKYARD_ATMOSPHERE.volumetricOpacityCeiling.toFixed(2)}, 1.0 - exp(-integratedDensity * stepLength * .075 * fogDensity));
-      vec3 fogColor = vec3(.30, .335, .325);
-      gl_FragColor = vec4(mix(sceneColor.rgb, fogColor, fogAmount), sceneColor.a);
-    }
-  `,
-};
-
 class PodiumScene {
   private scene = new Scene();
   private camera = new PerspectiveCamera(41, 1, 0.05, 60);
   private renderer: WebGLRenderer;
-  private composer?: EffectComposer;
+  private composer?: PodiumEffectsPipeline["composer"];
   private backdropRoot = new Group();
   private worldRoot = new Group();
   private baseRoot = new Group();
@@ -373,22 +291,38 @@ class PodiumScene {
   private signageRoot = new Group();
   private effectsRoot = new Group();
   private loader: GLTFLoader;
+  private draco: DRACOLoader;
+  private scheduler: PodiumAssetScheduler;
+  private effectsModule?: Promise<typeof import("./effects")>;
   private environmentTexture?: Texture;
-  private environmentTarget?: WebGLRenderTarget;
+  private environmentTarget?: PodiumEnvironment["target"];
+  private environmentDownload?: Promise<ArrayBuffer>;
   private ownedTextures = new Set<Texture>();
   private signSurfacePromise?: Promise<IndustrialSignSurfaceTextures | undefined>;
   private searchlights: Array<{ light: SpotLight; shaft: Mesh; side: -1 | 1; phase: number }> = [];
   private groundFogLayers: Array<{ mesh: Mesh; texture: Texture; speed: Vector2; offset: Vector2 }> = [];
-  private volumetricFogPass?: ShaderPass;
+  private volumetricFogPass?: NonNullable<PodiumEffectsPipeline["volumetricFogPass"]>;
   private volumetricFogCapable = false;
   private fogQuality: JunkyardFogQualityState = { mode: "fallback", lowSamples: 0, highSamples: 0 };
   private fogSampleStartedAt = performance.now();
   private fogSampleFrames = 0;
   private fogReadyAt = 0;
-  private modelCache = new Map<string, Promise<Object3D>>();
-  private arenaEnhancement?: () => Promise<void>;
-  private arenaEnhancementStarted = false;
+  private modelCache = new Map<string, Promise<LoadedModelSource>>();
+  private sceneAssetHashes = new Map<string, string>();
+  private arenaEnhancement?: () => Promise<boolean>;
+  private arenaEnhancementPromise?: Promise<boolean>;
   private observer: ResizeObserver;
+  private sceneObserver?: IntersectionObserver;
+  private sceneVisible = true;
+  private streaming = false;
+  private lastRenderedAt = 0;
+  private lastFrameAt = performance.now();
+  private longestFrameGap = 0;
+  private debugEnabled = ["localhost", "127.0.0.1", "::1"].includes(location.hostname.toLowerCase()) || new URLSearchParams(location.search).has("podium-debug");
+  private phaseStartedAt = performance.now();
+  private phaseTimings: Record<string, number> = {};
+  private longTaskObserver?: PerformanceObserver;
+  private longestLongTask = 0;
   private frame = 0;
   private disposed = false;
   private generation = 0;
@@ -432,6 +366,15 @@ class PodiumScene {
     const stage = host.querySelector<HTMLElement>("[data-podium-stage]"); if (!stage) throw new Error("missing-stage");
     host.dataset.podiumState = "initializing";
     this.status("Starting the 3D renderer…", 46);
+    const connection = (navigator as Navigator & { connection?: { saveData?: boolean; effectiveType?: string } }).connection;
+    const constrained = Boolean(connection?.saveData) || /^(?:slow-2g|2g|3g)$/i.test(String(connection?.effectiveType || ""));
+    this.scheduler = new PodiumAssetScheduler({
+      networkConcurrency: constrained ? 2 : 4,
+      yieldControl: this.yieldForMainWork,
+      onSnapshot: (snapshot) => this.onSchedulerSnapshot(snapshot),
+    });
+    this.observeDiagnostics();
+    this.recordPhase("initializing");
     const capture = new URLSearchParams(location.search).has("podium-capture"); this.capture = capture;
     if (capture) {
       host.dataset.podiumCapture = "true";
@@ -444,8 +387,8 @@ class PodiumScene {
     this.renderer.domElement.dataset.podiumCanvas = ""; this.renderer.domElement.style.touchAction = "none"; stage.append(this.renderer.domElement);
     this.singleLayout = host.dataset.podiumLayout === "single";
     this.editableBoneNames = new Set(String(host.dataset.poseBones || "").split(",").map((name) => name.trim().toLowerCase()).filter(Boolean));
-    const draco = new DRACOLoader(); draco.setDecoderPath(host.dataset.decoderPath || "");
-    this.loader = new GLTFLoader(); this.loader.setDRACOLoader(draco); this.loader.setMeshoptDecoder(MeshoptDecoder);
+    this.draco = new DRACOLoader(); this.draco.setDecoderPath(host.dataset.decoderPath || ""); this.draco.setWorkerLimit(1); this.draco.preload();
+    this.loader = new GLTFLoader(); this.loader.setDRACOLoader(this.draco);
     this.backdropRoot.name = "GENERATED_BACKDROP_PANELS"; this.backdropRoot.position.set(0, 2.8, -12.5);
     this.scene.add(this.camera);
     this.worldRoot.name = "SCENE_ROOT";
@@ -455,6 +398,13 @@ class PodiumScene {
     if (this.singleLayout) this.arenaReady = this.buildSingleStage();
     else this.arenaReady = this.buildArenaStage();
     this.observer = new ResizeObserver(() => this.resize()); this.observer.observe(stage); this.resize();
+    if ("IntersectionObserver" in window) {
+      this.sceneObserver = new IntersectionObserver((entries) => {
+        this.sceneVisible = entries.some((entry) => entry.isIntersecting);
+        this.updateSchedulerPause();
+      }, { rootMargin: "160px 0px" });
+      this.sceneObserver.observe(stage);
+    }
     this.renderer.domElement.addEventListener("pointerdown", this.onPointerDown);
     this.renderer.domElement.addEventListener("pointermove", this.onPointerMove);
     this.renderer.domElement.addEventListener("pointerup", this.onPointerUp);
@@ -469,12 +419,72 @@ class PodiumScene {
   attachTo(host: HTMLElement) {
     if (this.host === host) return;
     const stage = host.querySelector<HTMLElement>("[data-podium-stage]"); if (!stage) throw new Error("missing-stage");
+    const previousHost = this.host;
+    ["sceneRevision", "sceneGround", "sceneEnvironment", "sceneEffects", "sceneFog", "scenePlacements", "scenePlacementsTotal", "sceneCharacters", "podiumSignage", "podiumDetail"].forEach((key) => {
+      const value = previousHost.dataset[key]; if (value !== undefined) host.dataset[key] = value;
+    });
     this.observer.disconnect();
+    this.sceneObserver?.disconnect();
     this.host = host;
     this.singleLayout = host.dataset.podiumLayout === "single";
     stage.append(this.renderer.domElement);
     this.observer.observe(stage);
+    this.sceneObserver?.observe(stage);
     this.resize();
+  }
+
+  private yieldForMainWork = async () => {
+    await yieldThroughPaint();
+    const scheduling = (navigator as Navigator & { scheduling?: { isInputPending?: () => boolean } }).scheduling;
+    if (scheduling?.isInputPending?.()) await new Promise<void>((resolve) => window.setTimeout(resolve, 16));
+  };
+
+  private updateSchedulerPause() {
+    this.scheduler.setPaused(document.hidden || !this.sceneVisible || this.dragPointer >= 0);
+  }
+
+  private onSchedulerSnapshot(snapshot: PodiumSchedulerSnapshot) {
+    if (!this.debugEnabled) return;
+    this.host.dataset.podiumNetworkActive = String(snapshot.networkActive);
+    this.host.dataset.podiumNetworkQueued = String(snapshot.networkQueued);
+    this.host.dataset.podiumMainActive = String(snapshot.mainActive);
+    this.host.dataset.podiumMainQueued = String(snapshot.mainQueued);
+    this.publishDiagnostics(snapshot);
+  }
+
+  private observeDiagnostics() {
+    if (!this.debugEnabled || !("PerformanceObserver" in window)) return;
+    try {
+      this.longTaskObserver = new PerformanceObserver((list) => {
+        list.getEntries().forEach((entry) => { this.longestLongTask = Math.max(this.longestLongTask, entry.duration); });
+        this.host.dataset.podiumLongestTask = this.longestLongTask.toFixed(1);
+        this.publishDiagnostics(this.scheduler.snapshot());
+      });
+      this.longTaskObserver.observe({ type: "longtask", buffered: true });
+    } catch { this.longTaskObserver = undefined; }
+  }
+
+  private recordPhase(phase: string) {
+    this.phaseTimings[phase] = Math.round(performance.now() - this.phaseStartedAt);
+    this.host.dataset.podiumLoadPhase = phase;
+    this.publishDiagnostics(this.scheduler.snapshot());
+  }
+
+  private publishDiagnostics(snapshot: PodiumSchedulerSnapshot) {
+    if (!this.debugEnabled) return;
+    const diagnosticsWindow = window as Window & { raidlandsPodiumDiagnostics?: { getSnapshot: () => unknown } };
+    diagnosticsWindow.raidlandsPodiumDiagnostics = {
+      getSnapshot: () => ({
+        state: this.host.dataset.podiumState || "",
+        detail: this.host.dataset.podiumDetail || "",
+        placements: Number(this.host.dataset.scenePlacements || 0),
+        placementsTotal: Number(this.host.dataset.scenePlacementsTotal || 0),
+        phases: { ...this.phaseTimings },
+        scheduler: { ...snapshot },
+        longestFrameGapMs: this.longestFrameGap,
+        longestLongTaskMs: this.longestLongTask,
+      }),
+    };
   }
 
   private async buildSingleStage() {
@@ -500,24 +510,23 @@ class PodiumScene {
 
   private async buildArenaStage() {
     this.host.dataset.podiumState = "scene"; this.status("Building the arena shell…", 62);
-    const response = await fetch(this.host.dataset.sceneManifest || "", { cache: "no-cache", headers: { Accept: "application/json" } });
+    this.recordPhase("scene");
+    const response = await fetch(this.host.dataset.sceneManifest || "", { cache: "default", headers: { Accept: "application/json" } });
     if (!response.ok) throw new Error(`scene manifest returned ${response.status}`);
     const manifest = await response.json() as ArenaManifest;
     if (manifest.revision !== APPROVED_SCENE_REVISION || manifest.assets.length !== APPROVED_SCENE_ASSET_COUNT) throw new Error("unapproved scene manifest");
     this.manifest = manifest; this.host.dataset.sceneRevision = manifest.revision;
+    this.sceneAssetHashes = new Map(manifest.assets.map((asset) => [asset.localPath, asset.sha256]));
     const camera = manifest.camera;
     this.camera.fov = ARENA_CAMERA.fov; this.camera.near = numeric(camera, "Near_m", .05); this.camera.far = numeric(camera, "Far_m", 60);
     this.cameraBase.copy(ARENA_CAMERA.position); this.cameraTarget.copy(ARENA_CAMERA.target);
     this.renderer.toneMappingExposure = Math.pow(2, numeric(camera, "Exposure_EV", -.45) - .55);
     this.scene.background = new Color(0x0b0d0e); this.scene.fog = new FogExp2(0x171a1b, JUNKYARD_ATMOSPHERE.sceneFogDensity);
-    const fallbackOnly = new URLSearchParams(location.search).has("podium-fallback");
-    const hasEnvironment = fallbackOnly ? false : await this.buildArenaEnvironment().catch(() => false);
-    if (!hasEnvironment) { await this.buildBackdropPanels(); this.host.dataset.sceneEnvironment = "panels"; }
+    await this.buildBackdropPanels(); this.host.dataset.sceneEnvironment = "panels";
     this.buildArenaPodiums(manifest); this.buildInitialFloor(); this.buildArenaGantrySupports(); this.buildArenaLights(manifest); this.buildAtmosphere();
-    this.setupComposer();
     this.resize();
     const placements = manifest.basePlacements
-      .filter((placement) => this.useNativePlacement(placement))
+       .filter((placement) => shouldUseNativeArenaPlacement(placement.id))
       .filter((placement) => shouldRenderArenaPlacement(placement.id, this.mobile))
       .sort((left, right) => this.placementPriority(left) - this.placementPriority(right));
     this.arenaEnhancement = () => this.enhanceArena(placements);
@@ -531,73 +540,111 @@ class PodiumScene {
     this.baseRoot.add(floor); this.buildGroundScatter(); this.host.dataset.sceneGround = "initial-material";
   }
 
-  private async enhanceArena(placements: ArenaPlacement[]) {
-    if (this.arenaEnhancementStarted || this.disposed) return;
-    this.arenaEnhancementStarted = true; this.host.dataset.podiumDetail = "loading";
-    // Let the completed podium paint once, then stream detail without artificial idle delays.
-    await yieldToRenderer();
-    const floor = this.baseRoot.getObjectByName("ARENA_JUNKYARD_GROUND") as Mesh | undefined;
-    if (floor) {
-      try {
-        const { material, state } = await this.buildGroundMaterial(JUNKYARD_GROUND);
-        if (!this.disposed) { const previous = floor.material; floor.material = material; (Array.isArray(previous) ? previous : [previous]).forEach((item) => item.dispose()); this.host.dataset.sceneGround = state; }
-        else material.dispose();
-      } catch { /* The fast material remains usable. */ }
-    }
-    if (this.disposed) return;
-    await yieldToRenderer();
+  private async enhanceArena(placements: ArenaPlacement[]): Promise<boolean> {
+    if (this.disposed) return false;
+    if (!this.arenaEnhancementPromise) this.arenaEnhancementPromise = this.streamArena(placements);
+    const complete = await this.arenaEnhancementPromise;
+    const loaded = placements.filter((placement) => Boolean(this.baseRoot.getObjectByName(placement.id))).length;
+    this.host.dataset.scenePlacements = String(loaded);
+    this.host.dataset.scenePlacementsTotal = String(placements.length);
+    return complete;
+  }
+
+  private async streamArena(placements: ArenaPlacement[]): Promise<boolean> {
+    this.streaming = true; this.host.dataset.podiumDetail = "loading";
     this.host.dataset.scenePlacements = "0";
     this.host.dataset.scenePlacementsTotal = String(placements.length);
-    let loaded = await this.loadPlacementBatch(placements, this.baseRoot, this.mobile ? 3 : 6, true, (count) => {
-      this.host.dataset.scenePlacements = String(count);
-      this.setProgress(88 + (count / Math.max(placements.length, 1)) * 11);
+    this.recordPhase("details");
+    placements.forEach((placement) => {
+      void this.scheduler.prefetch(this.sceneModelUrl(placement.localPath), this.placementPriority(placement)).catch(() => undefined);
     });
-    if (this.disposed) return;
+    const environmentSource = this.host.dataset.environmentSrc || "";
+    if (environmentSource && !new URLSearchParams(location.search).has("podium-fallback")) {
+      this.environmentDownload = this.scheduler.prefetch(environmentSource, LOAD_PRIORITY.environment);
+      void this.environmentDownload.catch(() => undefined);
+    }
+    await yieldThroughPaint();
+    const floor = this.baseRoot.getObjectByName("ARENA_JUNKYARD_GROUND") as Mesh | undefined;
+    let groundComplete = false;
+    const upgradeGround = async () => {
+      if (!floor) return;
+      try {
+        const { material, state, complete } = await this.buildGroundMaterial(JUNKYARD_GROUND);
+        if (!this.disposed) { const previous = floor.material; floor.material = material; (Array.isArray(previous) ? previous : [previous]).forEach((item) => item.dispose()); this.host.dataset.sceneGround = state; }
+        else material.dispose();
+        groundComplete = complete;
+      } catch { /* The fast material remains usable. */ }
+    };
+    await upgradeGround();
+    if (this.disposed) return false;
+    await yieldThroughPaint();
+    let loaded = await this.loadPlacementQueue(placements, this.baseRoot, (count) => {
+      this.host.dataset.scenePlacements = String(count);
+      this.status(`Loading arena detail — ${count}/${placements.length}`, 76 + (count / Math.max(placements.length, 1)) * 18);
+    });
+    if (this.disposed) return false;
     let loadedIds = new Set(this.baseRoot.children.map((child) => child.name));
     let missing = placements.filter((placement) => !loadedIds.has(placement.id));
+    if (!groundComplete) {
+      this.status(`Retrying arena textures — ${loaded}/${placements.length}`, 94);
+      await upgradeGround();
+    }
     if (missing.length) {
-      await yieldToRenderer();
+      await new Promise<void>((resolve) => window.setTimeout(resolve, 600));
+      await yieldThroughPaint();
       const firstPassLoaded = loaded;
-      loaded += await this.loadPlacementBatch(missing, this.baseRoot, this.mobile ? 2 : 3, true, (count) => {
+      loaded += await this.loadPlacementQueue(missing, this.baseRoot, (count) => {
         const total = firstPassLoaded + count;
         this.host.dataset.scenePlacements = String(total);
-        this.setProgress(88 + (total / Math.max(placements.length, 1)) * 11);
+        this.status(`Retrying arena detail — ${total}/${placements.length}`, 76 + (total / Math.max(placements.length, 1)) * 18);
       });
       loadedIds = new Set(this.baseRoot.children.map((child) => child.name));
       missing = placements.filter((placement) => !loadedIds.has(placement.id));
     }
     this.host.dataset.scenePlacements = String(loaded);
-    if (missing.length || loaded !== placements.length) {
+    if (missing.length || loaded !== placements.length || !groundComplete) {
       this.host.dataset.scenePlacementsFailed = missing.map((placement) => placement.id).join(",");
-      throw new Error(`arena placements unavailable: ${missing.map((placement) => placement.id).join(", ")}`);
+      this.host.dataset.podiumDetail = "partial";
+      return false;
     }
     delete this.host.dataset.scenePlacementsFailed;
-    await yieldToRenderer();
-    this.host.dataset.sceneEffects = this.composer ? "full" : "direct";
-    this.host.dataset.podiumDetail = "ready";
+    await yieldThroughPaint();
+    return true;
   }
 
   private async buildArenaEnvironment(): Promise<boolean> {
-    const source = this.host.dataset.environmentSrc || ""; if (!source) return false;
-    const texture = await new RGBELoader().loadAsync(source);
-    if (this.disposed) { texture.dispose(); return false; }
-    texture.mapping = EquirectangularReflectionMapping;
-    const generator = new PMREMGenerator(this.renderer);
-    generator.compileEquirectangularShader();
-    const target = generator.fromEquirectangular(texture); generator.dispose();
-    this.environmentTexture = texture; this.environmentTarget = target;
-    this.scene.background = texture; this.scene.environment = target.texture;
+    if (this.environmentTexture && this.environmentTarget) { this.host.dataset.sceneEnvironment = "hdri"; return true; }
+    const sourceUrl = this.host.dataset.environmentSrc || "";
+    if (!sourceUrl || new URLSearchParams(location.search).has("podium-fallback")) return false;
+    let environment: PodiumEnvironment;
+    try {
+      let buffer: ArrayBuffer;
+      try { buffer = await (this.environmentDownload || this.scheduler.prefetch(sourceUrl, LOAD_PRIORITY.environment)); }
+      catch {
+        this.environmentDownload = undefined;
+        await yieldThroughPaint();
+        buffer = await this.scheduler.prefetch(sourceUrl, LOAD_PRIORITY.environment);
+      }
+      const effects = await this.loadEffectsModule();
+      environment = await this.scheduler.runMain(LOAD_PRIORITY.environment, () => effects.buildPodiumEnvironment(this.renderer, buffer));
+    } finally { this.scheduler.releaseDownload(sourceUrl); }
+    if (this.disposed) { environment.source.dispose(); environment.target.dispose(); return false; }
+    this.environmentTexture = environment.source; this.environmentTarget = environment.target;
+    this.scene.background = environment.source; this.scene.environment = environment.target.texture;
     this.scene.backgroundIntensity = .62; this.scene.environmentIntensity = .72;
     const rotation = MathUtils.degToRad(180);
     this.scene.backgroundRotation.set(0, rotation, 0); this.scene.environmentRotation.set(0, rotation, 0);
+    this.backdropRoot.visible = false;
     this.host.dataset.sceneEnvironment = "hdri";
+    this.recordPhase("environment");
     return true;
   }
 
   private async buildBackdropPanels() {
     const source = this.host.dataset.backdropSrc || ""; if (!source) return;
-    const texture = await new TextureLoader().loadAsync(source); texture.colorSpace = SRGBColorSpace;
+    const texture = await this.loadTextureAsset(source, LOAD_PRIORITY.winner); texture.colorSpace = SRGBColorSpace;
     texture.wrapS = ClampToEdgeWrapping; texture.wrapT = ClampToEdgeWrapping;
+    this.ownedTextures.add(texture);
     const panels = [
       { textureIndex: 0, position: [-9.15, 0, 5.1] as [number, number, number], yaw: 43, width: 12.5, shade: 0x817a70 },
       { textureIndex: 1, position: [0, 0, 0] as [number, number, number], yaw: 0, width: 12.5, shade: 0x817a70 },
@@ -615,7 +662,7 @@ class PodiumScene {
       );
       panel.name = `GENERATED_BACKDROP_PANEL_${index + 1}`; panel.renderOrder = -100;
       panel.position.set(...spec.position); panel.rotation.y = MathUtils.degToRad(spec.yaw); panel.scale.set(spec.width, 20.25, 1);
-      panel.userData.panelIndex = index; this.backdropRoot.add(panel);
+      panel.userData.panelIndex = index; this.ownedTextures.add(panelTexture); this.backdropRoot.add(panel);
     });
   }
 
@@ -633,12 +680,6 @@ class PodiumScene {
     return [1, 1, 1];
   }
 
-  private useNativePlacement(placement: ArenaPlacement): boolean {
-    if (placement.id === "ENV_TARP_BACK" || placement.id.startsWith("ENV_FLOOR_") || placement.id.startsWith("ENV_SIDEWALL_")) return false;
-    if (["L_WEAPON_THOMPSON", "C_WEAPON_L96", "C_WEAPON_M39", "C_MINIGUN", "R_ROCKET_LAUNCHER"].includes(placement.id)) return false;
-    return !/(?:RUBBLE|GRAVEL)/.test(placement.id);
-  }
-
   private buildArenaPodiums(manifest: ArenaManifest) {
     ([1, 2, 3] as const).forEach((podiumRank) => {
       const rank = podiumRank - 1; const node = manifest.sceneNodes.find((item) => String(item.node_id) === `PODIUM_RANK_${podiumRank}`);
@@ -650,10 +691,23 @@ class PodiumScene {
     });
   }
 
+  private async loadTextureAsset(source: string, priority: number): Promise<Texture> {
+    const buffer = await this.scheduler.prefetch(source, priority);
+    try {
+      return await this.scheduler.runMain(priority, async () => {
+        const extension = new URL(source, document.baseURI).pathname.split(".").pop()?.toLowerCase();
+        const type = extension === "png" ? "image/png" : extension === "jpg" || extension === "jpeg" ? "image/jpeg" : "image/webp";
+        const objectUrl = URL.createObjectURL(new Blob([buffer], { type }));
+        try { return await new TextureLoader().loadAsync(objectUrl); }
+        finally { URL.revokeObjectURL(objectUrl); }
+      });
+    } finally { this.scheduler.releaseDownload(source); }
+  }
+
   private async loadGroundTexture(source: string): Promise<Texture | undefined> {
     if (!source) return undefined;
     try {
-      const texture = await new TextureLoader().loadAsync(source);
+      const texture = await this.loadTextureAsset(source, LOAD_PRIORITY.detail);
       if (this.disposed) { texture.dispose(); return undefined; }
       this.ownedTextures.add(texture); return texture;
     } catch { return undefined; }
@@ -680,7 +734,7 @@ class PodiumScene {
     return geometry;
   }
 
-  private async buildGroundMaterial(config: GroundConfig): Promise<{ material: MeshStandardMaterial; state: string }> {
+  private async buildGroundMaterial(config: GroundConfig): Promise<{ material: MeshStandardMaterial; state: string; complete: boolean }> {
     const [preferredAlbedo, normal, arm] = await Promise.all([
       this.loadGroundTexture(this.host.dataset.groundAlbedoSrc || ""),
       this.loadGroundTexture(this.host.dataset.groundNormalSrc || ""),
@@ -706,7 +760,7 @@ class PodiumScene {
       metalness: 0,
       vertexColors: true,
     });
-    return { material, state: podiumGroundMaterialState(Boolean(preferredAlbedo), Boolean(albedo)) };
+    return { material, state: podiumGroundMaterialState(Boolean(preferredAlbedo), Boolean(albedo)), complete: Boolean(preferredAlbedo && normal && arm) };
   }
 
   private async buildTexturedGround(
@@ -912,27 +966,56 @@ class PodiumScene {
     embers.name = "ArenaEmbers"; embers.userData.particles = true; this.effectsRoot.add(embers);
   }
 
-  private setupComposer() {
-    const stage = this.host.querySelector<HTMLElement>("[data-podium-stage]")!; const width = Math.max(1, stage.clientWidth); const height = Math.max(1, stage.clientHeight);
-    const renderTarget = new WebGLRenderTarget(width, height, { depthBuffer: true });
-    const composer = new EffectComposer(this.renderer, renderTarget);
-    composer.renderTarget1.depthTexture = new DepthTexture(width, height, UnsignedIntType);
-    composer.renderTarget2.depthTexture = new DepthTexture(width, height, UnsignedIntType);
-    composer.addPass(new RenderPass(this.scene, this.camera));
-    this.volumetricFogCapable = this.canUseVolumetricFog();
-    if (this.volumetricFogCapable) {
-      const fogPass = new ShaderPass(VOLUMETRIC_FOG_SHADER);
-      fogPass.uniforms.cameraNear.value = this.camera.near; fogPass.uniforms.cameraFar.value = this.camera.far;
-      fogPass.uniforms.cameraProjectionMatrixInverse.value = this.camera.projectionMatrixInverse;
-      fogPass.uniforms.cameraWorldMatrix.value = this.camera.matrixWorld;
-      composer.addPass(fogPass); this.volumetricFogPass = fogPass;
-      this.setFogQuality("volumetric");
-    } else this.setFogQuality("fallback");
-    if (!this.mobile) {
-      const ssao = new SSAOPass(this.scene, this.camera, width, height); ssao.kernelRadius = 5; ssao.minDistance = .0005; ssao.maxDistance = .045; composer.addPass(ssao);
+  private loadEffectsModule() {
+    if (!this.effectsModule) {
+      this.effectsModule = import("./effects").catch((error) => { this.effectsModule = undefined; throw error; });
     }
-    composer.addPass(new UnrealBloomPass(new Vector2(width, height), .16, .65, 1.15));
-    this.composer = composer;
+    return this.effectsModule;
+  }
+
+  private async setupComposer(): Promise<boolean> {
+    if (this.composer) { this.host.dataset.sceneEffects = "full"; return true; }
+    const stage = this.host.querySelector<HTMLElement>("[data-podium-stage]");
+    if (!stage || this.disposed) return false;
+    const width = Math.max(1, stage.clientWidth); const height = Math.max(1, stage.clientHeight);
+    const effects = await this.loadEffectsModule();
+    this.volumetricFogCapable = this.canUseVolumetricFog();
+    const pipeline = await this.scheduler.runMain(LOAD_PRIORITY.effects, async () => {
+      const compilable = this.renderer as WebGLRenderer & { compileAsync?: (scene: Scene, camera: PerspectiveCamera) => Promise<unknown> };
+      if (compilable.compileAsync) await compilable.compileAsync(this.scene, this.camera);
+      else this.renderer.compile(this.scene, this.camera);
+      return effects.createPodiumEffects({
+        renderer: this.renderer, scene: this.scene, camera: this.camera, width, height,
+        mobile: this.mobile, volumetric: this.volumetricFogCapable,
+      });
+    });
+    if (this.disposed) { pipeline.composer.dispose(); return false; }
+
+    await this.scheduler.runMain(LOAD_PRIORITY.effects + 1, () => {
+      pipeline.bloomPass.enabled = true;
+      pipeline.composer.render();
+    });
+    if (pipeline.ssaoPass) {
+      await this.scheduler.runMain(LOAD_PRIORITY.effects + 2, () => {
+        pipeline.ssaoPass!.enabled = true;
+        pipeline.composer.render();
+      });
+    }
+    if (pipeline.volumetricFogPass) {
+      await this.scheduler.runMain(LOAD_PRIORITY.effects + 3, () => {
+        pipeline.volumetricFogPass!.uniforms.tDepth.value = pipeline.composer.readBuffer.depthTexture;
+        pipeline.volumetricFogPass!.enabled = true;
+        pipeline.composer.render();
+      });
+    }
+    if (this.disposed) { pipeline.composer.dispose(); return false; }
+    this.composer = pipeline.composer;
+    this.volumetricFogPass = pipeline.volumetricFogPass;
+    this.setFogQuality(pipeline.volumetricFogPass ? "volumetric" : "fallback");
+    this.resize();
+    this.host.dataset.sceneEffects = "full";
+    this.recordPhase("effects");
+    return true;
   }
 
   private canUseVolumetricFog(): boolean {
@@ -974,45 +1057,64 @@ class PodiumScene {
     const now = performance.now();
     this.fogReadyAt = 0; this.fogSampleStartedAt = now; this.fogSampleFrames = 0;
     this.fogQuality.lowSamples = 0; this.fogQuality.highSamples = 0;
+    this.updateSchedulerPause();
   };
 
   private placementPriority(placement: ArenaPlacement): number {
-    const classes: Record<string, number> = { Hero: 0, Primary: 1, Structure: 2, Secondary: 3, Detail: 4 };
-    return classes[placement.lodClass] ?? 3;
+    const classes: Record<string, number> = {
+      Hero: LOAD_PRIORITY.hero,
+      Primary: LOAD_PRIORITY.primary,
+      Structure: LOAD_PRIORITY.structure,
+      Secondary: LOAD_PRIORITY.secondary,
+      Detail: LOAD_PRIORITY.detail,
+      Background: LOAD_PRIORITY.background,
+    };
+    return classes[placement.lodClass] ?? LOAD_PRIORITY.background;
   }
 
-  private async loadPlacementBatch(
+  private sceneModelUrl(localPath: string): string {
+    const url = new URL(joinedUrl(this.host.dataset.sceneModelBase || "", localPath), document.baseURI);
+    const hash = this.sceneAssetHashes.get(localPath);
+    if (hash) url.searchParams.set("v", hash);
+    return url.href;
+  }
+
+  private async loadPlacementQueue(
     placements: ArenaPlacement[],
     parent: Group,
-    concurrency: number,
-    yieldBetween = false,
     onProgress?: (loaded: number) => void,
   ): Promise<number> {
-    let cursor = 0; let loaded = 0;
-    const worker = async () => {
-      while (cursor < placements.length && !this.disposed) {
-        const placement = placements[cursor++];
-        try { const instance = await this.createPlacement(placement); parent.add(instance); loaded += 1; onProgress?.(loaded); }
-        catch { /* Individual dressing assets degrade without removing the podium. */ }
-        if (yieldBetween) await yieldToRenderer();
-      }
-    };
-    await Promise.all(Array.from({ length: Math.min(concurrency, placements.length) }, () => worker())); return loaded;
+    let loaded = 0;
+    for (const placement of placements) {
+      if (this.disposed) break;
+      try {
+        const instance = await this.createPlacement(placement);
+        if (this.disposed) break;
+        parent.add(instance);
+        loaded += 1;
+        onProgress?.(loaded);
+      } catch { /* Individual dressing assets degrade without removing the podium. */ }
+    }
+    return loaded;
   }
 
   private async createPlacement(placement: ArenaPlacement): Promise<Group> {
     if (!this.manifest) throw new Error("manifest unavailable");
-    const base = this.host.dataset.sceneModelBase || "";
-    let visual: Object3D;
-    try { visual = await this.loadInstance(joinedUrl(base, placement.localPath)); }
+    const priority = this.placementPriority(placement);
+    let source: LoadedModelSource;
+    let fallbackFor = "";
+    try { source = await this.loadModelSource(this.sceneModelUrl(placement.localPath), priority); }
     catch (error) {
       const fallback = SCENE_MODEL_FALLBACKS[placement.localPath];
       if (!fallback) throw error;
-      visual = await this.loadInstance(joinedUrl(base, fallback));
-      visual.userData.sceneFallbackFor = placement.localPath;
+      source = await this.loadModelSource(this.sceneModelUrl(fallback), priority);
+      fallbackFor = placement.localPath;
     }
+    return this.scheduler.runMain(priority, () => {
+    const visual = cloneSkinnedScene(source.root);
+    if (fallbackFor) visual.userData.sceneFallbackFor = fallbackFor;
     visual.scale.setScalar(1); visual.updateMatrixWorld(true);
-    const nativeBounds = staticBounds(visual); visual.position.sub(anchorPoint(nativeBounds, placement.anchor));
+    visual.position.sub(anchorPoint(source.bounds, placement.anchor));
     visual.traverse((node) => {
       const mesh = node as Mesh; if (!mesh.isMesh) return;
       const primary = placement.lodClass === "Hero" || placement.lodClass === "Primary";
@@ -1074,6 +1176,7 @@ class PodiumScene {
     wrapper.userData.showcaseZone = transform.zone;
     wrapper.scale.set(...renderScale);
     return wrapper;
+    });
   }
 
   async setPresentation(board: string, metric: string, leaders: Leader[]) {
@@ -1098,33 +1201,68 @@ class PodiumScene {
       this.status(leaders.length ? "Player arena ready." : "3D arena ready.", 100);
       return;
     }
-    try { await this.completePresentation(board, metric, leaders, sceneLeaders, generation); }
-    catch (error) {
-      console.warn("Raidlands podium presentation failed to initialize.", error);
-      this.fail("Arena assets unavailable. Showing the poster and leaderboard cards."); return;
-    }
+    this.streaming = true;
+    this.host.dataset.podiumState = "interactive";
+    this.host.dataset.podiumDetail = "loading";
+    this.host.dataset.sceneEffects = "direct";
+    this.recordPhase("interactive");
+    this.status("Loading arena detail — 0/0", 83);
+    let complete = false;
+    try { complete = await this.completePresentation(board, metric, leaders, sceneLeaders, generation); }
+    catch (error) { console.warn("Raidlands podium detail finished partially.", error); }
     if (generation !== this.generation || this.disposed) return;
-    this.host.dataset.podiumState = "ready";
-    this.status(leaders.length ? "Player arena ready." : "3D arena ready.", 100);
+    this.streaming = false;
+    if (complete) {
+      this.host.dataset.podiumDetail = "ready";
+      this.host.dataset.podiumState = "ready";
+      this.recordPhase("ready");
+      this.status(leaders.length ? "Player arena ready." : "3D arena ready.", 100);
+    } else {
+      this.host.dataset.podiumDetail = "partial";
+      this.host.dataset.podiumState = "interactive";
+      this.status("Arena is interactive; some detail could not be loaded.", 99);
+    }
   }
 
-  private async completePresentation(board: string, metric: string, leaders: Leader[], sceneLeaders: Leader[], generation: number) {
-    const secondaryCharacters = await Promise.all(sceneLeaders.slice(1).map((leader, index) => this.buildCharacter(leader, index + 1, generation)));
-    if (generation !== this.generation || this.disposed) return;
-    secondaryCharacters.forEach((character) => { if (character) this.characterRoot.add(character); });
+  private async completePresentation(board: string, metric: string, leaders: Leader[], sceneLeaders: Leader[], generation: number): Promise<boolean> {
+    let complete = true;
+    let signSurface: IndustrialSignSurfaceTextures | undefined;
+    for (let index = 1; index < sceneLeaders.length; index += 1) {
+      const character = await this.buildCharacter(sceneLeaders[index], index, generation);
+      if (generation !== this.generation || this.disposed) return false;
+      if (character) this.characterRoot.add(character); else complete = false;
+      this.host.dataset.sceneCharacters = String(this.characterRoot.children.length);
+      this.status(`Loading contenders — ${this.characterRoot.children.length}/3`, 83 + index);
+    }
     this.host.dataset.sceneCharacters = String(this.characterRoot.children.length);
     this.setProgress(86);
     if (!this.singleLayout) {
-      const signSurface = await this.loadSignSurface();
-      if (generation !== this.generation || this.disposed) return;
-      this.buildSignage(board, metric, leaders.slice(0, 3), signSurface);
-      this.host.dataset.podiumSignage = "ready";
+      try {
+        signSurface = await this.loadSignSurface();
+        if (generation !== this.generation || this.disposed) return false;
+        this.buildSignage(board, metric, leaders.slice(0, 3), signSurface);
+        this.host.dataset.podiumSignage = "ready";
+      } catch { signSurface = undefined; }
     }
     if (this.arenaEnhancement) {
       this.host.dataset.podiumState = "details";
-      this.status("Loading arena detail…", 88);
-      await this.arenaEnhancement();
+      this.status("Loading arena detail — 0/0", 86);
+      complete = await this.arenaEnhancement() && complete;
     }
+    if (generation !== this.generation || this.disposed) return false;
+    if (!signSurface) {
+      try {
+        signSurface = await this.loadSignSurface();
+        if (signSurface) this.buildSignage(board, metric, leaders.slice(0, 3), signSurface);
+        else complete = false;
+      } catch { complete = false; }
+    }
+    try { complete = await this.buildArenaEnvironment() && complete; }
+    catch (error) { console.warn("Raidlands podium HDR environment was unavailable.", error); complete = false; }
+    if (generation !== this.generation || this.disposed) return false;
+    try { complete = await this.setupComposer() && complete; }
+    catch (error) { console.warn("Raidlands podium effects were unavailable.", error); complete = false; }
+    return complete && this.characterRoot.children.length === 3;
   }
 
   private characterAnchor(rank: number): ArenaPlacement | undefined {
@@ -1132,53 +1270,89 @@ class PodiumScene {
   }
 
   private async buildCharacter(leader: Leader, rank: number, generation: number): Promise<Group | undefined> {
-    const keys = podiumWearables(leader, rank); const roots: Object3D[] = [];
+    const keys = podiumWearables(leader, rank);
+    const pieces: Array<{ root: Object3D; bounds: Box3 }> = [];
     const poseBones = leader.appearance?.pose?.bones || {};
-    await Promise.all(keys.map(async (key) => {
-      const file = LEADERBOARD_PODIUM_ASSETS[key]; if (!file) return;
-      try { const model = await this.loadInstance(joinedUrl(this.host.dataset.modelBase || "", file)); normalizeWearableOrigin(model); poseWearable(model, rank, poseBones); roots.push(model); }
+    const priority = rank === 0 ? LOAD_PRIORITY.winner : LOAD_PRIORITY.secondaryCharacter;
+    const modelBase = this.host.dataset.modelBase || "";
+    const urls = keys.map((key) => LEADERBOARD_PODIUM_ASSETS[key]).filter(Boolean).map((file) => joinedUrl(modelBase, file));
+    urls.forEach((url) => { void this.scheduler.prefetch(url, priority).catch(() => undefined); });
+    for (const url of urls) {
+      if (generation !== this.generation || this.disposed) return undefined;
+      try { pieces.push(await this.prepareCharacterPiece(url, rank, poseBones, priority)); }
       catch { /* Resolve through the fallback chain below. */ }
-    }));
-    if (!roots.length) {
-      await Promise.all(LEADERBOARD_PODIUM_PRESETS.survivor.map(async (key) => {
-        try { const model = await this.loadInstance(joinedUrl(this.host.dataset.modelBase || "", LEADERBOARD_PODIUM_ASSETS[key])); normalizeWearableOrigin(model); poseWearable(model, rank, poseBones); roots.push(model); }
+    }
+    if (!pieces.length) {
+      const fallbackUrls = LEADERBOARD_PODIUM_PRESETS.survivor
+        .map((key) => LEADERBOARD_PODIUM_ASSETS[key]).filter(Boolean).map((file) => joinedUrl(modelBase, file));
+      fallbackUrls.forEach((url) => { void this.scheduler.prefetch(url, priority).catch(() => undefined); });
+      for (const url of fallbackUrls) {
+        if (generation !== this.generation || this.disposed) return undefined;
+        try { pieces.push(await this.prepareCharacterPiece(url, rank, poseBones, priority)); }
         catch { /* The merged mannequin is the final scene fallback. */ }
-      }));
+      }
     }
-    if (!roots.length && !this.singleLayout) {
+    if (!pieces.length && !this.singleLayout) {
       const anchor = this.characterAnchor(rank);
-      if (anchor) try { roots.push(await this.loadInstance(joinedUrl(this.host.dataset.sceneModelBase || "", anchor.localPath))); } catch { /* Cards remain authoritative. */ }
+      if (anchor) {
+        try {
+          const source = await this.loadModelSource(this.sceneModelUrl(anchor.localPath), priority);
+          pieces.push(await this.scheduler.runMain(priority, () => ({ root: cloneSkinnedScene(source.root), bounds: source.bounds.clone() })));
+        } catch { /* Cards remain authoritative. */ }
+      }
     }
-    if (generation !== this.generation || this.disposed || !roots.length) return undefined;
-    const visual = new Group(); roots.forEach((root) => visual.add(root));
-    const targetHeight = this.characterAnchor(rank)?.targetExtent || 1.8; const box = staticBounds(visual); const size = box.getSize(new Vector3());
-    visual.scale.setScalar(targetHeight / Math.max(size.y, .01)); const fitted = staticBounds(visual); const center = fitted.getCenter(new Vector3());
-    visual.position.x -= center.x; visual.position.y -= fitted.min.y; visual.position.z -= center.z;
-    const wrapper = new Group(); wrapper.add(visual);
-    const anchor = this.characterAnchor(rank);
-    // Keep the fitted soles exactly on the authored standing surface. The profile
-    // viewer does not apply the leaderboard's idle bounce, so it cannot appear to hover.
-    wrapper.position.set(anchor?.position[0] ?? this.rankX[rank], this.standingHeights[rank] + podiumOutfitGroundOffset(keys), anchor?.position[2] ?? 0);
-    wrapper.rotation.y = podiumCharacterYaw(rank); wrapper.userData.baseY = wrapper.position.y; wrapper.userData.phase = rank * 1.7;
+    if (generation !== this.generation || this.disposed || !pieces.length) return undefined;
+    const wrapper = await this.scheduler.runMain(priority, () => {
+      const visual = new Group(); pieces.forEach(({ root }) => visual.add(root));
+      const combined = new Box3().makeEmpty(); pieces.forEach(({ bounds }) => combined.union(bounds));
+      const size = combined.getSize(new Vector3());
+      const targetHeight = this.characterAnchor(rank)?.targetExtent || 1.8;
+      const scale = targetHeight / Math.max(size.y, .01);
+      const center = combined.getCenter(new Vector3()).multiplyScalar(scale);
+      visual.scale.setScalar(scale);
+      visual.position.set(-center.x, -combined.min.y * scale, -center.z);
+      const character = new Group(); character.add(visual);
+      const anchor = this.characterAnchor(rank);
+      // Keep the fitted soles exactly on the authored standing surface. The profile
+      // viewer does not apply the leaderboard's idle bounce, so it cannot appear to hover.
+      character.position.set(anchor?.position[0] ?? this.rankX[rank], this.standingHeights[rank] + podiumOutfitGroundOffset(keys), anchor?.position[2] ?? 0);
+      character.rotation.y = podiumCharacterYaw(rank); character.userData.baseY = character.position.y; character.userData.phase = rank * 1.7;
+      return character;
+    });
     const weaponKey = podiumWeapon(leader);
     if (weaponKey) {
       try {
-        const weapon = await this.loadInstance(joinedUrl(this.host.dataset.modelBase || "", LEADERBOARD_PODIUM_ASSETS[weaponKey]));
+        const weaponSource = await this.loadModelSource(joinedUrl(modelBase, LEADERBOARD_PODIUM_ASSETS[weaponKey]), priority);
         if (generation !== this.generation) return undefined;
-        weapon.traverse((node) => { if ((node as Mesh).isMesh) (node as Mesh).castShadow = false; });
-        const weaponSize = staticBounds(weapon).getSize(new Vector3()); const layout = podiumWeaponLayout(weaponKey, rank);
-        weapon.scale.setScalar(layout.size / Math.max(weaponSize.x, weaponSize.y, weaponSize.z, .01));
-        const weaponCenter = staticBounds(weapon).getCenter(new Vector3()); weapon.position.sub(weaponCenter);
-        const mount = new Group(); mount.name = "weapon-mount"; mount.add(weapon); mount.position.set(...layout.position); mount.rotation.set(...layout.rotation); wrapper.add(mount);
+        await this.scheduler.runMain(priority, () => {
+          const weapon = cloneSkinnedScene(weaponSource.root);
+          weapon.traverse((node) => { if ((node as Mesh).isMesh) (node as Mesh).castShadow = false; });
+          const weaponSize = weaponSource.bounds.getSize(new Vector3()); const layout = podiumWeaponLayout(weaponKey, rank);
+          const scale = layout.size / Math.max(weaponSize.x, weaponSize.y, weaponSize.z, .01);
+          weapon.scale.setScalar(scale);
+          const weaponCenter = weaponSource.bounds.getCenter(new Vector3()).multiplyScalar(scale); weapon.position.sub(weaponCenter);
+          const mount = new Group(); mount.name = "weapon-mount"; mount.add(weapon); mount.position.set(...layout.position); mount.rotation.set(...layout.rotation); wrapper.add(mount);
+        });
       } catch { /* The selected outfit remains visible if its weapon fails. */ }
     }
     return wrapper;
   }
 
-  private async loadInstance(url: string): Promise<Object3D> {
+  private async prepareCharacterPiece(url: string, rank: number, poseBones: PoseBones, priority: number): Promise<{ root: Object3D; bounds: Box3 }> {
+    const source = await this.loadModelSource(url, priority);
+    return this.scheduler.runMain(priority, () => {
+      const root = cloneSkinnedScene(source.root);
+      normalizeWearableOrigin(root);
+      poseWearable(root, rank, poseBones);
+      return { root, bounds: staticBounds(root) };
+    });
+  }
+
+  private async loadModelSource(url: string, priority: number): Promise<LoadedModelSource> {
     let promise = this.modelCache.get(url);
     if (!promise) {
-      promise = this.loader.loadAsync(url).then((gltf) => {
+      promise = this.scheduler.prefetch(url, priority).then((buffer) => this.scheduler.runMain(priority, async () => {
+        const gltf = await this.loader.parseAsync(buffer, new URL(".", url).href);
         const root = gltf.scene; const rigidReplacements: Array<{ source: SkinnedMesh; replacement: Mesh }> = [];
         root.traverse((node) => {
           if ((node as Mesh).isMesh) (node as Mesh).frustumCulled = false;
@@ -1191,12 +1365,12 @@ class PodiumScene {
           }
         });
         rigidReplacements.forEach(({ source, replacement }) => { if (source.parent) { source.parent.add(replacement); source.parent.remove(source); } });
-        return root;
-      });
+        return { root, bounds: staticBounds(root) };
+      })).finally(() => this.scheduler.releaseDownload(url));
       promise = promise.catch((error) => { this.modelCache.delete(url); throw error; });
       this.modelCache.set(url, promise);
     }
-    return cloneSkinnedScene(await promise);
+    return promise;
   }
 
   setPoseBones(bones: PoseBones) {
@@ -1283,11 +1457,12 @@ class PodiumScene {
 
   private loadSignSurface(): Promise<IndustrialSignSurfaceTextures | undefined> {
     if (this.signSurfacePromise) return this.signSurfacePromise;
-    this.signSurfacePromise = (async () => {
+    const request = (async () => {
       const sources = [this.host.dataset.signAlbedoSrc, this.host.dataset.signNormalSrc, this.host.dataset.signArmSrc];
       if (sources.some((source) => !source)) return undefined;
       try {
-        const [albedo, normal, arm] = await Promise.all(sources.map((source) => new TextureLoader().loadAsync(source!)));
+        sources.forEach((source) => { void this.scheduler.prefetch(source!, LOAD_PRIORITY.detail).catch(() => undefined); });
+        const [albedo, normal, arm] = await Promise.all(sources.map((source) => this.loadTextureAsset(source!, LOAD_PRIORITY.detail)));
         if (this.disposed) { albedo.dispose(); normal.dispose(); arm.dispose(); return undefined; }
         const anisotropy = Math.min(8, this.renderer.capabilities.getMaxAnisotropy());
         [albedo, normal, arm].forEach((texture) => {
@@ -1297,7 +1472,9 @@ class PodiumScene {
         albedo.colorSpace = SRGBColorSpace; return { albedo, normal, arm };
       } catch { return undefined; }
     })();
-    return this.signSurfacePromise;
+    this.signSurfacePromise = request;
+    void request.then((surface) => { if (!surface && this.signSurfacePromise === request) this.signSurfacePromise = undefined; });
+    return request;
   }
 
   private buildSignage(board: string, metric: string, leaders: Leader[], surface?: IndustrialSignSurfaceTextures) {
@@ -1364,16 +1541,19 @@ class PodiumScene {
         const bone = String(hit?.object.userData.poseBone || ""); if (!bone) return;
         event.preventDefault(); this.activePoseBone = bone; this.activePoseButton = event.button;
         this.dragPointer = event.pointerId; this.dragX = event.clientX; this.dragY = event.clientY;
+        this.updateSchedulerPause();
         this.renderer.domElement.setPointerCapture(event.pointerId); this.host.dataset.poseBoneDragging = "true";
         this.host.dispatchEvent(new CustomEvent("raidlands:podium-bone-select", { detail: { bone } }));
         this.updatePoseEditorRig(); return;
       }
       if (event.button !== 0) return;
       event.preventDefault(); this.dragPointer = event.pointerId; this.dragX = event.clientX; this.dragY = event.clientY;
+      this.updateSchedulerPause();
       this.renderer.domElement.setPointerCapture(event.pointerId); this.host.dataset.podiumDragging = "true";
       return;
     }
     this.dragPointer = event.pointerId; this.dragX = event.clientX; this.dragY = event.clientY;
+    this.updateSchedulerPause();
     const yawLimit = MathUtils.degToRad(this.mobile ? 60 : 75);
     this.currentYaw = MathUtils.clamp(this.currentYaw + this.currentIdleYaw, -yawLimit, yawLimit);
     this.targetYaw = MathUtils.clamp(this.targetYaw + this.currentIdleYaw, -yawLimit, yawLimit);
@@ -1409,9 +1589,9 @@ class PodiumScene {
   };
 
   private onPointerUp = (event: PointerEvent) => {
-    if (event.pointerId !== this.dragPointer) return; this.dragPointer = -1; this.host.dataset.podiumDragging = "false";
+    if (event.pointerId !== this.dragPointer) return; this.dragPointer = -1; this.host.dataset.podiumDragging = "false"; this.updateSchedulerPause();
     if (this.singleLayout && this.activePoseBone) {
-      if (event.buttons) { this.dragPointer = event.pointerId; this.activePoseButton = event.buttons & 2 ? 2 : 0; return; }
+      if (event.buttons) { this.dragPointer = event.pointerId; this.activePoseButton = event.buttons & 2 ? 2 : 0; this.updateSchedulerPause(); return; }
       this.activePoseBone = ""; this.activePoseButton = -1; this.host.dataset.poseBoneDragging = "false";
       if (this.renderer.domElement.hasPointerCapture(event.pointerId)) this.renderer.domElement.releasePointerCapture(event.pointerId);
       this.updatePoseEditorRig(); return;
@@ -1430,7 +1610,7 @@ class PodiumScene {
   };
 
   private onContextRestored = () => {
-    if (this.disposed) return; this.resize(); this.host.dataset.podiumState = "ready";
+    if (this.disposed) return; this.resize(); this.host.dataset.podiumState = this.singleLayout || this.host.dataset.podiumDetail === "ready" ? "ready" : "interactive";
     this.status("3D preview restored.");
   };
 
@@ -1448,6 +1628,10 @@ class PodiumScene {
 
   private animate = () => {
     if (this.disposed) return; const now = performance.now(); const time = now * .001;
+    const frameGap = now - this.lastFrameAt; this.lastFrameAt = now;
+    this.longestFrameGap = Math.max(this.longestFrameGap, frameGap);
+    if (this.debugEnabled) this.host.dataset.podiumLongestFrameGap = this.longestFrameGap.toFixed(1);
+    if (!this.sceneVisible && !this.capture) { this.frame = requestAnimationFrame(this.animate); return; }
     this.currentYaw += (this.targetYaw - this.currentYaw) * .1; this.currentPitch += (this.targetPitch - this.currentPitch) * .1;
     this.currentCharacterYaw += (this.targetCharacterYaw - this.currentCharacterYaw) * .16;
     if (this.singleLayout && this.characterRoot.children[0]) this.characterRoot.children[0].rotation.y = podiumCharacterYaw(0) + this.currentCharacterYaw;
@@ -1467,6 +1651,10 @@ class PodiumScene {
       const embers = this.effectsRoot.getObjectByName("ArenaEmbers"); if (embers) embers.position.y = Math.sin(time * .28) * .14;
     }
     if (this.poseHandles.size) this.updatePoseEditorRig();
+    if (this.streaming && !this.composer && now - this.lastRenderedAt < 1000 / 30) {
+      this.frame = requestAnimationFrame(this.animate); return;
+    }
+    this.lastRenderedAt = now;
     if (this.composer) {
       if (this.volumetricFogPass) {
         this.volumetricFogPass.uniforms.tDepth.value = this.composer.readBuffer.depthTexture;
@@ -1489,13 +1677,14 @@ class PodiumScene {
   }
 
   private status(message: string, progress?: number) {
-    const node = this.host.querySelector<HTMLElement>("[data-podium-status]"); if (node) node.textContent = message;
+    this.host.querySelectorAll<HTMLElement>("[data-podium-status], [data-podium-streaming-status]").forEach((node) => { node.textContent = message; });
     if (progress !== undefined) this.setProgress(progress);
   }
   private fail(message: string) { this.host.dataset.podiumState = "fallback"; this.status(message, 100); this.dispose(); }
 
   dispose() {
     if (this.disposed) return; this.disposed = true; cancelAnimationFrame(this.frame); this.observer.disconnect();
+    this.scheduler.dispose(); this.sceneObserver?.disconnect(); this.longTaskObserver?.disconnect();
     this.renderer.domElement.removeEventListener("pointerdown", this.onPointerDown); this.renderer.domElement.removeEventListener("pointermove", this.onPointerMove);
     this.renderer.domElement.removeEventListener("pointerup", this.onPointerUp); this.renderer.domElement.removeEventListener("pointercancel", this.onPointerUp);
     this.renderer.domElement.removeEventListener("contextmenu", this.onContextMenu);
@@ -1509,7 +1698,8 @@ class PodiumScene {
       if ((node as Points).isPoints) { const points = node as Points; geometries.add(points.geometry); materials.add(points.material as PointsMaterial); }
     });
     geometries.forEach((geometry) => geometry.dispose()); materials.forEach((material) => material.dispose()); this.ownedTextures.forEach((texture) => texture.dispose());
-    this.environmentTexture?.dispose(); this.environmentTarget?.dispose(); this.composer?.dispose(); this.renderer.dispose();
+    this.environmentTexture?.dispose(); this.environmentTarget?.dispose(); this.composer?.dispose(); this.draco.dispose(); this.renderer.dispose();
+    if (this.debugEnabled) delete (window as Window & { raidlandsPodiumDiagnostics?: unknown }).raidlandsPodiumDiagnostics;
   }
 }
 

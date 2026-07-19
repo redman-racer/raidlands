@@ -160,6 +160,18 @@ $validation_paths = array_column($validation['errors'], 'path');
 airstrike_compiler_test(in_array('Profiles.bad.ProfileKey', $validation_paths, true), 'validation includes ProfileKey path');
 airstrike_compiler_test(in_array('Profiles.bad.Waypoints[1].Time', $validation_paths, true), 'validation includes duplicate waypoint time path');
 
+$out_of_bounds = airstrike_compiler_source();
+$out_of_bounds['Waypoints'][1]['Y'] = 1000.125;
+$bounds_validation = raidlands_airstrike_animation_validate_profile($out_of_bounds, 'Profiles.bounds');
+$bounds_issue = array_values(array_filter(
+    (array) ($bounds_validation['errors'] ?? []),
+    static fn (array $issue): bool => ($issue['path'] ?? '') === 'Profiles.bounds.Waypoints[1].Y'
+))[0] ?? [];
+airstrike_compiler_test(
+    ($bounds_issue['message'] ?? '') === 'Must be at most 1000; received 1000.125.',
+    'validation reports the received out-of-bounds coordinate'
+);
+
 $straight_source = airstrike_compiler_source();
 $straight = raidlands_airstrike_animation_compile_profile($straight_source);
 $straight_frames = $straight['CompiledTrack']['Frames'];

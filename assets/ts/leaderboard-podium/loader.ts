@@ -5,7 +5,7 @@ type IdleWindow = Window & typeof globalThis & {
 const hosts = [...document.querySelectorAll<HTMLElement>("[data-leaderboard-podium]")];
 let loading: Promise<unknown> | undefined;
 
-const phaseProgress: Record<string, number> = { poster: 0, queued: 14, loading: 30, initializing: 46, scene: 62, characters: 76, details: 88, ready: 100, fallback: 100 };
+const phaseProgress: Record<string, number> = { poster: 0, queued: 14, loading: 30, initializing: 46, scene: 62, characters: 76, interactive: 83, details: 88, ready: 100, fallback: 100 };
 
 function setProgress(host: HTMLElement, progress: number) {
   const value = Math.max(0, Math.min(100, Math.round(progress)));

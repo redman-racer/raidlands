@@ -381,13 +381,24 @@ function raidlands_airstrike_animation_validate_number(
     }
 
     $number = (float) $value;
+    $received = raidlands_airstrike_animation_encode_canonical_number($number);
 
     if ($minimum !== null && $number < $minimum) {
-        raidlands_airstrike_animation_validation_error($errors, $path, 'minimum', 'Must be at least ' . $minimum . '.');
+        raidlands_airstrike_animation_validation_error(
+            $errors,
+            $path,
+            'minimum',
+            'Must be at least ' . $minimum . '; received ' . $received . '.'
+        );
     }
 
     if ($maximum !== null && $number > $maximum) {
-        raidlands_airstrike_animation_validation_error($errors, $path, 'maximum', 'Must be at most ' . $maximum . '.');
+        raidlands_airstrike_animation_validation_error(
+            $errors,
+            $path,
+            'maximum',
+            'Must be at most ' . $maximum . '; received ' . $received . '.'
+        );
     }
 }
 

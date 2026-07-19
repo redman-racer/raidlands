@@ -24,7 +24,7 @@ import {
   junkyardPodiumFogInfluence, junkyardSearchlightTarget, junkyardSmokeParticleCount, junkyardSmokeSample,
   nextJunkyardFogQuality, normalizationScale, orbitCameraPosition, podiumCategoryTitle, podiumGroundMaterialState, podiumThemeFor,
   PROFILE_PODIUM_GROUND, PROFILE_PODIUM_GROUND_RELIEF, profilePodiumGroundHeight,
-  shouldLiftForwardMoundVisibility, shouldRenderArenaPlacement, showcaseThemeSockets,
+  shouldLiftForwardMoundVisibility, shouldRenderArenaPlacement, shouldUseNativeArenaPlacement, showcaseThemeSockets,
 } from "../assets/ts/leaderboard-podium/scene-policy";
 
 function anchoredRoot(anchors: Record<string, [number, number, number]>): Group {
@@ -465,6 +465,7 @@ describe("leaderboard podium policy", () => {
     expect(manifest.revision).toBe("494242bdeae941e3389b34a819c514aae2cf39f8");
     expect(manifest.assets).toHaveLength(79);
     expect(manifest.basePlacements).toHaveLength(117);
+    expect(manifest.basePlacements.filter((placement) => shouldUseNativeArenaPlacement(placement.id) && shouldRenderArenaPlacement(placement.id, false))).toHaveLength(96);
     expect(manifest.characterAnchors).toHaveLength(3);
     expect(Object.keys(manifest.themes)).toHaveLength(6);
     const mostKills = generatedThemePlacements("most-kills", manifest.themes["most-kills"]);

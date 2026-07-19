@@ -206,6 +206,16 @@ interface RecoveryDraft {
   source: string;
 }
 
+class EditorRequestError extends Error {
+  public readonly status: number;
+
+  public constructor(message: string, status: number) {
+    super(message);
+    this.name = "EditorRequestError";
+    this.status = status;
+  }
+}
+
 interface NumericControlRange {
   minimum: number;
   maximum: number;
@@ -813,12 +823,12 @@ class AirstrikeEditorApp {
     const payload = (await response.json().catch(() => ({
       ok: false,
       error:
-        response.status === 401 || response.status === 403
+        response.status === 401 || response.status === 403 || response.status === 419
           ? "Your admin session expired or no longer has access. The browser kept a local recovery copy; sign back in before saving again."
           : "The server returned an unreadable response.",
     }))) as Record<string, unknown>;
     if (!response.ok || payload.ok !== true) {
-      throw new Error(String(payload.error || "The request failed."));
+      throw new EditorRequestError(String(payload.error || "The request failed."), response.status);
     }
     return payload;
   }
@@ -877,7 +887,7 @@ class AirstrikeEditorApp {
     }
     this.elements.source.value = draft.source;
     this.handleSourceInput();
-    this.showFeedback(`Restored local recovery draft from ${savedAt}. Save after signing in to make it server-side.`, "success");
+    this.showFeedback(`Restored local recovery draft from ${savedAt}. Save it to make the recovered changes server-side.`, "success");
     this.setStatus("Recovered local draft");
   }
 
@@ -3315,7 +3325,12 @@ class AirstrikeEditorApp {
       await this.agent.profileSaved(String(profile.profileKey || source.ProfileKey));
     } catch (error) {
       const message = error instanceof Error ? error.message : String(error);
-      this.showFeedback(`${message}\n\nA local recovery copy was kept in this browser. Sign back in, reload this editor, and restore the recovery draft if prompted.`, "error");
+      const recoveryGuidance = error instanceof EditorRequestError && [401, 403, 419].includes(error.status)
+        ? "A local recovery copy was kept in this browser. Sign back in, reload this editor, and restore the recovery draft if prompted."
+        : error instanceof EditorRequestError && error.status === 422
+          ? "A local recovery copy was kept in this browser. Correct the reported value and save again; reloading or signing in is not required."
+          : "A local recovery copy was kept in this browser. You can retry without reloading; sign back in only if your admin session expired.";
+      this.showFeedback(`${message}\n\n${recoveryGuidance}`, "error");
       this.setStatus("Save failed");
     }
   }

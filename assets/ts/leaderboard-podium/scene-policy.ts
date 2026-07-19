@@ -474,6 +474,12 @@ export function shouldRenderArenaPlacement(id: string, mobile: boolean): boolean
   return ordinal > 0 && ordinal % 2 === 1;
 }
 
+export function shouldUseNativeArenaPlacement(id: string): boolean {
+  if (id === "ENV_TARP_BACK" || id.startsWith("ENV_FLOOR_") || id.startsWith("ENV_SIDEWALL_")) return false;
+  if (["L_WEAPON_THOMPSON", "C_WEAPON_L96", "C_WEAPON_M39", "C_MINIGUN", "R_ROCKET_LAUNCHER"].includes(id)) return false;
+  return !/(?:RUBBLE|GRAVEL)/.test(id);
+}
+
 export function shouldLiftForwardMoundVisibility(id: string): boolean {
   return /^BG_MOUND_(?:1[2-7])$/.test(id);
 }

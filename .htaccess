@@ -18,6 +18,11 @@ SetEnvIf Authorization "(.+)" HTTP_AUTHORIZATION=$1
   AddType model/gltf-binary .glb
 </IfModule>
 
+<IfModule mod_deflate.c>
+  AddOutputFilterByType DEFLATE application/javascript text/javascript application/json application/manifest+json
+  SetEnvIfNoCase Request_URI "\.(?:glb|webp|hdr)$" no-gzip dont-vary
+</IfModule>
+
 <IfModule mod_headers.c>
   # Vite content-hashed chunks are safe to retain permanently. A changed build
   # gets a new filename, so repeat visits reuse Three.js without revalidation.

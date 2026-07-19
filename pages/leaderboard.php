@@ -331,6 +331,7 @@ function leaderboard_podium_markup(array $leaders, string $board, string $metric
         . '<p class="raidlands-loader-state leaderboard-podium-status" data-podium-status>3D view will load when it is in view.</p>'
         . '</div></div>'
         . '</div>'
+        . '<div class="leaderboard-podium-streaming" role="status" aria-live="polite"><span class="leaderboard-podium-streaming-dot" aria-hidden="true"></span><span data-podium-streaming-status>Loading arena detail — 0/0</span></div>'
         . '<script type="application/json" data-podium-payload>' . ($payload ?: '{"leaders":[]}') . '</script>'
         . '</section>';
 }

@@ -4,7 +4,7 @@ import { describe, expect, it } from "vitest";
 
 const read = (path: string) => readFileSync(resolve(__dirname, "..", path), "utf8");
 
-describe("leaderboard 3D loading plan", () => {
+describe("leaderboard 3D progressive loading", () => {
   it("ships a lightweight viewport and idle-gated module loader", () => {
     const loader = read("assets/ts/leaderboard-podium/loader.ts");
     const page = read("pages/leaderboard.php");
@@ -19,86 +19,106 @@ describe("leaderboard 3D loading plan", () => {
     const vite = read("vite.config.ts");
     const builtLoader = read("assets/build/airstrike-animation-editor/leaderboard-podium-loader.js");
     expect(vite).toContain('base: "./"');
-    expect(builtLoader).toContain('./chunks/three.module-');
+    expect(builtLoader).toContain("./chunks/three.module-");
     expect(builtLoader).not.toContain('return"/"');
   });
 
-  it("warms 3D routes only on user intent and respects constrained connections", () => {
+  it("warms 3D routes only on user intent and compresses only text assets", () => {
     const site = read("assets/js/site.js");
     const apache = read(".htaccess");
     expect(site).toContain("init3dRouteWarmup()");
     expect(site).toContain('preload.rel = "modulepreload"');
     expect(site).toContain("connection.saveData || slowConnection");
     expect(apache).toContain("max-age=31536000, immutable");
+    expect(apache).toContain("DEFLATE application/javascript text/javascript application/json");
+    expect(apache).toContain('Request_URI "\\.(?:glb|webp|hdr)$" no-gzip');
   });
 
-  it("reveals the winner before loading secondary characters and arena detail", () => {
+  it("reveals the winner in an interactive scene before secondary characters", () => {
     const app = read("assets/ts/leaderboard-podium/app.ts");
     const winner = app.indexOf("const winner = await this.buildCharacter");
-    const ready = app.indexOf('this.host.dataset.podiumState = "ready"', winner);
-    const secondary = app.indexOf("const secondaryCharacters = await Promise.all", ready);
-    const enhancement = app.indexOf("this.arenaEnhancement", secondary);
+    const interactive = app.indexOf('this.host.dataset.podiumState = "interactive"', winner);
+    const secondary = app.indexOf("for (let index = 1; index < sceneLeaders.length", interactive);
+    const details = app.indexOf('this.host.dataset.podiumState = "details"', secondary);
     expect(winner).toBeGreaterThan(-1);
-    expect(ready).toBeGreaterThan(winner);
-    expect(secondary).toBeGreaterThan(ready);
-    expect(enhancement).toBeGreaterThan(secondary);
+    expect(interactive).toBeGreaterThan(winner);
+    expect(secondary).toBeGreaterThan(interactive);
+    expect(details).toBeGreaterThan(secondary);
     expect(app).toContain('Array.from({ length: 3 }, (_, index) => leaders[index] || {})');
   });
 
-  it("finishes the HDR environment under the loader and defers arena placements", () => {
+  it("prefetches winner wearables together but parses and assembles them sequentially", () => {
     const app = read("assets/ts/leaderboard-podium/app.ts");
-    const shell = app.slice(app.indexOf("private async buildArenaStage"), app.indexOf("private buildInitialFloor"));
-    expect(shell).toContain("await this.buildArenaEnvironment()");
-    expect(shell).toContain("if (!hasEnvironment) { await this.buildBackdropPanels()");
-    expect(shell).not.toContain("buildSolidFloor()");
-    expect(shell).not.toContain("loadPlacementBatch(");
+    const character = app.slice(app.indexOf("private async buildCharacter"), app.indexOf("private async prepareCharacterPiece"));
+    expect(character).toContain("urls.forEach((url) => { void this.scheduler.prefetch");
+    expect(character).toContain("for (const url of urls)");
+    expect(character).not.toContain("Promise.all");
+    expect(app).toContain("this.loader.parseAsync(buffer");
+    expect(app).toContain("this.draco.setWorkerLimit(1); this.draco.preload()");
+    expect(app).not.toContain("MeshoptDecoder");
   });
 
-  it("streams the complete approved placement set without long idle gates", () => {
+  it("builds a lightweight direct-rendered shell before HDR and effects", () => {
+    const app = read("assets/ts/leaderboard-podium/app.ts");
+    const shell = app.slice(app.indexOf("private async buildArenaStage"), app.indexOf("private buildInitialFloor"));
+    expect(shell).toContain("await this.buildBackdropPanels()");
+    expect(shell).toContain("this.buildArenaPodiums(manifest)");
+    expect(shell).toContain("this.buildInitialFloor()");
+    expect(shell).not.toContain("buildArenaEnvironment");
+    expect(shell).not.toContain("setupComposer");
+    expect(app).toContain('this.host.dataset.sceneEffects = "direct"');
+  });
+
+  it("streams the complete policy-selected placement set one attachment at a time", () => {
     const app = read("assets/ts/leaderboard-podium/app.ts");
     const enhancement = app.slice(app.indexOf("private async enhanceArena"), app.indexOf("private async buildArenaEnvironment"));
-    expect(enhancement).toContain("loadPlacementBatch(placements");
+    const queue = app.slice(app.indexOf("private async loadPlacementQueue"), app.indexOf("private async createPlacement"));
+    expect(enhancement).toContain("loadPlacementQueue(placements");
     expect(enhancement).toContain("scenePlacementsTotal");
     expect(enhancement).toContain("let missing = placements.filter");
-    expect(enhancement).toContain("arena placements unavailable");
-    expect(enhancement).not.toContain("setTimeout(resolve, 3000)");
-    expect(app).toContain("if (yieldBetween) await yieldToRenderer()");
+    expect(enhancement).toContain("loadPlacementQueue(missing");
+    expect(queue).toContain("for (const placement of placements)");
+    expect(queue).not.toContain("Promise.all");
+    expect(app).not.toMatch(/placements\.slice\s*\(/);
+    expect(app).not.toMatch(/placements\.splice\s*\(/);
+    expect(app).toContain('url.searchParams.set("v", hash)');
     expect(app).toContain("this.modelCache.delete(url)");
   });
 
-  it("uses the Raidlands loader treatment and reveals only after arena detail", () => {
+  it("replaces the blocking overlay with a small interactive streaming status", () => {
     const page = read("pages/leaderboard.php");
-    const app = read("assets/ts/leaderboard-podium/app.ts");
     const styles = read("assets/css/styles.css");
-    expect(page).toContain("raidlands-loader--podium");
-    expect(page).toContain("data-podium-progress-value");
-    expect(styles).toContain(".raidlands-loader--podium .raidlands-loader-progress");
-    expect(app.indexOf("await this.completePresentation")).toBeLessThan(app.indexOf('this.host.dataset.podiumState = "ready"', app.indexOf("await this.completePresentation")));
-    expect(app).toContain('this.host.dataset.podiumState = "details"');
+    const loader = read("assets/ts/leaderboard-podium/loader.ts");
+    expect(page).toContain("data-podium-streaming-status");
+    expect(page).toContain("Loading arena detail — 0/0");
+    expect(styles).toContain('[data-podium-state="interactive"]');
+    expect(styles).toContain('[data-podium-state="details"]');
+    expect(styles).toContain(".leaderboard-podium-streaming");
+    expect(loader).toContain("interactive: 83");
   });
 
-  it("loads the HDRI background by default before revealing the arena", () => {
+  it("loads HDR and a dynamically imported effects pipeline after scene assembly", () => {
     const app = read("assets/ts/leaderboard-podium/app.ts");
-    const enhancement = app.slice(app.indexOf("private async enhanceArena"), app.indexOf("private async buildArenaEnvironment"));
-    expect(app).toContain('const fallbackOnly = new URLSearchParams(location.search).has("podium-fallback")');
-    expect(app).toContain("fallbackOnly ? false : await this.buildArenaEnvironment()");
-    expect(enhancement).not.toContain("buildArenaEnvironment");
-    expect(app).toContain("this.scene.background = texture");
+    const effects = read("assets/ts/leaderboard-podium/effects.ts");
+    const complete = app.slice(app.indexOf("private async completePresentation"), app.indexOf("private characterAnchor"));
+    expect(complete.indexOf("this.arenaEnhancement()")).toBeLessThan(complete.indexOf("this.buildArenaEnvironment()"));
+    expect(complete.indexOf("this.buildArenaEnvironment()")).toBeLessThan(complete.indexOf("this.setupComposer()"));
+    expect(app).toContain('import("./effects")');
+    expect(app).not.toContain('from "three/addons/postprocessing/');
+    expect(effects.indexOf("new RenderPass")).toBeLessThan(effects.indexOf("new ShaderPass"));
+    expect(effects.indexOf("new ShaderPass")).toBeLessThan(effects.indexOf("new SSAOPass"));
+    expect(effects.indexOf("new SSAOPass")).toBeLessThan(effects.indexOf("new UnrealBloomPass"));
     expect(app).toContain('this.host.dataset.sceneEnvironment = "hdri"');
-    expect(app).toContain("new PMREMGenerator");
-    expect(app).toContain("this.scene.environment = target.texture");
-    expect(app).toContain('this.host.dataset.sceneEffects = this.composer ? "full" : "direct"');
+    expect(app).toContain('this.host.dataset.sceneEffects = "full"');
   });
 
-  it("preserves the original full volumetric fog composer", () => {
+  it("only reports ready after placements, HDR, and effects complete", () => {
     const app = read("assets/ts/leaderboard-podium/app.ts");
-    expect(app).toContain("this.buildAtmosphere();\n    this.setupComposer();");
-    expect(app).toContain("composer.addPass(fogPass)");
-    expect(app).toContain('this.setFogQuality("volumetric")');
-    expect(app).toContain("const ssao = new SSAOPass");
-    expect(app).toContain("composer.addPass(ssao)");
-    expect(app).toContain("composer.addPass(new UnrealBloomPass");
-    expect(app).toContain("if (!this.mobile || !this.volumetricFogCapable || this.capture) return");
-    expect(app).not.toContain("this.buildSmoke(texture)");
+    const completion = app.indexOf("complete = await this.completePresentation");
+    const ready = app.indexOf('this.host.dataset.podiumState = "ready"', completion);
+    expect(completion).toBeGreaterThan(-1);
+    expect(ready).toBeGreaterThan(completion);
+    expect(app).toContain('this.host.dataset.podiumDetail = "partial"');
+    expect(app).toContain("Arena is interactive; some detail could not be loaded.");
   });
 });

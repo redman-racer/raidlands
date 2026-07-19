@@ -241,4 +241,18 @@ describe("airstrike animation golden fixtures", () => {
     const issues = validateSourceBundle(source, metadata);
     expect(issues.map((issue) => issue.path)).toContain("Profiles.straight_constant_speed.Waypoints[1].Time");
   });
+
+  it("reports the received coordinate when a waypoint exceeds its bounds", async () => {
+    const metadata = await json<VehiclePreviewMetadataFile>(metadataPath);
+    const source = await json<EditorSourceBundle>(join(fixtureRoot, "straight-constant-speed", "source.json"));
+    source.Profiles.straight_constant_speed!.Waypoints[1]!.Y = 1000.125;
+    const issue = validateSourceBundle(source, metadata).find(
+      (entry) => entry.path === "Profiles.straight_constant_speed.Waypoints[1].Y",
+    );
+
+    expect(issue).toMatchObject({
+      code: "maximum",
+      message: "Must be at most 1000; received 1000.125.",
+    });
+  });
 });
