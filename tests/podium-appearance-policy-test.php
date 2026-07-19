@@ -38,4 +38,19 @@ $pose = raidlands_podium_normalize_pose_rotations([
 podium_assert(isset($pose['l_upperarm']) && !isset($pose['not_a_real_bone']) && !isset($pose['head']), 'Pose normalization must keep only supported, non-zero bones.');
 podium_assert($pose['l_upperarm']['x'] === 0.5 && $pose['l_upperarm']['y'] === 3.141593, 'Pose rotations must be numeric and clamped to a safe radian range.');
 
+$default_pose = raidlands_podium_default_pose();
+podium_assert($default_pose['key'] === 'default' && str_contains($default_pose['label'], 'Leaderboard Idle'), 'The hard-coded pose fallback must be Leaderboard Idle.');
+podium_assert(isset($default_pose['bones']['l_upperarm'], $default_pose['bones']['r_upperarm']), 'Leaderboard Idle must include its relaxed arm rotations.');
+podium_assert(raidlands_podium_effective_pose_key('default', 'first-place') === 'first-place', 'An unset pose must accept its leaderboard-place fallback.');
+podium_assert(raidlands_podium_effective_pose_key('victory', 'first-place') === 'victory', 'An explicitly selected pose must override the leaderboard-place fallback.');
+podium_assert(
+    [
+        raidlands_podium_rank_pose_key(1),
+        raidlands_podium_rank_pose_key(2),
+        raidlands_podium_rank_pose_key(3),
+        raidlands_podium_rank_pose_key(4),
+    ] === ['first-place', 'second-place', 'third-place', 'default'],
+    'Leaderboard ranks must map to the matching place poses and then return to the idle default.'
+);
+
 echo "Podium appearance policy tests passed.\n";

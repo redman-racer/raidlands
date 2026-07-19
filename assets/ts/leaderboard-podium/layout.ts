@@ -63,6 +63,13 @@ export function podiumCharacterYaw(rank: number): number {
   return [0, 0.12, -0.12][rank] || 0;
 }
 
+// The Arctic Hazmat export has boot geometry extending below its visible soles.
+// Compensate after bounds fitting so the visible feet sit on, rather than inside,
+// the pedestal. Other mannequin exports already ground correctly.
+export function podiumOutfitGroundOffset(wearables: readonly string[]): number {
+  return wearables.includes("arctic-hazmat") ? 0.075 : 0;
+}
+
 export type PodiumWeaponLayout = {
   position: Point;
   rotation: Point;

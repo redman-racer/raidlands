@@ -22,7 +22,7 @@ import {
   Leader, LEADERBOARD_PODIUM_ASSETS, LEADERBOARD_PODIUM_PRESETS,
   leaderboardPodiumMetricValue, podiumWearables, podiumWeapon,
 } from "./policy";
-import { normalizeWearableOrigin, podiumCharacterYaw, podiumWeaponLayout } from "./layout";
+import { normalizeWearableOrigin, podiumCharacterYaw, podiumOutfitGroundOffset, podiumWeaponLayout } from "./layout";
 import { buildIndustrialPedestal, pedestalConfigForRank, pedestalRanksForLayout } from "./pedestal";
 import {
   buildIndustrialSign, CATEGORY_SIGN_TRANSFORM, fitSignageText, industrialSignDetail,
@@ -1158,7 +1158,7 @@ class PodiumScene {
     const anchor = this.characterAnchor(rank);
     // Keep the fitted soles exactly on the authored standing surface. The profile
     // viewer does not apply the leaderboard's idle bounce, so it cannot appear to hover.
-    wrapper.position.set(anchor?.position[0] ?? this.rankX[rank], this.standingHeights[rank], anchor?.position[2] ?? 0);
+    wrapper.position.set(anchor?.position[0] ?? this.rankX[rank], this.standingHeights[rank] + podiumOutfitGroundOffset(keys), anchor?.position[2] ?? 0);
     wrapper.rotation.y = podiumCharacterYaw(rank); wrapper.userData.baseY = wrapper.position.y; wrapper.userData.phase = rank * 1.7;
     const weaponKey = podiumWeapon(leader);
     if (weaponKey) {

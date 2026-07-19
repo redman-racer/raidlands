@@ -57,9 +57,30 @@ function raidlands_podium_normalize_pose_rotations($value): array
     return $result;
 }
 
+function raidlands_podium_default_pose(): array
+{
+    return [
+        'key' => 'default',
+        'label' => 'Leaderboard Idle (Default)',
+        'bones' => raidlands_podium_normalize_pose_rotations([
+            'pelvis' => ['x' => 0.0, 'y' => 0.03, 'z' => -0.02],
+            'spine1' => ['x' => -0.025, 'y' => -0.025, 'z' => 0.015],
+            'spine2' => ['x' => 0.02, 'y' => 0.015, 'z' => -0.01],
+            'neck' => ['x' => -0.02, 'y' => 0.02, 'z' => 0.0],
+            'head' => ['x' => 0.0, 'y' => -0.01, 'z' => 0.0],
+            'l_clavicle' => ['x' => 0.093, 'y' => 0.345, 'z' => -0.142],
+            'l_upperarm' => ['x' => 0.289, 'y' => -0.012, 'z' => -0.188],
+            'l_forearm' => ['x' => 0.117, 'y' => -0.132, 'z' => -0.234],
+            'r_clavicle' => ['x' => -0.083, 'y' => 0.424, 'z' => 0.113],
+            'r_upperarm' => ['x' => -0.36, 'y' => -0.118, 'z' => 0.184],
+            'r_forearm' => ['x' => -0.077, 'y' => -0.367, 'z' => 0.176],
+        ]),
+    ];
+}
+
 function raidlands_podium_poses(bool $include_inactive = false): array
 {
-    $poses = ['default' => ['key' => 'default', 'label' => 'Raidlands Default', 'bones' => []]];
+    $poses = ['default' => raidlands_podium_default_pose()];
     if (!raidlands_podium_is_ready()) return $poses;
     $rows = raidlands_db_fetch_all(
         'SELECT pose_key, label, rotations_json, is_active FROM podium_pose_presets'
@@ -79,10 +100,30 @@ function raidlands_podium_poses(bool $include_inactive = false): array
     return $poses;
 }
 
-function raidlands_podium_pose_payload(string $pose_key): array
+function raidlands_podium_effective_pose_key(string $pose_key, string $fallback_pose_key = 'default'): string
+{
+    $pose_key = raidlands_podium_clean_key($pose_key, 64);
+    if ($pose_key === '' || $pose_key === 'default') {
+        $pose_key = raidlands_podium_clean_key($fallback_pose_key, 64);
+    }
+    return $pose_key !== '' ? $pose_key : 'default';
+}
+
+function raidlands_podium_pose_payload(string $pose_key, string $fallback_pose_key = 'default'): array
 {
     $poses = raidlands_podium_poses();
+    $pose_key = raidlands_podium_effective_pose_key($pose_key, $fallback_pose_key);
     return $poses[$pose_key] ?? $poses['default'];
+}
+
+function raidlands_podium_rank_pose_key(int $rank): string
+{
+    return match ($rank) {
+        1 => 'first-place',
+        2 => 'second-place',
+        3 => 'third-place',
+        default => 'default',
+    };
 }
 
 function raidlands_podium_save_pose_preset(string $label, $rotations, string $actor_steam_id64): array
@@ -325,10 +366,11 @@ function raidlands_podium_captured_weapons(int $player_id, int $wipe_id = 0): ar
     );
 }
 
-function raidlands_podium_resolve_player(int $player_id, string $identity): array
+function raidlands_podium_resolve_player(int $player_id, string $identity, string $fallback_pose_key = 'default'): array
 {
     $fallback = raidlands_podium_preset_payload(raidlands_podium_default_preset($identity), 'default');
     $fallback['weapon'] = raidlands_podium_default_weapon($identity);
+    $fallback['pose'] = raidlands_podium_pose_payload('default', $fallback_pose_key);
     if (!raidlands_podium_is_ready() || $player_id <= 0) return $fallback;
 
     $profile = raidlands_podium_profile($player_id);
@@ -349,7 +391,7 @@ function raidlands_podium_resolve_player(int $player_id, string $identity): arra
     }
     $outfit = $outfit ?? $fallback;
     $outfit['weapon'] = raidlands_podium_resolve_weapon($player_id, $identity, $profile);
-    $outfit['pose'] = raidlands_podium_pose_payload((string) ($profile['pose_key'] ?? 'default'));
+    $outfit['pose'] = raidlands_podium_pose_payload((string) ($profile['pose_key'] ?? 'default'), $fallback_pose_key);
     return $outfit;
 }
 
@@ -382,20 +424,24 @@ function raidlands_podium_resolve_weapon(int $player_id, string $identity, array
     return ['shortname' => $shortname, 'skin_id' => $skin, 'asset' => $catalog[$shortname]['asset'], 'label' => $catalog[$shortname]['label'], 'source' => $source];
 }
 
-function raidlands_podium_resolve_bot(string $identity): array
+function raidlands_podium_resolve_bot(string $identity, string $fallback_pose_key = 'default'): array
 {
     $payload = raidlands_podium_preset_payload(raidlands_podium_default_preset('bot:' . $identity), 'bot-preset');
     $payload['weapon'] = raidlands_podium_default_weapon('bot:' . $identity);
+    $payload['pose'] = raidlands_podium_pose_payload('default', $fallback_pose_key);
     return $payload;
 }
 
 function raidlands_podium_decorate_leaders(array $leaders, string $board): array
 {
+    $rank = 1;
     foreach ($leaders as &$leader) {
         $identity = $board === 'bots' ? (string) ($leader['bot_key'] ?? $leader['display_name'] ?? 'bot') : (string) ($leader['steam_id64'] ?? 'player');
+        $fallback_pose_key = raidlands_podium_rank_pose_key($rank);
         $leader['appearance'] = $board === 'bots'
-            ? raidlands_podium_resolve_bot($identity)
-            : raidlands_podium_resolve_player((int) ($leader['player_id'] ?? 0), $identity);
+            ? raidlands_podium_resolve_bot($identity, $fallback_pose_key)
+            : raidlands_podium_resolve_player((int) ($leader['player_id'] ?? 0), $identity, $fallback_pose_key);
+        $rank++;
     }
     unset($leader);
     return $leaders;

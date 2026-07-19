@@ -8,7 +8,7 @@ import {
 } from "../assets/ts/leaderboard-podium/policy";
 import { Box3, Group, Object3D, Vector3 } from "three";
 import {
-  MANNEQUIN_ANCHORS, normalizeWearableOrigin, podiumCharacterYaw, podiumWeaponLayout,
+  MANNEQUIN_ANCHORS, normalizeWearableOrigin, podiumCharacterYaw, podiumOutfitGroundOffset, podiumWeaponLayout,
 } from "../assets/ts/leaderboard-podium/layout";
 import {
   buildIndustrialPedestal, pedestalConfigForRank, pedestalRanksForLayout,
@@ -97,6 +97,11 @@ describe("leaderboard podium policy", () => {
     expect(leftRocket.rotation[1]).toBe(Math.PI / 2);
   });
 
+  it("keeps the Arctic Hazmat boots above the pedestal surface", () => {
+    expect(podiumOutfitGroundOffset(["arctic-hazmat"])).toBeCloseTo(.075, 6);
+    expect(podiumOutfitGroundOffset(["hazmat"])).toBe(0);
+  });
+
   it("formats player, raid, bot, and RP game podium values", () => {
     expect(leaderboardPodiumMetricValue({ kdr: 2 }, "players", "kdr")).toEqual(["2.00", "K/D"]);
     expect(leaderboardPodiumMetricValue({ playtime_seconds: 5025 }, "players", "playtime")).toEqual(["1h 23m", "played"]);
@@ -142,7 +147,7 @@ describe("leaderboard podium policy", () => {
 
   it("keeps profile characters grounded while allowing drag-to-spin beside pose editing", () => {
     const source = readFileSync(resolve(__dirname, "../assets/ts/leaderboard-podium/app.ts"), "utf8");
-    expect(source).toContain("this.standingHeights[rank], anchor?.position[2]");
+    expect(source).toContain("this.standingHeights[rank] + podiumOutfitGroundOffset(keys), anchor?.position[2]");
     expect(source).toContain("this.targetCharacterYaw += deltaX * .012");
     expect(source).toContain('this.host.dataset.interactionMode !== "pose"');
     expect(source).toContain("if (!this.singleLayout) this.characterRoot.children.forEach");
