@@ -1,4 +1,5 @@
 export type PodiumLoadPriority = number;
+export type PodiumMainJobTiming = { label: string; startTime: number; endTime: number };
 
 export type PodiumSchedulerSnapshot = {
   networkActive: number;
@@ -6,6 +7,7 @@ export type PodiumSchedulerSnapshot = {
   mainActive: number;
   mainQueued: number;
   paused: boolean;
+  mainLabel?: string;
 };
 
 export type PodiumAssetSchedulerOptions = {
@@ -13,6 +15,7 @@ export type PodiumAssetSchedulerOptions = {
   fetcher?: typeof fetch;
   yieldControl?: () => Promise<void>;
   onSnapshot?: (snapshot: PodiumSchedulerSnapshot) => void;
+  onMainJobTiming?: (timing: PodiumMainJobTiming) => void;
 };
 
 type FetchJob = {
@@ -30,6 +33,7 @@ type MainJob<T = unknown> = {
   work: () => T | Promise<T>;
   resolve: (value: T) => void;
   reject: (error: unknown) => void;
+  label?: string;
 };
 
 function priorityOrder(left: { priority: number; sequence: number }, right: { priority: number; sequence: number }): number {
@@ -54,6 +58,7 @@ export class PodiumAssetScheduler {
   private readonly networkConcurrency: number;
   private readonly yieldControl: () => Promise<void>;
   private readonly onSnapshot?: (snapshot: PodiumSchedulerSnapshot) => void;
+  private readonly onMainJobTiming?: (timing: PodiumMainJobTiming) => void;
   private readonly downloads = new Map<string, Promise<ArrayBuffer>>();
   private readonly fetchJobs = new Map<string, FetchJob>();
   private readonly fetchQueue: FetchJob[] = [];
@@ -73,6 +78,7 @@ export class PodiumAssetScheduler {
     this.networkConcurrency = Math.max(1, Math.min(4, Math.round(options.networkConcurrency || 4)));
     this.yieldControl = options.yieldControl || yieldThroughPaint;
     this.onSnapshot = options.onSnapshot;
+    this.onMainJobTiming = options.onMainJobTiming;
   }
 
   public prefetch(url: string, priority: PodiumLoadPriority): Promise<ArrayBuffer> {
@@ -106,10 +112,10 @@ export class PodiumAssetScheduler {
     this.downloads.delete(url);
   }
 
-  public runMain<T>(priority: PodiumLoadPriority, work: () => T | Promise<T>): Promise<T> {
+  public runMain<T>(priority: PodiumLoadPriority, work: () => T | Promise<T>, label?: string): Promise<T> {
     if (this.disposed) return Promise.reject(abortError());
     const promise = new Promise<T>((resolve, reject) => {
-      this.mainQueue.push({ priority, sequence: this.sequence++, work, resolve, reject } as MainJob<T>);
+      this.mainQueue.push({ priority, sequence: this.sequence++, work, resolve, reject, label } as MainJob<T>);
       this.mainQueue.sort(priorityOrder);
       void this.drainMain();
       this.emit();
@@ -132,6 +138,7 @@ export class PodiumAssetScheduler {
       mainActive: this.mainActive,
       mainQueued: this.mainQueue.length,
       paused: this.paused,
+      mainLabel: this.activeMainJob?.label,
     };
   }
 
@@ -178,6 +185,7 @@ export class PodiumAssetScheduler {
     if (this.disposed || this.mainDraining || !this.mainQueue.length) return;
     this.mainDraining = true;
     let job: MainJob<any> | undefined;
+    let startedAt = 0;
     try {
       if (this.paused) {
         await new Promise<void>((resolve) => this.resumeWaiters.push(resolve));
@@ -190,12 +198,14 @@ export class PodiumAssetScheduler {
       this.emit();
       await this.yieldControl();
       if (this.disposed) throw abortError();
+      startedAt = performance.now();
       const value = await job.work();
       if (this.disposed) throw abortError();
       job.resolve(value);
     } catch (error) {
       job?.reject(error);
     } finally {
+      if (startedAt && job?.label) this.onMainJobTiming?.({ label: job.label, startTime: startedAt, endTime: performance.now() });
       this.mainActive = 0;
       if (this.activeMainJob === job) this.activeMainJob = undefined;
       this.mainDraining = false;

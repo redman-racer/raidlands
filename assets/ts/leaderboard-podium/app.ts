@@ -1,17 +1,17 @@
 import {
-  ACESFilmicToneMapping, AdditiveBlending, AmbientLight, Box3, BoxGeometry, BufferAttribute, BufferGeometry,
+  ACESFilmicToneMapping, AdditiveBlending, AmbientLight, BackSide, Box3, BoxGeometry, BufferAttribute, BufferGeometry,
   CanvasTexture, ClampToEdgeWrapping, Color, ConeGeometry, CylinderGeometry, DirectionalLight, DoubleSide, FogExp2,
   Float32BufferAttribute, Group, HemisphereLight, IcosahedronGeometry, InstancedMesh,
-  LineBasicMaterial, LineSegments, LinearFilter, MathUtils, Mesh, MeshBasicMaterial, MeshStandardMaterial, MirroredRepeatWrapping, Object3D,
+  FrontSide, LineBasicMaterial, LineSegments, LinearFilter, MathUtils, Mesh, MeshBasicMaterial, MeshDepthMaterial, MeshStandardMaterial, MirroredRepeatWrapping, Object3D,
   PCFSoftShadowMap, PerspectiveCamera, PlaneGeometry, PointLight,
   Points, PointsMaterial, Raycaster, RectAreaLight, Scene, SkinnedMesh, SphereGeometry, SpotLight,
-  SRGBColorSpace, Texture, TextureLoader, Vector2, Vector3, WebGLRenderer,
+  RGBADepthPacking, SRGBColorSpace, Texture, TextureLoader, Vector2, Vector3, WebGLRenderer, WebGLRenderTarget,
 } from "three";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
 import { GLTFLoader } from "three/addons/loaders/GLTFLoader.js";
 import { RectAreaLightUniformsLib } from "three/addons/lights/RectAreaLightUniformsLib.js";
 import { clone as cloneSkinnedScene } from "three/addons/utils/SkeletonUtils.js";
-import { PodiumAssetScheduler, yieldThroughPaint, type PodiumSchedulerSnapshot } from "./loading-scheduler";
+import { PodiumAssetScheduler, yieldThroughPaint, type PodiumMainJobTiming, type PodiumSchedulerSnapshot } from "./loading-scheduler";
 import type { PodiumEffectsPipeline, PodiumEnvironment } from "./effects";
 import {
   Leader, LEADERBOARD_PODIUM_ASSETS, LEADERBOARD_PODIUM_PRESETS,
@@ -147,12 +147,6 @@ export function staticBounds(root: Object3D): Box3 {
   root.traverse((node) => {
     const mesh = node as Mesh;
     if (!mesh.isMesh || !mesh.geometry) return;
-    if ((mesh as SkinnedMesh).isSkinnedMesh) {
-      const skinned = mesh as SkinnedMesh;
-      skinned.skeleton.update(); skinned.computeBoundingBox();
-      if (skinned.boundingBox) bounds.union(skinned.boundingBox.clone().applyMatrix4(skinned.matrixWorld));
-      return;
-    }
     if (!mesh.geometry.boundingBox) mesh.geometry.computeBoundingBox();
     if (mesh.geometry.boundingBox) bounds.union(mesh.geometry.boundingBox.clone().applyMatrix4(mesh.matrixWorld));
   });
@@ -281,6 +275,7 @@ class PodiumScene {
   private scene = new Scene();
   private camera = new PerspectiveCamera(41, 1, 0.05, 60);
   private renderer: WebGLRenderer;
+  private attachmentWarmTarget = new WebGLRenderTarget(1, 1, { depthBuffer: true, stencilBuffer: false });
   private composer?: PodiumEffectsPipeline["composer"];
   private backdropRoot = new Group();
   private worldRoot = new Group();
@@ -298,6 +293,7 @@ class PodiumScene {
   private environmentTarget?: PodiumEnvironment["target"];
   private environmentDownload?: Promise<ArrayBuffer>;
   private ownedTextures = new Set<Texture>();
+  private warmedTextures = new WeakSet<Texture>();
   private signSurfacePromise?: Promise<IndustrialSignSurfaceTextures | undefined>;
   private searchlights: Array<{ light: SpotLight; shaft: Mesh; side: -1 | 1; phase: number }> = [];
   private groundFogLayers: Array<{ mesh: Mesh; texture: Texture; speed: Vector2; offset: Vector2 }> = [];
@@ -315,6 +311,7 @@ class PodiumScene {
   private sceneObserver?: IntersectionObserver;
   private sceneVisible = true;
   private streaming = false;
+  private mainWorkActive = false;
   private lastRenderedAt = 0;
   private lastFrameAt = performance.now();
   private longestFrameGap = 0;
@@ -323,6 +320,8 @@ class PodiumScene {
   private phaseTimings: Record<string, number> = {};
   private longTaskObserver?: PerformanceObserver;
   private longestLongTask = 0;
+  private lastMainJob = "";
+  private mainJobTimings: PodiumMainJobTiming[] = [];
   private frame = 0;
   private disposed = false;
   private generation = 0;
@@ -372,8 +371,11 @@ class PodiumScene {
       networkConcurrency: constrained ? 2 : 4,
       yieldControl: this.yieldForMainWork,
       onSnapshot: (snapshot) => this.onSchedulerSnapshot(snapshot),
+      onMainJobTiming: (timing) => {
+        this.mainJobTimings.push(timing);
+        if (this.mainJobTimings.length > 80) this.mainJobTimings.splice(0, this.mainJobTimings.length - 80);
+      },
     });
-    this.observeDiagnostics();
     this.recordPhase("initializing");
     const capture = new URLSearchParams(location.search).has("podium-capture"); this.capture = capture;
     if (capture) {
@@ -413,6 +415,7 @@ class PodiumScene {
     document.addEventListener("visibilitychange", this.onVisibilityChange);
     this.renderer.domElement.addEventListener("webglcontextlost", this.onContextLost);
     this.renderer.domElement.addEventListener("webglcontextrestored", this.onContextRestored);
+    this.observeDiagnostics(); this.lastFrameAt = performance.now();
     this.animate();
   }
 
@@ -444,11 +447,14 @@ class PodiumScene {
   }
 
   private onSchedulerSnapshot(snapshot: PodiumSchedulerSnapshot) {
+    this.mainWorkActive = snapshot.mainActive > 0;
+    if (snapshot.mainLabel) this.lastMainJob = snapshot.mainLabel;
     if (!this.debugEnabled) return;
     this.host.dataset.podiumNetworkActive = String(snapshot.networkActive);
     this.host.dataset.podiumNetworkQueued = String(snapshot.networkQueued);
     this.host.dataset.podiumMainActive = String(snapshot.mainActive);
     this.host.dataset.podiumMainQueued = String(snapshot.mainQueued);
+    if (this.lastMainJob) this.host.dataset.podiumLastMainJob = this.lastMainJob;
     this.publishDiagnostics(snapshot);
   }
 
@@ -456,11 +462,18 @@ class PodiumScene {
     if (!this.debugEnabled || !("PerformanceObserver" in window)) return;
     try {
       this.longTaskObserver = new PerformanceObserver((list) => {
-        list.getEntries().forEach((entry) => { this.longestLongTask = Math.max(this.longestLongTask, entry.duration); });
+        list.getEntries().forEach((entry) => {
+          if (entry.duration <= this.longestLongTask) return;
+          this.longestLongTask = entry.duration;
+          const entryEnd = entry.startTime + entry.duration;
+          const timing = [...this.mainJobTimings].reverse().find((candidate) => candidate.startTime <= entryEnd && candidate.endTime >= entry.startTime);
+          const label = timing?.label || this.lastMainJob;
+          if (label) this.host.dataset.podiumLongestTaskJob = label;
+        });
         this.host.dataset.podiumLongestTask = this.longestLongTask.toFixed(1);
         this.publishDiagnostics(this.scheduler.snapshot());
       });
-      this.longTaskObserver.observe({ type: "longtask", buffered: true });
+      this.longTaskObserver.observe({ type: "longtask" });
     } catch { this.longTaskObserver = undefined; }
   }
 
@@ -570,8 +583,14 @@ class PodiumScene {
       if (!floor) return;
       try {
         const { material, state, complete } = await this.buildGroundMaterial(JUNKYARD_GROUND);
-        if (!this.disposed) { const previous = floor.material; floor.material = material; (Array.isArray(previous) ? previous : [previous]).forEach((item) => item.dispose()); this.host.dataset.sceneGround = state; }
-        else material.dispose();
+        if (!this.disposed) {
+          await this.scheduler.runMain(LOAD_PRIORITY.detail, () => {
+            const previous = floor.material; floor.material = material;
+            (Array.isArray(previous) ? previous : [previous]).forEach((item) => item.dispose());
+            this.host.dataset.sceneGround = state;
+          });
+          await this.warmObjectResources(floor, LOAD_PRIORITY.detail);
+        } else material.dispose();
         groundComplete = complete;
       } catch { /* The fast material remains usable. */ }
     };
@@ -626,7 +645,16 @@ class PodiumScene {
         buffer = await this.scheduler.prefetch(sourceUrl, LOAD_PRIORITY.environment);
       }
       const effects = await this.loadEffectsModule();
-      environment = await this.scheduler.runMain(LOAD_PRIORITY.environment, () => effects.buildPodiumEnvironment(this.renderer, buffer));
+      const source = await this.scheduler.runMain(LOAD_PRIORITY.environment, () => effects.parsePodiumEnvironment(buffer), "environment:parse-hdr");
+      try {
+        await this.scheduler.runMain(LOAD_PRIORITY.environment + 1, () => this.renderer.initTexture(source), "environment:upload-hdr");
+        const generator = await this.scheduler.runMain(LOAD_PRIORITY.environment + 2, () => effects.createPodiumEnvironmentGenerator(this.renderer), "environment:create-pmrem");
+        try {
+          await this.scheduler.runMain(LOAD_PRIORITY.environment + 3, () => effects.compilePodiumEnvironmentShader(generator), "environment:compile-pmrem");
+          const target = await this.scheduler.runMain(LOAD_PRIORITY.environment + 4, () => effects.renderPodiumEnvironment(generator, source), "environment:render-pmrem");
+          environment = { source, target };
+        } catch (error) { generator.dispose(); throw error; }
+      } catch (error) { source.dispose(); throw error; }
     } finally { this.scheduler.releaseDownload(sourceUrl); }
     if (this.disposed) { environment.source.dispose(); environment.target.dispose(); return false; }
     this.environmentTexture = environment.source; this.environmentTarget = environment.target;
@@ -635,6 +663,7 @@ class PodiumScene {
     const rotation = MathUtils.degToRad(180);
     this.scene.backgroundRotation.set(0, rotation, 0); this.scene.environmentRotation.set(0, rotation, 0);
     this.backdropRoot.visible = false;
+    await this.warmShaderObjects([...this.shellShaderObjects(false), ...this.characterShaderObjects()], LOAD_PRIORITY.environment + 1);
     this.host.dataset.sceneEnvironment = "hdri";
     this.recordPhase("environment");
     return true;
@@ -973,40 +1002,161 @@ class PodiumScene {
     return this.effectsModule;
   }
 
+  private async compileObjectShaders(object: Object3D): Promise<void> {
+    this.scene.updateMatrixWorld(true); object.updateMatrixWorld(true); this.camera.updateMatrixWorld(true);
+    const compilable = this.renderer as WebGLRenderer & {
+      compileAsync?: (object: Object3D, camera: PerspectiveCamera, targetScene?: Scene) => Promise<unknown>;
+    };
+    if (compilable.compileAsync) await compilable.compileAsync(object, this.camera, this.scene);
+    else this.renderer.compile(object, this.camera, this.scene);
+  }
+
+  private async warmShaderObjects(objects: Object3D[], priority: number): Promise<void> {
+    for (const object of objects) {
+      if (this.disposed || !object.visible) continue;
+      await this.warmObjectResources(object, priority);
+    }
+  }
+
+  private async warmObjectResources(object: Object3D, priority: number): Promise<void> {
+    const renderables: Object3D[] = [];
+    object.traverse((node) => {
+      const candidate = node as Object3D & { isMesh?: boolean; isPoints?: boolean; isLine?: boolean };
+      if (candidate.isMesh || candidate.isPoints || candidate.isLine) renderables.push(node);
+    });
+    for (const renderable of renderables) await this.warmRenderableResources(renderable, priority);
+  }
+
+  private async warmRenderableResources(object: Object3D, priority: number): Promise<void> {
+    const textures = new Set<Texture>();
+    const renderable = object as Mesh;
+    const materials = Array.isArray(renderable.material) ? renderable.material : [renderable.material];
+    materials.forEach((material) => {
+      Object.values(material || {}).forEach((value) => { if (value instanceof Texture && !this.warmedTextures.has(value)) textures.add(value); });
+    });
+    for (const texture of textures) {
+      await this.scheduler.runMain(priority, () => {
+        this.renderer.initTexture(texture); this.warmedTextures.add(texture);
+      }, `texture:${texture.name || texture.uuid}`);
+    }
+    for (const material of materials) {
+      await this.scheduler.runMain(priority, () => {
+        const compileTarget = object.clone(false) as Mesh;
+        compileTarget.material = material;
+        return this.compileObjectShaders(compileTarget);
+      }, `shader:${object.name || object.type}:${material.name || material.type}`);
+      if (renderable.castShadow) {
+        const source = material as MeshStandardMaterial;
+        const depth = new MeshDepthMaterial({
+          depthPacking: RGBADepthPacking,
+          alphaMap: source.alphaMap,
+          alphaTest: source.alphaTest,
+          map: source.map,
+          displacementMap: source.displacementMap,
+          displacementScale: source.displacementScale,
+          displacementBias: source.displacementBias,
+          side: source.shadowSide ?? (source.side === FrontSide ? BackSide : source.side === BackSide ? FrontSide : source.side),
+        });
+        try {
+          await this.scheduler.runMain(priority, () => {
+            const compileTarget = object.clone(false) as Mesh; compileTarget.material = depth;
+            return this.compileObjectShaders(compileTarget);
+          }, `shadow:${object.name || object.type}:${material.name || material.type}`);
+        } finally { depth.dispose(); }
+      }
+    }
+  }
+
+  private renderableShaderObjects(objects: Object3D[]): Object3D[] {
+    const renderables: Object3D[] = [];
+    const seen = new Set<Object3D>();
+    objects.forEach((object) => object.traverse((node) => {
+      const candidate = node as Object3D & { isMesh?: boolean; isPoints?: boolean; isLine?: boolean };
+      if ((candidate.isMesh || candidate.isPoints || candidate.isLine) && !seen.has(node)) {
+        seen.add(node); renderables.push(node);
+      }
+    }));
+    return renderables;
+  }
+
+  private async warmSsaoNormalVariants(pipeline: PodiumEffectsPipeline, priority: number): Promise<void> {
+    const ssao = pipeline.ssaoPass; if (!ssao) return;
+    const renderables = this.renderableShaderObjects([...this.shellShaderObjects(false), ...this.characterShaderObjects()]);
+    for (const object of renderables) {
+      await this.scheduler.runMain(priority, async () => {
+        const mesh = object as Mesh;
+        const original = mesh.material;
+        mesh.material = ssao.normalMaterial;
+        try { await this.compileObjectShaders(object.clone(false)); }
+        finally { mesh.material = original; }
+      }, `ssao-normal:${object.name || object.type}`);
+    }
+  }
+
+  private shellShaderObjects(includeBackdrop: boolean): Object3D[] {
+    return [
+      ...(includeBackdrop ? this.backdropRoot.children : []),
+      ...this.baseRoot.children,
+      ...this.pedestalRoot.children,
+      ...this.signageRoot.children,
+      ...this.effectsRoot.children,
+    ];
+  }
+
+  private characterShaderObjects(): Object3D[] {
+    return this.characterRoot.children.flatMap((character) => character.children.flatMap((child) => {
+      if (child.name === "weapon-mount") return child.children;
+      return child.children.length ? child.children : [child];
+    }));
+  }
+
   private async setupComposer(): Promise<boolean> {
     if (this.composer) { this.host.dataset.sceneEffects = "full"; return true; }
     const stage = this.host.querySelector<HTMLElement>("[data-podium-stage]");
     if (!stage || this.disposed) return false;
     const width = Math.max(1, stage.clientWidth); const height = Math.max(1, stage.clientHeight);
+    const warmWidth = Math.min(width, 384); const warmHeight = Math.max(1, Math.round(warmWidth * height / width));
     const effects = await this.loadEffectsModule();
     this.volumetricFogCapable = this.canUseVolumetricFog();
     const pipeline = await this.scheduler.runMain(LOAD_PRIORITY.effects, async () => {
-      const compilable = this.renderer as WebGLRenderer & { compileAsync?: (scene: Scene, camera: PerspectiveCamera) => Promise<unknown> };
-      if (compilable.compileAsync) await compilable.compileAsync(this.scene, this.camera);
-      else this.renderer.compile(this.scene, this.camera);
       return effects.createPodiumEffects({
-        renderer: this.renderer, scene: this.scene, camera: this.camera, width, height,
+        renderer: this.renderer, scene: this.scene, camera: this.camera, width: warmWidth, height: warmHeight,
         mobile: this.mobile, volumetric: this.volumetricFogCapable,
       });
-    });
+    }, "effects:create-pipeline");
     if (this.disposed) { pipeline.composer.dispose(); return false; }
 
-    await this.scheduler.runMain(LOAD_PRIORITY.effects + 1, () => {
+    for (const target of effects.podiumEffectsRenderTargets(pipeline)) {
+      await this.scheduler.runMain(LOAD_PRIORITY.effects + 1, () => this.renderer.initRenderTarget(target), "effects:init-render-target");
+    }
+    if (pipeline.ssaoPass) {
+      await this.scheduler.runMain(LOAD_PRIORITY.effects + 1, () => this.renderer.initTexture(pipeline.ssaoPass!.noiseTexture), "effects:init-ssao-noise");
+    }
+    const effectWarmup = effects.createPodiumEffectsWarmup(pipeline);
+    try { await this.warmShaderObjects(effectWarmup.objects, LOAD_PRIORITY.effects + 1); }
+    finally { effectWarmup.dispose(); }
+    await this.warmSsaoNormalVariants(pipeline, LOAD_PRIORITY.effects + 2);
+
+    await this.scheduler.runMain(LOAD_PRIORITY.effects + 3, () => {
       pipeline.bloomPass.enabled = true;
       pipeline.composer.render();
-    });
+    }, "effects:warm-bloom");
     if (pipeline.ssaoPass) {
-      await this.scheduler.runMain(LOAD_PRIORITY.effects + 2, () => {
+      await this.scheduler.runMain(LOAD_PRIORITY.effects + 4, () => {
         pipeline.ssaoPass!.enabled = true;
         pipeline.composer.render();
-      });
+      }, "effects:warm-ssao");
     }
     if (pipeline.volumetricFogPass) {
-      await this.scheduler.runMain(LOAD_PRIORITY.effects + 3, () => {
+      await this.scheduler.runMain(LOAD_PRIORITY.effects + 5, () => {
         pipeline.volumetricFogPass!.uniforms.tDepth.value = pipeline.composer.readBuffer.depthTexture;
         pipeline.volumetricFogPass!.enabled = true;
         pipeline.composer.render();
-      });
+      }, "effects:warm-volumetric-fog");
+    }
+    await this.scheduler.runMain(LOAD_PRIORITY.effects + 6, () => pipeline.composer.setSize(width, height), "effects:resize-final");
+    for (const target of effects.podiumEffectsRenderTargets(pipeline)) {
+      await this.scheduler.runMain(LOAD_PRIORITY.effects + 7, () => this.renderer.initRenderTarget(target), "effects:init-final-render-target");
     }
     if (this.disposed) { pipeline.composer.dispose(); return false; }
     this.composer = pipeline.composer;
@@ -1090,7 +1240,11 @@ class PodiumScene {
       try {
         const instance = await this.createPlacement(placement);
         if (this.disposed) break;
-        parent.add(instance);
+        const priority = this.placementPriority(placement);
+        await this.warmObjectResources(instance, priority);
+        await this.scheduler.runMain(priority, () => {
+          parent.add(instance); this.warmAttachedPlacement(instance, parent);
+        }, `placement:${placement.id}:attach-render`);
         loaded += 1;
         onProgress?.(loaded);
       } catch { /* Individual dressing assets degrade without removing the podium. */ }
@@ -1110,8 +1264,8 @@ class PodiumScene {
       source = await this.loadModelSource(this.sceneModelUrl(fallback), priority);
       fallbackFor = placement.localPath;
     }
+    const visual = await this.scheduler.runMain(priority, () => cloneSkinnedScene(source.root), `placement:${placement.id}:clone`);
     return this.scheduler.runMain(priority, () => {
-    const visual = cloneSkinnedScene(source.root);
     if (fallbackFor) visual.userData.sceneFallbackFor = fallbackFor;
     visual.scale.setScalar(1); visual.updateMatrixWorld(true);
     visual.position.sub(anchorPoint(source.bounds, placement.anchor));
@@ -1176,7 +1330,34 @@ class PodiumScene {
     wrapper.userData.showcaseZone = transform.zone;
     wrapper.scale.set(...renderScale);
     return wrapper;
+    }, `placement:${placement.id}:configure`);
+  }
+
+  private warmAttachedPlacement(instance: Object3D, parent: Group): void {
+    const hidden: Array<{ object: Object3D; visible: boolean }> = [];
+    const hide = (object: Object3D) => { hidden.push({ object, visible: object.visible }); object.visible = false; };
+    [this.backdropRoot, this.pedestalRoot, this.characterRoot, this.signageRoot, this.effectsRoot, this.poseEditorRoot]
+      .forEach(hide);
+    parent.children.forEach((child) => { if (child !== instance) hide(child); });
+    const culled: Array<{ object: Object3D & { frustumCulled: boolean }; value: boolean }> = [];
+    instance.traverse((node) => {
+      const renderable = node as Object3D & { isMesh?: boolean; isPoints?: boolean; isLine?: boolean; frustumCulled: boolean };
+      if (renderable.isMesh || renderable.isPoints || renderable.isLine) {
+        culled.push({ object: renderable, value: renderable.frustumCulled }); renderable.frustumCulled = false;
+      }
     });
+    const previousTarget = this.renderer.getRenderTarget();
+    const shadowsEnabled = this.renderer.shadowMap.enabled;
+    try {
+      this.renderer.shadowMap.enabled = false;
+      this.renderer.setRenderTarget(this.attachmentWarmTarget);
+      this.renderer.render(this.scene, this.camera);
+    } finally {
+      this.renderer.shadowMap.enabled = shadowsEnabled;
+      this.renderer.setRenderTarget(previousTarget);
+      culled.forEach(({ object, value }) => { object.frustumCulled = value; });
+      hidden.forEach(({ object, visible }) => { object.visible = visible; });
+    }
   }
 
   async setPresentation(board: string, metric: string, leaders: Leader[]) {
@@ -1187,11 +1368,17 @@ class PodiumScene {
     if (generation !== this.generation || this.disposed) return;
     this.host.dataset.podiumState = "characters"; this.status("Loading the winning character…", 76);
     const sceneLeaders = Array.from({ length: 3 }, (_, index) => leaders[index] || {});
-    if (!this.singleLayout) this.buildSignage(board, metric, leaders.slice(0, 3));
+    podiumWearables(sceneLeaders[0], 0).forEach((key) => {
+      const file = LEADERBOARD_PODIUM_ASSETS[key];
+      if (file) void this.scheduler.prefetch(joinedUrl(this.host.dataset.modelBase || "", file), LOAD_PRIORITY.winner).catch(() => undefined);
+    });
+    if (!this.singleLayout) await this.scheduler.runMain(LOAD_PRIORITY.winner, () => this.buildSignage(board, metric, leaders.slice(0, 3)));
+    await this.warmShaderObjects(this.shellShaderObjects(true), LOAD_PRIORITY.winner);
     const winner = await this.buildCharacter(sceneLeaders[0], 0, generation);
     if (generation !== this.generation || this.disposed) return;
     if (!winner) { this.fail("Character assets unavailable. Showing the poster and leaderboard cards."); return; }
     this.characterRoot.clear(); this.characterRoot.add(winner);
+    if (generation !== this.generation || this.disposed) return;
     this.poseBones = { ...(sceneLeaders[0]?.appearance?.pose?.bones || {}) };
     this.rebuildPoseEditorRig();
     this.host.dataset.sceneCharacters = "1"; this.host.dataset.sceneThemeProps = "0";
@@ -1230,7 +1417,11 @@ class PodiumScene {
     for (let index = 1; index < sceneLeaders.length; index += 1) {
       const character = await this.buildCharacter(sceneLeaders[index], index, generation);
       if (generation !== this.generation || this.disposed) return false;
-      if (character) this.characterRoot.add(character); else complete = false;
+      if (character) {
+        await this.scheduler.runMain(LOAD_PRIORITY.secondaryCharacter, async () => {
+          this.characterRoot.add(character);
+        });
+      } else complete = false;
       this.host.dataset.sceneCharacters = String(this.characterRoot.children.length);
       this.status(`Loading contenders — ${this.characterRoot.children.length}/3`, 83 + index);
     }
@@ -1240,7 +1431,8 @@ class PodiumScene {
       try {
         signSurface = await this.loadSignSurface();
         if (generation !== this.generation || this.disposed) return false;
-        this.buildSignage(board, metric, leaders.slice(0, 3), signSurface);
+        await this.scheduler.runMain(LOAD_PRIORITY.detail, () => this.buildSignage(board, metric, leaders.slice(0, 3), signSurface));
+        await this.warmShaderObjects([...this.signageRoot.children], LOAD_PRIORITY.detail);
         this.host.dataset.podiumSignage = "ready";
       } catch { signSurface = undefined; }
     }
@@ -1253,7 +1445,10 @@ class PodiumScene {
     if (!signSurface) {
       try {
         signSurface = await this.loadSignSurface();
-        if (signSurface) this.buildSignage(board, metric, leaders.slice(0, 3), signSurface);
+        if (signSurface) {
+          await this.scheduler.runMain(LOAD_PRIORITY.detail, () => this.buildSignage(board, metric, leaders.slice(0, 3), signSurface));
+          await this.warmShaderObjects([...this.signageRoot.children], LOAD_PRIORITY.detail);
+        }
         else complete = false;
       } catch { complete = false; }
     }
@@ -1297,7 +1492,8 @@ class PodiumScene {
       if (anchor) {
         try {
           const source = await this.loadModelSource(this.sceneModelUrl(anchor.localPath), priority);
-          pieces.push(await this.scheduler.runMain(priority, () => ({ root: cloneSkinnedScene(source.root), bounds: source.bounds.clone() })));
+          const piece = await this.scheduler.runMain(priority, () => ({ root: cloneSkinnedScene(source.root), bounds: source.bounds.clone() }));
+          await this.warmObjectResources(piece.root, priority); pieces.push(piece);
         } catch { /* Cards remain authoritative. */ }
       }
     }
@@ -1324,8 +1520,8 @@ class PodiumScene {
       try {
         const weaponSource = await this.loadModelSource(joinedUrl(modelBase, LEADERBOARD_PODIUM_ASSETS[weaponKey]), priority);
         if (generation !== this.generation) return undefined;
+        const weapon = await this.scheduler.runMain(priority, () => cloneSkinnedScene(weaponSource.root));
         await this.scheduler.runMain(priority, () => {
-          const weapon = cloneSkinnedScene(weaponSource.root);
           weapon.traverse((node) => { if ((node as Mesh).isMesh) (node as Mesh).castShadow = false; });
           const weaponSize = weaponSource.bounds.getSize(new Vector3()); const layout = podiumWeaponLayout(weaponKey, rank);
           const scale = layout.size / Math.max(weaponSize.x, weaponSize.y, weaponSize.z, .01);
@@ -1333,6 +1529,7 @@ class PodiumScene {
           const weaponCenter = weaponSource.bounds.getCenter(new Vector3()).multiplyScalar(scale); weapon.position.sub(weaponCenter);
           const mount = new Group(); mount.name = "weapon-mount"; mount.add(weapon); mount.position.set(...layout.position); mount.rotation.set(...layout.rotation); wrapper.add(mount);
         });
+        await this.warmObjectResources(weapon, priority);
       } catch { /* The selected outfit remains visible if its weapon fails. */ }
     }
     return wrapper;
@@ -1340,33 +1537,41 @@ class PodiumScene {
 
   private async prepareCharacterPiece(url: string, rank: number, poseBones: PoseBones, priority: number): Promise<{ root: Object3D; bounds: Box3 }> {
     const source = await this.loadModelSource(url, priority);
-    return this.scheduler.runMain(priority, () => {
-      const root = cloneSkinnedScene(source.root);
+    const root = await this.scheduler.runMain(priority, () => cloneSkinnedScene(source.root));
+    await this.scheduler.runMain(priority, () => {
       normalizeWearableOrigin(root);
       poseWearable(root, rank, poseBones);
-      return { root, bounds: staticBounds(root) };
     });
+    const bounds = await this.scheduler.runMain(priority, () => staticBounds(root));
+    const piece = { root, bounds };
+    await this.warmObjectResources(piece.root, priority);
+    return piece;
   }
 
   private async loadModelSource(url: string, priority: number): Promise<LoadedModelSource> {
     let promise = this.modelCache.get(url);
     if (!promise) {
-      promise = this.scheduler.prefetch(url, priority).then((buffer) => this.scheduler.runMain(priority, async () => {
-        const gltf = await this.loader.parseAsync(buffer, new URL(".", url).href);
-        const root = gltf.scene; const rigidReplacements: Array<{ source: SkinnedMesh; replacement: Mesh }> = [];
-        root.traverse((node) => {
-          if ((node as Mesh).isMesh) (node as Mesh).frustumCulled = false;
-          if ((node as SkinnedMesh).isSkinnedMesh) {
-            const skinned = node as SkinnedMesh; if (expandSkinAttributes(skinned)) return;
-            const rigidGeometry = skinned.geometry.clone(); rigidGeometry.applyMatrix4(skinned.bindMatrix);
-            const replacement = new Mesh(rigidGeometry, skinned.material); replacement.name = skinned.name; replacement.position.copy(skinned.position);
-            replacement.quaternion.copy(skinned.quaternion); replacement.scale.copy(skinned.scale); replacement.renderOrder = skinned.renderOrder; replacement.frustumCulled = false;
-            rigidReplacements.push({ source: skinned, replacement });
-          }
-        });
-        rigidReplacements.forEach(({ source, replacement }) => { if (source.parent) { source.parent.add(replacement); source.parent.remove(source); } });
-        return { root, bounds: staticBounds(root) };
-      })).finally(() => this.scheduler.releaseDownload(url));
+      promise = this.scheduler.prefetch(url, priority).then(async (buffer) => {
+        const assetLabel = decodeURIComponent(new URL(url).pathname.split("/").pop() || "model");
+        const gltf = await this.scheduler.runMain(priority, () => this.loader.parseAsync(buffer, new URL(".", url).href), `model:${assetLabel}:parse`);
+        const root = await this.scheduler.runMain(priority, () => {
+          const root = gltf.scene; const rigidReplacements: Array<{ source: SkinnedMesh; replacement: Mesh }> = [];
+          root.traverse((node) => {
+            if ((node as Mesh).isMesh) (node as Mesh).frustumCulled = false;
+            if ((node as SkinnedMesh).isSkinnedMesh) {
+              const skinned = node as SkinnedMesh; if (expandSkinAttributes(skinned)) return;
+              const rigidGeometry = skinned.geometry.clone(); rigidGeometry.applyMatrix4(skinned.bindMatrix);
+              const replacement = new Mesh(rigidGeometry, skinned.material); replacement.name = skinned.name; replacement.position.copy(skinned.position);
+              replacement.quaternion.copy(skinned.quaternion); replacement.scale.copy(skinned.scale); replacement.renderOrder = skinned.renderOrder; replacement.frustumCulled = false;
+              rigidReplacements.push({ source: skinned, replacement });
+            }
+          });
+          rigidReplacements.forEach(({ source, replacement }) => { if (source.parent) { source.parent.add(replacement); source.parent.remove(source); } });
+          return root;
+        }, `model:${assetLabel}:rigid`);
+        const bounds = await this.scheduler.runMain(priority, () => staticBounds(root), `model:${assetLabel}:bounds`);
+        return { root, bounds };
+      }).finally(() => this.scheduler.releaseDownload(url));
       promise = promise.catch((error) => { this.modelCache.delete(url); throw error; });
       this.modelCache.set(url, promise);
     }
@@ -1651,6 +1856,8 @@ class PodiumScene {
       const embers = this.effectsRoot.getObjectByName("ArenaEmbers"); if (embers) embers.position.y = Math.sin(time * .28) * .14;
     }
     if (this.poseHandles.size) this.updatePoseEditorRig();
+    const presentationVisible = ["interactive", "details", "ready"].includes(this.host.dataset.podiumState || "");
+    if (!presentationVisible || this.mainWorkActive) { this.frame = requestAnimationFrame(this.animate); return; }
     if (this.streaming && !this.composer && now - this.lastRenderedAt < 1000 / 30) {
       this.frame = requestAnimationFrame(this.animate); return;
     }
@@ -1698,7 +1905,7 @@ class PodiumScene {
       if ((node as Points).isPoints) { const points = node as Points; geometries.add(points.geometry); materials.add(points.material as PointsMaterial); }
     });
     geometries.forEach((geometry) => geometry.dispose()); materials.forEach((material) => material.dispose()); this.ownedTextures.forEach((texture) => texture.dispose());
-    this.environmentTexture?.dispose(); this.environmentTarget?.dispose(); this.composer?.dispose(); this.draco.dispose(); this.renderer.dispose();
+    this.environmentTexture?.dispose(); this.environmentTarget?.dispose(); this.attachmentWarmTarget.dispose(); this.composer?.dispose(); this.draco.dispose(); this.renderer.dispose();
     if (this.debugEnabled) delete (window as Window & { raidlandsPodiumDiagnostics?: unknown }).raidlandsPodiumDiagnostics;
   }
 }

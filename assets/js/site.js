@@ -2021,6 +2021,8 @@
       <td>${formatLeaderboardNumber(row.npc_kills)}</td>
       <td>${formatLeaderboardNumber(row.deaths_by_npc)}</td>
       <td>${formatLeaderboardKdr(row.kdr)}</td>
+      <td>${Number(row.headshot_rate || 0).toFixed(1)}%</td>
+      <td>${formatLeaderboardNumber(row.best_kill_streak)}</td>
       <td>${formatLeaderboardDuration(row.playtime_seconds)}</td>
       <td>${formatLeaderboardNumber(row.reward_points)}</td>
     </tr>`;
@@ -2281,7 +2283,7 @@
         : "raid_damage";
     }
 
-    return ["kills", "kdr", "playtime", "rp", "npc_kills", "deaths_by_npc"].includes(value) ? value : "kills";
+    return ["kills", "kdr", "playtime", "rp", "npc_kills", "deaths_by_npc", "headshots", "streak", "damage", "distance"].includes(value) ? value : "kills";
   }
 
   function normalizeLeaderboardPage(value) {

@@ -23,6 +23,7 @@ function raidlands_stats_is_ready(): bool
         raidlands_db_fetch_one('SELECT baseline_reward_points FROM player_wipe_stats LIMIT 1');
         raidlands_db_fetch_one('SELECT baseline_npc_kills FROM player_wipe_stats LIMIT 1');
         raidlands_db_fetch_one('SELECT baseline_raid_damage FROM player_wipe_stats LIMIT 1');
+        raidlands_db_fetch_one('SELECT headshots FROM player_leaderboard_stats LIMIT 1');
         raidlands_db_fetch_one('SELECT raid_players_received FROM stats_ingest_log LIMIT 1');
         raidlands_db_fetch_one('SELECT id FROM bot_wipe_stats LIMIT 1');
         return true;
@@ -416,7 +417,12 @@ function raidlands_stats_ingest_snapshot(array $payload, string $server_id, stri
                 'tcs_destroyed_baseline' => raidlands_stats_bigint($player['tcs_destroyed_baseline'] ?? 0),
             ];
 
-            raidlands_stats_upsert_player_wipe($pdo, $wipe_id, $player_id, $display_name, $raw, $is_first_season);
+            $leaderboard = raidlands_stats_authoritative_leaderboard($player['leaderboard'] ?? null);
+
+            raidlands_stats_upsert_player_wipe($pdo, $wipe_id, $player_id, $display_name, $raw, $is_first_season, $leaderboard);
+            if ($leaderboard !== null) {
+                raidlands_stats_upsert_leaderboard_details($pdo, $wipe_id, $player_id, $leaderboard);
+            }
             raidlands_podium_ingest_observation(
                 $pdo,
                 $player_id,
@@ -605,7 +611,56 @@ function raidlands_stats_reward_points_baseline(int $raw_reward_points, int $bas
     return min(max(0, $raw_reward_points), max(0, $baseline_reward_points));
 }
 
-function raidlands_stats_upsert_player_wipe(PDO $pdo, int $wipe_id, int $player_id, string $display_name, array $raw, bool $is_first_season): void
+function raidlands_stats_authoritative_leaderboard($value): ?array
+{
+    if (!is_array($value)
+        || strtolower(trim((string) ($value['source'] ?? ''))) !== 'raidlandsleaderboards'
+        || strtolower(trim((string) ($value['scope'] ?? ''))) !== 'wipe') {
+        return null;
+    }
+
+    $fields = [
+        'kills', 'deaths', 'total_deaths', 'playtime_seconds', 'connections', 'npc_kills', 'animal_kills',
+        'suicides', 'headshots', 'melee_kills', 'ranged_kills', 'explosive_kills', 'player_damage',
+        'npc_damage', 'items_crafted', 'structures_built', 'entities_destroyed', 'explosives_thrown',
+        'shots_fired', 'rockets_fired', 'healing_used', 'distance_travelled', 'longest_kill_metres',
+        'current_kill_streak', 'best_kill_streak',
+    ];
+    $normalized = [];
+
+    foreach ($fields as $field) {
+        $normalized[$field] = raidlands_stats_bigint($value[$field] ?? 0);
+    }
+
+    return $normalized;
+}
+
+function raidlands_stats_upsert_leaderboard_details(PDO $pdo, int $wipe_id, int $player_id, array $stats): void
+{
+    $fields = [
+        'total_deaths', 'connections', 'animal_kills', 'suicides', 'headshots', 'melee_kills',
+        'ranged_kills', 'explosive_kills', 'player_damage', 'npc_damage', 'items_crafted',
+        'structures_built', 'entities_destroyed', 'explosives_thrown', 'shots_fired', 'rockets_fired',
+        'healing_used', 'distance_travelled', 'longest_kill_metres', 'current_kill_streak', 'best_kill_streak',
+    ];
+    $columns = implode(', ', $fields);
+    $values = implode(', ', array_map(static fn(string $field): string => ':' . $field, $fields));
+    $updates = implode(', ', array_map(static fn(string $field): string => $field . ' = VALUES(' . $field . ')', $fields));
+    $statement = $pdo->prepare(
+        "INSERT INTO player_leaderboard_stats (wipe_id, player_id, $columns)
+         VALUES (:wipe_id, :player_id, $values)
+         ON DUPLICATE KEY UPDATE $updates, updated_at = NOW()"
+    );
+    $params = ['wipe_id' => $wipe_id, 'player_id' => $player_id];
+
+    foreach ($fields as $field) {
+        $params[$field] = raidlands_stats_bigint($stats[$field] ?? 0);
+    }
+
+    $statement->execute($params);
+}
+
+function raidlands_stats_upsert_player_wipe(PDO $pdo, int $wipe_id, int $player_id, string $display_name, array $raw, bool $is_first_season, ?array $authoritative = null): void
 {
     $existing = raidlands_db_fetch_one(
         'SELECT * FROM player_wipe_stats WHERE wipe_id = :wipe_id AND player_id = :player_id',
@@ -670,6 +725,14 @@ function raidlands_stats_upsert_player_wipe(PDO $pdo, int $wipe_id, int $player_
     $reward_points = max(0, $raw['reward_points'] - $baseline['reward_points']);
     $npc_kills = max(0, $raw['npc_kills'] - $baseline['npc_kills']);
     $deaths_by_npc = max(0, $raw['deaths_by_npc'] - $baseline['deaths_by_npc']);
+
+    if ($authoritative !== null) {
+        $kills = raidlands_stats_int($authoritative['kills'] ?? 0);
+        $deaths = raidlands_stats_int($authoritative['deaths'] ?? 0);
+        $playtime = raidlands_stats_int($authoritative['playtime_seconds'] ?? 0);
+        $npc_kills = raidlands_stats_int($authoritative['npc_kills'] ?? 0);
+    }
+
     $kdr = $deaths === 0 ? (float) $kills : round($kills / $deaths, 3);
 
     $statement = $pdo->prepare(
@@ -1016,7 +1079,7 @@ function raidlands_stats_ingest_warning(?array $latest_ingest = null): string
 
 function raidlands_stats_metric(string $metric): string
 {
-    return in_array($metric, ['kills', 'kdr', 'playtime', 'rp', 'npc_kills', 'deaths_by_npc'], true) ? $metric : 'kills';
+    return in_array($metric, ['kills', 'kdr', 'playtime', 'rp', 'npc_kills', 'deaths_by_npc', 'headshots', 'streak', 'damage', 'distance'], true) ? $metric : 'kills';
 }
 
 function raidlands_stats_raid_metric(string $metric): string
@@ -1078,6 +1141,10 @@ function raidlands_stats_leaderboard_order(string $metric): string
         'rp' => 'reward_points DESC, kills DESC',
         'npc_kills' => 'npc_kills DESC, deaths_by_npc ASC, kills DESC',
         'deaths_by_npc' => 'deaths_by_npc DESC, npc_kills DESC, kills DESC',
+        'headshots' => 'headshot_rate DESC, headshots DESC, kills DESC',
+        'streak' => 'best_kill_streak DESC, kills DESC, deaths ASC',
+        'damage' => 'player_damage DESC, kills DESC, deaths ASC',
+        'distance' => 'distance_travelled DESC, playtime_seconds DESC, kills DESC',
         default => 'kills DESC, deaths ASC, kdr DESC',
     };
 }
@@ -1170,9 +1237,18 @@ function raidlands_stats_leaderboard_result(
                 s.kdr,
                 s.playtime_seconds,
                 s.reward_points,
+                COALESCE(d.headshots, 0) AS headshots,
+                CASE WHEN s.kills = 0 THEN 0 ELSE ROUND(COALESCE(d.headshots, 0) * 100 / s.kills, 2) END AS headshot_rate,
+                COALESCE(d.best_kill_streak, 0) AS best_kill_streak,
+                COALESCE(d.player_damage, 0) AS player_damage,
+                COALESCE(d.distance_travelled, 0) AS distance_travelled,
+                COALESCE(d.longest_kill_metres, 0) AS longest_kill_metres,
+                COALESCE(d.suicides, 0) AS suicides,
+                COALESCE(d.animal_kills, 0) AS animal_kills,
                 s.last_seen_at
              FROM player_wipe_stats s
              INNER JOIN players p ON p.id = s.player_id
+             LEFT JOIN player_leaderboard_stats d ON d.wipe_id = s.wipe_id AND d.player_id = s.player_id
              WHERE s.wipe_id = :wipe_id
                AND s.playtime_seconds > 0
                $search_sql
@@ -1210,9 +1286,18 @@ function raidlands_stats_leaderboard_result(
                 CASE WHEN SUM(s.deaths) = 0 THEN SUM(s.kills) ELSE ROUND(SUM(s.kills) / SUM(s.deaths), 3) END AS kdr,
                 SUM(s.playtime_seconds) AS playtime_seconds,
                 SUM(s.reward_points) AS reward_points,
+                SUM(COALESCE(d.headshots, 0)) AS headshots,
+                CASE WHEN SUM(s.kills) = 0 THEN 0 ELSE ROUND(SUM(COALESCE(d.headshots, 0)) * 100 / SUM(s.kills), 2) END AS headshot_rate,
+                MAX(COALESCE(d.best_kill_streak, 0)) AS best_kill_streak,
+                SUM(COALESCE(d.player_damage, 0)) AS player_damage,
+                SUM(COALESCE(d.distance_travelled, 0)) AS distance_travelled,
+                MAX(COALESCE(d.longest_kill_metres, 0)) AS longest_kill_metres,
+                SUM(COALESCE(d.suicides, 0)) AS suicides,
+                SUM(COALESCE(d.animal_kills, 0)) AS animal_kills,
                 MAX(s.last_seen_at) AS last_seen_at
              FROM player_wipe_stats s
              INNER JOIN players p ON p.id = s.player_id
+             LEFT JOIN player_leaderboard_stats d ON d.wipe_id = s.wipe_id AND d.player_id = s.player_id
              $where_sql
              GROUP BY p.id, p.steam_id64, p.display_name
              ORDER BY $order
@@ -1232,6 +1317,14 @@ function raidlands_stats_leaderboard_result(
         $row['kdr'] = (float) $row['kdr'];
         $row['playtime_seconds'] = (int) $row['playtime_seconds'];
         $row['reward_points'] = (int) $row['reward_points'];
+        $row['headshots'] = (int) $row['headshots'];
+        $row['headshot_rate'] = (float) $row['headshot_rate'];
+        $row['best_kill_streak'] = (int) $row['best_kill_streak'];
+        $row['player_damage'] = (int) $row['player_damage'];
+        $row['distance_travelled'] = (int) $row['distance_travelled'];
+        $row['longest_kill_metres'] = (int) $row['longest_kill_metres'];
+        $row['suicides'] = (int) $row['suicides'];
+        $row['animal_kills'] = (int) $row['animal_kills'];
     }
     unset($row);
 

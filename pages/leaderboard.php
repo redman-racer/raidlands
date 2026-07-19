@@ -101,6 +101,10 @@ $leaderboard_metrics = [
     'rp' => 'RP',
     'npc_kills' => 'NPC Kills',
     'deaths_by_npc' => 'Killed by NPCs',
+    'headshots' => 'Headshot %',
+    'streak' => 'Best Streak',
+    'damage' => 'PvP Damage',
+    'distance' => 'Distance',
 ];
 $leaderboard_bot_metrics = [
     'kdr' => 'K/D',
@@ -223,11 +227,18 @@ function leaderboard_podium_value(array $row, string $board, string $metric): st
         return raidlands_stats_format_duration((int) ($row['playtime_seconds'] ?? 0));
     }
 
+    if ($metric === 'headshots') {
+        return number_format((float) ($row['headshot_rate'] ?? 0), 1) . '%';
+    }
+
     $field = match ($metric) {
         'rp' => 'reward_points',
         'npc_kills' => 'npc_kills',
         'deaths_by_npc' => 'deaths_by_npc',
         'deaths' => 'deaths',
+        'streak' => 'best_kill_streak',
+        'damage' => 'player_damage',
+        'distance' => 'distance_travelled',
         'raid_damage' => 'raid_damage',
         'rockets_used' => 'rockets_used',
         'c4_used' => 'c4_used',
@@ -252,6 +263,7 @@ function leaderboard_podium_markup(array $leaders, string $board, string $metric
     $metric_labels = [
         'kills' => 'kills', 'kdr' => 'K/D', 'playtime' => 'played', 'rp' => 'RP',
         'npc_kills' => 'NPC kills', 'deaths_by_npc' => 'NPC deaths', 'deaths' => 'deaths',
+        'headshots' => 'headshots', 'streak' => 'kill streak', 'damage' => 'PvP damage', 'distance' => 'metres',
         'raid_damage' => 'damage', 'rockets_used' => 'rockets', 'c4_used' => 'C4',
         'satchels_used' => 'satchels', 'explosive_ammo_used' => 'explosive rounds', 'tcs_destroyed' => 'TCs broken',
         'total-won' => 'RP won',
@@ -287,6 +299,10 @@ function leaderboard_podium_markup(array $leaders, string $board, string $metric
         $metric === 'deaths_by_npc' => 'FALLEN TO NPCS',
         $metric === 'playtime' => 'MOST PLAYTIME',
         $metric === 'deaths' => 'MOST DEATHS',
+        $metric === 'headshots' => 'BEST HEADSHOT RATE',
+        $metric === 'streak' => 'BEST KILL STREAK',
+        $metric === 'damage' => 'MOST PVP DAMAGE',
+        $metric === 'distance' => 'FARTHEST TRAVELLED',
         $metric === 'kdr' => 'BEST K/D',
         default => 'MOST KILLS',
     };
@@ -477,6 +493,8 @@ function leaderboard_podium_markup(array $leaders, string $board, string $metric
                   <th>NPC Kills</th>
                   <th>Killed by NPCs</th>
                   <th>K/D</th>
+                  <th>HS%</th>
+                  <th>Best Streak</th>
                   <th>Playtime</th>
                   <th>RP</th>
                 </tr>
@@ -513,6 +531,8 @@ function leaderboard_podium_markup(array $leaders, string $board, string $metric
                     <td><?= e(raidlands_stats_format_number($row['npc_kills'])) ?></td>
                     <td><?= e(raidlands_stats_format_number($row['deaths_by_npc'])) ?></td>
                     <td><?= e(raidlands_stats_format_kdr($row['kdr'])) ?></td>
+                    <td><?= e(number_format((float) $row['headshot_rate'], 1)) ?>%</td>
+                    <td><?= e(raidlands_stats_format_number($row['best_kill_streak'])) ?></td>
                     <td><?= e(raidlands_stats_format_duration($row['playtime_seconds'])) ?></td>
                     <td><?= e(raidlands_stats_format_number($row['reward_points'])) ?></td>
                   </tr>

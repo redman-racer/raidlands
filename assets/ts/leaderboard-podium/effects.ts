@@ -1,6 +1,6 @@
 import {
-  DataTexture, DepthTexture, EquirectangularReflectionMapping, LinearFilter, LinearSRGBColorSpace, PMREMGenerator, Texture, UnsignedIntType,
-  Vector2, WebGLRenderer, WebGLRenderTarget, type PerspectiveCamera, type Scene,
+  DataTexture, DepthTexture, EquirectangularReflectionMapping, LinearFilter, LinearSRGBColorSpace, Mesh, PlaneGeometry, PMREMGenerator, Texture, UnsignedIntType,
+  Vector2, WebGLRenderer, WebGLRenderTarget, type Material, type PerspectiveCamera, type Scene,
 } from "three";
 import { RGBELoader } from "three/addons/loaders/RGBELoader.js";
 import { EffectComposer } from "three/addons/postprocessing/EffectComposer.js";
@@ -106,7 +106,9 @@ export type PodiumEffectsPipeline = {
   bloomPass: UnrealBloomPass;
 };
 
-export function buildPodiumEnvironment(renderer: WebGLRenderer, buffer: ArrayBuffer): PodiumEnvironment {
+export type PodiumEffectsWarmup = { objects: Mesh[]; dispose: () => void };
+
+export function parsePodiumEnvironment(buffer: ArrayBuffer): Texture {
   const data = new RGBELoader().parse(buffer);
   const source = new DataTexture(data.data as unknown as BufferSource, data.width, data.height);
   source.type = data.type;
@@ -117,11 +119,20 @@ export function buildPodiumEnvironment(renderer: WebGLRenderer, buffer: ArrayBuf
   source.flipY = true;
   source.needsUpdate = true;
   source.mapping = EquirectangularReflectionMapping;
-  const generator = new PMREMGenerator(renderer);
+  return source;
+}
+
+export function createPodiumEnvironmentGenerator(renderer: WebGLRenderer): PMREMGenerator {
+  return new PMREMGenerator(renderer);
+}
+
+export function compilePodiumEnvironmentShader(generator: PMREMGenerator): void {
   generator.compileEquirectangularShader();
-  const target = generator.fromEquirectangular(source);
-  generator.dispose();
-  return { source, target };
+}
+
+export function renderPodiumEnvironment(generator: PMREMGenerator, source: Texture): WebGLRenderTarget {
+  try { return generator.fromEquirectangular(source); }
+  finally { generator.dispose(); }
 }
 
 export function createPodiumEffects(input: {
@@ -165,4 +176,32 @@ export function createPodiumEffects(input: {
   bloomPass.enabled = false;
   composer.addPass(bloomPass);
   return { composer, volumetricFogPass, ssaoPass, bloomPass };
+}
+
+export function podiumEffectsRenderTargets(pipeline: PodiumEffectsPipeline): WebGLRenderTarget[] {
+  return [
+    pipeline.composer.renderTarget1,
+    pipeline.composer.renderTarget2,
+    pipeline.bloomPass.renderTargetBright,
+    ...pipeline.bloomPass.renderTargetsHorizontal,
+    ...pipeline.bloomPass.renderTargetsVertical,
+    ...(pipeline.ssaoPass ? [pipeline.ssaoPass.normalRenderTarget, pipeline.ssaoPass.ssaoRenderTarget, pipeline.ssaoPass.blurRenderTarget] : []),
+  ];
+}
+
+export function createPodiumEffectsWarmup(pipeline: PodiumEffectsPipeline): PodiumEffectsWarmup {
+  const materials: Material[] = [
+    ...(pipeline.volumetricFogPass ? [pipeline.volumetricFogPass.material] : []),
+    pipeline.bloomPass.materialHighPassFilter,
+    ...pipeline.bloomPass.separableBlurMaterials,
+    pipeline.bloomPass.compositeMaterial,
+    pipeline.bloomPass.blendMaterial,
+    pipeline.bloomPass.basic,
+    ...(pipeline.ssaoPass ? [
+      pipeline.ssaoPass.ssaoMaterial, pipeline.ssaoPass.normalMaterial, pipeline.ssaoPass.blurMaterial,
+      pipeline.ssaoPass.depthRenderMaterial, pipeline.ssaoPass.copyMaterial,
+    ] : []),
+  ];
+  const geometry = new PlaneGeometry(2, 2);
+  return { objects: [...new Set(materials)].map((material) => new Mesh(geometry, material)), dispose: () => geometry.dispose() };
 }
