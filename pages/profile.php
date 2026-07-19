@@ -142,6 +142,7 @@ $profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_
       <?php else : ?>
         <div class="podium-profile-grid" data-podium-profile data-pose-api="<?= e(route_url('api/profile/podium-poses.php')) ?>" data-podium-admin="<?= $profile_is_podium_admin ? 'true' : 'false' ?>">
           <section class="leaderboard-podium podium-profile-preview" data-leaderboard-podium data-podium-layout="single" data-board="players" data-metric="kills"
+            data-pose-editor="<?= $profile_is_podium_admin ? 'true' : 'false' ?>" data-pose-bones="<?= e(implode(',', (array) ($profile_podium['pose_bones'] ?? []))) ?>"
             data-model-base="<?= e(asset_url('media/models/leaderboard/')) ?>" data-decoder-path="<?= e(asset_url('media/models/draco/')) ?>"
             data-ground-albedo-src="<?= e(asset_url('media/textures/leaderboard-junkyard-dirt-albedo.webp')) ?>"
             data-ground-normal-src="<?= e(asset_url('media/textures/leaderboard-junkyard-dirt-normal.webp')) ?>"
@@ -233,7 +234,7 @@ $profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_
                   <label><span>New pose name</span><input type="text" maxlength="80" placeholder="Victory stance" data-pose-name></label>
                   <button class="btn btn-primary" type="button" data-pose-save>Save as Available Pose</button>
                 </div>
-                <p class="podium-pose-status" data-pose-status aria-live="polite">Adjust a bone to preview it on every mannequin layer.</p>
+                <p class="podium-pose-status" data-pose-status aria-live="polite">Grab a joint in the 3D view. Left-drag bends it; right-drag rolls it. The sliders remain available for precise edits.</p>
               </section>
             <?php endif; ?>
 

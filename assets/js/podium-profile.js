@@ -69,6 +69,10 @@
     return { key: "preview", label: "Unsaved preview", bones: workingBones };
   }
 
+  function previewBones() {
+    host.dispatchEvent(new CustomEvent("raidlands:podium-pose-change", { bubbles: true, detail: { bones: workingBones } }));
+  }
+
   function refreshBoneControls() {
     if (!editor) return;
     var bone = editor.querySelector("[data-pose-bone]").value;
@@ -98,11 +102,11 @@
         workingBones[bone][axis] = Number(input.value) * Math.PI / 180;
         var output = editor.querySelector('[data-pose-output="' + axis + '"]');
         if (output) output.textContent = input.value + "°";
-        update(editorPose());
+        previewBones();
       });
     });
     editor.querySelector("[data-pose-reset]").addEventListener("click", function () {
-      delete workingBones[boneSelect.value]; refreshBoneControls(); update(editorPose());
+      delete workingBones[boneSelect.value]; refreshBoneControls(); previewBones();
     });
     editor.querySelector("[data-pose-save]").addEventListener("click", async function () {
       var button = this; var name = editor.querySelector("[data-pose-name]").value.trim();
@@ -120,6 +124,18 @@
         cloneSelectedBones(); update();
       } catch (error) { status.textContent = error && error.message ? error.message : "The pose could not be saved."; }
       finally { button.disabled = false; }
+    });
+    host.addEventListener("raidlands:podium-bone-select", function (event) {
+      var bone = event.detail && event.detail.bone;
+      if (!bone || !boneSelect.querySelector('option[value="' + CSS.escape(bone) + '"]')) return;
+      boneSelect.value = bone; refreshBoneControls();
+      status.textContent = "Editing " + bone.replace(/_/g, " ") + ". Left-drag bends; right-drag rolls.";
+    });
+    host.addEventListener("raidlands:podium-bone-edit", function (event) {
+      var detail = event.detail || {}; var bone = detail.bone; var rotation = detail.rotation;
+      if (!bone || !rotation) return;
+      workingBones[bone] = { x: Number(rotation.x) || 0, y: Number(rotation.y) || 0, z: Number(rotation.z) || 0 };
+      boneSelect.value = bone; refreshBoneControls();
     });
   }
 })();

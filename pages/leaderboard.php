@@ -291,7 +291,7 @@ function leaderboard_podium_markup(array $leaders, string $board, string $metric
         default => 'MOST KILLS',
     };
 
-    return '<section class="leaderboard-podium" data-leaderboard-podium data-board="' . e($board) . '" data-metric="' . e($metric) . '"'
+    return '<section class="leaderboard-podium" data-leaderboard-podium data-podium-state="poster" data-board="' . e($board) . '" data-metric="' . e($metric) . '"'
         . ' data-model-base="' . e(asset_url('media/models/leaderboard/')) . '"'
         . ' data-scene-manifest="' . e(asset_url('data/leaderboard-scene-manifest.json')) . '"'
         . ' data-scene-model-base="' . e(asset_url('media/models/leaderboard-scene/')) . '"'
@@ -309,10 +309,13 @@ function leaderboard_podium_markup(array $leaders, string $board, string $metric
         . '<div class="leaderboard-podium-heading"><span>Current category</span><strong data-podium-category>' . e($theme) . '</strong></div>'
         . '<div class="leaderboard-podium-drag" aria-hidden="true"><span>◌</span> Drag to rotate</div>'
         . '<div class="leaderboard-podium-stage" data-podium-stage aria-hidden="true">'
-        . '<img class="leaderboard-podium-poster" src="' . e(asset_url('media/leaderboard-podium-poster.webp')) . '" alt="" decoding="async">'
+        . '<img class="leaderboard-podium-poster" src="' . e(asset_url('media/leaderboard-podium-poster.webp')) . '" alt="" decoding="async" fetchpriority="high">'
         . '</div>'
         . '<div class="leaderboard-podium-cards" data-podium-cards>' . $cards . $empty . '</div>'
-        . '<p class="leaderboard-podium-status" data-podium-status aria-live="polite">Loading 3D podium scene.</p>'
+        . '<div class="leaderboard-podium-loader" data-podium-loader role="status" aria-live="polite">'
+        . '<span class="leaderboard-podium-progress" aria-hidden="true"><i></i></span>'
+        . '<span class="leaderboard-podium-status" data-podium-status>3D view will load when it is in view.</span>'
+        . '</div>'
         . '<script type="application/json" data-podium-payload>' . ($payload ?: '{"leaders":[]}') . '</script>'
         . '</section>';
 }
@@ -804,5 +807,5 @@ function leaderboard_podium_markup(array $leaders, string $board, string $metric
 </section>
 
 <?php if ($leaderboard_ready) : ?>
-  <script type="module" src="<?= e(asset_url('build/airstrike-animation-editor/leaderboard-podium.js')) ?>"></script>
+  <script type="module" src="<?= e(asset_url('build/airstrike-animation-editor/leaderboard-podium-loader.js')) ?>"></script>
 <?php endif; ?>

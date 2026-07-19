@@ -2,9 +2,9 @@ import {
   ACESFilmicToneMapping, AdditiveBlending, AmbientLight, Box3, BoxGeometry, BufferAttribute, BufferGeometry,
   CanvasTexture, ClampToEdgeWrapping, Color, ConeGeometry, CylinderGeometry, DepthTexture, DirectionalLight, DoubleSide, FogExp2,
   EquirectangularReflectionMapping, Float32BufferAttribute, Group, HemisphereLight, IcosahedronGeometry, InstancedMesh,
-  LinearFilter, MathUtils, Mesh, MeshBasicMaterial, MeshStandardMaterial, MirroredRepeatWrapping, Object3D,
+  LineBasicMaterial, LineSegments, LinearFilter, MathUtils, Mesh, MeshBasicMaterial, MeshStandardMaterial, MirroredRepeatWrapping, Object3D,
   PCFSoftShadowMap, PerspectiveCamera, PlaneGeometry, PointLight,
-  PMREMGenerator, Points, PointsMaterial, RectAreaLight, Scene, SkinnedMesh, SpotLight,
+  PMREMGenerator, Points, PointsMaterial, Raycaster, RectAreaLight, Scene, SkinnedMesh, SphereGeometry, SpotLight,
   SRGBColorSpace, Texture, TextureLoader, UnsignedIntType, Vector2, Vector3, WebGLRenderer, WebGLRenderTarget,
 } from "three";
 import { DRACOLoader } from "three/addons/loaders/DRACOLoader.js";
@@ -41,6 +41,8 @@ import {
 } from "./scene-policy";
 
 type Payload = { leaders?: Leader[]; metric?: string; board?: string };
+type PoseRotation = { x?: number; y?: number; z?: number };
+type PoseBones = Record<string, PoseRotation>;
 type CameraRecord = Record<string, unknown>;
 type GroundConfig = {
   readonly width: number;
@@ -67,6 +69,16 @@ const SCENE_MODEL_FALLBACKS: Record<string, string> = {
 
 function supportsWebGL2(): boolean {
   try { return Boolean(document.createElement("canvas").getContext("webgl2")); } catch { return false; }
+}
+
+function waitForBrowserIdle(timeout = 1000): Promise<void> {
+  return new Promise((resolve) => {
+    const idleWindow = window as Window & typeof globalThis & {
+      requestIdleCallback?: (callback: IdleRequestCallback, options?: IdleRequestOptions) => number;
+    };
+    if (idleWindow.requestIdleCallback) idleWindow.requestIdleCallback(() => window.setTimeout(resolve, 24), { timeout });
+    else window.setTimeout(resolve, 32);
+  });
 }
 
 function parsePayload(host: HTMLElement): Payload {
@@ -107,7 +119,7 @@ function renderCards(host: HTMLElement, leaders: Leader[], board: string, metric
   });
 }
 
-function poseWearable(root: Object3D, rank: number, bones: Record<string, { x?: number; y?: number; z?: number }> = {}) {
+function poseWearable(root: Object3D, rank: number, bones: PoseBones = {}) {
   const lean = [0, -0.025, 0.025][rank] || 0;
   root.traverse((node) => {
     const name = node.name.toLowerCase();
@@ -117,6 +129,7 @@ function poseWearable(root: Object3D, rank: number, bones: Record<string, { x?: 
     if (name === "l_forearm") { node.rotation.y -= 0.3; node.rotation.z += 0.12; }
     if (name === "r_forearm") { node.rotation.y += 0.3; node.rotation.z -= 0.12; }
     if (name === "head") node.rotation.y += [0, 0.06, -0.06][rank] || 0;
+    node.userData.podiumBaseRotation = { x: node.rotation.x, y: node.rotation.y, z: node.rotation.z };
     const custom = bones[name];
     if (custom) {
       node.rotation.x += Number(custom.x) || 0;
@@ -362,6 +375,7 @@ class PodiumScene {
   private baseRoot = new Group();
   private pedestalRoot = new Group();
   private characterRoot = new Group();
+  private poseEditorRoot = new Group();
   private signageRoot = new Group();
   private effectsRoot = new Group();
   private loader: GLTFLoader;
@@ -378,6 +392,8 @@ class PodiumScene {
   private fogSampleFrames = 0;
   private fogReadyAt = 0;
   private modelCache = new Map<string, Promise<Object3D>>();
+  private arenaEnhancement?: () => Promise<void>;
+  private arenaEnhancementStarted = false;
   private observer: ResizeObserver;
   private frame = 0;
   private disposed = false;
@@ -403,9 +419,23 @@ class PodiumScene {
   private dragPointer = -1;
   private dragX = 0;
   private dragY = 0;
+  private poseBones: PoseBones = {};
+  private editableBoneNames = new Set<string>();
+  private editableBoneNodes = new Map<string, Object3D[]>();
+  private primaryBoneNodes = new Map<string, Object3D>();
+  private poseHandles = new Map<string, Mesh>();
+  private poseHandleTargets = new Map<string, Object3D>();
+  private poseLine?: LineSegments;
+  private poseLinePairs: Array<[Object3D, Object3D]> = [];
+  private poseRaycaster = new Raycaster();
+  private posePointer = new Vector2();
+  private activePoseBone = "";
+  private activePoseButton = -1;
 
   constructor(private host: HTMLElement) {
     const stage = host.querySelector<HTMLElement>("[data-podium-stage]"); if (!stage) throw new Error("missing-stage");
+    host.dataset.podiumState = "initializing";
+    this.status("Starting the 3D renderer…");
     const capture = new URLSearchParams(location.search).has("podium-capture"); this.capture = capture;
     if (capture) {
       host.dataset.podiumCapture = "true";
@@ -417,12 +447,14 @@ class PodiumScene {
     this.renderer.shadowMap.enabled = true; this.renderer.shadowMap.type = PCFSoftShadowMap;
     this.renderer.domElement.dataset.podiumCanvas = ""; this.renderer.domElement.style.touchAction = "none"; stage.append(this.renderer.domElement);
     this.singleLayout = host.dataset.podiumLayout === "single";
+    this.editableBoneNames = new Set(String(host.dataset.poseBones || "").split(",").map((name) => name.trim().toLowerCase()).filter(Boolean));
     const draco = new DRACOLoader(); draco.setDecoderPath(host.dataset.decoderPath || "");
     this.loader = new GLTFLoader(); this.loader.setDRACOLoader(draco); this.loader.setMeshoptDecoder(MeshoptDecoder);
     this.backdropRoot.name = "GENERATED_BACKDROP_PANELS"; this.backdropRoot.position.set(0, 2.8, -12.5);
     this.scene.add(this.camera);
     this.worldRoot.name = "SCENE_ROOT";
-    this.worldRoot.add(this.backdropRoot, this.baseRoot, this.pedestalRoot, this.characterRoot, this.signageRoot, this.effectsRoot);
+    this.poseEditorRoot.name = "PROFILE_POSE_EDITOR_RIG";
+    this.worldRoot.add(this.backdropRoot, this.baseRoot, this.pedestalRoot, this.characterRoot, this.signageRoot, this.effectsRoot, this.poseEditorRoot);
     this.scene.add(this.worldRoot);
     if (this.singleLayout) this.arenaReady = this.buildSingleStage();
     else this.arenaReady = this.buildArenaStage();
@@ -431,8 +463,10 @@ class PodiumScene {
     this.renderer.domElement.addEventListener("pointermove", this.onPointerMove);
     this.renderer.domElement.addEventListener("pointerup", this.onPointerUp);
     this.renderer.domElement.addEventListener("pointercancel", this.onPointerUp);
+    this.renderer.domElement.addEventListener("contextmenu", this.onContextMenu);
     document.addEventListener("visibilitychange", this.onVisibilityChange);
-    this.renderer.domElement.addEventListener("webglcontextlost", (event) => { event.preventDefault(); this.fail("3D unavailable. Showing the arena poster and leaderboard cards."); });
+    this.renderer.domElement.addEventListener("webglcontextlost", this.onContextLost);
+    this.renderer.domElement.addEventListener("webglcontextrestored", this.onContextRestored);
     this.animate();
   }
 
@@ -469,6 +503,7 @@ class PodiumScene {
   }
 
   private async buildArenaStage() {
+    this.host.dataset.podiumState = "scene"; this.status("Building the arena shell…");
     const response = await fetch(this.host.dataset.sceneManifest || "", { cache: "no-cache", headers: { Accept: "application/json" } });
     if (!response.ok) throw new Error(`scene manifest returned ${response.status}`);
     const manifest = await response.json() as ArenaManifest;
@@ -479,21 +514,64 @@ class PodiumScene {
     this.cameraBase.copy(ARENA_CAMERA.position); this.cameraTarget.copy(ARENA_CAMERA.target);
     this.renderer.toneMappingExposure = Math.pow(2, numeric(camera, "Exposure_EV", -.45) - .55);
     this.scene.background = new Color(0x0b0d0e); this.scene.fog = new FogExp2(0x171a1b, JUNKYARD_ATMOSPHERE.sceneFogDensity);
-    const fallbackOnly = new URLSearchParams(location.search).has("podium-fallback");
-    const hasEnvironment = fallbackOnly ? false : await this.buildArenaEnvironment().catch(() => false);
-    if (!hasEnvironment) { await this.buildBackdropPanels(); this.host.dataset.sceneEnvironment = "panels"; }
-    this.buildArenaPodiums(manifest); await this.buildSolidFloor(); this.buildArenaGantrySupports(); this.buildArenaLights(manifest); this.buildAtmosphere();
-    this.setupComposer();
+    await this.buildBackdropPanels(); this.host.dataset.sceneEnvironment = "panels";
+    this.buildArenaPodiums(manifest); this.buildInitialFloor(); this.buildArenaGantrySupports(); this.buildArenaLights(manifest); this.buildAtmosphere();
     this.resize();
     const placements = manifest.basePlacements
       .filter((placement) => this.useNativePlacement(placement))
       .filter((placement) => shouldRenderArenaPlacement(placement.id, this.mobile))
       .sort((left, right) => this.placementPriority(left) - this.placementPriority(right));
-    const loaded = await this.loadPlacementBatch(placements, this.baseRoot, 6);
+    this.arenaEnhancement = () => this.enhanceArena(placements);
+  }
+
+  private buildInitialFloor() {
+    const geometry = this.buildGroundGeometry(JUNKYARD_GROUND, junkyardGroundHeight, junkyardGroundSurfaceShade);
+    const material = new MeshStandardMaterial({ color: 0x3b3027, roughness: .94, metalness: 0, vertexColors: true });
+    const floor = new Mesh(geometry, material); floor.name = "ARENA_JUNKYARD_GROUND";
+    floor.rotation.x = -Math.PI / 2; floor.position.set(0, JUNKYARD_GROUND.baseY, JUNKYARD_GROUND.centerZ); floor.receiveShadow = true;
+    this.baseRoot.add(floor); this.buildGroundScatter(); this.host.dataset.sceneGround = "initial-material";
+  }
+
+  private async enhanceArena(placements: ArenaPlacement[]) {
+    if (this.arenaEnhancementStarted || this.disposed) return;
+    this.arenaEnhancementStarted = true; this.host.dataset.podiumDetail = "loading";
+    // Protect the first-interaction window, then yield between every expensive decode/build.
+    await new Promise<void>((resolve) => window.setTimeout(resolve, 3000));
+    await waitForBrowserIdle();
+    const floor = this.baseRoot.getObjectByName("ARENA_JUNKYARD_GROUND") as Mesh | undefined;
+    if (floor) {
+      try {
+        const { material, state } = await this.buildGroundMaterial(JUNKYARD_GROUND);
+        if (!this.disposed) { const previous = floor.material; floor.material = material; (Array.isArray(previous) ? previous : [previous]).forEach((item) => item.dispose()); this.host.dataset.sceneGround = state; }
+        else material.dispose();
+      } catch { /* The fast material remains usable. */ }
+    }
+    if (this.disposed) return;
+    await waitForBrowserIdle();
+    const priorityPlacements = placements.filter((placement) => placement.lodClass === "Hero" || placement.lodClass === "Primary");
+    // The poster-backed shell supplies distant detail; cap live GLBs to keep draw calls predictable.
+    const detailPlacements = placements.filter((placement) => placement.lodClass === "Secondary").slice(0, this.mobile ? 0 : 8);
+    let loaded = await this.loadPlacementBatch(priorityPlacements, this.baseRoot, 1, true);
+    if (!this.disposed) {
+      await waitForBrowserIdle();
+      loaded += await this.loadPlacementBatch(detailPlacements, this.baseRoot, 1, true);
+    }
+    if (this.disposed) return;
     this.host.dataset.scenePlacements = String(loaded);
-    const loadedIds = new Set(this.baseRoot.children.map((child) => child.name));
-    const missingCritical = placements.filter((placement) => placement.lodClass === "Hero" && !loadedIds.has(placement.id));
-    if (loaded < 1 || missingCritical.length) throw new Error("critical arena models unavailable");
+    await waitForBrowserIdle(2000);
+    const params = new URLSearchParams(location.search);
+    const useHdri = !params.has("podium-fallback") && (this.capture || params.has("podium-hdri"));
+    if (useHdri) {
+      const hasEnvironment = await this.buildArenaEnvironment().catch(() => false);
+      if (hasEnvironment) this.backdropRoot.visible = false;
+    }
+    await waitForBrowserIdle(2000);
+    if (this.capture || params.has("podium-effects")) {
+      try { this.setupComposer(); this.resize(); } catch { /* Direct rendering remains available. */ }
+    } else {
+      this.setFogQuality("fallback"); this.host.dataset.sceneEffects = "performance";
+    }
+    this.host.dataset.podiumDetail = "ready";
   }
 
   private async buildArenaEnvironment(): Promise<boolean> {
@@ -898,13 +976,14 @@ class PodiumScene {
     return classes[placement.lodClass] ?? 3;
   }
 
-  private async loadPlacementBatch(placements: ArenaPlacement[], parent: Group, concurrency: number): Promise<number> {
+  private async loadPlacementBatch(placements: ArenaPlacement[], parent: Group, concurrency: number, yieldBetween = false): Promise<number> {
     let cursor = 0; let loaded = 0;
     const worker = async () => {
       while (cursor < placements.length && !this.disposed) {
         const placement = placements[cursor++];
         try { const instance = await this.createPlacement(placement); parent.add(instance); loaded += 1; }
         catch { /* Individual dressing assets degrade without removing the podium. */ }
+        if (yieldBetween) await waitForBrowserIdle(500);
       }
     };
     await Promise.all(Array.from({ length: Math.min(concurrency, placements.length) }, () => worker())); return loaded;
@@ -987,32 +1066,45 @@ class PodiumScene {
   }
 
   async setPresentation(board: string, metric: string, leaders: Leader[]) {
-    const generation = ++this.generation; this.characterRoot.clear();
+    const generation = ++this.generation;
     this.targetYaw = 0; this.targetPitch = 0; this.currentIdleYaw = 0; this.lastCameraInteractionAt = performance.now();
     try { await this.arenaReady; }
     catch (error) { console.warn("Raidlands podium arena failed to initialize.", error); this.fail("Arena assets unavailable. Showing the poster and leaderboard cards."); return; }
     if (generation !== this.generation || this.disposed) return;
+    this.host.dataset.podiumState = "characters"; this.status("Loading the winning character…");
     const sceneLeaders = leaders.length ? leaders.slice(0, 3) : [{}, {}, {}];
+    if (!this.singleLayout) this.buildSignage(board, metric, leaders.slice(0, 3));
+    const winner = await this.buildCharacter(sceneLeaders[0], 0, generation);
+    if (generation !== this.generation || this.disposed) return;
+    if (!winner) { this.fail("Character assets unavailable. Showing the poster and leaderboard cards."); return; }
+    this.characterRoot.clear(); this.characterRoot.add(winner);
+    this.poseBones = { ...(sceneLeaders[0]?.appearance?.pose?.bones || {}) };
+    this.rebuildPoseEditorRig();
+    this.host.dataset.sceneCharacters = "1"; this.host.dataset.sceneThemeProps = "0";
+    this.host.dataset.podiumState = "ready";
+    this.status(leaders.length ? "Player arena ready." : "3D arena ready.");
+    void this.completePresentation(board, metric, leaders, sceneLeaders, generation);
+  }
+
+  private async completePresentation(board: string, metric: string, leaders: Leader[], sceneLeaders: Leader[], generation: number) {
+    const secondaryCharacters = await Promise.all(sceneLeaders.slice(1).map((leader, index) => this.buildCharacter(leader, index + 1, generation)));
+    if (generation !== this.generation || this.disposed) return;
+    secondaryCharacters.forEach((character) => { if (character) this.characterRoot.add(character); });
+    this.host.dataset.sceneCharacters = String(this.characterRoot.children.length);
     if (!this.singleLayout) {
       const signSurface = await this.loadSignSurface();
       if (generation !== this.generation || this.disposed) return;
       this.buildSignage(board, metric, leaders.slice(0, 3), signSurface);
+      this.host.dataset.podiumSignage = "ready";
     }
-    await Promise.all(sceneLeaders.map((leader, rank) => this.addCharacter(leader, rank, generation)));
-    if (generation === this.generation && !this.disposed) {
-      this.host.dataset.sceneCharacters = String(this.characterRoot.children.length);
-      this.host.dataset.sceneThemeProps = "0";
-      this.host.dataset.podiumState = "ready";
-      if (!this.singleLayout) this.host.dataset.podiumSignage = "ready";
-      this.status(leaders.length ? "Player arena ready." : "3D arena ready.");
-    }
+    if (this.arenaEnhancement) void this.arenaEnhancement().catch((error) => console.warn("Raidlands podium detail enhancement failed.", error));
   }
 
   private characterAnchor(rank: number): ArenaPlacement | undefined {
     const id = `CHAR_RANK_${rank + 1}`; return this.manifest?.characterAnchors.find((placement) => placement.id === id);
   }
 
-  private async addCharacter(leader: Leader, rank: number, generation: number) {
+  private async buildCharacter(leader: Leader, rank: number, generation: number): Promise<Group | undefined> {
     const keys = podiumWearables(leader, rank); const roots: Object3D[] = [];
     const poseBones = leader.appearance?.pose?.bones || {};
     await Promise.all(keys.map(async (key) => {
@@ -1030,7 +1122,7 @@ class PodiumScene {
       const anchor = this.characterAnchor(rank);
       if (anchor) try { roots.push(await this.loadInstance(joinedUrl(this.host.dataset.sceneModelBase || "", anchor.localPath))); } catch { /* Cards remain authoritative. */ }
     }
-    if (generation !== this.generation || this.disposed || !roots.length) return;
+    if (generation !== this.generation || this.disposed || !roots.length) return undefined;
     const visual = new Group(); roots.forEach((root) => visual.add(root));
     const targetHeight = this.characterAnchor(rank)?.targetExtent || 1.8; const box = staticBounds(visual); const size = box.getSize(new Vector3());
     visual.scale.setScalar(targetHeight / Math.max(size.y, .01)); const fitted = staticBounds(visual); const center = fitted.getCenter(new Vector3());
@@ -1043,7 +1135,7 @@ class PodiumScene {
     if (weaponKey) {
       try {
         const weapon = await this.loadInstance(joinedUrl(this.host.dataset.modelBase || "", LEADERBOARD_PODIUM_ASSETS[weaponKey]));
-        if (generation !== this.generation) return;
+        if (generation !== this.generation) return undefined;
         weapon.traverse((node) => { if ((node as Mesh).isMesh) (node as Mesh).castShadow = false; });
         const weaponSize = staticBounds(weapon).getSize(new Vector3()); const layout = podiumWeaponLayout(weaponKey, rank);
         weapon.scale.setScalar(layout.size / Math.max(weaponSize.x, weaponSize.y, weaponSize.z, .01));
@@ -1051,7 +1143,7 @@ class PodiumScene {
         const mount = new Group(); mount.name = "weapon-mount"; mount.add(weapon); mount.position.set(...layout.position); mount.rotation.set(...layout.rotation); wrapper.add(mount);
       } catch { /* The selected outfit remains visible if its weapon fails. */ }
     }
-    this.characterRoot.add(wrapper);
+    return wrapper;
   }
 
   private async loadInstance(url: string): Promise<Object3D> {
@@ -1075,6 +1167,73 @@ class PodiumScene {
       this.modelCache.set(url, promise);
     }
     return cloneSkinnedScene(await promise);
+  }
+
+  setPoseBones(bones: PoseBones) {
+    if (!this.singleLayout || this.disposed) return;
+    this.poseBones = JSON.parse(JSON.stringify(bones || {})) as PoseBones;
+    this.editableBoneNodes.forEach((nodes, name) => {
+      const custom = this.poseBones[name] || {};
+      nodes.forEach((node) => {
+        const base = node.userData.podiumBaseRotation as PoseRotation | undefined;
+        if (!base) return;
+        node.rotation.set(
+          Number(base.x) + (Number(custom.x) || 0),
+          Number(base.y) + (Number(custom.y) || 0),
+          Number(base.z) + (Number(custom.z) || 0),
+        );
+      });
+    });
+    this.characterRoot.updateMatrixWorld(true);
+    this.updatePoseEditorRig();
+  }
+
+  private rebuildPoseEditorRig() {
+    this.poseEditorRoot.traverse((node) => {
+      const mesh = node as Mesh; if (mesh.geometry) mesh.geometry.dispose();
+      const material = (mesh as Mesh).material; if (material) (Array.isArray(material) ? material : [material]).forEach((item) => item.dispose());
+    });
+    this.poseEditorRoot.clear(); this.editableBoneNodes.clear(); this.primaryBoneNodes.clear();
+    this.poseHandles.clear(); this.poseHandleTargets.clear(); this.poseLinePairs = []; this.poseLine = undefined;
+    if (this.host.dataset.poseEditor !== "true" || !this.characterRoot.children.length) return;
+    this.characterRoot.traverse((node) => {
+      const name = node.name.toLowerCase();
+      if (!this.editableBoneNames.has(name) || !node.userData.podiumBaseRotation) return;
+      const nodes = this.editableBoneNodes.get(name) || []; nodes.push(node); this.editableBoneNodes.set(name, nodes);
+      if (!this.primaryBoneNodes.has(name)) this.primaryBoneNodes.set(name, node);
+    });
+    this.primaryBoneNodes.forEach((node, name) => {
+      const child = node.children.find((candidate) => this.editableBoneNames.has(candidate.name.toLowerCase()));
+      const target = child || node; this.poseHandleTargets.set(name, target);
+      if (child) this.poseLinePairs.push([node, child]);
+      const sideColor = name.startsWith("l_") ? 0x65bfff : name.startsWith("r_") ? 0xff875f : 0x91f0a2;
+      const handle = new Mesh(new SphereGeometry(.045, 12, 8), new MeshBasicMaterial({ color: sideColor, depthTest: false, transparent: true, opacity: .92 }));
+      handle.name = `POSE_HANDLE_${name}`; handle.userData.poseBone = name; handle.renderOrder = 1000;
+      this.poseHandles.set(name, handle); this.poseEditorRoot.add(handle);
+    });
+    const positions = new Float32Array(Math.max(1, this.poseLinePairs.length) * 6);
+    const geometry = new BufferGeometry(); geometry.setAttribute("position", new BufferAttribute(positions, 3));
+    this.poseLine = new LineSegments(geometry, new LineBasicMaterial({ color: 0x91f0a2, depthTest: false, transparent: true, opacity: .72 }));
+    this.poseLine.name = "PROFILE_POSE_BONES"; this.poseLine.renderOrder = 999; this.poseEditorRoot.add(this.poseLine);
+    this.setPoseBones(this.poseBones);
+  }
+
+  private updatePoseEditorRig() {
+    if (!this.poseHandles.size) return;
+    const world = new Vector3();
+    this.poseHandles.forEach((handle, name) => {
+      const target = this.poseHandleTargets.get(name); if (!target) return;
+      target.getWorldPosition(world); this.worldRoot.worldToLocal(world); handle.position.copy(world);
+      const material = handle.material as MeshBasicMaterial;
+      material.opacity = this.activePoseBone === name ? 1 : .82; handle.scale.setScalar(this.activePoseBone === name ? 1.45 : 1);
+    });
+    const attribute = this.poseLine?.geometry.getAttribute("position") as BufferAttribute | undefined;
+    if (!attribute) return;
+    this.poseLinePairs.forEach(([start, end], index) => {
+      start.getWorldPosition(world); this.worldRoot.worldToLocal(world); attribute.setXYZ(index * 2, world.x, world.y, world.z);
+      end.getWorldPosition(world); this.worldRoot.worldToLocal(world); attribute.setXYZ(index * 2 + 1, world.x, world.y, world.z);
+    });
+    attribute.needsUpdate = true;
   }
 
   private clearSignage() {
@@ -1162,7 +1321,22 @@ class PodiumScene {
   }
 
   private onPointerDown = (event: PointerEvent) => {
-    if (this.singleLayout || this.disposed) return; this.dragPointer = event.pointerId; this.dragX = event.clientX; this.dragY = event.clientY;
+    if (this.disposed) return;
+    if (this.singleLayout) {
+      if (this.host.dataset.poseEditor !== "true" || (event.button !== 0 && event.button !== 2)) return;
+      if (this.activePoseBone && event.pointerId === this.dragPointer) { this.activePoseButton = event.button; return; }
+      const rect = this.renderer.domElement.getBoundingClientRect();
+      this.posePointer.set(((event.clientX - rect.left) / Math.max(1, rect.width)) * 2 - 1, -((event.clientY - rect.top) / Math.max(1, rect.height)) * 2 + 1);
+      this.poseRaycaster.setFromCamera(this.posePointer, this.camera);
+      const hit = this.poseRaycaster.intersectObjects([...this.poseHandles.values()], false)[0];
+      const bone = String(hit?.object.userData.poseBone || ""); if (!bone) return;
+      event.preventDefault(); this.activePoseBone = bone; this.activePoseButton = event.button;
+      this.dragPointer = event.pointerId; this.dragX = event.clientX; this.dragY = event.clientY;
+      this.renderer.domElement.setPointerCapture(event.pointerId); this.host.dataset.poseBoneDragging = "true";
+      this.host.dispatchEvent(new CustomEvent("raidlands:podium-bone-select", { detail: { bone } }));
+      this.updatePoseEditorRig(); return;
+    }
+    this.dragPointer = event.pointerId; this.dragX = event.clientX; this.dragY = event.clientY;
     const yawLimit = MathUtils.degToRad(this.mobile ? 60 : 75);
     this.currentYaw = MathUtils.clamp(this.currentYaw + this.currentIdleYaw, -yawLimit, yawLimit);
     this.targetYaw = MathUtils.clamp(this.targetYaw + this.currentIdleYaw, -yawLimit, yawLimit);
@@ -1174,6 +1348,19 @@ class PodiumScene {
   private onPointerMove = (event: PointerEvent) => {
     if (event.pointerId !== this.dragPointer) return;
     const deltaX = event.clientX - this.dragX; const deltaY = event.clientY - this.dragY; this.dragX = event.clientX; this.dragY = event.clientY;
+    if (this.singleLayout && this.activePoseBone) {
+      event.preventDefault(); const current = this.poseBones[this.activePoseBone] || { x: 0, y: 0, z: 0 };
+      const next = { x: Number(current.x) || 0, y: Number(current.y) || 0, z: Number(current.z) || 0 };
+      const rolling = this.activePoseButton === 2 || Boolean(event.buttons & 2);
+      if (rolling) next.z = MathUtils.clamp(next.z + deltaX * .012, -Math.PI, Math.PI);
+      else {
+        next.x = MathUtils.clamp(next.x + deltaY * .01, -Math.PI, Math.PI);
+        next.y = MathUtils.clamp(next.y + deltaX * .01, -Math.PI, Math.PI);
+      }
+      this.poseBones[this.activePoseBone] = next; this.setPoseBones(this.poseBones);
+      this.host.dispatchEvent(new CustomEvent("raidlands:podium-bone-edit", { detail: { bone: this.activePoseBone, rotation: next } }));
+      return;
+    }
     this.lastCameraInteractionAt = performance.now();
     const clamped = clampArenaRotation(this.targetYaw + deltaX * .004, this.targetPitch + deltaY * .003, this.mobile ? 60 : 75);
     this.targetYaw = clamped.yaw; this.targetPitch = clamped.pitch;
@@ -1181,8 +1368,28 @@ class PodiumScene {
 
   private onPointerUp = (event: PointerEvent) => {
     if (event.pointerId !== this.dragPointer) return; this.dragPointer = -1; this.host.dataset.podiumDragging = "false";
+    if (this.singleLayout && this.activePoseBone) {
+      if (event.buttons) { this.dragPointer = event.pointerId; this.activePoseButton = event.buttons & 2 ? 2 : 0; return; }
+      this.activePoseBone = ""; this.activePoseButton = -1; this.host.dataset.poseBoneDragging = "false";
+      if (this.renderer.domElement.hasPointerCapture(event.pointerId)) this.renderer.domElement.releasePointerCapture(event.pointerId);
+      this.updatePoseEditorRig(); return;
+    }
     this.lastCameraInteractionAt = performance.now();
     if (this.renderer.domElement.hasPointerCapture(event.pointerId)) this.renderer.domElement.releasePointerCapture(event.pointerId);
+  };
+
+  private onContextMenu = (event: MouseEvent) => {
+    if (this.singleLayout && this.host.dataset.poseEditor === "true") event.preventDefault();
+  };
+
+  private onContextLost = (event: Event) => {
+    event.preventDefault(); this.host.dataset.podiumState = "loading";
+    this.status("3D graphics paused. Restoring the preview…");
+  };
+
+  private onContextRestored = () => {
+    if (this.disposed) return; this.resize(); this.host.dataset.podiumState = "ready";
+    this.status("3D preview restored.");
   };
 
   private updateArenaCamera() {
@@ -1215,6 +1422,7 @@ class PodiumScene {
       this.characterRoot.children.forEach((character) => { character.position.y = character.userData.baseY + Math.sin(time * .72 + character.userData.phase) * .012; });
       const embers = this.effectsRoot.getObjectByName("ArenaEmbers"); if (embers) embers.position.y = Math.sin(time * .28) * .14;
     }
+    if (this.poseHandles.size) this.updatePoseEditorRig();
     if (this.composer) {
       if (this.volumetricFogPass) {
         this.volumetricFogPass.uniforms.tDepth.value = this.composer.readBuffer.depthTexture;
@@ -1232,6 +1440,9 @@ class PodiumScene {
     if (this.disposed) return; this.disposed = true; cancelAnimationFrame(this.frame); this.observer.disconnect();
     this.renderer.domElement.removeEventListener("pointerdown", this.onPointerDown); this.renderer.domElement.removeEventListener("pointermove", this.onPointerMove);
     this.renderer.domElement.removeEventListener("pointerup", this.onPointerUp); this.renderer.domElement.removeEventListener("pointercancel", this.onPointerUp);
+    this.renderer.domElement.removeEventListener("contextmenu", this.onContextMenu);
+    this.renderer.domElement.removeEventListener("webglcontextlost", this.onContextLost);
+    this.renderer.domElement.removeEventListener("webglcontextrestored", this.onContextRestored);
     document.removeEventListener("visibilitychange", this.onVisibilityChange);
     const geometries = new Set<BufferGeometry>(); const materials = new Set<MeshStandardMaterial | MeshBasicMaterial | PointsMaterial>();
     this.scene.traverse((node) => {
@@ -1252,7 +1463,14 @@ function activateHost(host: HTMLElement): PodiumScene | undefined {
     instances.set(host, sharedLeaderboardScene);
     return sharedLeaderboardScene;
   }
-  if (instances.has(host) || !supportsWebGL2()) { if (!supportsWebGL2()) host.dataset.podiumState = "fallback"; return instances.get(host); }
+  if (instances.has(host) || !supportsWebGL2()) {
+    if (!supportsWebGL2()) {
+      host.dataset.podiumState = "fallback";
+      const status = host.querySelector<HTMLElement>("[data-podium-status]");
+      if (status) status.textContent = "3D is unavailable on this device. Leaderboard results are still ready below.";
+    }
+    return instances.get(host);
+  }
   try {
     const scene = new PodiumScene(host); instances.set(host, scene);
     if (host.dataset.podiumLayout !== "single") sharedLeaderboardScene = scene;
@@ -1281,6 +1499,13 @@ document.addEventListener("raidlands:leaderboard-payload", (event) => {
 document.addEventListener("raidlands:podium-preview", (event) => {
   const custom = event as CustomEvent<Payload>; const host = custom.target instanceof HTMLElement ? custom.target.closest<HTMLElement>("[data-leaderboard-podium]") : null;
   if (host) present(host, custom.detail);
+});
+
+document.addEventListener("raidlands:podium-pose-change", (event) => {
+  const custom = event as CustomEvent<{ bones?: PoseBones }>;
+  const host = custom.target instanceof HTMLElement ? custom.target.closest<HTMLElement>("[data-leaderboard-podium]") : null;
+  const instance = host ? instances.get(host) : undefined;
+  if (instance) instance.setPoseBones(custom.detail?.bones || {});
 });
 
 window.addEventListener("pagehide", () => new Set(instances.values()).forEach((instance) => instance.dispose()), { once: true });
