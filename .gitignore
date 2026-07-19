@@ -6,6 +6,7 @@ node_modules/
 data/raidlands-secrets.php
 data/site-content.json
 data/*.log
+data/cache/
 dist/
 assets/media/maps/*
 !assets/media/maps/.gitkeep

@@ -47,6 +47,11 @@ describe("airstrike agent editor integration contract", () => {
     expect(markup).toContain('data-editor-tool-dialog="flight-path"');
     expect(markup).toContain('data-editor-tool-ai="ordnance"');
     expect(markup).toContain('data-agent-context-rail data-agent-scope="ordnance"');
+    expect(markup).toContain('data-editor-tool-column="flight-waypoints"');
+    expect(markup).toContain('data-editor-tool-column="flight-waypoint-settings"');
+    expect(markup).toContain('data-editor-tool-column="flight-route-behavior"');
+    expect(markup).toContain('data-editor-tool-column="ordnance-schedule"');
+    expect(markup).toContain('data-editor-tool-column="ordnance-editor"');
     expect(markup).toContain("data-agent-apply");
     expect(markup).toContain("data-agent-discard");
     expect(markup).toContain("data-agent-undo");
@@ -54,6 +59,8 @@ describe("airstrike agent editor integration contract", () => {
     expect(app).toContain("agentProposalId: this.agent.proposalIdForSave()");
     expect(app).toContain("commitWorkspaceProposal");
     expect(app).toContain("canonicalJson(this.toolSession.profile)");
+    expect(app).toContain("initializeToolColumns(dialog)");
+    expect(app).toContain("saveToolColumnState(dialog)");
     expect(viewport).toContain('route.name = "agent-proposal-route"');
     expect(viewport).toContain("getReleasePreviewEvents(profile, this.options.metadata)");
     expect(server).toContain("p.profile_key = :saved_profile_key");

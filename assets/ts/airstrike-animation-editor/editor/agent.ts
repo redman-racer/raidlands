@@ -248,12 +248,6 @@ export class AirstrikeAgentController {
   }
 
   private initializeContextRails(): void {
-    const labels: Record<string, string> = {
-      profile: "Profile AI",
-      "flight-path": "Flight Path AI",
-      ordnance: "Ordnance AI",
-      "view-validation": "Review AI",
-    };
     const suggestions: Record<string, string[]> = {
       profile: ["Improve the profile name and notes", "Check whether this vehicle fits the intent"],
       "flight-path": ["Smooth this route", "Check timing and terrain clearance"],
@@ -263,7 +257,6 @@ export class AirstrikeAgentController {
     for (const rail of this.contextRails) {
       const scope = String(rail.dataset.agentScope || "full") as AgentWorkspaceScope;
       rail.innerHTML = `
-        <div class="airstrike-context-agent-head"><strong>${labels[scope] || "Airstrike AI"}</strong><button type="button" data-agent-context-toggle aria-label="Collapse AI help">AI</button></div>
         <div class="airstrike-context-agent-mode"><button type="button" data-agent-context-mode="plan">Plan</button><button type="button" data-agent-context-mode="regular">Regular</button><button type="button" data-agent-context-full>Full conversation</button></div>
         <div class="airstrike-context-agent-suggestions"></div>
         <div class="airstrike-context-agent-status" data-agent-context-status></div>
@@ -282,7 +275,6 @@ export class AirstrikeAgentController {
         });
         suggestionHost.appendChild(button);
       }
-      query<HTMLButtonElement>(rail, "[data-agent-context-toggle]").addEventListener("click", () => rail.classList.toggle("is-collapsed"));
       rail.querySelectorAll<HTMLButtonElement>("[data-agent-context-mode]").forEach((button) => button.addEventListener("click", () => this.setMode(button.dataset.agentContextMode === "regular" ? "regular" : "plan")));
       query<HTMLButtonElement>(rail, "[data-agent-context-full]").addEventListener("click", () => void this.options.openFullAgent());
       query<HTMLFormElement>(rail, "[data-agent-context-form]").addEventListener("submit", (event) => {

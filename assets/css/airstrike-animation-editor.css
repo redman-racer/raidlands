@@ -1264,6 +1264,7 @@
 .airstrike-ordnance-tabs button,
 .airstrike-tool-footer button,
 .airstrike-tool-window-actions > button,
+.airstrike-tool-column-toggle,
 .airstrike-context-agent button {
   appearance: none;
   min-height: 30px;
@@ -1278,6 +1279,7 @@
 .airstrike-editor-tool-card button:hover,
 .airstrike-tool-footer button:hover,
 .airstrike-tool-window-actions > button:hover,
+.airstrike-tool-column-toggle:hover,
 .airstrike-context-agent button:hover { border-color: rgba(54, 197, 230, .65); background: rgba(19, 56, 64, .9); }
 .airstrike-editor-tool-card nav button { width: 30px; min-height: 24px; padding: 2px; }
 
@@ -1285,8 +1287,8 @@
   position: fixed;
   inset: auto;
   z-index: 120;
-  width: min(860px, calc(100vw - 48px));
-  max-width: none;
+  width: max-content;
+  max-width: calc(100vw - 48px);
   max-height: calc(100vh - 48px);
   margin: 0;
   padding: 0;
@@ -1297,7 +1299,6 @@
   color: #edf3f4;
   box-shadow: 0 28px 90px rgba(0, 0, 0, .72);
 }
-.airstrike-tool-dialog-wide { width: min(1180px, calc(100vw - 48px)); }
 .airstrike-tool-dialog[open] { display: block; }
 .airstrike-tool-dialog.is-dragging { user-select: none; }
 .airstrike-tool-dialog.is-minimized {
@@ -1325,26 +1326,140 @@
 .airstrike-tool-window-actions { display: flex; align-items: center; gap: 6px; }
 .airstrike-tool-window-actions > button { width: 34px; padding: 0; font-size: 20px; }
 .airstrike-tool-window-actions [data-editor-tool-minimize] { font-size: 17px; }
-.airstrike-tool-layout { min-height: 0; display: grid; grid-template-columns: minmax(0, 1fr) 330px; overflow: hidden; }
+.airstrike-tool-layout {
+  min-width: 0;
+  min-height: 0;
+  display: flex;
+  width: max-content;
+  max-width: 100%;
+  align-items: stretch;
+  overflow-x: auto;
+  overflow-y: hidden;
+}
 .airstrike-tool-content { min-width: 0; min-height: 0; display: grid; align-content: start; gap: 12px; padding: 14px; overflow: auto; }
 .airstrike-tool-content input,
 .airstrike-tool-content select,
 .airstrike-tool-content textarea { width: 100%; box-sizing: border-box; }
 .airstrike-tool-content textarea { resize: vertical; }
-.airstrike-workspace-section { display: grid; align-content: start; gap: 10px; padding: 12px; border: 1px solid rgba(129, 167, 174, .17); border-radius: 7px; background: rgba(7, 12, 14, .72); }
+.airstrike-tool-column {
+  --airstrike-tool-column-width: 330px;
+  width: var(--airstrike-tool-column-width);
+  min-width: var(--airstrike-tool-column-width);
+  max-width: var(--airstrike-tool-column-width);
+  flex: 0 0 var(--airstrike-tool-column-width);
+  box-sizing: border-box;
+  transition: width 160ms ease, min-width 160ms ease, max-width 160ms ease, flex-basis 160ms ease;
+}
+.airstrike-tool-content.airstrike-tool-column { --airstrike-tool-column-width: 520px; }
+.airstrike-tool-column-bar {
+  min-width: 0;
+  min-height: 32px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 9px;
+  padding-bottom: 8px;
+  border-bottom: 1px solid rgba(129, 167, 174, .17);
+}
+.airstrike-tool-column-bar strong {
+  min-width: 0;
+  overflow: hidden;
+  color: #c7d9dc;
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .08em;
+  text-overflow: ellipsis;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+.airstrike-tool-column-toggle {
+  width: 28px;
+  min-width: 28px;
+  min-height: 26px;
+  padding: 0;
+  color: #a9c3c8;
+  font-size: 17px;
+  line-height: 1;
+}
+.airstrike-tool-column.is-collapsed {
+  width: 44px;
+  min-width: 44px;
+  max-width: 44px;
+  flex-basis: 44px;
+  align-self: stretch;
+  padding: 0;
+  gap: 0;
+  overflow: hidden;
+}
+.airstrike-tool-column.is-collapsed > :not(.airstrike-tool-column-bar) { display: none !important; }
+.airstrike-tool-column.is-collapsed > .airstrike-tool-column-bar {
+  width: 44px;
+  height: 100%;
+  min-height: 230px;
+  box-sizing: border-box;
+  flex-direction: column;
+  justify-content: flex-start;
+  gap: 10px;
+  padding: 7px 6px;
+  border-bottom: 0;
+}
+.airstrike-tool-column.is-collapsed > .airstrike-tool-column-bar strong {
+  writing-mode: vertical-rl;
+  text-overflow: clip;
+}
+.airstrike-workspace-section { display: grid; align-content: start; gap: 10px; padding: 12px; border: 1px solid rgba(129, 167, 174, .17); border-radius: 0; background: rgba(7, 12, 14, .72); }
 .airstrike-workspace-section h3 { margin: 0; font-size: 13px; }
 
-.airstrike-flight-workspace { grid-template-columns: 270px minmax(0, 1fr); align-content: stretch; }
-.airstrike-workspace-collection { min-width: 0; display: grid; align-content: start; gap: 9px; padding: 10px; border: 1px solid rgba(129, 167, 174, .18); border-radius: 7px; background: rgba(3, 8, 9, .68); overflow: auto; }
+.airstrike-flight-workspace {
+  display: flex;
+  width: max-content;
+  max-width: none;
+  align-content: stretch;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+.airstrike-workspace-collection { min-width: 0; display: grid; align-content: start; gap: 9px; padding: 10px; border: 1px solid rgba(129, 167, 174, .18); border-radius: 0; background: rgba(3, 8, 9, .68); overflow: auto; }
 .airstrike-workspace-collection header { display: grid; gap: 7px; }
 .airstrike-workspace-collection header > div { display: flex; flex-wrap: wrap; gap: 5px; }
 .airstrike-workspace-editor { min-width: 0; display: grid; align-content: start; gap: 10px; overflow: auto; }
-.airstrike-flight-workspace > .airstrike-workspace-editor { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.airstrike-flight-workspace > .airstrike-workspace-collection { --airstrike-tool-column-width: 270px; }
+.airstrike-flight-workspace > .airstrike-workspace-editor {
+  display: flex;
+  width: max-content;
+  max-width: none;
+  gap: 0;
+  overflow: hidden;
+}
+.airstrike-flight-workspace .airstrike-workspace-section { --airstrike-tool-column-width: 285px; }
 
-.airstrike-ordnance-workspace { grid-template-rows: auto auto minmax(0, 1fr); overflow: hidden; }
-.airstrike-ordnance-overview { display: grid; grid-template-columns: minmax(220px, 320px) minmax(0, 1fr); align-items: end; gap: 12px; }
+.airstrike-ordnance-workspace {
+  display: flex;
+  width: max-content;
+  max-width: none;
+  align-items: stretch;
+  gap: 0;
+  padding: 0;
+  overflow: hidden;
+}
+.airstrike-ordnance-schedule-column {
+  --airstrike-tool-column-width: 365px;
+  min-height: 0;
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  align-content: start;
+  gap: 12px;
+  padding: 12px;
+  overflow: auto;
+}
+.airstrike-ordnance-editor-column {
+  --airstrike-tool-column-width: 450px;
+  gap: 10px;
+  padding: 12px;
+  border-left: 1px solid rgba(129, 167, 174, .17);
+}
+.airstrike-ordnance-overview { display: grid; align-items: end; gap: 8px; }
 .airstrike-ordnance-overview > strong { padding: 9px 10px; border: 1px solid rgba(249, 115, 22, .25); border-radius: 6px; color: #ffd7b5; background: rgba(48, 28, 14, .52); font-size: 11px; }
-.airstrike-ordnance-grid { min-height: 0; display: grid; grid-template-columns: 280px minmax(0, 1fr); gap: 12px; overflow: hidden; }
 .airstrike-ordnance-collections { align-content: start; }
 .airstrike-ordnance-collections section { display: grid; gap: 7px; }
 .airstrike-ordnance-collections section + section { padding-top: 10px; border-top: 1px solid rgba(129, 167, 174, .15); }
@@ -1358,15 +1473,11 @@
 [data-editor-manual-collection][hidden],
 [data-editor-repeated-collection][hidden] { display: none !important; }
 
-.airstrike-context-agent { min-width: 0; min-height: 0; display: grid; grid-template-rows: auto auto auto minmax(80px, 1fr) auto auto; gap: 8px; padding: 12px; border-left: 1px solid rgba(167, 139, 250, .25); background: linear-gradient(180deg, rgba(38, 25, 62, .42), rgba(10, 12, 18, .94)); overflow: hidden; }
-.airstrike-context-agent.is-collapsed { grid-template-rows: auto; align-self: start; }
-.airstrike-context-agent.is-collapsed > :not(.airstrike-context-agent-head) { display: none; }
-.airstrike-context-agent-head,
+.airstrike-context-agent { --airstrike-tool-column-width: 330px; min-width: 0; min-height: 0; display: grid; grid-template-rows: auto auto auto auto minmax(80px, 1fr) auto auto auto; gap: 8px; padding: 12px; border-left: 1px solid rgba(167, 139, 250, .25); background: linear-gradient(180deg, rgba(38, 25, 62, .42), rgba(10, 12, 18, .94)); overflow: hidden; }
 .airstrike-context-agent-mode,
 .airstrike-context-agent-actions,
 .airstrike-context-agent-form > div { display: flex; align-items: center; gap: 6px; }
-.airstrike-context-agent-head { justify-content: space-between; }
-.airstrike-context-agent-head strong { color: #eee9ff; font-size: 12px; }
+.airstrike-context-agent .airstrike-tool-column-bar strong { color: #eee9ff; }
 .airstrike-context-agent-mode button.is-active { border-color: rgba(167, 139, 250, .72); background: rgba(82, 52, 130, .62); }
 .airstrike-context-agent-status { color: #b7a9d8; font-size: 10px; line-height: 1.35; }
 .airstrike-context-agent-output { min-height: 0; overflow: auto; padding: 8px; border: 1px solid rgba(167, 139, 250, .18); border-radius: 6px; color: #ddd6fe; background: rgba(5, 6, 11, .52); font-size: 11px; line-height: 1.45; white-space: pre-wrap; }
@@ -1998,10 +2109,6 @@
     --editor-left-width: 260px;
     --editor-right-width: 300px;
   }
-
-  .airstrike-tool-layout { grid-template-columns: minmax(0, 1fr); overflow: auto; }
-  .airstrike-context-agent { border-top: 1px solid rgba(167, 139, 250, .25); border-left: 0; min-height: 300px; }
-  .airstrike-flight-workspace > .airstrike-workspace-editor { grid-template-columns: minmax(0, 1fr); }
 
   .airstrike-editor-toolbar .btn {
     padding-inline: 10px;

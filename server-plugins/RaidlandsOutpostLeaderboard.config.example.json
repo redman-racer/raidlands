@@ -1,0 +1,13 @@
+{
+  "Enabled": true,
+  "API Base URL (blank uses WebsiteVipBridge)": "",
+  "Endpoint Path": "/api/outpost-leaderboard.php",
+  "Refresh Interval Seconds": 300,
+  "Request Timeout Seconds": 20,
+  "Maximum Image Bytes": 2097152,
+  "Maximum Anchor Distance From Outpost": 250.0,
+  "Mannequin Item Shortname": "mannequin",
+  "Plaque Item Shortname": "sign.post.single",
+  "Board Item Shortname": "sign.pictureframe.xxl"
+}
+

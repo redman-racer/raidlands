@@ -367,6 +367,7 @@ Check these URLs on the live domain:
 - `/link/`
 - `/api/server-status.php`
 - `/api/server-status-history.php`
+- `/api/outpost-leaderboard.php` returns the current-wipe kill board JSON; its revisioned `image` URLs return the 1024x512 board and 256x128 podium plaques.
 - `/api/server/status-heartbeat.php` rejects unsigned requests
 - `/api/server/rp-point-requests.php` rejects unsigned requests
 - `/api/server/rp-point-result.php` rejects unsigned requests

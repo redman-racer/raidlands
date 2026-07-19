@@ -142,6 +142,8 @@ Game-server flow:
 - Put `server-plugins/WebsiteVipBridge.cs` into the uMod/Oxide plugins folder.
 - Put `server-plugins/WebsiteMapBridge.cs` into the uMod/Oxide plugins folder when website map/replay telemetry is enabled.
 - Put `server-plugins/WebsiteClanBridge.cs` into the uMod/Oxide plugins folder when clan website/API management is enabled.
+- Install the authoritative `RaidlandsOutpostLeaderboard.cs` from the Rust server repository when the physical Outpost podium is enabled; `server-plugins/RaidlandsOutpostLeaderboard.config.example.json` documents its production configuration.
+- Place the podium once in game with `/outpostleaderboard set`. The plugin consumes `/api/outpost-leaderboard.php` every five minutes and keeps its last good standings and images during API failures.
 - Configure all bridge plugins with the same `ApiBaseUrl`, `ServerId`, and `SharedSecret` as the website. The hub exchanges at most one request at a time every 30 seconds and backs off to 300 seconds after failures.
 - Leave `WipeKey` blank for automatic leaderboard seasons. WebsiteVipBridge will derive a stable key from `ServerId` and the Rust save creation time after each wipe. Set `WipeKey` only for a deliberate manual override; a static value like `raidlands-main` will keep every wipe in one leaderboard season.
 - Direct joins still call `/api/server/vip-player.php`. Change polling, status, RP work, kit/permission revisions, map telemetry, replay events, and clan actions share `/api/server/bridge-exchange.php`.

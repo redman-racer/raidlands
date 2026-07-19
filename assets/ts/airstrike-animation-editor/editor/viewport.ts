@@ -88,6 +88,9 @@ export interface MonumentReferencePayload {
 
 export type ReleaseVisibilityMode = "all" | "near" | "current" | "selected";
 export type ViewOrientation = "iso" | "top" | "bottom" | "front" | "back" | "left" | "right";
+
+const VEHICLE_PATH_DIRECTION_PREVIEW_DISTANCE = 3000;
+const VEHICLE_PATH_DROP_PREVIEW_DISTANCE = 500;
 export interface ViewOrientationState {
   current: Exclude<ViewOrientation, "iso">;
   yawDegrees: number;
@@ -1235,8 +1238,8 @@ export class AirstrikeViewport {
     const target = release.followVehiclePath
       ? origin.clone().add(
           usesDownwardVehiclePath(release.fields.Payload)
-            ? new Vector3(0, -500, 0)
-            : new Vector3(0, 0, -500).applyQuaternion(vehicleRotation),
+            ? new Vector3(0, -VEHICLE_PATH_DROP_PREVIEW_DISTANCE, 0)
+            : new Vector3(0, 0, -VEHICLE_PATH_DIRECTION_PREVIEW_DISTANCE).applyQuaternion(vehicleRotation),
         )
       : unityPositionToThreeVector({
           x: release.fields.TargetOffsetX,
@@ -1311,8 +1314,8 @@ export class AirstrikeViewport {
       const target = release.followVehiclePath
         ? origin.clone().add(
             usesDownwardVehiclePath(release.fields.Payload)
-              ? new Vector3(0, -500, 0)
-              : new Vector3(0, 0, -500).applyQuaternion(unityQuaternionValueToThreeQuaternion(pose.rotation)),
+              ? new Vector3(0, -VEHICLE_PATH_DROP_PREVIEW_DISTANCE, 0)
+              : new Vector3(0, 0, -VEHICLE_PATH_DIRECTION_PREVIEW_DISTANCE).applyQuaternion(unityQuaternionValueToThreeQuaternion(pose.rotation)),
           )
         : unityPositionToThreeVector({
             x: release.fields.TargetOffsetX,

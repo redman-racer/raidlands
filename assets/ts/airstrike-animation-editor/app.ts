@@ -1462,7 +1462,7 @@ class AirstrikeEditorApp {
     targetingSourceHelp.textContent = isHoming
       ? "Automatic homing missiles always retain Rust's native vehicle tracking."
       : group.FollowVehiclePath === true
-        ? "Launches from the selected hardpoint along the live vehicle trajectory."
+        ? "Launches from the selected hardpoint along the live vehicle trajectory. The 3D ray previews direction only; ordnance continues under Rust physics."
         : "Aims at the stored ping using the targeting controls below.";
     targetingSourceWrapper.appendChild(targetingSourceHelp);
     basic.appendChild(targetingSourceWrapper);
@@ -2311,6 +2311,7 @@ class AirstrikeEditorApp {
       button.addEventListener("click", () => this.openTool(String(button.dataset.editorToolAi || ""), true, button));
     });
     this.elements.root.querySelectorAll<HTMLDialogElement>("[data-editor-tool-dialog]").forEach((dialog) => {
+      this.initializeToolColumns(dialog);
       dialog.addEventListener("cancel", (event) => {
         event.preventDefault();
         void this.requestToolClose();
@@ -2347,6 +2348,82 @@ class AirstrikeEditorApp {
     return value === "profile" || value === "flight-path" || value === "ordnance" || value === "view-validation";
   }
 
+  private initializeToolColumns(dialog: HTMLDialogElement): void {
+    const tool = String(dialog.dataset.editorToolDialog || "");
+    if (!this.isToolId(tool)) return;
+    const storedState = this.loadToolColumnState(tool);
+    dialog.querySelectorAll<HTMLElement>("[data-editor-tool-column]").forEach((column) => {
+      const columnId = String(column.dataset.editorToolColumn || "");
+      const label = String(column.dataset.editorToolColumnLabel || columnId || "Editor column");
+      if (storedState[columnId] === true) column.classList.add("is-collapsed");
+
+      const bar = document.createElement("div");
+      const title = document.createElement("strong");
+      const button = document.createElement("button");
+      bar.className = "airstrike-tool-column-bar";
+      title.textContent = label;
+      button.type = "button";
+      button.className = "airstrike-tool-column-toggle";
+      button.dataset.editorToolColumnToggle = columnId;
+      bar.append(title, button);
+      column.prepend(bar);
+      button.addEventListener("click", () => this.toggleToolColumn(dialog, column));
+      this.updateToolColumnState(column);
+    });
+  }
+
+  private toggleToolColumn(dialog: HTMLDialogElement, column: HTMLElement): void {
+    column.classList.toggle("is-collapsed");
+    this.updateToolColumnState(column);
+    this.saveToolColumnState(dialog);
+    window.requestAnimationFrame(() => {
+      this.constrainToolWindow(dialog);
+      this.rememberToolWindowPosition(dialog);
+    });
+  }
+
+  private updateToolColumnState(column: HTMLElement): void {
+    const collapsed = column.classList.contains("is-collapsed");
+    const label = String(column.dataset.editorToolColumnLabel || "Editor column");
+    const button = column.querySelector<HTMLButtonElement>(":scope > .airstrike-tool-column-bar .airstrike-tool-column-toggle");
+    if (!button) return;
+    button.textContent = collapsed ? "+" : "\u2212";
+    button.setAttribute("aria-expanded", String(!collapsed));
+    button.setAttribute("aria-label", `${collapsed ? "Expand" : "Collapse"} ${label}`);
+    button.title = `${collapsed ? "Expand" : "Collapse"} ${label}`;
+  }
+
+  private toolColumnStorageKey(tool: ToolId): string {
+    return `raidlands.airstrike-animation-editor.tool-columns.${tool}`;
+  }
+
+  private loadToolColumnState(tool: ToolId): Record<string, boolean> {
+    try {
+      const parsed = JSON.parse(window.localStorage.getItem(this.toolColumnStorageKey(tool)) || "{}") as unknown;
+      if (parsed && !Array.isArray(parsed) && typeof parsed === "object") {
+        return Object.fromEntries(Object.entries(parsed).map(([key, value]) => [key, value === true]));
+      }
+    } catch {
+      // Tool columns remain usable when saved preferences are unavailable.
+    }
+    return {};
+  }
+
+  private saveToolColumnState(dialog: HTMLDialogElement): void {
+    const tool = String(dialog.dataset.editorToolDialog || "");
+    if (!this.isToolId(tool)) return;
+    const state: Record<string, boolean> = {};
+    dialog.querySelectorAll<HTMLElement>("[data-editor-tool-column]").forEach((column) => {
+      const columnId = String(column.dataset.editorToolColumn || "");
+      if (columnId) state[columnId] = column.classList.contains("is-collapsed");
+    });
+    try {
+      window.localStorage.setItem(this.toolColumnStorageKey(tool), JSON.stringify(state));
+    } catch {
+      // Tool columns remain usable when saved preferences are unavailable.
+    }
+  }
+
   private openTool(value: string, aiExpanded: boolean, opener: HTMLElement | null = null): void {
     if (!this.isToolId(value) || this.activeTool) return;
     const dialog = this.elements.root.querySelector<HTMLDialogElement>(`[data-editor-tool-dialog="${value}"]`);
@@ -2368,6 +2445,7 @@ class AirstrikeEditorApp {
     }
     const rail = dialog.querySelector<HTMLElement>("[data-agent-context-rail]");
     rail?.classList.toggle("is-collapsed", !aiExpanded);
+    if (rail) this.updateToolColumnState(rail);
     this.agent.workspaceChanged(value);
     this.updateToolSessionStatus();
     this.renderInspectorSummaries();
