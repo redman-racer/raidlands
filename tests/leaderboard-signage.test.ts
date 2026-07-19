@@ -35,6 +35,8 @@ describe("leaderboard 3D signage", () => {
     expect(third.position[0]).toBe(4.35);
     expect(second.yaw).toBeGreaterThan(0);
     expect(third.yaw).toBeLessThan(0);
+    expect(second.position[2]).toBeCloseTo(1.28);
+    expect(second.position[2]).toBeGreaterThan(third.position[2]);
     expect(second.position[2]).toBeLessThan(playerSignageTransform(1, false).position[2]);
   });
 

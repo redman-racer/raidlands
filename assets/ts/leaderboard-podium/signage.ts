@@ -61,7 +61,9 @@ export function playerSignageTransform(rank: number, mobile: boolean, podiumCent
   const fallbackX = [0, -4.2, 4.2][index];
   const positions: Array<[number, number, number]> = [
     [podiumCenterX ?? fallbackX, .20, 1.30],
-    [podiumCenterX ?? fallbackX, .28, 1.13],
+    // Rank two's wider pedestal needs extra front clearance once the side sign
+    // is yawed toward center; otherwise the drum breaks through the housing.
+    [podiumCenterX ?? fallbackX, .28, 1.28],
     [podiumCenterX ?? fallbackX, .25, 1.13],
   ];
   const scales = mobile ? [1.12, .94, .90] : [1, .82, .77];
