@@ -338,6 +338,13 @@ function raidlands_server_map_texture_url(string $server_id): string
     return '';
 }
 
+function raidlands_server_map_replay_retention_days(): int
+{
+    global $site_config;
+
+    return max(1, min(31, (int) ($site_config['serverStats']['replayRetentionDays'] ?? 31)));
+}
+
 function raidlands_server_map_is_local_request(): bool
 {
     $host_header = trim((string) ($_SERVER['HTTP_HOST'] ?? $_SERVER['SERVER_NAME'] ?? ''));
@@ -2776,13 +2783,37 @@ function raidlands_server_map_replay_events_ingest_snapshot(array $payload, stri
         $accepted_event_keys[] = $event_key;
     }
 
+    $active_wipe_key = raidlands_server_map_replay_active_wipe_key($server_id);
+    $purged_events = raidlands_server_map_replay_events_prune($server_id, $active_wipe_key);
+
     return [
         'serverId' => $server_id,
         'wipeKey' => $wipe_key,
         'acceptedEvents' => $accepted,
         'acceptedEventKeys' => $accepted_event_keys,
         'rejectedEvents' => $rejected_events,
+        'purgedEvents' => $purged_events,
     ];
+}
+
+function raidlands_server_map_replay_events_prune(string $server_id, string $active_wipe_key): int
+{
+    $server_id = raidlands_server_status_clean_text($server_id, 120);
+    $active_wipe_key = raidlands_server_status_clean_text($active_wipe_key, 160);
+    if ($server_id === '' || $active_wipe_key === '') {
+        return 0;
+    }
+
+    return raidlands_db_execute(
+        'DELETE FROM server_map_replay_events
+         WHERE server_id = :server_id
+           AND (wipe_key <> :active_wipe_key OR occurred_at < :cutoff)',
+        [
+            'server_id' => $server_id,
+            'active_wipe_key' => $active_wipe_key,
+            'cutoff' => gmdate('Y-m-d H:i:s', time() - (raidlands_server_map_replay_retention_days() * 24 * 60 * 60)),
+        ]
+    );
 }
 
 function raidlands_server_map_replay_event_from_row(array $row): array

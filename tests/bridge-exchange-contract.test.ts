@@ -42,6 +42,8 @@ describe("server bridge exchange contract", () => {
     expect(status).toContain("rejectedEvents");
     expect(status).toContain("ON DUPLICATE KEY UPDATE");
     expect(endpoint).toContain("raidlands_server_map_replay_events_ingest_snapshot");
+    expect(status).toContain("raidlands_server_map_replay_events_prune($server_id, $active_wipe_key)");
+    expect(status).toContain("wipe_key <> :active_wipe_key OR occurred_at < :cutoff");
   });
 
   it("keeps all module responses independently addressable", () => {

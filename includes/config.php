@@ -31,6 +31,7 @@ $site_config = [
         'cacheSeconds' => raidlands_env_int('RAIDLANDS_SERVER_STATUS_CACHE_SECONDS', 30),
         'staleSeconds' => raidlands_env_int('RAIDLANDS_SERVER_STATUS_STALE_SECONDS', 120),
         'sampleRetentionDays' => raidlands_env_int('RAIDLANDS_SERVER_STATUS_SAMPLE_RETENTION_DAYS', 30),
+        'replayRetentionDays' => raidlands_env_int('RAIDLANDS_SERVER_MAP_REPLAY_RETENTION_DAYS', 31),
         'hourlyRetentionMonths' => raidlands_env_int('RAIDLANDS_SERVER_STATUS_HOURLY_RETENTION_MONTHS', 24),
     ],
     'connectCommand' => raidlands_env('RAIDLANDS_CONNECT_COMMAND', 'connect raidlands.net:25607'),
