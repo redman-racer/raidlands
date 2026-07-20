@@ -32,7 +32,7 @@
 28. Run `database/migrations/034_vote_rewards_rp_games.sql`.
 29. Run `database/migrations/039_more_rp_games.sql`.
 30. Run `database/migrations/040_multiplayer_rp_games.sql`.
-31. Run `database/migrations/041_animation_diagnostics.sql`.
+31. Run `database/migrations/073_drop_animation_diagnostics.sql`.
 32. Run `database/migrations/042_public_lobby_chat.sql`.
 33. Run `database/migrations/046_monument_extraction.sql`.
 34. Run `database/migrations/047_airstrike_animation_editor.sql`.

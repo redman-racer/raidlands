@@ -7,7 +7,6 @@ require_once __DIR__ . '/todos.php';
 require_once __DIR__ . '/kits.php';
 require_once __DIR__ . '/permissions.php';
 require_once __DIR__ . '/rewards.php';
-require_once __DIR__ . '/animation-diagnostics.php';
 require_once __DIR__ . '/chat.php';
 require_once __DIR__ . '/discord.php';
 
@@ -501,7 +500,7 @@ function raidlands_admin_redirect(?string $section = null, array $params = []): 
 
 function raidlands_admin_section_keys(): array
 {
-    return ['identity', 'links', 'discord', 'wipe', 'todo', 'features', 'pages', 'seo', 'feedback', 'chat', 'store', 'vote-rewards', 'rp-games', 'kits', 'groups', 'grants', 'sync', 'airstrike-animations', 'animations'];
+    return ['identity', 'links', 'discord', 'wipe', 'todo', 'features', 'pages', 'seo', 'feedback', 'chat', 'store', 'vote-rewards', 'rp-games', 'kits', 'groups', 'grants', 'sync', 'airstrike-animations'];
 }
 
 function raidlands_admin_allowed_section_keys(): array
@@ -524,7 +523,7 @@ function raidlands_admin_section_permission(string $section): string
         'groups' => 'admin.permissions.manage',
         'grants' => 'admin.grants.manage',
         'airstrike-animations' => 'admin.airstrike_animations.manage',
-        'sync', 'animations' => 'admin.sync.view',
+        'sync' => 'admin.sync.view',
         default => 'admin.content.manage',
     };
 }
@@ -545,7 +544,7 @@ function raidlands_admin_can_save_section(string $section): bool
 {
     $section = raidlands_admin_clean_section($section);
 
-    if ($section === 'sync' || $section === 'animations' || $section === 'airstrike-animations') {
+    if ($section === 'sync' || $section === 'airstrike-animations') {
         return false;
     }
 

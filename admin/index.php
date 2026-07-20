@@ -52,13 +52,12 @@ $admin_sections_all = [
     'grants' => ['label' => 'Player Access', 'kicker' => 'Access', 'title' => 'Player Access', 'summary' => 'Load a SteamID64, grant products, add standalone shop groups, and remove website-owned manual access.'],
     'sync' => ['label' => 'Sync', 'kicker' => 'Bridge', 'title' => 'WebsiteVipBridge State', 'summary' => 'Entitlement sync, stats ingest status, and server API endpoints.'],
     'airstrike-animations' => ['label' => 'Airstrike Animations', 'kicker' => 'Authoring', 'title' => 'Portable Airstrikes Animation Profiles', 'summary' => 'Draft, validate, publish, and synchronize target-relative vehicle routes and payload timing.'],
-    'animations' => ['label' => 'Animations', 'kicker' => 'Diagnostics', 'title' => 'Animation Diagnostics', 'summary' => 'Steam-linked browser diagnostics for loader, motion, and visual-effect startup issues.'],
 ];
 $admin_nav_groups = [
     'site-setup' => ['label' => 'Site Setup', 'sections' => ['identity', 'links', 'discord']],
     'content' => ['label' => 'Content', 'sections' => ['todo', 'features', 'pages', 'seo', 'feedback', 'chat']],
     'store-access' => ['label' => 'Store & Access', 'sections' => ['store', 'vote-rewards', 'rp-games', 'kits', 'groups', 'grants']],
-    'server-ops' => ['label' => 'Server Ops', 'sections' => ['wipe', 'sync', 'airstrike-animations', 'animations']],
+    'server-ops' => ['label' => 'Server Ops', 'sections' => ['wipe', 'sync', 'airstrike-animations']],
 ];
 $admin_sections = $admin_sections_all;
 
@@ -315,10 +314,6 @@ try {
             $admin_sync_rows = raidlands_store_recent_sync_rows(30);
             $admin_stats_summary = raidlands_stats_admin_summary();
         }
-    }
-
-    if ($active_section === 'animations') {
-        $admin_animation_state = raidlands_animation_diagnostics_admin_state($_GET);
     }
 
     if ($active_section === 'airstrike-animations') {

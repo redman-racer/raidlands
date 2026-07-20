@@ -156,7 +156,7 @@ the host or upload it through a private channel.
    - `database/migrations/034_vote_rewards_rp_games.sql`
    - `database/migrations/039_more_rp_games.sql`
    - `database/migrations/040_multiplayer_rp_games.sql`
-   - `database/migrations/041_animation_diagnostics.sql`
+   - `database/migrations/073_drop_animation_diagnostics.sql`
    - `database/migrations/042_public_lobby_chat.sql`
    - `database/migrations/046_monument_extraction.sql`
    - `database/migrations/049_rust_servers_vote_rewards.sql`

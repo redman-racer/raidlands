@@ -29,8 +29,6 @@
   let serverHistoryPayload = null;
   let serverHistoryRange = "6h";
   let serverHistoryResizeTimer = null;
-  let animationDiagnosticFlushTimer = null;
-  let animationDiagnosticInFlight = false;
   let resolvedWipeTimeZone = null;
   let latestWipeSignal = normalizeWipeSignal(CONFIG.wipe && CONFIG.wipe.signal);
   const timeZonePartFormatters = new Map();
@@ -58,12 +56,6 @@
       auth: {
         steamUrl: "",
         discordUrl: ""
-      },
-      animationDiagnostics: {
-        enabled: false,
-        endpointUrl: `${basePath}api/animation-diagnostics.php`,
-        csrfToken: "",
-        maxEvents: 24
       }
     };
     const configNode = document.getElementById("site-config");
@@ -86,10 +78,6 @@
           ...defaults.auth,
           ...(parsed.auth || {})
         },
-        animationDiagnostics: {
-          ...defaults.animationDiagnostics,
-          ...(parsed.animationDiagnostics || {})
-        },
         serverStats: {
           ...defaults.serverStats,
           ...(parsed.serverStats || {})
@@ -102,7 +90,6 @@
   }
 
   function init() {
-    initAnimationDiagnostics();
     bindNav();
     bindActions();
     initRpGames();

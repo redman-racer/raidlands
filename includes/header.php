@@ -1,6 +1,5 @@
 <?php
 
-require_once __DIR__ . '/animation-diagnostics.php';
 require_once __DIR__ . '/chat.php';
 require_once __DIR__ . '/server-status.php';
 
@@ -19,11 +18,9 @@ try {
     // The live status request below can hydrate the signal after page load.
 }
 
-$client_site_config['animationDiagnostics'] = raidlands_animation_diagnostics_client_config($linked_player, $base_path . 'api/animation-diagnostics.php');
 $client_site_config['chat'] = raidlands_chat_client_config($linked_player, $base_path . 'api/chat/');
 $config_json = json_encode($client_site_config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 $loader_json = json_encode($loader_payload, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES);
-$animation_diagnostics_json = json_encode($client_site_config['animationDiagnostics'], JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES);
 ?>
 <!doctype html>
 <html lang="en" data-page="<?= e($page_id) ?>" data-base="<?= e($base_path) ?>">
@@ -67,143 +64,6 @@ $animation_diagnostics_json = json_encode($client_site_config['animationDiagnost
     <?php endif; ?>
     <link rel="preload" as="script" href="<?= e(asset_url('js/raidlands-loader.js')) ?>">
     <script>
-      window.__raidlandsAnimationDiagnostics = <?= $animation_diagnostics_json ?: '{}' ?>;
-      (function () {
-        var diagnostics = window.__raidlandsAnimationDiagnostics || {};
-        diagnostics.queue = diagnostics.queue || [];
-        window.__raidlandsAnimationDiagnostics = diagnostics;
-        var diagnosticFlushTimer = 0;
-        var diagnosticInFlight = false;
-
-        function flushDiagnostics(useBeacon) {
-          if (!diagnostics.enabled || !diagnostics.endpointUrl || !diagnostics.queue.length || diagnosticInFlight) {
-            return;
-          }
-
-          var maxEvents = Math.max(1, Number(diagnostics.maxEvents) || 24);
-          var events = diagnostics.queue.splice(0, maxEvents);
-          var body = JSON.stringify({
-            csrf: diagnostics.csrfToken || '',
-            events: events
-          });
-
-          if (useBeacon && navigator.sendBeacon) {
-            var blob = new Blob([body], { type: 'application/json' });
-
-            if (navigator.sendBeacon(diagnostics.endpointUrl, blob)) {
-              return;
-            }
-          }
-
-          if (!window.fetch) {
-            diagnostics.queue.unshift.apply(diagnostics.queue, events);
-            return;
-          }
-
-          diagnosticInFlight = true;
-          window.fetch(diagnostics.endpointUrl, {
-            method: 'POST',
-            credentials: 'same-origin',
-            keepalive: Boolean(useBeacon),
-            headers: {
-              Accept: 'application/json',
-              'Content-Type': 'application/json',
-              'X-Requested-With': 'fetch',
-              'X-Raidlands-CSRF': diagnostics.csrfToken || ''
-            },
-            body: body
-          }).then(function (response) {
-            if (!response.ok) {
-              throw new Error('Animation diagnostics failed with HTTP ' + response.status);
-            }
-          }).catch(function () {
-            diagnostics.queue.unshift.apply(diagnostics.queue, events);
-
-            if (diagnostics.queue.length > maxEvents) {
-              diagnostics.queue.splice(maxEvents);
-            }
-          }).finally(function () {
-            diagnosticInFlight = false;
-          });
-        }
-
-        diagnostics.flush = flushDiagnostics;
-
-        window.__raidlandsRecordAnimationDiagnostic = function (eventType, details) {
-          if (!diagnostics.enabled) {
-            return;
-          }
-
-          var root = document.documentElement;
-          var viewport = {
-            width: window.innerWidth || 0,
-            height: window.innerHeight || 0,
-            devicePixelRatio: window.devicePixelRatio || 1,
-            screenWidth: window.screen ? window.screen.width : 0,
-            screenHeight: window.screen ? window.screen.height : 0
-          };
-          var capabilities = {
-            matchMedia: typeof window.matchMedia === 'function',
-            reducedMotion: false,
-            mobilePerformance: false,
-            localStorage: false,
-            sessionStorage: false
-          };
-
-          try {
-            capabilities.reducedMotion = capabilities.matchMedia && window.matchMedia('(prefers-reduced-motion: reduce)').matches;
-            capabilities.mobilePerformance = capabilities.matchMedia && window.matchMedia('(max-width: 700px), (pointer: coarse)').matches;
-          } catch (error) {
-            capabilities.matchMedia = false;
-          }
-
-          try {
-            window.localStorage.setItem('raidlands-diagnostic-test', '1');
-            window.localStorage.removeItem('raidlands-diagnostic-test');
-            capabilities.localStorage = true;
-          } catch (error) {
-            capabilities.localStorage = false;
-          }
-
-          try {
-            window.sessionStorage.setItem('raidlands-diagnostic-test', '1');
-            window.sessionStorage.removeItem('raidlands-diagnostic-test');
-            capabilities.sessionStorage = true;
-          } catch (error) {
-            capabilities.sessionStorage = false;
-          }
-
-          diagnostics.queue.push({
-            eventType: String(eventType || ''),
-            at: new Date().toISOString(),
-            page: {
-              id: root.dataset.page || '',
-              url: window.location.href,
-              referrer: document.referrer || ''
-            },
-            viewport: viewport,
-            capabilities: capabilities,
-            loader: window.__raidlandsLoaderSession || {},
-            details: details || {}
-          });
-
-          if (diagnostics.queue.length > (diagnostics.maxEvents || 24)) {
-            diagnostics.queue.splice(0, diagnostics.queue.length - (diagnostics.maxEvents || 24));
-          }
-
-          window.clearTimeout(diagnosticFlushTimer);
-          diagnosticFlushTimer = window.setTimeout(function () {
-            flushDiagnostics(false);
-          }, 450);
-        };
-
-        document.addEventListener('visibilitychange', function () {
-          if (document.visibilityState === 'hidden') {
-            flushDiagnostics(true);
-          }
-        });
-      }());
-
       (function () {
         var storageKey = 'raidlands-loader-seen';
         var navigationType = 'navigate';
@@ -241,17 +101,6 @@ $animation_diagnostics_json = json_encode($client_site_config['animationDiagnost
           sessionStorageReadable: sessionStorageReadable,
           sessionStorageHadSeen: sessionStorageHadSeen
         };
-
-        if (window.__raidlandsRecordAnimationDiagnostic) {
-          window.__raidlandsRecordAnimationDiagnostic('loader_decision', {
-            storageKey: storageKey,
-            navigationType: navigationType,
-            shouldShow: shouldShow,
-            sessionStorageReadable: sessionStorageReadable,
-            sessionStorageHadSeen: sessionStorageHadSeen,
-            rootClassName: document.documentElement.className
-          });
-        }
 
         if (!shouldShow) {
           document.documentElement.classList.add('raidlands-loader-skipped');
