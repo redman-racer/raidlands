@@ -4,7 +4,7 @@ require_once __DIR__ . '/stats.php';
 require_once __DIR__ . '/podium.php';
 
 const RAIDLANDS_OUTPOST_LEADERBOARD_SCHEMA_VERSION = 1;
-const RAIDLANDS_OUTPOST_LEADERBOARD_RENDER_VERSION = 4;
+const RAIDLANDS_OUTPOST_LEADERBOARD_RENDER_VERSION = 5;
 
 function raidlands_outpost_leaderboard_row(array $row): array
 {
@@ -51,6 +51,22 @@ function raidlands_outpost_leaderboard_most_worn(int $player_id, int $wipe_id): 
     ];
 }
 
+function raidlands_outpost_leaderboard_wipe_number(array $wipe): int
+{
+    $provided = max(0, (int) ($wipe['wipe_number'] ?? 0));
+    if ($provided > 0) return $provided;
+
+    $server_id = raidlands_stats_clean_text((string) ($wipe['server_id'] ?? ''), 80);
+    if ($server_id === '' || !raidlands_stats_is_ready()) return 1;
+
+    $row = raidlands_db_fetch_one(
+        'SELECT COUNT(*) AS wipe_number FROM wipe_seasons WHERE server_id = :server_id',
+        ['server_id' => $server_id]
+    );
+
+    return max(1, (int) ($row['wipe_number'] ?? 1));
+}
+
 function raidlands_outpost_leaderboard_build_payload(
     array $standings,
     ?array $wipe,
@@ -80,6 +96,7 @@ function raidlands_outpost_leaderboard_build_payload(
         'id' => $wipe_id,
         'server_id' => raidlands_stats_clean_text((string) ($wipe['server_id'] ?? ''), 80),
         'wipe_key' => raidlands_stats_wipe_key((string) ($wipe['wipe_key'] ?? 'current')),
+        'number' => max(1, (int) ($wipe['wipe_number'] ?? 1)),
         'started_at' => raidlands_stats_timestamp($wipe['started_at'] ?? null),
     ];
 
@@ -127,6 +144,7 @@ function raidlands_outpost_leaderboard_payload(): array
     if ($wipe === null) {
         return raidlands_outpost_leaderboard_build_payload([], null);
     }
+    $wipe['wipe_number'] = raidlands_outpost_leaderboard_wipe_number($wipe);
 
     $result = raidlands_stats_leaderboard_result('kills', 'current', 1, 25, '', 0, '', false);
     return raidlands_outpost_leaderboard_build_payload((array) ($result['rows'] ?? []), $wipe);
@@ -381,11 +399,20 @@ function raidlands_outpost_leaderboard_render_png(array $payload, string $image)
         raidlands_outpost_leaderboard_draw_text($canvas, 'OUTPOST LEADERBOARD', 23, 345, 47, $white, 'left', 'display', $shadow);
         raidlands_outpost_leaderboard_draw_text($canvas, 'TOP 25  /  PLAYER KILLS', 11, 347, 67, $orange, 'left', 'body');
 
-        $wipe_key = (string) ($payload['wipe']['wipe_key'] ?? 'Standings unavailable');
-        raidlands_outpost_leaderboard_draw_cut_panel($canvas, 738, 25, 990, 72, $panel_soft, $steel_dim, 7);
-        raidlands_outpost_leaderboard_draw_text($canvas, 'CURRENT WIPE', 9, 752, 43, $orange, 'left', 'body');
-        $wipe_name = raidlands_outpost_leaderboard_fit_text($wipe_key, 14, 222, 'body');
-        raidlands_outpost_leaderboard_draw_text($canvas, $wipe_name, 14, 752, 63, $white, 'left', 'body', $shadow);
+        $wipe_number = max(1, (int) ($payload['wipe']['number'] ?? 1));
+        raidlands_outpost_leaderboard_draw_cut_panel($canvas, 852, 25, 990, 72, $panel_soft, $steel_dim, 7);
+        raidlands_outpost_leaderboard_draw_text($canvas, 'CURRENT WIPE', 9, 866, 43, $orange, 'left', 'body');
+        raidlands_outpost_leaderboard_draw_text(
+            $canvas,
+            '#' . str_pad((string) $wipe_number, 2, '0', STR_PAD_LEFT),
+            17,
+            976,
+            66,
+            $white,
+            'right',
+            'display',
+            $shadow
+        );
 
         $standings = (array) ($payload['standings'] ?? []);
         foreach ([18, 519] as $table_x) {

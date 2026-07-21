@@ -32,12 +32,13 @@ $resolver = static function (int $player_id): ?array {
     ];
 };
 
-$wipe = ['id' => 9, 'server_id' => 'raidlands-main', 'wipe_key' => 'raidlands-main-test', 'started_at' => '2026-07-18T00:00:00Z'];
+$wipe = ['id' => 9, 'server_id' => 'raidlands-main', 'wipe_key' => 'raidlands-main-test', 'wipe_number' => 3, 'started_at' => '2026-07-18T00:00:00Z'];
 $payload = raidlands_outpost_leaderboard_build_payload($rows, $wipe, $resolver, '2026-07-18T13:00:00Z');
 
 outpost_leaderboard_assert(count($payload['standings']) === 25, 'The game endpoint must cap standings at 25 rows.');
 outpost_leaderboard_assert(count($payload['podium']) === 3, 'The podium must contain at most three leaders.');
-outpost_leaderboard_assert($payload['render_version'] === 4, 'The payload must identify the current branded image renderer.');
+outpost_leaderboard_assert($payload['render_version'] === 5, 'The payload must identify the current branded image renderer.');
+outpost_leaderboard_assert($payload['wipe']['number'] === 3, 'The Outpost payload must expose the chronological wipe count.');
 outpost_leaderboard_assert(!str_contains($payload['standings'][0]['display_name'], '<'), 'Player names must be stripped of markup.');
 outpost_leaderboard_assert(mb_strlen($payload['standings'][0]['display_name']) <= 64, 'Player names must be capped at 64 characters.');
 $unicode_row = raidlands_outpost_leaderboard_row(['display_name' => 'Игрок Ω']);
