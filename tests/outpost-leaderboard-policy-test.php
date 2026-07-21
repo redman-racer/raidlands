@@ -37,6 +37,7 @@ $payload = raidlands_outpost_leaderboard_build_payload($rows, $wipe, $resolver, 
 
 outpost_leaderboard_assert(count($payload['standings']) === 25, 'The game endpoint must cap standings at 25 rows.');
 outpost_leaderboard_assert(count($payload['podium']) === 3, 'The podium must contain at most three leaders.');
+outpost_leaderboard_assert($payload['render_version'] === 4, 'The payload must identify the current branded image renderer.');
 outpost_leaderboard_assert(!str_contains($payload['standings'][0]['display_name'], '<'), 'Player names must be stripped of markup.');
 outpost_leaderboard_assert(mb_strlen($payload['standings'][0]['display_name']) <= 64, 'Player names must be capped at 64 characters.');
 $unicode_row = raidlands_outpost_leaderboard_row(['display_name' => 'Игрок Ω']);
@@ -77,8 +78,16 @@ $top25_info = getimagesizefromstring($top25);
 $plaque_info = getimagesizefromstring($plaque);
 outpost_leaderboard_assert($top25_info !== false && $top25_info[0] === 1024 && $top25_info[1] === 512, 'The physical leaderboard image must be 1024x512.');
 outpost_leaderboard_assert($plaque_info !== false && $plaque_info[0] === 256 && $plaque_info[1] === 128, 'Podium plaques must be 256x128.');
+outpost_leaderboard_assert(strlen($top25) < 2097152 && strlen($plaque) < 2097152, 'Branded sign images must remain under the plugin image-size ceiling.');
+$fitted_name = raidlands_outpost_leaderboard_fit_text('A player name that is far too long for the sign', 14, 120);
+outpost_leaderboard_assert(raidlands_outpost_leaderboard_text_width($fitted_name, 14) <= 120, 'Player names must be measured into their visual slot.');
 $empty_top25_info = getimagesizefromstring(raidlands_outpost_leaderboard_render_png($empty, 'top25'));
 outpost_leaderboard_assert($empty_top25_info !== false && $empty_top25_info[0] === 1024 && $empty_top25_info[1] === 512, 'The empty-state board must remain a valid 1024x512 PNG.');
 outpost_leaderboard_assert(is_file(raidlands_outpost_leaderboard_font()), 'The bundled leaderboard font must materialize successfully.');
+outpost_leaderboard_assert(
+    str_contains($implementation, '/assets/media/horizontal-logo-lrg.webp')
+        && str_contains($implementation, '/assets/media/header-bg-rust-v2.png'),
+    'The physical leaderboard renderer must use the in-game logo and the shared industrial brand art.'
+);
 
 echo "Outpost leaderboard policy tests passed.\n";
