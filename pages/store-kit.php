@@ -117,11 +117,14 @@ function store_kit_render_product_offer(array $product, ?array $player, string $
     $cash_passes = raidlands_store_cash_pass_offers($product, true);
     $cash_subscriptions = raidlands_store_cash_subscription_offers($product, true);
     $offer_count = count($rp_offers) + count($cash_passes) + count($cash_subscriptions);
+    $backpack_slots = raidlands_store_product_backpack_slots($product);
 
     return '<article class="metal-card store-kit-product-card">'
         . '<div><p class="section-kicker">' . e(raidlands_store_type_label((string) ($product['product_type'] ?? 'perk'))) . '</p>'
         . '<h3>' . e((string) ($product['name'] ?? 'Store product')) . '</h3>'
-        . '<p class="card-copy">' . e((string) ($product['short_description'] ?? '')) . '</p></div>'
+        . '<p class="card-copy">' . e((string) ($product['short_description'] ?? '')) . '</p>'
+        . ($backpack_slots > 0 ? '<p class="store-kit-backpack-capacity"><strong>' . e((string) $backpack_slots) . '</strong> backpack slots included</p>' : '')
+        . '</div>'
         . '<div class="store-price"><strong>' . e($offer_count > 0 ? 'Offers available' : 'Offers unavailable') . '</strong><span>' . e((string) $offer_count) . ' option' . ($offer_count === 1 ? '' : 's') . '</span></div>'
         . '<div class="store-card-actions"><a class="btn btn-primary" href="' . e(raidlands_store_product_public_url($product)) . '">View Product</a></div>'
         . '</article>';

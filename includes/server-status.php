@@ -3873,7 +3873,10 @@ function raidlands_server_status_row_public(array $row, int $stale_seconds, arra
         'queue' => (int) ($row['queue'] ?? 0),
         'joining' => (int) ($row['joining'] ?? 0),
         'sleepers' => (int) ($row['sleepers'] ?? 0),
-        'mapName' => (string) ($row['map_name'] ?: $site_config['mapName']),
+        'mapName' => raidlands_server_status_public_map_name(
+            (string) ($row['map_name'] ?? ''),
+            (string) ($site_config['mapName'] ?? 'Procedural Map')
+        ),
         'mapImageUrl' => (string) ($map_image_public['url'] ?? ''),
         'mapImage' => $map_image_public,
         'serverFps' => (string) ($row['server_fps'] ?: $site_config['serverFps']),
@@ -3897,6 +3900,26 @@ function raidlands_server_status_row_public(array $row, int $stale_seconds, arra
     ];
 }
 
+function raidlands_server_status_public_map_name(string $map_name, string $fallback = 'Procedural Map'): string
+{
+    $map_name = trim($map_name);
+    $fallback = trim($fallback) !== '' ? trim($fallback) : 'Procedural Map';
+
+    if ($map_name === '') {
+        return $fallback;
+    }
+
+    if (preg_match('/^procedural\s+battlefield$/i', $map_name) === 1) {
+        return 'Procedural Map';
+    }
+
+    if (preg_match('/\bbattlefield\b/i', $map_name) === 1) {
+        $map_name = trim((string) preg_replace('/\s*battlefield\s*/i', ' ', $map_name));
+    }
+
+    return $map_name !== '' ? $map_name : $fallback;
+}
+
 function raidlands_server_status_fallback(string $error): array
 {
     global $site_config;
@@ -3918,7 +3941,7 @@ function raidlands_server_status_fallback(string $error): array
         'queue' => (int) $site_config['queue'],
         'joining' => 0,
         'sleepers' => 0,
-        'mapName' => (string) $site_config['mapName'],
+        'mapName' => raidlands_server_status_public_map_name((string) $site_config['mapName']),
         'mapImageUrl' => '',
         'mapImage' => null,
         'serverFps' => (string) $site_config['serverFps'],

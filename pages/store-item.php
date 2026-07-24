@@ -471,6 +471,7 @@ function store_item_render_perks(array $perks): string
     $offer_count = count(raidlands_store_rp_offers($product, true))
         + count(raidlands_store_cash_pass_offers($product, true))
         + count(raidlands_store_cash_subscription_offers($product, true));
+    $backpack_slots = raidlands_store_product_backpack_slots($product);
   ?>
   <?= render_page_hero('store-item',
       '<a class="btn btn-primary" href="' . e(route_url('store')) . '">Back to Store</a>'
@@ -488,6 +489,9 @@ function store_item_render_perks(array $perks): string
           <h2><?= e((string) ($product['name'] ?? 'Store item')) ?></h2>
           <p class="section-lede"><?= e((string) ($product['description'] ?: $product['short_description'] ?? '')) ?></p>
           <div class="store-card-facts">
+            <?php if ($backpack_slots > 0) : ?>
+              <span><strong><?= e((string) $backpack_slots) ?></strong> backpack slots</span>
+            <?php endif; ?>
             <span><?= e((string) count($linked_kits)) ?> kit<?= count($linked_kits) === 1 ? '' : 's' ?></span>
             <span><?= e((string) count($linked_perks)) ?> perk<?= count($linked_perks) === 1 ? '' : 's' ?></span>
             <span><?= e((string) $offer_count) ?> offer<?= $offer_count === 1 ? '' : 's' ?></span>

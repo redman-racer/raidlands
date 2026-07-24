@@ -13,7 +13,7 @@ function asset_url(string $path): string
     $url = $base_path . 'assets/' . $asset_path;
     $absolute_path = dirname(__DIR__) . DIRECTORY_SEPARATOR . 'assets' . DIRECTORY_SEPARATOR . str_replace(['/', '\\'], DIRECTORY_SEPARATOR, $asset_path);
 
-    if (preg_match('/\.(css|js)$/i', $asset_path) && is_file($absolute_path)) {
+    if (preg_match('/\.(css|js|png|jpe?g|webp|svg|ico)$/i', $asset_path) && is_file($absolute_path)) {
         return $url . '?v=' . filemtime($absolute_path);
     }
 
@@ -216,7 +216,7 @@ function raidlands_loader_payload(): array
             'sourceLabel' => 'site fallback',
         ],
         'tips' => [
-            'High-rate wipes reward fast rebuilds as much as first-strike raids.',
+            '10X progression rewards fast rebuilds as much as first-strike raids.',
             'Keep a flank kit staged before pushing a loaded base.',
             'Thursday wipes are the clean reset: new bases, new grudges, new counters.',
             'A copied connect command is still the fastest backup when Steam links stall.',

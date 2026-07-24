@@ -612,13 +612,23 @@ if (!$raidlands_has_env_file && !$raidlands_has_env_local_file && is_file($raidl
 }
 
 $raidlands_content_file = $raidlands_root . '/data/site-content.json';
+$raidlands_10x_release_defaults = [
+    'site_config' => $site_config,
+    'quick_features' => $quick_features,
+    'feature_cards' => $feature_cards,
+    'roadmap_cards' => $roadmap_cards,
+    'page_copy' => $page_copy,
+    'seo_pages' => $seo_pages,
+];
 $raidlands_content_overrides = raidlands_load_site_content($raidlands_content_file);
 
 if ($raidlands_content_overrides !== []) {
     raidlands_apply_content_overrides($raidlands_content_overrides);
 }
 
-unset($raidlands_content_overrides);
+raidlands_enforce_10x_release_content($raidlands_10x_release_defaults);
+
+unset($raidlands_content_overrides, $raidlands_10x_release_defaults);
 
 $site_config['steamConnectUrl'] = raidlands_normalize_steam_connect_url(
     (string) ($site_config['steamConnectUrl'] ?? ''),
@@ -682,6 +692,50 @@ function raidlands_apply_content_overrides(array $content): void
             ${$global_name} = $content[$content_key];
         }
     }
+}
+
+function raidlands_enforce_10x_release_content(array $defaults): void
+{
+    global $site_config, $quick_features, $feature_cards, $roadmap_cards, $page_copy, $seo_pages;
+
+    $contains_retired_copy = static function ($value) use (&$contains_retired_copy): bool {
+        if (is_array($value)) {
+            foreach ($value as $nested) {
+                if ($contains_retired_copy($nested)) {
+                    return true;
+                }
+            }
+
+            return false;
+        }
+
+        if (!is_scalar($value)) {
+            return false;
+        }
+
+        return preg_match(
+            '/1000\s*x|battlefield|instant[\s-]+progression|unlimited[\s-]+resources|standalone[\s-]+roam[\s-]*bots?/i',
+            (string) $value
+        ) === 1;
+    };
+
+    $default_site = (array) ($defaults['site_config'] ?? []);
+
+    foreach (['serverName', 'tagline'] as $key) {
+        if (array_key_exists($key, $default_site)) {
+            $site_config[$key] = $default_site[$key];
+        }
+    }
+
+    if ($contains_retired_copy($site_config['mapName'] ?? null) && array_key_exists('mapName', $default_site)) {
+        $site_config['mapName'] = $default_site['mapName'];
+    }
+
+    $quick_features = array_values((array) ($defaults['quick_features'] ?? []));
+    $feature_cards = array_values((array) ($defaults['feature_cards'] ?? []));
+    $roadmap_cards = array_values((array) ($defaults['roadmap_cards'] ?? []));
+    $page_copy = (array) ($defaults['page_copy'] ?? []);
+    $seo_pages = (array) ($defaults['seo_pages'] ?? []);
 }
 
 function raidlands_merge_assoc(array $base, array $overrides): array

@@ -814,6 +814,29 @@ function raidlands_store_product_types(): array
     return ['kit_bundle', 'kit_unlock', 'perk'];
 }
 
+function raidlands_store_product_backpack_slots(array $product): int
+{
+    $slots = 0;
+
+    foreach ((array) ($product['linked_perks'] ?? []) as $perk) {
+        $permission = strtolower(trim((string) ($perk['permission'] ?? '')));
+
+        if (preg_match('/^backpacks\.size\.(\d+)$/', $permission, $matches) === 1) {
+            $slots = max($slots, (int) $matches[1]);
+        }
+    }
+
+    if ($slots > 0) {
+        return $slots;
+    }
+
+    if (preg_match('/\b(36|42|48)(?:[- ]slot backpack| backpack slots)\b/i', (string) ($product['short_description'] ?? ''), $matches) === 1) {
+        return (int) $matches[1];
+    }
+
+    return 0;
+}
+
 function raidlands_store_normalize_product_type(string $type): string
 {
     $type = trim($type);

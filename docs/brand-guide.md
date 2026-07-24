@@ -53,7 +53,8 @@ Usage notes:
 - Keep PNG copies available for Rust UI plugins and integrations that are more reliable with PNG.
 - Use the horizontal logo where width is available, especially footer, admin header, and broad panels.
 - Do not point Rust UI configs at local filesystem paths. Store web-relative paths such as `/assets/media/raidlands-logo.png`.
-- Run `node scripts/build-raidlands-10x-assets.mjs` after changing the approved primary masters to refresh responsive derivatives.
+- Run `node scripts/build-raidlands-10x-assets.mjs` after changing an approved primary master to refresh responsive logos, the Rust server header, voting banner, and social card while validating transparent artwork bounds.
+- To import an approved square logo edit, run `node scripts/build-raidlands-10x-assets.mjs --primary-source "C:\path\to\approved-logo.png"`. The importer removes a connected checkerboard background, writes the transparent 1024px master, and rejects materially off-center artwork.
 
 ## Color Palette
 

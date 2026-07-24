@@ -377,6 +377,7 @@ function render_store_product_card(array $product, ?array $player, string $csrf,
     $has_cash = count($cash_passes) + count($cash_subscriptions) > 0 ? '1' : '0';
     $search = store_product_search_blob($product);
     $sort_name = strtolower((string) ($product['name'] ?? ''));
+    $backpack_slots = raidlands_store_product_backpack_slots($product);
 
     return '<article class="metal-card store-product-card"'
         . ' data-store-product'
@@ -395,6 +396,7 @@ function render_store_product_card(array $product, ?array $player, string $csrf,
         . '<h3>' . e((string) $product['name']) . '</h3>'
         . '<p class="card-copy">' . e((string) $product['short_description']) . '</p>'
         . '<div class="store-card-facts">'
+        . ($backpack_slots > 0 ? '<span><strong>' . e((string) $backpack_slots) . '</strong> backpack slots</span>' : '')
         . '<span>' . e((string) count($linked_kits)) . ' kit' . (count($linked_kits) === 1 ? '' : 's') . '</span>'
         . '<span>' . e((string) count($linked_perks)) . ' perk' . (count($linked_perks) === 1 ? '' : 's') . '</span>'
         . '<span>' . e((string) $active_offer_count) . ' offer' . ($active_offer_count === 1 ? '' : 's') . '</span>'

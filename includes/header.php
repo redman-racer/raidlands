@@ -24,7 +24,9 @@ $config_json = json_encode($client_site_config, JSON_HEX_TAG | JSON_HEX_AMP | JS
 $loader_json = json_encode($loader_payload, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES);
 $canonical_url = raidlands_canonical_url();
 $site_url = raidlands_public_absolute_url();
-$og_image_url = raidlands_public_absolute_url('assets/media/og-image.png');
+$og_image_path = dirname(__DIR__) . '/assets/media/og-image.png';
+$og_image_url = raidlands_public_absolute_url('assets/media/og-image.png')
+    . (is_file($og_image_path) ? '?v=' . filemtime($og_image_path) : '');
 $server_online = $initial_server_status !== null
     ? !empty($initial_server_status['online'])
     : !empty($site_config['serverOnline']);
