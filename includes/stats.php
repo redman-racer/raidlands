@@ -32,6 +32,145 @@ function raidlands_stats_is_ready(): bool
     }
 }
 
+function raidlands_stats_restore_auto_increment_tables(PDO $pdo, ?array $table_names = null): void
+{
+    static $default_tables_verified = false;
+
+    $using_default_tables = $table_names === null;
+    if ($using_default_tables && $default_tables_verified) {
+        return;
+    }
+
+    $table_names ??= [
+        'players',
+        'wipe_seasons',
+        'player_wipe_stats',
+        'player_leaderboard_stats',
+        'bot_wipe_stats',
+        'stats_ingest_log',
+        'player_outfit_observations',
+        'player_weapon_observations',
+    ];
+    $table_names = array_values(array_unique(array_filter(
+        array_map('strval', $table_names),
+        static fn(string $table_name): bool => preg_match('/^[a-zA-Z0-9_]+$/', $table_name) === 1
+    )));
+
+    if ($table_names === []) {
+        if ($using_default_tables) {
+            $default_tables_verified = true;
+        }
+        return;
+    }
+
+    $load_columns = static function () use ($pdo, $table_names): array {
+        $params = [];
+        $placeholders = [];
+
+        foreach ($table_names as $index => $table_name) {
+            $parameter = 'table_' . $index;
+            $placeholders[] = ':' . $parameter;
+            $params[$parameter] = $table_name;
+        }
+
+        $statement = $pdo->prepare(
+            'SELECT TABLE_NAME, COLUMN_TYPE, COLUMN_KEY, IS_NULLABLE, EXTRA
+             FROM information_schema.COLUMNS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND COLUMN_NAME = "id"
+               AND TABLE_NAME IN (' . implode(', ', $placeholders) . ')'
+        );
+        $statement->execute($params);
+
+        return $statement->fetchAll(PDO::FETCH_ASSOC);
+    };
+    $missing_auto_increment = static function (array $columns): array {
+        return array_values(array_filter(
+            $columns,
+            static fn(array $column): bool => stripos((string) ($column['EXTRA'] ?? ''), 'auto_increment') === false
+        ));
+    };
+
+    if ($missing_auto_increment($load_columns()) === []) {
+        if ($using_default_tables) {
+            $default_tables_verified = true;
+        }
+        return;
+    }
+
+    $lock_name = 'raidlands_stats_restore_auto_increment';
+    $lock_statement = $pdo->prepare('SELECT GET_LOCK(:lock_name, 20)');
+    $lock_statement->execute(['lock_name' => $lock_name]);
+
+    if ((int) $lock_statement->fetchColumn() !== 1) {
+        throw new RuntimeException('Timed out while waiting to repair restored stats table identities.');
+    }
+
+    try {
+        $columns = $missing_auto_increment($load_columns());
+        if ($columns === []) {
+            if ($using_default_tables) {
+                $default_tables_verified = true;
+            }
+            return;
+        }
+
+        foreach ($columns as $column) {
+            $column_type = strtolower(trim((string) ($column['COLUMN_TYPE'] ?? '')));
+
+            if (
+                strtoupper((string) ($column['COLUMN_KEY'] ?? '')) !== 'PRI'
+                || strtoupper((string) ($column['IS_NULLABLE'] ?? '')) !== 'NO'
+                || preg_match('/^(?:tinyint|smallint|mediumint|int|bigint)(?:\(\d+\))?(?: unsigned)?$/', $column_type) !== 1
+            ) {
+                throw new RuntimeException(
+                    'Restored table ' . (string) ($column['TABLE_NAME'] ?? '') . ' has an invalid primary ID definition.'
+                );
+            }
+        }
+
+        $original_sql_mode = (string) $pdo->query('SELECT @@SESSION.sql_mode')->fetchColumn();
+        $original_foreign_key_checks = (int) $pdo->query('SELECT @@SESSION.FOREIGN_KEY_CHECKS')->fetchColumn();
+        $sql_modes = array_values(array_filter(array_map('trim', explode(',', $original_sql_mode))));
+
+        if (!in_array('NO_AUTO_VALUE_ON_ZERO', array_map('strtoupper', $sql_modes), true)) {
+            $sql_modes[] = 'NO_AUTO_VALUE_ON_ZERO';
+        }
+
+        try {
+            // Preserve any ID 0 rows created after the partial restore. Foreign
+            // key checks are paused only so MySQL can rebuild referenced IDs.
+            $pdo->exec('SET SESSION sql_mode = ' . $pdo->quote(implode(',', $sql_modes)));
+            $pdo->exec('SET SESSION FOREIGN_KEY_CHECKS = 0');
+
+            foreach ($columns as $column) {
+                $table_name = (string) $column['TABLE_NAME'];
+                $column_type = strtolower(trim((string) $column['COLUMN_TYPE']));
+                $pdo->exec(
+                    'ALTER TABLE `' . str_replace('`', '``', $table_name) . '`
+                     MODIFY COLUMN `id` ' . $column_type . ' NOT NULL AUTO_INCREMENT'
+                );
+            }
+        } finally {
+            $pdo->exec('SET SESSION FOREIGN_KEY_CHECKS = ' . ($original_foreign_key_checks === 0 ? '0' : '1'));
+            $pdo->exec('SET SESSION sql_mode = ' . $pdo->quote($original_sql_mode));
+        }
+
+        if ($using_default_tables) {
+            $default_tables_verified = true;
+        }
+    } catch (Throwable $error) {
+        throw new RuntimeException(
+            'The website could not repair auto-increment IDs after the database restore: ' . $error->getMessage(),
+            0,
+            $error
+        );
+    } finally {
+        $release_statement = $pdo->prepare('SELECT RELEASE_LOCK(:lock_name)');
+        $release_statement->execute(['lock_name' => $lock_name]);
+    }
+}
+
 function raidlands_stats_wipes_are_ready(): bool
 {
     if (!raidlands_db_is_configured()) {
@@ -152,6 +291,7 @@ function raidlands_stats_activate_wipe_signal(string $server_id, string $wipe_ke
     $wipe_key = raidlands_stats_canonical_wipe_key($server_id, $wipe_key, $started_at);
 
     $pdo = raidlands_db_required();
+    raidlands_stats_restore_auto_increment_tables($pdo);
     $pdo->beginTransaction();
 
     try {
@@ -349,6 +489,7 @@ function raidlands_stats_ingest_snapshot(array $payload, string $server_id, stri
     }
 
     $pdo = raidlands_db_required();
+    raidlands_stats_restore_auto_increment_tables($pdo);
     $pdo->beginTransaction();
 
     $accepted = 0;
@@ -591,12 +732,11 @@ function raidlands_stats_upsert_player(PDO $pdo, string $steam_id64, string $dis
         'display_name' => $display_name,
     ]);
 
-    $row = raidlands_db_fetch_one(
-        'SELECT id FROM players WHERE steam_id64 = :steam_id64',
-        ['steam_id64' => $steam_id64]
-    );
+    $select = $pdo->prepare('SELECT id FROM players WHERE steam_id64 = :steam_id64');
+    $select->execute(['steam_id64' => $steam_id64]);
+    $row = $select->fetch(PDO::FETCH_ASSOC);
 
-    if ($row === null) {
+    if (!is_array($row)) {
         throw new RuntimeException('Player could not be loaded after stat upsert.');
     }
 

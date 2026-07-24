@@ -4840,26 +4840,9 @@ namespace Oxide.Plugins
                 skin = 0L;
             }
 
-            var definition = ItemManager.FindItemDefinition(shortname);
             var condition = Math.Max(0f, KitFloat(item, "Condition", 0f));
             var maxCondition = Math.Max(0f, KitFloat(item, "MaxCondition", 0f));
             var amount = Math.Max(1, KitInt(item, "Amount", 1));
-
-            if (definition != null && definition.condition.enabled)
-            {
-                var defaultMaxCondition = Math.Max(0f, definition.condition.max);
-                var badMaxCondition = maxCondition <= 0f || maxCondition < defaultMaxCondition || maxCondition > defaultMaxCondition;
-
-                if (badMaxCondition)
-                {
-                    maxCondition = defaultMaxCondition;
-                }
-
-                if (condition <= 0f || condition < maxCondition || condition > maxCondition || badMaxCondition)
-                {
-                    condition = maxCondition > 0f ? maxCondition : defaultMaxCondition;
-                }
-            }
 
             return new JObject
             {

@@ -87,6 +87,38 @@ function raidlands_kits_clean_text($value, int $max_length = 160): string
     return substr($text, 0, $max_length);
 }
 
+function raidlands_kits_public_name($kit): string
+{
+    $name = is_array($kit)
+        ? (string) ($kit['kit_name'] ?? $kit['reward_display_name'] ?? '')
+        : (string) $kit;
+    $name = strtolower(trim($name));
+    $labels = [
+        'vip_combat' => 'VIP Combat',
+        'vip_supplies' => 'VIP Supplies',
+        'vip_plus_combat' => 'VIP+ Combat',
+        'vip_plus_supplies' => 'VIP+ Supplies',
+        'mvp_combat' => 'MVP Combat',
+        'mvp_supplies' => 'MVP Supplies',
+        'golden_combat' => 'Golden Combat',
+        'golden_supplies' => 'Golden Supplies',
+        'ultimate_combat' => 'Ultimate Combat',
+        'ultimate_supplies' => 'Ultimate Supplies',
+        'titan_combat' => 'Titan Combat',
+        'titan_supplies' => 'Titan Supplies',
+    ];
+
+    if (isset($labels[$name])) {
+        return $labels[$name];
+    }
+
+    $fallback = is_array($kit)
+        ? (string) ($kit['reward_display_name'] ?? $kit['kit_name'] ?? '')
+        : (string) $kit;
+
+    return trim($fallback) !== '' ? trim($fallback) : 'Kit';
+}
+
 function raidlands_kits_clean_multiline($value, int $max_length = 3000): string
 {
     $text = trim(str_replace("\0", '', (string) $value));
@@ -1200,7 +1232,7 @@ function raidlands_kits_assert_complete_admin_post(array $post): void
     }
 }
 
-function raidlands_kits_save_items(PDO $pdo, int $kit_id, array $item_rows): void
+function raidlands_kits_save_items(PDO $pdo, int $kit_id, array $item_rows, bool $preserve_condition = false): void
 {
     $delete = $pdo->prepare('DELETE FROM game_kit_items WHERE kit_id = :kit_id');
     $delete->execute(['kit_id' => $kit_id]);
@@ -1235,10 +1267,16 @@ function raidlands_kits_save_items(PDO $pdo, int $kit_id, array $item_rows): voi
                 $skin = 0;
             }
 
-            $amount = raidlands_kits_int($row['amount'] ?? $row['Amount'] ?? 1, 1, 1000000);
+            $amount = raidlands_kits_int($row['amount'] ?? $row['Amount'] ?? 1, 1, 2147483647);
             $condition = raidlands_kits_decimal($row['condition'] ?? $row['Condition'] ?? 0, 0, 1000000);
             $max_condition = raidlands_kits_decimal($row['max_condition'] ?? $row['MaxCondition'] ?? 0, 0, 1000000);
-            $condition_item = raidlands_kits_normalize_condition_item($shortname, $amount, $condition, $max_condition);
+            $condition_item = $preserve_condition
+                ? [
+                    'amount' => $amount,
+                    'condition' => $condition,
+                    'max_condition' => $max_condition,
+                ]
+                : raidlands_kits_normalize_condition_item($shortname, $amount, $condition, $max_condition);
 
             $insert->execute([
                 'kit_id' => $kit_id,
@@ -1590,12 +1628,11 @@ function raidlands_kits_item_to_rust(array $item): array
         $skin = 0;
     }
 
-    $condition_item = raidlands_kits_normalize_condition_item(
-        $shortname,
-        max(1, (int) $item['amount']),
-        (float) $item['condition_value'],
-        (float) $item['max_condition']
-    );
+    $condition_item = [
+        'amount' => max(1, (int) $item['amount']),
+        'condition' => max(0, (float) $item['condition_value']),
+        'max_condition' => max(0, (float) $item['max_condition']),
+    ];
 
     return [
         'Shortname' => $shortname,
@@ -1783,7 +1820,51 @@ function raidlands_kits_insert_item_from_payload(PDO $pdo, int $kit_id, string $
         ];
     }
 
-    raidlands_kits_save_items($pdo, $kit_id, $rows);
+    raidlands_kits_save_items($pdo, $kit_id, $rows, true);
+}
+
+function raidlands_kits_pending_managed_names(PDO $pdo): array
+{
+    $rows = $pdo->query(
+        "SELECT payload_json
+         FROM game_kit_sync_log
+         WHERE status = 'pending'
+           AND revision = (
+             SELECT latest.revision
+             FROM (
+               SELECT COALESCE(MAX(revision), 0) AS revision
+               FROM game_kit_sync_log
+               WHERE status IN ('pending', 'applied', 'failed')
+             ) latest
+           )
+           AND payload_json IS NOT NULL
+           AND payload_json <> ''
+         ORDER BY id DESC
+         LIMIT 1"
+    )->fetchAll(PDO::FETCH_ASSOC);
+    $names = [];
+
+    foreach ($rows as $row) {
+        $payload = json_decode((string) ($row['payload_json'] ?? ''), true);
+
+        foreach ((array) ($payload['kits'] ?? []) as $kit) {
+            $kit = is_array($kit) ? $kit : [];
+            $candidates = array_merge(
+                [$kit['Name'] ?? '', $kit['PreviousName'] ?? ''],
+                (array) ($kit['PreviousNames'] ?? [])
+            );
+
+            foreach ($candidates as $candidate) {
+                $name = strtolower(raidlands_kits_clean_text($candidate, 160));
+
+                if ($name !== '') {
+                    $names[$name] = true;
+                }
+            }
+        }
+    }
+
+    return $names;
 }
 
 function raidlands_kits_import_snapshot(array $payload): array
@@ -1812,6 +1893,7 @@ function raidlands_kits_import_snapshot(array $payload): array
     $pdo = raidlands_db_required();
     $revision = raidlands_kits_next_revision($pdo);
     $imported = 0;
+    $pending_managed_names = raidlands_kits_pending_managed_names($pdo);
 
     $pdo->beginTransaction();
 
@@ -1821,6 +1903,10 @@ function raidlands_kits_import_snapshot(array $payload): array
             $name = raidlands_kits_clean_text($kit['Name'] ?? $kit_name, 160);
 
             if ($name === '') {
+                continue;
+            }
+
+            if (isset($pending_managed_names[strtolower($name)])) {
                 continue;
             }
 
@@ -1895,7 +1981,7 @@ function raidlands_kits_import_snapshot(array $payload): array
                 'main' => array_map(static fn ($item) => is_array($item) ? $item : (array) $item, (array) ($kit['MainItems'] ?? [])),
                 'wear' => array_map(static fn ($item) => is_array($item) ? $item : (array) $item, (array) ($kit['WearItems'] ?? [])),
                 'belt' => array_map(static fn ($item) => is_array($item) ? $item : (array) $item, (array) ($kit['BeltItems'] ?? [])),
-            ]);
+            ], true);
             raidlands_kits_register_claim_permission($pdo, $incoming_permission);
 
             $imported += 1;
@@ -1906,6 +1992,10 @@ function raidlands_kits_import_snapshot(array $payload): array
             $kit_name = raidlands_kits_clean_text($reward['KitName'] ?? '', 160);
 
             if ($kit_name === '') {
+                continue;
+            }
+
+            if (isset($pending_managed_names[strtolower($kit_name)])) {
                 continue;
             }
 

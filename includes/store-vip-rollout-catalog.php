@@ -195,6 +195,11 @@ return [
         'short_description' => '48-slot backpack, Titan kit, expanded vehicle and sentry access, queue priority, and top-tier conveniences.',
         'description' => 'Includes a 48-slot backpack, the server-synced Titan kit, expanded approved vehicle and sentry access, queue priority, movement perks, and Titan rank conveniences.',
         'oxide_group' => 'rank_titan_vip',
+        'fulfillment_groups' => [
+            'rank_titan_vip',
+            'perk_backpack_48',
+            'perk_backpack_keep_wipe',
+        ],
         'tier_priority' => 70,
         'is_stackable' => 0,
         'is_active' => 1,

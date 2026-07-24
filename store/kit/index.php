@@ -38,7 +38,7 @@ if ($store_kit_context === null) {
     ];
 } else {
     $kit = (array) $store_kit_context['kit'];
-    $kit_name = (string) ($kit['kit_name'] ?? 'Raidlands kit');
+    $kit_name = raidlands_kits_public_name($kit);
     $kit_description = trim((string) ($kit['description'] ?? ''));
     $seo_description = $kit_description !== ''
         ? (function_exists('mb_substr') ? mb_substr($kit_description, 0, 155) : substr($kit_description, 0, 155))

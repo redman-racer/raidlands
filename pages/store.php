@@ -345,7 +345,7 @@ function render_store_product_card(array $product, ?array $player, string $csrf,
                 $kit_html .= '<img src="' . e($image) . '" alt="" loading="lazy" referrerpolicy="no-referrer">';
             }
 
-            $kit_html .= '<span><strong>' . e((string) ($kit['kit_name'] ?? 'Kit')) . '</strong><small>' . e(implode(' / ', $meta)) . '</small>'
+            $kit_html .= '<span><strong>' . e(raidlands_kits_public_name($kit)) . '</strong><small>' . e(implode(' / ', $meta)) . '</small>'
                 . ($items !== [] ? '<em>' . e('Includes ' . implode(', ', $items)) . '</em>' : '')
                 . '</span></a>';
         }

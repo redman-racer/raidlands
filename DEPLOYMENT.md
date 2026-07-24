@@ -58,8 +58,11 @@ the host or upload it through a private channel.
 
 1. Take timestamped database and document-root backups and keep both outside the deployment target.
 2. Restore the July 24 production export into an isolated database with MySQL's force/continue option. The export references missing historical store price ID `42`, so its final foreign-key statement cannot succeed until migration `074` restores that inactive row.
-3. Apply `database/migrations/074_raidlands_10x_progression.sql` to the isolated restore, run the integrity checks, and then apply the same forward-only migration to production during the coordinated maintenance window.
-4. Set these production `.env` values before the new PHP files go live:
+3. Apply `database/migrations/074_raidlands_10x_progression.sql`, `database/migrations/075_raidlands_10x_store_repair.sql`, and `database/migrations/076_rank_kit_restore_split.sql` to the isolated restore in order.
+4. Run `php tests/rank-kit-restore-integration-test.php` against that isolated database. Confirm the twelve split kits, exact July 20 non-boom rows, material conversion, container capacities, stored payload hash, business/history counts, and foreign keys all pass before the production maintenance window.
+5. Deploy the website and updated `WebsiteVipBridge.cs` before applying migration `076` in production. Migration `076` publishes a frozen twelve-kit payload; while it is pending, the website ignores stale snapshots for those names and their aliases.
+6. Apply migrations `074`–`076` to production in order. Wait for both the kit and permission revisions to be acknowledged before treating synchronization as complete. Do not manually clear the pending kit row or replace its stored payload.
+7. Set these production `.env` values before the new PHP files go live:
 
    ```dotenv
    RAIDLANDS_SERVER_NAME="Raidlands 10X"
@@ -67,9 +70,10 @@ the host or upload it through a private channel.
    RAIDLANDS_MAP_NAME="Procedural Map"
    ```
 
-5. Review Admin > Identity, Pages, and SEO for saved file-backed overrides from the retired identity.
-6. Deploy the updated `WebsiteVipBridge.cs`, reload it with the website release, and confirm the live permission snapshot contains the exact `kits.sentry.small`, `kits.sentry.large`, `kits.portafort`, and `kits.vehicle` group mappings. The website keeps those four standalone packs hidden until this confirmation reaches `oxide_group_permission_live`.
-7. Complete Stripe test-mode checkout, RP redemption, renewal, expiration, upgrade, lifetime-protection, and overlapping-entitlement tests with a non-owner Steam account before switching production traffic.
+8. Review Admin > Identity, Pages, and SEO for saved file-backed overrides from the retired identity.
+9. Reload `WebsiteVipBridge.cs` and confirm the live permission snapshot contains the exact standalone pack mappings plus the six new `kits.*.supplies` permissions. Confirm Diamond has VIP, VIP+, and Golden Combat and Supplies access.
+10. Claim all twelve rank kits on the development Rust server and verify exact delivered stacks, aliases, permissions, uses, and cooldowns. Confirm the six rank-kit ServerRewards products are absent while unrelated RP kits remain.
+11. Complete Stripe test-mode checkout, RP redemption, renewal, expiration, upgrade, lifetime-protection, and overlapping-entitlement tests with a non-owner Steam account before switching production traffic.
 
 ### Discord identity rollout
 
@@ -181,6 +185,8 @@ the host or upload it through a private channel.
    - `database/migrations/051_server_map_heatmap.sql`
    - `database/migrations/063_blackjack_roulette_slots.sql`
    - `database/migrations/074_raidlands_10x_progression.sql`
+   - `database/migrations/075_raidlands_10x_store_repair.sql`
+   - `database/migrations/076_rank_kit_restore_split.sql`
    - `database/migrations/066_raid_stats.sql`
    - `database/seeds/001_store_products.sql`
 

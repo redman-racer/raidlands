@@ -397,7 +397,7 @@ function store_item_render_kit(array $kit): string
     return '<article class="' . e($row_class) . '">'
         . '<div class="store-item-kit-row-head">'
         . ($image !== '' ? '<img src="' . e($image) . '" alt="" loading="lazy" decoding="async">' : '<span class="store-kit-item-placeholder" aria-hidden="true"></span>')
-        . '<div><h3><a href="' . e(raidlands_store_kit_public_url($kit)) . '">' . e((string) ($kit['kit_name'] ?? 'Kit')) . '</a></h3>'
+        . '<div><h3><a href="' . e(raidlands_store_kit_public_url($kit)) . '">' . e(raidlands_kits_public_name($kit)) . '</a></h3>'
         . '<p>' . e(implode(' / ', $meta)) . '</p>'
         . ($description !== '' ? '<small>' . e($description) . '</small>' : '')
         . '</div></div>'

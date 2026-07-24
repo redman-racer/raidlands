@@ -880,7 +880,7 @@
   function createModal() {
     var modalCoreFieldSpecs = [
       { label: 'Shortname', help: 'Rust item shortname saved to the kit slot. Pick from the catalog when possible.', type: 'text', field: 'shortname', list: 'admin-kit-shortname-options', maxlength: '160' },
-      { label: 'Amount', help: 'Stack amount granted for this item. Most equipment stays at 1.', type: 'number', field: 'amount', min: '1', max: '1000000' },
+      { label: 'Amount', help: 'Stack amount granted for this item. Most equipment stays at 1.', type: 'number', field: 'amount', min: '1', max: '2147483647' },
       { label: 'Skin', help: 'Optional Rust workshop skin ID. Use 0 for the default item skin.', type: 'number', field: 'skin', min: '0' }
     ];
     var modalAdvancedFieldSpecs = [

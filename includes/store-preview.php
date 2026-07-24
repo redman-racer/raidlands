@@ -98,7 +98,7 @@ function raidlands_store_preview_items(array $kits): array
     $items = [];
 
     foreach ($kits as $kit_index => $kit) {
-        $kit_name = trim((string) ($kit['kit_name'] ?? 'Kit'));
+        $kit_name = raidlands_kits_public_name($kit);
         $containers = (array) ($kit['items'] ?? []);
 
         foreach (['main', 'wear', 'belt'] as $container) {
@@ -160,7 +160,7 @@ function raidlands_store_preview_payload(array $kits, ?array $product = null): a
 {
     return [
         'version' => 1,
-        'title' => (string) ($product['name'] ?? ($kits[0]['kit_name'] ?? 'Kit preview')),
+        'title' => (string) ($product['name'] ?? (isset($kits[0]) ? raidlands_kits_public_name((array) $kits[0]) : 'Kit preview')),
         'items' => raidlands_store_preview_items($kits),
         'decoderPath' => asset_url('media/store-preview/draco/'),
         'labels' => [

@@ -4378,7 +4378,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                                           </label>
                                           <label class="admin-field">
                                             <?= admin_field_head('Amount', 'Stack amount given in the kit.') ?>
-                                            <input type="number" min="1" max="1000000" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][amount]" value="<?= e((string) ($item['amount'] ?? 1)) ?>">
+                                            <input type="number" min="1" max="2147483647" name="kits[<?= e((string) $index) ?>][items][<?= e($container) ?>][<?= e((string) $item_index) ?>][amount]" value="<?= e((string) ($item['amount'] ?? 1)) ?>">
                                           </label>
                                           <label class="admin-field">
                                             <?= admin_field_head('Slot', 'Container slot position.') ?>

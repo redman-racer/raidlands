@@ -202,11 +202,11 @@ function store_kit_render_container(string $label, array $items): string
     <div class="section-inner store-kit-focus-grid">
       <article class="metal-card store-kit-hero-card">
         <?php if ($image !== '') : ?>
-          <img class="store-kit-hero-image" src="<?= e($image) ?>" alt="<?= e((string) ($kit['kit_name'] ?? 'Kit')) ?>" loading="eager" decoding="async">
+          <img class="store-kit-hero-image" src="<?= e($image) ?>" alt="<?= e(raidlands_kits_public_name($kit)) ?>" loading="eager" decoding="async">
         <?php endif; ?>
         <div class="store-kit-hero-copy">
           <p class="section-kicker">Kit detail</p>
-          <h2><?= e((string) ($kit['kit_name'] ?? 'Kit')) ?></h2>
+          <h2><?= e(raidlands_kits_public_name($kit)) ?></h2>
           <p class="section-lede"><?= e((string) ($kit['description'] ?: 'Full kit contents and matching store products.')) ?></p>
         </div>
       </article>
