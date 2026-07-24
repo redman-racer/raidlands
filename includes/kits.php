@@ -74,6 +74,22 @@ function raidlands_kits_readiness_message(bool $admin = false): string
     return '';
 }
 
+function raidlands_kits_repair_restored_ids(PDO $pdo): void
+{
+    raidlands_db_repair_restored_auto_increment_ids($pdo, [
+        'game_kits',
+        'game_kit_items',
+        'game_kit_group_access',
+        'game_kit_sync_log',
+        'store_product_kits',
+        'oxide_groups',
+        'oxide_permissions',
+        'oxide_group_permission_grants',
+        'oxide_group_permission_live',
+        'oxide_permission_sync_log',
+    ]);
+}
+
 function raidlands_kits_clean_text($value, int $max_length = 160): string
 {
     $text = trim(str_replace("\0", '', (string) $value));
@@ -1382,6 +1398,7 @@ function raidlands_kits_admin_save(array $post, array $files = []): array
     raidlands_kits_assert_complete_admin_post($post);
 
     $pdo = raidlands_db_required();
+    raidlands_kits_repair_restored_ids($pdo);
     $publish = (string) ($post['kit_save_mode'] ?? 'draft') === 'publish';
     $revision = raidlands_kits_next_revision($pdo);
     $changed = 0;
@@ -1891,6 +1908,7 @@ function raidlands_kits_import_snapshot(array $payload): array
         ?? [];
 
     $pdo = raidlands_db_required();
+    raidlands_kits_repair_restored_ids($pdo);
     $revision = raidlands_kits_next_revision($pdo);
     $imported = 0;
     $pending_managed_names = raidlands_kits_pending_managed_names($pdo);
