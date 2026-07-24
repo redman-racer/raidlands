@@ -2,7 +2,7 @@
 
 <section class="section">
   <div class="section-inner legal-copy">
-    <p>These terms explain the practical rules for using the Raidlands website, Rust server, Discord, account systems, and supporter perks.</p>
+    <p>These terms explain the practical rules for using the Raidlands 10X website, Rust server, Discord, account systems, and supporter perks.</p>
     <h2>Server Access</h2>
     <p>Raidlands may change server configuration, maps, wipes, features, rules, or access at any time to protect server health and gameplay quality.</p>
     <h2>Rules and Enforcement</h2>
@@ -14,6 +14,6 @@
     <h2>Vote Rewards and RP Games</h2>
     <p>Vote rewards and RP games use in-game Raidlands RP only. RP has no cash value, cannot be cashed out, and point changes are not final until the Rust server confirms the ServerRewards balance change. RP games show odds and payout rules before play, and admins may pause rewards, games, entries, or payouts to protect server balance, prevent abuse, or review technical issues.</p>
     <h2>Facepunch Disclaimer</h2>
-    <p>Raidlands is not affiliated with Facepunch Studios.</p>
+    <p>Raidlands 10X is not affiliated with Facepunch Studios.</p>
   </div>
 </section>

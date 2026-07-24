@@ -1,5 +1,6 @@
 using System;
 using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Linq;
 using System.Reflection;
@@ -15,8 +16,8 @@ using UnityEngine;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteVipBridge", "Raidlands", "1.9.0")]
-    [Description("Syncs website VIP entitlements and player stats between Raidlands.net and the Rust server.")]
+    [Info("WebsiteVipBridge", "Raidlands", "1.9.1")]
+    [Description("Syncs Raidlands 10X website entitlements and player stats with the Rust server.")]
     public class WebsiteVipBridge : CovalencePlugin
     {
         private Configuration config;
@@ -360,6 +361,10 @@ namespace Oxide.Plugins
                 "rank_diamond_vip",
                 "rank_ultimate_vip",
                 "rank_titan_vip",
+                "store_redeem_pack_sentry_small",
+                "store_redeem_pack_sentry_large",
+                "store_redeem_pack_portafort",
+                "store_redeem_pack_vehicle",
                 "vip_bronze",
                 "vip_gold",
                 "vip_elite",
@@ -404,6 +409,10 @@ namespace Oxide.Plugins
                 "perk_shop_sale_25",
                 "perk_shop_sale_50",
                 "perk_shop_sale_75",
+                "store_redeem_pack_sentry_small",
+                "store_redeem_pack_sentry_large",
+                "store_redeem_pack_portafort",
+                "store_redeem_pack_vehicle",
                 "vip_bronze",
                 "vip_gold",
                 "vip_elite",
@@ -974,6 +983,25 @@ namespace Oxide.Plugins
                 config.KitPermissionPrefixes = defaults.KitPermissionPrefixes;
             }
 
+            foreach (var requiredPackGroup in new[]
+            {
+                "store_redeem_pack_sentry_small",
+                "store_redeem_pack_sentry_large",
+                "store_redeem_pack_portafort",
+                "store_redeem_pack_vehicle"
+            })
+            {
+                if (!config.KitPermissionManagedGroups.Any(value => string.Equals(value, requiredPackGroup, StringComparison.OrdinalIgnoreCase)))
+                {
+                    config.KitPermissionManagedGroups.Add(requiredPackGroup);
+                }
+
+                if (!config.ManagedGroups.Any(value => string.Equals(value, requiredPackGroup, StringComparison.OrdinalIgnoreCase)))
+                {
+                    config.ManagedGroups.Add(requiredPackGroup);
+                }
+            }
+
             config.HeatmapMetrics = DistinctConfigValues(config.HeatmapMetrics);
             config.KitPermissionManagedGroups = DistinctConfigValues(config.KitPermissionManagedGroups);
             config.KitPermissionPrefixes = DistinctConfigValues(config.KitPermissionPrefixes);
@@ -1022,8 +1050,10 @@ namespace Oxide.Plugins
 
             if (WebsiteBridgeHub == null || !WebsiteBridgeHub.IsLoaded)
             {
-                PrintError("WebsiteBridgeHub is not loaded. Frequent VIP/control synchronization is paused; no legacy polling fallback will be started.");
+                PrintError("WebsiteBridgeHub is not loaded. Frequent VIP/control synchronization is paused; the low-rate status heartbeat failover remains active.");
             }
+
+            StartStatusHeartbeat();
 
             if (config.StatsEnabled)
             {
@@ -1427,7 +1457,7 @@ namespace Oxide.Plugins
                 return;
             }
 
-            SyncStatusHeartbeat();
+            SyncStatusHeartbeat(true);
             var interval = Math.Max(15, config.StatusHeartbeatIntervalSeconds);
             var last = lastStatusHeartbeatAt == DateTime.MinValue
                 ? "never"
@@ -3149,22 +3179,33 @@ namespace Oxide.Plugins
             }
 
             var interval = Math.Max(15, config.StatusHeartbeatIntervalSeconds);
-            timer.Once(5f, () => RunScheduled("Initial status heartbeat", SyncStatusHeartbeat));
-            statusHeartbeatTimer = timer.Every(interval, () => RunScheduled("Status heartbeat timer", SyncStatusHeartbeat));
-            Puts($"WebsiteVipBridge posting server status heartbeat every {interval} seconds.");
+            timer.Once(5f, () => RunScheduled("Initial status heartbeat failover check", SyncStatusHeartbeat));
+            statusHeartbeatTimer = timer.Every(interval, () => RunScheduled("Status heartbeat failover timer", SyncStatusHeartbeat));
+            Puts($"WebsiteVipBridge monitoring WebsiteBridgeHub heartbeat acknowledgements every {interval} seconds; direct posting is failover-only.");
         }
 
         private void QueueStatusHeartbeat()
         {
-            // WebsiteBridgeHub collects the latest heartbeat on its next exchange.
+            if (!config.StatusHeartbeatEnabled || !ShouldPostDirectStatusHeartbeat())
+            {
+                return;
+            }
+
+            pendingStatusHeartbeatTimer?.Destroy();
+            pendingStatusHeartbeatTimer = timer.Once(Math.Max(3, config.StatusHeartbeatDebounceSeconds), () => RunScheduled("Queued status heartbeat failover", SyncStatusHeartbeat));
         }
 
         private void SyncStatusHeartbeat()
         {
+            SyncStatusHeartbeat(false);
+        }
+
+        private void SyncStatusHeartbeat(bool forceDirect)
+        {
             pendingStatusHeartbeatTimer?.Destroy();
             pendingStatusHeartbeatTimer = null;
 
-            if (!config.StatusHeartbeatEnabled || !CanRequest())
+            if (!config.StatusHeartbeatEnabled || !CanRequest() || (!forceDirect && !ShouldPostDirectStatusHeartbeat()))
             {
                 return;
             }
@@ -3191,6 +3232,39 @@ namespace Oxide.Plugins
 
                 lastStatusHeartbeatAt = DateTime.UtcNow;
             });
+        }
+
+        private bool ShouldPostDirectStatusHeartbeat()
+        {
+            if (WebsiteBridgeHub == null || !WebsiteBridgeHub.IsLoaded)
+            {
+                return true;
+            }
+
+            var exchangeInterval = 30;
+            try
+            {
+                var hubStatus = WebsiteBridgeHub.Call("API_GetWebsiteBridgeStatus") as IDictionary<string, object>;
+                object configuredInterval;
+                if (hubStatus != null
+                    && hubStatus.TryGetValue("exchange_interval_seconds", out configuredInterval)
+                    && configuredInterval != null)
+                {
+                    exchangeInterval = Math.Max(30, Math.Min(900, Convert.ToInt32(configuredInterval, CultureInfo.InvariantCulture)));
+                }
+            }
+            catch (Exception ex)
+            {
+                PrintWarning("Could not inspect WebsiteBridgeHub heartbeat health: " + ex.Message);
+            }
+
+            if (lastStatusHeartbeatAt == DateTime.MinValue)
+            {
+                return true;
+            }
+
+            var failoverAfterSeconds = Math.Max(60, (exchangeInterval * 2) + 10);
+            return (DateTime.UtcNow - lastStatusHeartbeatAt).TotalSeconds >= failoverAfterSeconds;
         }
 
         private StatusHeartbeat BuildStatusHeartbeat()
@@ -6479,13 +6553,13 @@ namespace Oxide.Plugins
             var chatSettings = EnsureObject(json, "Chat Settings");
             var messageSettings = EnsureObject(json, "Messgae Settings");
 
-            chatSettings["Chat Prefix"] = "<size=16><color=#ff3b3b>| Raidlands |</color></size>";
+            chatSettings["Chat Prefix"] = "<size=16><color=#ff3b3b>| Raidlands 10X |</color></size>";
             messageSettings["Value Color (HEX)"] = BrandValue("AccentGold");
         }
 
         private void ApplySmartChatBotBrand(JObject json)
         {
-            json["Chat Prefix"] = "<color=#ff3b3b>Raidlands</color> ";
+            json["Chat Prefix"] = "<color=#ff3b3b>Raidlands 10X</color> ";
             json["Show Chat Prefix"] = true;
             json["Auto Messages"] = new JArray(
                 new JObject
@@ -6511,9 +6585,9 @@ namespace Oxide.Plugins
         private void ApplyDiscordWipeBrand(JObject json)
         {
             ApplyDiscordMessageBrands(json["Wipe messages"] as JArray,
-                "Raidlands has wiped. Drop in, build fast, and claim the map.");
+                "Raidlands 10X has wiped. Drop in, progress fast, and claim the map.");
             ApplyDiscordMessageBrands(json["Protocol messages"] as JArray,
-                "Raidlands server protocol changed. Update Rust before reconnecting.");
+                "Raidlands 10X server protocol changed. Update Rust before reconnecting.");
         }
 
         private void ApplyScoreboardsBrand(JObject json)
@@ -6667,7 +6741,7 @@ namespace Oxide.Plugins
 
             var values = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase);
 
-            values["Name"] = "Raidlands";
+            values["Name"] = "Raidlands 10X";
             values["WebsiteUrl"] = websiteUrl;
             values["PrimaryRed"] = "#ff3b3b";
             values["AccentGold"] = "#ffd166";

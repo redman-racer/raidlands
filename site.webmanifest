@@ -1,7 +1,7 @@
 {
-  "name": "Raidlands 1000x Rust Server",
-  "short_name": "Raidlands",
-  "description": "1000x apocalyptic Rust battlefield with kits, teleporting, clans, fast raids, and Thursday wipes.",
+  "name": "Raidlands 10X Rust Server",
+  "short_name": "Raidlands 10X",
+  "description": "10X gathering, 5X loot, 3X scrap, balanced kits, and Thursday progression wipes.",
   "icons": [
     {
       "src": "assets/icons/favicon-128x128.png",

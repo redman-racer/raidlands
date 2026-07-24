@@ -14,10 +14,11 @@
           'No impersonating staff or pretending to represent Raidlands.',
           'No real-money trading outside official Raidlands store systems.',
           'Follow staff instructions during investigations.',
-          'Respect group limits and staff-posted wipe rules.',
+          'The maximum team size is 16. Do not exceed that limit through alliances or coordinated group splitting.',
+          'Respect staff-posted wipe rules and configured stack limits, including the 120 cap for C4 and rockets.',
       ]) ?>
       <?= render_rule_block('Gameplay Stance', [
-          'Raidlands is a PvP battlefield.',
+          'Raidlands is a progression-focused PvP server.',
           'Raiding, counters, doorcamping, roofcamping, and revenge raids are normal Rust behavior.',
           'Staff will not punish ordinary PvP because someone lost gear.',
           'Cheating, exploits, and real-world threats are the line.',

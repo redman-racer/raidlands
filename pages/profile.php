@@ -263,7 +263,7 @@ $profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_
       <div class="section-header">
         <p class="section-kicker">Player stats</p>
         <h2>RP, combat, and playtime</h2>
-        <p class="section-lede">These stats come from the game server. Wipe RP follows the active season; your synced spendable RP balance is shown in the RP shop section.</p>
+        <p class="section-lede">These stats come from the game server. Wipe-earned RP measures this season's gains; the separately synced spendable balance resets only on force wipe.</p>
       </div>
 
       <?php if (!raidlands_stats_is_ready()) : ?>
@@ -276,7 +276,7 @@ $profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_
         <div class="profile-stat-grid">
           <?php
             $stat_cards = [
-                ['Wipe RP', $profile_stats['current']['reward_points'] ?? 0],
+                ['RP Earned This Wipe', $profile_stats['current']['reward_points'] ?? 0],
                 ['Wipe Kills', $profile_stats['current']['kills'] ?? 0],
                 ['Wipe NPC Kills', $profile_stats['current']['npc_kills'] ?? 0],
                 ['Killed by NPCs', $profile_stats['current']['deaths_by_npc'] ?? 0],
@@ -320,7 +320,7 @@ $profile_url = $profile_player !== null ? trim((string) ($profile_player['steam_
 
       <div class="profile-stat-grid">
         <article class="stat-tile">
-          <span>Synced RP</span>
+          <span>Spendable RP</span>
           <strong><?= e(raidlands_store_rp((int) ($profile_rp_balance['reward_points'] ?? 0))) ?></strong>
         </article>
         <article class="stat-tile">

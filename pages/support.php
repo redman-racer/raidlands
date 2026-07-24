@@ -119,6 +119,23 @@
   </div>
 </section>
 
+<section class="section alt">
+  <div class="section-inner">
+    <div class="section-header">
+      <p class="section-kicker">10X quick answers</p>
+      <h2>Rates, backpacks, wipes, and RP</h2>
+    </div>
+    <div class="grid two">
+      <?= render_card('GATHER', 'What are the live rates?', 'Player gathering and production are 10X, general loot is 5X, components are approximately 5X with 10X stacks, and scrap plus raid-resource progression are approximately 3X.') ?>
+      <?= render_card('PACK', 'Do backpacks drop on death?', 'No. Everyone receives six backpack slots and keeps backpack contents on death. VIP, VIP+, and MVP receive 36 slots; Golden receives 42; Diamond, Ultimate, and Titan receive 48.') ?>
+      <?= render_card('WIPE', 'When does the server wipe?', 'The website uses the live configured schedule: ' . implode(' and ', (array) ($site_config['wipe']['dayNames'] ?? ['Thursday'])) . ' at ' . (string) ($site_config['wipe']['time'] ?? '19:00') . ' ' . (string) ($site_config['wipe']['timezone'] ?? 'Europe/London') . '.') ?>
+      <?= render_card('RP', 'When does spendable RP reset?', 'Spendable RP resets only on force wipe. RP earned this wipe is a separate seasonal statistic used by profiles and leaderboards.') ?>
+      <?= render_card('KIT', 'Where do kit contents come from?', 'The store displays active kit contents, uses, cooldowns, and permissions synchronized from the live Rust server rather than placeholder inventories.') ?>
+      <?= render_card('CRATE', 'Can event crates contain explosives?', 'Locked, helicopter, and Bradley crates can contain direct C4 or rockets, with rare explosive limits applied per crate.') ?>
+    </div>
+  </div>
+</section>
+
 <section class="section">
   <div class="section-inner">
     <div class="grid three">

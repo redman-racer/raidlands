@@ -86,7 +86,7 @@ $empty_top25_info = getimagesizefromstring(raidlands_outpost_leaderboard_render_
 outpost_leaderboard_assert($empty_top25_info !== false && $empty_top25_info[0] === 1024 && $empty_top25_info[1] === 512, 'The empty-state board must remain a valid 1024x512 PNG.');
 outpost_leaderboard_assert(is_file(raidlands_outpost_leaderboard_font()), 'The bundled leaderboard font must materialize successfully.');
 outpost_leaderboard_assert(
-    str_contains($implementation, '/assets/media/horizontal-logo-lrg.webp')
+    str_contains($implementation, '/assets/media/horizontal-logo-10x-lrg.webp')
         && str_contains($implementation, '/assets/media/header-bg-rust-v2.png'),
     'The physical leaderboard renderer must use the in-game logo and the shared industrial brand art.'
 );

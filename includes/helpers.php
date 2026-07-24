@@ -29,6 +29,50 @@ function route_url(string $path = ''): string
     return $path === '' ? $base_path : $base_path . $path . '/';
 }
 
+function raidlands_request_origin(): string
+{
+    $https = (!empty($_SERVER['HTTPS']) && $_SERVER['HTTPS'] !== 'off')
+        || strtolower((string) ($_SERVER['HTTP_X_FORWARDED_PROTO'] ?? '')) === 'https';
+    $scheme = $https ? 'https' : 'http';
+    $host = trim((string) ($_SERVER['HTTP_X_FORWARDED_HOST'] ?? $_SERVER['HTTP_HOST'] ?? 'localhost'));
+    $host = trim(explode(',', $host)[0] ?? 'localhost');
+
+    if (!preg_match('/^[a-z0-9.-]+(?::[0-9]{1,5})?$/i', $host)) {
+        $host = 'localhost';
+    }
+
+    return $scheme . '://' . $host;
+}
+
+function raidlands_public_absolute_url(string $path = ''): string
+{
+    $script_dir = str_replace('\\', '/', dirname((string) ($_SERVER['SCRIPT_NAME'] ?? '/')));
+
+    if ($script_dir === '.' || !str_starts_with($script_dir, '/')) {
+        $script_dir = '';
+    }
+
+    $root = preg_replace(
+        '#/(admin|api(?:/.*)?|api-docs|bans|clans|discord|events|features|leaderboard|link|play|privacy|profile|rp-games|rules|server|store|support|terms|vote)$#',
+        '',
+        rtrim($script_dir, '/')
+    ) ?? '';
+    $root = $root === '/' ? '' : $root;
+
+    return raidlands_request_origin() . $root . '/' . ltrim($path, '/');
+}
+
+function raidlands_canonical_url(): string
+{
+    $request_path = strtok((string) ($_SERVER['REQUEST_URI'] ?? '/'), '?') ?: '/';
+
+    if (!str_starts_with($request_path, '/')) {
+        $request_path = '/' . ltrim($request_path, '/');
+    }
+
+    return raidlands_request_origin() . $request_path;
+}
+
 function icon_svg(string $paths): string
 {
     return '<svg viewBox="0 0 64 64" focusable="false">' . $paths . '</svg>';
@@ -145,8 +189,8 @@ function raidlands_loader_payload(): array
     $wipe_timezone = (string) ($site_config['wipe']['timezone'] ?? 'Europe/London');
 
     return [
-        'brand' => (string) ($site_config['serverName'] ?? 'Raidlands 1000x'),
-        'tagline' => (string) ($site_config['tagline'] ?? 'Raid. Respawn. Rebuild. Repeat.'),
+        'brand' => (string) ($site_config['serverName'] ?? 'Raidlands 10X'),
+        'tagline' => (string) ($site_config['tagline'] ?? 'Progress fast. Raid smarter.'),
         'pageId' => $page_id,
         'pageTitle' => (string) ($page_meta['title'] ?? 'Raidlands'),
         'logoUrl' => asset_url('media/raidlands-logo.webp'),
@@ -193,7 +237,7 @@ function raidlands_loader_payload(): array
             ['id' => 'server-status', 'level' => 'info', 'text' => 'Connecting to live Rust status feed...', 'wait' => 'server'],
             ['level' => 'info', 'text' => 'Loading wipe schedule...'],
             ['level' => 'ok', 'text' => '[OK] ' . $wipe_days . ' wipe window ' . $wipe_time . ' ' . $wipe_timezone],
-            ['id' => 'dom-ready', 'level' => 'info', 'text' => 'Parsing battlefield route...', 'wait' => 'dom', 'successText' => '[OK] Route markup parsed'],
+            ['id' => 'dom-ready', 'level' => 'info', 'text' => 'Parsing progression route...', 'wait' => 'dom', 'successText' => '[OK] Route markup parsed'],
             ['id' => 'window-load', 'level' => 'info', 'text' => 'Loading visual assets...', 'wait' => 'load', 'successText' => '[OK] Visual assets mounted'],
             ['level' => 'info', 'text' => 'Establishing breach route...', 'decorative' => true],
             ['level' => 'info', 'text' => 'Compiling target intel...', 'decorative' => true],

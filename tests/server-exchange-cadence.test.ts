@@ -14,6 +14,18 @@ describe("centralized server exchange cadence", () => {
     expect(status).toContain("return max($exchange_seconds * 4, $configured_seconds);");
   });
 
+  it("keeps heartbeat health recoverable when the centralized exchange is unavailable", () => {
+    const hub = read("server-plugins/WebsiteBridgeHub.cs");
+    const vip = read("server-plugins/WebsiteVipBridge.cs");
+
+    expect(hub).toContain('LoadVipBridgeSetting("SharedSecret")');
+    expect(hub).toContain("requestWatchdogTimer");
+    expect(hub).toContain("Website bridge exchange is not ready and will retry");
+    expect(vip).toContain("StartStatusHeartbeat();");
+    expect(vip).toContain("ShouldPostDirectStatusHeartbeat()");
+    expect(vip).toContain("direct posting is failover-only");
+  });
+
   it("passes the exchange cadence to both 3D map viewers", () => {
     for (const page of ["pages/home.php", "pages/server.php"]) {
       expect(read(page)).toContain('data-live-refresh-seconds="<?= e((string) ($site_config[\'serverStats\'][\'exchangeSeconds\'] ?? 30)) ?>"');

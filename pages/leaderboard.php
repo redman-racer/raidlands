@@ -4,8 +4,9 @@ require_once $site_root . '/includes/stats.php';
 require_once $site_root . '/includes/rewards.php';
 
 $leaderboard_ready = raidlands_stats_is_ready();
+$leaderboard_show_bot_board = false;
 $leaderboard_board = (string) ($_GET['board'] ?? 'players');
-$leaderboard_board = in_array($leaderboard_board, ['players', 'raids', 'bots', 'rp-games'], true) ? $leaderboard_board : 'players';
+$leaderboard_board = in_array($leaderboard_board, ['players', 'raids', 'rp-games'], true) ? $leaderboard_board : 'players';
 $leaderboard_scope = raidlands_stats_scope((string) ($_GET['scope'] ?? 'current'));
 $leaderboard_wipe_id = raidlands_stats_wipe_id($_GET['wipe_id'] ?? 0);
 $leaderboard_wipe_key = raidlands_stats_optional_wipe_key($_GET['wipe_key'] ?? '');
@@ -450,6 +451,7 @@ $leaderboard_podium_html = leaderboard_podium_markup(
             aria-selected="<?= $leaderboard_board === 'raids' ? 'true' : 'false' ?>"
             aria-controls="leaderboard-raids"
             data-leaderboard-tab="raids">Raid Stats</a>
+          <?php if ($leaderboard_show_bot_board) : ?>
           <a
             class="<?= $leaderboard_board === 'bots' ? 'is-active' : '' ?>"
             href="<?= e(leaderboard_url('bots', $leaderboard_scope, $leaderboard_bot_metric, 1, $leaderboard_per_page, $leaderboard_search, $leaderboard_selected_wipe_id, $leaderboard_selected_wipe_key)) ?>"
@@ -457,6 +459,7 @@ $leaderboard_podium_html = leaderboard_podium_markup(
             aria-selected="<?= $leaderboard_board === 'bots' ? 'true' : 'false' ?>"
             aria-controls="leaderboard-bots"
             data-leaderboard-tab="bots">Bot Stats</a>
+          <?php endif; ?>
           <a
             class="<?= $leaderboard_board === 'rp-games' ? 'is-active' : '' ?>"
             href="<?= e(leaderboard_url('rp-games', $leaderboard_scope, 'total-won', 1, $leaderboard_per_page, $leaderboard_search, $leaderboard_selected_wipe_id, $leaderboard_selected_wipe_key)) ?>"
@@ -491,7 +494,7 @@ $leaderboard_podium_html = leaderboard_podium_markup(
             <div>
               <p class="section-kicker">Player standings</p>
               <h3>Player Stats</h3>
-              <p class="section-lede">Sort players by combat, survival time, NPC fights, and ServerRewards RP.</p>
+              <p class="section-lede">Sort players by combat, survival time, NPC fights, and RP earned during the selected wipe. Spendable RP is a separate balance and resets only on force wipe.</p>
             </div>
             <span class="status-pill" data-leaderboard-count><?= e(leaderboard_page_summary($leaderboard_player_result)) ?></span>
           </div>
@@ -727,6 +730,7 @@ $leaderboard_podium_html = leaderboard_podium_markup(
           </nav>
         </section>
 
+        <?php if ($leaderboard_show_bot_board) : ?>
         <section
           id="leaderboard-bots"
           class="<?= e(leaderboard_panel_classes('bots', $leaderboard_board)) ?>"
@@ -838,6 +842,7 @@ $leaderboard_podium_html = leaderboard_podium_markup(
             <a class="<?= (int) $leaderboard_bot_result['page'] >= (int) $leaderboard_bot_result['pages'] ? 'is-disabled' : '' ?>" href="<?= e(leaderboard_url('bots', $leaderboard_scope, $leaderboard_bot_metric, min((int) $leaderboard_bot_result['pages'], (int) $leaderboard_bot_result['page'] + 1), $leaderboard_per_page, $leaderboard_search, $leaderboard_selected_wipe_id, $leaderboard_selected_wipe_key)) ?>" data-leaderboard-page-link="next">Next</a>
           </nav>
         </section>
+        <?php endif; ?>
 
         <section
           id="leaderboard-rp-games"

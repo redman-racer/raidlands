@@ -24,7 +24,7 @@ $vote_balance = is_array($vote_state['balance'] ?? null) ? $vote_state['balance'
     <?php else : ?>
       <div class="store-rp-status">
         <div>
-          <p class="section-kicker">Your synced RP</p>
+          <p class="section-kicker">Your spendable RP</p>
           <strong><?= e(raidlands_store_rp((int) ($vote_balance['reward_points'] ?? 0))) ?></strong>
         </div>
         <span><?= $vote_balance === null || empty($vote_balance['last_seen_at']) ? 'Waiting for the next server sync' : 'Last synced ' . e((string) $vote_balance['last_seen_at']) ?></span>
@@ -99,7 +99,7 @@ $vote_balance = is_array($vote_state['balance'] ?? null) ? $vote_state['balance'
         <li>Vote rewards use in-game Raidlands RP only.</li>
         <li>Rewards have no cash value and cannot be cashed out.</li>
         <li>Rust-Servers.net claims are checked against their SteamID vote API.</li>
-        <li>Queued claims become final only after the Rust server credits ServerRewards RP.</li>
+        <li>Queued claims become final only after the Rust server credits your in-game RP balance.</li>
         <li>Strict vote sites wait for their callback before RP is queued.</li>
       </ul>
     </div>

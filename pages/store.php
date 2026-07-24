@@ -564,6 +564,12 @@ function raidlands_store_format_seconds(int $seconds): string
         <span><?= $store_rp_balance === null || empty($store_rp_balance['last_seen_at']) ? 'Waiting for the next server sync' : 'Last synced ' . e((string) $store_rp_balance['last_seen_at']) ?></span>
       </div>
     <?php endif; ?>
+
+    <div class="metal-panel progression-rule-panel">
+      <p class="section-kicker">Included for every player</p>
+      <h2>Six backpack slots and death retention are free</h2>
+      <p class="section-lede">VIP tiers sell larger backpack capacity, balanced server-synced kits, queue access, movement conveniences, and approved perks. Blueprint access and keeping backpack contents on death are not paid exclusives.</p>
+    </div>
   </div>
 </section>
 
@@ -584,7 +590,7 @@ function raidlands_store_format_seconds(int $seconds): string
     <div class="metal-panel">
       <p class="section-kicker">Purchase notes</p>
       <h2>Modded server perks</h2>
-      <p class="section-lede">These products affect gameplay access on Raidlands. Check kit contents, cooldowns, and wipe-balance notes before buying.</p>
+      <p class="section-lede">These products affect gameplay access on Raidlands. Active kits show their exact server-synchronized contents, seven-use limits, and 12-hour cooldowns where configured. Unverified products stay hidden.</p>
       <div class="button-row">
         <a class="btn btn-primary" href="<?= e(route_url('profile')) ?>">Check My Profile</a>
         <a class="btn btn-secondary" href="<?= e(route_url('terms')) ?>">Terms</a>

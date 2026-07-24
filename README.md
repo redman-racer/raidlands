@@ -1,6 +1,6 @@
-# Raidlands Website
+# Raidlands 10X Website
 
-PHP-rendered website for Raidlands 1000x, built from the website plan and media kit.
+PHP-rendered website for Raidlands 10X, built around 10X gathering, 5X loot, 3X scrap, balanced kits, and account-linked server access.
 
 ## Local Preview
 

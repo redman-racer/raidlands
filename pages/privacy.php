@@ -2,7 +2,7 @@
 
 <section class="section">
   <div class="section-inner legal-copy">
-    <p>This policy explains the practical data handled by the Raidlands website, Rust server, Discord, support workflows, and account systems.</p>
+    <p>This policy explains the practical data handled by the Raidlands 10X website, Rust server, Discord, support workflows, and account systems.</p>
     <h2>Data We May Collect</h2>
     <p>Raidlands may collect website usage events, connect button clicks, copied command events, Steam account details, Discord account details, support ticket details, and moderation records when you use those systems.</p>
     <h2>Connected Accounts</h2>

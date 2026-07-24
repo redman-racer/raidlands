@@ -1073,7 +1073,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="robots" content="noindex, nofollow">
-    <title>Raidlands Admin</title>
+    <title>Raidlands 10X Admin</title>
     <meta name="theme-color" content="#0b0d0e">
     <meta name="msapplication-TileColor" content="#050607">
     <meta name="msapplication-TileImage" content="<?= e(asset_url('icons/mstile-150x150.png')) ?>">
@@ -1104,8 +1104,8 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
       <main class="admin-login-shell">
         <?php if ($admin_auth_tables_ready) : ?>
         <div class="admin-login-panel">
-          <img class="admin-login-logo" src="<?= e(asset_url('media/raidlands-logo.webp')) ?>" alt="Raidlands">
-          <h1>Raidlands Admin</h1>
+          <img class="admin-login-logo" src="<?= e(asset_url('media/raidlands-logo.webp')) ?>" alt="Raidlands 10X">
+          <h1>Raidlands 10X Admin</h1>
           <?php if ($flash !== null) : ?>
             <div class="admin-alert <?= e((string) $flash['type']) ?>"><?= e((string) $flash['message']) ?></div>
           <?php endif; ?>
@@ -1126,8 +1126,8 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
           <input type="hidden" name="action" value="login">
           <input type="hidden" name="section" value="<?= e($active_section) ?>">
           <input type="hidden" name="csrf" value="<?= e($csrf) ?>">
-          <img class="admin-login-logo" src="<?= e(asset_url('media/raidlands-logo.webp')) ?>" alt="Raidlands">
-          <h1>Raidlands Admin</h1>
+          <img class="admin-login-logo" src="<?= e(asset_url('media/raidlands-logo.webp')) ?>" alt="Raidlands 10X">
+          <h1>Raidlands 10X Admin</h1>
           <?php if ($flash !== null) : ?>
             <div class="admin-alert <?= e((string) $flash['type']) ?>"><?= e((string) $flash['message']) ?></div>
           <?php endif; ?>
@@ -1152,12 +1152,12 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
         <div class="admin-topbar-main">
           <a class="admin-brand" href="<?= e(route_url()) ?>">
             <img
-              src="<?= e(asset_url('media/horizontal-logo-xsm.webp')) ?>"
-              srcset="<?= e(asset_url('media/horizontal-logo-xxsm.webp')) ?> 120w, <?= e(asset_url('media/horizontal-logo-xsm.webp')) ?> 300w, <?= e(asset_url('media/horizontal-logo-sm.webp')) ?> 550w, <?= e(asset_url('media/horizontal-logo-med.webp')) ?> 1100w"
+              src="<?= e(asset_url('media/horizontal-logo-10x-xsm.webp')) ?>"
+              srcset="<?= e(asset_url('media/horizontal-logo-10x-xxsm.webp')) ?> 120w, <?= e(asset_url('media/horizontal-logo-10x-xsm.webp')) ?> 300w, <?= e(asset_url('media/horizontal-logo-10x-sm.webp')) ?> 550w, <?= e(asset_url('media/horizontal-logo-10x-med.webp')) ?> 1100w"
               sizes="(max-width: 520px) 136px, 168px"
               width="300"
               height="100"
-              alt="Raidlands"
+              alt="Raidlands 10X"
               decoding="async">
             <span>Admin</span>
           </a>
@@ -1216,7 +1216,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
         <div class="admin-container" data-admin-section="<?= e($active_section) ?>">
           <div class="admin-heading">
             <p class="section-kicker">Website Control</p>
-            <h1>Raidlands Admin Panel</h1>
+            <h1>Raidlands 10X Admin Panel</h1>
           </div>
 
           <?php if ($flash !== null) : ?>
@@ -1275,12 +1275,12 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                     <div class="admin-grid three">
                       <label class="admin-field">
                         <?= admin_field_head('Server name', 'Public server name used in page headers, browser metadata, and status fallbacks.') ?>
-                        <input type="text" name="site_config[serverName]" maxlength="120" placeholder="Raidlands 1000x" value="<?= e((string) ($admin_site['serverName'] ?? '')) ?>">
+                        <input type="text" name="site_config[serverName]" maxlength="120" placeholder="Raidlands 10X" value="<?= e((string) ($admin_site['serverName'] ?? '')) ?>">
                         <?= admin_hint('Changes public brand text. It does not rename the Rust server itself.') ?>
                       </label>
                       <label class="admin-field">
                         <?= admin_field_head('Tagline', 'Short brand line shown in page heroes and reusable headers.') ?>
-                        <input type="text" name="site_config[tagline]" maxlength="160" placeholder="Raid. Respawn. Rebuild. Repeat." value="<?= e((string) ($admin_site['tagline'] ?? '')) ?>">
+                        <input type="text" name="site_config[tagline]" maxlength="160" placeholder="Progress fast. Raid smarter." value="<?= e((string) ($admin_site['tagline'] ?? '')) ?>">
                       </label>
                       <label class="admin-field">
                         <?= admin_field_head('Region', 'Shown in the server status panel so players know the server location.') ?>
@@ -1288,7 +1288,7 @@ function admin_render_kit_slot_editor(array $kit, int $kit_index, array $catalog
                       </label>
                       <label class="admin-field">
                         <?= admin_field_head('Fallback map name', 'Map label shown before live server data loads or when it is unavailable.') ?>
-                        <input type="text" name="site_config[mapName]" maxlength="120" placeholder="Procedural Battlefield" value="<?= e((string) ($admin_site['mapName'] ?? '')) ?>">
+                        <input type="text" name="site_config[mapName]" maxlength="120" placeholder="Procedural Map" value="<?= e((string) ($admin_site['mapName'] ?? '')) ?>">
                         <?= admin_hint('Live status can override this when the server bridge responds.') ?>
                       </label>
                       <label class="admin-field">

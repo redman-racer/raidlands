@@ -292,7 +292,7 @@ function raidlands_outpost_leaderboard_draw_cover($canvas, string $path, int $wi
 
 function raidlands_outpost_leaderboard_draw_logo($canvas, int $x, int $y, int $max_width, int $max_height): bool
 {
-    $path = dirname(__DIR__) . '/assets/media/horizontal-logo-lrg.webp';
+    $path = dirname(__DIR__) . '/assets/media/horizontal-logo-10x-lrg.webp';
     $source = raidlands_outpost_leaderboard_image_resource($path);
     if ($source === null) return false;
 

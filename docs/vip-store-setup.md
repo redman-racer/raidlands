@@ -1,4 +1,4 @@
-# Raidlands Store Setup
+# Raidlands 10X Store Setup
 
 ## Local database
 
@@ -42,9 +42,10 @@
 38. Run `database/migrations/056_seed_airstrike_animation_strike_profiles.sql`.
 39. Run `database/migrations/057_repair_airstrike_animation_column_widths.sql`.
 40. Run `database/migrations/063_blackjack_roulette_slots.sql`.
-41. Run `database/seeds/001_store_products.sql`.
-42. Copy the root `.env.example` file to `.env`.
-43. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
+41. Run `database/migrations/074_raidlands_10x_progression.sql`.
+42. Run `database/seeds/001_store_products.sql`.
+43. Copy the root `.env.example` file to `.env`.
+44. Fill in `RAIDLANDS_DB_DSN`, `RAIDLANDS_DB_USER`, and `RAIDLANDS_DB_PASSWORD`.
 
 The root `.env` file is ignored by Git and protected from direct web access by the root `.htaccess`.
 

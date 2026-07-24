@@ -7,6 +7,7 @@ $loader_payload = raidlands_loader_payload();
 $linked_player = raidlands_linked_player();
 $client_site_config = $site_config;
 $client_site_config['wipe']['signal'] = ['key' => '', 'startedAt' => ''];
+$initial_server_status = null;
 
 try {
     $initial_server_status = raidlands_server_status_public();
@@ -21,6 +22,59 @@ try {
 $client_site_config['chat'] = raidlands_chat_client_config($linked_player, $base_path . 'api/chat/');
 $config_json = json_encode($client_site_config, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 $loader_json = json_encode($loader_payload, JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES);
+$canonical_url = raidlands_canonical_url();
+$site_url = raidlands_public_absolute_url();
+$og_image_url = raidlands_public_absolute_url('assets/media/og-image.png');
+$server_online = $initial_server_status !== null
+    ? !empty($initial_server_status['online'])
+    : !empty($site_config['serverOnline']);
+$server_name = trim((string) ($initial_server_status['name'] ?? $site_config['serverName'] ?? 'Raidlands 10X'));
+$server_players = max(0, (int) ($initial_server_status['players'] ?? $site_config['playersOnline'] ?? 0));
+$server_max_players = max(0, (int) ($initial_server_status['maxPlayers'] ?? $site_config['maxPlayers'] ?? 0));
+$server_schema_status = !$server_online
+    ? 'https://schema.org/OfflineTemporarily'
+    : ($server_max_players > 0 && $server_players >= $server_max_players
+        ? 'https://schema.org/OnlineFull'
+        : 'https://schema.org/Online');
+$structured_data = [
+    '@context' => 'https://schema.org',
+    '@graph' => [
+        [
+            '@type' => 'Organization',
+            '@id' => $site_url . '#organization',
+            'name' => 'Raidlands 10X',
+            'url' => $site_url,
+            'logo' => raidlands_public_absolute_url('assets/media/raidlands-logo.png'),
+        ],
+        [
+            '@type' => 'WebSite',
+            '@id' => $site_url . '#website',
+            'name' => 'Raidlands 10X',
+            'url' => $site_url,
+            'publisher' => ['@id' => $site_url . '#organization'],
+        ],
+        [
+            '@type' => 'GameServer',
+            '@id' => $site_url . '#game-server',
+            'name' => $server_name !== '' ? $server_name : 'Raidlands 10X',
+            'url' => raidlands_public_absolute_url('server/'),
+            'description' => 'Raidlands 10X Rust server with 10X gathering, 5X loot, and 3X scrap progression.',
+            'serverStatus' => $server_schema_status,
+            'playersOnline' => $server_players,
+            'owner' => ['@id' => $site_url . '#organization'],
+            'image' => $og_image_url,
+            'mainEntityOfPage' => raidlands_public_absolute_url('server/'),
+            'game' => [
+                '@type' => 'VideoGame',
+                'name' => 'Rust',
+            ],
+        ],
+    ],
+];
+$structured_data_json = json_encode(
+    $structured_data,
+    JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_UNESCAPED_SLASHES
+);
 ?>
 <!doctype html>
 <html lang="en" data-page="<?= e($page_id) ?>" data-base="<?= e($base_path) ?>">
@@ -36,7 +90,17 @@ $loader_json = json_encode($loader_payload, JSON_HEX_TAG | JSON_HEX_AMP | JSON_H
     <meta property="og:title" content="<?= e($seo['ogTitle']) ?>">
     <meta property="og:description" content="<?= e($seo['ogDescription']) ?>">
     <meta property="og:type" content="website">
-    <meta property="og:image" content="<?= e(asset_url('media/og-image.png')) ?>">
+    <meta property="og:site_name" content="Raidlands 10X">
+    <meta property="og:url" content="<?= e($canonical_url) ?>">
+    <meta property="og:image" content="<?= e($og_image_url) ?>">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="Raidlands 10X Rust server">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="<?= e($seo['ogTitle']) ?>">
+    <meta name="twitter:description" content="<?= e($seo['ogDescription']) ?>">
+    <meta name="twitter:image" content="<?= e($og_image_url) ?>">
+    <link rel="canonical" href="<?= e($canonical_url) ?>">
     <link rel="icon" href="<?= e(asset_url('icons/favicon.ico')) ?>" type="image/x-icon">
     <link rel="icon" href="<?= e(asset_url('icons/favicon-16x16.ico')) ?>" sizes="16x16" type="image/x-icon">
     <link rel="icon" href="<?= e(asset_url('icons/favicon-32x32.ico')) ?>" sizes="32x32" type="image/x-icon">
@@ -50,7 +114,7 @@ $loader_json = json_encode($loader_payload, JSON_HEX_TAG | JSON_HEX_AMP | JSON_H
     <link rel="icon" href="<?= e(asset_url('icons/favicon-512x512.png')) ?>" sizes="512x512" type="image/png">
     <link rel="apple-touch-icon" href="<?= e(asset_url('icons/apple-touch-icon.png')) ?>" sizes="180x180">
     <link rel="manifest" href="<?= e($base_path . 'site.webmanifest') ?>">
-    <link rel="preload" as="image" href="<?= e(asset_url('media/loading/battlefield-background.webp')) ?>" fetchpriority="high">
+    <link rel="preload" as="image" href="<?= e(asset_url('media/loading/loading-raid-scene.webp')) ?>" fetchpriority="high">
     <link rel="preload" as="image" href="<?= e(asset_url('media/loading/breach-ring.webp')) ?>">
     <?php foreach ((array) ($loader_payload['explosionAssetUrls'] ?? []) as $explosion_asset_url) : ?>
       <link rel="preload" as="image" href="<?= e((string) $explosion_asset_url) ?>" media="(min-width: 701px)">
@@ -117,6 +181,7 @@ $loader_json = json_encode($loader_payload, JSON_HEX_TAG | JSON_HEX_AMP | JSON_H
     <link rel="stylesheet" href="<?= e(asset_url('css/styles.css')) ?>">
     <script type="application/json" id="raidlands-loader-data"><?= $loader_json ?></script>
     <script type="application/json" id="site-config"><?= $config_json ?></script>
+    <script type="application/ld+json"><?= $structured_data_json ?></script>
     <script defer src="<?= e(asset_url('js/site.js')) ?>"></script>
   </head>
   <body>
@@ -127,7 +192,7 @@ $loader_json = json_encode($loader_payload, JSON_HEX_TAG | JSON_HEX_AMP | JSON_H
         <header class="site-header">
           <div class="header-inner">
             <a class="brand" href="<?= e(route_url()) ?>" aria-label="Raidlands home">
-              <img src="<?= e(asset_url('media/raidlands-logo.webp')) ?>" alt="Raidlands 1000x">
+              <img src="<?= e(asset_url('media/raidlands-logo.webp')) ?>" alt="Raidlands 10X">
             </a>
             <nav class="nav-menu" id="site-menu" aria-label="Primary navigation">
               <?php foreach ($header_nav as $nav_item) : ?>

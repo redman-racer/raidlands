@@ -2,11 +2,11 @@
 
 Upload these files with the horizontal logo rollout:
 
-- `assets/media/horizontal-logo-xxsm.webp`
-- `assets/media/horizontal-logo-xsm.webp`
-- `assets/media/horizontal-logo-sm.webp`
-- `assets/media/horizontal-logo-med.webp`
-- `assets/media/horizontal-logo-lrg.webp`
+- `assets/media/horizontal-logo-10x-xxsm.webp`
+- `assets/media/horizontal-logo-10x-xsm.webp`
+- `assets/media/horizontal-logo-10x-sm.webp`
+- `assets/media/horizontal-logo-10x-med.webp`
+- `assets/media/horizontal-logo-10x-lrg.webp`
 - `assets/media/in-game/raidlands-footer-logo.png`
 - `includes/footer.php`
 - `admin/index.php`

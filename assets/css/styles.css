@@ -4977,7 +4977,7 @@ html[data-podium-capture="true"] .leaderboard-podium[data-podium-capture="true"]
     radial-gradient(ellipse at 66% 48%, rgba(255, 138, 40, .14), transparent 36%),
     linear-gradient(180deg, rgba(5, 6, 7, .32), rgba(5, 6, 7, .88)),
     url("../media/texture-grunge.svg") center / 760px repeat,
-    url("../media/loading/battlefield-background.webp") center / cover no-repeat,
+    url("../media/loading/loading-raid-scene.webp") center / cover no-repeat,
     #050607;
   overflow: hidden;
   isolation: isolate;
@@ -15993,4 +15993,64 @@ button.monument-room {
   color: inherit;
   font: 0.72rem/1.45 ui-monospace, SFMono-Regular, Consolas, monospace;
   white-space: pre-wrap;
+}
+
+.progression-rate-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.progression-rate-card {
+  min-height: 190px;
+}
+
+.progression-rate-card > strong {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--orange);
+  font-family: var(--font-display);
+  font-size: clamp(2.8rem, 5vw, 4.5rem);
+  font-weight: 700;
+  line-height: .85;
+  letter-spacing: .02em;
+}
+
+.progression-rate-card h3 {
+  margin: 0 0 8px;
+}
+
+.progression-rule-panel {
+  margin-top: 18px;
+}
+
+.progression-rule-list {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 10px 22px;
+}
+
+.progression-rule-list li {
+  margin: 0;
+}
+
+@media (max-width: 980px) {
+  .progression-rate-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .progression-rule-list {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+}
+
+@media (max-width: 620px) {
+  .progression-rate-grid,
+  .progression-rule-list {
+    grid-template-columns: 1fr;
+  }
+
+  .progression-rate-card {
+    min-height: 0;
+  }
 }

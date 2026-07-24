@@ -9,7 +9,7 @@
     <div class="metal-panel">
       <p class="section-kicker">Connection methods</p>
       <h2>Get in with a fallback ready</h2>
-      <p class="section-lede">Direct connect is fastest. The console command is most reliable. Server browser search is the backup when protocols or overlays misbehave.</p>
+      <p class="section-lede">Direct connect is fastest. You are joining the 10X progression server: 10X gathering and production, 5X loot, 3X scrap, no blueprint grind, teams up to 16, and C4 and rocket stacks capped at 120.</p>
       <?= render_command_box() ?>
       <div class="button-row">
         <a class="btn btn-primary" href="<?= e($site_config['steamConnectUrl']) ?>" data-track="join_server_clicked">Launch Rust and Join</a>

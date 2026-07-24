@@ -258,7 +258,6 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
               <option value="kills">Kills</option>
               <option value="npc_fights">NPC fights</option>
               <option value="loot_pvp">Loot/PvP activity</option>
-              <option value="roambots">RoamBots</option>
             </select>
           </label>
           <label class="server-terrain-field">
@@ -384,7 +383,7 @@ function raidlands_server_page_date($value, string $fallback = 'Pending'): strin
   <div class="section-inner split-panel">
     <div class="metal-panel server-detail-panel">
       <p class="section-kicker">Server details</p>
-      <h2>Current battlefield snapshot</h2>
+      <h2>Current server snapshot</h2>
       <dl class="server-detail-list">
         <div><dt>Name</dt><dd><?= e(raidlands_server_page_value($server_status['name'] ?? $site_config['serverName'])) ?></dd></div>
         <div><dt>Region</dt><dd><?= e($site_config['region']) ?></dd></div>

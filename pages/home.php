@@ -103,7 +103,7 @@ $home_is_linked = raidlands_has_linked_account();
     <div class="hero-layout">
       <div class="hero-copy">
         <img class="hero-brand-mark" src="<?= e(asset_url('media/raidlands-logo.webp')) ?>" alt="">
-        <h1>Raidlands 1000x</h1>
+        <h1>Raidlands 10X</h1>
         <p class="hero-subtitle"><?= e($page_copy['home']['lede']) ?></p>
         <div class="hero-actions">
           <a class="btn btn-primary" href="<?= e($site_config['steamConnectUrl']) ?>" data-track="join_server_clicked">
@@ -131,7 +131,7 @@ $home_is_linked = raidlands_has_linked_account();
   <div class="section-inner">
     <div class="section-header home-section-heading">
       <div>
-        <p class="section-kicker">Live battlefield</p>
+        <p class="section-kicker">Live server</p>
         <h2>See the fight before you join</h2>
         <p class="section-lede">Current population, wipe map, and recent activity come straight from the Raidlands server feed.</p>
       </div>
@@ -260,6 +260,32 @@ $home_is_linked = raidlands_has_linked_account();
 <script type="module" src="<?= e(asset_url('build/airstrike-animation-editor/server-map-viewer.js')) ?>"></script>
 <?php endif; ?>
 
+<section class="section alt progression-baseline-section">
+  <div class="section-inner">
+    <div class="section-header">
+      <p class="section-kicker">10X progression baseline</p>
+      <h2>Fast progress with readable raid pacing</h2>
+      <p class="section-lede">These are the advertised live rates. Server-owned kit contents and permissions continue to sync directly from the game server.</p>
+    </div>
+    <div class="progression-rate-grid">
+      <?php foreach ($progression_rates as [$rate, $label, $copy]) : ?>
+        <article class="metal-card progression-rate-card">
+          <strong><?= e($rate) ?></strong>
+          <h3><?= e($label) ?></h3>
+          <p class="card-copy"><?= e($copy) ?></p>
+        </article>
+      <?php endforeach; ?>
+    </div>
+    <div class="metal-panel progression-rule-panel">
+      <ul class="list-clean progression-rule-list">
+        <?php foreach ($progression_rules as $rule) : ?>
+          <li><?= e($rule) ?></li>
+        <?php endforeach; ?>
+      </ul>
+    </div>
+  </div>
+</section>
+
 <section class="section alt home-leaderboard-section">
   <div class="section-inner">
     <div class="section-header home-section-heading">
@@ -302,26 +328,6 @@ $home_is_linked = raidlands_has_linked_account();
         <?php endforeach; ?>
       </div>
 
-      <?php if ($home_bot_threat !== null) : ?>
-        <?php
-          $home_bot_name = trim((string) ($home_bot_threat['display_name'] ?? ''));
-          $home_bot_name = $home_bot_name !== '' ? $home_bot_name : (string) ($home_bot_threat['bot_key'] ?? 'Raidlands Bot');
-        ?>
-        <article class="metal-panel home-bot-threat">
-          <div class="leaderboard-bot-avatar" aria-hidden="true">BOT</div>
-          <div class="home-bot-copy">
-            <p class="section-kicker">NPC threat report</p>
-            <h3><?= e($home_bot_name) ?></h3>
-            <p class="store-muted"><?= e(trim((string) ($home_bot_threat['skill_tier'] ?? '')) !== '' ? (string) $home_bot_threat['skill_tier'] . ' tier' : 'Active combat bot') ?><?= trim((string) ($home_bot_threat['kit_name'] ?? '')) !== '' ? ' / ' . e((string) $home_bot_threat['kit_name']) : '' ?></p>
-          </div>
-          <dl class="home-bot-stats">
-            <div><dt>Player kills</dt><dd><?= e(number_format((int) ($home_bot_threat['kills'] ?? 0))) ?></dd></div>
-            <div><dt>Deaths</dt><dd><?= e(number_format((int) ($home_bot_threat['deaths'] ?? 0))) ?></dd></div>
-            <div><dt>K/D</dt><dd><?= e(raidlands_stats_format_kdr($home_bot_threat['kdr'] ?? 0)) ?></dd></div>
-          </dl>
-          <a class="btn btn-secondary" href="<?= e(route_url('leaderboard') . '?board=bots&scope=current&metric=kills') ?>">Bot Rankings</a>
-        </article>
-      <?php endif; ?>
     <?php else : ?>
       <div class="metal-panel home-empty-state">
         <p class="section-kicker"><?= $home_leaderboard_ready ? 'Awaiting contenders' : 'Stats feed pending' ?></p>
@@ -416,12 +422,12 @@ $home_is_linked = raidlands_has_linked_account();
   </div>
 </section>
 
-<section class="section alt">
+<section class="section">
   <div class="section-inner">
     <div class="section-header">
-      <p class="section-kicker">Built for nonstop raids</p>
-      <h2>Farm fast. Gear fast. Raid fast.</h2>
-      <p class="section-lede">Raidlands removes the slow parts and keeps the war. Whether you play solo, with friends, or inside a full clan, every Thursday wipe is a fresh battlefield.</p>
+      <p class="section-kicker">Progression first</p>
+      <h2>Gather faster. Build faster. Earn the raid.</h2>
+      <p class="section-lede">Raidlands accelerates the slow parts while keeping loot routes, kit timing, preparation, counters, and defense relevant throughout each Thursday wipe.</p>
     </div>
     <div class="grid four">
       <?php foreach ($home_built_cards as $card) : ?>
@@ -437,12 +443,12 @@ $home_is_linked = raidlands_has_linked_account();
   </div>
 </section>
 
-<section class="section">
+<section class="section alt">
   <div class="section-inner split-panel">
     <div class="metal-panel wipe-schedule-panel">
       <p class="section-kicker">Wipe schedule</p>
-      <h2>Wipes every Thursday</h2>
-      <p class="section-lede">The wasteland resets every Thursday. New bases. New rivalries. New raids.</p>
+      <h2><?= e(implode(' / ', (array) ($site_config['wipe']['dayNames'] ?? ['Thursday']))) ?> wipes</h2>
+      <p class="section-lede">The live schedule is <?= e(implode(' and ', (array) ($site_config['wipe']['dayNames'] ?? ['Thursday']))) ?> at <?= e((string) ($site_config['wipe']['time'] ?? '19:00')) ?> <?= e((string) ($site_config['wipe']['timezone'] ?? 'Europe/London')) ?>. New bases, rivalries, and raids start from there.</p>
       <div class="tag-row wipe-schedule-meta" aria-label="Wipe timing">
         <span class="tag"><span class="tag-label">Last wipe</span><span class="tag-value" data-last-wipe>Loading</span></span>
         <span class="tag"><span class="tag-label">Upcoming</span><span class="tag-value" data-next-wipe>Loading</span></span>

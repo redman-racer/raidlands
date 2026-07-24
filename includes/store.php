@@ -863,6 +863,148 @@ function raidlands_store_access_ends_at(int $duration_seconds, ?string $from = n
     return gmdate('Y-m-d H:i:s', $timestamp + $duration_seconds);
 }
 
+function raidlands_store_required_live_permission(string $product_slug): string
+{
+    return [
+        'redeem-pack-sentry-small' => 'kits.sentry.small',
+        'redeem-pack-sentry-large' => 'kits.sentry.large',
+        'redeem-pack-portafort' => 'kits.portafort',
+        'redeem-pack-vehicle' => 'kits.vehicle',
+    ][$product_slug] ?? '';
+}
+
+function raidlands_store_product_is_live_ready(array $product): bool
+{
+    $required_permission = raidlands_store_required_live_permission((string) ($product['slug'] ?? ''));
+
+    if ($required_permission === '') {
+        return true;
+    }
+
+    if (
+        !raidlands_store_table_exists('oxide_groups')
+        || !raidlands_store_table_exists('oxide_permissions')
+        || !raidlands_store_table_exists('oxide_group_permission_live')
+    ) {
+        return false;
+    }
+
+    $groups = raidlands_store_clean_groups((array) ($product['fulfillment_groups'] ?? [$product['oxide_group'] ?? '']));
+
+    if ($groups === []) {
+        return false;
+    }
+
+    [$placeholders, $params] = raidlands_store_sql_in_params($groups, 'live_group');
+    $params['required_permission'] = $required_permission;
+    $row = raidlands_db_fetch_one(
+        'SELECT COUNT(*) AS total
+         FROM oxide_group_permission_live ogpl
+         INNER JOIN oxide_groups og ON og.id = ogpl.group_id
+         INNER JOIN oxide_permissions op ON op.id = ogpl.permission_id
+         WHERE og.group_name IN (' . implode(', ', $placeholders) . ')
+           AND op.permission_name = :required_permission',
+        $params
+    );
+
+    return (int) ($row['total'] ?? 0) > 0;
+}
+
+function raidlands_store_is_rank_product(array $product): bool
+{
+    return raidlands_store_normalize_product_type((string) ($product['product_type'] ?? '')) === 'kit_bundle'
+        && empty($product['is_stackable'])
+        && (int) ($product['tier_priority'] ?? 0) > 0;
+}
+
+function raidlands_store_rank_purchase_decision(array $product, array $price, array $active_rank_entitlements, ?int $now = null): array
+{
+    if (!raidlands_store_is_rank_product($product)) {
+        return ['allowed' => true, 'reason' => ''];
+    }
+
+    $candidate_tier = (int) ($product['tier_priority'] ?? 0);
+    $duration = max(0, (int) ($price['access_duration_seconds'] ?? 0));
+    $candidate_end = $duration > 0 ? ($now ?? time()) + $duration : null;
+    $same_tier_latest_end = 0;
+
+    foreach ($active_rank_entitlements as $entitlement) {
+        $existing_tier = (int) ($entitlement['tier_priority'] ?? 0);
+
+        if ($existing_tier > $candidate_tier) {
+            return [
+                'allowed' => false,
+                'reason' => 'Your account already has a higher Raidlands rank. Wait for it to end before buying a lower tier.',
+            ];
+        }
+
+        if ($existing_tier !== $candidate_tier) {
+            continue;
+        }
+
+        $existing_end_text = trim((string) ($entitlement['ends_at'] ?? ''));
+
+        if ($existing_end_text === '') {
+            return [
+                'allowed' => false,
+                'reason' => 'Your account already has permanent access to this Raidlands rank.',
+            ];
+        }
+
+        $existing_end = strtotime($existing_end_text);
+
+        if ($existing_end !== false) {
+            $same_tier_latest_end = max($same_tier_latest_end, $existing_end);
+        }
+    }
+
+    if ($same_tier_latest_end > 0 && $candidate_end !== null && $candidate_end <= $same_tier_latest_end) {
+        return [
+            'allowed' => false,
+            'reason' => 'This pass would not extend your current Raidlands rank.',
+        ];
+    }
+
+    return ['allowed' => true, 'reason' => ''];
+}
+
+function raidlands_store_active_rank_entitlements(int $player_id): array
+{
+    if ($player_id <= 0) {
+        return [];
+    }
+
+    raidlands_store_expire_stale_entitlements();
+
+    return raidlands_db_fetch_all(
+        "SELECT e.id, e.product_id, e.source_type, e.source_id, e.ends_at,
+                p.slug, p.name, p.tier_priority
+         FROM entitlements e
+         INNER JOIN store_products p ON p.id = e.product_id
+         WHERE e.player_id = :player_id
+           AND e.status = 'active'
+           AND (e.ends_at IS NULL OR e.ends_at > NOW())
+           AND p.product_type IN ('kit_bundle', 'vip_subscription')
+           AND p.is_stackable = 0
+           AND p.tier_priority > 0
+         ORDER BY p.tier_priority DESC, e.ends_at DESC",
+        ['player_id' => $player_id]
+    );
+}
+
+function raidlands_store_assert_rank_purchase_allowed(int $player_id, array $product, array $price): void
+{
+    $decision = raidlands_store_rank_purchase_decision(
+        $product,
+        $price,
+        raidlands_store_active_rank_entitlements($player_id)
+    );
+
+    if (empty($decision['allowed'])) {
+        throw new RuntimeException((string) ($decision['reason'] ?? 'That rank would not improve your current access.'));
+    }
+}
+
 function raidlands_store_type_label(string $type): string
 {
     return match (raidlands_store_normalize_product_type($type)) {
@@ -915,11 +1057,20 @@ function raidlands_store_seed_catalog(): array
 function raidlands_store_catalog(bool $active_only = true): array
 {
     if (!raidlands_db_is_configured()) {
+        $fallback_products = raidlands_store_seed_catalog();
+
+        if ($active_only) {
+            $fallback_products = array_values(array_filter(
+                $fallback_products,
+                static fn (array $product): bool => !empty($product['is_active'])
+            ));
+        }
+
         return [
             'source' => 'fallback',
             'setupRequired' => true,
             'error' => 'Store setup is not finished yet.',
-            'products' => raidlands_store_seed_catalog(),
+            'products' => $fallback_products,
         ];
     }
 
@@ -1004,6 +1155,7 @@ function raidlands_store_catalog(bool $active_only = true): array
         $products = array_values(array_filter(
             $products,
             static fn (array $product): bool => (array) ($product['fulfillment_groups'] ?? []) !== []
+                && raidlands_store_product_is_live_ready($product)
         ));
     }
 
@@ -1944,6 +2096,8 @@ function raidlands_store_rp_price_by_id(int $price_id): ?array
             p.slug,
             p.product_type,
             p.oxide_group,
+            p.tier_priority,
+            p.is_stackable,
             p.is_active AS product_is_active
          FROM store_prices pr
          INNER JOIN store_products p ON p.id = pr.product_id
@@ -1970,6 +2124,15 @@ function raidlands_store_create_rp_purchase_request(int $price_id, bool $auto_re
         throw new RuntimeException('That product does not have an applied server group configured yet.');
     }
 
+    $row['fulfillment_groups'] = raidlands_store_effective_fulfillment_groups(
+        (int) ($row['product_id'] ?? 0),
+        $row['oxide_group'] ?? ''
+    );
+
+    if (!raidlands_store_product_is_live_ready($row)) {
+        throw new RuntimeException('That pack is waiting for its live server permission to be verified.');
+    }
+
     $rp_cost = (int) ($row['rp_cost'] ?? 0);
     $duration = (int) ($row['access_duration_seconds'] ?? 0);
     $interval = (string) ($row['access_interval'] ?? 'one_time');
@@ -1985,6 +2148,8 @@ function raidlands_store_create_rp_purchase_request(int $price_id, bool $auto_re
     if ($auto_renew && (empty($row['allow_auto_renew']) || $interval === 'one_time' || $duration <= 0)) {
         throw new RuntimeException('Auto-renew is not available for that RP offer.');
     }
+
+    raidlands_store_assert_rank_purchase_allowed((int) $player['id'], $row, $row);
 
     $token = bin2hex(random_bytes(16));
 
@@ -3494,7 +3659,9 @@ function raidlands_store_checkout_for_price(int $price_id): string
             p.slug,
             p.name,
             p.product_type,
-            p.oxide_group
+            p.oxide_group,
+            p.tier_priority,
+            p.is_stackable
          FROM store_prices pr
          INNER JOIN store_products p ON p.id = pr.product_id
          WHERE pr.id = :price_id
@@ -3517,6 +3684,14 @@ function raidlands_store_checkout_for_price(int $price_id): string
     if ($fulfillment_groups === []) {
         throw new RuntimeException('That product does not have an applied server group configured yet.');
     }
+
+    $row['fulfillment_groups'] = $fulfillment_groups;
+
+    if (!raidlands_store_product_is_live_ready($row)) {
+        throw new RuntimeException('That pack is waiting for its live server permission to be verified.');
+    }
+
+    raidlands_store_assert_rank_purchase_allowed((int) $player['id'], $row, $row);
 
     $stripe_price_id = (string) $row['stripe_price_id'];
 
@@ -3640,25 +3815,6 @@ function raidlands_store_grant_entitlement(
     }
 
     try {
-        if (raidlands_store_normalize_product_type((string) $product['product_type']) === 'kit_bundle' && empty($product['is_stackable'])) {
-            $source_clause = $source_type === 'manual' ? "AND e.source_type = 'manual'" : '';
-            $revoke = $pdo->prepare(
-                "UPDATE entitlements e
-                 INNER JOIN store_products p ON p.id = e.product_id
-                 SET e.status = 'revoked', e.changed_at = NOW(), e.updated_at = NOW()
-                 WHERE e.player_id = :player_id
-                    AND e.status = 'active'
-                    AND p.product_type IN ('kit_bundle', 'vip_subscription')
-                    AND p.is_stackable = 0
-                    AND e.product_id <> :product_id
-                    $source_clause"
-            );
-            $revoke->execute([
-                'player_id' => $player_id,
-                'product_id' => $product_id,
-            ]);
-        }
-
         $grant = $pdo->prepare(
             "INSERT INTO entitlements
                 (player_id, product_id, source_type, source_id, oxide_group, status, starts_at, ends_at, changed_at)
@@ -3668,7 +3824,10 @@ function raidlands_store_grant_entitlement(
                 oxide_group = VALUES(oxide_group),
                 status = 'active',
                 starts_at = COALESCE(starts_at, NOW()),
-                ends_at = VALUES(ends_at),
+                ends_at = CASE
+                    WHEN ends_at IS NULL OR VALUES(ends_at) IS NULL THEN NULL
+                    ELSE GREATEST(ends_at, VALUES(ends_at))
+                END,
                 changed_at = NOW(),
                 updated_at = NOW()"
         );
@@ -3680,6 +3839,88 @@ function raidlands_store_grant_entitlement(
             'oxide_group' => $oxide_group,
             'ends_at' => $ends_at,
         ]);
+
+        if (raidlands_store_is_rank_product($product)) {
+            $current_statement = $pdo->prepare(
+                'SELECT id, ends_at
+                 FROM entitlements
+                 WHERE player_id = :player_id
+                   AND product_id = :product_id
+                   AND source_type = :source_type
+                   AND source_id = :source_id
+                 LIMIT 1'
+            );
+            $current_statement->execute([
+                'player_id' => $player_id,
+                'product_id' => $product_id,
+                'source_type' => $source_type,
+                'source_id' => $source_id,
+            ]);
+            $current_entitlement = $current_statement->fetch(PDO::FETCH_ASSOC) ?: [];
+            $current_entitlement_id = (int) ($current_entitlement['id'] ?? 0);
+            $existing_statement = $pdo->prepare(
+                "SELECT e.id, e.ends_at, p.tier_priority
+                 FROM entitlements e
+                 INNER JOIN store_products p ON p.id = e.product_id
+                 WHERE e.player_id = :player_id
+                   AND e.id <> :current_entitlement_id
+                   AND e.status = 'active'
+                   AND (e.ends_at IS NULL OR e.ends_at > NOW())
+                   AND p.product_type IN ('kit_bundle', 'vip_subscription')
+                   AND p.is_stackable = 0
+                   AND p.tier_priority > 0"
+            );
+            $existing_statement->execute([
+                'player_id' => $player_id,
+                'current_entitlement_id' => $current_entitlement_id,
+            ]);
+            $candidate_tier = (int) ($product['tier_priority'] ?? 0);
+            $effective_end = $current_entitlement['ends_at'] ?? $ends_at;
+            $candidate_end_timestamp = $effective_end !== null && strtotime((string) $effective_end) !== false
+                ? (int) strtotime((string) $effective_end)
+                : null;
+            $revoke_ids = [];
+
+            foreach ($existing_statement->fetchAll(PDO::FETCH_ASSOC) as $existing) {
+                $existing_tier = (int) ($existing['tier_priority'] ?? 0);
+
+                if ($existing_tier >= $candidate_tier) {
+                    continue;
+                }
+
+                $existing_end_text = trim((string) ($existing['ends_at'] ?? ''));
+
+                if ($existing_end_text === '' && $candidate_end_timestamp !== null) {
+                    continue;
+                }
+
+                $existing_end_timestamp = $existing_end_text !== '' && strtotime($existing_end_text) !== false
+                    ? (int) strtotime($existing_end_text)
+                    : null;
+
+                if (
+                    $candidate_end_timestamp !== null
+                    && $existing_end_timestamp !== null
+                    && $existing_end_timestamp > $candidate_end_timestamp
+                ) {
+                    continue;
+                }
+
+                $revoke_ids[] = (int) ($existing['id'] ?? 0);
+            }
+
+            $revoke_ids = array_values(array_filter(array_unique($revoke_ids)));
+
+            if ($revoke_ids !== []) {
+                [$revoke_placeholders, $revoke_params] = raidlands_store_sql_in_params($revoke_ids, 'revoke_entitlement');
+                $revoke = $pdo->prepare(
+                    "UPDATE entitlements
+                     SET status = 'revoked', changed_at = NOW(), updated_at = NOW()
+                     WHERE id IN (" . implode(', ', $revoke_placeholders) . ")"
+                );
+                $revoke->execute($revoke_params);
+            }
+        }
 
         if ($owns_transaction) {
             $pdo->commit();

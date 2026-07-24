@@ -4,15 +4,15 @@ This guide is derived from the current repository, not from an external brand bo
 
 ## Brand Position
 
-Raidlands is a high-rate Rust server brand built around fast raids, repeat wipes, battlefield momentum, and a hardened industrial look.
+Raidlands is a progression-focused Rust server brand built around clear rates, fast rebuilding, meaningful raids, repeat wipes, and a hardened industrial look.
 
 Use copy that feels direct, competitive, and player-facing. Avoid internal implementation terms in public pages, such as MySQL, Oxide, bridge sync, config mappings, or plugin names, unless the page is explicitly admin or developer documentation.
 
 Default public identity:
 
-- Name: `Raidlands 1000x`
+- Name: `Raidlands 10X`
 - Short name: `Raidlands`
-- Tagline: `Raid. Respawn. Rebuild. Repeat.`
+- Tagline: `Progress fast. Raid smarter.`
 - Connect command: `connect raidlands.net:25607`
 - Discord invite: `https://discord.gg/N6wnHzMhWS`
 
@@ -27,11 +27,11 @@ Primary website mark:
 
 Horizontal footer/admin mark:
 
-- `assets/media/horizontal-logo-xxsm.webp`
-- `assets/media/horizontal-logo-xsm.webp`
-- `assets/media/horizontal-logo-sm.webp`
-- `assets/media/horizontal-logo-med.webp`
-- `assets/media/horizontal-logo-lrg.webp`
+- `assets/media/horizontal-logo-10x-xxsm.webp`
+- `assets/media/horizontal-logo-10x-xsm.webp`
+- `assets/media/horizontal-logo-10x-sm.webp`
+- `assets/media/horizontal-logo-10x-med.webp`
+- `assets/media/horizontal-logo-10x-lrg.webp`
 
 In-game optimized marks:
 
@@ -43,6 +43,9 @@ Supporting logo files:
 - `assets/media/nav-logo.png`
 - `assets/media/nav-logo.webp`
 - `assets/media/og-image.png`
+- `assets/media/rust-server-header-raidlands-10x.png`
+- `assets/media/rust-server-header-raidlands-10x.jpg`
+- `assets/media/voting-site-banner-raidlands-10x.png`
 
 Usage notes:
 
@@ -50,6 +53,7 @@ Usage notes:
 - Keep PNG copies available for Rust UI plugins and integrations that are more reliable with PNG.
 - Use the horizontal logo where width is available, especially footer, admin header, and broad panels.
 - Do not point Rust UI configs at local filesystem paths. Store web-relative paths such as `/assets/media/raidlands-logo.png`.
+- Run `node scripts/build-raidlands-10x-assets.mjs` after changing the approved primary masters to refresh responsive derivatives.
 
 ## Color Palette
 

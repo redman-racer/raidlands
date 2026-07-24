@@ -251,7 +251,7 @@ $rp_game_tabs = [
 
     <div class="profile-stat-grid rp-games-stat-grid">
       <article class="stat-tile">
-        <span>Synced RP</span>
+        <span>Spendable RP</span>
         <strong data-rp-stat="balance"><?= e(raidlands_store_rp((int) ($games_balance['reward_points'] ?? 0))) ?></strong>
       </article>
       <article class="stat-tile">
@@ -305,7 +305,7 @@ $rp_game_tabs = [
           <span>2</span><div><strong>Server updates RP</strong><small>This normally finishes within about a minute.</small></div>
         </li>
         <li data-rp-sync-step="balance">
-          <span>3</span><div><strong>Balance refreshes</strong><small>The Synced RP number and activity status update automatically.</small></div>
+          <span>3</span><div><strong>Balance refreshes</strong><small>The spendable RP number and activity status update automatically.</small></div>
         </li>
       </ol>
 

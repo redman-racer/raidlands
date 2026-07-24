@@ -760,6 +760,9 @@ function raidlands_kits_fetch_all(bool $active_only = false, bool $include_delet
 
     if ($active_only) {
         $conditions[] = 'is_active = 1';
+        $conditions[] = 'is_hidden = 0';
+        $conditions[] = 'published_revision > 0';
+        $conditions[] = 'published_at IS NOT NULL';
     }
 
     if (!$include_deleted) {

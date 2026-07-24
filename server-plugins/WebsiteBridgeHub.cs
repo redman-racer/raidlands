@@ -15,12 +15,13 @@ using Oxide.Core.Plugins;
 
 namespace Oxide.Plugins
 {
-    [Info("WebsiteBridgeHub", "Raidlands", "1.0.0")]
+    [Info("WebsiteBridgeHub", "Raidlands", "1.0.1")]
     [Description("Batches frequent Raidlands website bridge control and telemetry traffic into a single signed exchange.")]
     public class WebsiteBridgeHub : RustPlugin
     {
         private const int ProtocolVersion = 1;
         private const string SecretsConfigName = "Secrets.local";
+        private const string VipBridgeConfigName = "WebsiteVipBridge";
 
         [PluginReference] private Plugin WebsiteVipBridge;
         [PluginReference] private Plugin WebsiteMapBridge;
@@ -28,9 +29,11 @@ namespace Oxide.Plugins
 
         private HubConfig config;
         private Timer nextExchangeTimer;
+        private Timer requestWatchdogTimer;
         private bool requestInFlight;
         private bool unloading;
         private long sequence;
+        private long inFlightSequence;
         private int consecutiveFailures;
         private int lastHttpCode;
         private int lastRequestBytes;
@@ -42,6 +45,7 @@ namespace Oxide.Plugins
         private float nextDelaySeconds;
         private readonly Queue<DateTime> recentCalls = new Queue<DateTime>();
         private Dictionary<string, string> secrets;
+        private JObject vipBridgeConfig;
         private readonly Dictionary<string, string> lastModuleHealth = new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             ["vip"] = "awaiting exchange",
@@ -97,8 +101,9 @@ namespace Oxide.Plugins
         {
             if (!CanRequest(out var error))
             {
-                PrintError("Website bridge exchange is disabled: " + error);
+                PrintError("Website bridge exchange is not ready and will retry: " + error);
                 lastError = error;
+                ScheduleNext(config.StartupDelaySeconds);
                 return;
             }
 
@@ -110,6 +115,8 @@ namespace Oxide.Plugins
             unloading = true;
             nextExchangeTimer?.Destroy();
             nextExchangeTimer = null;
+            requestWatchdogTimer?.Destroy();
+            requestWatchdogTimer = null;
         }
 
         private void OnPluginLoaded(Plugin plugin)
@@ -174,9 +181,12 @@ namespace Oxide.Plugins
                 ["in_flight"] = requestInFlight,
                 ["sequence"] = sequence,
                 ["last_http_code"] = lastHttpCode,
+                ["last_attempt_at"] = FormatTime(lastAttemptUtc),
                 ["last_success_at"] = FormatTime(lastSuccessUtc),
                 ["last_error"] = lastError,
                 ["consecutive_failures"] = consecutiveFailures,
+                ["exchange_interval_seconds"] = config.ExchangeIntervalSeconds,
+                ["request_timeout_seconds"] = config.RequestTimeoutSeconds,
                 ["next_delay_seconds"] = nextDelaySeconds,
                 ["calls_per_minute"] = recentCalls.Count / 5d,
                 ["request_bytes"] = lastRequestBytes,
@@ -192,7 +202,7 @@ namespace Oxide.Plugins
         {
             return string.Format(
                 CultureInfo.InvariantCulture,
-                "WebsiteBridgeHub v1.0.0: server={0}, inFlight={1}, sequence={2}, lastAttempt={3}, lastSuccess={4}, http={5}, latencyMs={6:0}, bytes={7}/{8}, failures={9}, nextDelay={10:0}s, callsPerMin={11:0.00}, modules=[{12}], queues={13}, error={14}",
+                "WebsiteBridgeHub v1.0.1: server={0}, inFlight={1}, sequence={2}, lastAttempt={3}, lastSuccess={4}, http={5}, latencyMs={6:0}, bytes={7}/{8}, failures={9}, nextDelay={10:0}s, callsPerMin={11:0.00}, modules=[{12}], queues={13}, error={14}",
                 config.ServerId,
                 requestInFlight,
                 sequence,
@@ -278,6 +288,26 @@ namespace Oxide.Plugins
                 return;
             }
 
+            try
+            {
+                BeginExchange();
+            }
+            catch (Exception ex)
+            {
+                RecordFailure(0, "exchange setup failed: " + ex.Message, 0d, 0);
+            }
+        }
+
+        private void BeginExchange()
+        {
+            if (consecutiveFailures > 0)
+            {
+                // Permit a corrected Secrets.local or WebsiteVipBridge config to
+                // recover the hub without requiring another plugin reload.
+                secrets = null;
+                vipBridgeConfig = null;
+            }
+
             if (!CanRequest(out var validationError))
             {
                 RecordFailure(0, validationError, 0d, 0);
@@ -310,59 +340,83 @@ namespace Oxide.Plugins
             var headers = BuildHeaders("POST", url, body);
             headers["Content-Type"] = "application/json";
             requestInFlight = true;
+            inFlightSequence = currentSequence;
             lastAttemptUtc = DateTime.UtcNow;
             recentCalls.Enqueue(lastAttemptUtc);
             PruneRecentCalls();
             var stopwatch = Stopwatch.StartNew();
+            requestWatchdogTimer?.Destroy();
+            requestWatchdogTimer = timer.Once(config.RequestTimeoutSeconds + 5f, () =>
+            {
+                if (!unloading && requestInFlight && inFlightSequence == currentSequence)
+                {
+                    RecordFailure(0, $"exchange {currentSequence} exceeded its {config.RequestTimeoutSeconds}s request timeout", stopwatch.Elapsed.TotalMilliseconds, 0);
+                }
+            });
 
             webrequest.Enqueue(url, body, (code, response) =>
             {
-                stopwatch.Stop();
-                requestInFlight = false;
-                lastResponseBytes = Encoding.UTF8.GetByteCount(response ?? "");
-                lastLatencyMilliseconds = stopwatch.Elapsed.TotalMilliseconds;
-
-                if (code < 200 || code >= 300)
+                if (unloading || !requestInFlight || inFlightSequence != currentSequence)
                 {
-                    RecordFailure(code, "HTTP " + code + ": " + Truncate(response, 300), lastLatencyMilliseconds, lastResponseBytes);
                     return;
                 }
 
-                JObject parsed;
                 try
                 {
-                    parsed = JObject.Parse(response ?? "");
+                    requestWatchdogTimer?.Destroy();
+                    requestWatchdogTimer = null;
+                    stopwatch.Stop();
+                    requestInFlight = false;
+                    lastResponseBytes = Encoding.UTF8.GetByteCount(response ?? "");
+                    lastLatencyMilliseconds = stopwatch.Elapsed.TotalMilliseconds;
+
+                    if (code < 200 || code >= 300)
+                    {
+                        RecordFailure(code, "HTTP " + code + ": " + Truncate(response, 300), lastLatencyMilliseconds, lastResponseBytes);
+                        return;
+                    }
+
+                    JObject parsed;
+                    try
+                    {
+                        parsed = JObject.Parse(response ?? "");
+                    }
+                    catch (Exception ex)
+                    {
+                        RecordFailure(code, "invalid JSON response: " + ex.Message, lastLatencyMilliseconds, lastResponseBytes);
+                        return;
+                    }
+
+                    if (parsed.Value<bool?>("ok") != true || parsed.Value<int?>("protocol") != ProtocolVersion || parsed.Value<long?>("sequence") != currentSequence)
+                    {
+                        RecordFailure(code, "exchange response envelope did not match the request", lastLatencyMilliseconds, lastResponseBytes);
+                        return;
+                    }
+
+                    var responseModules = parsed["modules"] as JObject ?? new JObject();
+                    UpdateModuleHealth("vip", responseModules["vip"] as JObject);
+                    UpdateModuleHealth("map", responseModules["map"] as JObject);
+                    UpdateModuleHealth("clans", responseModules["clans"] as JObject);
+                    ApplyModule(WebsiteVipBridge, "vip", currentSequence, responseModules["vip"] as JObject);
+                    ApplyModule(WebsiteMapBridge, "map", currentSequence, responseModules["map"] as JObject);
+                    ApplyModule(WebsiteClanBridge, "clans", currentSequence, responseModules["clans"] as JObject);
+
+                    var wasFailing = consecutiveFailures > 0;
+                    consecutiveFailures = 0;
+                    lastHttpCode = code;
+                    lastError = "";
+                    lastSuccessUtc = DateTime.UtcNow;
+                    if (wasFailing)
+                    {
+                        Puts("Website bridge exchange recovered.");
+                    }
+                    ScheduleNext(config.ExchangeIntervalSeconds);
                 }
                 catch (Exception ex)
                 {
-                    RecordFailure(code, "invalid JSON response: " + ex.Message, lastLatencyMilliseconds, lastResponseBytes);
-                    return;
+                    stopwatch.Stop();
+                    RecordFailure(code, "exchange response handling failed: " + ex.Message, stopwatch.Elapsed.TotalMilliseconds, Encoding.UTF8.GetByteCount(response ?? ""));
                 }
-
-                if (parsed.Value<bool?>("ok") != true || parsed.Value<int?>("protocol") != ProtocolVersion || parsed.Value<long?>("sequence") != currentSequence)
-                {
-                    RecordFailure(code, "exchange response envelope did not match the request", lastLatencyMilliseconds, lastResponseBytes);
-                    return;
-                }
-
-                var responseModules = parsed["modules"] as JObject ?? new JObject();
-                UpdateModuleHealth("vip", responseModules["vip"] as JObject);
-                UpdateModuleHealth("map", responseModules["map"] as JObject);
-                UpdateModuleHealth("clans", responseModules["clans"] as JObject);
-                ApplyModule(WebsiteVipBridge, "vip", currentSequence, responseModules["vip"] as JObject);
-                ApplyModule(WebsiteMapBridge, "map", currentSequence, responseModules["map"] as JObject);
-                ApplyModule(WebsiteClanBridge, "clans", currentSequence, responseModules["clans"] as JObject);
-
-                var wasFailing = consecutiveFailures > 0;
-                consecutiveFailures = 0;
-                lastHttpCode = code;
-                lastError = "";
-                lastSuccessUtc = DateTime.UtcNow;
-                if (wasFailing)
-                {
-                    Puts("Website bridge exchange recovered.");
-                }
-                ScheduleNext(config.ExchangeIntervalSeconds);
             }, this, RequestMethod.POST, headers, config.RequestTimeoutSeconds);
         }
 
@@ -429,6 +483,8 @@ namespace Oxide.Plugins
 
         private void RecordFailure(int code, string error, double latencyMilliseconds, int responseBytes)
         {
+            requestWatchdogTimer?.Destroy();
+            requestWatchdogTimer = null;
             requestInFlight = false;
             lastHttpCode = code;
             lastError = error ?? "request failed";
@@ -462,9 +518,9 @@ namespace Oxide.Plugins
                 error = "ServerId is empty";
                 return false;
             }
-            if (string.IsNullOrWhiteSpace(ResolveSecretValue(config.SharedSecret)))
+            if (string.IsNullOrWhiteSpace(ResolveSharedSecret()))
             {
-                error = "SharedSecret is empty after resolving secrets";
+                error = $"SharedSecret is empty after checking WebsiteBridgeHub and oxide/config/{VipBridgeConfigName}.json";
                 return false;
             }
             error = "";
@@ -480,9 +536,51 @@ namespace Oxide.Plugins
             {
                 ["X-Raidlands-Server"] = config.ServerId,
                 ["X-Raidlands-Timestamp"] = timestamp,
-                ["X-Raidlands-Signature"] = HmacSha256(payload, ResolveSecretValue(config.SharedSecret)),
+                ["X-Raidlands-Signature"] = HmacSha256(payload, ResolveSharedSecret()),
                 ["Accept"] = "application/json"
             };
+        }
+
+        private string ResolveSharedSecret()
+        {
+            var configured = ResolveSecretValue(config.SharedSecret);
+            if (!string.IsNullOrWhiteSpace(configured))
+            {
+                return configured;
+            }
+
+            return ResolveSecretValue(LoadVipBridgeSetting("SharedSecret"));
+        }
+
+        private string LoadVipBridgeSetting(string key)
+        {
+            var bridgeConfig = LoadVipBridgeConfig();
+            return bridgeConfig == null ? "" : (bridgeConfig.Value<string>(key) ?? "").Trim();
+        }
+
+        private JObject LoadVipBridgeConfig()
+        {
+            if (vipBridgeConfig != null)
+            {
+                return vipBridgeConfig;
+            }
+
+            var path = Path.Combine(Interface.Oxide.ConfigDirectory, VipBridgeConfigName + ".json");
+            if (!File.Exists(path))
+            {
+                return null;
+            }
+
+            try
+            {
+                vipBridgeConfig = JObject.Parse(File.ReadAllText(path));
+            }
+            catch (Exception ex)
+            {
+                PrintWarning("Could not read " + VipBridgeConfigName + ".json: " + ex.Message);
+            }
+
+            return vipBridgeConfig;
         }
 
         private string ResolveSecretValue(string value)

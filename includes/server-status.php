@@ -3865,7 +3865,9 @@ function raidlands_server_status_row_public(array $row, int $stale_seconds, arra
         'online' => $online,
         'status' => $status,
         'statusLabel' => $status_label,
-        'name' => (string) ($row['name'] ?: $site_config['serverName']),
+        // The website brand is authoritative even while an older game-server
+        // heartbeat remains cached during a coordinated rebrand deployment.
+        'name' => (string) $site_config['serverName'],
         'players' => (int) ($row['players'] ?? 0),
         'maxPlayers' => (int) ($row['max_players'] ?? $site_config['maxPlayers']),
         'queue' => (int) ($row['queue'] ?? 0),

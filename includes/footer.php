@@ -4,15 +4,15 @@
             <div>
               <img
                 class="footer-logo"
-                src="<?= e(asset_url('media/horizontal-logo-xsm.webp')) ?>"
-                srcset="<?= e(asset_url('media/horizontal-logo-xxsm.webp')) ?> 120w, <?= e(asset_url('media/horizontal-logo-xsm.webp')) ?> 300w, <?= e(asset_url('media/horizontal-logo-sm.webp')) ?> 550w, <?= e(asset_url('media/horizontal-logo-med.webp')) ?> 1100w, <?= e(asset_url('media/horizontal-logo-lrg.webp')) ?> 2172w"
+                src="<?= e(asset_url('media/horizontal-logo-10x-xsm.webp')) ?>"
+                srcset="<?= e(asset_url('media/horizontal-logo-10x-xxsm.webp')) ?> 120w, <?= e(asset_url('media/horizontal-logo-10x-xsm.webp')) ?> 300w, <?= e(asset_url('media/horizontal-logo-10x-sm.webp')) ?> 550w, <?= e(asset_url('media/horizontal-logo-10x-med.webp')) ?> 1100w, <?= e(asset_url('media/horizontal-logo-10x-lrg.webp')) ?> 2172w"
                 sizes="(max-width: 520px) 190px, 250px"
                 width="300"
                 height="100"
-                alt="Raidlands"
+                alt="Raidlands 10X"
                 loading="lazy"
                 decoding="async">
-              <p class="footer-copy">1000x Rust warfare, built for nonstop raids. Raidlands is not affiliated with Facepunch Studios.</p>
+              <p class="footer-copy">10X progression, 5X loot, and raids worth preparing for. Raidlands 10X is not affiliated with Facepunch Studios.</p>
             </div>
             <nav class="footer-nav" aria-label="Footer navigation">
               <?php $footer_linked_player = raidlands_linked_player(); ?>

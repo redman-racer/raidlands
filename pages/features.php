@@ -87,13 +87,39 @@
   };
 ?>
 
+<section class="section progression-baseline-section">
+  <div class="section-inner">
+    <div class="section-header">
+      <p class="section-kicker">Live progression model</p>
+      <h2>10X gather, 5X loot, 3X scrap</h2>
+      <p class="section-lede">Raidlands accelerates crafting, smelting, and progression while keeping direct raid resources deliberately limited. Exact live kit contents remain server-synchronized.</p>
+    </div>
+    <div class="progression-rate-grid">
+      <?php foreach ($progression_rates as [$rate, $label, $copy]) : ?>
+        <article class="metal-card progression-rate-card">
+          <strong><?= e($rate) ?></strong>
+          <h3><?= e($label) ?></h3>
+          <p class="card-copy"><?= e($copy) ?></p>
+        </article>
+      <?php endforeach; ?>
+    </div>
+    <div class="metal-panel progression-rule-panel">
+      <ul class="list-clean progression-rule-list">
+        <?php foreach ($progression_rules as $rule) : ?>
+          <li><?= e($rule) ?></li>
+        <?php endforeach; ?>
+      </ul>
+    </div>
+  </div>
+</section>
+
 <?php if (!$feature_ready) : ?>
   <section class="section">
     <div class="section-inner">
       <div class="section-header">
         <p class="section-kicker">Feature breakdown</p>
         <h2>Fast, convenient, and still dangerous</h2>
-        <p class="section-lede">Raidlands is built for Rust players who already understand kits, teleporting, clans, wipe fights, and battlefield servers.</p>
+        <p class="section-lede">Raidlands is built for Rust players who want faster progression, readable kit timing, coordinated team play, and wipe-long raids.</p>
       </div>
       <div class="grid three">
         <?php foreach ($feature_cards as $card) : ?>
