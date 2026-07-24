@@ -38,7 +38,6 @@ try {
         "CREATE TABLE $quoted_child (
             id BIGINT UNSIGNED NOT NULL,
             player_id BIGINT UNSIGNED NOT NULL,
-            PRIMARY KEY (id),
             CONSTRAINT fk_stats_ai_child_$suffix
                 FOREIGN KEY (player_id) REFERENCES $quoted_parent (id) ON DELETE CASCADE
         ) ENGINE=InnoDB"
@@ -52,7 +51,7 @@ try {
     raidlands_stats_restore_auto_increment_tables($pdo, [$parent_table, $child_table]);
 
     $columns = $pdo->query(
-        "SELECT TABLE_NAME, EXTRA
+        "SELECT TABLE_NAME, COLUMN_KEY, EXTRA
          FROM information_schema.COLUMNS
          WHERE TABLE_SCHEMA = DATABASE()
            AND TABLE_NAME IN (" . $pdo->quote($parent_table) . ', ' . $pdo->quote($child_table) . ")
@@ -65,6 +64,10 @@ try {
         stats_restore_auto_increment_assert(
             stripos((string) ($column['EXTRA'] ?? ''), 'auto_increment') !== false,
             (string) $column['TABLE_NAME'] . ' regains auto-increment'
+        );
+        stats_restore_auto_increment_assert(
+            strtoupper((string) ($column['COLUMN_KEY'] ?? '')) === 'PRI',
+            (string) $column['TABLE_NAME'] . ' has an ID primary key'
         );
     }
 

@@ -63,7 +63,30 @@ function raidlands_stats_restore_auto_increment_tables(PDO $pdo, ?array $table_n
         return;
     }
 
-    $load_columns = static function () use ($pdo, $table_names): array {
+    $required_unique_indexes = [
+        'players' => [
+            'uq_players_steam_id64' => ['steam_id64'],
+        ],
+        'wipe_seasons' => [
+            'uq_wipe_seasons_server_key' => ['server_id', 'wipe_key'],
+        ],
+        'player_wipe_stats' => [
+            'uq_player_wipe_stats_player' => ['wipe_id', 'player_id'],
+        ],
+        'player_leaderboard_stats' => [
+            'uq_player_leaderboard_stats_player' => ['wipe_id', 'player_id'],
+        ],
+        'bot_wipe_stats' => [
+            'uq_bot_wipe_stats_bot' => ['wipe_id', 'bot_key'],
+        ],
+        'player_outfit_observations' => [
+            'uq_player_outfit_wipe_signature' => ['player_id', 'server_id', 'wipe_id', 'outfit_signature'],
+        ],
+        'player_weapon_observations' => [
+            'uq_player_weapon_wipe_item' => ['player_id', 'server_id', 'wipe_id', 'weapon_shortname', 'skin_id'],
+        ],
+    ];
+    $build_table_filter = static function () use ($table_names): array {
         $params = [];
         $placeholders = [];
 
@@ -73,6 +96,10 @@ function raidlands_stats_restore_auto_increment_tables(PDO $pdo, ?array $table_n
             $params[$parameter] = $table_name;
         }
 
+        return [$params, $placeholders];
+    };
+    $load_schema = static function () use ($pdo, $build_table_filter): array {
+        [$params, $placeholders] = $build_table_filter();
         $statement = $pdo->prepare(
             'SELECT TABLE_NAME, COLUMN_TYPE, COLUMN_KEY, IS_NULLABLE, EXTRA
              FROM information_schema.COLUMNS
@@ -81,17 +108,68 @@ function raidlands_stats_restore_auto_increment_tables(PDO $pdo, ?array $table_n
                AND TABLE_NAME IN (' . implode(', ', $placeholders) . ')'
         );
         $statement->execute($params);
+        $columns = [];
 
-        return $statement->fetchAll(PDO::FETCH_ASSOC);
+        foreach ($statement->fetchAll(PDO::FETCH_ASSOC) as $column) {
+            $columns[(string) $column['TABLE_NAME']] = $column;
+        }
+
+        $index_statement = $pdo->prepare(
+            'SELECT TABLE_NAME, INDEX_NAME, NON_UNIQUE, SEQ_IN_INDEX, COLUMN_NAME
+             FROM information_schema.STATISTICS
+             WHERE TABLE_SCHEMA = DATABASE()
+               AND TABLE_NAME IN (' . implode(', ', $placeholders) . ')
+             ORDER BY TABLE_NAME, INDEX_NAME, SEQ_IN_INDEX'
+        );
+        $index_statement->execute($params);
+        $indexes = [];
+
+        foreach ($index_statement->fetchAll(PDO::FETCH_ASSOC) as $index) {
+            $table_name = (string) $index['TABLE_NAME'];
+            $index_name = (string) $index['INDEX_NAME'];
+            $indexes[$table_name][$index_name]['non_unique'] = (int) $index['NON_UNIQUE'];
+            $indexes[$table_name][$index_name]['columns'][] = (string) $index['COLUMN_NAME'];
+        }
+
+        return [$columns, $indexes];
     };
-    $missing_auto_increment = static function (array $columns): array {
-        return array_values(array_filter(
-            $columns,
-            static fn(array $column): bool => stripos((string) ($column['EXTRA'] ?? ''), 'auto_increment') === false
-        ));
+    $tables_needing_repair = static function (array $columns, array $indexes) use (
+        $table_names,
+        $required_unique_indexes
+    ): array {
+        $repair = [];
+
+        foreach ($table_names as $table_name) {
+            if (!isset($columns[$table_name])) {
+                continue;
+            }
+
+            $primary = $indexes[$table_name]['PRIMARY'] ?? null;
+            if (
+                stripos((string) ($columns[$table_name]['EXTRA'] ?? ''), 'auto_increment') === false
+                || !is_array($primary)
+                || (array) ($primary['columns'] ?? []) !== ['id']
+            ) {
+                $repair[$table_name] = true;
+            }
+
+            foreach ($required_unique_indexes[$table_name] ?? [] as $index_name => $index_columns) {
+                $index = $indexes[$table_name][$index_name] ?? null;
+                if (
+                    !is_array($index)
+                    || (int) ($index['non_unique'] ?? 1) !== 0
+                    || (array) ($index['columns'] ?? []) !== $index_columns
+                ) {
+                    $repair[$table_name] = true;
+                }
+            }
+        }
+
+        return array_keys($repair);
     };
 
-    if ($missing_auto_increment($load_columns()) === []) {
+    [$columns, $indexes] = $load_schema();
+    if ($tables_needing_repair($columns, $indexes) === []) {
         if ($using_default_tables) {
             $default_tables_verified = true;
         }
@@ -107,25 +185,46 @@ function raidlands_stats_restore_auto_increment_tables(PDO $pdo, ?array $table_n
     }
 
     try {
-        $columns = $missing_auto_increment($load_columns());
-        if ($columns === []) {
+        [$columns, $indexes] = $load_schema();
+        $repair_tables = $tables_needing_repair($columns, $indexes);
+        if ($repair_tables === []) {
             if ($using_default_tables) {
                 $default_tables_verified = true;
             }
             return;
         }
 
-        foreach ($columns as $column) {
+        foreach ($repair_tables as $table_name) {
+            $column = $columns[$table_name];
             $column_type = strtolower(trim((string) ($column['COLUMN_TYPE'] ?? '')));
+            $primary = $indexes[$table_name]['PRIMARY'] ?? null;
 
             if (
-                strtoupper((string) ($column['COLUMN_KEY'] ?? '')) !== 'PRI'
-                || strtoupper((string) ($column['IS_NULLABLE'] ?? '')) !== 'NO'
+                strtoupper((string) ($column['IS_NULLABLE'] ?? '')) !== 'NO'
                 || preg_match('/^(?:tinyint|smallint|mediumint|int|bigint)(?:\(\d+\))?(?: unsigned)?$/', $column_type) !== 1
             ) {
                 throw new RuntimeException(
-                    'Restored table ' . (string) ($column['TABLE_NAME'] ?? '') . ' has an invalid primary ID definition.'
+                    'Restored table ' . $table_name . ' has an invalid ID column definition.'
                 );
+            }
+
+            if (is_array($primary) && (array) ($primary['columns'] ?? []) !== ['id']) {
+                throw new RuntimeException('Restored table ' . $table_name . ' has an unexpected primary key.');
+            }
+
+            foreach ($required_unique_indexes[$table_name] ?? [] as $index_name => $index_columns) {
+                $index = $indexes[$table_name][$index_name] ?? null;
+                if (
+                    is_array($index)
+                    && (
+                        (int) ($index['non_unique'] ?? 1) !== 0
+                        || (array) ($index['columns'] ?? []) !== $index_columns
+                    )
+                ) {
+                    throw new RuntimeException(
+                        'Restored table ' . $table_name . ' has an invalid ' . $index_name . ' index.'
+                    );
+                }
             }
         }
 
@@ -143,13 +242,37 @@ function raidlands_stats_restore_auto_increment_tables(PDO $pdo, ?array $table_n
             $pdo->exec('SET SESSION sql_mode = ' . $pdo->quote(implode(',', $sql_modes)));
             $pdo->exec('SET SESSION FOREIGN_KEY_CHECKS = 0');
 
-            foreach ($columns as $column) {
-                $table_name = (string) $column['TABLE_NAME'];
+            foreach ($repair_tables as $table_name) {
+                $column = $columns[$table_name];
                 $column_type = strtolower(trim((string) $column['COLUMN_TYPE']));
-                $pdo->exec(
-                    'ALTER TABLE `' . str_replace('`', '``', $table_name) . '`
-                     MODIFY COLUMN `id` ' . $column_type . ' NOT NULL AUTO_INCREMENT'
-                );
+                $alterations = [];
+                $primary = $indexes[$table_name]['PRIMARY'] ?? null;
+
+                if (!is_array($primary)) {
+                    $alterations[] = 'ADD PRIMARY KEY (`id`)';
+                }
+
+                foreach ($required_unique_indexes[$table_name] ?? [] as $index_name => $index_columns) {
+                    if (!isset($indexes[$table_name][$index_name])) {
+                        $quoted_columns = array_map(
+                            static fn(string $column_name): string => '`' . str_replace('`', '``', $column_name) . '`',
+                            $index_columns
+                        );
+                        $alterations[] = 'ADD UNIQUE KEY `' . str_replace('`', '``', $index_name) . '` ('
+                            . implode(', ', $quoted_columns) . ')';
+                    }
+                }
+
+                if (stripos((string) ($column['EXTRA'] ?? ''), 'auto_increment') === false) {
+                    $alterations[] = 'MODIFY COLUMN `id` ' . $column_type . ' NOT NULL AUTO_INCREMENT';
+                }
+
+                if ($alterations !== []) {
+                    $pdo->exec(
+                        'ALTER TABLE `' . str_replace('`', '``', $table_name) . '` '
+                        . implode(', ', $alterations)
+                    );
+                }
             }
         } finally {
             $pdo->exec('SET SESSION FOREIGN_KEY_CHECKS = ' . ($original_foreign_key_checks === 0 ? '0' : '1'));
